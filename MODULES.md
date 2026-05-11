@@ -4,8 +4,11 @@ This file tracks every module in the package and its current state. Update this 
 
 | # | Module | Status | Locked at version | Notes |
 |---|---|---|---|---|
-| 1 | Repo scaffold | ✅ In place | v0.1-scaffold | Directory layout, pyproject, env handling, .gitignore |
-| 2 | `config.py` | ⏳ Not started | — | Pydantic v2 schema, YAML loader, .env integration |
+| 1 | Repo scaffold | 🔒 Locked | v0.1-scaffold | Directory layout, pyproject, env handling, .gitignore |
+| 2 | `config.py` | 🔍 Under review | v0.2 (pending) | Pydantic v2 schema, YAML loader, .env integration |
+| 2 | `settings.py` | 🔍 Under review | v0.2 (pending) | Pydantic-settings for .env / environment variables |
+| 2 | `configs/sanjay_van_baseline.yaml` | 🔍 Under review | v0.2 (pending) | Locked baseline values matching working notebook pipeline |
+| 2 | `aois/sanjay_van.geojson` | 🔍 Placeholder | v0.2 (pending) | Bounding-box placeholder; user replaces with real polygon |
 | 3 | `utils/logging.py` | ⏳ Not started | — | Rich-based logger |
 | 3 | `utils/gee.py` | ⏳ Not started | — | Auth wrapper, safe_get_info, common helpers |
 | 4 | `stages/base.py` | ⏳ Not started | — | Stage abstract interface |
