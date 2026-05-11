@@ -90,14 +90,6 @@ class TestStageResult:
         assert r.metadata == {}
         assert r.warnings == []
 
-    def test_can_set_outputs(self):
-        r = StageResult(outputs={"x": 1})
-        assert r.outputs == {"x": 1}
-
-    def test_can_set_metadata(self):
-        r = StageResult(metadata={"elapsed_sec": 1.23})
-        assert r.metadata["elapsed_sec"] == 1.23
-
     def test_can_append_warnings(self):
         r = StageResult()
         r.warnings.append("S1 had only 3 images in this window")

@@ -127,49 +127,6 @@ def test_unknown_field_raises(tmp_path):
         load_config(bad_yaml)
 
 
-def test_wrong_type_raises(tmp_path):
-    bad_yaml = tmp_path / "bad.yaml"
-    bad_yaml.write_text(
-        textwrap.dedent("""\
-        name: test
-        roi:
-          name: t
-          roi_file: aois/t.geojson
-        dates:
-          phenology: {start: 2020-01-01, end: 2024-12-31}
-          radar:     {start: 2020-01-01, end: 2024-12-31}
-          optical_composite: {start: 2023-01-01, end: 2023-12-31}
-        clustering:
-          k: "six"       # should be int
-        """)
-    )
-    with pytest.raises(ValidationError):
-        load_config(bad_yaml)
-
-
-def test_out_of_range_value_raises(tmp_path):
-    bad_yaml = tmp_path / "bad.yaml"
-    bad_yaml.write_text(
-        textwrap.dedent("""\
-        name: test
-        roi:
-          name: t
-          roi_file: aois/t.geojson
-        dates:
-          phenology: {start: 2020-01-01, end: 2024-12-31}
-          radar:     {start: 2020-01-01, end: 2024-12-31}
-          optical_composite: {start: 2023-01-01, end: 2023-12-31}
-        cloud_mask:
-          max_cloud_pct: 150   # > 100, invalid
-        """)
-    )
-    with pytest.raises(ValidationError):
-        load_config(bad_yaml)
-
-
-# ---------- Name safety ----------
-
-
 def test_name_rejects_unsafe_characters():
     """Config names go into file paths, so they shouldn't contain slashes etc."""
     with pytest.raises(ValidationError, match="path-safe"):

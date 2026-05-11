@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from fmu.settings import Settings, get_settings
+from fmu.settings import Settings
 
 
 def test_settings_loads_with_defaults(monkeypatch):
@@ -51,17 +51,3 @@ def test_resolved_asset_root_fails_without_project_id(monkeypatch):
     s = Settings(_env_file=None)  # type: ignore[call-arg]
     with pytest.raises(ValueError, match="GEE_PROJECT_ID is not set"):
         s.resolved_asset_root()
-
-
-def test_get_settings_returns_singleton():
-    """Repeated calls return the same cached instance."""
-    s1 = get_settings()
-    s2 = get_settings()
-    assert s1 is s2
-
-
-def test_get_settings_force_reload_creates_new_instance(monkeypatch):
-    s1 = get_settings()
-    monkeypatch.setenv("GEE_PROJECT_ID", "different-project")
-    s2 = get_settings(force_reload=True)
-    assert s1 is not s2

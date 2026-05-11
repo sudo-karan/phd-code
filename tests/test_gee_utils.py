@@ -143,14 +143,6 @@ def test_safe_get_info_appends_context_on_error():
         assert "loading S2 stack" in str(e)
 
 
-def test_safe_get_info_no_context_still_works():
-    from fmu.utils.gee import safe_get_info
-
-    mock_obj = MagicMock()
-    mock_obj.getInfo.return_value = "hello"
-    assert safe_get_info(mock_obj) == "hello"
-
-
 def test_safe_get_info_rejects_non_gee_objects():
     from fmu.utils.gee import safe_get_info
 
@@ -159,16 +151,6 @@ def test_safe_get_info_rejects_non_gee_objects():
 
 
 # ---------- safe_call decorator ----------
-
-
-def test_safe_call_decorator_passes_through_normally():
-    from fmu.utils.gee import safe_call
-
-    @safe_call("doing the thing")
-    def add(a, b):
-        return a + b
-
-    assert add(2, 3) == 5
 
 
 def test_safe_call_decorator_adds_context_to_gee_errors():

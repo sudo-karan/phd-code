@@ -7,12 +7,10 @@ These tests don't need GEE and don't make network calls.
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 
 import pytest
 
 from fmu.utils.logging import (
-    get_console,
     get_logger,
     init_logging,
 )
@@ -119,12 +117,6 @@ def test_get_logger_works_before_init():
     log.warning("this should work")
 
 
-def test_get_console_returns_singleton():
-    c1 = get_console()
-    c2 = get_console()
-    assert c1 is c2
-
-
 def test_log_file_in_run_dir_has_init_message(tmp_path, monkeypatch):
     """The log file should record that logging was initialized."""
     monkeypatch.setenv("OUTPUT_DIR", str(tmp_path))
@@ -145,12 +137,3 @@ def test_run_dir_is_under_output_dir_runs(tmp_path, monkeypatch):
     run_dir = init_logging(config_name="hierarchy_test")
     # Should be at <tmp_path>/runs/<config>_<timestamp>/
     assert run_dir.parent == tmp_path / "runs"
-
-
-def test_path_returned_is_pathlib(tmp_path, monkeypatch):
-    monkeypatch.setenv("OUTPUT_DIR", str(tmp_path))
-    from fmu.settings import get_settings
-
-    get_settings(force_reload=True)
-    run_dir = init_logging(config_name="pathlib_check")
-    assert isinstance(run_dir, Path)

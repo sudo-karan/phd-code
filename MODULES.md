@@ -11,9 +11,8 @@ This file tracks every module in the package and its current state. Update this 
 | 2 | `aois/sanjay_van.geojson` | 🔍 Placeholder | v0.2 (pending) | Bounding-box placeholder; user replaces with real polygon |
 | 3 | `utils/logging.py` | 🔒 Locked | v0.3-utils | Rich-based per-run logger |
 | 3 | `utils/gee.py` | 🔒 Locked | v0.3-utils | Init, safe_get_info wrapper, ROI loader, asset_path |
-| 4 | `stages/base.py` | 🔍 Under review | v0.4 (pending) | Stage abstract, PipelineContext, StageResult, registry |
-| 5 | `pipeline.py` (skeleton) | ⏳ Not started | — | Orchestrator with placeholder stages |
-| 6 | Tests for 1–5 | ⏳ Not started | — | Config tests, smoke test |
+| 4 | `stages/base.py` | 🔒 Locked | v0.4-stage | Stage abstract, PipelineContext, StageResult, registry |
+| 5 | `pipeline.py` (orchestrator) | 🔍 Under review | v0.5 (pending) | Walks stages, validates context, writes manifest |
 | 7 | `stages/data_load.py` | ⏳ Not started | — | S2 + S1 loading, cloud masking |
 | 8 | `stages/masking.py` | ⏳ Not started | — | Water, urban, non-veg masks |
 | 9 | `stages/features_optical.py` | ⏳ Not started | — | NDVI/NIRv harmonics, amplitude, phase |
