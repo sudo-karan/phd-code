@@ -1,0 +1,58 @@
+# Environment secrets — NEVER commit these
+.env
+.env.local
+.env.*.local
+
+# GEE auth credentials
+.config/earthengine/
+credentials
+
+# Python virtual environments
+.venv/
+venv/
+env/
+.python-version
+
+# Python build / cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+*-checkpoint.ipynb
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Output artifacts (these are produced by the pipeline; not source)
+outputs/
+runs/
+*.tif
+*.geotiff
+*.zip
+*.parquet
+
+# Logs
+*.log
+logs/
+
+# Local notebooks for scratch (notebooks/exploration is allowed; user adds patterns here as needed)
+# Uncomment the next line to ignore everything in exploration except a .gitkeep:
+# notebooks/exploration/*
+# !notebooks/exploration/.gitkeep
