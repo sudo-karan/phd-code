@@ -9,8 +9,8 @@ This file tracks every module in the package and its current state. Update this 
 | 2 | `settings.py` | 🔍 Under review | v0.2 (pending) | Pydantic-settings for .env / environment variables |
 | 2 | `configs/sanjay_van_baseline.yaml` | 🔍 Under review | v0.2 (pending) | Locked baseline values matching working notebook pipeline |
 | 2 | `aois/sanjay_van.geojson` | 🔍 Placeholder | v0.2 (pending) | Bounding-box placeholder; user replaces with real polygon |
-| 3 | `utils/logging.py` | ⏳ Not started | — | Rich-based logger |
-| 3 | `utils/gee.py` | ⏳ Not started | — | Auth wrapper, safe_get_info, common helpers |
+| 3 | `utils/logging.py` | 🔍 Under review | v0.3 (pending) | Rich-based per-run logger |
+| 3 | `utils/gee.py` | 🔍 Under review | v0.3 (pending) | Init, safe_get_info wrapper, ROI loader, asset_path |
 | 4 | `stages/base.py` | ⏳ Not started | — | Stage abstract interface |
 | 5 | `pipeline.py` (skeleton) | ⏳ Not started | — | Orchestrator with placeholder stages |
 | 6 | Tests for 1–5 | ⏳ Not started | — | Config tests, smoke test |

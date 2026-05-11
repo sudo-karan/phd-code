@@ -46,9 +46,26 @@ earthengine authenticate
 cp .env.example .env
 # Edit .env and set GEE_PROJECT_ID to your project
 
-# 6. Run the smoke test
-pytest tests/test_pipeline_smoke.py -v
+# 6. Run the fast test suite
+pytest
+
+# 7. (Optional) Run live GEE integration tests — slower, hits the real API
+pytest -m live_gee
 ```
+
+## Testing — two tiers
+
+The test suite is split into two tiers:
+
+- **Fast tier (default).** Unit tests with mocked GEE calls. Runs in ~1 second.
+  No authentication needed. Runs on every `pytest` invocation and in CI.
+
+- **Live tier.** Integration tests that hit the real Earth Engine API.
+  Takes ~10-20 seconds. Needs `earthengine authenticate` to have been run.
+  Excluded by default; run explicitly with `pytest -m live_gee`.
+
+**Before locking a module, run both tiers.** Fast tier proves the logic is right;
+live tier proves it works against real GEE.
 
 ## Repository layout
 

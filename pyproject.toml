@@ -74,7 +74,11 @@ ignore = ["E501"]  # line length handled by formatter
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-addopts = "-v --tb=short"
+# Default: skip live GEE tests. Run them explicitly with `pytest -m live_gee`.
+addopts = "-v --tb=short -m 'not live_gee'"
+markers = [
+    "live_gee: tests that make real Earth Engine API calls (slow; require auth)",
+]
 
 [tool.mypy]
 python_version = "3.11"
