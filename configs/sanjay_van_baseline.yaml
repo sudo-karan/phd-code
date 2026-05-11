@@ -1,64 +1,32 @@
-# Sanjay Van baseline configuration
+# Sanjay Van baseline config. Locked reference — don't modify in place;
+# new ideas become new YAML files compared against this.
 #
-# This is THE LOCKED BASELINE. Once stable, do not modify this file.
-# New experiments become new YAML files compared against this one.
-#
-# Values here match the working state of the Colab notebooks (Phase 6, ~Notebook 12):
-#   - S2_SR_HARMONIZED for optical (not HLS yet)
-#   - Single annual harmonic on NDVI (not dual-harmonic NIRv yet)
-#   - Z-score normalization (not robust scaling yet)
-#   - Manual k=6 (not auto-K yet)
-#
-# The above are deliberate. Each becomes its own experiment config later.
+# Mirrors the working notebook pipeline: S2_SR_HARMONIZED, k=6, zscore,
+# single annual harmonic. HLS / auto-K / robust scaling / dual harmonic
+# all go in separate configs later.
 
 name: sanjay_van_baseline
-description: >
-  Locked baseline for Sanjay Van. Reproduces the working notebook pipeline
-  inside the modular framework. All future experiments are diffs against this.
+description: Locked baseline for Sanjay Van.
 
-# --- Region of interest ---
 roi:
   name: sanjay_van
   roi_file: aois/sanjay_van.geojson
-  # roi_asset: null   # reserved for future use
 
-# --- Time windows ---
-#
-# Each stream uses a different window. They are intentionally NOT aligned,
-# because each one answers a different question:
-#
-#   phenology (long window, 8 years):
-#     Harmonic regression needs many years of observations so year-to-year
-#     anomalies (drought, monsoon variation) average out. Stable amplitude
-#     and phase require multiple full seasonal cycles.
-#
-#   radar (density-consistent window, 2017-2021):
-#     Sentinel-1B operated from 2016 to its anomaly in Dec 2021, giving
-#     a 6-day revisit. From Dec 2021 through 2024 only S1A operated, so
-#     revisit dropped to 12 days. Constellation recovered in 2025 with
-#     S1C and S1D. We use 2017-2021 because every month inside that
-#     window has roughly the same number of observations.
-#
-#   optical_composite (single recent year):
-#     Used to build ONE cloud-free static composite image — the image
-#     SNIC sees when drawing stand boundaries. Not a time series.
-#     One recent year is enough; it represents "what the landscape
-#     looks like now."
+# Three windows for three jobs. Don't unify them.
+# - phenology: long, for stable harmonic fits.
+# - radar: 2017-2021, density-consistent (S1B died Dec 2021, halving revisit).
+# - optical_composite: one recent year for the static image SNIC sees.
 dates:
   phenology:
-    # Long window for stable harmonic fits. Anchored to S2 record.
     start: 2017-01-01
     end: 2024-12-31
   radar:
-    # Density-consistent window: post-S1B-launch, pre-S1B-anomaly.
     start: 2017-01-01
     end: 2021-12-01
   optical_composite:
-    # Recent year for the static composite SNIC sees.
     start: 2023-01-01
     end: 2023-12-31
 
-# --- Dataset IDs (using DatasetIDs defaults, but written out for clarity) ---
 datasets:
   phenology_collection: COPERNICUS/S2_SR_HARMONIZED
   optical_composite_collection: COPERNICUS/S2_SR_HARMONIZED
@@ -69,17 +37,17 @@ datasets:
   water: JRC/GSW1_4/GlobalSurfaceWater
   nightlights: NOAA/VIIRS/DNB/MONTHLY_V1/VCMSLCFG
 
-# --- Pipeline parameters ---
 cloud_mask:
   max_cloud_pct: 20.0
 
 masking:
   ndvi_min: 0.2
-  nightlights_threshold: 30.0    # Delhi-calibrated; revisit for other ROIs
-  keep_worldcover_classes: [10, 20, 30]   # trees, shrubs, grass
+  nightlights_threshold: 30.0  # Delhi-calibrated, won't generalize
+  keep_worldcover_classes: [10, 20, 30]  # trees, shrubs, grass
+  jrc_water_occurrence_threshold: 50.0  # >= this% of months observed = permanent water
 
 segmentation:
-  size: 10                        # ~100m seed spacing on a 10m grid
+  size: 10
   compactness: 0.5
   connectivity: 8
   neighborhood_size: 128
@@ -103,5 +71,5 @@ custom_csv_features: []
 
 export:
   export_geotiff: true
-  export_gee_asset: false        # asset export is opt-in
+  export_gee_asset: false
   analysis_scale_m: 10

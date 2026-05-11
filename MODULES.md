@@ -1,48 +1,31 @@
 # Module status
 
-This file tracks every module in the package and its current state. Update this whenever a module is added, modified, or locked.
+Tracks each module's state. ⏳ Not started · 🔍 Under review · 🔒 Locked.
 
-| # | Module | Status | Locked at version | Notes |
+A module is **Locked** when the code is read, has tests (fast + live where
+applicable), is documented, and is part of the smoke test. Modifications to
+locked modules need a new `decisions.md` entry.
+
+| # | Module | Status | Locked at | Notes |
 |---|---|---|---|---|
-| 1 | Repo scaffold | 🔒 Locked | v0.1-scaffold | Directory layout, pyproject, env handling, .gitignore |
-| 2 | `config.py` | 🔍 Under review | v0.2 (pending) | Pydantic v2 schema, YAML loader, .env integration |
-| 2 | `settings.py` | 🔍 Under review | v0.2 (pending) | Pydantic-settings for .env / environment variables |
-| 2 | `configs/sanjay_van_baseline.yaml` | 🔍 Under review | v0.2 (pending) | Locked baseline values matching working notebook pipeline |
-| 2 | `aois/sanjay_van.geojson` | 🔍 Placeholder | v0.2 (pending) | Bounding-box placeholder; user replaces with real polygon |
-| 3 | `utils/logging.py` | 🔒 Locked | v0.3-utils | Rich-based per-run logger |
-| 3 | `utils/gee.py` | 🔒 Locked | v0.3-utils | Init, safe_get_info wrapper, ROI loader, asset_path |
-| 4 | `stages/base.py` | 🔒 Locked | v0.4-stage | Stage abstract, PipelineContext, StageResult, registry |
-| 5 | `pipeline.py` (orchestrator) | 🔍 Under review | v0.5 (pending) | Walks stages, validates context, writes manifest |
-| 7 | `stages/data_load.py` | ⏳ Not started | — | S2 + S1 loading, cloud masking |
-| 8 | `stages/masking.py` | ⏳ Not started | — | Water, urban, non-veg masks |
-| 9 | `stages/features_optical.py` | ⏳ Not started | — | NDVI/NIRv harmonics, amplitude, phase |
-| 10 | `stages/features_radar.py` | ⏳ Not started | — | S1 VV/VH ratio + percentiles |
-| 11 | `stages/features_structure.py` | ⏳ Not started | — | Lang canopy height + texture |
-| 12 | `stages/features_static.py` | ⏳ Not started | — | Terrain, climate, disturbance |
-| 13 | `stages/features_custom_csv.py` | ⏳ Not started | — | Bring-your-own-feature CSV ingestion |
-| 14 | `stages/segmentation.py` | ⏳ Not started | — | SNIC |
-| 15 | `stages/clustering.py` | ⏳ Not started | — | wekaKMeans with auto-K |
-| 16 | `stages/profiling.py` | ⏳ Not started | — | Per-cluster centroids, area stats |
-| 17 | `stages/export.py` | ⏳ Not started | — | GeoTIFF + GEE asset export |
-| 18 | `metrics/stand_stats.py` | ⏳ Not started | — | Stand count, size distribution, variance |
-| 19 | `metrics/weak_baselines.py` | ⏳ Not started | — | Kappa vs WorldCover, Dynamic World |
-| 20 | `metrics/report.py` | ⏳ Not started | — | Per-run markdown report generator |
-
-**Legend:** ⏳ Not started · 🚧 In progress · 🔍 Under review · ✅ In place · 🔒 Locked (frozen baseline)
-
-## Locking policy
-
-A module is "Locked" only when:
-1. The code has been read and accepted by Jaskaran
-2. It has at least one test
-3. It is documented in the main README and `decisions.md`
-4. It runs as part of the smoke test
-
-Modules in "In place" status are functional and committed but not yet baseline-frozen. They can be modified freely.
-
-Once a module is **Locked**, modifications require:
-- A written justification (added to `decisions.md`)
-- A new test or modification to existing tests
-- A version bump
-
-The point of locking is to prevent the "going in circles" pattern: settled decisions stay settled unless explicitly reopened.
+| 1 | Repo scaffold | 🔒 | v0.1-scaffold | Layout, pyproject, .env handling, .gitignore |
+| 2 | `config.py` + baseline YAML | 🔒 | v0.2-config | Pydantic schema, locked baseline |
+| 2 | `settings.py` | 🔒 | v0.2-config | Pydantic-settings, .env |
+| 3 | `utils/logging.py` | 🔒 | v0.3-utils | Rich + per-run dirs |
+| 3 | `utils/gee.py` | 🔒 | v0.3-utils | Init, safe_get_info, ROI loader, asset_path |
+| 4 | `stages/base.py` | 🔒 | v0.4-stage | Stage contract, registry |
+| 5 | `pipeline.py` | 🔒 | v0.5-orchestrator | Orchestrator + manifest |
+| - | Voice pass cleanup | 🔒 | v0.5.1-voice | Knowledge moved to docs/design_notes.md |
+| 6 | `stages/masking.py` | 🔍 | v0.6 (pending) | habitat_mask + water_mask + landcover_summary; first real GEE stage |
+| 7 | `stages/data_load.py` | ⏳ | — | S2 + S1 loading + cloud masking |
+| 8 | Asset caching (cross-cutting) | ⏳ | — | Hash-based asset caching across stages; team.yaml ACL |
+| 9 | `stages/features_optical.py` | ⏳ | — | NDVI/NIRv harmonics |
+| 10 | `stages/features_radar.py` | ⏳ | — | S1 VV/VH percentiles |
+| 11 | `stages/features_structure.py` | ⏳ | — | Canopy height |
+| 12 | `stages/features_static.py` | ⏳ | — | Terrain, climate, distance-to-water |
+| 13 | `stages/features_custom_csv.py` | ⏳ | — | User CSV hook |
+| 14 | `stages/segmentation.py` | ⏳ | — | SNIC |
+| 15 | `stages/clustering.py` | ⏳ | — | wekaKMeans |
+| 16 | `stages/profiling.py` | ⏳ | — | Per-cluster centroids |
+| 17 | `stages/export.py` | ⏳ | — | GeoTIFF + GEE asset |
+| 18 | `metrics/*` | ⏳ | — | Stand stats, weak baselines, run report |

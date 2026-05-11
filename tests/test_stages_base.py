@@ -284,7 +284,7 @@ class TestRegistry:
                 name = "not_a_stage"
 
     def test_register_name_mismatch_raises(self):
-        with pytest.raises(ValueError, match="doesn't match"):
+        with pytest.raises(ValueError, match="has name="):
 
             @register_stage("decorator_says_x")
             class S(Stage):
