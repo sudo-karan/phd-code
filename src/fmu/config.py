@@ -81,6 +81,21 @@ class DataLoadParams(BaseModel):
     s2_composite_reducer: Literal["median", "p25", "p50", "p75"] = "median"
 
 
+class FeaturesOpticalParams(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # Vegetation index for phenology features.
+    # ndvi: (NIR-RED)/(NIR+RED). Notebook baseline.
+    # nirv: NIR * NDVI. Tracks productivity more linearly in dense canopy.
+    index: Literal["ndvi", "nirv"] = "ndvi"
+    # Harmonic mode.
+    # single: annual cycle only — matches notebook baseline.
+    # dual:   annual + semi-annual — catches double-peaked phenology.
+    harmonic_mode: Literal["single", "dual"] = "single"
+    # Whether to include a linear-trend term in the regression. Captures
+    # multi-year greening or browning beyond seasonality.
+    include_trend: bool = True
+
+
 class MaskingParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -162,6 +177,7 @@ class Config(BaseModel):
     cloud_mask: CloudMaskParams = Field(default_factory=CloudMaskParams)
     data_load: DataLoadParams = Field(default_factory=DataLoadParams)
     masking: MaskingParams = Field(default_factory=MaskingParams)
+    features_optical: FeaturesOpticalParams = Field(default_factory=FeaturesOpticalParams)
     segmentation: SegmentationParams = Field(default_factory=SegmentationParams)
     clustering: ClusteringParams = Field(default_factory=ClusteringParams)
     normalization: NormalizationParams = Field(default_factory=NormalizationParams)

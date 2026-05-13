@@ -55,6 +55,15 @@ masking:
   jrc_water_occurrence_threshold: 50.0  # >= this% of months observed = permanent water
   open_buildings_confidence: 0.7  # drop low-confidence building polygons
 
+# Phenology features from the S2 collection. The baseline mirrors the
+# locked notebook approach: NDVI + single annual harmonic. The variant
+# config sanjay_van_nirv_dual.yaml uses NIRv + dual harmonic for comparison
+# (see DEC-013).
+features_optical:
+  index: ndvi
+  harmonic_mode: single
+  include_trend: true
+
 segmentation:
   size: 10
   compactness: 0.5

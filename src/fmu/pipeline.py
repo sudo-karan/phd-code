@@ -108,6 +108,7 @@ class Pipeline:
         t0 = time.perf_counter()
         cache_status: dict[str, str] = {}
         export_tasks: list[ExportTaskInfo] = []
+        cached_outputs: dict[str, Any] = {}
 
         # Which produces are cacheable as GEE assets? Default: all of them
         # (preserves behavior for stages that only produce ee.Image outputs).
@@ -119,8 +120,14 @@ class Pipeline:
             # Try cache-first if enabled
             if self.use_cache:
                 cached_outputs = self._try_load_cache(stage, config, cache_status, cacheable)
-                # Skip the live run only if every produces key is cacheable AND in cache.
-                if cached_outputs is not None and cacheable == stage.produces:
+                # Skip the live run only if every produces key is cacheable AND
+                # every cacheable key actually hit. Empty cacheable set never skips.
+                all_cacheable_hit = (
+                    cacheable
+                    and len(cached_outputs) == len(cacheable)
+                    and cacheable == stage.produces
+                )
+                if all_cacheable_hit:
                     log.info("  [cache] all %d outputs hit; skipping stage run", len(cached_outputs))
                     for key, value in cached_outputs.items():
                         ctx.set(key, value)
@@ -157,9 +164,8 @@ class Pipeline:
             # For cacheable outputs that hit cache, swap in the cached version
             # so downstream stages and exports use the persisted asset.
             final_outputs = dict(stage_result.outputs)
-            if self.use_cache:
-                for key, cached_image in (cached_outputs or {}).items():
-                    final_outputs[key] = cached_image
+            for key, cached_image in cached_outputs.items():
+                final_outputs[key] = cached_image
 
             for key, value in final_outputs.items():
                 ctx.set(key, value)
@@ -236,6 +242,11 @@ class Pipeline:
         """Submit async export tasks for cacheable outputs that missed the cache."""
         import ee  # local import: only needed if caching is on
 
+        if not ctx.has("roi"):
+            log.warning(
+                "  [cache] cannot export — `roi` not in context; skipping export."
+            )
+            return []
         roi = ctx.get("roi")
         if not isinstance(roi, ee.Geometry):
             log.warning(

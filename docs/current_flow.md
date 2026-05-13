@@ -110,6 +110,48 @@ Loads Sentinel-2 and Sentinel-1 collections, applies S2 cloud masking (SCL-based
 
 **Related decisions:** DEC-005 (union mask sampling, handles missing bands), ENG-012 (fail-loud), ENG-018 (caching).
 
+### 3. features_optical — `src/fmu/stages/features_optical.py`
+
+Per-pixel phenology features via harmonic regression on a vegetation index (NDVI or NIRv) over the 8-year S2 phenology window. The output is the dominant input to clustering downstream.
+
+**Reads from context:** `s2_collection`, `roi`
+**Writes to context:** `optical_features` (single multi-band image)
+**Cacheable:** yes (one image with named bands)
+
+**Regression model:**
+
+```
+y(t) = a + b·cos(2π·t) + c·sin(2π·t)
+     + [d·cos(4π·t) + e·sin(4π·t)]   # dual harmonic only
+     + [f·t]                          # if include_trend
+```
+
+Where `y` is the vegetation index (NDVI or NIRv) and `t` is years since 2017-01-01.
+
+**Derived metrics extracted from the coefficients** (per DEC-002):
+- `<prefix>_mean = a` (intercept)
+- `<prefix>_amplitude_annual = sqrt(b² + c²)`
+- `<prefix>_phase_annual = atan2(c, b)` — radians, when peak greenness happens
+- `<prefix>_amplitude_semi`, `<prefix>_phase_semi` — dual harmonic only
+- `<prefix>_trend = f` — per-year change
+- `<prefix>_residual_variance` — RMS of regression residuals; high = pixel poorly fit by smooth seasonal cycle
+- `<prefix>_obs_count` — number of valid observations per pixel (metadata, not for clustering)
+
+Where `<prefix>` is `ndvi` or `nirv` depending on the config.
+
+**Config knobs:**
+- `features_optical.index` — `ndvi` (default, baseline) or `nirv`
+- `features_optical.harmonic_mode` — `single` (default, baseline) or `dual`
+- `features_optical.include_trend` — bool (default `true`)
+
+**Two configs run through this same stage:**
+- `sanjay_van_baseline.yaml`: NDVI + single annual harmonic + trend (6 bands)
+- `sanjay_van_nirv_dual.yaml`: NIRv + dual harmonic + trend (8 bands)
+
+The metrics module (Module 18) will compare their outputs (see DEC-013).
+
+**Related decisions:** DEC-002 (derived metrics not raw coefficients), DEC-013 (baseline vs variant), DEC-014 (compute over full ROI, mask at clustering), DEC-015 (which features included/skipped and why).
+
 ### Later stages
 
 Each one will get its own section here as it's built.
@@ -130,6 +172,9 @@ Each one will get its own section here as it's built.
 | Pipeline orchestrator | `src/fmu/pipeline.py` |
 | Masking logic | `src/fmu/stages/masking.py` |
 | Data load logic | `src/fmu/stages/data_load.py` |
+| Optical features logic | `src/fmu/stages/features_optical.py` |
+| Phenology config knobs | `configs/*.yaml` → `features_optical.{index, harmonic_mode, include_trend}` |
+| NIRv + dual variant config | `configs/sanjay_van_nirv_dual.yaml` |
 | S2 cloud mask SCL classes | `configs/sanjay_van_baseline.yaml` → `cloud_mask.drop_scl_classes` |
 | S2 max cloud % | `configs/sanjay_van_baseline.yaml` → `cloud_mask.max_cloud_pct` |
 | S1 orbit direction | `configs/sanjay_van_baseline.yaml` → `data_load.s1_orbit` |

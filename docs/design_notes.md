@@ -197,3 +197,48 @@ For data_load specifically:
 The pattern generalizes: any future stage that produces a mix of cheap
 metadata (collections, geometries) and expensive materializations (images)
 can declare its `cacheable_outputs` accordingly.
+
+## features_optical: config-driven, single stage code
+
+The same `FeaturesOpticalStage` runs both the NDVI + single-annual baseline
+and the NIRv + dual-harmonic variant. The config tells it which index to
+compute, which harmonic terms to include, and whether to add a linear
+trend. No code branches on "is this a variant?" — the config drives the
+exact regression structure dynamically.
+
+This is the intended pattern for "improve, don't fork": new ideas become
+new YAML files, not new modules. The framework checks both run cleanly
+and produces comparable outputs. Module 18 (metrics) does the actual
+comparison.
+
+The regression is fit per-pixel using `ee.Reducer.linearRegression(numX, numY=1)`,
+which returns coefficients as an array image plus residual RMS. The stage
+extracts each coefficient by name, derives amplitude / phase per harmonic
+pair, and combines everything into one multi-band image whose band names
+encode the config (e.g., `ndvi_mean` vs `nirv_mean`). Downstream stages
+can read either via the `optical_features` context key without knowing
+which index was used.
+
+Per DEC-014, features are computed over the entire ROI. The `habitat_mask`
+from Module 7 is not applied here; it's the clustering stage's job to
+filter pixels before training. This keeps the feature stage flexible (you
+can visualize phenology of built-up pixels alongside forest pixels for
+context) at no computational cost (GEE is lazy).
+
+## NIRv units: NIR_reflectance × NDVI (both 0-1)
+
+Per Badgley et al. (2017), NIRv = NIR_reflectance × NDVI, where
+NIR_reflectance is actual reflectance (0-1). Sentinel-2 SR stores
+reflectance as integers scaled by 10000, so the stage divides B8 by
+10000 before multiplying by NDVI. This keeps NIRv in [0, 1] like NDVI.
+
+This isn't optional or stylistic — using the stored integers directly
+produces values ~10000× too large and breaks the literature definition.
+Discovered when NIRv visualizations rendered fully saturated against a
+0-1 palette; fixing it in the feature stage (rather than adapting the
+palette) was the right move because (a) the values are now physically
+meaningful, (b) the clusterer treats both indices on the same scale
+before z-scoring, and (c) future stages don't need to remember which
+index is in which range.
+
+NDVI is unaffected — the 10000 scaling cancels in the ratio.

@@ -1,0 +1,86 @@
+# Sanjay Van variant: NIRv + dual harmonic phenology features.
+# Compared against the baseline (NDVI + single annual harmonic) by the
+# metrics module. See DEC-013 in decisions.md.
+#
+# Everything else identical to sanjay_van_baseline.yaml. Only the
+# `features_optical` section and `name` differ.
+
+name: sanjay_van_nirv_dual
+description: NIRv + dual harmonic variant of the Sanjay Van baseline (DEC-013).
+
+roi:
+  name: sanjay_van
+  roi_file: aois/sanjay_van.geojson
+
+dates:
+  phenology:
+    start: 2017-01-01
+    end: 2024-12-31
+  radar:
+    start: 2017-01-01
+    end: 2021-12-01
+  optical_composite:
+    start: 2023-01-01
+    end: 2023-12-31
+
+datasets:
+  phenology_collection: COPERNICUS/S2_SR_HARMONIZED
+  optical_composite_collection: COPERNICUS/S2_SR_HARMONIZED
+  radar_collection: COPERNICUS/S1_GRD
+  canopy_height: users/nlang/ETH_GlobalCanopyHeight_2020_10m_v1
+  dem: NASA/NASADEM_HGT/001
+  worldcover: ESA/WorldCover/v200
+  water: JRC/GSW1_4/GlobalSurfaceWater
+  nightlights: NOAA/VIIRS/DNB/MONTHLY_V1/VCMSLCFG
+  open_buildings: GOOGLE/Research/open-buildings/v3/polygons
+
+cloud_mask:
+  max_cloud_pct: 20.0
+  drop_scl_classes: [3, 8, 9, 10]
+
+data_load:
+  s1_orbit: ASCENDING
+  s1_polarizations: [VV, VH]
+  s1_instrument_mode: IW
+  s2_composite_reducer: median
+
+masking:
+  ndvi_min: 0.2
+  nightlights_threshold: 30.0
+  keep_worldcover_classes: [10, 20, 30]
+  jrc_water_occurrence_threshold: 50.0
+  open_buildings_confidence: 0.7
+
+# Variant phenology features: NIRv + dual harmonic.
+features_optical:
+  index: nirv
+  harmonic_mode: dual
+  include_trend: true
+
+segmentation:
+  size: 10
+  compactness: 0.5
+  connectivity: 8
+  neighborhood_size: 128
+
+clustering:
+  k: 6
+  n_training_samples: 5000
+  seed: 42
+
+normalization:
+  method: zscore
+
+features:
+  optical_harmonic: true
+  radar: true
+  canopy_height: true
+  terrain: true
+  custom_csv: false
+
+custom_csv_features: []
+
+export:
+  export_geotiff: true
+  export_gee_asset: false
+  analysis_scale_m: 10

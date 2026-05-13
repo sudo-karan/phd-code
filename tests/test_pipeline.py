@@ -314,3 +314,72 @@ class TestPipelineResult:
         assert isinstance(result, PipelineResult)
         assert isinstance(result.context, PipelineContext)
         assert result.context.get("out") == "hello"
+
+
+# ---------- Cache-skip regression tests ----------
+
+
+class TestCacheSkipBehavior:
+    """Regression tests for a bug found 2026-05-14: when caching was on
+    and `_try_load_cache` returned an empty dict (nothing cached), the
+    orchestrator was *skipping* the stage instead of running it live.
+    The stage looked like "from cache" in logs and produced nothing —
+    no error, no output, downstream stages had no inputs.
+
+    The fix requires `len(cached_outputs) == len(cacheable)` (and cacheable
+    must be non-empty) before the skip path is taken.
+    """
+
+    def test_use_cache_off_runs_stage_normally(self, tmp_path):
+        """Sanity: cache off → stage runs every time, no cache logic."""
+        run_log = []
+
+        @register_stage("counts_calls")
+        class S(Stage):
+            name = "counts_calls"
+            required_inputs: set[str] = set()
+            produces = {"counter"}
+
+            def run(self, ctx, config):
+                run_log.append("ran")
+                return StageResult(outputs={"counter": len(run_log)})
+
+        pipeline = Pipeline(stage_names=["counts_calls"], use_cache=False)
+        result = pipeline.run(config=_make_config(), run_dir=tmp_path)
+        assert run_log == ["ran"]
+        assert result.context.get("counter") == 1
+
+    def test_use_cache_on_with_empty_cache_still_runs_stage(self, tmp_path):
+        """Cache on, nothing cached → stage MUST run live, not skip.
+
+        This is the explicit regression test for the bug. With the
+        broken logic, the stage would be skipped silently and `counter`
+        would be missing from the context, or zero.
+        """
+        run_log = []
+
+        @register_stage("counts_calls_2")
+        class S(Stage):
+            name = "counts_calls_2"
+            required_inputs: set[str] = set()
+            produces = {"counter"}
+
+            def run(self, ctx, config):
+                run_log.append("ran")
+                return StageResult(outputs={"counter": 42})
+
+        # use_cache=True but the stage produces a non-ee.Image value;
+        # the cache check will find nothing in GEE (and we don't even
+        # touch GEE here because asset_exists short-circuits — actually
+        # it tries to hit GEE. We have to mock that.)
+        from unittest.mock import patch
+
+        with patch("fmu.pipeline.asset_exists", return_value=False), \
+             patch("fmu.pipeline.cached_asset_path", return_value="fake/path"):
+            pipeline = Pipeline(stage_names=["counts_calls_2"], use_cache=True)
+            result = pipeline.run(config=_make_config(), run_dir=tmp_path)
+
+        # The critical assertions: the stage actually ran, and the output
+        # made it into the context.
+        assert run_log == ["ran"], "Stage was skipped instead of running"
+        assert result.context.get("counter") == 42, "Stage output not in context"
