@@ -100,6 +100,11 @@ class Stage(ABC):
     name: ClassVar[str] = ""
     required_inputs: ClassVar[set[str]] = set()
     produces: ClassVar[set[str]] = set()
+    # Subset of `produces` that can be cached as GEE assets (ee.Image only).
+    # Empty set or unset = all produces are cacheable (default). Stages whose
+    # outputs are mostly ee.ImageCollection / non-Image should override this
+    # to limit the orchestrator's cache check to the actually-cacheable keys.
+    cacheable_outputs: ClassVar[set[str]] = set()
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)

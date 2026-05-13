@@ -18,7 +18,7 @@ A module is **Locked** when the code is read, has tests (fast + live where appli
 | - | Voice pass cleanup | 🔒 | v0.5.1-voice | Knowledge moved to docs/design_notes.md |
 | 6 | Asset caching (cross-cutting) | ⏳ | — | Stable asset paths; cache-first orchestrator; async export on miss; `use_cache` flag |
 | 7 | `stages/masking.py` | 🔄 paused | — | Multi-source: WorldCover + JRC + Open Buildings + VIIRS. Locks AFTER caching is in place. |
-| 8 | `stages/data_load.py` | ⏳ | — | S2 + S1 loading + cloud masking + static composite |
+| 8 | `stages/data_load.py` | 🔄 paused | — | S2 + S1 loading + cloud masking + static composite. Cacheable: `s2_composite`. |
 | 9 | `stages/features_optical.py` | ⏳ | — | NDVI/NIRv harmonics |
 | 10 | `stages/features_radar.py` | ⏳ | — | S1 VV/VH percentiles |
 | 11 | `stages/features_structure.py` | ⏳ | — | Canopy height + texture |

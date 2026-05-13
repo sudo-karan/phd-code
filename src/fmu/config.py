@@ -64,6 +64,21 @@ class DatasetIDs(BaseModel):
 class CloudMaskParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
     max_cloud_pct: float = Field(default=20.0, ge=0.0, le=100.0)
+    # SCL classes to drop. Defaults: 3=cloud_shadow, 8=cloud_medium_prob,
+    # 9=cloud_high_prob, 10=thin_cirrus.
+    drop_scl_classes: list[int] = Field(default=[3, 8, 9, 10], min_length=1)
+
+
+class DataLoadParams(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # S1: VV+VH, IW mode by default. Single orbit direction (configurable).
+    s1_orbit: Literal["ASCENDING", "DESCENDING"] = "ASCENDING"
+    s1_polarizations: list[Literal["VV", "VH"]] = Field(
+        default=["VV", "VH"], min_length=1
+    )
+    s1_instrument_mode: Literal["IW", "EW", "SM"] = "IW"
+    # Composite reducer for the static S2 image SNIC will see.
+    s2_composite_reducer: Literal["median", "p25", "p50", "p75"] = "median"
 
 
 class MaskingParams(BaseModel):
@@ -145,6 +160,7 @@ class Config(BaseModel):
     datasets: DatasetIDs = Field(default_factory=DatasetIDs)
 
     cloud_mask: CloudMaskParams = Field(default_factory=CloudMaskParams)
+    data_load: DataLoadParams = Field(default_factory=DataLoadParams)
     masking: MaskingParams = Field(default_factory=MaskingParams)
     segmentation: SegmentationParams = Field(default_factory=SegmentationParams)
     clustering: ClusteringParams = Field(default_factory=ClusteringParams)

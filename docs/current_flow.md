@@ -83,7 +83,32 @@ The built mask uses Open Buildings (vector, derived from commercial imagery — 
 
 ### 2. data_load — `src/fmu/stages/data_load.py`
 
-*Not yet built.* Will load S2 and S1 collections, apply per-image cloud masking, and build the static optical composite used by SNIC. Will read `roi` from context; produce `s2_collection`, `s1_collection`, `s2_composite`.
+Loads Sentinel-2 and Sentinel-1 collections, applies S2 cloud masking (SCL-based), and builds the static optical composite SNIC will see. The phenology and radar windows are different from the composite window — each serves a different downstream stage.
+
+**Reads from context:** `roi`
+**Writes to context:** `s2_collection`, `s1_collection`, `s2_composite`
+
+**Cacheable outputs:** `s2_composite` only. Image collections can't be exported as single assets, so they're recomputed each run (filtering is cheap — composite calculation is the expensive part).
+
+**Datasets:**
+- Sentinel-2 SR Harmonized (`COPERNICUS/S2_SR_HARMONIZED`) — phenology + composite
+- Sentinel-1 GRD (`COPERNICUS/S1_GRD`) — radar
+
+**Logic:**
+- S2 collection: filter by ROI + phenology window + `CLOUDY_PIXEL_PERCENTAGE ≤ max_cloud_pct`. Per-image SCL masking drops classes 3 (cloud shadow), 8 (cloud medium prob), 9 (cloud high prob), 10 (thin cirrus).
+- S1 collection: filter by IW mode, single orbit direction (default ASCENDING), VV+VH polarizations. **No dB conversion needed** — `COPERNICUS/S1_GRD` is already in dB ([source](https://developers.google.com/earth-engine/guides/sentinel1)).
+- S2 composite: re-filter S2 by the optical_composite window, apply SCL mask, reduce by `s2_composite_reducer` (default median).
+- Empty windows → `RuntimeError` (fail-loud per ENG-012).
+
+**Config knobs** (in `configs/*.yaml`):
+- `cloud_mask.max_cloud_pct` — drop S2 images with cloud % above this (default 20)
+- `cloud_mask.drop_scl_classes` — which SCL pixel classes to mask out (default [3, 8, 9, 10])
+- `data_load.s1_orbit` — `ASCENDING` or `DESCENDING` (default ASCENDING)
+- `data_load.s1_polarizations` — list of `VV` / `VH` (default both)
+- `data_load.s1_instrument_mode` — `IW` / `EW` / `SM` (default IW)
+- `data_load.s2_composite_reducer` — `median` / `p25` / `p50` / `p75` (default median)
+
+**Related decisions:** DEC-005 (union mask sampling, handles missing bands), ENG-012 (fail-loud), ENG-018 (caching).
 
 ### Later stages
 
@@ -104,6 +129,12 @@ Each one will get its own section here as it's built.
 | Stage abstract / registry | `src/fmu/stages/base.py` |
 | Pipeline orchestrator | `src/fmu/pipeline.py` |
 | Masking logic | `src/fmu/stages/masking.py` |
+| Data load logic | `src/fmu/stages/data_load.py` |
+| S2 cloud mask SCL classes | `configs/sanjay_van_baseline.yaml` → `cloud_mask.drop_scl_classes` |
+| S2 max cloud % | `configs/sanjay_van_baseline.yaml` → `cloud_mask.max_cloud_pct` |
+| S1 orbit direction | `configs/sanjay_van_baseline.yaml` → `data_load.s1_orbit` |
+| S1 polarizations | `configs/sanjay_van_baseline.yaml` → `data_load.s1_polarizations` |
+| S2 composite reducer | `configs/sanjay_van_baseline.yaml` → `data_load.s2_composite_reducer` |
 | WorldCover dataset ID | `configs/sanjay_van_baseline.yaml` → `datasets.worldcover` |
 | JRC water dataset ID | `configs/sanjay_van_baseline.yaml` → `datasets.water` |
 | Open Buildings dataset ID | `configs/sanjay_van_baseline.yaml` → `datasets.open_buildings` |

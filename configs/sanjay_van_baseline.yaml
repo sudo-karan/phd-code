@@ -40,6 +40,13 @@ datasets:
 
 cloud_mask:
   max_cloud_pct: 20.0
+  drop_scl_classes: [3, 8, 9, 10]  # cloud_shadow, cloud_med, cloud_high, thin_cirrus
+
+data_load:
+  s1_orbit: ASCENDING
+  s1_polarizations: [VV, VH]
+  s1_instrument_mode: IW
+  s2_composite_reducer: median  # single static image for SNIC
 
 masking:
   ndvi_min: 0.2  # reserved, applied later (needs S2)

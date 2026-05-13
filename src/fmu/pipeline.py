@@ -109,14 +109,18 @@ class Pipeline:
         cache_status: dict[str, str] = {}
         export_tasks: list[ExportTaskInfo] = []
 
+        # Which produces are cacheable as GEE assets? Default: all of them
+        # (preserves behavior for stages that only produce ee.Image outputs).
+        cacheable = stage.cacheable_outputs if stage.cacheable_outputs else stage.produces
+
         try:
             stage.validate(ctx, config)
 
             # Try cache-first if enabled
             if self.use_cache:
-                cached_outputs = self._try_load_cache(stage, config, cache_status)
-                if cached_outputs is not None:
-                    # All outputs cached → skip running the stage
+                cached_outputs = self._try_load_cache(stage, config, cache_status, cacheable)
+                # Skip the live run only if every produces key is cacheable AND in cache.
+                if cached_outputs is not None and cacheable == stage.produces:
                     log.info("  [cache] all %d outputs hit; skipping stage run", len(cached_outputs))
                     for key, value in cached_outputs.items():
                         ctx.set(key, value)
@@ -139,7 +143,6 @@ class Pipeline:
                     f"Stage {name!r} returned {type(stage_result).__name__}, expected StageResult."
                 )
 
-            # produced keys must match the declaration exactly
             produced_keys = set(stage_result.outputs.keys())
             if produced_keys != stage.produces:
                 missing = stage.produces - produced_keys
@@ -151,13 +154,20 @@ class Pipeline:
                     parts.append(f"Undeclared outputs: {sorted(extra)}.")
                 raise ValueError(" ".join(parts))
 
-            for key, value in stage_result.outputs.items():
+            # For cacheable outputs that hit cache, swap in the cached version
+            # so downstream stages and exports use the persisted asset.
+            final_outputs = dict(stage_result.outputs)
+            if self.use_cache:
+                for key, cached_image in (cached_outputs or {}).items():
+                    final_outputs[key] = cached_image
+
+            for key, value in final_outputs.items():
                 ctx.set(key, value)
 
-            # Submit async exports for missing assets (fire-and-forget)
+            # Submit exports for any cacheable outputs that missed
             if self.use_cache:
                 export_tasks = self._submit_exports(
-                    stage, config, ctx, stage_result.outputs, cache_status
+                    stage, config, ctx, final_outputs, cache_status, cacheable
                 )
 
         except Exception as e:
@@ -194,15 +204,16 @@ class Pipeline:
         stage: Stage,
         config: Config,
         cache_status: dict[str, str],
+        cacheable: set[str],
     ) -> dict[str, Any] | None:
-        """Check if all of stage.produces exist in cache.
+        """Check which cacheable outputs exist in cache.
 
-        Returns the loaded outputs as a dict if all hit; None on any miss.
-        Mutates cache_status with "hit" / "miss" per key.
+        Returns a dict of loaded outputs (possibly empty if none hit).
+        Mutates cache_status with "hit" / "miss" per cacheable key.
+        Non-cacheable keys are not checked.
         """
-        all_hit = True
         outputs: dict[str, Any] = {}
-        for key in sorted(stage.produces):
+        for key in sorted(cacheable):
             path = cached_asset_path(config.name, stage.name, key)
             if asset_exists(path):
                 cache_status[key] = "hit"
@@ -210,9 +221,8 @@ class Pipeline:
                 log.debug("  [cache] hit:  %s → %s", key, path)
             else:
                 cache_status[key] = "miss"
-                all_hit = False
                 log.debug("  [cache] miss: %s (expected %s)", key, path)
-        return outputs if all_hit else None
+        return outputs
 
     def _submit_exports(
         self,
@@ -221,8 +231,9 @@ class Pipeline:
         ctx: PipelineContext,
         outputs: dict[str, Any],
         cache_status: dict[str, str],
+        cacheable: set[str],
     ) -> list[ExportTaskInfo]:
-        """For outputs that weren't in cache, submit async export tasks."""
+        """Submit async export tasks for cacheable outputs that missed the cache."""
         import ee  # local import: only needed if caching is on
 
         roi = ctx.get("roi")
@@ -235,11 +246,13 @@ class Pipeline:
 
         tasks: list[ExportTaskInfo] = []
         for key, image in outputs.items():
+            if key not in cacheable:
+                continue
             if cache_status.get(key) == "hit":
-                continue  # came from cache, no need to re-export
+                continue
             if not isinstance(image, ee.Image):
                 log.warning(
-                    "  [cache] skipping export of %s — not an ee.Image (got %s)",
+                    "  [cache] skipping export of %s — declared cacheable but not an ee.Image (got %s)",
                     key, type(image).__name__,
                 )
                 continue

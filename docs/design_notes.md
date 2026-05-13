@@ -176,3 +176,24 @@ checks cache before running and submits exports after.
 Sharing assets with collaborators (programmatic ACLs via `team.yaml`) is
 deferred to a future module — for now anyone with the asset path can read
 them if granted access manually.
+
+## Caching: only ee.Image outputs, not collections
+
+Asset export works for `ee.Image`, not for `ee.ImageCollection`. A collection
+is a sequence of images, and "exporting it" would mean exporting each one as
+a separate asset — many tasks, lots of storage, and the resulting assets
+wouldn't be reusable as a collection anyway.
+
+So stages that produce collections (`data_load`) declare which subset of
+`produces` is actually cacheable via `cacheable_outputs`. The orchestrator
+only checks/exports those, and re-runs the stage live each time to
+regenerate the collections (which is cheap — filtering is just metadata).
+
+For data_load specifically:
+- `s2_collection`, `s1_collection`: re-filtered each run, ~1-2 sec
+- `s2_composite`: cached. This is the expensive operation — it reduces
+  potentially hundreds of S2 images through the SCL mask and reducer.
+
+The pattern generalizes: any future stage that produces a mix of cheap
+metadata (collections, geometries) and expensive materializations (images)
+can declare its `cacheable_outputs` accordingly.
