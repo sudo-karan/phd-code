@@ -1,101 +1,47 @@
-# Forest Management Units (`fmu`)
+# fmu — Forest Management Units
 
-A modular pipeline for delineating ecologically coherent forest stands from open multi-sensor satellite data, using Google Earth Engine.
+Multi-sensor pipeline for delineating forest stands from open satellite data,
+running server-side on Google Earth Engine.
 
-**Status:** Pre-alpha. The package skeleton is in place; real stage implementations are being added module by module.
+Pre-alpha. Scaffold + config + utils + orchestrator in place. Real stages
+(data load, masking, features, segmentation, clustering) coming.
 
----
-
-## What this is
-
-A Python package (`fmu`) that fuses Sentinel-2 phenology, Sentinel-1 radar, canopy height, and topographic data into per-stand feature vectors, segments the landscape with SNIC, and clusters stands into ecologically meaningful groups — all running server-side on Google Earth Engine.
-
-The pipeline is designed to be:
-
-- **Modular.** Each stage (data loading, masking, feature extraction, segmentation, clustering, profiling, export) is swappable.
-- **Configuration-driven.** ROI, dates, parameters, and dataset choices live in YAML files. No hardcoded magic numbers.
-- **ROI-agnostic.** The same pipeline runs on any geometry from a 4 km² park to a 10,000 km² forest, with parameters that scale automatically.
-- **Reproducible.** Every run produces a manifest pinning config, code version, and outputs.
-- **Validation-first.** Every run automatically logs cluster stability, stand statistics, and weak-baseline agreement (WorldCover, Dynamic World).
-
-## What it isn't (yet)
-
-- Not a working end-to-end pipeline — see "Status" above.
-- Not a published method — there is no paper yet, and the research question that the pipeline supports is still being developed.
-- Not a replacement for ground-truth validation. The pipeline produces unsupervised stand maps; external validation against reference data is a separate, ongoing effort.
-
-## Quick start
+## Setup
 
 ```bash
-# 1. Clone and enter the repo
-git clone <your-fork-url> phd-code
-cd phd-code
-
-# 2. Create a Python 3.13 virtual environment
 python3.13 -m venv .venv
-source .venv/bin/activate   # macOS/Linux
-# .venv\Scripts\activate    # Windows
-
-# 3. Install in editable mode with dev tools
+source .venv/bin/activate
 pip install -e ".[dev]"
-
-# 4. Authenticate with Google Earth Engine (one-time, browser-based)
-earthengine authenticate
-
-# 5. Set up environment variables
-cp .env.example .env
-# Edit .env and set GEE_PROJECT_ID to your project
-
-# 6. Run the fast test suite
-pytest
-
-# 7. (Optional) Run live GEE integration tests — slower, hits the real API
-pytest -m live_gee
+earthengine authenticate            # one-time per machine
+cp .env.example .env                # then set GEE_PROJECT_ID
+pytest                              # fast tier
+pytest -m live_gee                  # real-GEE tier (needs auth)
 ```
 
-## Testing — two tiers
-
-The test suite is split into two tiers:
-
-- **Fast tier (default).** Unit tests with mocked GEE calls. Runs in ~1 second.
-  No authentication needed. Runs on every `pytest` invocation and in CI.
-
-- **Live tier.** Integration tests that hit the real Earth Engine API.
-  Takes ~10-20 seconds. Needs `earthengine authenticate` to have been run.
-  Excluded by default; run explicitly with `pytest -m live_gee`.
-
-**Before locking a module, run both tiers.** Fast tier proves the logic is right;
-live tier proves it works against real GEE.
-
-## Repository layout
+## Layout
 
 ```
-phd-code/
-├── src/fmu/              # the package
-│   ├── config.py         # Pydantic config + YAML loader
-│   ├── pipeline.py       # the orchestrator
-│   ├── stages/           # pipeline stages (one module per stage)
-│   ├── metrics/          # automatic validation metrics
-│   └── utils/            # GEE helpers, logging, etc.
-├── configs/              # YAML config files (one per ROI/experiment)
-├── tests/                # pytest tests
-├── scripts/              # CLI entry points
-├── notebooks/exploration/  # scratch notebooks (not part of the package)
-├── legacy/               # archive of pre-package work; read-only history
-├── .env.example          # template for environment variables
-└── pyproject.toml        # package definition + dependencies
+src/fmu/              package
+  config.py           pydantic YAML schema
+  settings.py         .env / per-machine settings
+  pipeline.py         orchestrator
+  stages/             pipeline stages (base.py contract; concrete stages WIP)
+  metrics/            validation metrics (WIP)
+  utils/              gee.py, logging.py
+configs/              YAML configs, one per experiment
+aois/                 GeoJSON polygons
+tests/                pytest tests (fast + live_gee tiers)
+docs/design_notes.md  why the code is the way it is
+legacy/               pre-package Colab notebooks (read-only)
 ```
 
-## How development works
+## Tests
 
-This repo is being built **module by module**, with each module reviewed before the next is started. See `MODULES.md` for the status of each module and what's been locked vs what's in progress.
+- `pytest` → fast tier only (~1s, no auth, runs in CI). Tests pure-Python infrastructure.
+- `pytest -m live_gee` → real-API tier (~10-20s, needs `earthengine authenticate`). Tests GEE stages against real data.
 
-Design decisions are tracked in the companion `phd-notebook` repo under `decisions.md`. Each significant choice (e.g. Pydantic v2 over dataclasses; SNIC over watershed) has a written justification with a "revisit if..." clause. This is deliberate — the goal is to stop re-litigating settled questions every meeting.
+**CI runs only the fast tier.** GEE stages must be verified locally with `pytest -m live_gee` before locking a module — CI cannot do this. See `docs/current_flow.md` for the testing policy.
 
 ## License
 
 MIT — see `LICENSE`.
-
-## Acknowledgements
-
-Built as part of a PhD project supervised by Prof. Aaditeshwar Seth. The pipeline draws on methods from the multi-sensor remote sensing and land surface phenology literature; specific references are listed in the design document (in the companion `phd-notebook` repo).

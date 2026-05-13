@@ -89,7 +89,7 @@ def test_roi_asset_only():
 
 
 def test_date_range_rejects_inverted():
-    with pytest.raises(ValidationError, match="end .* must be >= start"):
+    with pytest.raises(ValidationError, match="before start"):
         DateRange(start="2024-01-01", end="2020-01-01")
 
 
@@ -139,6 +139,27 @@ def test_name_rejects_unsafe_characters():
                 optical_composite=DateRange(start="2023-01-01", end="2023-12-31"),
             ),
         )
+
+
+def test_empty_worldcover_classes_rejected(tmp_path):
+    """An empty keep list = mask everything = no data. Catch it here, not in the stage."""
+    bad_yaml = tmp_path / "empty_wc.yaml"
+    bad_yaml.write_text(
+        textwrap.dedent("""\
+        name: empty_wc_test
+        roi:
+          name: t
+          roi_file: aois/t.geojson
+        dates:
+          phenology: {start: 2020-01-01, end: 2024-12-31}
+          radar:     {start: 2020-01-01, end: 2024-12-31}
+          optical_composite: {start: 2023-01-01, end: 2023-12-31}
+        masking:
+          keep_worldcover_classes: []
+        """)
+    )
+    with pytest.raises(ValidationError):
+        load_config(bad_yaml)
 
 
 # ---------- Defaults ----------

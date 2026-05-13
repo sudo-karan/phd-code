@@ -49,5 +49,5 @@ def test_resolved_asset_root_fails_without_project_id(monkeypatch):
     monkeypatch.delenv("GEE_PROJECT_ID", raising=False)
     monkeypatch.delenv("GEE_ASSET_ROOT", raising=False)
     s = Settings(_env_file=None)  # type: ignore[call-arg]
-    with pytest.raises(ValueError, match="GEE_PROJECT_ID is not set"):
+    with pytest.raises(ValueError, match="GEE_PROJECT_ID not set"):
         s.resolved_asset_root()

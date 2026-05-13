@@ -146,7 +146,7 @@ def test_safe_get_info_appends_context_on_error():
 def test_safe_get_info_rejects_non_gee_objects():
     from fmu.utils.gee import safe_get_info
 
-    with pytest.raises(TypeError, match="expected a GEE object"):
+    with pytest.raises(TypeError, match="expected GEE object"):
         safe_get_info("just a string")
 
 
