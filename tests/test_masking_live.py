@@ -85,9 +85,8 @@ def test_habitat_mask_has_nonzero_coverage(sanjay_van_ctx, baseline_config):
 
 
 def test_landcover_summary_has_expected_label_values(sanjay_van_ctx, baseline_config):
-    """The labeled summary should contain at least one of the vegetation
-    classes (10, 20, 30) over Sanjay Van. Water (80) may or may not appear
-    depending on JRC's coverage of the jheels."""
+    """Labeled summary should contain at least one of the veg classes (10/20/30).
+    Built (50) and water (80) may or may not appear depending on the ROI."""
     result = MaskingStage().run(sanjay_van_ctx, baseline_config)
     summary = result.outputs["landcover_summary"]
 
@@ -103,13 +102,36 @@ def test_landcover_summary_has_expected_label_values(sanjay_van_ctx, baseline_co
     )
     values = hist.get("landcover_summary", {})
     keys_seen = {int(k) for k in values}
-    # At least one of the vegetation labels should be present
+    # At least one veg class should be present
     assert keys_seen & {10, 20, 30}, (
         f"Expected at least one of 10/20/30 in landcover_summary, saw: {keys_seen}"
     )
     # All values should be from the expected set
-    assert keys_seen <= {0, 10, 20, 30, 80}, (
-        f"Unexpected labels in landcover_summary: {keys_seen - {0, 10, 20, 30, 80}}"
+    assert keys_seen <= {0, 10, 20, 30, 50, 80}, (
+        f"Unexpected labels in landcover_summary: {keys_seen - {0, 10, 20, 30, 50, 80}}"
+    )
+
+
+def test_built_areas_appear_in_summary(sanjay_van_ctx, baseline_config):
+    """Sanjay Van bbox includes surrounding colonies, so built-up (50)
+    should be picked up by Open Buildings + VIIRS combined mask."""
+    result = MaskingStage().run(sanjay_van_ctx, baseline_config)
+    summary = result.outputs["landcover_summary"]
+    roi = sanjay_van_ctx.get("roi")
+    hist = safe_get_info(
+        summary.reduceRegion(
+            reducer=ee.Reducer.frequencyHistogram(),
+            geometry=roi,
+            scale=10,
+            maxPixels=1e7,
+        ),
+        context="landcover_summary built-up presence",
+    )
+    values = hist.get("landcover_summary", {})
+    built_count = values.get("50", 0)
+    assert built_count > 0, (
+        "Expected at least some built-up pixels (code 50) in the ROI; "
+        "Open Buildings should cover colonies around Sanjay Van."
     )
 
 

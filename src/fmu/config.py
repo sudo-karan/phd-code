@@ -58,6 +58,7 @@ class DatasetIDs(BaseModel):
     worldcover: str = "ESA/WorldCover/v200"
     water: str = "JRC/GSW1_4/GlobalSurfaceWater"
     nightlights: str = "NOAA/VIIRS/DNB/MONTHLY_V1/VCMSLCFG"
+    open_buildings: str = "GOOGLE/Research/open-buildings/v3/polygons"
 
 
 class CloudMaskParams(BaseModel):
@@ -68,8 +69,8 @@ class CloudMaskParams(BaseModel):
 class MaskingParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    ndvi_min: float = Field(default=0.2, ge=-1.0, le=1.0)
-    # Sanjay-Van-calibrated; won't generalize, revisit for other ROIs
+    ndvi_min: float = Field(default=0.2, ge=-1.0, le=1.0)  # reserved, applied later (needs S2)
+    # VIIRS radiance threshold (nW/cm²/sr). Delhi-calibrated; won't generalize.
     nightlights_threshold: float = Field(default=30.0, ge=0.0)
     keep_worldcover_classes: list[int] = Field(
         default=[10, 20, 30], min_length=1
@@ -77,6 +78,9 @@ class MaskingParams(BaseModel):
     # JRC GSW occurrence is 0-100 (% of months observed as water).
     # >= 50 means water at least half the time = "permanent" water.
     jrc_water_occurrence_threshold: float = Field(default=50.0, ge=0.0, le=100.0)
+    # Open Buildings polygons have a per-feature confidence in [0,1].
+    # Drop polygons below this threshold to avoid noisy / low-confidence buildings.
+    open_buildings_confidence: float = Field(default=0.7, ge=0.0, le=1.0)
 
 
 class SegmentationParams(BaseModel):

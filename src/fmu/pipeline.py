@@ -10,6 +10,13 @@ from typing import Any
 
 from fmu.config import Config
 from fmu.stages.base import PipelineContext, Stage, StageResult, get_stage_class
+from fmu.utils.caching import (
+    ExportTaskInfo,
+    asset_exists,
+    cached_asset_path,
+    load_cached_image,
+    start_export,
+)
 from fmu.utils.logging import get_logger
 
 log = get_logger(__name__)
@@ -22,6 +29,8 @@ class StageRecord:
     produced: list[str]
     warnings: list[str] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
+    cache_status: dict[str, str] = field(default_factory=dict)  # key → "hit" / "miss-exported" / "off"
+    export_tasks: list[dict[str, str]] = field(default_factory=list)
 
 
 @dataclass
@@ -34,14 +43,23 @@ class PipelineResult:
 
 
 class Pipeline:
-    """Run a sequence of registered stages."""
+    """Run a sequence of registered stages.
 
-    def __init__(self, stage_names: list[str]) -> None:
+    Args:
+        stage_names: ordered list of registered stage names to run.
+        use_cache: if True, check GEE asset cache before running each stage
+            and submit async export tasks for outputs that aren't cached.
+            Off by default — turn on for normal runs that need shareable
+            assets / fast visualization. Tests should leave this off.
+    """
+
+    def __init__(self, stage_names: list[str], use_cache: bool = False) -> None:
         if not stage_names:
             raise ValueError("Pipeline must have at least one stage.")
         self.stage_names = list(stage_names)
         # eager resolution — typos in stage names fail now, not after 10 min of GEE work
         self.stage_classes: list[type[Stage]] = [get_stage_class(n) for n in stage_names]
+        self.use_cache = use_cache
 
     def run(
         self,
@@ -88,10 +106,33 @@ class Pipeline:
         log.debug("  produces: %s", sorted(stage.produces))
 
         t0 = time.perf_counter()
+        cache_status: dict[str, str] = {}
+        export_tasks: list[ExportTaskInfo] = []
 
         try:
             stage.validate(ctx, config)
 
+            # Try cache-first if enabled
+            if self.use_cache:
+                cached_outputs = self._try_load_cache(stage, config, cache_status)
+                if cached_outputs is not None:
+                    # All outputs cached → skip running the stage
+                    log.info("  [cache] all %d outputs hit; skipping stage run", len(cached_outputs))
+                    for key, value in cached_outputs.items():
+                        ctx.set(key, value)
+                    elapsed = time.perf_counter() - t0
+                    log.info("✓ stage %s done in %.2f sec (from cache)", name, elapsed)
+                    return StageRecord(
+                        name=name,
+                        elapsed_sec=elapsed,
+                        produced=sorted(cached_outputs.keys()),
+                        warnings=[],
+                        metadata={"source": "cache"},
+                        cache_status=cache_status,
+                        export_tasks=[],
+                    )
+
+            # Run live
             stage_result = stage.run(ctx, config)
             if not isinstance(stage_result, StageResult):
                 raise TypeError(
@@ -113,6 +154,12 @@ class Pipeline:
             for key, value in stage_result.outputs.items():
                 ctx.set(key, value)
 
+            # Submit async exports for missing assets (fire-and-forget)
+            if self.use_cache:
+                export_tasks = self._submit_exports(
+                    stage, config, ctx, stage_result.outputs, cache_status
+                )
+
         except Exception as e:
             elapsed = time.perf_counter() - t0
             log.error("✗ stage %s FAILED after %.2f sec: %s", name, elapsed, e)
@@ -131,7 +178,82 @@ class Pipeline:
             produced=sorted(stage_result.outputs.keys()),
             warnings=list(stage_result.warnings),
             metadata=dict(stage_result.metadata),
+            cache_status=cache_status,
+            export_tasks=[
+                {
+                    "task_id": t.task_id,
+                    "asset_path": t.asset_path,
+                    "description": t.description,
+                }
+                for t in export_tasks
+            ],
         )
+
+    def _try_load_cache(
+        self,
+        stage: Stage,
+        config: Config,
+        cache_status: dict[str, str],
+    ) -> dict[str, Any] | None:
+        """Check if all of stage.produces exist in cache.
+
+        Returns the loaded outputs as a dict if all hit; None on any miss.
+        Mutates cache_status with "hit" / "miss" per key.
+        """
+        all_hit = True
+        outputs: dict[str, Any] = {}
+        for key in sorted(stage.produces):
+            path = cached_asset_path(config.name, stage.name, key)
+            if asset_exists(path):
+                cache_status[key] = "hit"
+                outputs[key] = load_cached_image(path)
+                log.debug("  [cache] hit:  %s → %s", key, path)
+            else:
+                cache_status[key] = "miss"
+                all_hit = False
+                log.debug("  [cache] miss: %s (expected %s)", key, path)
+        return outputs if all_hit else None
+
+    def _submit_exports(
+        self,
+        stage: Stage,
+        config: Config,
+        ctx: PipelineContext,
+        outputs: dict[str, Any],
+        cache_status: dict[str, str],
+    ) -> list[ExportTaskInfo]:
+        """For outputs that weren't in cache, submit async export tasks."""
+        import ee  # local import: only needed if caching is on
+
+        roi = ctx.get("roi")
+        if not isinstance(roi, ee.Geometry):
+            log.warning(
+                "  [cache] cannot export — `roi` in context isn't an ee.Geometry; "
+                "skipping export. Got: %s", type(roi).__name__
+            )
+            return []
+
+        tasks: list[ExportTaskInfo] = []
+        for key, image in outputs.items():
+            if cache_status.get(key) == "hit":
+                continue  # came from cache, no need to re-export
+            if not isinstance(image, ee.Image):
+                log.warning(
+                    "  [cache] skipping export of %s — not an ee.Image (got %s)",
+                    key, type(image).__name__,
+                )
+                continue
+            path = cached_asset_path(config.name, stage.name, key)
+            task = start_export(
+                image=image,
+                asset_path=path,
+                roi=roi,
+                scale=10,
+                description=f"{config.name}_{stage.name}_{key}",
+            )
+            cache_status[key] = "miss-exported"
+            tasks.append(task)
+        return tasks
 
     def _write_manifest(
         self,
@@ -150,6 +272,8 @@ class Pipeline:
                     "produced": s.produced,
                     "warnings": s.warnings,
                     "metadata": _json_safe(s.metadata),
+                    "cache_status": s.cache_status,
+                    "export_tasks": s.export_tasks,
                 }
                 for s in result.stages
             ],

@@ -1,0 +1,233 @@
+"""
+One-off: run the masking stage, print numeric breakdown, and emit a
+JavaScript snippet you can paste into the GEE Code Editor to visualize.
+
+Usage:
+    python scripts/inspect_masking.py
+    python scripts/inspect_masking.py --config configs/sanjay_van_baseline.yaml
+"""
+
+from __future__ import annotations
+
+import argparse
+
+import ee
+
+from fmu.config import load_config
+from fmu.pipeline import Pipeline
+from fmu.stages.base import PipelineContext
+from fmu.stages.masking import MaskingStage  # noqa: F401 — registers the stage
+from fmu.utils.gee import init_gee, load_roi_geometry, safe_get_info
+from fmu.utils.logging import init_logging
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--config",
+        default="configs/sanjay_van_baseline.yaml",
+        help="Path to the pipeline config YAML.",
+    )
+    args = parser.parse_args()
+
+    config = load_config(args.config)
+    init_gee()
+
+    roi = load_roi_geometry(config.roi.roi_file)
+    ctx = PipelineContext()
+    ctx.set("roi", roi)
+
+    run_dir = init_logging(config_name=config.name)
+    result = Pipeline(stage_names=["masking"], use_cache=True).run(
+        config=config, run_dir=run_dir, initial_context=ctx
+    )
+
+    summary = result.context.get("landcover_summary")
+    # Get the actual ROI coordinates from GEE so the JS snippet uses the
+    # real geometry (not a buffered centroid).
+    roi_coords = safe_get_info(roi.coordinates(), context="roi coordinates for JS")
+
+    # Numeric breakdown
+    print()
+    print("=" * 70)
+    print(f"Numeric breakdown of landcover_summary over {config.roi.name}:")
+    print("=" * 70)
+    hist = safe_get_info(
+        summary.reduceRegion(
+            reducer=ee.Reducer.frequencyHistogram(),
+            geometry=roi,
+            scale=10,
+            maxPixels=1e7,
+        ),
+        context="landcover_summary histogram",
+    )
+    values = hist.get("landcover_summary", {})
+    total = sum(values.values()) or 1
+    label_names = {
+        "0": "Other (excluded)",
+        "10": "Trees",
+        "20": "Shrubland",
+        "30": "Grass",
+        "50": "Built-up",
+        "80": "Water",
+    }
+    for code, count in sorted(values.items(), key=lambda kv: -kv[1]):
+        name = label_names.get(code, f"Class {code}")
+        pct = 100 * count / total
+        print(f"  {code:>3} {name:<20s} {count:>10,.0f} px  ({pct:5.1f}%)")
+
+    # JavaScript snippet for the Code Editor
+    keep = config.masking.keep_worldcover_classes
+    keep_js = ", ".join(str(c) for c in keep)
+    water_thresh = config.masking.jrc_water_occurrence_threshold
+    nl_thresh = config.masking.nightlights_threshold
+    ob_conf = config.masking.open_buildings_confidence
+
+    import json as _json
+    roi_coords_js = _json.dumps(roi_coords)
+
+    # Check what's cached so we emit the right JS.
+    from fmu.utils.caching import asset_exists, cached_asset_path
+    cached_paths = {}
+    for key in ("habitat_mask", "water_mask", "landcover_summary"):
+        path = cached_asset_path(config.name, "masking", key)
+        if asset_exists(path):
+            cached_paths[key] = path
+
+    print()
+    print("=" * 70)
+    print("VISUALIZE IN GEE CODE EDITOR")
+    print("=" * 70)
+
+    if len(cached_paths) == 3:
+        # All assets exist — emit JS that reads them directly. No memory
+        # error at high zoom because GEE just reads pre-rendered rasters.
+        print("All masking outputs are cached as GEE assets. Paste into")
+        print("https://code.earthengine.google.com/:")
+        print()
+        print(f"// --- masking output for {config.name} (from cached assets) ---")
+        print(f"var roi = ee.Geometry.Polygon({roi_coords_js});")
+        print("Map.centerObject(roi, 13);")
+        print()
+        print(f"var habitatMask = ee.Image('{cached_paths['habitat_mask']}');")
+        print(f"var waterMask = ee.Image('{cached_paths['water_mask']}');")
+        print(f"var summary = ee.Image('{cached_paths['landcover_summary']}');")
+        print()
+        print(
+            "Map.addLayer(habitatMask.selfMask(), {palette: ['33aa33']}, "
+            "'Habitat mask (green)', true);"
+        )
+        print(
+            "Map.addLayer(waterMask.selfMask(), {palette: ['1f78b4']}, "
+            "'Water mask (blue)', true);"
+        )
+        print(
+            "Map.addLayer(summary, "
+            "{min: 0, max: 80, palette: "
+            "['888888','1d6f1d','85c285','c9d63a','cc4444','1f78b4']}, "
+            "'Landcover summary (0/10/20/30/50/80)', true);"
+        )
+        print(
+            "Map.addLayer(roi, {color: 'red', fillColor: '00000000'}, 'ROI boundary');"
+        )
+        print("// -----------------------------------------------")
+    else:
+        # Some / all assets missing — assets are being exported in the
+        # background. The JS snippet falls back to live computation, which
+        # will still hit the memory limit at high zoom, but at least you
+        # can see something while exports complete.
+        missing = [k for k in ("habitat_mask", "water_mask", "landcover_summary") if k not in cached_paths]
+        print(f"Cache miss for: {missing}")
+        print(
+            "Export tasks for these were submitted (see the log above and "
+            "https://code.earthengine.google.com/tasks)."
+        )
+        print(
+            "Once those complete (typically 5-15 minutes for ~13 km²), re-run "
+            "this script to get the asset-based JS snippet without the memory issue."
+        )
+        print()
+        print("For now, here's a live-computation snippet that may hit the memory")
+        print("limit at high zoom:")
+        print()
+        print(f"// --- masking output for {config.name} (live, no cache) ---")
+        print(f"var roi = ee.Geometry.Polygon({roi_coords_js});")
+        print("Map.centerObject(roi, 13);")
+        print()
+        print("// Vegetation from WorldCover")
+        print(
+            f"var wc = ee.ImageCollection('{config.datasets.worldcover}')"
+            ".first().select('Map').clip(roi);"
+        )
+        print(f"var keepClasses = [{keep_js}];")
+        print("var veg = wc.eq(keepClasses[0]);")
+        print("for (var i = 1; i < keepClasses.length; i++) {")
+        print("  veg = veg.or(wc.eq(keepClasses[i]));")
+        print("}")
+        print("var wcWater = wc.eq(80);")
+        print()
+        print("// Water from JRC GSW + WorldCover class 80")
+        print(
+            f"var gsw = ee.Image('{config.datasets.water}').select('occurrence').clip(roi);"
+        )
+        print(f"var waterMask = gsw.gte({water_thresh}).unmask(0).or(wcWater);")
+        print()
+        print("// Built-up from Open Buildings (vector, independent of S2)")
+        print(
+            f"var buildings = ee.FeatureCollection('{config.datasets.open_buildings}')"
+            ".filterBounds(roi)"
+        )
+        print(f"  .filter(ee.Filter.gte('confidence', {ob_conf}));")
+        print(
+            "var builtFromBuildings = buildings"
+            ".reduceToImage(['confidence'], ee.Reducer.first()).gt(0).unmask(0);"
+        )
+        print()
+        print("// Bright urban from VIIRS")
+        print(
+            f"var viirs = ee.ImageCollection('{config.datasets.nightlights}')"
+            ".select('avg_rad').sort('system:time_start', false).first().clip(roi);"
+        )
+        print(f"var brightUrban = viirs.gte({nl_thresh}).unmask(0);")
+        print()
+        print("var builtMask = builtFromBuildings.or(brightUrban);")
+        print(
+            "var habitatMask = veg.and(waterMask.not()).and(builtMask.not());"
+        )
+        print()
+        print("var summary = ee.Image(0).int();")
+        print(
+            "keepClasses.forEach(function(c) { summary = summary.where(wc.eq(c), c); });"
+        )
+        print("summary = summary.where(builtMask, 50);")
+        print("summary = summary.where(waterMask, 80);")
+        print()
+        print(
+            "Map.addLayer(habitatMask.selfMask(), {palette: ['33aa33']}, "
+            "'Habitat mask (green)', true);"
+        )
+        print(
+            "Map.addLayer(builtMask.selfMask(), {palette: ['cc4444']}, "
+            "'Built mask (red)', true);"
+        )
+        print(
+            "Map.addLayer(waterMask.selfMask(), {palette: ['1f78b4']}, "
+            "'Water mask (blue)', true);"
+        )
+        print(
+            "Map.addLayer(summary, "
+            "{min: 0, max: 80, palette: "
+            "['888888','1d6f1d','85c285','c9d63a','cc4444','1f78b4']}, "
+            "'Landcover summary (0/10/20/30/50/80)', false);"
+        )
+        print(
+            "Map.addLayer(roi, {color: 'red', fillColor: '00000000'}, 'ROI boundary');"
+        )
+        print("// -----------------------------------------------")
+    print()
+    print(f"Run dir: {run_dir}")
+    print(f"Manifest: {run_dir / 'manifest.json'}")
+
+
+if __name__ == "__main__":
+    main()

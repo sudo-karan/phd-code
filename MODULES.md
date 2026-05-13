@@ -2,9 +2,9 @@
 
 Tracks each module's state. ⏳ Not started · 🔍 Under review · 🔒 Locked.
 
-A module is **Locked** when the code is read, has tests (fast + live where
-applicable), is documented, and is part of the smoke test. Modifications to
-locked modules need a new `decisions.md` entry.
+A module is **Locked** when the code is read, has tests (fast + live where applicable), is documented, and is part of the smoke test. Modifications to locked modules need a new `decisions.md` entry.
+
+**Build order ≠ runtime order.** This file is build order — what we'll work on next. Runtime order (what runs in a pipeline run) is in `docs/current_flow.md`.
 
 | # | Module | Status | Locked at | Notes |
 |---|---|---|---|---|
@@ -16,12 +16,12 @@ locked modules need a new `decisions.md` entry.
 | 4 | `stages/base.py` | 🔒 | v0.4-stage | Stage contract, registry |
 | 5 | `pipeline.py` | 🔒 | v0.5-orchestrator | Orchestrator + manifest |
 | - | Voice pass cleanup | 🔒 | v0.5.1-voice | Knowledge moved to docs/design_notes.md |
-| 6 | `stages/masking.py` | 🔍 | v0.6 (pending) | habitat_mask + water_mask + landcover_summary; first real GEE stage |
-| 7 | `stages/data_load.py` | ⏳ | — | S2 + S1 loading + cloud masking |
-| 8 | Asset caching (cross-cutting) | ⏳ | — | Hash-based asset caching across stages; team.yaml ACL |
+| 6 | Asset caching (cross-cutting) | ⏳ | — | Stable asset paths; cache-first orchestrator; async export on miss; `use_cache` flag |
+| 7 | `stages/masking.py` | 🔄 paused | — | Multi-source: WorldCover + JRC + Open Buildings + VIIRS. Locks AFTER caching is in place. |
+| 8 | `stages/data_load.py` | ⏳ | — | S2 + S1 loading + cloud masking + static composite |
 | 9 | `stages/features_optical.py` | ⏳ | — | NDVI/NIRv harmonics |
 | 10 | `stages/features_radar.py` | ⏳ | — | S1 VV/VH percentiles |
-| 11 | `stages/features_structure.py` | ⏳ | — | Canopy height |
+| 11 | `stages/features_structure.py` | ⏳ | — | Canopy height + texture |
 | 12 | `stages/features_static.py` | ⏳ | — | Terrain, climate, distance-to-water |
 | 13 | `stages/features_custom_csv.py` | ⏳ | — | User CSV hook |
 | 14 | `stages/segmentation.py` | ⏳ | — | SNIC |
@@ -29,3 +29,7 @@ locked modules need a new `decisions.md` entry.
 | 16 | `stages/profiling.py` | ⏳ | — | Per-cluster centroids |
 | 17 | `stages/export.py` | ⏳ | — | GeoTIFF + GEE asset |
 | 18 | `metrics/*` | ⏳ | — | Stand stats, weak baselines, run report |
+
+## Note on Module 7 (masking)
+
+Module 7 (`stages/masking.py`) was originally Module 6 and is functionally complete (multi-source masking with WorldCover + JRC + Open Buildings + VIIRS, all tests passing). However, **rendering Open Buildings as a live rasterization hits GEE's per-tile memory limit at high zoom levels.** Locking masking is deferred until Module 6 (asset caching) is in place — once outputs cache as assets, the visualization issue goes away.

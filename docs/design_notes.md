@@ -112,3 +112,67 @@ Three separate windows for three jobs:
 v2 throughout. Faster, better error messages, official pydantic-settings
 companion, current standard. Don't accidentally install v1 — they're not
 compatible.
+
+## Masking: avoiding circularity with the feature data
+
+A mask that's derived from the same data we cluster on is at risk of
+forcing the clustering to find what the mask put there. Strongest case:
+NDVI mask + NDVI feature is pure leakage. Less obvious: anything S2-derived
+used to mask data that will later be fed S2 features.
+
+We accept moderate circularity for **WorldCover** (S2/S1-derived) because
+the signal it extracts (categorical land cover) is qualitatively different
+from the continuous phenology features we'll compute. Replacing it would
+cost more (lose 10 m, lose convenient veg classes) than the residual bias
+costs.
+
+We avoid it for the **built-up mask** because that's the layer the
+downstream urban-vs-vegetation distinction depends on. Built-up uses:
+- **Google Open Buildings** (vector polygons from commercial high-res
+  imagery — different sensor altogether), rasterized at 10 m
+- **VIIRS Nightlights** (Day/Night Band — different sensor entirely)
+
+Both are independent of S2/Landsat. Their failure modes (low confidence
+polygons, coarse 463 m resolution) are different from each other and
+different from WorldCover, so combining them recovers from each one's
+weaknesses.
+
+Water uses **JRC GSW** (Landsat-derived — different mission from S2)
+OR **WorldCover class 80** for redundancy.
+
+This is one of the few places where the framework explicitly does better
+than the notebooks: in the notebooks, masking was a single-source
+afterthought.
+
+## Asset caching: cross-cutting, opt-in
+
+Stages that materialize ee.Image outputs can be expensive to recompute and
+expensive to visualize (per-tile compute hits GEE's memory limit at high
+zoom for stages with lots of vector rasterization, like Open Buildings).
+Caching solves both: compute once, save as an asset, reuse forever.
+
+Three design points:
+
+1. **Off by default.** `Pipeline(stage_names, use_cache=False)`. Tests
+   don't write assets; only real runs (via the inspect / run scripts) flip
+   it on. This keeps the test suite clean and prevents accidental asset
+   pollution.
+
+2. **Stable paths, not hash-based.** Path is
+   `{asset_root}/{config_name}/{stage_name}/{key}`. Changing config
+   thresholds overwrites the asset. We accept this tradeoff for now; a
+   future module can add config-hash-based paths if reproducibility of
+   past runs becomes important.
+
+3. **Fire-and-forget on cache miss.** Stage runs live AND submits an async
+   export task. The current run returns the live computation; the next
+   run benefits from the cache. No blocking on the (5-15 min) export.
+   This is the standard GEE pattern.
+
+The orchestrator handles caching transparently — individual stages don't
+need to know. They produce `ee.Image` outputs as usual; the orchestrator
+checks cache before running and submits exports after.
+
+Sharing assets with collaborators (programmatic ACLs via `team.yaml`) is
+deferred to a future module — for now anyone with the asset path can read
+them if granted access manually.

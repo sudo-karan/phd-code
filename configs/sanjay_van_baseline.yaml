@@ -36,15 +36,17 @@ datasets:
   worldcover: ESA/WorldCover/v200
   water: JRC/GSW1_4/GlobalSurfaceWater
   nightlights: NOAA/VIIRS/DNB/MONTHLY_V1/VCMSLCFG
+  open_buildings: GOOGLE/Research/open-buildings/v3/polygons
 
 cloud_mask:
   max_cloud_pct: 20.0
 
 masking:
-  ndvi_min: 0.2
-  nightlights_threshold: 30.0  # Delhi-calibrated, won't generalize
+  ndvi_min: 0.2  # reserved, applied later (needs S2)
+  nightlights_threshold: 30.0  # VIIRS, Delhi-calibrated, won't generalize
   keep_worldcover_classes: [10, 20, 30]  # trees, shrubs, grass
   jrc_water_occurrence_threshold: 50.0  # >= this% of months observed = permanent water
+  open_buildings_confidence: 0.7  # drop low-confidence building polygons
 
 segmentation:
   size: 10

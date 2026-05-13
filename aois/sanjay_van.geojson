@@ -1,23 +1,23 @@
 {
   "type": "FeatureCollection",
   "name": "sanjay_van",
-  "description": "Rough bounding-box approximation of Sanjay Van, Delhi. REPLACE THIS with the actual polygon you've been using in your notebooks. The bounds here are taken from the test ROI in your earlier code (~28.535-28.565 N, 77.165-77.205 E) and are NOT a real boundary.",
+  "description": "Working area around Sanjay Van, Delhi. Bounds from Jaskaran's earlier notebooks. This is a rectangular bbox covering the park and immediate surroundings (~13 km²), not the tight park boundary. For the tight park polygon, trace from a satellite basemap when needed.",
   "features": [
     {
       "type": "Feature",
       "properties": {
         "name": "sanjay_van",
-        "source": "placeholder",
-        "note": "Replace with real polygon from Forest Department or hand-traced boundary"
+        "source": "notebook roi_bounds [77.16, 28.51, 77.19, 28.55]",
+        "note": "Bbox of the working area used in Notebooks 7-13. Replace with hand-traced polygon if a tighter park boundary is needed."
       },
       "geometry": {
         "type": "Polygon",
         "coordinates": [[
-          [77.165, 28.535],
-          [77.205, 28.535],
-          [77.205, 28.565],
-          [77.165, 28.565],
-          [77.165, 28.535]
+          [77.16, 28.51],
+          [77.19, 28.51],
+          [77.19, 28.55],
+          [77.16, 28.55],
+          [77.16, 28.51]
         ]]
       }
     }
