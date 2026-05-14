@@ -152,6 +152,32 @@ The metrics module (Module 18) will compare their outputs (see DEC-013).
 
 **Related decisions:** DEC-002 (derived metrics not raw coefficients), DEC-013 (baseline vs variant), DEC-014 (compute over full ROI, mask at clustering), DEC-015 (which features included/skipped and why).
 
+### 4. features_radar — `src/fmu/stages/features_radar.py`
+
+Per-pixel radar features via statistical reducers over the 5-year S1 collection. No harmonic regression — SAR backscatter doesn't have a clean seasonal cycle (returns depend on geometry, moisture, biomass, not photosynthesis).
+
+**Reads from context:** `s1_collection`, `roi`
+**Writes to context:** `radar_features` (single multi-band image)
+**Cacheable:** yes
+
+**Reducers applied:**
+- Per-percentile (default [10, 50, 90]): `vv_p10`, `vv_p50`, `vv_p90`, `vh_p10`, `vh_p50`, `vh_p90`
+- IQR (interquartile range, p75 - p25): `vv_iqr`, `vh_iqr` — variability metric
+- Cross-pol contrast: `vv_minus_vh_median` (VV_p50 − VH_p50 in dB) — vegetation structure proxy
+
+Total: 9 bands with default config.
+
+**On the cross-pol contrast (DEC-016):** Uses `VV − VH` in dB, equivalent to `10·log10(VV_linear / VH_linear)`. The notebook computed `VV / VH` on dB-scale values directly, which isn't mathematically meaningful — dB is a log-scale quantity, not a magnitude. This module fixes that.
+
+**On no speckle filtering:** Temporal median over 100+ S1 images suppresses speckle more strongly than any 3×3 or 5×5 spatial filter (variance reduction scales with the number of independent samples). Spatial filters would also blur edges, hurting the downstream SNIC segmentation. If individual-scene speckle becomes a concern, it's a variant config, not a baseline addition.
+
+**Config knobs:**
+- `features_radar.percentiles` — list of percentiles to compute (default `[10, 50, 90]`)
+- `features_radar.include_iqr` — bool (default `true`)
+- `features_radar.include_cross_pol_contrast` — bool (default `true`)
+
+**Related decisions:** DEC-014 (compute over full ROI, mask at clustering), DEC-016 (VV−VH in dB, no speckle filter), ENG-018 (caching).
+
 ### Later stages
 
 Each one will get its own section here as it's built.
@@ -173,7 +199,9 @@ Each one will get its own section here as it's built.
 | Masking logic | `src/fmu/stages/masking.py` |
 | Data load logic | `src/fmu/stages/data_load.py` |
 | Optical features logic | `src/fmu/stages/features_optical.py` |
+| Radar features logic | `src/fmu/stages/features_radar.py` |
 | Phenology config knobs | `configs/*.yaml` → `features_optical.{index, harmonic_mode, include_trend}` |
+| Radar config knobs | `configs/*.yaml` → `features_radar.{percentiles, include_iqr, include_cross_pol_contrast}` |
 | NIRv + dual variant config | `configs/sanjay_van_nirv_dual.yaml` |
 | S2 cloud mask SCL classes | `configs/sanjay_van_baseline.yaml` → `cloud_mask.drop_scl_classes` |
 | S2 max cloud % | `configs/sanjay_van_baseline.yaml` → `cloud_mask.max_cloud_pct` |

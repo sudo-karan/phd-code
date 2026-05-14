@@ -64,6 +64,15 @@ features_optical:
   harmonic_mode: single
   include_trend: true
 
+# Radar features from the S1 collection. Statistical reducers over the
+# 5-year window (notebook approach — no harmonic). VV-VH dB difference
+# replaces notebook's VV/VH (which was a literal division of dB values,
+# not mathematically meaningful — see DEC-016).
+features_radar:
+  percentiles: [10, 50, 90]
+  include_iqr: true
+  include_cross_pol_contrast: true
+
 segmentation:
   size: 10
   compactness: 0.5

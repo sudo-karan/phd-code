@@ -242,3 +242,39 @@ before z-scoring, and (c) future stages don't need to remember which
 index is in which range.
 
 NDVI is unaffected — the 10000 scaling cancels in the ratio.
+
+## features_radar: no harmonic, no speckle filter
+
+Unlike optical phenology, SAR backscatter doesn't have a clean seasonal
+cycle to fit. Returns depend on surface geometry, soil moisture, and
+biomass — not on photosynthesis. So we don't fit harmonics; we summarize
+the 5-year time series with percentile statistics (p10, p50, p90),
+interquartile range, and one derived ratio (VV − VH in dB).
+
+Two specific choices worth documenting because they deviate from the
+notebook approach:
+
+**VV − VH (dB), not VV / VH.** The notebook divided dB-scale values
+directly: `vv.divide(vh)`. This isn't mathematically meaningful — dB is
+log-scale, and a "ratio" of log values produces a number with no clean
+physical interpretation. The right operation is either:
+  - Difference in dB: `VV_dB − VH_dB`
+  - Ratio in linear units: `VV_linear / VH_linear`
+These are identical under the log transform: `VV − VH (dB) = 10·log10(VV_linear / VH_linear)`.
+We use the dB difference because it has clean physical meaning ("VV is X dB
+stronger than VH") and matches standard SAR vegetation literature.
+
+**No speckle filter.** Per-image Lee filter or similar is a common
+preprocessing step in SAR pipelines, but for our use case it's the wrong
+tradeoff:
+- We aggregate 100+ S1 images per pixel via median. The temporal variance
+  reduction (~√N factor) is much stronger than any 3×3 or 5×5 spatial
+  filter could provide.
+- Spatial filters blur edges. SNIC segmentation downstream relies on
+  visible edges in the data to draw superpixel boundaries — pre-blurring
+  works against that.
+- Filter parameter tuning (window size, damping) adds knobs we'd need to
+  defend. ENG-006's "stop going in circles" concern applies.
+If individual-scene speckle becomes a concern (e.g., for visualization),
+that's a variant config (`features_radar.apply_lee_filter: true`), not a
+baseline addition.

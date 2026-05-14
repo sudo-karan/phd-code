@@ -8,10 +8,12 @@ folders = [
     'projects/replicating-paper/assets/fmu/sanjay_van_baseline/masking',
     'projects/replicating-paper/assets/fmu/sanjay_van_baseline/data_load',
     'projects/replicating-paper/assets/fmu/sanjay_van_baseline/features_optical',
+    'projects/replicating-paper/assets/fmu/sanjay_van_baseline/features_radar',
     'projects/replicating-paper/assets/fmu/sanjay_van_nirv_dual',
     'projects/replicating-paper/assets/fmu/sanjay_van_nirv_dual/masking',
     'projects/replicating-paper/assets/fmu/sanjay_van_nirv_dual/data_load',
     'projects/replicating-paper/assets/fmu/sanjay_van_nirv_dual/features_optical',
+    'projects/replicating-paper/assets/fmu/sanjay_van_nirv_dual/features_radar',
 ]
 
 for path in folders:

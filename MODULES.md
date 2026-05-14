@@ -20,7 +20,7 @@ A module is **Locked** when the code is read, has tests (fast + live where appli
 | 7 | `stages/masking.py` | 🔄 paused | — | Multi-source: WorldCover + JRC + Open Buildings + VIIRS. Locks AFTER caching is in place. |
 | 8 | `stages/data_load.py` | 🔄 paused | — | S2 + S1 loading + cloud masking + static composite. Cacheable: `s2_composite`. |
 | 9 | `stages/features_optical.py` | 🔄 paused | — | Harmonic regression on NDVI or NIRv. Single or dual harmonic + trend. Variant config for comparison. |
-| 10 | `stages/features_radar.py` | ⏳ | — | S1 VV/VH percentiles |
+| 10 | `stages/features_radar.py` | 🔄 paused | — | S1 percentiles + IQR + VV-VH cross-pol contrast. No harmonics, no speckle filtering. |
 | 11 | `stages/features_structure.py` | ⏳ | — | Canopy height + texture |
 | 12 | `stages/features_static.py` | ⏳ | — | Terrain, climate, distance-to-water |
 | 13 | `stages/features_custom_csv.py` | ⏳ | — | User CSV hook |

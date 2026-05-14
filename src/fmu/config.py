@@ -96,6 +96,23 @@ class FeaturesOpticalParams(BaseModel):
     include_trend: bool = True
 
 
+class FeaturesRadarParams(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # Percentiles to compute over the S1 time series. Default [10, 50, 90]
+    # covers the typical "low / median / high" backscatter summary.
+    # Each percentile becomes a band (vv_p10, vv_p50, vv_p90, vh_p10, ...).
+    percentiles: list[int] = Field(default=[10, 50, 90], min_length=1)
+    # Add interquartile range (p75 - p25) as a variability metric. Adds
+    # vv_iqr and vh_iqr bands. p25 and p75 are computed internally but
+    # not exposed as bands unless they're also in `percentiles`.
+    include_iqr: bool = True
+    # Cross-pol contrast: VV_median - VH_median in dB. Equivalent to
+    # 10*log10(VV_linear / VH_linear). Standard SAR vegetation metric;
+    # the notebook's VV/VH (literal division of dB values) wasn't
+    # mathematically well-defined.
+    include_cross_pol_contrast: bool = True
+
+
 class MaskingParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -178,6 +195,7 @@ class Config(BaseModel):
     data_load: DataLoadParams = Field(default_factory=DataLoadParams)
     masking: MaskingParams = Field(default_factory=MaskingParams)
     features_optical: FeaturesOpticalParams = Field(default_factory=FeaturesOpticalParams)
+    features_radar: FeaturesRadarParams = Field(default_factory=FeaturesRadarParams)
     segmentation: SegmentationParams = Field(default_factory=SegmentationParams)
     clustering: ClusteringParams = Field(default_factory=ClusteringParams)
     normalization: NormalizationParams = Field(default_factory=NormalizationParams)
