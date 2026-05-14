@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import ClassVar
 
 import pytest
 
@@ -383,3 +384,56 @@ class TestCacheSkipBehavior:
         # made it into the context.
         assert run_log == ["ran"], "Stage was skipped instead of running"
         assert result.context.get("counter") == 42, "Stage output not in context"
+
+
+class TestExplicitNoCaching:
+    """Regression test for a bug found 2026-05-14: when a stage declares
+    `cacheable_outputs = set()` to mean "nothing in this stage should
+    be cached as a GEE asset" (because it produces Python data rather
+    than ee.Images), the orchestrator was treating the empty set as
+    falsy and falling back to caching ALL produces — which then warned
+    about non-ee.Image values being uncacheable.
+
+    The fix: distinguish "stage explicitly set cacheable_outputs to set()"
+    from "stage didn't override it at all" via class.__dict__ inspection.
+    """
+
+    def test_explicit_empty_cacheable_outputs_skips_export(self, tmp_path):
+        """Stage with cacheable_outputs=set() should not attempt export.
+
+        We assert by checking that no export-related code runs even when
+        the cached asset path doesn't exist (since the stage isn't trying
+        to cache anything).
+        """
+        run_log = []
+
+        @register_stage("opts_out_of_caching")
+        class S(Stage):
+            name = "opts_out_of_caching"
+            required_inputs: set[str] = set()
+            produces = {"py_data"}
+            cacheable_outputs: ClassVar[set[str]] = set()  # explicit opt-out
+
+            def run(self, ctx, config):
+                run_log.append("ran")
+                return StageResult(outputs={"py_data": [1, 2, 3]})
+
+        from unittest.mock import patch
+
+        # If the orchestrator were still trying to cache, it would call
+        # asset_exists. We mock it and assert it's NOT called when the
+        # stage declares cacheable_outputs=set().
+        with patch("fmu.pipeline.asset_exists") as mock_exists, \
+             patch("fmu.pipeline.cached_asset_path", return_value="fake/path"):
+            pipeline = Pipeline(stage_names=["opts_out_of_caching"], use_cache=True)
+            result = pipeline.run(config=_make_config(), run_dir=tmp_path)
+
+        # Stage ran and put data in context
+        assert run_log == ["ran"]
+        assert result.context.get("py_data") == [1, 2, 3]
+        # The orchestrator never tried to check cache existence
+        # because cacheable_outputs is explicitly empty
+        assert mock_exists.call_count == 0, (
+            f"asset_exists called {mock_exists.call_count} times — "
+            "orchestrator tried to cache when stage opted out"
+        )

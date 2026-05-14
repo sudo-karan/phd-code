@@ -110,9 +110,24 @@ class Pipeline:
         export_tasks: list[ExportTaskInfo] = []
         cached_outputs: dict[str, Any] = {}
 
-        # Which produces are cacheable as GEE assets? Default: all of them
-        # (preserves behavior for stages that only produce ee.Image outputs).
-        cacheable = stage.cacheable_outputs if stage.cacheable_outputs else stage.produces
+        # Which produces are cacheable as GEE assets?
+        # - cacheable_outputs is the truth: if the stage declares the set,
+        #   honor it exactly (including the empty set, which means "nothing
+        #   cacheable — always run, results live in memory only").
+        # - If the stage hasn't customized cacheable_outputs at all, the base
+        #   class default is the empty set, which historically meant "cache
+        #   everything in produces". To preserve that for stages that don't
+        #   explicitly opt out, distinguish via a sentinel-equivalent: only
+        #   default-to-produces when cacheable_outputs IS the base default.
+        # Practically: if the stage class overrode cacheable_outputs to a
+        # non-empty set, use it. If it overrode it to set() explicitly, use
+        # set(). If it didn't override at all, default to produces.
+        # We detect "explicit empty set" via class-level attribute presence:
+        cacheable = (
+            stage.cacheable_outputs
+            if "cacheable_outputs" in stage.__class__.__dict__
+            else stage.produces
+        )
 
         try:
             stage.validate(ctx, config)
