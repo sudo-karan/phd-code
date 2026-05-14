@@ -147,7 +147,7 @@ class Pipeline:
                     for key, value in cached_outputs.items():
                         ctx.set(key, value)
                     elapsed = time.perf_counter() - t0
-                    log.info("✓ stage %s done in %.2f sec (from cache)", name, elapsed)
+                    log.info("stage %s done in %.2f sec (from cache)", name, elapsed)
                     return StageRecord(
                         name=name,
                         elapsed_sec=elapsed,
@@ -193,7 +193,7 @@ class Pipeline:
 
         except Exception as e:
             elapsed = time.perf_counter() - t0
-            log.error("✗ stage %s FAILED after %.2f sec: %s", name, elapsed, e)
+            log.error("stage %s FAILED after %.2f sec: %s", name, elapsed, e)
             raise
 
         elapsed = time.perf_counter() - t0
@@ -201,7 +201,7 @@ class Pipeline:
         for w in stage_result.warnings:
             log.warning("  [%s] %s", name, w)
 
-        log.info("✓ stage %s done in %.2f sec", name, elapsed)
+        log.info("stage %s done in %.2f sec", name, elapsed)
 
         return StageRecord(
             name=name,
