@@ -113,6 +113,25 @@ class FeaturesRadarParams(BaseModel):
     include_cross_pol_contrast: bool = True
 
 
+class FeaturesStructureParams(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # Add neighborhood statistics (std-dev and max) over a window around
+    # each pixel. Captures local structural heterogeneity beyond the
+    # point canopy height. Adds canopy_height_std and canopy_height_max
+    # bands. When False, only canopy_height is emitted (notebook approach).
+    include_neighborhood_stats: bool = True
+    # Window size in pixels for the neighborhood. Must be odd. Default 3
+    # means a 3×3 window (radius=1) — small enough to preserve boundaries.
+    neighborhood_kernel_size: int = Field(default=3, ge=3, le=11)
+
+    @field_validator("neighborhood_kernel_size")
+    @classmethod
+    def _odd_kernel(cls, v: int) -> int:
+        if v % 2 == 0:
+            raise ValueError(f"neighborhood_kernel_size must be odd, got {v}")
+        return v
+
+
 class MaskingParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -196,6 +215,7 @@ class Config(BaseModel):
     masking: MaskingParams = Field(default_factory=MaskingParams)
     features_optical: FeaturesOpticalParams = Field(default_factory=FeaturesOpticalParams)
     features_radar: FeaturesRadarParams = Field(default_factory=FeaturesRadarParams)
+    features_structure: FeaturesStructureParams = Field(default_factory=FeaturesStructureParams)
     segmentation: SegmentationParams = Field(default_factory=SegmentationParams)
     clustering: ClusteringParams = Field(default_factory=ClusteringParams)
     normalization: NormalizationParams = Field(default_factory=NormalizationParams)

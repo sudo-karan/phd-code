@@ -278,3 +278,26 @@ tradeoff:
 If individual-scene speckle becomes a concern (e.g., for visualization),
 that's a variant config (`features_radar.apply_lee_filter: true`), not a
 baseline addition.
+
+## features_structure: canopy height + neighborhood stats
+
+ETH Global Canopy Height 2020 is the per-pixel input (10 m, derived from
+GEDI + S2 fusion — DEC-009). The notebook used this as a single band.
+This module adds two derived bands by default: standard deviation and
+max within a small (3×3) window around each pixel.
+
+The neighborhood stats capture structural heterogeneity that the point
+value can't. A mature even-aged stand has uniform tall trees → low std,
+max ≈ height. A regenerating patch has variable heights → high std. A
+forest edge has tall and short pixels mixed → high std, max much larger
+than the typical pixel.
+
+A 3×3 window at 10 m resolution covers 30 × 30 m on the ground — small
+enough to preserve stand boundaries (we don't want to blur across forest
+edges before SNIC sees them). Window size is configurable via
+`features_structure.neighborhood_kernel_size` (odd integers 3-11).
+
+When `include_neighborhood_stats: false`, only canopy_height is emitted
+— that's the notebook-faithful mode. Both baseline and nirv_dual default
+to true to keep structure features identical between configs (so optical
+variant comparison stays controlled at Module 18).

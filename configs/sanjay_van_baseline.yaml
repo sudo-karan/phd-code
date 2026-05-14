@@ -73,6 +73,12 @@ features_radar:
   include_iqr: true
   include_cross_pol_contrast: true
 
+# Structure features from ETH Global Canopy Height. Adds neighborhood
+# stats (std + max in 3x3 window) for local heterogeneity.
+features_structure:
+  include_neighborhood_stats: true
+  neighborhood_kernel_size: 3
+
 segmentation:
   size: 10
   compactness: 0.5

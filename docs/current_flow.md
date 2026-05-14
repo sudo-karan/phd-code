@@ -178,6 +178,27 @@ Total: 9 bands with default config.
 
 **Related decisions:** DEC-014 (compute over full ROI, mask at clustering), DEC-016 (VV−VH in dB, no speckle filter), ENG-018 (caching).
 
+### 5. features_structure — `src/fmu/stages/features_structure.py`
+
+Per-pixel structural features from canopy height. Uses ETH Global Canopy Height 2020 (10 m, GEDI + S2 fusion — see DEC-009 for why over raw GEDI).
+
+**Reads from context:** `roi`
+**Writes to context:** `structure_features` (single multi-band image)
+**Cacheable:** yes
+
+**Bands (default):**
+- `canopy_height` — point value from the ETH dataset (meters)
+- `canopy_height_std` — std-dev in a 3×3 window — local structural heterogeneity
+- `canopy_height_max` — max in 3×3 window — tallest neighbor (catches edges where short pixels neighbor tall trees)
+
+When `include_neighborhood_stats` is false, only `canopy_height` is emitted (notebook approach).
+
+**Config knobs:**
+- `features_structure.include_neighborhood_stats` — bool (default `true`)
+- `features_structure.neighborhood_kernel_size` — odd int 3-11 (default 3)
+
+**Related decisions:** DEC-009 (ETH over GEDI L2A), DEC-014 (compute over full ROI, mask at clustering).
+
 ### Later stages
 
 Each one will get its own section here as it's built.
@@ -200,8 +221,10 @@ Each one will get its own section here as it's built.
 | Data load logic | `src/fmu/stages/data_load.py` |
 | Optical features logic | `src/fmu/stages/features_optical.py` |
 | Radar features logic | `src/fmu/stages/features_radar.py` |
+| Structure features logic | `src/fmu/stages/features_structure.py` |
 | Phenology config knobs | `configs/*.yaml` → `features_optical.{index, harmonic_mode, include_trend}` |
 | Radar config knobs | `configs/*.yaml` → `features_radar.{percentiles, include_iqr, include_cross_pol_contrast}` |
+| Structure config knobs | `configs/*.yaml` → `features_structure.{include_neighborhood_stats, neighborhood_kernel_size}` |
 | NIRv + dual variant config | `configs/sanjay_van_nirv_dual.yaml` |
 | S2 cloud mask SCL classes | `configs/sanjay_van_baseline.yaml` → `cloud_mask.drop_scl_classes` |
 | S2 max cloud % | `configs/sanjay_van_baseline.yaml` → `cloud_mask.max_cloud_pct` |
