@@ -298,6 +298,24 @@ Per-superpixel feature stack → preprocessing → k-means → per-pixel cluster
 
 **Related decisions:** DEC-001, DEC-003, DEC-004, DEC-014.
 
+### 9. profiling — `src/fmu/stages/profiling.py`
+
+Per-cluster feature statistics in **original units** (un-scaled, un-log-transformed). Bridges from cluster IDs to ecological interpretation.
+
+**Reads from context:** `roi`, `cluster_labels`, `optical_features`, `radar_features`, `structure_features`, `static_features`
+**Writes to context:** `cluster_profiles` — a Python list of dicts, one per cluster
+**Cacheable:** no. Operation is fast (k small `reduceRegion` calls); cheaper to recompute than to manage a non-image cache type.
+
+**Per-cluster output:**
+- `cluster_id`, `pixel_count`, `area_ha`
+- For each feature band: `<band>_mean`, `<band>_p25`, `<band>_p50`, `<band>_p75`
+
+Cyclic bands (phase, aspect) are decomposed to sin/cos first — circular mean can be recovered from `atan2(sin_mean, cos_mean)` if needed for interpretation.
+
+Profile data lives in the `manifest.json` `metadata.profiles` block, so it's automatically saved alongside every run. The inspect script also writes `cluster_profiles.csv` to the run dir for easy pandas loading.
+
+**Memory:** safe by construction — each cluster contains a subset of pixels, and the per-cluster reduceRegion calls are independent and small.
+
 ### Later stages
 
 Each one will get its own section here as it's built.

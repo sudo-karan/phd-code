@@ -13,6 +13,8 @@ folders = [
     'projects/replicating-paper/assets/fmu/sanjay_van_baseline/features_static',
     'projects/replicating-paper/assets/fmu/sanjay_van_baseline/segmentation',
     'projects/replicating-paper/assets/fmu/sanjay_van_baseline/clustering',
+    'projects/replicating-paper/assets/fmu/sanjay_van_baseline/profiling',
+
 
     'projects/replicating-paper/assets/fmu/sanjay_van_nirv_dual',
     'projects/replicating-paper/assets/fmu/sanjay_van_nirv_dual/masking',
@@ -23,6 +25,8 @@ folders = [
     'projects/replicating-paper/assets/fmu/sanjay_van_nirv_dual/features_static',
     'projects/replicating-paper/assets/fmu/sanjay_van_nirv_dual/segmentation',
     'projects/replicating-paper/assets/fmu/sanjay_van_nirv_dual/clustering',
+    'projects/replicating-paper/assets/fmu/sanjay_van_nirv_dual/profiling',
+
 
 
 ]
