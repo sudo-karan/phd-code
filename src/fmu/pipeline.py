@@ -226,7 +226,7 @@ class Pipeline:
         config: Config,
         cache_status: dict[str, str],
         cacheable: set[str],
-    ) -> dict[str, Any] | None:
+    ) -> dict[str, Any]:
         """Check which cacheable outputs exist in cache.
 
         Returns a dict of loaded outputs (possibly empty if none hit).
