@@ -199,6 +199,37 @@ When `include_neighborhood_stats` is false, only `canopy_height` is emitted (not
 
 **Related decisions:** DEC-009 (ETH over GEDI L2A), DEC-014 (compute over full ROI, mask at clustering).
 
+### 6. features_static — `src/fmu/stages/features_static.py`
+
+Per-pixel features that don't change meaningfully over the analysis time window: terrain, distance to water, long-term rainfall climatology.
+
+**Reads from context:** `roi`, `water_mask`
+**Writes to context:** `static_features` (single multi-band image)
+**Cacheable:** yes
+
+**Bands (default):**
+- `elevation` — meters above sea level (NASADEM)
+- `slope` — degrees (derived from elevation via `ee.Terrain.products`)
+- `aspect` — degrees 0-360, cyclic raw (derived from elevation)
+- `distance_to_water` — meters to nearest water pixel (uses `water_mask` from masking stage, via `fastDistanceTransform`)
+- `annual_rainfall` — mm/year mean from CHIRPS PENTAD over 1991-2020 climatology
+
+When `include_climate` is false, only the first 4 bands are emitted.
+
+**On aspect:** emitted as raw degrees (0-360). Cyclic, so 0° and 359° look maximally different to a Euclidean clusterer despite being identical. Future improvement: emit `aspect_sin`, `aspect_cos` instead. Left as raw to match notebook approach (ENG-006).
+
+**On distance to water:** uses `water_mask` from masking, not a fresh JRC pull, so the water source is consistent between exclusion (masking) and feature (here). Cap at `max_water_distance_pixels` × analysis scale (default 10 km).
+
+**On rainfall:** 30-year standard climatology (1991-2020). Long enough to smooth out year-to-year variation. For a small AOI like Sanjay Van, this band will be nearly constant; included for cross-AOI generality.
+
+**Config knobs:**
+- `features_static.include_climate` — bool (default `true`)
+- `features_static.max_water_distance_pixels` — int 100-10000 (default 1000)
+- `datasets.climate` — CHIRPS pentad path (default `UCSB-CHG/CHIRPS/PENTAD`)
+- `dates.climate` — climatology window (default 1991-01-01 → 2020-12-31)
+
+**Related decisions:** DEC-014 (compute over full ROI, mask at clustering).
+
 ### Later stages
 
 Each one will get its own section here as it's built.
@@ -222,9 +253,12 @@ Each one will get its own section here as it's built.
 | Optical features logic | `src/fmu/stages/features_optical.py` |
 | Radar features logic | `src/fmu/stages/features_radar.py` |
 | Structure features logic | `src/fmu/stages/features_structure.py` |
+| Static features logic | `src/fmu/stages/features_static.py` |
 | Phenology config knobs | `configs/*.yaml` → `features_optical.{index, harmonic_mode, include_trend}` |
 | Radar config knobs | `configs/*.yaml` → `features_radar.{percentiles, include_iqr, include_cross_pol_contrast}` |
 | Structure config knobs | `configs/*.yaml` → `features_structure.{include_neighborhood_stats, neighborhood_kernel_size}` |
+| Static config knobs | `configs/*.yaml` → `features_static.{include_climate, max_water_distance_pixels}` |
+| Climate dataset + window | `configs/*.yaml` → `datasets.climate`, `dates.climate` |
 | NIRv + dual variant config | `configs/sanjay_van_nirv_dual.yaml` |
 | S2 cloud mask SCL classes | `configs/sanjay_van_baseline.yaml` → `cloud_mask.drop_scl_classes` |
 | S2 max cloud % | `configs/sanjay_van_baseline.yaml` → `cloud_mask.max_cloud_pct` |

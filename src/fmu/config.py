@@ -43,6 +43,11 @@ class DatesConfig(BaseModel):
     phenology: DateRange
     radar: DateRange
     optical_composite: DateRange
+    # Climatology window for rainfall. Default to a 30-year standard
+    # normal (1991-2020) when not specified.
+    climate: DateRange = Field(
+        default_factory=lambda: DateRange(start="1991-01-01", end="2020-12-31")
+    )
 
 
 class DatasetIDs(BaseModel):
@@ -59,6 +64,8 @@ class DatasetIDs(BaseModel):
     water: str = "JRC/GSW1_4/GlobalSurfaceWater"
     nightlights: str = "NOAA/VIIRS/DNB/MONTHLY_V1/VCMSLCFG"
     open_buildings: str = "GOOGLE/Research/open-buildings/v3/polygons"
+    # CHIRPS pentad rainfall (5-day totals, ~5 km). Long climatology source.
+    climate: str = "UCSB-CHG/CHIRPS/PENTAD"
 
 
 class CloudMaskParams(BaseModel):
@@ -130,6 +137,19 @@ class FeaturesStructureParams(BaseModel):
         if v % 2 == 0:
             raise ValueError(f"neighborhood_kernel_size must be odd, got {v}")
         return v
+
+
+class FeaturesStaticParams(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # Include CHIRPS-derived mean annual rainfall as a band. Useful if
+    # the AOI spans different climate regimes. For a small AOI like
+    # Sanjay Van it'll be nearly constant — kept for cross-AOI generality.
+    include_climate: bool = True
+    # Max distance (in pixels at the analysis scale) for the distance-to-water
+    # transform. Pixels farther than this are capped at this value.
+    # 1000 pixels at 10m = 10 km cap. Tradeoff: larger = more compute, but
+    # captures wider-ranging "near water" gradients.
+    max_water_distance_pixels: int = Field(default=1000, ge=100, le=10000)
 
 
 class MaskingParams(BaseModel):
@@ -216,6 +236,7 @@ class Config(BaseModel):
     features_optical: FeaturesOpticalParams = Field(default_factory=FeaturesOpticalParams)
     features_radar: FeaturesRadarParams = Field(default_factory=FeaturesRadarParams)
     features_structure: FeaturesStructureParams = Field(default_factory=FeaturesStructureParams)
+    features_static: FeaturesStaticParams = Field(default_factory=FeaturesStaticParams)
     segmentation: SegmentationParams = Field(default_factory=SegmentationParams)
     clustering: ClusteringParams = Field(default_factory=ClusteringParams)
     normalization: NormalizationParams = Field(default_factory=NormalizationParams)

@@ -22,7 +22,7 @@ A module is **Locked** when the code is read, has tests (fast + live where appli
 | 9 | `stages/features_optical.py` | 🔄 paused | — | Harmonic regression on NDVI or NIRv. Single or dual harmonic + trend. Variant config for comparison. |
 | 10 | `stages/features_radar.py` | 🔄 paused | — | S1 percentiles + IQR + VV-VH cross-pol contrast. No harmonics, no speckle filtering. |
 | 11 | `stages/features_structure.py` | 🔄 paused | — | ETH canopy height + neighborhood stats (std, max). Improves on notebook's single-band approach. |
-| 12 | `stages/features_static.py` | ⏳ | — | Terrain, climate, distance-to-water |
+| 12 | `stages/features_static.py` | 🔄 paused | — | NASADEM (elevation, slope, aspect) + distance-to-water + CHIRPS rainfall climatology |
 | 13 | `stages/features_custom_csv.py` | ⏳ | — | User CSV hook |
 | 14 | `stages/segmentation.py` | ⏳ | — | SNIC |
 | 15 | `stages/clustering.py` | ⏳ | — | wekaKMeans |

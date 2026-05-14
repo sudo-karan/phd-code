@@ -301,3 +301,30 @@ When `include_neighborhood_stats: false`, only canopy_height is emitted
 — that's the notebook-faithful mode. Both baseline and nirv_dual default
 to true to keep structure features identical between configs (so optical
 variant comparison stays controlled at Module 18).
+
+## features_static: terrain + distance + climate
+
+Five bands: elevation, slope, aspect, distance_to_water, annual_rainfall.
+
+`ee.Terrain.products()` computes slope and aspect from elevation. NASADEM
+is in meters per pixel, so slope comes out in degrees correctly.
+
+`distance_to_water` is the first stage that *requires* the masking stage's
+output (it consumes `water_mask`). This is a deliberate dependency — using
+the same water source for both exclusion (masking) and feature (here)
+keeps the two notions consistent. The alternative (compute water freshly
+inside this stage) would risk drift between the two definitions.
+
+`fastDistanceTransform` returns squared-euclidean distance in pixels. Take
+sqrt and multiply by analysis scale (10 m) to get distance in meters.
+
+CHIRPS PENTAD provides 5-day rainfall totals. Sum over the 30-year window
+(1991-2020 standard normal) divided by 30 gives mean annual rainfall in mm.
+For Sanjay Van this will be ~600-800 mm — Delhi's monsoon-dominated regime.
+The band will be nearly uniform within the AOI; included for cross-AOI
+generality (when an AOI spans climate gradients).
+
+Aspect is emitted as raw degrees 0-360. This is cyclic — north-facing
+pixels at 0° and 359° look maximally different to a Euclidean clusterer.
+A sin/cos decomposition would fix this; left as a future improvement to
+match notebook behavior.

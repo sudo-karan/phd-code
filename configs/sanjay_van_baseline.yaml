@@ -16,6 +16,7 @@ roi:
 # - phenology: long, for stable harmonic fits.
 # - radar: 2017-2021, density-consistent (S1B died Dec 2021, halving revisit).
 # - optical_composite: one recent year for the static image SNIC sees.
+# - climate: 30-year standard normal for rainfall climatology.
 dates:
   phenology:
     start: 2017-01-01
@@ -26,6 +27,9 @@ dates:
   optical_composite:
     start: 2023-01-01
     end: 2023-12-31
+  climate:
+    start: 1991-01-01
+    end: 2020-12-31
 
 datasets:
   phenology_collection: COPERNICUS/S2_SR_HARMONIZED
@@ -37,6 +41,7 @@ datasets:
   water: JRC/GSW1_4/GlobalSurfaceWater
   nightlights: NOAA/VIIRS/DNB/MONTHLY_V1/VCMSLCFG
   open_buildings: GOOGLE/Research/open-buildings/v3/polygons
+  climate: UCSB-CHG/CHIRPS/PENTAD
 
 cloud_mask:
   max_cloud_pct: 20.0
@@ -78,6 +83,12 @@ features_radar:
 features_structure:
   include_neighborhood_stats: true
   neighborhood_kernel_size: 3
+
+# Static features: terrain (elevation, slope, aspect), distance to water,
+# mean annual rainfall (CHIRPS climatology).
+features_static:
+  include_climate: true
+  max_water_distance_pixels: 1000  # 10 km cap at 10m scale
 
 segmentation:
   size: 10
