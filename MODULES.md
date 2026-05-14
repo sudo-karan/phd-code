@@ -27,7 +27,7 @@ A module is **Locked** when the code is read, has tests (fast + live where appli
 | 14 | `stages/segmentation.py` | 🔄 paused | — | SNIC superpixels. 5-band z-scored input stack (B4, B8, composite NIRv, canopy_height, VV-VH). Same inputs across both configs. |
 | 15 | `stages/clustering.py` | 🔄 paused | — | wekaKMeans on per-superpixel feature stack. Cyclic decomposition, log-transform skewed bands (DEC-004), median/IQR scaling (DEC-003), preprocessing params cached as asset property. |
 | 16 | `stages/profiling.py` | 🔄 paused | — | Per-cluster feature stats in original units. Mean+IQR per band. Saved to CSV in run dir. |
-| 17 | `stages/export.py` | ⏳ | — | GeoTIFF + GEE asset |
+| 17 | `stages/export.py` | 🔄 paused | — | Drive GeoTIFF + comprehensive run manifest (config, asset paths, clustering metadata, distribution, decisions). |
 | 18 | `metrics/*` | ⏳ | — | Stand stats, weak baselines, run report |
 
 ## Note on Module 7 (masking)

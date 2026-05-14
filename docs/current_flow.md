@@ -316,6 +316,30 @@ Profile data lives in the `manifest.json` `metadata.profiles` block, so it's aut
 
 **Memory:** safe by construction — each cluster contains a subset of pixels, and the per-cluster reduceRegion calls are independent and small.
 
+### 10. export — `src/fmu/stages/export.py`
+
+Packages the pipeline's final research-ready outputs. Two deliverables: a GeoTIFF of cluster_labels to the user's Google Drive (for collaborators without GEE access), and a comprehensive run manifest JSON for reproducibility / publication.
+
+**Reads from context:** `roi`, `cluster_labels`
+**Writes to context:** `export_manifest` — a comprehensive Python dict
+**Cacheable:** no. Always runs (Drive task submission + manifest assembly are cheap).
+
+**The manifest** captures:
+- `pipeline_version` (from `fmu.__version__`)
+- `run_timestamp` (UTC ISO 8601)
+- `roi` (name, area_km², path to geojson)
+- `config_snapshot` (entire YAML serialized — guarantees we can reproduce later)
+- `asset_paths` — every cached GEE asset path for this config (probed dynamically)
+- `clustering` — preprocessing params (read from the cluster_labels asset property, ENG-022) + per-cluster pixel distribution
+- `drive_export` — Drive task ID, filename, folder, submission timestamp
+- `decisions_referenced` — hand-maintained list of DEC-* / ENG-* entries the pipeline implements
+
+The manifest goes into the orchestrator's `manifest.json` automatically (via stage metadata). The inspect script additionally saves a standalone `export_manifest_{config}.json` file for convenience.
+
+**Drive export** uses `ee.batch.Export.image.toDrive`. Submit-and-forget — the task ID goes into the manifest; user monitors at the GEE Tasks page. Typical wait: 5-15 minutes for a single-band 10m × 13km² uint8 image.
+
+**Why uint8?** Cluster IDs are 0..k-1 ≤ 255 for any reasonable k. uint8 quarters the file size and most GIS tools handle it natively.
+
 ### Later stages
 
 Each one will get its own section here as it's built.
