@@ -260,6 +260,44 @@ These five capture four orthogonal information sources at the same 10 m resoluti
 
 **Related decisions:** DEC-001 (superpixels not pixels), DEC-014 (compute everywhere, mask at clustering), DEC-016 (cross-pol metric definition).
 
+### 8. clustering — `src/fmu/stages/clustering.py`
+
+Per-superpixel feature stack → preprocessing → k-means → per-pixel cluster labels. Implements the locked DEC-001 (cluster on superpixel means), DEC-003 (median/IQR robust scaling), DEC-004 (log-transform right-skewed bands).
+
+**Reads from context:** `roi`, `snic_clusters`, `optical_features`, `radar_features`, `structure_features`, `static_features`, `habitat_mask`
+**Writes to context:** `cluster_labels` (per-pixel cluster ID 0..k-1, masked outside habitat), `feature_stack` (preprocessed multi-band feature image — kept for profiling stage)
+**Cacheable:** yes, both outputs. Plus preprocessing parameters cached as a `clustering_metadata` property on the `cluster_labels` asset (ENG-022).
+
+**Pipeline inside the stage (all server-side):**
+
+1. **Build raw feature stack** — auto-detect bands from each features_* asset (works for both `ndvi_*` and `nirv_*` configs). Drop `*_obs_count` (metadata) and `annual_rainfall` (constant in our ROI; kept in the static-features asset for cross-AOI generality).
+
+2. **Cyclic decomposition** — every `*_phase_*` band and `aspect` is replaced with a sin/cos pair. Aspect is converted from degrees to radians first.
+
+3. **Per-superpixel averaging** — `reduceConnectedComponents(reducer=mean, labelBand=snic_clusters, maxSize=1024)`. Every pixel now holds its superpixel's mean for each feature.
+
+4. **Habitat filter** — `updateMask(habitat_mask)`. Non-habitat pixels excluded from training and labelling.
+
+5. **Skewness detection** — `ee.Reducer.skew()` per band. Bands with `|skew| > 1.0` are marked for log-transform.
+
+6. **Log-transform** — `log(x − band_min + 1e-3)` so log is defined even for zero/negative values (some bands like `trend` and `vv_minus_vh_median` include both).
+
+7. **Robust scaling** — per band: `(x − median) / IQR`. Bands with zero IQR (true constants) are dropped — they contribute nothing to clustering and would cause division-by-zero.
+
+8. **K-means** — sample `n_training_samples=5000` habitat pixels, train `ee.Clusterer.wekaKMeans(k=6, init=KMeansPlusPlus, seed=42)`, apply to all habitat pixels.
+
+9. **Persist preprocessing metadata** — log_transform_bands, log_offsets, per-band scaling params, active bands list, dropped constant bands — all attached as `clustering_metadata` JSON property on the `cluster_labels` asset.
+
+**Config knobs:**
+- `clustering.k` — number of clusters (default 6)
+- `clustering.n_training_samples` — sample size for k-means training (default 5000)
+- `clustering.seed` — random seed (default 42)
+- `clustering.skewness_threshold` — log-transform threshold (default 1.0 per DEC-004)
+- `clustering.superpixel_max_size` — max pixels per superpixel (default 1024)
+- `normalization.method` — `robust` (default, per DEC-003) or `zscore` (notebook baseline)
+
+**Related decisions:** DEC-001, DEC-003, DEC-004, DEC-014.
+
 ### Later stages
 
 Each one will get its own section here as it's built.
@@ -285,11 +323,13 @@ Each one will get its own section here as it's built.
 | Structure features logic | `src/fmu/stages/features_structure.py` |
 | Static features logic | `src/fmu/stages/features_static.py` |
 | Segmentation (SNIC) logic | `src/fmu/stages/segmentation.py` |
+| Clustering (k-means) logic | `src/fmu/stages/clustering.py` |
 | Phenology config knobs | `configs/*.yaml` → `features_optical.{index, harmonic_mode, include_trend}` |
 | Radar config knobs | `configs/*.yaml` → `features_radar.{percentiles, include_iqr, include_cross_pol_contrast}` |
 | Structure config knobs | `configs/*.yaml` → `features_structure.{include_neighborhood_stats, neighborhood_kernel_size}` |
 | Static config knobs | `configs/*.yaml` → `features_static.{include_climate, max_water_distance_pixels}` |
 | Segmentation config knobs | `configs/*.yaml` → `segmentation.{size, compactness, connectivity, neighborhood_size, normalize_inputs}` |
+| Clustering config knobs | `configs/*.yaml` → `clustering.{k, n_training_samples, seed, skewness_threshold, superpixel_max_size}` + `normalization.method` |
 | Climate dataset + window | `configs/*.yaml` → `datasets.climate`, `dates.climate` |
 | NIRv + dual variant config | `configs/sanjay_van_nirv_dual.yaml` |
 | S2 cloud mask SCL classes | `configs/sanjay_van_baseline.yaml` → `cloud_mask.drop_scl_classes` |

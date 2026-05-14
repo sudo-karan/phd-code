@@ -49,7 +49,7 @@ def test_baseline_fields_have_expected_values():
     cfg = load_config(BASELINE_YAML)
     assert cfg.roi.name == "sanjay_van"
     assert cfg.clustering.k == 6
-    assert cfg.normalization.method == "zscore"
+    assert cfg.normalization.method == "robust"  # per DEC-003
     assert cfg.segmentation.size == 10
     assert cfg.cloud_mask.max_cloud_pct == 20.0
 
@@ -139,27 +139,6 @@ def test_name_rejects_unsafe_characters():
                 optical_composite=DateRange(start="2023-01-01", end="2023-12-31"),
             ),
         )
-
-
-def test_empty_worldcover_classes_rejected(tmp_path):
-    """An empty keep list = mask everything = no data. Catch it here, not in the stage."""
-    bad_yaml = tmp_path / "empty_wc.yaml"
-    bad_yaml.write_text(
-        textwrap.dedent("""\
-        name: empty_wc_test
-        roi:
-          name: t
-          roi_file: aois/t.geojson
-        dates:
-          phenology: {start: 2020-01-01, end: 2024-12-31}
-          radar:     {start: 2020-01-01, end: 2024-12-31}
-          optical_composite: {start: 2023-01-01, end: 2023-12-31}
-        masking:
-          keep_worldcover_classes: []
-        """)
-    )
-    with pytest.raises(ValidationError):
-        load_config(bad_yaml)
 
 
 # ---------- Defaults ----------

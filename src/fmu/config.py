@@ -189,6 +189,12 @@ class ClusteringParams(BaseModel):
     k: int = Field(default=6, ge=2, le=50)
     n_training_samples: int = Field(default=5000, ge=100)
     seed: int = 42
+    # Skewness threshold above which a feature gets log-transformed before scaling.
+    # Per DEC-004: a feature with |skew| > 1.0 is log-transformed via log(x - min + 1e-3).
+    skewness_threshold: float = Field(default=1.0, ge=0.0)
+    # Pixels per superpixel cap for reduceConnectedComponents. Must exceed our
+    # largest SNIC superpixel; 1024 is generous at size=10.
+    superpixel_max_size: int = Field(default=1024, ge=64, le=8192)
 
 
 class NormalizationParams(BaseModel):

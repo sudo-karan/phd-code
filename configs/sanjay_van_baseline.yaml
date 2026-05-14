@@ -101,9 +101,11 @@ clustering:
   k: 6
   n_training_samples: 5000
   seed: 42
+  skewness_threshold: 1.0   # log-transform features with |skew| > this (DEC-004)
+  superpixel_max_size: 1024 # max pixels in a single SNIC superpixel — must exceed largest
 
 normalization:
-  method: zscore
+  method: robust  # median/IQR per DEC-003 — replaces notebook's zscore
 
 features:
   optical_harmonic: true

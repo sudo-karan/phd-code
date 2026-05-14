@@ -88,9 +88,11 @@ clustering:
   k: 6
   n_training_samples: 5000
   seed: 42
+  skewness_threshold: 1.0
+  superpixel_max_size: 1024
 
 normalization:
-  method: zscore
+  method: robust
 
 features:
   optical_harmonic: true

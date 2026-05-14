@@ -358,3 +358,60 @@ bands dominate SNIC's distance metric.
 Same SNIC inputs across both configs means boundaries are bit-identical
 between baseline and nirv_dual. Module 18's clustering comparison is
 attributable to optical features alone — segmentation is not a confound.
+
+## clustering: where the actual stand assignment happens
+
+The clustering stage is the longest single stage in the pipeline because
+it has the most distinct steps. Each step is a small, well-defined
+operation; the complexity is in the orchestration.
+
+**Why we average per superpixel before clustering** (DEC-001): clustering
+on raw pixels gives salt-and-pepper output because of within-stand pixel
+noise. SNIC superpixels are ~100 pixels each — averaging within them
+yields stable per-stand feature vectors that the clusterer can group
+sensibly.
+
+**Why cyclic decomposition** (sin/cos for phase + aspect): a phase of 0
+and 2π are identical angles but maximally distant in linear feature
+space. K-means uses Euclidean distance. Without decomposition, two stands
+peaking on Jan 1 and Dec 31 would look maximally different despite being
+phenologically identical. sin/cos pairs are continuous across the cyclic
+discontinuity.
+
+**Why log-transform before scaling** (DEC-004): some feature distributions
+are right-skewed (long tail of large values — typical for distance
+metrics, IQR bands, biomass-related signals). Median/IQR scaling can
+handle skewed distributions but k-means still treats outliers as
+maximally distant points that pull centroids around. Log-transform
+compresses the long tail; subsequent median/IQR scaling then puts the
+de-skewed distribution on a comparable scale to the other bands.
+
+**Why median/IQR over z-score** (DEC-003): outliers exist (occasional
+unusual pixels — disturbed patches, gaps, anomalies). Mean and stddev
+are sensitive to outliers; median and IQR aren't. The notebook used
+zscore; we deviate here because the practical difference matters in
+heterogeneous landscapes like Sanjay Van's edges.
+
+**Why drop constant bands instead of silently dividing by zero**: some
+bands genuinely have zero spread (e.g., annual_rainfall when the entire
+ROI sits inside one CHIRPS pixel). We detect IQR ≤ 1e-9 and drop the
+band rather than producing NaN/Inf garbage. The dropped band list is
+recorded in clustering_metadata so we know what got excluded.
+
+**Why cache preprocessing params as image properties** (ENG-022): they
+are JSON-serializable scalars and short lists. Image properties travel
+with the asset across machines and sessions. Profiling and metrics
+stages can read these back to invert transformations (e.g., display
+centroid values in original feature units) without recomputing the
+medians, IQRs, etc.
+
+**Stochastic clustering and reproducibility**: k-means initialization is
+non-deterministic in general. We use `seed=42` for reproducibility, and
+the GEE wekaKMeans seed argument propagates through KMeans++ init. With
+the same inputs and same seed, runs are bit-identical.
+
+**Same configuration, both variants**: both baseline and nirv_dual run
+through identical clustering code. Their feature stacks differ (baseline
+has 5 optical bands after dropping obs_count; variant has 7 due to dual
+harmonic), and that's the entire experiment — does NIRv+dual give better
+clusters? Module 18's metrics will answer that.
