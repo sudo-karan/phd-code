@@ -176,6 +176,11 @@ class SegmentationParams(BaseModel):
     compactness: float = Field(default=0.5, ge=0.0)  # low = spectral, high = spatial
     connectivity: Literal[4, 8] = 8
     neighborhood_size: int = Field(default=128, ge=8)
+    # Whether to z-score the 5 SNIC input bands per-band over the ROI before
+    # running SNIC. Necessary when input bands have wildly different scales
+    # (S2 reflectance 0-3000, NIRv 0-1, canopy_height 0-30, dB values).
+    # Without this, the largest-magnitude band dominates SNIC's distance metric.
+    normalize_inputs: bool = True
 
 
 class ClusteringParams(BaseModel):

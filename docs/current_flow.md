@@ -230,6 +230,36 @@ When `include_climate` is false, only the first 4 bands are emitted.
 
 **Related decisions:** DEC-014 (compute over full ROI, mask at clustering).
 
+### 7. segmentation — `src/fmu/stages/segmentation.py`
+
+SNIC superpixel segmentation. Draws boundaries that downstream clustering operates on (DEC-001 — clustering on superpixel means, not pixels).
+
+**Reads from context:** `roi`, `s2_composite`, `structure_features`, `radar_features`
+**Writes to context:** `snic_clusters` (single band, integer IDs), `snic_means` (5 bands, per-cluster means of input bands)
+**Cacheable:** yes, both outputs.
+
+**SNIC input stack** (5 bands, all 10 m native — chosen after the resolution analysis):
+- `B4_median` (S2 red, raw composite reflectance)
+- `B8_median` (S2 NIR, raw composite reflectance)
+- `composite_nirv` — NIRv derived in-stage from B4/B8: `(B8/10000) × NDVI`. Better than NDVI in dense canopy (no saturation, more within-forest spatial variation).
+- `canopy_height` (from `structure_features` — independent sensor)
+- `vv_minus_vh_median` (from `radar_features` — independent sensor)
+
+These five capture four orthogonal information sources at the same 10 m resolution. NASADEM (30 m), CHIRPS (5,500 m), and cyclic features (phase, aspect) are excluded — resolution analysis showed they'd contribute nothing useful at SNIC's scale.
+
+**Z-score normalization (per band, over the ROI)** is applied before SNIC sees the stack. Without this, the larger-magnitude bands (raw S2 reflectance 0-3000) would dominate the spectral-distance term over `canopy_height` (0-30) and `vv_minus_vh_median` (~0-15 dB). All bands z-scored = all bands contribute roughly equally.
+
+**Same inputs across both configs.** `composite_nirv` is derived from `s2_composite`, which is identical between baseline and variant. So segmentation boundaries are bit-identical between the two configs — Module 18's comparison isolates the optical-features change to the clustering stage alone.
+
+**Config knobs:**
+- `segmentation.size` — seed spacing in pixels (default 10 ≈ 100 m on 10 m grid)
+- `segmentation.compactness` — 0 = boundaries follow image edges, high = circular blobs (default 0.5)
+- `segmentation.connectivity` — 4 or 8 (default 8)
+- `segmentation.neighborhood_size` — search window (default 128)
+- `segmentation.normalize_inputs` — bool (default `true`; z-score per band before SNIC)
+
+**Related decisions:** DEC-001 (superpixels not pixels), DEC-014 (compute everywhere, mask at clustering), DEC-016 (cross-pol metric definition).
+
 ### Later stages
 
 Each one will get its own section here as it's built.
@@ -254,10 +284,12 @@ Each one will get its own section here as it's built.
 | Radar features logic | `src/fmu/stages/features_radar.py` |
 | Structure features logic | `src/fmu/stages/features_structure.py` |
 | Static features logic | `src/fmu/stages/features_static.py` |
+| Segmentation (SNIC) logic | `src/fmu/stages/segmentation.py` |
 | Phenology config knobs | `configs/*.yaml` → `features_optical.{index, harmonic_mode, include_trend}` |
 | Radar config knobs | `configs/*.yaml` → `features_radar.{percentiles, include_iqr, include_cross_pol_contrast}` |
 | Structure config knobs | `configs/*.yaml` → `features_structure.{include_neighborhood_stats, neighborhood_kernel_size}` |
 | Static config knobs | `configs/*.yaml` → `features_static.{include_climate, max_water_distance_pixels}` |
+| Segmentation config knobs | `configs/*.yaml` → `segmentation.{size, compactness, connectivity, neighborhood_size, normalize_inputs}` |
 | Climate dataset + window | `configs/*.yaml` → `datasets.climate`, `dates.climate` |
 | NIRv + dual variant config | `configs/sanjay_van_nirv_dual.yaml` |
 | S2 cloud mask SCL classes | `configs/sanjay_van_baseline.yaml` → `cloud_mask.drop_scl_classes` |

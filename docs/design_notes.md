@@ -328,3 +328,33 @@ Aspect is emitted as raw degrees 0-360. This is cyclic — north-facing
 pixels at 0° and 359° look maximally different to a Euclidean clusterer.
 A sin/cos decomposition would fix this; left as a future improvement to
 match notebook behavior.
+
+## segmentation: 5-band z-scored stack, NIRv for the optical signal
+
+The SNIC input stack is hand-picked from the resolution analysis:
+B4_median + B8_median + composite_nirv + canopy_height + vv_minus_vh_median.
+All 10 m native, four orthogonal information sources (visible color, NIR,
+structural height, microwave roughness).
+
+`composite_nirv` is derived in the segmentation stage from B4/B8 of the
+2023 S2 composite: `(B8/10000) × NDVI`. Not the same as `nirv_mean` from
+features_optical (that's a harmonic-regression intercept over 8 years).
+This in-stage derivation has two advantages:
+  1. Available identically to both baseline and nirv_dual configs without
+     either re-export or per-config code branches
+  2. Spatial signal from a single 2023 snapshot — good for boundaries
+
+Why NIRv over NDVI for SNIC input: NDVI saturates in dense canopy. Sanjay
+Van is exactly such a case — its forest interior would map to one NDVI
+value, hiding within-forest structure SNIC needs to find boundaries on.
+NIRv keeps responding because NIR alone is unbounded. The user pushed
+back on a default-to-NDVI choice; the math is on their side here.
+
+Pre-SNIC normalization (z-score per band over the ROI) is essential
+because the 5 bands span 4 orders of magnitude (S2 reflectance 0-3000,
+canopy_height 0-30, NIRv 0-1, dB ~0-15). Without normalization, raw S2
+bands dominate SNIC's distance metric.
+
+Same SNIC inputs across both configs means boundaries are bit-identical
+between baseline and nirv_dual. Module 18's clustering comparison is
+attributable to optical features alone — segmentation is not a confound.

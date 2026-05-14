@@ -24,7 +24,7 @@ A module is **Locked** when the code is read, has tests (fast + live where appli
 | 11 | `stages/features_structure.py` | 🔄 paused | — | ETH canopy height + neighborhood stats (std, max). Improves on notebook's single-band approach. |
 | 12 | `stages/features_static.py` | 🔄 paused | — | NASADEM (elevation, slope, aspect) + distance-to-water + CHIRPS rainfall climatology |
 | 13 | `stages/features_custom_csv.py` | ⏳ | — | User CSV hook |
-| 14 | `stages/segmentation.py` | ⏳ | — | SNIC |
+| 14 | `stages/segmentation.py` | 🔄 paused | — | SNIC superpixels. 5-band z-scored input stack (B4, B8, composite NIRv, canopy_height, VV-VH). Same inputs across both configs. |
 | 15 | `stages/clustering.py` | ⏳ | — | wekaKMeans |
 | 16 | `stages/profiling.py` | ⏳ | — | Per-cluster centroids |
 | 17 | `stages/export.py` | ⏳ | — | GeoTIFF + GEE asset |
