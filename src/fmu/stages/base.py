@@ -45,7 +45,9 @@ class PipelineContext:
             raise KeyError(f"PipelineContext: {key!r} already set.")
         self._data[key] = value
 
-    def keys(self) -> _set[str]:
+    def keys(self) -> set[str]:  # type: ignore[valid-type]
+        # `set[str]` is builtins.set; mypy mis-resolves it to PipelineContext.set
+        # because the class scope shadows the builtin name.
         return set(self._data.keys())
 
     def __repr__(self) -> str:
