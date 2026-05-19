@@ -105,7 +105,7 @@ def baseline_assets_cached(real_gee):
         )
 
 
-def test_full_pipeline_chain_runs_end_to_end(baseline_assets_cached):
+def test_full_pipeline_chain_runs_end_to_end(baseline_assets_cached, monkeypatch):
     """The full 10-stage pipeline runs end-to-end with cache enabled.
 
     What this proves:
@@ -121,29 +121,26 @@ def test_full_pipeline_chain_runs_end_to_end(baseline_assets_cached):
     ctx = PipelineContext()
     ctx.set("roi", roi)
 
+    # Subclass ExportStage to skip the Drive task submission — we're
+    # smoke-testing the chain, not the side-effecting export.
+    from fmu.stages.base import _stage_registry
+
+    class _SmokeExport(ExportStage):
+        def _submit_drive_export(self, **_kwargs):
+            return {"id": "SMOKE_TEST_NO_REAL_TASK"}
+
+    # Swap the registry entry via monkeypatch — auto-restored on test exit,
+    # even if pytest aborts mid-test (KeyboardInterrupt, OOM). Avoids the
+    # bug where a manual try/finally leaves the registry mutated if the
+    # test process gets killed before finally runs.
+    monkeypatch.setitem(_stage_registry, "export", _SmokeExport)
+
     # Use a temporary run dir so we don't litter the user's runs/
     import tempfile
     with tempfile.TemporaryDirectory() as tmp:
         run_dir = Path(tmp)
         pipeline = Pipeline(stage_names=FULL_PIPELINE_STAGES, use_cache=True)
-        # Subclass ExportStage to skip the Drive task submission — we're
-        # smoke-testing the chain, not the side-effecting export.
-        from fmu.stages.export import ExportStage
-
-        class _SmokeExport(ExportStage):
-            def _submit_drive_export(self, **_kwargs):
-                return {"id": "SMOKE_TEST_NO_REAL_TASK"}
-
-        # Re-register under the same name. We have to clear and re-register
-        # because the registry rejects duplicate names by default.
-        from fmu.stages.base import _stage_registry
-        _stage_registry["export"] = _SmokeExport
-
-        try:
-            result = pipeline.run(config=config, run_dir=run_dir, initial_context=ctx)
-        finally:
-            # Restore original
-            _stage_registry["export"] = ExportStage
+        result = pipeline.run(config=config, run_dir=run_dir, initial_context=ctx)
 
     # Every stage in the chain must have run successfully
     stage_names_run = [s.name for s in result.stages]
@@ -151,13 +148,50 @@ def test_full_pipeline_chain_runs_end_to_end(baseline_assets_cached):
         f"Pipeline ran wrong stages: expected {FULL_PIPELINE_STAGES}, got {stage_names_run}"
     )
 
-    # Each cached stage should report "from cache" (source=cache in metadata).
-    # The export stage and metrics-less profiling won't.
-    cached_stages = [s for s in result.stages if s.metadata.get("source") == "cache"]
-    assert len(cached_stages) >= 6, (
-        "Expected at least 6 cached stages (masking through clustering); "
-        f"got {len(cached_stages)}"
+    # Stages that produce ONLY ee.Image outputs are fully cacheable and
+    # should all hit cache here (baseline_assets_cached confirmed upstream).
+    # data_load is intentionally excluded: it produces ee.ImageCollections
+    # (s2_collection, s1_collection) that aren't cacheable as assets, so
+    # it always re-derives them live even when its s2_composite is cached.
+    # That's by design — the collections are cheap to rebuild.
+    # Asserting by name is more diagnostic than "at least 6 cached" — a name
+    # match tells you WHICH stage was unexpectedly missing from cache.
+    expected_cached_stages = {
+        "masking",
+        "features_optical",
+        "features_radar",
+        "features_structure",
+        "features_static",
+        "segmentation",
+        "clustering",
+    }
+    cached_by_name = {
+        s.name for s in result.stages if s.metadata.get("source") == "cache"
+    }
+    not_cached = expected_cached_stages - cached_by_name
+    assert not not_cached, (
+        f"These stages should have been served from cache but weren't: {sorted(not_cached)}. "
+        "Either upstream assets are missing or the cache layer is broken."
     )
+
+    # data_load always runs live (uncacheable collection outputs); verify
+    # it actually ran rather than being skipped.
+    data_load_record = next(
+        (s for s in result.stages if s.name == "data_load"), None
+    )
+    assert data_load_record is not None, "data_load stage didn't run"
+    assert data_load_record.metadata.get("source") != "cache", (
+        "data_load should always run live (it produces uncacheable collections)"
+    )
+
+    # profiling and export are never cached by design — they always run.
+    # Make sure they ran (not cache-skipped) for the same reason.
+    for always_run_stage in ("profiling", "export"):
+        record = next((s for s in result.stages if s.name == always_run_stage), None)
+        assert record is not None, f"{always_run_stage} didn't run"
+        assert record.metadata.get("source") != "cache", (
+            f"{always_run_stage} should never be served from cache"
+        )
 
     # Final context should have every produced key from every stage.
     # NB: masking's `produces` is {habitat_mask, water_mask, landcover_summary}

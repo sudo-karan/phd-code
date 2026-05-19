@@ -437,3 +437,58 @@ class TestExplicitNoCaching:
             f"asset_exists called {mock_exists.call_count} times — "
             "orchestrator tried to cache when stage opted out"
         )
+
+    def test_subclass_inherits_cacheable_outputs(self, tmp_path):
+        """Regression test for a bug found 2026-05-19: when a subclass
+        inherits cacheable_outputs through MRO (rather than redeclaring it
+        in its own __dict__), the orchestrator was falling back to the
+        "default to caching all produces" behavior — causing it to try
+        to cache the parent's non-image outputs.
+
+        The fix: _resolve_cacheable_outputs walks the MRO instead of only
+        checking the direct class's __dict__.
+
+        This bit us when the smoke test's _SmokeExport subclass inherited
+        ExportStage's cacheable_outputs=set() but had it ignored.
+        """
+        run_log = []
+
+        @register_stage("parent_opts_out")
+        class Parent(Stage):
+            name = "parent_opts_out"
+            required_inputs: ClassVar[set[str]] = set()
+            produces = {"py_data"}
+            cacheable_outputs: ClassVar[set[str]] = set()  # opt out
+
+            def run(self, ctx, config):
+                run_log.append("parent")
+                return StageResult(outputs={"py_data": [1, 2, 3]})
+
+        # Subclass: register under a different name. Note that the subclass
+        # does NOT redeclare cacheable_outputs — it inherits the empty set
+        # through MRO. The orchestrator must still honor that.
+        @register_stage("child_inherits_optout")
+        class Child(Parent):
+            name = "child_inherits_optout"
+            # cacheable_outputs intentionally not declared — inherited
+
+            def run(self, ctx, config):
+                run_log.append("child")
+                return StageResult(outputs={"py_data": ["a", "b"]})
+
+        from unittest.mock import patch
+
+        with patch("fmu.pipeline.asset_exists") as mock_exists, \
+             patch("fmu.pipeline.cached_asset_path", return_value="fake/path"):
+            pipeline = Pipeline(stage_names=["child_inherits_optout"], use_cache=True)
+            result = pipeline.run(config=_make_config(), run_dir=tmp_path)
+
+        # Child stage ran, inherited opt-out worked
+        assert run_log == ["child"]
+        assert result.context.get("py_data") == ["a", "b"]
+        # The orchestrator never checked cache because cacheable_outputs is
+        # the empty set, inherited from Parent through MRO
+        assert mock_exists.call_count == 0, (
+            f"asset_exists called {mock_exists.call_count} times — "
+            "MRO walk didn't find inherited cacheable_outputs=set()"
+        )

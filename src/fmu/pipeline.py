@@ -108,24 +108,20 @@ class Pipeline:
         t0 = time.perf_counter()
         cache_status: dict[str, str] = {}
         export_tasks: list[ExportTaskInfo] = []
-        cached_outputs: dict[str, Any] = {}        # Which produces are cacheable as GEE assets?
-        # - cacheable_outputs is the truth: if the stage declares the set,
-        #   honor it exactly (including the empty set, which means "nothing
-        #   cacheable — always run, results live in memory only").
-        # - If the stage hasn't customized cacheable_outputs at all, the base
-        #   class default is the empty set, which historically meant "cache
-        #   everything in produces". To preserve that for stages that don't
-        #   explicitly opt out, distinguish via a sentinel-equivalent: only
-        #   default-to-produces when cacheable_outputs IS the base default.
-        # Practically: if the stage class overrode cacheable_outputs to a
-        # non-empty set, use it. If it overrode it to set() explicitly, use
-        # set(). If it didn't override at all, default to produces.
-        # We detect "explicit empty set" via class-level attribute presence:
-        cacheable = (
-            stage.cacheable_outputs
-            if "cacheable_outputs" in stage.__class__.__dict__
-            else stage.produces
-        )
+        cached_outputs: dict[str, Any] = {}
+
+        # Which produces are cacheable as GEE assets?
+        # - cacheable_outputs is the truth: if any class in the MRO declares
+        #   it (including the empty set, meaning "nothing cacheable — always
+        #   run, results live in memory only"), honor that declaration.
+        # - If NO class between the concrete stage and Stage declares it, the
+        #   stage didn't customize at all; default to caching everything in
+        #   produces (preserves the original behavior for image-only stages).
+        # Walking the MRO instead of checking only `stage.__class__.__dict__`
+        # is critical: subclasses (e.g., the smoke test's _SmokeExport) inherit
+        # the parent's cacheable_outputs through MRO but don't redeclare it
+        # in their own __dict__.
+        cacheable = self._resolve_cacheable_outputs(stage)
 
         try:
             stage.validate(ctx, config)
@@ -222,6 +218,28 @@ class Pipeline:
                 for t in export_tasks
             ],
         )
+
+    @staticmethod
+    def _resolve_cacheable_outputs(stage: Stage) -> set[str]:
+        """Resolve a stage's cacheable_outputs declaration via MRO walk.
+
+        Returns the first `cacheable_outputs` set declared in any class
+        between the concrete stage class and the base Stage (exclusive).
+        If no override is found, defaults to the stage's `produces` set
+        (preserving the historical "cache everything by default" behavior
+        for image-only stages).
+
+        Walking the MRO is necessary because test subclasses and other
+        derived classes inherit cacheable_outputs through the chain
+        without redeclaring it in their own __dict__.
+        """
+        for klass in type(stage).__mro__:
+            if klass is Stage:
+                # Reached the base class without finding an override
+                break
+            if "cacheable_outputs" in klass.__dict__:
+                return klass.__dict__["cacheable_outputs"]
+        return stage.produces
 
     def _try_load_cache(
         self,

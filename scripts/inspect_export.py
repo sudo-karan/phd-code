@@ -112,8 +112,7 @@ def main() -> None:
         print("Drive export was not submitted (live test mode?).")
     print()
 
-    print(f"Decisions implemented: {len(export_manifest['decisions_referenced'])}")
-    print(f"  {', '.join(export_manifest['decisions_referenced'])}")
+    print(f"Decisions source: {export_manifest['decisions_source']}")
     print()
 
     print(f"Full manifest:  {standalone_path}")

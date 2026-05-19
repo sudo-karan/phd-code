@@ -54,6 +54,7 @@ Outputs:
 from __future__ import annotations
 
 import json
+import math
 
 import ee
 
@@ -162,7 +163,13 @@ class ClusteringStage(Stage):
             habitat_masked, skewed_bands, preprocessing_sample
         )
 
-        # Re-sample after log transform so scaling sees the post-log distribution.
+        # Re-sample after log transform. NOT a redundant call: log
+        # transformation changes the distribution of the affected bands,
+        # so percentiles (median/IQR) computed from preprocessing_sample
+        # would describe the WRONG distribution for scaling. Each sample
+        # uses the same seed → samples the same pixel positions, but with
+        # values reflecting their respective transform stages. Sampling
+        # is cheap (~10k pixels × handful of bands per roundtrip).
         post_log_sample = transformed_stack.sample(
             region=roi,
             scale=scale,
@@ -280,7 +287,7 @@ def _decompose_cyclic_bands(image: ee.Image) -> tuple[ee.Image, list[str]]:
         original = image.select(cb)
         if cb == "aspect":  # noqa: SIM108 — keep for the radians conversion comment
             # Aspect is in degrees ∈ [0, 360]; convert to radians first.
-            radians = original.multiply(3.141592653589793 / 180.0)
+            radians = original.multiply(math.pi / 180.0)
         else:
             # Phase bands from atan2 are already in radians ∈ [-π, π].
             radians = original

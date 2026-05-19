@@ -110,7 +110,7 @@ def test_manifest_has_required_sections(ctx_ready_for_export):
         "asset_paths",
         "clustering",
         "drive_export",
-        "decisions_referenced",
+        "decisions_source",
     }
     missing = expected_keys - set(manifest.keys())
     assert not missing, f"Manifest missing keys: {missing}"

@@ -41,38 +41,12 @@ from fmu.utils.logging import get_logger
 log = get_logger(__name__)
 
 
-# Hand-maintained list of decisions and engineering entries the pipeline
-# implements. Keep in sync with phd-notebook/decisions.md.
-_DECISIONS_IMPLEMENTED = [
-    "DEC-001",  # SNIC superpixels (clustering via majority vote for memory)
-    "DEC-002",  # Derived harmonic metrics (amp/phase, not raw coefficients)
-    "DEC-003",  # Median/IQR robust scaling
-    "DEC-004",  # Log-transform right-skewed bands (|skew| > 1.0)
-    "DEC-005",  # Union-mask sampling
-    "DEC-006",  # Three-phase masking
-    "DEC-007",  # Sanjay Van primary site
-    "DEC-008",  # Server-side GEE
-    "DEC-009",  # ETH Canopy Height (not GEDI L2A)
-    "DEC-010",  # Pipeline in package
-    "DEC-011",  # Built-up mask uses S2-independent data
-    "DEC-012",  # S2 SCL cloud masking
-    "DEC-013",  # NIRv + dual harmonic as comparison variant
-    "DEC-014",  # Features computed over full ROI, masked at clustering
-    "DEC-015",  # Optical features included/skipped with reasoning
-    "DEC-016",  # Cross-pol contrast is VV-VH in dB
-    "DEC-017",  # No speckle filtering for radar features
-    "DEC-018",  # Structure features include neighborhood statistics
-    "DEC-019",  # features_static uses water_mask from masking
-    "DEC-020",  # SNIC 5-band stack with composite NIRv, z-scored
-    "DEC-021",  # Identical SNIC inputs across configs
-    "DEC-022",  # Cyclic features get sin/cos decomposition before clustering
-    "ENG-018",  # Asset caching cross-cutting (utils/caching.py)
-    "ENG-019",  # Masking outputs three context keys
-    "ENG-020",  # cacheable_outputs subset for mixed-output stages
-    "ENG-021",  # Cache-skip requires complete coverage
-    "ENG-022",  # Clustering preprocessing metadata as image property
-    "ENG-024",  # Explicit cache opt-out via empty cacheable_outputs
-]
+# The pipeline implements the decisions and engineering choices documented
+# in phd-notebook/decisions.md (the source of truth, locked alongside this
+# repo at the same git revision). We deliberately don't enumerate decision
+# IDs here — they'd drift from the notebook as decisions are added/revised.
+# Instead the manifest records a pointer to the source of truth.
+_DECISIONS_SOURCE = "phd-notebook/decisions.md"
 
 
 # Inventory of cacheable outputs across all pipeline stages. Each entry is
@@ -170,7 +144,7 @@ class ExportStage(Stage):
                 "submitted_at": now_iso if task else None,
                 "task_submitted": task is not None,
             },
-            "decisions_referenced": _DECISIONS_IMPLEMENTED,
+            "decisions_source": _DECISIONS_SOURCE,
         }
 
         return StageResult(
@@ -232,18 +206,32 @@ class ExportStage(Stage):
 
 
 def _read_clustering_metadata(cluster_labels: ee.Image) -> dict[str, Any]:
-    """Pull the JSON-serialized clustering metadata off the asset property."""
+    """Pull the JSON-serialized clustering metadata off the asset property.
+
+    Raises if the property is missing or malformed. Both are integrity
+    failures: the clustering stage MUST set this property (ENG-022), and
+    the export stage MUST be able to read it for the manifest to be a
+    valid reproducibility artifact. Silently substituting an empty dict
+    would produce a manifest that looks valid but is missing the
+    preprocessing parameters needed to interpret cluster IDs in original
+    feature units.
+    """
     raw = safe_get_info(
         cluster_labels.get("clustering_metadata"),
         context="clustering_metadata property",
     )
     if not raw:
-        return {}
+        raise ValueError(
+            "cluster_labels asset is missing the 'clustering_metadata' "
+            "property. Re-run the clustering stage to produce a valid asset."
+        )
     try:
         return json.loads(raw)
-    except (json.JSONDecodeError, TypeError):
-        log.warning("  clustering_metadata property is not valid JSON")
-        return {}
+    except (json.JSONDecodeError, TypeError) as e:
+        raise ValueError(
+            f"clustering_metadata property is not valid JSON: {e}. "
+            "Re-run the clustering stage."
+        ) from e
 
 
 def _compute_cluster_distribution(
