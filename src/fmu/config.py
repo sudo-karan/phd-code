@@ -210,17 +210,6 @@ class FeatureToggles(BaseModel):
     radar: bool = True
     canopy_height: bool = True
     terrain: bool = True
-    custom_csv: bool = False
-
-
-class CustomCSVFeature(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    name: str
-    path: Path
-    lon_col: str = "lon"
-    lat_col: str = "lat"
-    value_col: str = "value"
 
 
 class ExportParams(BaseModel):
@@ -268,7 +257,6 @@ class Config(BaseModel):
     clustering: ClusteringParams = Field(default_factory=ClusteringParams)
     normalization: NormalizationParams = Field(default_factory=NormalizationParams)
     features: FeatureToggles = Field(default_factory=FeatureToggles)
-    custom_csv_features: list[CustomCSVFeature] = Field(default_factory=list)
     export: ExportParams = Field(default_factory=ExportParams)
     metrics: MetricsParams = Field(default_factory=MetricsParams)
 

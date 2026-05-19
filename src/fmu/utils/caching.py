@@ -47,11 +47,34 @@ def cached_asset_path(config_name: str, stage_name: str, key: str) -> str:
 
 
 def asset_exists(path: str) -> bool:
-    """True if the given GEE asset path exists and is readable."""
+    """True if the given GEE asset path exists and is readable.
+
+    Distinguishes "not found" (returns False) from permission errors and
+    other failures (re-raises). Tries the underlying HTTP status first
+    (most reliable across GEE client versions); falls back to string-
+    matching the EE error message for older versions where the wrapped
+    cause is unreachable.
+    """
     try:
         ee.data.getAsset(path)
         return True
     except ee.EEException as e:
+        # Prefer the underlying HttpError status when available — GEE's
+        # Python client wraps googleapiclient HttpError into EEException,
+        # and the cause's response status is more reliable than message
+        # text.
+        cause = getattr(e, "__cause__", None)
+        if cause is not None:
+            status = getattr(getattr(cause, "resp", None), "status", None)
+            if status == 404:
+                return False
+            if status in (401, 403):
+                # Permission issue — propagate so the user fixes it.
+                raise
+
+        # Fallback: match the message text. GEE's "not found" / "does not
+        # exist" / "404" phrasing has been stable across the versions we
+        # support, but it's not formally guaranteed.
         msg = str(e).lower()
         if "not found" in msg or "does not exist" in msg or "404" in msg:
             return False

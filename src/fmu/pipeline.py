@@ -108,9 +108,7 @@ class Pipeline:
         t0 = time.perf_counter()
         cache_status: dict[str, str] = {}
         export_tasks: list[ExportTaskInfo] = []
-        cached_outputs: dict[str, Any] = {}
-
-        # Which produces are cacheable as GEE assets?
+        cached_outputs: dict[str, Any] = {}        # Which produces are cacheable as GEE assets?
         # - cacheable_outputs is the truth: if the stage declares the set,
         #   honor it exactly (including the empty set, which means "nothing
         #   cacheable — always run, results live in memory only").
@@ -192,6 +190,11 @@ class Pipeline:
                 )
 
         except Exception as e:
+            # Stage failure: log, then re-raise. We intentionally do NOT try
+            # to clean up partial context state — pipelines are one-shot, and
+            # the next run starts with a fresh context anyway. We also leave
+            # any in-flight export tasks alone; GEE handles its own task
+            # cleanup, and orphaned exports cost the user nothing.
             elapsed = time.perf_counter() - t0
             log.error("✗ stage %s FAILED after %.2f sec: %s", name, elapsed, e)
             raise

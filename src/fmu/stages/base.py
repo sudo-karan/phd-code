@@ -28,7 +28,18 @@ class PipelineContext:
         return self._data[key]
 
     def set(self, key: str, value: Any) -> None:
-        # write-once: two stages can't both claim to produce the same key
+        """Set a key in the context. Write-once: re-setting an existing key
+        raises KeyError.
+
+        Write-once enforces the architectural invariant that each context
+        key has exactly one producing stage. If two stages produce the
+        same key, the conflict is caught at run time rather than silently
+        clobbered. To intentionally pre-populate a key (e.g., `roi` from
+        the inspect script), do it before any stage runs.
+
+        Raises:
+            KeyError: if `key` already exists in the context.
+        """
         if key in self._data:
             raise KeyError(f"PipelineContext: {key!r} already set.")
         self._data[key] = value
@@ -125,6 +136,22 @@ class Stage(ABC):
             )
 
     def validate(self, ctx: PipelineContext, config: Any) -> None:
+        """Validate stage preconditions before `run` is called.
+
+        The default implementation checks that every key in
+        `required_inputs` exists in the context. Subclasses may override
+        to add additional checks (e.g., band counts, projection match,
+        config constraints) — but should call super().validate() to keep
+        the default check active.
+
+        Override is OPTIONAL. Most stages get away with the default,
+        because GEE will surface most preconditions as informative
+        errors at run time. Override only when the cost of a late
+        failure outweighs the cost of an extra validation call.
+
+        Raises:
+            KeyError: missing required_inputs in the context.
+        """
         missing = self.required_inputs - ctx.keys()
         if missing:
             raise KeyError(

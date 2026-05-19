@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 
 from pydantic import Field
@@ -29,11 +30,26 @@ class Settings(BaseSettings):
         return f"projects/{self.gee_project_id}/assets/fmu"
 
 
+# Module-level singleton + lock. The lock protects against double-load in
+# multi-threaded contexts (pytest-xdist, future async work). In the common
+# single-threaded case the lock is uncontended and adds negligible overhead.
 _cached: Settings | None = None
+_cache_lock = threading.Lock()
 
 
 def get_settings(force_reload: bool = False) -> Settings:
+    """Get the cached Settings instance, loading it from .env if needed.
+
+    Args:
+        force_reload: re-read .env even if a cached instance exists. Used
+            in tests that mutate environment variables between cases.
+    """
     global _cached
-    if _cached is None or force_reload:
-        _cached = Settings()
-    return _cached
+    # Fast path: already loaded, no reload requested
+    if _cached is not None and not force_reload:
+        return _cached
+    # Slow path: take the lock and check again
+    with _cache_lock:
+        if _cached is None or force_reload:
+            _cached = Settings()
+        return _cached
