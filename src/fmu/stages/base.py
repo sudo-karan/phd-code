@@ -7,6 +7,7 @@ required_inputs/produces pattern.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from builtins import set as _set  # PipelineContext.set shadows the builtin in class scope
 from dataclasses import dataclass, field
 from typing import Any, ClassVar
 

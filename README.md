@@ -9,11 +9,41 @@ Pre-alpha. Scaffold, config, orchestrator, caching, and stages 1–9
 see `MODULES.md` for the build-order roadmap and `docs/current_flow.md` for
 runtime flow + per-stage details.
 
-## Setup
+## What it does
+
+Given a GeoJSON polygon (an Area of Interest), fmu:
+
+1. **Masks** non-habitat pixels (water, buildings, bare/urban) using a
+   multi-source mask designed to avoid circularity with downstream
+   features (see [docs/design_notes.md](docs/design_notes.md)).
+2. **Loads** Sentinel-2 (optical) and Sentinel-1 (radar) collections
+   plus auxiliary datasets (canopy height, terrain, climate).
+3. **Computes per-pixel features**:
+   - phenology via harmonic regression on NDVI (or NIRv) over 8 years of S2
+   - radar statistics (percentiles, IQR, cross-pol contrast) over 5 years of S1
+   - structural heterogeneity from ETH canopy height + neighborhood stats
+   - terrain (NASADEM), distance-to-water, mean annual rainfall (CHIRPS)
+4. **Segments** the AOI into SNIC superpixels using a 5-band z-scored stack
+   that combines visible, NIR, structural, and microwave information.
+5. **Clusters** the per-superpixel feature vectors with k-means
+   (preprocessing: cyclic decomposition, log-transform of skewed bands,
+   median/IQR robust scaling).
+6. **Profiles** each cluster (mean/IQR per feature in original units).
+7. **Exports** a GeoTIFF of cluster labels to Google Drive plus a full
+   reproducibility manifest.
+8. **Compares** the result against a reference clustering with ARI / NMI /
+   silhouette / Hungarian-aligned agreement map.
+
+The whole sequence is config-driven. A new experiment is a new YAML file;
+the framework runs both baseline and variant through identical code and
+the metrics stage compares them.
+
+## Quickstart
 
 One-time per machine:
 
 ```bash
+# 1. Setup (one-time)
 python3.13 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
@@ -175,6 +205,19 @@ One YAML per experiment under `configs/`. The schema lives in
 Don't edit a locked baseline in place. Copy it and change what you need —
 the new config's outputs cache to their own asset folder.
 
+## Deeper docs
+
+| You want to know... | Read |
+|---|---|
+| Why the code is structured the way it is | [docs/design_notes.md](docs/design_notes.md) |
+| What each stage does and in what order | [docs/current_flow.md](docs/current_flow.md) |
+| How to actually run things (inspect scripts, full pipeline, cache) | [docs/running.md](docs/running.md) |
+| Format of every file fmu produces | [docs/outputs.md](docs/outputs.md) |
+| Every GEE dataset used, what it contributes, why chosen | [docs/datasets.md](docs/datasets.md) |
+| How config works; how to add a new experiment | [docs/configs.md](docs/configs.md) |
+| Stage contract, registry, caching internals, how to add a stage | [docs/architecture.md](docs/architecture.md) |
+| Module status (locked / paused / in progress) | [MODULES.md](MODULES.md) |
+
 ## Tests
 
 ```bash
@@ -204,4 +247,4 @@ CI runs only the fast tier. **GEE stages must be verified locally with
 
 ## License
 
-MIT — see `LICENSE`.
+MIT — see [LICENSE](LICENSE).
