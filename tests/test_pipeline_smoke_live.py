@@ -160,9 +160,14 @@ def test_full_pipeline_chain_runs_end_to_end(baseline_assets_cached):
     )
 
     # Final context should have every produced key from every stage.
+    # NB: masking's `produces` is {habitat_mask, water_mask, landcover_summary}
+    # — built_up_mask is an internal intermediate inside the masking stage,
+    # not a context output. The export.py inventory list previously included
+    # it by mistake; that's why the export manifest reports 11 cached assets
+    # rather than 12.
     expected_keys = {
         # masking
-        "habitat_mask", "built_up_mask", "water_mask",
+        "habitat_mask", "water_mask", "landcover_summary",
         # data_load
         "s2_composite",
         # features

@@ -78,9 +78,12 @@ _DECISIONS_IMPLEMENTED = [
 # Inventory of cacheable outputs across all pipeline stages. Each entry is
 # (stage_name, output_key). The export stage probes each path; whichever
 # ones exist get listed in the manifest.
+#
+# Note: built_up_mask is intentionally absent — it's an intermediate
+# computed inside the masking stage to derive habitat_mask, but is never
+# exposed as a context output (masking.produces does not include it).
 _CACHEABLE_OUTPUTS = [
     ("masking", "habitat_mask"),
-    ("masking", "built_up_mask"),
     ("masking", "water_mask"),
     ("data_load", "s2_composite"),
     ("features_optical", "optical_features"),
