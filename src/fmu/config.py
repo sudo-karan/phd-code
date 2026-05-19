@@ -231,6 +231,22 @@ class ExportParams(BaseModel):
     analysis_scale_m: int = Field(default=10, ge=1)
 
 
+class MetricsParams(BaseModel):
+    """Parameters for the metrics stage (Module 18).
+
+    `reference_config_name`: if set, the metrics stage will load the named
+    config's `cluster_labels` asset and compute ARI/NMI/correspondence
+    against the current config's cluster_labels. If null, only intrinsic
+    metrics (silhouette score) are computed for the current config.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    reference_config_name: str | None = None
+    n_comparison_samples: int = Field(default=10000, ge=100)
+    n_silhouette_samples_per_cluster: int = Field(default=833, ge=50)
+
+
 class Config(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -254,6 +270,7 @@ class Config(BaseModel):
     features: FeatureToggles = Field(default_factory=FeatureToggles)
     custom_csv_features: list[CustomCSVFeature] = Field(default_factory=list)
     export: ExportParams = Field(default_factory=ExportParams)
+    metrics: MetricsParams = Field(default_factory=MetricsParams)
 
     @field_validator("name")
     @classmethod

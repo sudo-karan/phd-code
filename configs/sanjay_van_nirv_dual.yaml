@@ -107,3 +107,8 @@ export:
   export_geotiff: true
   export_gee_asset: false
   analysis_scale_m: 10
+
+metrics:
+  reference_config_name: sanjay_van_baseline  # variant compares against baseline
+  n_comparison_samples: 10000
+  n_silhouette_samples_per_cluster: 833

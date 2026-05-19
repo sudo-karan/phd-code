@@ -340,6 +340,36 @@ The manifest goes into the orchestrator's `manifest.json` automatically (via sta
 
 **Why uint8?** Cluster IDs are 0..k-1 ≤ 255 for any reasonable k. uint8 quarters the file size and most GIS tools handle it natively.
 
+### 11. metrics — `src/fmu/stages/metrics.py`
+
+The actual research deliverable. Quantitative comparison between the two clusterings, answering the thesis question "does NIRv + dual harmonic meaningfully improve clustering?"
+
+**Reads from context:** `roi`, `cluster_labels`, `habitat_mask`
+**Also reads (cross-config):** reference config's `cluster_labels` and `feature_stack` assets, if `metrics.reference_config_name` is set.
+**Writes to context:** `comparison_metrics` (Python dict), `agreement_map` (GEE image, only in comparison mode)
+**Cacheable:** no. Always runs (fast — sampling + scikit-learn).
+
+**Two modes:**
+
+1. **Baseline mode** (`reference_config_name: null`): only intrinsic silhouette score computed.
+2. **Comparison mode** (`reference_config_name: <other_config>`): full metric suite vs reference.
+
+**Comparison-mode outputs:**
+- **ARI** (Adjusted Rand Index): partition similarity, 0=random, 1=identical
+- **NMI** (Normalized Mutual Information): information-theoretic agreement
+- **Confusion matrix** + **cluster correspondence** via Hungarian algorithm (`scipy.optimize.linear_sum_assignment`) on pixel-overlap counts
+- **Agreement rate**: % of pixels matching after correspondence
+- **Silhouette scores**: intrinsic quality for both configs
+- **Agreement map**: server-side image showing per-pixel agreement (0=disagree, 1=agree after correspondence remapping)
+
+**Sampling strategy:**
+- ARI/NMI: 10,000 paired pixels via stacked-image `.sample()` (both labels at identical locations)
+- Silhouette: stratified sample of ~833 pixels per cluster (~5000 total) via `stratifiedSample()`
+
+**Why not centroid-distance for correspondence?** Feature bands differ between configs (ndvi_* vs nirv_*). Pixel-overlap is config-agnostic and what most clustering-comparison studies use.
+
+**Related decisions:** DEC-013 (the variant exists to be tested here).
+
 ### Later stages
 
 Each one will get its own section here as it's built.
