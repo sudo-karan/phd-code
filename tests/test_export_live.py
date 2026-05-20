@@ -4,28 +4,20 @@ The Drive submission is mocked-out via subclass to avoid creating a real
 Drive export task every time tests run. The rest of the stage runs live
 against GEE (asset existence checks, cluster distribution computation,
 metadata reads).
+
+Upstream artifacts loaded from GEE cache (see tests/_live_cache_fixtures.py
+for rationale). To populate the cache, run `python scripts/inspect_clustering.py`
+on each config you want covered.
 """
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
-import ee
 import pytest
 
-from fmu.config import load_config
-from fmu.stages.base import PipelineContext
-from fmu.stages.clustering import ClusteringStage
-from fmu.stages.data_load import DataLoadStage
+from _live_cache_fixtures import ctx_ready_for_downstream
 from fmu.stages.export import ExportStage
-from fmu.stages.features_optical import FeaturesOpticalStage
-from fmu.stages.features_radar import FeaturesRadarStage
-from fmu.stages.features_static import FeaturesStaticStage
-from fmu.stages.features_structure import FeaturesStructureStage
-from fmu.stages.masking import MaskingStage
-from fmu.stages.segmentation import SegmentationStage
-from fmu.utils.gee import load_roi_geometry
 
 pytestmark = pytest.mark.live_gee
 
@@ -41,51 +33,10 @@ class _NoDriveExportStage(ExportStage):
 
 
 @pytest.fixture(scope="module")
-def real_gee():
-    import fmu.utils.gee as gee_mod
-    from fmu.settings import get_settings
-
-    gee_mod._initialized = False
-    get_settings(force_reload=True)
-
-    settings = get_settings()
-    if not settings.gee_project_id:
-        pytest.skip("GEE_PROJECT_ID not set in .env")
-
-    try:
-        gee_mod.init_gee()
-    except ee.EEException as e:
-        msg = str(e).lower()
-        if "authenticate" in msg or "credentials" in msg:
-            pytest.skip(f"GEE not authenticated. {e}")
-        raise
-    yield
-
-
-@pytest.fixture(scope="module")
-def ctx_ready_for_export(real_gee):
-    repo_root = Path(__file__).parent.parent
-    config = load_config(repo_root / "configs" / "sanjay_van_baseline.yaml")
-    roi = load_roi_geometry(repo_root / "aois" / "sanjay_van.geojson")
-    ctx = PipelineContext()
-    ctx.set("roi", roi)
-
-    stages = [
-        MaskingStage(),
-        DataLoadStage(),
-        FeaturesOpticalStage(),
-        FeaturesRadarStage(),
-        FeaturesStructureStage(),
-        FeaturesStaticStage(),
-        SegmentationStage(),
-        ClusteringStage(),
-    ]
-    for stage in stages:
-        result = stage.run(ctx, config)
-        for key, value in result.outputs.items():
-            if not ctx.has(key):
-                ctx.set(key, value)
-    return ctx, config
+def ctx_ready_for_export():
+    return ctx_ready_for_downstream(
+        "sanjay_van_baseline.yaml", include_clustering=True
+    )
 
 
 def test_runs_end_to_end(ctx_ready_for_export):
@@ -125,7 +76,7 @@ def test_cluster_distribution_present_and_consistent(ctx_ready_for_export):
 
     assert len(distribution) == config.clustering.k
     total = sum(c["pixel_count"] for c in distribution)
-    assert total > 5000, f"Only {total} pixels; habitat mask too aggressive?"
+    assert total > 5000, f"Only {total} pixels — habitat mask too aggressive?"
 
     # Percent of habitat should sum to ~100%
     total_pct = sum(c["percent_of_habitat"] for c in distribution)

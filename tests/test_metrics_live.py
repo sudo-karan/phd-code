@@ -1,8 +1,12 @@
 """Live integration tests for the metrics stage.
 
-These tests run against the variant config (sanjay_van_nirv_dual) so the
-comparison path against the baseline reference is exercised. Requires
-both configs' cluster_labels and feature_stack to be cached as GEE assets.
+These tests run against both configs:
+  - sanjay_van_nirv_dual (comparison mode — reference set to baseline)
+  - sanjay_van_baseline (baseline mode — no reference)
+
+Upstream artifacts loaded from GEE cache (see tests/_live_cache_fixtures.py
+for rationale). To populate the cache, run `python scripts/inspect_clustering.py
+--config configs/sanjay_van_baseline.yaml` and the same for the variant.
 """
 
 from __future__ import annotations
@@ -12,80 +16,30 @@ from pathlib import Path
 import ee
 import pytest
 
-from fmu.config import load_config
-from fmu.stages.base import PipelineContext
-from fmu.stages.clustering import ClusteringStage
-from fmu.stages.data_load import DataLoadStage
-from fmu.stages.features_optical import FeaturesOpticalStage
-from fmu.stages.features_radar import FeaturesRadarStage
-from fmu.stages.features_static import FeaturesStaticStage
-from fmu.stages.features_structure import FeaturesStructureStage
-from fmu.stages.masking import MaskingStage
+from _live_cache_fixtures import ctx_ready_for_downstream
 from fmu.stages.metrics import MetricsStage
-from fmu.stages.segmentation import SegmentationStage
 from fmu.utils.caching import asset_exists, cached_asset_path
-from fmu.utils.gee import load_roi_geometry
 
 pytestmark = pytest.mark.live_gee
 
 
 @pytest.fixture(scope="module")
-def real_gee():
-    import fmu.utils.gee as gee_mod
-    from fmu.settings import get_settings
-
-    gee_mod._initialized = False
-    get_settings(force_reload=True)
-
-    settings = get_settings()
-    if not settings.gee_project_id:
-        pytest.skip("GEE_PROJECT_ID not set in .env")
-
-    try:
-        gee_mod.init_gee()
-    except ee.EEException as e:
-        msg = str(e).lower()
-        if "authenticate" in msg or "credentials" in msg:
-            pytest.skip(f"GEE not authenticated. {e}")
-        raise
-
-    # Skip if baseline assets aren't cached (we need them as reference)
-    baseline_labels = cached_asset_path(
-        "sanjay_van_baseline", "clustering", "cluster_labels"
+def ctx_ready_for_metrics():
+    """Variant config — comparison mode."""
+    ctx, config = ctx_ready_for_downstream(
+        "sanjay_van_nirv_dual.yaml", include_clustering=True
     )
-    if not asset_exists(baseline_labels):
-        pytest.skip(
-            f"Baseline cluster_labels not cached at {baseline_labels}. "
-            "Run inspect_clustering.py on baseline first."
-        )
-
-    yield
-
-
-@pytest.fixture(scope="module")
-def ctx_ready_for_metrics(real_gee):
-    """Run the variant pipeline up through clustering, then we can run metrics."""
-    repo_root = Path(__file__).parent.parent
-    config = load_config(repo_root / "configs" / "sanjay_van_nirv_dual.yaml")
-    roi = load_roi_geometry(repo_root / "aois" / "sanjay_van.geojson")
-    ctx = PipelineContext()
-    ctx.set("roi", roi)
-
-    stages = [
-        MaskingStage(),
-        DataLoadStage(),
-        FeaturesOpticalStage(),
-        FeaturesRadarStage(),
-        FeaturesStructureStage(),
-        FeaturesStaticStage(),
-        SegmentationStage(),
-        ClusteringStage(),
-    ]
-    for stage in stages:
-        result = stage.run(ctx, config)
-        for key, value in result.outputs.items():
-            if not ctx.has(key):
-                ctx.set(key, value)
+    # Comparison mode also needs the baseline reference assets — verify
+    # they're cached too, otherwise the metrics stage will skip its
+    # comparison path or error.
+    ref = config.metrics.reference_config_name
+    if ref:
+        ref_path = cached_asset_path(ref, "clustering", "cluster_labels")
+        if not asset_exists(ref_path):
+            pytest.skip(
+                f"Reference cluster_labels not cached at {ref_path}. "
+                f"Run inspect_clustering.py --config configs/{ref}.yaml first."
+            )
     return ctx, config
 
 
@@ -168,30 +122,11 @@ def test_agreement_map_is_image(ctx_ready_for_metrics):
 
 
 @pytest.fixture(scope="module")
-def ctx_ready_for_baseline_metrics(real_gee):
+def ctx_ready_for_baseline_metrics():
     """Same as ctx_ready_for_metrics but uses the baseline config (no reference)."""
-    repo_root = Path(__file__).parent.parent
-    config = load_config(repo_root / "configs" / "sanjay_van_baseline.yaml")
-    roi = load_roi_geometry(repo_root / "aois" / "sanjay_van.geojson")
-    ctx = PipelineContext()
-    ctx.set("roi", roi)
-
-    stages = [
-        MaskingStage(),
-        DataLoadStage(),
-        FeaturesOpticalStage(),
-        FeaturesRadarStage(),
-        FeaturesStructureStage(),
-        FeaturesStaticStage(),
-        SegmentationStage(),
-        ClusteringStage(),
-    ]
-    for stage in stages:
-        result = stage.run(ctx, config)
-        for key, value in result.outputs.items():
-            if not ctx.has(key):
-                ctx.set(key, value)
-    return ctx, config
+    return ctx_ready_for_downstream(
+        "sanjay_van_baseline.yaml", include_clustering=True
+    )
 
 
 def test_baseline_mode_only_returns_intrinsic_metrics(ctx_ready_for_baseline_metrics):
@@ -245,7 +180,7 @@ def test_baseline_mode_passes_orchestrator_validation(ctx_ready_for_baseline_met
     with tempfile.TemporaryDirectory() as tmp:
         run_dir = Path(tmp)
         # use_cache=False so this is a pure framework-level test, not a
-        # cache test; and so we don't pollute the user's GEE asset space.
+        # cache test — and so we don't pollute the user's GEE asset space.
         pipeline = Pipeline(stage_names=["metrics"], use_cache=False)
         result = pipeline.run(config=config, run_dir=run_dir, initial_context=ctx)
 

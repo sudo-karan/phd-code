@@ -1,74 +1,31 @@
-"""Live integration tests for the clustering stage."""
+"""Live integration tests for the clustering stage.
+
+Upstream artifacts come from the GEE asset cache (populated by an earlier
+inspect_*.py run). This matches the production cache-hit path and avoids
+the per-call memory limit that re-running every upstream stage live used
+to exhaust.
+
+To populate the cache: `python scripts/inspect_clustering.py` once.
+After that, all clustering tests run in seconds with no upstream compute.
+"""
 
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import ee
 import pytest
 
-from fmu.config import load_config
-from fmu.stages.base import PipelineContext
+from _live_cache_fixtures import ctx_ready_for_downstream
 from fmu.stages.clustering import ClusteringStage
-from fmu.stages.data_load import DataLoadStage
-from fmu.stages.features_optical import FeaturesOpticalStage
-from fmu.stages.features_radar import FeaturesRadarStage
-from fmu.stages.features_static import FeaturesStaticStage
-from fmu.stages.features_structure import FeaturesStructureStage
-from fmu.stages.masking import MaskingStage
-from fmu.stages.segmentation import SegmentationStage
-from fmu.utils.gee import load_roi_geometry, safe_get_info
+from fmu.utils.gee import safe_get_info
 
 pytestmark = pytest.mark.live_gee
 
 
 @pytest.fixture(scope="module")
-def real_gee():
-    import fmu.utils.gee as gee_mod
-    from fmu.settings import get_settings
-
-    gee_mod._initialized = False
-    get_settings(force_reload=True)
-
-    settings = get_settings()
-    if not settings.gee_project_id:
-        pytest.skip("GEE_PROJECT_ID not set in .env")
-
-    try:
-        gee_mod.init_gee()
-    except ee.EEException as e:
-        msg = str(e).lower()
-        if "authenticate" in msg or "credentials" in msg:
-            pytest.skip(f"GEE not authenticated. {e}")
-        raise
-    yield
-
-
-@pytest.fixture(scope="module")
-def ctx_ready_for_clustering(real_gee):
-    """Run every upstream stage live so context has every input clustering needs."""
-    repo_root = Path(__file__).parent.parent
-    config = load_config(repo_root / "configs" / "sanjay_van_baseline.yaml")
-    roi = load_roi_geometry(repo_root / "aois" / "sanjay_van.geojson")
-    ctx = PipelineContext()
-    ctx.set("roi", roi)
-
-    stages = [
-        MaskingStage(),
-        DataLoadStage(),
-        FeaturesOpticalStage(),
-        FeaturesRadarStage(),
-        FeaturesStructureStage(),
-        FeaturesStaticStage(),
-        SegmentationStage(),
-    ]
-    for stage in stages:
-        result = stage.run(ctx, config)
-        for key, value in result.outputs.items():
-            if not ctx.has(key):
-                ctx.set(key, value)
-    return ctx, config
+def ctx_ready_for_clustering():
+    return ctx_ready_for_downstream("sanjay_van_baseline.yaml")
 
 
 def test_runs_end_to_end(ctx_ready_for_clustering):
@@ -106,13 +63,23 @@ def test_cluster_labels_in_valid_range(ctx_ready_for_clustering):
 
 def test_all_k_clusters_present(ctx_ready_for_clustering):
     """K-means should produce all k cluster IDs (no empty clusters
-    over a real ROI with thousands of superpixels)."""
+    over a real ROI with thousands of superpixels).
+
+    Mask cluster_labels to habitat-only before counting. The cluster_labels
+    image is masked OUTSIDE the habitat (those pixels are null), but GEE's
+    countDistinct treats the null/masked entity as a distinct value in some
+    reduction paths — producing k+1 instead of k. Applying habitat_mask
+    excludes those pixels from the reducer entirely.
+    """
     ctx, config = ctx_ready_for_clustering
     roi = ctx.get("roi")
+    habitat_mask = ctx.get("habitat_mask")
     result = ClusteringStage().run(ctx, config)
 
     count_stats = safe_get_info(
-        result.outputs["cluster_labels"].reduceRegion(
+        result.outputs["cluster_labels"]
+        .updateMask(habitat_mask)
+        .reduceRegion(
             reducer=ee.Reducer.countDistinct(),
             geometry=roi,
             scale=config.export.analysis_scale_m,
