@@ -60,41 +60,36 @@ def test_cluster_labels_in_valid_range(ctx_ready_for_clustering):
         f"cluster_id_max={cmax} (k={config.clustering.k})"
     )
 
-
-def test_all_k_clusters_present(ctx_ready_for_clustering):
-    """K-means should produce all k cluster IDs (no empty clusters
-    over a real ROI with thousands of superpixels).
-
-    Mask cluster_labels to habitat-only before counting. The cluster_labels
-    image is masked OUTSIDE the habitat (those pixels are null), but GEE's
-    countDistinct treats the null/masked entity as a distinct value in some
-    reduction paths — producing k+1 instead of k. Applying habitat_mask
-    excludes those pixels from the reducer entirely.
-    """
+def test_all_k_clusters_present(ctx_ready_for_clustering, capsys):
+    """K-means should produce all k cluster IDs..."""
     ctx, config = ctx_ready_for_clustering
     roi = ctx.get("roi")
     habitat_mask = ctx.get("habitat_mask")
     result = ClusteringStage().run(ctx, config)
 
-    count_stats = safe_get_info(
+    # Diagnostic: pull the full histogram so a failure shows which values exist
+    hist = safe_get_info(
         result.outputs["cluster_labels"]
         .updateMask(habitat_mask)
         .reduceRegion(
-            reducer=ee.Reducer.countDistinct(),
+            reducer=ee.Reducer.frequencyHistogram(),
             geometry=roi,
             scale=config.export.analysis_scale_m,
             maxPixels=1e9,
             bestEffort=True,
         ),
-        context="distinct cluster count",
+        context="cluster id histogram",
     )
-    n_distinct = count_stats.get("cluster_id")
-    assert n_distinct is not None
+    with capsys.disabled():
+        print(f"\n=== cluster_labels histogram (k={config.clustering.k}) ===")
+        for key, count in sorted(hist["cluster_id"].items(), key=lambda kv: float(kv[0])):
+            print(f"  cluster_id={key!r:>10}  count={count:>10,}")
+
+    n_distinct = len(hist["cluster_id"])
     assert n_distinct == config.clustering.k, (
-        f"got {n_distinct} distinct clusters, expected k={config.clustering.k}"
+        f"got {n_distinct} distinct clusters, expected k={config.clustering.k}. "
+        f"Histogram: {hist['cluster_id']}"
     )
-
-
 def test_feature_stack_has_active_bands(ctx_ready_for_clustering):
     """feature_stack should expose only bands that survived scaling."""
     ctx, config = ctx_ready_for_clustering
@@ -150,3 +145,37 @@ def test_clustering_metadata_is_attached(ctx_ready_for_clustering):
         assert key in parsed, f"missing key in metadata: {key}"
     assert parsed["k"] == config.clustering.k
     assert parsed["normalization_method"] == config.normalization.method
+
+
+def test_diagnose_cluster_histogram(ctx_ready_for_clustering, capsys):
+    """Diagnostic: print the full frequency histogram of cluster_labels.
+
+    Not really a test of behavior; it always passes. The point is to surface
+    *which* values are showing up in cluster_labels so we can identify
+    where the 7th-cluster value is coming from.
+
+    Run with `-s` to see the print output:
+        pytest -m live_gee tests/test_clustering_live.py::test_diagnose_cluster_histogram -v -s
+    """
+    ctx, config = ctx_ready_for_clustering
+    roi = ctx.get("roi")
+    habitat_mask = ctx.get("habitat_mask")
+    result = ClusteringStage().run(ctx, config)
+
+    hist = safe_get_info(
+        result.outputs["cluster_labels"]
+        .updateMask(habitat_mask)
+        .reduceRegion(
+            reducer=ee.Reducer.frequencyHistogram(),
+            geometry=roi,
+            scale=config.export.analysis_scale_m,
+            maxPixels=1e9,
+            bestEffort=True,
+        ),
+        context="cluster id histogram",
+    )
+    with capsys.disabled():
+        print(f"\n=== cluster_labels frequency histogram (k={config.clustering.k}) ===")
+        for key, count in sorted(hist["cluster_id"].items(), key=lambda kv: float(kv[0])):
+            print(f"  cluster_id={key!r:>10}  count={count:>10,}")
+        print("=" * 60)
