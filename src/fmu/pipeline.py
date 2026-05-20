@@ -29,7 +29,7 @@ class StageRecord:
     produced: list[str]
     warnings: list[str] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
-    cache_status: dict[str, str] = field(default_factory=dict)  # key → "hit" / "miss-exported" / "off"
+    cache_status: dict[str, str] = field(default_factory=dict)  # key -> "hit" / "miss-exported" / "off"
     export_tasks: list[dict[str, str]] = field(default_factory=list)
 
 
@@ -49,7 +49,7 @@ class Pipeline:
         stage_names: ordered list of registered stage names to run.
         use_cache: if True, check GEE asset cache before running each stage
             and submit async export tasks for outputs that aren't cached.
-            Off by default — turn on for normal runs that need shareable
+            Off by default; turn on for normal runs that need shareable
             assets / fast visualization. Tests should leave this off.
     """
 
@@ -57,7 +57,7 @@ class Pipeline:
         if not stage_names:
             raise ValueError("Pipeline must have at least one stage.")
         self.stage_names = list(stage_names)
-        # eager resolution — typos in stage names fail now, not after 10 min of GEE work
+        # eager resolution: typos in stage names fail now, not after 10 min of GEE work
         self.stage_classes: list[type[Stage]] = [get_stage_class(n) for n in stage_names]
         self.use_cache = use_cache
 
@@ -72,7 +72,7 @@ class Pipeline:
 
         log.info("=" * 60)
         log.info("Pipeline run: %s", config.name)
-        log.info("Stages: %s", " → ".join(self.stage_names))
+        log.info("Stages: %s", " -> ".join(self.stage_names))
         log.info("Run directory: %s", run_dir)
         log.info("=" * 60)
 
@@ -101,7 +101,7 @@ class Pipeline:
         stage = stage_cls()
         name = stage.name
 
-        log.info("→ stage: %s", name)
+        log.info("stage: %s", name)
         log.debug("  requires: %s", sorted(stage.required_inputs))
         log.debug("  produces: %s", sorted(stage.produces))
 
@@ -112,7 +112,7 @@ class Pipeline:
 
         # Which produces are cacheable as GEE assets?
         # - cacheable_outputs is the truth: if any class in the MRO declares
-        #   it (including the empty set, meaning "nothing cacheable — always
+        #   it (including the empty set, meaning "nothing cacheable, always
         #   run, results live in memory only"), honor that declaration.
         # - If NO class between the concrete stage and Stage declares it, the
         #   stage didn't customize at all; default to caching everything in
@@ -187,7 +187,7 @@ class Pipeline:
 
         except Exception as e:
             # Stage failure: log, then re-raise. We intentionally do NOT try
-            # to clean up partial context state — pipelines are one-shot, and
+            # to clean up partial context state. Pipelines are one-shot, and
             # the next run starts with a fresh context anyway. We also leave
             # any in-flight export tasks alone; GEE handles its own task
             # cleanup, and orphaned exports cost the user nothing.
@@ -260,7 +260,7 @@ class Pipeline:
             if asset_exists(path):
                 cache_status[key] = "hit"
                 outputs[key] = load_cached_image(path)
-                log.debug("  [cache] hit:  %s → %s", key, path)
+                log.debug("  [cache] hit:  %s at %s", key, path)
             else:
                 cache_status[key] = "miss"
                 log.debug("  [cache] miss: %s (expected %s)", key, path)
@@ -280,13 +280,13 @@ class Pipeline:
 
         if not ctx.has("roi"):
             log.warning(
-                "  [cache] cannot export — `roi` not in context; skipping export."
+                "  [cache] cannot export; `roi` not in context, skipping export."
             )
             return []
         roi = ctx.get("roi")
         if not isinstance(roi, ee.Geometry):
             log.warning(
-                "  [cache] cannot export — `roi` in context isn't an ee.Geometry; "
+                "  [cache] cannot export; `roi` in context isn't an ee.Geometry, "
                 "skipping export. Got: %s", type(roi).__name__
             )
             return []
@@ -299,7 +299,7 @@ class Pipeline:
                 continue
             if not isinstance(image, ee.Image):
                 log.warning(
-                    "  [cache] skipping export of %s — declared cacheable but not an ee.Image (got %s)",
+                    "  [cache] skipping export of %s: declared cacheable but not an ee.Image (got %s)",
                     key, type(image).__name__,
                 )
                 continue

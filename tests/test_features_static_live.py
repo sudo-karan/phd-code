@@ -99,7 +99,7 @@ def test_band_names_without_climate(ctx_with_water_mask):
 
 
 def test_elevation_in_plausible_range(ctx_with_water_mask):
-    """Sanjay Van is on Delhi Ridge — elevation ~210-260 m above sea level."""
+    """Sanjay Van is on Delhi Ridge; elevation ~210-260 m above sea level."""
     ctx, config = ctx_with_water_mask
     roi = ctx.get("roi")
     result = FeaturesStaticStage().run(ctx, config)
@@ -175,5 +175,5 @@ def test_annual_rainfall_positive(ctx_with_water_mask):
     )
     rain = stats.get("annual_rainfall")
     assert rain is not None
-    # Delhi climatology — wide tolerance for sanity check
+    # Delhi climatology; wide tolerance for sanity check
     assert 300 < rain < 1500, f"Delhi annual rainfall: {rain} mm/year"

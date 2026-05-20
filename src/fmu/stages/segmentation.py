@@ -3,17 +3,17 @@ stack at 10 m native resolution, producing labeled superpixels for clustering.
 
 Input bands (all 10 m native, hand-picked for boundary detection per the
 resolution analysis):
-  - B4_median, B8_median  → S2 visible red + NIR (spectral basis)
-  - composite_nirv        → NIRv from the 2023 S2 composite; NDVI×NIR_reflectance,
+  - B4_median, B8_median  to S2 visible red + NIR (spectral basis)
+  - composite_nirv        to NIRv from the 2023 S2 composite; NDVI×NIR_reflectance,
                             doesn't saturate in dense canopy like NDVI would
-  - canopy_height         → ETH 2020 structure (independent from optical)
-  - vv_minus_vh_median    → S1 cross-pol contrast (independent from optical)
+  - canopy_height         to ETH 2020 structure (independent from optical)
+  - vv_minus_vh_median    to S1 cross-pol contrast (independent from optical)
 
 These 5 bands are z-scored per-band over the ROI (so no single band's
 larger magnitude dominates SNIC's distance metric), then stacked and fed
 to ee.Algorithms.Image.Segmentation.SNIC.
 
-Same SNIC inputs across both configs — boundaries are a constant of the
+Same SNIC inputs across both configs; boundaries are a constant of the
 experiment. Only the clustering stage's feature stack varies between
 baseline and variant. This keeps Module 18's metrics attributable.
 

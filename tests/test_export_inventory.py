@@ -61,7 +61,7 @@ def test_inventory_discovers_landcover_summary():
     with _mocked_cache(exists=True):
         paths = _inventory_cached_assets("test_config")
     assert "landcover_summary" in paths, (
-        "auto-discovery missed landcover_summary — registry walk broken"
+        "auto-discovery missed landcover_summary; registry walk broken"
     )
 
 
@@ -75,7 +75,7 @@ def test_inventory_discovers_all_masking_outputs():
 
 def test_inventory_excludes_optout_stages():
     """Stages with cacheable_outputs=set() (profiling, export, metrics) must
-    not appear in the inventory — they don't produce cacheable images."""
+    not appear in the inventory; they don't produce cacheable images."""
     with _mocked_cache(exists=True):
         paths = _inventory_cached_assets("test_config")
     for output in ("cluster_profiles", "export_manifest", "comparison_metrics", "agreement_map"):

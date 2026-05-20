@@ -1,4 +1,4 @@
-"""Metrics stage — quantitative comparison of clusterings.
+"""Metrics stage. Quantitative comparison of clusterings.
 
 This is the actual research deliverable: does the variant clustering
 differ meaningfully from the baseline, and how?
@@ -10,14 +10,14 @@ The stage runs in two modes depending on `metrics.reference_config_name`:
 
   - **set (comparison mode):** also loads the reference config's
     cluster_labels asset and computes:
-      ARI  — Adjusted Rand Index (partition similarity, 0=random, 1=identical)
-      NMI  — Normalized Mutual Information (information-theoretic agreement)
-      Correspondence — Hungarian algorithm on the confusion matrix, gives
-                       the optimal mapping {current_cluster_id: reference_cluster_id}
-      Agreement rate — % of pixels where the mapped labels agree
-      Confusion matrix — k×k pixel-overlap counts
-      Agreement map — server-side image showing per-pixel agreement (1 where
-                      configs agree, 0 where they differ)
+      ARI: Adjusted Rand Index (partition similarity, 0=random, 1=identical)
+      NMI: Normalized Mutual Information (information-theoretic agreement)
+      Correspondence: Hungarian algorithm on the confusion matrix, gives
+                      the optimal mapping {current_cluster_id: reference_cluster_id}
+      Agreement rate: fraction of pixels where the mapped labels agree
+      Confusion matrix: k x k pixel-overlap counts
+      Agreement map: server-side image showing per-pixel agreement (1 where
+                     configs agree, 0 where they differ)
 
 Implementation notes:
   - ARI/NMI computed on a random sample of habitat pixels (both labels
@@ -25,7 +25,7 @@ Implementation notes:
   - Silhouette score computed on a stratified sample of the feature_stack
     (n samples per cluster), using sklearn's built-in implementation.
   - Cluster correspondence uses the confusion matrix (pixel overlap),
-    NOT feature-space centroids — feature bands differ between configs
+    NOT feature-space centroids. Feature bands differ between configs
     so centroid distance isn't meaningful.
 """
 
@@ -131,7 +131,7 @@ class MetricsStage(Stage):
 
             # Confusion matrix + Hungarian correspondence
             cm = confusion_matrix(current_arr, reference_arr, labels=list(range(k)))
-            # Hungarian minimizes cost; we want to maximize overlap → negate.
+            # Hungarian minimizes cost; we want to maximize overlap, so negate.
             row_ind, col_ind = linear_sum_assignment(-cm)
             correspondence = {int(r): int(c) for r, c in zip(row_ind, col_ind, strict=False)}
             total_pixels = int(cm.sum())
@@ -143,8 +143,8 @@ class MetricsStage(Stage):
                 "confusion_matrix": cm.tolist(),
             })
             log.info(
-                "    correspondence (current→reference): %s",
-                ", ".join(f"{a}→{b}" for a, b in correspondence.items()),
+                "    correspondence (current to reference): %s",
+                ", ".join(f"{a} to {b}" for a, b in correspondence.items()),
             )
             log.info("    agreement rate after correspondence: %.2f%%", 100 * agreement_rate)
 
@@ -180,7 +180,7 @@ class MetricsStage(Stage):
                 .clip(roi)
             )
         else:
-            log.info("  baseline mode — no reference config; intrinsic metrics only")
+            log.info("  baseline mode: no reference config, intrinsic metrics only")
 
         # Output contract: `produces` always lists both keys, so we always
         # write both. In baseline mode `agreement_map` is None (the reference
@@ -263,7 +263,7 @@ def _compute_silhouette(
     """Compute silhouette score on a stratified sample of the feature_stack.
 
     Stratified sampling ensures each cluster contributes roughly the same
-    number of points — important for silhouette which compares within-cluster
+    number of points. Important for silhouette which compares within-cluster
     distance to nearest-cluster distance.
     """
     feature_stack_path = cached_asset_path(config_name, "clustering", "feature_stack")

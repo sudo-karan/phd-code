@@ -79,7 +79,7 @@ def main() -> None:
     # --- Print the table ---
     print()
     print("=" * 78)
-    print(f"Clustering metrics — {config.name}")
+    print(f"Clustering metrics; {config.name}")
     print("=" * 78)
     print(f"  current_config:       {metrics['current_config']}")
     if metrics.get("reference_config"):
@@ -103,9 +103,9 @@ def main() -> None:
             )
 
         print()
-        print("  Cluster correspondence (current → reference):")
+        print("  Cluster correspondence (current to reference):")
         for cur, ref in sorted(metrics["correspondence"].items(), key=lambda x: int(x[0])):
-            print(f"    {config.name} cluster {cur}  →  {metrics['reference_config']} cluster {ref}")
+            print(f"    {config.name} cluster {cur}  to  {metrics['reference_config']} cluster {ref}")
 
         print()
         print("  Confusion matrix (rows=current, cols=reference):")
@@ -117,7 +117,7 @@ def main() -> None:
     else:
         print(f"  silhouette (current):   {metrics.get('silhouette_current', 'N/A'):.4f}")
         print()
-        print("  No reference config set — only intrinsic metrics computed.")
+        print("  No reference config set; only intrinsic metrics computed.")
 
     # --- Emit Code Editor JS for the agreement map ---
     if metrics.get("reference_config"):
@@ -152,7 +152,7 @@ def main() -> None:
         print(f"var current   = ee.Image('{current_path}');")
         print(f"var reference = ee.Image('{reference_path}');")
         print()
-        print(f"// Cluster correspondence — {config.name} → {metrics['reference_config']}")
+        print(f"// Cluster correspondence; {config.name} to {metrics['reference_config']}")
         print(f"var fromValues = {from_values_int};")
         print(f"var toValues   = {to_values};")
         print()

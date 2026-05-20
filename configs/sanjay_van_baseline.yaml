@@ -1,9 +1,9 @@
-# Sanjay Van baseline config. Locked reference — don't modify in place;
+# Sanjay Van baseline config. Locked reference; don't modify in place;
 # new ideas become new YAML files compared against this.
 #
 # Approximates the working notebook pipeline (S2_SR_HARMONIZED, k=6, NDVI,
 # single annual harmonic) while applying the locked engineering decisions
-# from phd-notebook/decisions.md — most notably robust scaling (DEC-003)
+# from phd-notebook/decisions.md; most notably robust scaling (DEC-003)
 # in place of the notebook's zscore. Cross-config variants (HLS, auto-K,
 # NIRv, dual harmonic, etc.) go in separate YAML files.
 
@@ -72,9 +72,9 @@ features_optical:
   include_trend: true
 
 # Radar features from the S1 collection. Statistical reducers over the
-# 5-year window (notebook approach — no harmonic). VV-VH dB difference
+# 5-year window (notebook approach; no harmonic). VV-VH dB difference
 # replaces notebook's VV/VH (which was a literal division of dB values,
-# not mathematically meaningful — see DEC-016).
+# not mathematically meaningful; see DEC-016).
 features_radar:
   percentiles: [10, 50, 90]
   include_iqr: true
@@ -104,7 +104,7 @@ clustering:
   n_training_samples: 5000
   seed: 42
   skewness_threshold: 1.0   # log-transform features with |skew| > this (DEC-004)
-  superpixel_max_size: 1024 # max pixels in a single SNIC superpixel — must exceed largest
+  superpixel_max_size: 1024 # max pixels in a single SNIC superpixel; must exceed largest
 
 normalization:
   method: robust  # DEC-003: median/IQR scaling. This is also the schema default.
@@ -121,6 +121,6 @@ export:
   analysis_scale_m: 10
 
 metrics:
-  reference_config_name: null  # baseline has no reference — intrinsic silhouette only
+  reference_config_name: null  # baseline has no reference; intrinsic silhouette only
   n_comparison_samples: 10000
   n_silhouette_samples_per_cluster: 833

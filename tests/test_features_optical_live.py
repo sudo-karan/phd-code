@@ -84,7 +84,7 @@ def test_baseline_produces_optical_features(baseline_ctx_and_config):
 
 
 def test_baseline_band_names(baseline_ctx_and_config):
-    """NDVI + single + trend → 6 bands with ndvi_ prefix and expected suffixes."""
+    """NDVI + single + trend to 6 bands with ndvi_ prefix and expected suffixes."""
     ctx, config = baseline_ctx_and_config
     result = FeaturesOpticalStage().run(ctx, config)
     band_names = safe_get_info(
@@ -102,7 +102,7 @@ def test_baseline_band_names(baseline_ctx_and_config):
 
 
 def test_nirv_dual_band_names(nirv_dual_ctx_and_config):
-    """NIRv + dual + trend → 8 bands with nirv_ prefix and both harmonics."""
+    """NIRv + dual + trend to 8 bands with nirv_ prefix and both harmonics."""
     ctx, config = nirv_dual_ctx_and_config
     result = FeaturesOpticalStage().run(ctx, config)
     band_names = safe_get_info(
@@ -140,7 +140,7 @@ def test_ndvi_mean_in_plausible_range(baseline_ctx_and_config):
 
 
 def test_nirv_mean_in_plausible_range(nirv_dual_ctx_and_config):
-    """NIRv per Badgley et al. (2017) lives in [0, 1] — NDVI × NIR_reflectance.
+    """NIRv per Badgley et al. (2017) lives in [0, 1]; NDVI × NIR_reflectance.
     If this test fails with values >1, we've regressed back to the un-normalized
     NIRv (NIR stored-integer × NDVI, in thousands), which is the bug fixed
     2026-05-14.

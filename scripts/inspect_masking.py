@@ -16,7 +16,7 @@ import ee
 from fmu.config import load_config
 from fmu.pipeline import Pipeline
 from fmu.stages.base import PipelineContext
-from fmu.stages.masking import MaskingStage  # noqa: F401 — registers the stage
+from fmu.stages.masking import MaskingStage  # noqa: F401  # registers the stage
 from fmu.utils.gee import init_gee, load_roi_geometry, safe_get_info
 from fmu.utils.logging import init_logging
 
@@ -100,7 +100,7 @@ def main() -> None:
     print("=" * 70)
 
     if len(cached_paths) == 3:
-        # All assets exist — emit JS that reads them directly. No memory
+        # All assets exist; emit JS that reads them directly. No memory
         # error at high zoom because GEE just reads pre-rendered rasters.
         print("All masking outputs are cached as GEE assets. Paste into")
         print("https://code.earthengine.google.com/:")
@@ -132,7 +132,7 @@ def main() -> None:
         )
         print("// -----------------------------------------------")
     else:
-        # Some / all assets missing — assets are being exported in the
+        # Some / all assets missing; assets are being exported in the
         # background. The JS snippet falls back to live computation, which
         # will still hit the memory limit at high zoom, but at least you
         # can see something while exports complete.

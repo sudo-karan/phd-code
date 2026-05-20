@@ -1,7 +1,7 @@
 """
 Tests for fmu.stages.base.
 
-The Stage interface is load-bearing — every future concrete stage builds on
+The Stage interface is load-bearing; every future concrete stage builds on
 these primitives. Thorough coverage here saves us from architectural
 refactors later.
 """
@@ -152,7 +152,7 @@ class TestStageSubclassing:
 
     def test_subclass_missing_run_is_still_abstract(self):
         class StillAbstract(Stage):
-            # No run() override — this stays abstract; subclass-validation
+            # No run() override; this stays abstract; subclass-validation
             # is skipped because abstractmethods are still unimplemented.
             name = "x"
 
@@ -328,7 +328,7 @@ class TestRegistry:
             def run(self, ctx, config):
                 return StageResult()
 
-        # Re-register the same class — should be a no-op, not raise
+        # Re-register the same class; should be a no-op, not raise
         register_stage("idempotent")(S)
         assert get_stage_class("idempotent") is S
 

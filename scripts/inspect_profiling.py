@@ -88,7 +88,7 @@ def main() -> None:
     # ---- Print preview to terminal (just the highlighted bands as means) ----
     print()
     print("=" * 90)
-    print(f"Cluster profiles — {config.name} (k={config.clustering.k})")
+    print(f"Cluster profiles; {config.name} (k={config.clustering.k})")
     print("=" * 90)
 
     if not profiles:
@@ -121,7 +121,7 @@ def main() -> None:
             key = f"{band}_mean"
             val = profile.get(key)
             if val is None:
-                row.append("—")
+                row.append("-")
             else:
                 row.append(_fmt_value(val))
         print(_format_row(row, widths=[8, 8, 10] + [10] * len(present_preview)))
@@ -154,7 +154,7 @@ def _write_profiles_csv(profiles: list[dict], path: Path) -> None:
     if not profiles:
         return
     # Collect all keys across all profiles (in case some bands are missing
-    # for individual clusters — shouldn't happen but be robust)
+    # for individual clusters; shouldn't happen but be robust)
     all_keys: list[str] = []
     seen: set[str] = set()
     for p in profiles:

@@ -6,9 +6,9 @@ instead of recomputing; visualization in the Code Editor reads the static
 raster instead of recomputing live (which avoids per-tile memory limits).
 
 Three operations:
-  - cached_asset_path(config_name, stage, key) → stable asset path
-  - asset_exists(path) → bool
-  - start_export(image, path, roi, scale) → submit async export task
+  - cached_asset_path(config_name, stage, key) to stable asset path
+  - asset_exists(path) to bool
+  - start_export(image, path, roi, scale) to submit async export task
 
 The orchestrator wires these together. On cache miss, the stage runs live
 and the export task starts in the background; the live output is returned
@@ -59,7 +59,7 @@ def asset_exists(path: str) -> bool:
         ee.data.getAsset(path)
         return True
     except ee.EEException as e:
-        # Prefer the underlying HttpError status when available — GEE's
+        # Prefer the underlying HttpError status when available; GEE's
         # Python client wraps googleapiclient HttpError into EEException,
         # and the cause's response status is more reliable than message
         # text.
@@ -69,7 +69,7 @@ def asset_exists(path: str) -> bool:
             if status == 404:
                 return False
             if status in (401, 403):
-                # Permission issue — propagate so the user fixes it.
+                # Permission issue; propagate so the user fixes it.
                 raise
 
         # Fallback: match the message text. GEE's "not found" / "does not
@@ -78,7 +78,7 @@ def asset_exists(path: str) -> bool:
         msg = str(e).lower()
         if "not found" in msg or "does not exist" in msg or "404" in msg:
             return False
-        # Permission or other error — propagate
+        # Permission or other error; propagate
         raise
 
 
@@ -128,7 +128,7 @@ def start_export(
         description=description,
     )
     log.info(
-        "Started cache export → %s (task %s). Check progress at "
+        "Started cache export to %s (task %s). Check progress at "
         "https://code.earthengine.google.com/tasks",
         asset_path,
         task.id,

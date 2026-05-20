@@ -1,6 +1,6 @@
 """Profiling stage. Computes per-cluster statistics on every feature
 band in ORIGINAL UNITS (not the scaled, log-transformed values used
-for clustering). Output is a small list of dicts — one per cluster.
+for clustering). Output is a small list of dicts; one per cluster.
 
 For each of the k clusters:
   - pixel_count, area_ha
@@ -13,7 +13,7 @@ For each of the k clusters:
 This bridges raw cluster IDs to ecological interpretation. Without this,
 a cluster map shows "cluster 3" with no way to say what cluster 3 is.
 
-Not a cached stage — the operation is fast (k small reduceRegion calls)
+Not a cached stage; the operation is fast (k small reduceRegion calls)
 and the output is a Python list. Saved by the inspect script as CSV/JSON
 for downstream analysis.
 """
@@ -89,7 +89,7 @@ class ProfilingStage(Stage):
                 "  cyclic bands decomposed: %s", ", ".join(decomposition_log)
             )
 
-        # Per-cluster reduce (k small server calls — memory-safe since each
+        # Per-cluster reduce (k small server calls; memory-safe since each
         # cluster contains a subset of pixels and bestEffort caps the work)
         profiles: list[dict[str, Any]] = []
         pixel_area_ha = (scale * scale) / 10000.0
@@ -98,7 +98,7 @@ class ProfilingStage(Stage):
             mask = cluster_labels.eq(cluster_id)
             cluster_image = feature_stack.updateMask(mask)
 
-            # Pixel count — use the first band; identical for all bands
+            # Pixel count; use the first band; identical for all bands
             count_stats = safe_get_info(
                 cluster_image.select(feature_band_names[0]).reduceRegion(
                     reducer=ee.Reducer.count(),
@@ -147,7 +147,7 @@ class ProfilingStage(Stage):
                 "n_feature_bands": len(feature_band_names),
                 "feature_bands": feature_band_names,
                 "cyclic_decomposed": decomposition_log,
-                "profiles": profiles,  # also in metadata → goes to manifest.json
+                "profiles": profiles,  # also in metadata to goes to manifest.json
             },
         )
 
@@ -172,7 +172,7 @@ def _decompose_cyclic_bands(image: ee.Image) -> tuple[ee.Image, list[str]]:
     new_bands: list[ee.Image] = []
     for cb in cyclic_bands:
         original = image.select(cb)
-        if cb == "aspect":  # noqa: SIM108 — keep for radians conversion comment
+        if cb == "aspect":  # noqa: SIM108  (keep for radians conversion comment)
             # Aspect is in degrees ∈ [0, 360]; convert to radians first.
             radians = original.multiply(math.pi / 180.0)
         else:

@@ -3,7 +3,7 @@
   1. A GeoTIFF of cluster_labels exported to the user's Google Drive
      (loadable in QGIS / ArcGIS / rasterio for collaborators without
      GEE access).
-  2. A comprehensive run manifest (JSON) capturing:
+  2. A run manifest (JSON) capturing:
        - pipeline version
        - run timestamp
        - the entire config that produced this run
@@ -11,10 +11,10 @@
        - clustering preprocessing parameters
        - per-cluster pixel-count distribution
        - the Drive export task ID
-       - which DEC/ENG entries the pipeline implements
+       - pointer to decisions.md as the source of truth
 
 Feature assets are already cached as GEE assets by the orchestrator
-(ENG-018). The export stage does not re-export them — it just records
+(ENG-018). The export stage does not re-export them; it just records
 their paths in the manifest so collaborators can be pointed directly
 at the existing assets.
 
@@ -44,13 +44,13 @@ log = get_logger(__name__)
 # The pipeline implements the decisions and engineering choices documented
 # in phd-notebook/decisions.md (the source of truth, locked alongside this
 # repo at the same git revision). We deliberately don't enumerate decision
-# IDs here — they'd drift from the notebook as decisions are added/revised.
+# IDs here; they'd drift from the notebook as decisions are added/revised.
 # Instead the manifest records a pointer to the source of truth.
 _DECISIONS_SOURCE = "phd-notebook/decisions.md"
 
 
 # The export manifest's asset inventory is derived from the stage registry
-# at runtime — we ask every registered stage what its cacheable_outputs are
+# at runtime; we ask every registered stage what its cacheable_outputs are
 # (via the same MRO walk the orchestrator uses). This prevents the drift
 # problem we hit when this list was hand-maintained: it always missed an
 # output (e.g., landcover_summary), or kept a phantom entry for a key
@@ -111,7 +111,7 @@ class ExportStage(Stage):
         try:
             roi_area_m2 = safe_get_info(roi.area(maxError=1), context="roi area")
             roi_area_km2 = round((roi_area_m2 or 0) / 1e6, 3)
-        except Exception:  # noqa: BLE001 — area is informational, not critical
+        except Exception:  # noqa: BLE001; area is informational, not critical
             roi_area_km2 = None
 
         # 6. Build the manifest
@@ -153,7 +153,7 @@ class ExportStage(Stage):
         )
 
     # ---------------------------------------------------------------------
-    # Side-effecting hook — overridden in tests to skip Drive submission
+    # Side-effecting hook; overridden in tests to skip Drive submission
     # ---------------------------------------------------------------------
 
     def _submit_drive_export(
@@ -169,7 +169,7 @@ class ExportStage(Stage):
         Default implementation actually submits. Tests can override this
         to return a fake task descriptor without hitting GEE batch.
         """
-        # Cast to integer — cluster IDs are inherently integer; this also
+        # Cast to integer; cluster IDs are inherently integer; this also
         # makes the resulting GeoTIFF smaller (uint8 if k ≤ 256).
         labels_int = cluster_labels.toUint8()
 

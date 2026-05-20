@@ -1,8 +1,8 @@
 # Running the pipeline
 
-How to actually run fmu — single stage, full pipeline, comparison run.
-For *what* each stage does, see [current_flow.md](current_flow.md). For
-*how to interpret output*, see [outputs.md](outputs.md).
+How to actually run fmu: single stage, full pipeline, comparison run.
+For what each stage does, see [current_flow.md](current_flow.md). For
+how to interpret output, see [outputs.md](outputs.md).
 
 ## Prerequisites
 
@@ -30,17 +30,23 @@ If you want clustering to write outputs to a non-default asset root,
 set `GEE_ASSET_ROOT`. Otherwise the pipeline defaults to
 `projects/{GEE_PROJECT_ID}/assets/fmu`.
 
+Provision the asset folder hierarchy once per project:
+
+```bash
+python create_folders_in_gee.py
+```
+
 ## Verify your install
 
 ```bash
-pytest                                    # fast tier, ~1s, no auth needed
+pytest                                    # fast tier, no auth needed
 ```
 
 If this passes, the package imports cleanly and the orchestrator works.
-It does NOT verify GEE — that needs the live tier:
+It does NOT verify GEE. That needs the live tier:
 
 ```bash
-pytest -m live_gee                        # ~10-20s per stage test, needs auth
+pytest -m live_gee                        # per-stage tests, need auth
 ```
 
 The live tests connect to real GEE. They skip themselves cleanly with an
@@ -80,7 +86,7 @@ inspect_export.py             # everything + export (submits Drive task)
 inspect_metrics.py            # everything + metrics (needs a reference config)
 ```
 
-Run an upstream script before its downstream — they share the cache,
+Run an upstream script before its downstream. They share the cache,
 so each later script benefits from earlier exports.
 
 ### B. Programmatic (for batch / CI / your own driver)
@@ -134,7 +140,7 @@ print(f"Done. Manifest: {run_dir}/manifest.json")
   `{GEE_ASSET_ROOT}/{config_name}/{stage_name}/{output_key}` for every
   cacheable output. If all are present, the live computation is skipped
   and the cached assets are loaded into the context.
-- **After each stage:** any cacheable output that *missed* the cache is
+- **After each stage:** any cacheable output that missed the cache is
   submitted as an async export task. The current run keeps the live
   computation (so downstream stages don't block); subsequent runs hit
   the cache.
@@ -148,6 +154,7 @@ Example after running the baseline through clustering:
 ```
 .../fmu/sanjay_van_baseline/masking/habitat_mask
 .../fmu/sanjay_van_baseline/masking/water_mask
+.../fmu/sanjay_van_baseline/masking/landcover_summary
 .../fmu/sanjay_van_baseline/data_load/s2_composite
 .../fmu/sanjay_van_baseline/features_optical/optical_features
 .../fmu/sanjay_van_baseline/features_radar/radar_features
@@ -167,21 +174,21 @@ Cache-miss exports are submitted via `ee.batch.Export.image.toAsset`.
 Each one returns a task ID; the orchestrator logs the URL:
 
 ```
-INFO Started cache export → projects/.../habitat_mask (task ABC123). Check progress at https://code.earthengine.google.com/tasks
+INFO Started cache export to projects/.../habitat_mask (task ABC123). Check progress at https://code.earthengine.google.com/tasks
 ```
 
-The task takes 5–15 min for a typical 10 m image over an AOI the size of
-Sanjay Van. The Python process does NOT wait — it moves on. Re-run the
+The task takes 5-15 min for a typical 10 m image over an AOI the size of
+Sanjay Van. The Python process does NOT wait; it moves on. Re-run the
 same script after exports complete; the next run will hit the cache.
 
 If a task fails (e.g., GEE quota, malformed image), the task page shows
-an error; the asset never materializes; the next run will keep
+an error, the asset never materializes, and the next run will keep
 re-submitting until it succeeds.
 
 ### Stable paths, not hashes
 
-Cache paths are derived from `(config_name, stage_name, output_key)` —
-*not* from a hash of the parameters that produced the output. So if you
+Cache paths are derived from `(config_name, stage_name, output_key)`,
+not from a hash of the parameters that produced the output. So if you
 change a threshold in the config without changing the config's `name`,
 **the next run will overwrite the cached asset.** This is intentional;
 config names ARE the version. To preserve an old run, give the new
@@ -226,11 +233,11 @@ clustering against a reference config. Setup:
 | `RuntimeError: GEE_PROJECT_ID not set in .env` | `.env` missing or empty | `cp .env.example .env`, edit it |
 | `ee.EEException: ... not authenticated ...` | Earth Engine auth missing or expired | `earthengine authenticate` |
 | `KeyError: 'roi' not found` | Forgot to seed the context | `ctx.set("roi", load_roi_geometry(config.roi.roi_file))` |
-| `KeyError: 'habitat_mask' not found` (or any other context key) | Ran a stage out of order — its `required_inputs` weren't produced yet | Run upstream stages first; the orchestrator validates this and tells you which input is missing |
-| Stage fails with "image computation user memory limit exceeded" | Live tile rendering of a vector-rasterized layer (typically built-up) | Enable caching (`use_cache=True`) — the next run loads the static asset |
+| `KeyError: 'habitat_mask' not found` (or any other context key) | Ran a stage out of order, its `required_inputs` weren't produced yet | Run upstream stages first; the orchestrator validates this and tells you which input is missing |
+| Stage fails with "image computation user memory limit exceeded" | Live tile rendering of a vector-rasterized layer (typically built-up) | Enable caching (`use_cache=True`). The next run loads the static asset |
 | `ValueError: cluster_labels asset is missing the 'clustering_metadata' property` in export | The cached `cluster_labels` asset was produced by an older clustering stage | Re-run the clustering stage to overwrite the asset with a current-version one |
 | Live tests skip with "Baseline cache not populated" | `test_pipeline_smoke_live.py` needs baseline assets first | Run `inspect_clustering.py --config configs/sanjay_van_baseline.yaml` |
-| Drive export task never appears | GEE Tasks page shows the task with FAILED — usually GEE quota or permission issues | Check the task error message; may need to wait an hour for quota reset |
+| Drive export task never appears | GEE Tasks page shows the task with FAILED, usually GEE quota or permission issues | Check the task error message; may need to wait an hour for quota reset |
 
 ## Debug verbosity
 
@@ -252,7 +259,7 @@ outputs/runs/<config>_<YYYYMMDD-HHMMSS>/
 ├── manifest.json
 ├── export_manifest_<config>.json     # added by inspect_export
 ├── cluster_profiles.csv              # added by inspect_profiling
-└── comparison_metrics_<config>.json  # added by inspect_metrics
+└── metrics_<config>.json             # added by inspect_metrics
 ```
 
 Plus the cluster_labels GeoTIFF in your Google Drive at

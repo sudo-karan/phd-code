@@ -101,7 +101,7 @@ def test_vv_median_in_db_range(baseline_ctx_and_config):
 
 
 def test_vh_median_lower_than_vv(baseline_ctx_and_config):
-    """VH backscatter is typically weaker than VV — co-pol > cross-pol."""
+    """VH backscatter is typically weaker than VV; co-pol > cross-pol."""
     ctx, config = baseline_ctx_and_config
     roi = ctx.get("roi")
     result = FeaturesRadarStage().run(ctx, config)

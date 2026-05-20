@@ -1,7 +1,7 @@
 # Design notes
 
 Notes on why the code is the way it is. Companion to `decisions.md` in the
-phd-notebook repo — `decisions.md` *locks* choices, this file *explains* them.
+phd-notebook repo; `decisions.md` *locks* choices, this file *explains* them.
 Keep entries short. If something needs more, write it up properly.
 
 ---
@@ -21,9 +21,9 @@ of silently using a default.
 
 Two separate Pydantic things on purpose:
 
-- `Settings` (`settings.py`) — per-machine, from `.env`, gitignored. Project
+- `Settings` (`settings.py`); per-machine, from `.env`, gitignored. Project
   ID, output paths, log level. Different per user.
-- `Config` (`config.py`) — per-experiment, from YAML, in git. ROI, dates,
+- `Config` (`config.py`); per-experiment, from YAML, in git. ROI, dates,
   parameters. Same for everyone running the same experiment.
 
 If two people run `python ... --config baseline.yaml` they should get the
@@ -53,7 +53,7 @@ errors at import time are confusing. See DEC-008.
 ## `safe_get_info` wrapper
 
 GEE errors fire at materialization (`.getInfo()`), not at construction.
-Without context labels, error tracebacks point at the materialization line —
+Without context labels, error tracebacks point at the materialization line,
 50+ lines away from the offending operation. The wrapper attaches a context
 string so the error tells you which operation failed.
 
@@ -72,7 +72,7 @@ can list what each stage needs without reading its body). See DEC-012.
 ## Stage failure: exceptions only, no soft-fail
 
 A stage either succeeds or raises. `warnings` field on `StageResult` is
-informational only. Research pipelines benefit from loud failures — silent
+informational only. Research pipelines benefit from loud failures; silent
 partial failures cause subtle wrong results that are hard to detect later.
 See DEC-013.
 
@@ -110,7 +110,7 @@ Three separate windows for three jobs:
 ## Pydantic v1 vs v2
 
 v2 throughout. Faster, better error messages, official pydantic-settings
-companion, current standard. Don't accidentally install v1 — they're not
+companion, current standard. Don't accidentally install v1; they're not
 compatible.
 
 ## Masking: avoiding circularity with the feature data
@@ -129,15 +129,15 @@ costs.
 We avoid it for the **built-up mask** because that's the layer the
 downstream urban-vs-vegetation distinction depends on. Built-up uses:
 - **Google Open Buildings** (vector polygons from commercial high-res
-  imagery — different sensor altogether), rasterized at 10 m
-- **VIIRS Nightlights** (Day/Night Band — different sensor entirely)
+  imagery; different sensor altogether), rasterized at 10 m
+- **VIIRS Nightlights** (Day/Night Band; different sensor entirely)
 
 Both are independent of S2/Landsat. Their failure modes (low confidence
 polygons, coarse 463 m resolution) are different from each other and
 different from WorldCover, so combining them recovers from each one's
 weaknesses.
 
-Water uses **JRC GSW** (Landsat-derived — different mission from S2)
+Water uses **JRC GSW** (Landsat-derived; different mission from S2)
 OR **WorldCover class 80** for redundancy.
 
 This is one of the few places where the framework explicitly does better
@@ -169,29 +169,29 @@ Three design points:
    run benefits from the cache. No blocking on the (5-15 min) export.
    This is the standard GEE pattern.
 
-The orchestrator handles caching transparently — individual stages don't
+The orchestrator handles caching transparently; individual stages don't
 need to know. They produce `ee.Image` outputs as usual; the orchestrator
 checks cache before running and submits exports after.
 
 Sharing assets with collaborators (programmatic ACLs via `team.yaml`) is
-deferred to a future module — for now anyone with the asset path can read
+deferred to a future module; for now anyone with the asset path can read
 them if granted access manually.
 
 ## Caching: only ee.Image outputs, not collections
 
 Asset export works for `ee.Image`, not for `ee.ImageCollection`. A collection
 is a sequence of images, and "exporting it" would mean exporting each one as
-a separate asset — many tasks, lots of storage, and the resulting assets
+a separate asset; many tasks, lots of storage, and the resulting assets
 wouldn't be reusable as a collection anyway.
 
 So stages that produce collections (`data_load`) declare which subset of
 `produces` is actually cacheable via `cacheable_outputs`. The orchestrator
 only checks/exports those, and re-runs the stage live each time to
-regenerate the collections (which is cheap — filtering is just metadata).
+regenerate the collections (which is cheap; filtering is just metadata).
 
 For data_load specifically:
 - `s2_collection`, `s1_collection`: re-filtered each run, ~1-2 sec
-- `s2_composite`: cached. This is the expensive operation — it reduces
+- `s2_composite`: cached. This is the expensive operation; it reduces
   potentially hundreds of S2 images through the SCL mask and reducer.
 
 The pattern generalizes: any future stage that produces a mix of cheap
@@ -203,7 +203,7 @@ can declare its `cacheable_outputs` accordingly.
 The same `FeaturesOpticalStage` runs both the NDVI + single-annual baseline
 and the NIRv + dual-harmonic variant. The config tells it which index to
 compute, which harmonic terms to include, and whether to add a linear
-trend. No code branches on "is this a variant?" — the config drives the
+trend. No code branches on "is this a variant?"; the config drives the
 exact regression structure dynamically.
 
 This is the intended pattern for "improve, don't fork": new ideas become
@@ -232,7 +232,7 @@ NIR_reflectance is actual reflectance (0-1). Sentinel-2 SR stores
 reflectance as integers scaled by 10000, so the stage divides B8 by
 10000 before multiplying by NDVI. This keeps NIRv in [0, 1] like NDVI.
 
-This isn't optional or stylistic — using the stored integers directly
+This isn't optional or stylistic; using the stored integers directly
 produces values ~10000× too large and breaks the literature definition.
 Discovered when NIRv visualizations rendered fully saturated against a
 0-1 palette; fixing it in the feature stage (rather than adapting the
@@ -241,13 +241,13 @@ meaningful, (b) the clusterer treats both indices on the same scale
 before z-scoring, and (c) future stages don't need to remember which
 index is in which range.
 
-NDVI is unaffected — the 10000 scaling cancels in the ratio.
+NDVI is unaffected; the 10000 scaling cancels in the ratio.
 
 ## features_radar: no harmonic, no speckle filter
 
 Unlike optical phenology, SAR backscatter doesn't have a clean seasonal
 cycle to fit. Returns depend on surface geometry, soil moisture, and
-biomass — not on photosynthesis. So we don't fit harmonics; we summarize
+biomass; not on photosynthesis. So we don't fit harmonics; we summarize
 the 5-year time series with percentile statistics (p10, p50, p90),
 interquartile range, and one derived ratio (VV − VH in dB).
 
@@ -255,7 +255,7 @@ Two specific choices worth documenting because they deviate from the
 notebook approach:
 
 **VV − VH (dB), not VV / VH.** The notebook divided dB-scale values
-directly: `vv.divide(vh)`. This isn't mathematically meaningful — dB is
+directly: `vv.divide(vh)`. This isn't mathematically meaningful; dB is
 log-scale, and a "ratio" of log values produces a number with no clean
 physical interpretation. The right operation is either:
   - Difference in dB: `VV_dB − VH_dB`
@@ -271,7 +271,7 @@ tradeoff:
   reduction (~√N factor) is much stronger than any 3×3 or 5×5 spatial
   filter could provide.
 - Spatial filters blur edges. SNIC segmentation downstream relies on
-  visible edges in the data to draw superpixel boundaries — pre-blurring
+  visible edges in the data to draw superpixel boundaries; pre-blurring
   works against that.
 - Filter parameter tuning (window size, damping) adds knobs we'd need to
   defend. ENG-006's "stop going in circles" concern applies.
@@ -282,23 +282,23 @@ baseline addition.
 ## features_structure: canopy height + neighborhood stats
 
 ETH Global Canopy Height 2020 is the per-pixel input (10 m, derived from
-GEDI + S2 fusion — DEC-009). The notebook used this as a single band.
+GEDI + S2 fusion; DEC-009). The notebook used this as a single band.
 This module adds two derived bands by default: standard deviation and
 max within a small (3×3) window around each pixel.
 
 The neighborhood stats capture structural heterogeneity that the point
-value can't. A mature even-aged stand has uniform tall trees → low std,
-max ≈ height. A regenerating patch has variable heights → high std. A
-forest edge has tall and short pixels mixed → high std, max much larger
+value can't. A mature even-aged stand has uniform tall trees to low std,
+max ≈ height. A regenerating patch has variable heights to high std. A
+forest edge has tall and short pixels mixed to high std, max much larger
 than the typical pixel.
 
-A 3×3 window at 10 m resolution covers 30 × 30 m on the ground — small
+A 3×3 window at 10 m resolution covers 30 × 30 m on the ground; small
 enough to preserve stand boundaries (we don't want to blur across forest
 edges before SNIC sees them). Window size is configurable via
 `features_structure.neighborhood_kernel_size` (odd integers 3-11).
 
-When `include_neighborhood_stats: false`, only canopy_height is emitted
-— that's the notebook-faithful mode. Both baseline and nirv_dual default
+When `include_neighborhood_stats: false`, only canopy_height is emitted;
+that's the notebook-faithful mode. Both baseline and nirv_dual default
 to true to keep structure features identical between configs (so optical
 variant comparison stays controlled at Module 18).
 
@@ -310,7 +310,7 @@ Five bands: elevation, slope, aspect, distance_to_water, annual_rainfall.
 is in meters per pixel, so slope comes out in degrees correctly.
 
 `distance_to_water` is the first stage that *requires* the masking stage's
-output (it consumes `water_mask`). This is a deliberate dependency — using
+output (it consumes `water_mask`). This is a deliberate dependency; using
 the same water source for both exclusion (masking) and feature (here)
 keeps the two notions consistent. The alternative (compute water freshly
 inside this stage) would risk drift between the two definitions.
@@ -320,11 +320,11 @@ sqrt and multiply by analysis scale (10 m) to get distance in meters.
 
 CHIRPS PENTAD provides 5-day rainfall totals. Sum over the 30-year window
 (1991-2020 standard normal) divided by 30 gives mean annual rainfall in mm.
-For Sanjay Van this will be ~600-800 mm — Delhi's monsoon-dominated regime.
+For Sanjay Van this will be ~600-800 mm; Delhi's monsoon-dominated regime.
 The band will be nearly uniform within the AOI; included for cross-AOI
 generality (when an AOI spans climate gradients).
 
-Aspect is emitted as raw degrees 0-360. This is cyclic — north-facing
+Aspect is emitted as raw degrees 0-360. This is cyclic; north-facing
 pixels at 0° and 359° look maximally different to a Euclidean clusterer.
 A sin/cos decomposition would fix this; left as a future improvement to
 match notebook behavior.
@@ -342,10 +342,10 @@ features_optical (that's a harmonic-regression intercept over 8 years).
 This in-stage derivation has two advantages:
   1. Available identically to both baseline and nirv_dual configs without
      either re-export or per-config code branches
-  2. Spatial signal from a single 2023 snapshot — good for boundaries
+  2. Spatial signal from a single 2023 snapshot; good for boundaries
 
 Why NIRv over NDVI for SNIC input: NDVI saturates in dense canopy. Sanjay
-Van is exactly such a case — its forest interior would map to one NDVI
+Van is exactly such a case; its forest interior would map to one NDVI
 value, hiding within-forest structure SNIC needs to find boundaries on.
 NIRv keeps responding because NIR alone is unbounded. The user pushed
 back on a default-to-NDVI choice; the math is on their side here.
@@ -357,7 +357,7 @@ bands dominate SNIC's distance metric.
 
 Same SNIC inputs across both configs means boundaries are bit-identical
 between baseline and nirv_dual. Module 18's clustering comparison is
-attributable to optical features alone — segmentation is not a confound.
+attributable to optical features alone; segmentation is not a confound.
 
 ## clustering: where the actual stand assignment happens
 
@@ -367,7 +367,7 @@ operation; the complexity is in the orchestration.
 
 **Why we average per superpixel before clustering** (DEC-001): clustering
 on raw pixels gives salt-and-pepper output because of within-stand pixel
-noise. SNIC superpixels are ~100 pixels each — averaging within them
+noise. SNIC superpixels are ~100 pixels each; averaging within them
 yields stable per-stand feature vectors that the clusterer can group
 sensibly.
 
@@ -379,7 +379,7 @@ phenologically identical. sin/cos pairs are continuous across the cyclic
 discontinuity.
 
 **Why log-transform before scaling** (DEC-004): some feature distributions
-are right-skewed (long tail of large values — typical for distance
+are right-skewed (long tail of large values; typical for distance
 metrics, IQR bands, biomass-related signals). Median/IQR scaling can
 handle skewed distributions but k-means still treats outliers as
 maximally distant points that pull centroids around. Log-transform
@@ -387,7 +387,7 @@ compresses the long tail; subsequent median/IQR scaling then puts the
 de-skewed distribution on a comparable scale to the other bands.
 
 **Why median/IQR over z-score** (DEC-003): outliers exist (occasional
-unusual pixels — disturbed patches, gaps, anomalies). Mean and stddev
+unusual pixels; disturbed patches, gaps, anomalies). Mean and stddev
 are sensitive to outliers; median and IQR aren't. The notebook used
 zscore; we deviate here because the practical difference matters in
 heterogeneous landscapes like Sanjay Van's edges.
@@ -413,5 +413,5 @@ the same inputs and same seed, runs are bit-identical.
 **Same configuration, both variants**: both baseline and nirv_dual run
 through identical clustering code. Their feature stacks differ (baseline
 has 5 optical bands after dropping obs_count; variant has 7 due to dual
-harmonic), and that's the entire experiment — does NIRv+dual give better
+harmonic), and that's the entire experiment; does NIRv+dual give better
 clusters? Module 18's metrics will answer that.

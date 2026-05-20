@@ -9,7 +9,7 @@ Output context keys:
   - s2_composite: single cloud-free static image over the optical_composite window.
     Used by SNIC for segmentation. Cacheable (the expensive one to recompute).
 
-Note: collections (ImageCollection) are NOT cacheable as single assets — they're
+Note: collections (ImageCollection) are NOT cacheable as single assets. They are
 sequences of images, and exporting them all is expensive and rarely useful. Only
 the static composite is in `cacheable_outputs`.
 """
@@ -26,7 +26,7 @@ from fmu.utils.logging import get_logger
 log = get_logger(__name__)
 
 
-# Reducer functions for the static composite — keyed by config string.
+# Reducer functions for the static composite, keyed by config string.
 _REDUCERS = {
     "median": lambda: ee.Reducer.median(),
     "p25": lambda: ee.Reducer.percentile([25]),
@@ -60,13 +60,13 @@ class DataLoadStage(Stage):
                 "s2_dataset": config.datasets.phenology_collection,
                 "s1_dataset": config.datasets.radar_collection,
                 "s2_phenology_window": (
-                    f"{config.dates.phenology.start} → {config.dates.phenology.end}"
+                    f"{config.dates.phenology.start} to {config.dates.phenology.end}"
                 ),
                 "s1_radar_window": (
-                    f"{config.dates.radar.start} → {config.dates.radar.end}"
+                    f"{config.dates.radar.start} to {config.dates.radar.end}"
                 ),
                 "s2_composite_window": (
-                    f"{config.dates.optical_composite.start} → "
+                    f"{config.dates.optical_composite.start} to "
                     f"{config.dates.optical_composite.end}"
                 ),
                 "s1_orbit": config.data_load.s1_orbit,
@@ -96,7 +96,7 @@ class DataLoadStage(Stage):
         if size == 0:
             raise RuntimeError(
                 f"data_load: no S2 images in phenology window "
-                f"{dates.start} → {dates.end} over ROI "
+                f"{dates.start} to {dates.end} over ROI "
                 f"with CLOUDY_PIXEL_PERCENTAGE ≤ {cm.max_cloud_pct}. "
                 f"Loosen the cloud filter or widen the window."
             )
@@ -140,7 +140,7 @@ class DataLoadStage(Stage):
         if size == 0:
             raise RuntimeError(
                 f"data_load: no S1 images in radar window "
-                f"{dates.start} → {dates.end} over ROI with "
+                f"{dates.start} to {dates.end} over ROI with "
                 f"mode={params.s1_instrument_mode}, orbit={params.s1_orbit}, "
                 f"pol={params.s1_polarizations}. Try the other orbit direction "
                 f"or widen the window."
@@ -159,8 +159,8 @@ class DataLoadStage(Stage):
     ) -> ee.Image:
         """Make the static S2 composite for SNIC.
 
-        Uses a separate date window (`optical_composite`) — typically a recent year,
-        not the full phenology window — and re-filters from scratch so the composite
+        Uses a separate date window (`optical_composite`), typically a recent year,
+        not the full phenology window. Re-filters from scratch so the composite
         date range is independent of the phenology collection.
         """
         dates = config.dates.optical_composite
@@ -180,7 +180,7 @@ class DataLoadStage(Stage):
         if size == 0:
             raise RuntimeError(
                 f"data_load: no S2 images in composite window "
-                f"{dates.start} → {dates.end}. "
+                f"{dates.start} to {dates.end}. "
                 f"Loosen cloud filter or widen window."
             )
         log.info("  S2 composite window: %d images after cloud filter", size)

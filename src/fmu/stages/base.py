@@ -7,7 +7,6 @@ required_inputs/produces pattern.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from builtins import set as _set  # PipelineContext.set shadows the builtin in class scope
 from dataclasses import dataclass, field
 from typing import Any, ClassVar
 
@@ -144,7 +143,7 @@ class Stage(ABC):
         The default implementation checks that every key in
         `required_inputs` exists in the context. Subclasses may override
         to add additional checks (e.g., band counts, projection match,
-        config constraints) — but should call super().validate() to keep
+        config constraints); but should call super().validate() to keep
         the default check active.
 
         Override is OPTIONAL. Most stages get away with the default,

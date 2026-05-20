@@ -1,12 +1,12 @@
 """Structure features stage. Per-pixel structural metrics from canopy height.
 
 Uses ETH Global Canopy Height 2020 (10 m, derived from GEDI + Sentinel-2
-fusion — per DEC-009 we prefer this over GEDI L2A which is too sparse).
+fusion; per DEC-009 we prefer this over GEDI L2A which is too sparse).
 
 When `include_neighborhood_stats` is enabled, the stage also emits
 standard deviation and max within a small window around each pixel.
 This captures local structural heterogeneity that a single canopy
-height value can't — a mature stand has tall, similar-height pixels
+height value can't; a mature stand has tall, similar-height pixels
 nearby (low std-dev); a regenerating patch has variable heights (high
 std-dev); a forest edge has both tall and zero-height pixels (high std,
 high max relative to height).

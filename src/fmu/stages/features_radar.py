@@ -1,9 +1,9 @@
 """Radar features stage. Statistical reducers over the S1 collection.
 
 Per-pixel features summarize 5 years of Sentinel-1 VV and VH backscatter
-into stable statistics. No harmonic regression — SAR backscatter doesn't
+into stable statistics. No harmonic regression; SAR backscatter doesn't
 have a clean seasonal cycle the way optical phenology does (returns
-depend on geometry, moisture, biomass — not photosynthesis).
+depend on geometry, moisture, biomass; not photosynthesis).
 
 Per DEC-016: cross-pol contrast is VV_median - VH_median in dB. This is
 equivalent to 10*log10(VV_linear / VH_linear) under the dB transform.
@@ -61,7 +61,7 @@ class FeaturesRadarStage(Stage):
 
         output_bands: list[ee.Image] = []
 
-        # Requested percentiles → output bands (renamed to lowercase prefix)
+        # Requested percentiles to output bands (renamed to lowercase prefix)
         for p in requested:
             output_bands.append(reduced.select(f"VV_p{p}").rename(f"vv_p{p}"))
             output_bands.append(reduced.select(f"VH_p{p}").rename(f"vh_p{p}"))

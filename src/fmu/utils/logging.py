@@ -75,7 +75,7 @@ def init_logging(
     _initialized = True
 
     log = get_logger(__name__)
-    log.info("Logging initialized — run dir: %s", run_dir)
+    log.info("Logging initialized; run dir: %s", run_dir)
     log.info("Log level: %s", level_str)
 
     return run_dir

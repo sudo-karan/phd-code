@@ -79,7 +79,7 @@ def test_snic_clusters_has_single_band(ctx_ready_for_snic):
 
 
 def test_snic_means_has_five_bands(ctx_ready_for_snic):
-    """SNIC's per-cluster mean output should have one band per input — five total.
+    """SNIC's per-cluster mean output should have one band per input; five total.
     Note: SNIC suffixes the input names with '_mean' internally; the stage
     strips that suffix so downstream code sees stable band names matching
     the inputs."""

@@ -1,22 +1,22 @@
 """Static features stage. Terrain, distance-to-water, climate climatology.
 
 These are quantities that don't change meaningfully over the pipeline's
-time window — a 30-year rainfall mean is essentially constant for
+time window: a 30-year rainfall mean is roughly constant for
 clustering purposes, as are elevation/slope/aspect.
 
 Bands (with default config):
-- elevation     — meters above sea level (NASADEM)
-- slope         — degrees (derived from elevation)
-- aspect        — degrees 0-360, cyclic (derived from elevation)
-- distance_to_water — meters to nearest water pixel from masking's water_mask
-- annual_rainfall   — mm/year, 30-year mean from CHIRPS climatology
+- elevation: meters above sea level (NASADEM)
+- slope: degrees (derived from elevation)
+- aspect: degrees 0-360, cyclic (derived from elevation)
+- distance_to_water: meters to nearest water pixel from masking's water_mask
+- annual_rainfall: mm/year, 30-year mean from CHIRPS climatology
 
 Per DEC-014, computed over the full ROI; the habitat mask applies at
 clustering. Output cacheable as single multi-band asset.
 
 A note on aspect: it's emitted as raw degrees (0-360), which is cyclic.
-This creates artifacts for distance-based clustering (north-facing at 0°
-and 359° look maximally different despite being identical). A sin/cos
+This creates artifacts for distance-based clustering (north-facing at 0
+and 359 look maximally different despite being identical). A sin/cos
 decomposition would fix this; left as a future improvement so this stage
 matches the notebook approach.
 """
@@ -46,14 +46,14 @@ class FeaturesStaticStage(Stage):
         water_mask: ee.Image = ctx.get("water_mask")
         params = config.features_static
 
-        # Terrain — elevation, slope, aspect from NASADEM
+        # Terrain: elevation, slope, aspect from NASADEM
         dem = ee.Image(config.datasets.dem).select("elevation")
         terrain = ee.Terrain.products(dem)
         elevation = terrain.select("elevation").rename("elevation")
         slope = terrain.select("slope").rename("slope")
         aspect = terrain.select("aspect").rename("aspect")
 
-        # Distance to water — fast distance transform on the water_mask.
+        # Distance to water: fast distance transform on the water_mask.
         # fastDistanceTransform returns squared euclidean distance in pixels;
         # take sqrt and multiply by analysis scale (10 m) to get meters.
         max_dist_pix = params.max_water_distance_pixels
@@ -66,7 +66,7 @@ class FeaturesStaticStage(Stage):
 
         output_bands: list[ee.Image] = [elevation, slope, aspect, distance_to_water]
 
-        # Climate — mean annual rainfall from CHIRPS pentad climatology.
+        # Climate: mean annual rainfall from CHIRPS pentad climatology.
         # CHIRPS pentads are 5-day rainfall totals (mm). Sum over the
         # climatology window then divide by number of years.
         if params.include_climate:
@@ -94,7 +94,7 @@ class FeaturesStaticStage(Stage):
                 "dem_dataset": config.datasets.dem,
                 "climate_dataset": config.datasets.climate if params.include_climate else None,
                 "climate_window": (
-                    f"{config.dates.climate.start} → {config.dates.climate.end}"
+                    f"{config.dates.climate.start} to {config.dates.climate.end}"
                     if params.include_climate
                     else None
                 ),

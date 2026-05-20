@@ -57,7 +57,7 @@ class MaskingStage(Stage):
         # Combined water: either source counts
         water_mask = gsw_water.Or(wc_water).rename("water_mask")
 
-        # ----- Open Buildings: vector polygons → rasterized built mask -----
+        # ----- Open Buildings: vector polygons to rasterized built mask -----
         # Filter to ROI and confidence threshold, then rasterize at the pipeline
         # analysis scale. Anything inside a building polygon becomes 1.
         buildings = (

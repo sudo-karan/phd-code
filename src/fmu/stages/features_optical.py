@@ -11,7 +11,7 @@ The regression model, per pixel, is:
 
 where t is years since 2017-01-01.
 
-Derived metrics (per DEC-002 — derived metrics, not raw coefficients):
+Derived metrics (per DEC-002; derived metrics, not raw coefficients):
 - mean = a
 - amplitude_annual = sqrt(b² + c²)
 - phase_annual = atan2(c, b)        # radians
@@ -40,7 +40,7 @@ log = get_logger(__name__)
 
 
 # Reference date for the time variable t (years since this date).
-# Arbitrary choice — shifts phase by a constant, which doesn't affect clustering.
+# Arbitrary choice; shifts phase by a constant, which doesn't affect clustering.
 _TIME_REFERENCE = "2017-01-01"
 
 
@@ -95,7 +95,7 @@ class FeaturesOpticalStage(Stage):
         # 6. Concatenate, clip to ROI for cleanliness
         optical_features = ee.Image.cat(output_bands).clip(ctx.get("roi"))
 
-        # Diagnostic — log the output band names
+        # Diagnostic; log the output band names
         band_names = safe_get_info(
             optical_features.bandNames(), context="optical_features band names"
         )
@@ -194,14 +194,14 @@ def _derive_metrics(
     mean = coefficients.select("constant").rename(f"{prefix}_mean")
     bands.append(mean)
 
-    # Annual harmonic → amplitude + phase
+    # Annual harmonic to amplitude + phase
     b = coefficients.select("cos_annual")
     c = coefficients.select("sin_annual")
     amp_annual = b.hypot(c).rename(f"{prefix}_amplitude_annual")
     phase_annual = c.atan2(b).rename(f"{prefix}_phase_annual")
     bands.extend([amp_annual, phase_annual])
 
-    # Semi-annual harmonic → amplitude + phase (if dual)
+    # Semi-annual harmonic to amplitude + phase (if dual)
     if harmonic_mode == "dual":
         d = coefficients.select("cos_semi")
         e = coefficients.select("sin_semi")
@@ -214,13 +214,13 @@ def _derive_metrics(
         trend = coefficients.select("t").rename(f"{prefix}_trend")
         bands.append(trend)
 
-    # Residual variance — diagnostic for how well-fit each pixel is by the harmonic
+    # Residual variance; diagnostic for how well-fit each pixel is by the harmonic
     residual_variance = residuals_image.arrayFlatten([["residuals"]]).rename(
         f"{prefix}_residual_variance"
     )
     bands.append(residual_variance)
 
-    # Observation count — metadata for downstream confidence weighting
+    # Observation count; metadata for downstream confidence weighting
     obs_count = obs_count_image.toInt32().rename(f"{prefix}_obs_count")
     bands.append(obs_count)
 

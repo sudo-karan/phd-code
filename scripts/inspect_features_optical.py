@@ -2,7 +2,7 @@
 Run the full pipeline through features_optical and emit info / JS to view
 the resulting phenology features in the GEE Code Editor.
 
-Stages run: masking → data_load → features_optical, with caching on.
+Stages run: masking to data_load to features_optical, with caching on.
 First run kicks off export tasks for cacheable outputs; second run uses
 the cached assets.
 """
@@ -15,7 +15,7 @@ import json
 from fmu.config import load_config
 from fmu.pipeline import Pipeline
 from fmu.stages.base import PipelineContext
-from fmu.stages.data_load import DataLoadStage  # noqa: F401 — registers stage
+from fmu.stages.data_load import DataLoadStage  # noqa: F401  # registers stage
 from fmu.stages.features_optical import FeaturesOpticalStage  # noqa: F401
 from fmu.stages.masking import MaskingStage  # noqa: F401
 from fmu.utils.caching import asset_exists, cached_asset_path
@@ -46,7 +46,7 @@ def main() -> None:
 
     prefix = config.features_optical.index  # "ndvi" or "nirv"
 
-    # Numeric summary — per-band statistics over the ROI
+    # Numeric summary; per-band statistics over the ROI
     features_path = cached_asset_path(config.name, "features_optical", "optical_features")
     features_cached = asset_exists(features_path)
 
@@ -100,19 +100,19 @@ def main() -> None:
         # Both NDVI and NIRv live in [0, 1] (NIRv is NDVI × NIR_reflectance,
         # both in 0-1). One palette set works for either.
 
-        # Mean — color ramp brown → yellow → green (low → high vegetation)
+        # Mean; color ramp brown to yellow to green (low to high vegetation)
         print(
             f"Map.addLayer(feats.select('{prefix}_mean'), "
             "{min: -0.1, max: 0.8, palette: ['8B4513','EDC9AF','F0E68C','9ACD32','228B22']}, "
             f"'Mean ({prefix.upper()})', true);"
         )
-        # Amplitude — color ramp dark → bright (low → high seasonality)
+        # Amplitude; color ramp dark to bright (low to high seasonality)
         print(
             f"Map.addLayer(feats.select('{prefix}_amplitude_annual'), "
             "{min: 0, max: 0.3, palette: ['000033','3333AA','9999FF','FFFF99','FFCC00']}, "
             "'Amplitude annual', false);"
         )
-        # Phase — cyclic palette (red → yellow → green → blue → red)
+        # Phase; cyclic palette (red to yellow to green to blue to red)
         print(
             f"Map.addLayer(feats.select('{prefix}_phase_annual'), "
             "{min: -3.14, max: 3.14, palette: "
@@ -131,13 +131,13 @@ def main() -> None:
                 "{min: -0.02, max: 0.02, palette: ['8B0000','FF6666','FFFFFF','66CC66','006400']}, "
                 "'Trend (per-year change)', false);"
             )
-        # Residual variance — high values = poorly-fit pixels
+        # Residual variance; high values = poorly-fit pixels
         print(
             f"Map.addLayer(feats.select('{prefix}_residual_variance'), "
             "{min: 0, max: 0.3, palette: ['FFFFFF','FFCCCC','FF6666','990000']}, "
             "'Residual variance (poor harmonic fit)', false);"
         )
-        # Obs count — confidence / data density
+        # Obs count; confidence / data density
         print(
             f"Map.addLayer(feats.select('{prefix}_obs_count'), "
             "{min: 50, max: 300, palette: ['000044','3366CC','99CCFF','FFFFCC']}, "
@@ -154,7 +154,7 @@ def main() -> None:
             "https://code.earthengine.google.com/tasks)."
         )
         print(
-            "Re-run this script after the export completes (10-30 min — this is the "
+            "Re-run this script after the export completes (10-30 min; this is the "
             "biggest export so far) to get the asset-based JS snippet."
         )
 

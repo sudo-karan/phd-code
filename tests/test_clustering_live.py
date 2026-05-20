@@ -147,7 +147,7 @@ def test_feature_stack_has_active_bands(ctx_ready_for_clustering):
 
 
 def test_aspect_decomposed(ctx_ready_for_clustering):
-    """aspect → aspect_sin + aspect_cos."""
+    """aspect to aspect_sin + aspect_cos."""
     ctx, config = ctx_ready_for_clustering
     result = ClusteringStage().run(ctx, config)
     band_names = set(
