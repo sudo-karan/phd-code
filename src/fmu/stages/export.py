@@ -49,26 +49,20 @@ log = get_logger(__name__)
 _DECISIONS_SOURCE = "phd-notebook/decisions.md"
 
 
-# Inventory of cacheable outputs across all pipeline stages. Each entry is
-# (stage_name, output_key). The export stage probes each path; whichever
-# ones exist get listed in the manifest.
+# The export manifest's asset inventory is derived from the stage registry
+# at runtime — we ask every registered stage what its cacheable_outputs are
+# (via the same MRO walk the orchestrator uses). This prevents the drift
+# problem we hit when this list was hand-maintained: it always missed an
+# output (e.g., landcover_summary), or kept a phantom entry for a key
+# that wasn't actually produced. The single source of truth is each stage's
+# class declaration.
 #
-# Note: built_up_mask is intentionally absent — it's an intermediate
-# computed inside the masking stage to derive habitat_mask, but is never
-# exposed as a context output (masking.produces does not include it).
-_CACHEABLE_OUTPUTS = [
-    ("masking", "habitat_mask"),
-    ("masking", "water_mask"),
-    ("data_load", "s2_composite"),
-    ("features_optical", "optical_features"),
-    ("features_radar", "radar_features"),
-    ("features_structure", "structure_features"),
-    ("features_static", "static_features"),
-    ("segmentation", "snic_clusters"),
-    ("segmentation", "snic_means"),
-    ("clustering", "cluster_labels"),
-    ("clustering", "feature_stack"),
-]
+# Stages that ARE in the registry but never go in the cache (because they
+# either opt out via cacheable_outputs=set() or have non-image outputs
+# like the export and metrics stages themselves) contribute nothing here.
+# The probe is config-scoped: we only list paths that exist for THIS
+# config's runs, so a stage that hasn't been run yet for this config
+# won't appear.
 
 
 @register_stage("export")
@@ -275,11 +269,30 @@ def _compute_cluster_distribution(
 
 
 def _inventory_cached_assets(config_name: str) -> dict[str, str]:
-    """For every known cacheable output, check existence and record the path
-    if it exists. Order doesn't matter; we return a dict for lookup."""
+    """Discover cached assets for this config by walking the stage registry.
+
+    For each registered stage, ask the orchestrator's resolution helper
+    what that stage's cacheable_outputs are (handles MRO inheritance and
+    explicit opt-outs). Then probe each (stage, output) for an existing
+    asset at the cache path.
+
+    Returns a dict {output_key: full_asset_path} containing only the
+    outputs that actually exist as cached GEE assets. Missing outputs
+    (stage never run, or opt-out) are simply absent.
+    """
+    # Imported lazily to avoid a circular import with the pipeline module.
+    from fmu.pipeline import Pipeline
+    from fmu.stages.base import get_stage_class, list_registered_stages
+
     paths: dict[str, str] = {}
-    for stage_name, output_key in _CACHEABLE_OUTPUTS:
-        path = cached_asset_path(config_name, stage_name, output_key)
-        if asset_exists(path):
-            paths[output_key] = path
+    for stage_name in list_registered_stages():
+        stage = get_stage_class(stage_name)()
+        # Use the same MRO-walking resolver the orchestrator uses, so an
+        # opt-out via cacheable_outputs=set() is honored here too (and we
+        # don't probe nonsense paths for stages like profiling/export/metrics).
+        cacheable = Pipeline._resolve_cacheable_outputs(stage)
+        for output_key in sorted(cacheable):
+            path = cached_asset_path(config_name, stage_name, output_key)
+            if asset_exists(path):
+                paths[output_key] = path
     return paths

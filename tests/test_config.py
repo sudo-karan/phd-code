@@ -162,7 +162,8 @@ def test_defaults_fill_in_when_omitted(tmp_path):
     cfg = load_config(minimal_yaml)
     # All defaults should be filled
     assert cfg.clustering.k == 6
-    assert cfg.normalization.method == "zscore"
+    # Default is "robust" per DEC-003; was "zscore" pre-2026-05-20
+    assert cfg.normalization.method == "robust"
     assert cfg.export.export_geotiff is True
     assert cfg.features.optical_harmonic is True
 

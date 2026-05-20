@@ -1,9 +1,11 @@
 # Sanjay Van baseline config. Locked reference — don't modify in place;
 # new ideas become new YAML files compared against this.
 #
-# Mirrors the working notebook pipeline: S2_SR_HARMONIZED, k=6, zscore,
-# single annual harmonic. HLS / auto-K / robust scaling / dual harmonic
-# all go in separate configs later.
+# Approximates the working notebook pipeline (S2_SR_HARMONIZED, k=6, NDVI,
+# single annual harmonic) while applying the locked engineering decisions
+# from phd-notebook/decisions.md — most notably robust scaling (DEC-003)
+# in place of the notebook's zscore. Cross-config variants (HLS, auto-K,
+# NIRv, dual harmonic, etc.) go in separate YAML files.
 
 name: sanjay_van_baseline
 description: Locked baseline for Sanjay Van.
@@ -105,7 +107,7 @@ clustering:
   superpixel_max_size: 1024 # max pixels in a single SNIC superpixel — must exceed largest
 
 normalization:
-  method: robust  # median/IQR per DEC-003 — replaces notebook's zscore
+  method: robust  # DEC-003: median/IQR scaling. This is also the schema default.
 
 features:
   optical_harmonic: true

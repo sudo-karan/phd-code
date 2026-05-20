@@ -6,7 +6,7 @@ from datetime import date
 from pathlib import Path
 from typing import Literal
 
-import yaml  # type: ignore[import-untyped]
+import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
@@ -199,8 +199,11 @@ class ClusteringParams(BaseModel):
 
 class NormalizationParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    # zscore: matches earlier notebooks. robust: median/IQR, outlier-resistant.
-    method: Literal["zscore", "robust"] = "zscore"
+    # Default is "robust" (median/IQR scaling) per DEC-003 — outlier-resistant,
+    # and what every shipped config uses. "zscore" remains available for ad-hoc
+    # comparisons against earlier notebook behavior, but isn't the recommended
+    # path forward.
+    method: Literal["zscore", "robust"] = "robust"
 
 
 class FeatureToggles(BaseModel):
