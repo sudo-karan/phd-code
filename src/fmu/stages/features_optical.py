@@ -9,12 +9,15 @@ The regression model, per pixel, is:
          + [f·t]                          # if include_trend
          + ε
 
-where t is years since 2017-01-01.
+where t is years since `features_optical.time_reference` (default
+2017-01-01; configurable per DEC-???). The reference epoch shifts the
+numerical value of `phase_*` by a constant but does NOT change
+amplitude, trend, or any clustering outcome.
 
 Derived metrics (per DEC-002; derived metrics, not raw coefficients):
 - mean = a
 - amplitude_annual = sqrt(b² + c²)
-- phase_annual = atan2(c, b)        # radians
+- phase_annual = atan2(c, b)        # radians, measured from time_reference
 - amplitude_semi = sqrt(d² + e²)    # dual only
 - phase_semi = atan2(e, d)          # dual only
 - trend = f                          # if include_trend
@@ -28,6 +31,7 @@ clustering (DEC-014). Output cacheable as a single multi-band asset.
 from __future__ import annotations
 
 import math
+from datetime import date
 
 import ee
 
@@ -37,11 +41,6 @@ from fmu.utils.gee import safe_call, safe_get_info
 from fmu.utils.logging import get_logger
 
 log = get_logger(__name__)
-
-
-# Reference date for the time variable t (years since this date).
-# Arbitrary choice; shifts phase by a constant, which doesn't affect clustering.
-_TIME_REFERENCE = "2017-01-01"
 
 
 @register_stage("features_optical")
@@ -56,6 +55,7 @@ class FeaturesOpticalStage(Stage):
         s2: ee.ImageCollection = ctx.get("s2_collection")
         params = config.features_optical
         prefix = params.index  # "ndvi" or "nirv"
+        time_reference = params.time_reference  # datetime.date
 
         # 1. Add the vegetation index as 'y' band
         with_index = s2.map(lambda img: _add_index(img, params.index))
@@ -65,7 +65,9 @@ class FeaturesOpticalStage(Stage):
             params.harmonic_mode, params.include_trend
         )
         with_regression = with_index.map(
-            lambda img: _add_regression_bands(img, params.harmonic_mode, params.include_trend)
+            lambda img: _add_regression_bands(
+                img, params.harmonic_mode, params.include_trend, time_reference
+            )
         )
 
         # 3. Fit per-pixel linear regression
@@ -100,6 +102,7 @@ class FeaturesOpticalStage(Stage):
             optical_features.bandNames(), context="optical_features band names"
         )
         log.info("  optical_features bands (%d): %s", len(band_names), band_names)
+        log.info("  time_reference: %s", time_reference.isoformat())
 
         return StageResult(
             outputs={"optical_features": optical_features},
@@ -107,6 +110,7 @@ class FeaturesOpticalStage(Stage):
                 "index": params.index,
                 "harmonic_mode": params.harmonic_mode,
                 "include_trend": params.include_trend,
+                "time_reference": time_reference.isoformat(),
                 "num_regression_terms": num_x,
                 "output_bands": band_names,
             },
@@ -138,13 +142,21 @@ def _add_index(img: ee.Image, index_name: str) -> ee.Image:
 
 
 def _add_regression_bands(
-    img: ee.Image, harmonic_mode: str, include_trend: bool
+    img: ee.Image,
+    harmonic_mode: str,
+    include_trend: bool,
+    time_reference: date,
 ) -> ee.Image:
     """Add the regression independent-variable bands to an image:
     constant, cos_annual, sin_annual, [cos_semi, sin_semi], [t].
+
+    `time_reference` is the date used as t=0. Cross-config phase
+    comparability requires all configs use the same reference; see
+    `FeaturesOpticalParams.time_reference` in config.py for the
+    rationale.
     """
-    date = ee.Date(img.get("system:time_start"))
-    years = date.difference(ee.Date(_TIME_REFERENCE), "year")
+    image_date = ee.Date(img.get("system:time_start"))
+    years = image_date.difference(ee.Date(time_reference.isoformat()), "year")
 
     t_band = ee.Image.constant(years).float().rename("t")
     constant_band = ee.Image.constant(1).float().rename("constant")

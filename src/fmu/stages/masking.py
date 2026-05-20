@@ -16,6 +16,11 @@ Note on data sources:
   (vector, independent of S2) and VIIRS (different sensor) to avoid
   circularity with the S2 features used in downstream stages.
   See docs/design_notes.md.
+
+Source toggles (`masking.use_viirs`, `masking.use_open_buildings`) let
+users disable either built-up source. With both off, `built_mask` is
+empty and `habitat_mask` reduces to "veg AND NOT water"; a warning is
+logged in that case because masking accuracy degrades.
 """
 
 from __future__ import annotations
@@ -60,30 +65,54 @@ class MaskingStage(Stage):
         # ----- Open Buildings: vector polygons to rasterized built mask -----
         # Filter to ROI and confidence threshold, then rasterize at the pipeline
         # analysis scale. Anything inside a building polygon becomes 1.
-        buildings = (
-            ee.FeatureCollection(ds.open_buildings)
-            .filterBounds(roi)
-            .filter(ee.Filter.gte("confidence", params.open_buildings_confidence))
-        )
-        built_from_buildings = (
-            buildings.reduceToImage(properties=["confidence"], reducer=ee.Reducer.first())
-            .gt(0)
-            .unmask(0)
-        )
+        # When use_open_buildings is False, contributes a zero image (so the
+        # downstream Or() with VIIRS still works without branching).
+        if params.use_open_buildings:
+            buildings = (
+                ee.FeatureCollection(ds.open_buildings)
+                .filterBounds(roi)
+                .filter(ee.Filter.gte("confidence", params.open_buildings_confidence))
+            )
+            built_from_buildings = (
+                buildings.reduceToImage(properties=["confidence"], reducer=ee.Reducer.first())
+                .gt(0)
+                .unmask(0)
+            )
+        else:
+            built_from_buildings = ee.Image(0)
+            log.info("  Open Buildings disabled via masking.use_open_buildings=false")
 
         # ----- VIIRS: broad urban / bright-light areas -----
         # Use the latest available VIIRS monthly composite.
-        viirs = (
-            ee.ImageCollection(ds.nightlights)
-            .select("avg_rad")
-            .sort("system:time_start", False)
-            .first()
-            .clip(roi)
-        )
-        bright_urban = viirs.gte(params.nightlights_threshold).unmask(0)
+        # When use_viirs is False, contributes a zero image. Threshold is
+        # region-specific (default is Delhi-calibrated), so disabling is a
+        # legitimate option for AOIs where the calibration doesn't transfer.
+        if params.use_viirs:
+            viirs = (
+                ee.ImageCollection(ds.nightlights)
+                .select("avg_rad")
+                .sort("system:time_start", False)
+                .first()
+                .clip(roi)
+            )
+            bright_urban = viirs.gte(params.nightlights_threshold).unmask(0)
+        else:
+            bright_urban = ee.Image(0)
+            log.info("  VIIRS nightlights disabled via masking.use_viirs=false")
 
         # ----- Combined built mask (either source) -----
         built_mask = built_from_buildings.Or(bright_urban)
+
+        # Warn loudly if both sources are off; downstream urban-vs-vegetation
+        # circularity protection (the design point in docs/design_notes.md)
+        # depends on at least one non-S2 built-up source being active.
+        if not params.use_viirs and not params.use_open_buildings:
+            log.warning(
+                "  ALL built-up sources disabled (use_viirs=false, "
+                "use_open_buildings=false). habitat_mask = veg AND NOT water; "
+                "built-up areas will not be excluded. This breaks the design's "
+                "circularity protection between mask and S2-derived features."
+            )
 
         # ----- habitat_mask: veg AND NOT water AND NOT built -----
         habitat_mask = (
@@ -111,6 +140,8 @@ class MaskingStage(Stage):
                 "water_occurrence_threshold": params.jrc_water_occurrence_threshold,
                 "open_buildings_confidence": params.open_buildings_confidence,
                 "nightlights_threshold": params.nightlights_threshold,
+                "use_viirs": params.use_viirs,
+                "use_open_buildings": params.use_open_buildings,
                 "worldcover_dataset": ds.worldcover,
                 "water_dataset": ds.water,
                 "open_buildings_dataset": ds.open_buildings,

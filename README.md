@@ -5,7 +5,7 @@ from open satellite data. Runs server-side on Google Earth Engine; the
 Python package wires up config, orchestration, caching, and inspect/run
 scripts.
 
-Pipeline is at v1.0 with all 11 runtime stages implemented. See
+Pipeline is at v1.1 with all 11 runtime stages implemented. See
 `MODULES.md` for the build-order roadmap and `docs/current_flow.md` for
 the runtime flow and per-stage details.
 
@@ -29,8 +29,11 @@ Given a GeoJSON polygon (an Area of Interest), fmu:
    (preprocessing: cyclic decomposition, log-transform of skewed bands,
    median/IQR robust scaling).
 6. **Profiles** each cluster (mean/IQR per feature in original units).
-7. **Exports** a GeoTIFF of cluster labels to Google Drive plus a run
-   manifest covering every parameter, asset path, and preprocessing step.
+7. **Exports** a GeoTIFF of cluster labels plus two vector layers
+   (`stands_snic`, one polygon per SNIC superpixel; `stands_dissolved`,
+   one polygon per connected same-cluster management unit) to Google
+   Drive in SHP and GeoJSON, plus a run manifest covering every
+   parameter, asset path, and preprocessing step.
 8. **Compares** the result against a reference clustering with ARI, NMI,
    silhouette, and a Hungarian-aligned agreement map.
 

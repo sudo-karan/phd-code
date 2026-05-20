@@ -74,6 +74,8 @@ Builds the habitat mask, water mask, and labeled landcover summary. Multi-source
 - `jrc_water_occurrence_threshold`; % months water observed (default 50.0)
 - `open_buildings_confidence`; drop building polygons below this (default 0.7)
 - `nightlights_threshold`; VIIRS radiance threshold (default 30.0, Delhi-calibrated)
+- `use_viirs`; include VIIRS in the built mask (default `true`). Turn off for AOIs where the radiance threshold doesn't transfer (the default is Delhi-calibrated).
+- `use_open_buildings`; include Open Buildings in the built mask (default `true`). Symmetric to `use_viirs`. Turning both off leaves `built_mask` empty and is logged as a warning, since the circularity protection between mask and S2 features depends on at least one non-S2 built-up source.
 
 **Not used in this stage** (kept in config for future use):
 - `ndvi_min`; applied later in a feature stage; requires S2 data, doesn't belong in static masking
@@ -128,7 +130,7 @@ y(t) = a + b·cos(2π·t) + c·sin(2π·t)
      + [f·t]                          # if include_trend
 ```
 
-Where `y` is the vegetation index (NDVI or NIRv) and `t` is years since 2017-01-01.
+Where `y` is the vegetation index (NDVI or NIRv) and `t` is years since `features_optical.time_reference` (default 2017-01-01; configurable per DEC-???). The reference epoch shifts the numeric value of `phase_*` by a constant but does **not** affect amplitude, trend, or any clustering outcome. Cross-config phase comparability (which the metrics stage relies on) requires both configs use the same `time_reference`.
 
 **Derived metrics extracted from the coefficients** (per DEC-002):
 - `<prefix>_mean = a` (intercept)
@@ -145,6 +147,7 @@ Where `<prefix>` is `ndvi` or `nirv` depending on the config.
 - `features_optical.index`; `ndvi` (default, baseline) or `nirv`
 - `features_optical.harmonic_mode`; `single` (default, baseline) or `dual`
 - `features_optical.include_trend`; bool (default `true`)
+- `features_optical.time_reference`; reference date for the time variable `t` (default `2017-01-01`). Keep identical across configs you intend to compare phases between.
 
 **Two configs run through this same stage:**
 - `sanjay_van_baseline.yaml`: NDVI + single annual harmonic + trend (6 bands)
@@ -320,11 +323,17 @@ Profile data lives in the `manifest.json` `metadata.profiles` block, so it's aut
 
 ### 10. export - `src/fmu/stages/export.py`
 
-Packages the pipeline's final research-ready outputs. Two deliverables: a GeoTIFF of cluster_labels to the user's Google Drive (for collaborators without GEE access), and a run manifest JSON for reproducibility / publication.
+Packages the pipeline's final research-ready outputs. As of v1.1.0 there are three deliverable classes plus a run manifest, all driven by config toggles:
 
-**Reads from context:** `roi`, `cluster_labels`
+1. **Raster GeoTIFF** of `cluster_labels` to the user's Google Drive (for collaborators without GEE access). Toggle: `export.export_geotiff`.
+2. **SNIC superpixel vectors** (`stands_snic`): one polygon per SNIC superpixel with per-superpixel means of every features_* band attached. The debugging / methodology layer; lets you trace a polygon back to the SNIC label and inspect what fed clustering. Toggle: `export.export_vector_snic`.
+3. **Dissolved cluster vectors** (`stands_dissolved`): one polygon per connected same-cluster region, with cluster profile statistics attached. The forester-facing management-units layer. Toggle: `export.export_vector_dissolved`.
+
+Each vector layer is exported in every format listed in `export.vector_formats` (default: both `shp` and `geojson`). SHP exports carry a minimal ~5-6-column attribute schema (10-char field-name limit); GeoJSON exports carry the full attribute schema. See `docs/outputs.md` for per-layer schemas.
+
+**Reads from context:** `roi`, `cluster_labels`, `snic_clusters`, `optical_features`, `radar_features`, `structure_features`, `static_features`, `cluster_profiles`
 **Writes to context:** `export_manifest`; a Python dict of the manifest contents
-**Cacheable:** no. Always runs (Drive task submission + manifest assembly are cheap).
+**Cacheable:** no. Always runs (Drive task submission + manifest assembly are cheap; vector building is server-side and Drive-bound).
 
 **The manifest** captures:
 - `pipeline_version` (from `fmu.__version__`)
@@ -333,14 +342,29 @@ Packages the pipeline's final research-ready outputs. Two deliverables: a GeoTIF
 - `config_snapshot` (entire YAML serialized; guarantees we can reproduce later)
 - `asset_paths`; every cached GEE asset path for this config (probed dynamically)
 - `clustering`; preprocessing params (read from the cluster_labels asset property, ENG-022) + per-cluster pixel distribution
-- `drive_export`; Drive task ID, filename, folder, submission timestamp
-- `decisions_referenced`; hand-maintained list of DEC-* / ENG-* entries the pipeline implements
+- `drive_exports` (v1.1.0: dict, was singular `drive_export`); one entry per submitted Drive task. Keys: `raster_cluster_labels`, `vector_stands_snic_{fmt}`, `vector_stands_dissolved_{fmt}`. Each entry carries `folder`, `filename`, `format`, `task_id`, `submitted_at`, `task_submitted`.
+- `vector_layers`; per-layer metadata (description, n_features, geometry type, id renumbering scheme, SHP and GeoJSON attribute lists)
+- `decisions_source`; pointer to `phd-notebook/decisions.md` as the source of truth
 
 The manifest goes into the orchestrator's `manifest.json` automatically (via stage metadata). The inspect script additionally saves a standalone `export_manifest_{config}.json` file for convenience.
 
-**Drive export** uses `ee.batch.Export.image.toDrive`. Submit-and-forget; the task ID goes into the manifest; user monitors at the GEE Tasks page. Typical wait: 5-15 minutes for a single-band 10m × 13km² uint8 image.
+**Raster export** uses `ee.batch.Export.image.toDrive`. Submit-and-forget; the task ID goes into the manifest; user monitors at the GEE Tasks page. Typical wait: 5-15 minutes for a single-band 10m × 13km² uint8 image. cluster_labels is cast to uint8 (k ≤ 256, quarters file size).
 
-**Why uint8?** Cluster IDs are 0..k-1 ≤ 255 for any reasonable k. uint8 quarters the file size and most GIS tools handle it natively.
+**Vector exports** use `ee.batch.Export.table.toDrive`. The SNIC layer is built server-side via `reduceToVectors` on the snic_clusters image, then `reduceRegions(mean)` on the concatenated features_* stack, then `reduceRegions(mode)` for cluster_id, then geometry-derived attributes (area_ha, perim_m, n_pixels, centroid lat/lon), then renumbered 1..N by centroid (sorted lat desc / lon asc; deterministic). The dissolved layer is built via `reduceToVectors(eightConnected=true)` on cluster_labels, filtered by `vector_min_stand_pixels`, with `profile_<band>_p50` columns attached from cluster_profiles, then renumbered 1..M by the same centroid scheme.
+
+SHP outputs use the `selectors` argument to pick a minimal SHP-safe attribute subset (every name ≤10 chars). GeoJSON outputs pass no `selectors`, so they include all attached properties.
+
+**Manifest schema change (breaking, v1.0.0 → v1.1.0):** the previous singular `drive_export` field is gone; all Drive tasks are now keyed under `drive_exports`. Past on-disk manifests are unaffected (archival), but any downstream code that reads `manifest["drive_export"]["task_id"]` must migrate to `manifest["drive_exports"]["raster_cluster_labels"]["task_id"]`.
+
+**Config knobs** (in `configs/*.yaml` under `export:`):
+- `export_geotiff`; submit raster Drive task (default `true`)
+- `export_gee_asset`; reserved for future use
+- `analysis_scale_m`; pixel size in meters for exports (default 10)
+- `drive_folder`; folder under My Drive where all exports land (default `"fmu_exports"`)
+- `export_vector_snic`; emit the SNIC superpixel vector layer (default `true`)
+- `export_vector_dissolved`; emit the dissolved cluster vector layer (default `true`)
+- `vector_formats`; list of formats to export per vector layer (default `[shp, geojson]`; rejects duplicates and unknown formats)
+- `vector_min_stand_pixels`; minimum pixels for a dissolved stand to survive filtering (default 4; SNIC layer is unfiltered because SNIC enforces its own minimum via `segmentation.size`)
 
 ### 11. metrics - `src/fmu/stages/metrics.py`
 

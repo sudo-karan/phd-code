@@ -7,11 +7,14 @@ These tests verify:
   3. Both ROI source options behave correctly
   4. Date ranges are validated
   5. Defaults work when fields are omitted
+  6. v1.1.0 fields (masking toggles, time_reference, vector export knobs)
+     have the right defaults and validators
 """
 
 from __future__ import annotations
 
 import textwrap
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -21,6 +24,9 @@ from fmu.config import (
     Config,
     DateRange,
     DatesConfig,
+    ExportParams,
+    FeaturesOpticalParams,
+    MaskingParams,
     ROIConfig,
     load_config,
 )
@@ -181,3 +187,188 @@ def test_load_non_mapping_raises(tmp_path):
     bad.write_text("- just\n- a\n- list\n")
     with pytest.raises(ValueError, match="mapping"):
         load_config(bad)
+
+
+# ---------- v1.1.0: masking source toggles ----------
+
+
+def test_masking_toggles_default_to_true():
+    """Defaults must preserve pre-v1.1.0 behavior (both sources on)."""
+    mp = MaskingParams()
+    assert mp.use_viirs is True
+    assert mp.use_open_buildings is True
+
+
+def test_masking_toggles_accept_false():
+    mp = MaskingParams(use_viirs=False, use_open_buildings=False)
+    assert mp.use_viirs is False
+    assert mp.use_open_buildings is False
+
+
+def test_masking_toggles_individually_settable():
+    """The two sources are independent; either alone should be accepted."""
+    only_viirs = MaskingParams(use_viirs=True, use_open_buildings=False)
+    assert only_viirs.use_viirs is True and only_viirs.use_open_buildings is False
+    only_ob = MaskingParams(use_viirs=False, use_open_buildings=True)
+    assert only_ob.use_viirs is False and only_ob.use_open_buildings is True
+
+
+def test_baseline_masking_toggles_on():
+    """Both baseline and variant YAMLs rely on the True defaults."""
+    cfg = load_config(BASELINE_YAML)
+    assert cfg.masking.use_viirs is True
+    assert cfg.masking.use_open_buildings is True
+
+
+# ---------- v1.1.0: features_optical.time_reference ----------
+
+
+def test_time_reference_defaults_to_2017_01_01():
+    """Default anchor preserves cross-config phase comparability."""
+    fop = FeaturesOpticalParams()
+    assert fop.time_reference == date(2017, 1, 1)
+
+
+def test_time_reference_accepts_custom_date():
+    fop = FeaturesOpticalParams(time_reference=date(2020, 6, 15))
+    assert fop.time_reference == date(2020, 6, 15)
+
+
+def test_time_reference_parses_iso_string(tmp_path):
+    """YAML stores dates as 'YYYY-MM-DD' strings; pydantic should coerce."""
+    cfg_yaml = tmp_path / "with_anchor.yaml"
+    cfg_yaml.write_text(
+        textwrap.dedent("""\
+        name: anchor_test
+        roi:
+          name: t
+          roi_file: aois/t.geojson
+        dates:
+          phenology: {start: 2020-01-01, end: 2024-12-31}
+          radar:     {start: 2020-01-01, end: 2024-12-31}
+          optical_composite: {start: 2023-01-01, end: 2023-12-31}
+        features_optical:
+          index: ndvi
+          harmonic_mode: single
+          include_trend: true
+          time_reference: 2019-03-15
+        """)
+    )
+    cfg = load_config(cfg_yaml)
+    assert cfg.features_optical.time_reference == date(2019, 3, 15)
+
+
+def test_time_reference_rejects_non_date():
+    with pytest.raises(ValidationError):
+        FeaturesOpticalParams(time_reference="not-a-date")  # type: ignore[arg-type]
+
+
+# ---------- v1.1.0: export.drive_folder ----------
+
+
+def test_drive_folder_defaults_to_fmu_exports():
+    """Default preserves the pre-v1.1.0 ExportStage.DRIVE_FOLDER class constant."""
+    assert ExportParams().drive_folder == "fmu_exports"
+
+
+def test_drive_folder_accepts_custom():
+    ep = ExportParams(drive_folder="my_research_outputs")
+    assert ep.drive_folder == "my_research_outputs"
+
+
+# ---------- v1.1.0: vector export toggles ----------
+
+
+def test_vector_export_toggles_default_true():
+    ep = ExportParams()
+    assert ep.export_vector_snic is True
+    assert ep.export_vector_dissolved is True
+
+
+def test_vector_export_toggles_independent():
+    """All four combos of the two toggles should validate."""
+    for snic in (True, False):
+        for dissolved in (True, False):
+            ep = ExportParams(
+                export_vector_snic=snic, export_vector_dissolved=dissolved
+            )
+            assert ep.export_vector_snic is snic
+            assert ep.export_vector_dissolved is dissolved
+
+
+# ---------- v1.1.0: vector_formats ----------
+
+
+def test_vector_formats_default():
+    assert ExportParams().vector_formats == ["shp", "geojson"]
+
+
+def test_vector_formats_accepts_single():
+    ep = ExportParams(vector_formats=["geojson"])
+    assert ep.vector_formats == ["geojson"]
+
+
+def test_vector_formats_rejects_empty():
+    with pytest.raises(ValidationError):
+        ExportParams(vector_formats=[])
+
+
+def test_vector_formats_rejects_invalid_value():
+    with pytest.raises(ValidationError):
+        ExportParams(vector_formats=["kml"])  # type: ignore[list-item]
+    with pytest.raises(ValidationError):
+        ExportParams(vector_formats=["shp", "csv"])  # type: ignore[list-item]
+
+
+def test_vector_formats_rejects_duplicates():
+    """Duplicate formats would submit redundant Drive tasks; reject."""
+    with pytest.raises(ValidationError, match="duplicates"):
+        ExportParams(vector_formats=["shp", "shp"])
+    with pytest.raises(ValidationError, match="duplicates"):
+        ExportParams(vector_formats=["geojson", "geojson"])
+
+
+# ---------- v1.1.0: vector_min_stand_pixels ----------
+
+
+def test_vector_min_stand_pixels_default():
+    assert ExportParams().vector_min_stand_pixels == 4
+
+
+def test_vector_min_stand_pixels_accepts_in_range():
+    assert ExportParams(vector_min_stand_pixels=1).vector_min_stand_pixels == 1
+    assert ExportParams(vector_min_stand_pixels=1000).vector_min_stand_pixels == 1000
+
+
+def test_vector_min_stand_pixels_rejects_zero():
+    with pytest.raises(ValidationError):
+        ExportParams(vector_min_stand_pixels=0)
+
+
+def test_vector_min_stand_pixels_rejects_negative():
+    with pytest.raises(ValidationError):
+        ExportParams(vector_min_stand_pixels=-1)
+
+
+def test_vector_min_stand_pixels_rejects_over_max():
+    with pytest.raises(ValidationError):
+        ExportParams(vector_min_stand_pixels=1001)
+
+
+# ---------- v1.1.0: baseline YAML still validates ----------
+
+
+def test_baseline_yaml_has_v1_1_0_defaults():
+    """The shipped baseline relies on v1.1.0 fields defaulting correctly."""
+    cfg = load_config(BASELINE_YAML)
+    # masking
+    assert cfg.masking.use_viirs is True
+    assert cfg.masking.use_open_buildings is True
+    # features_optical
+    assert cfg.features_optical.time_reference == date(2017, 1, 1)
+    # export
+    assert cfg.export.drive_folder == "fmu_exports"
+    assert cfg.export.export_vector_snic is True
+    assert cfg.export.export_vector_dissolved is True
+    assert cfg.export.vector_formats == ["shp", "geojson"]
+    assert cfg.export.vector_min_stand_pixels == 4

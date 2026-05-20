@@ -61,6 +61,8 @@ masking:
   keep_worldcover_classes: [10, 20, 30]  # trees, shrubs, grass
   jrc_water_occurrence_threshold: 50.0  # >= this% of months observed = permanent water
   open_buildings_confidence: 0.7  # drop low-confidence building polygons
+  use_viirs: true            # include VIIRS in built mask; turn off where calibration is uncertain
+  use_open_buildings: true   # include Google Open Buildings in built mask
 
 # Phenology features from the S2 collection. The baseline mirrors the
 # locked notebook approach: NDVI + single annual harmonic. The variant
@@ -70,6 +72,11 @@ features_optical:
   index: ndvi
   harmonic_mode: single
   include_trend: true
+  # Reference epoch for the harmonic regression's time variable t. Shifts
+  # the numeric value of phase_annual by a constant; does NOT affect amplitude,
+  # trend, or any clustering outcome. Keep identical across configs that you
+  # want to compare phases between (the metrics stage relies on this).
+  time_reference: 2017-01-01
 
 # Radar features from the S1 collection. Statistical reducers over the
 # 5-year window (notebook approach; no harmonic). VV-VH dB difference
@@ -119,6 +126,14 @@ export:
   export_geotiff: true
   export_gee_asset: false
   analysis_scale_m: 10
+  drive_folder: fmu_exports        # all Drive exports land here
+  # Vector outputs (v1.1.0). One polygon-per-SNIC-superpixel layer (debugging /
+  # methodology) and one dissolved-cluster layer (forester-facing management
+  # units). Each layer exported in every listed format. See docs/outputs.md.
+  export_vector_snic: true
+  export_vector_dissolved: true
+  vector_formats: [shp, geojson]    # SHP gets minimal schema, GeoJSON gets full
+  vector_min_stand_pixels: 4        # drop dissolved stands smaller than this
 
 metrics:
   reference_config_name: null  # baseline has no reference; intrinsic silhouette only

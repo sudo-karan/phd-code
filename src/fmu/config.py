@@ -101,6 +101,20 @@ class FeaturesOpticalParams(BaseModel):
     # Whether to include a linear-trend term in the regression. Captures
     # multi-year greening or browning beyond seasonality.
     include_trend: bool = True
+    # Reference date for the harmonic regression's time variable t.
+    # t = years since `time_reference`. Affects the numerical value of
+    # `phase_annual` (which is measured relative to this epoch) but NOT
+    # amplitude, trend, or clustering outcomes. Default 2017-01-01
+    # matches Sentinel-2's S2A+S2B full-constellation start, so cross-
+    # config phase values are comparable by default.
+    #
+    # Important: do NOT auto-derive this from `dates.phenology.start`.
+    # If two configs have different phenology windows, keeping a shared
+    # anchor preserves cross-config phase comparability (which the
+    # metrics stage relies on). Override only when you have a specific
+    # reason and accept that phase values become non-comparable to
+    # configs using the default anchor.
+    time_reference: date = Field(default_factory=lambda: date(2017, 1, 1))
 
 
 class FeaturesRadarParams(BaseModel):
@@ -167,6 +181,16 @@ class MaskingParams(BaseModel):
     # Open Buildings polygons have a per-feature confidence in [0,1].
     # Drop polygons below this threshold to avoid noisy / low-confidence buildings.
     open_buildings_confidence: float = Field(default=0.7, ge=0.0, le=1.0)
+    # Whether to include VIIRS nightlights in the built-up mask. VIIRS catches
+    # bright settlements that Open Buildings misses, but the radiance threshold
+    # is region-specific (the default is Delhi-calibrated). Turn off when
+    # running on AOIs where VIIRS calibration is uncertain or where Open
+    # Buildings alone is sufficient.
+    use_viirs: bool = True
+    # Whether to include Google Open Buildings in the built-up mask. Symmetric
+    # with use_viirs. Turning both off leaves built_mask empty (habitat_mask
+    # becomes "veg AND NOT water"); the stage logs a warning in that case.
+    use_open_buildings: bool = True
 
 
 class SegmentationParams(BaseModel):
@@ -218,9 +242,42 @@ class FeatureToggles(BaseModel):
 class ExportParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    # ----- Raster (existing) -----
     export_geotiff: bool = True
     export_gee_asset: bool = False
     analysis_scale_m: int = Field(default=10, ge=1)
+
+    # ----- Drive folder (new) -----
+    # Folder under My Drive where all exports land. Was previously hardcoded
+    # to "fmu_exports" in ExportStage.DRIVE_FOLDER.
+    drive_folder: str = "fmu_exports"
+
+    # ----- Vector outputs (new) -----
+    # Two vector layers, each with rich attributes (see docs/outputs.md):
+    #   stands_snic     - one polygon per SNIC superpixel (debugging /
+    #                     methodology layer). ~1,529 features for Sanjay Van.
+    #   stands_dissolved - one polygon per connected same-cluster region
+    #                     (forester-facing management units).
+    export_vector_snic: bool = True
+    export_vector_dissolved: bool = True
+    # Output formats per vector layer. Each format gets its own Drive task.
+    # SHP has a 10-char field-name limit so it carries only the minimal
+    # attribute set; GeoJSON gets the full attribute schema.
+    vector_formats: list[Literal["shp", "geojson"]] = Field(
+        default=["shp", "geojson"], min_length=1
+    )
+    # Minimum pixel count for a dissolved stand to survive filtering.
+    # Speckle (1-3 px misclassifications) gets dropped. Applies to the
+    # dissolved layer ONLY; SNIC superpixels are unfiltered because SNIC
+    # already enforces its own minimum-size via the `size` parameter.
+    vector_min_stand_pixels: int = Field(default=4, ge=1, le=1000)
+
+    @field_validator("vector_formats")
+    @classmethod
+    def _formats_unique(cls, v: list[str]) -> list[str]:
+        if len(set(v)) != len(v):
+            raise ValueError(f"vector_formats must not contain duplicates: {v}")
+        return v
 
 
 class MetricsParams(BaseModel):

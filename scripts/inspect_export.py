@@ -98,18 +98,50 @@ def main() -> None:
         print(f"  {key:25s} {path}")
     print()
 
-    drive = export_manifest["drive_export"]
-    if drive.get("task_submitted"):
-        print("Drive export submitted:")
-        print(f"  task_id:  {drive['task_id']}")
-        print(f"  folder:   '{drive['folder']}' in your Google Drive")
-        print(f"  filename: {drive['filename']}")
+    # v1.1.0: vector_layers section. Per-layer metadata (n_features,
+    # id field, geometry type, schema). Empty dict if both vector
+    # toggles are off.
+    vector_layers = export_manifest.get("vector_layers", {})
+    if vector_layers:
+        print(f"Vector layers ({len(vector_layers)}):")
+        for layer_name, layer in vector_layers.items():
+            n_features = layer.get("n_features", "?")
+            id_field = layer.get("id_field", "?")
+            print(
+                f"  {layer_name:20s} {n_features!s:>5} features  "
+                f"id={id_field}"
+            )
+        print()
+
+    # v1.1.0: drive_exports dict (replaces singular drive_export field).
+    # One entry per submitted Drive task. Submitted flag may be False
+    # if a test subclass intercepted submission.
+    drive_exports = export_manifest.get("drive_exports", {})
+    submitted = {k: e for k, e in drive_exports.items() if e.get("task_submitted")}
+    not_submitted = {k: e for k, e in drive_exports.items() if not e.get("task_submitted")}
+
+    if submitted:
+        print(f"Drive exports submitted ({len(submitted)} tasks):")
+        for key, entry in submitted.items():
+            print(
+                f"  {key:35s} [{entry['format']:>7}]  "
+                f"task_id={entry['task_id']}  file={entry['filename']}"
+            )
+        # All tasks share the same drive folder per stage logic.
+        folder = next(iter(submitted.values()))["folder"]
+        print(f"  All files land in Drive folder: '{folder}'")
         print(
             "  Monitor at https://code.earthengine.google.com/tasks "
             "(5-15 min typically)."
         )
     else:
-        print("Drive export was not submitted (live test mode?).")
+        print("No Drive exports submitted (live test mode?).")
+
+    if not_submitted:
+        print()
+        print(f"Drive exports declared but not submitted ({len(not_submitted)}):")
+        for key in not_submitted:
+            print(f"  {key}")
     print()
 
     print(f"Decisions source: {export_manifest['decisions_source']}")

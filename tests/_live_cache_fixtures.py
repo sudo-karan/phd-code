@@ -20,6 +20,12 @@ from cache.
 
 If the cache isn't populated (user hasn't run inspect_clustering.py yet),
 tests skip with a clear message rather than re-deriving the heavy compute.
+
+Profiling note (v1.1.0). Profiling produces `cluster_profiles` — a Python
+list of dicts, not a cacheable image asset. So `include_profiling=True`
+runs the profiling stage live rather than loading from cache. Profiling
+is fast (k small reduceRegion calls, ~30s), so this is an acceptable cost
+for downstream tests (export, metrics) that consume cluster_profiles.
 """
 
 from __future__ import annotations
@@ -128,7 +134,9 @@ def context_with_upstream_from_cache(
     telling the user how to populate the cache.
 
     The caller is responsible for setting `roi` separately (it's not a
-    cached asset).
+    cached asset). Non-cacheable outputs (e.g., `cluster_profiles`) must
+    be added by the caller too; see `ctx_ready_for_downstream` for the
+    profiling path.
     """
     ctx = PipelineContext()
     missing: list[str] = []
@@ -156,6 +164,7 @@ def ctx_ready_for_downstream(
     config_filename: str,
     *,
     include_clustering: bool = False,
+    include_profiling: bool = False,
 ) -> tuple[PipelineContext, Config]:
     """One-stop helper: GEE init, config load, ROI load, context-from-cache.
 
@@ -167,9 +176,33 @@ def ctx_ready_for_downstream(
         include_clustering: True for stages downstream of clustering
             (profiling, export, metrics). False (default) for clustering
             itself.
+        include_profiling: True for stages downstream of profiling
+            (currently: export, when its dissolved-vector layer attaches
+            cluster_profiles). Implies include_clustering=True. Runs the
+            profiling stage live (~30s, k small reduceRegion calls) and
+            populates `cluster_profiles` on the context. Profiling output
+            is not a cacheable image asset, hence no cache-load path.
     """
+    # Profiling consumes cluster_labels, so requesting profiling without
+    # clustering would skip on a missing-asset error. Auto-enable to make
+    # the fixture harder to misuse.
+    if include_profiling and not include_clustering:
+        include_clustering = True
+
     init_real_gee_or_skip()
     config, roi = load_config_and_roi(config_filename)
-    ctx = context_with_upstream_from_cache(config.name, include_clustering=include_clustering)
+    ctx = context_with_upstream_from_cache(
+        config.name, include_clustering=include_clustering
+    )
     ctx.set("roi", roi)
+
+    if include_profiling:
+        # Run profiling live; its output is a Python list of dicts, not a
+        # cacheable image. Stage runs in ~30s for typical k.
+        from fmu.stages.profiling import ProfilingStage
+
+        result = ProfilingStage().run(ctx, config)
+        for output_key, output_value in result.outputs.items():
+            ctx.set(output_key, output_value)
+
     return ctx, config

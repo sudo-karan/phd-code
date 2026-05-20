@@ -54,12 +54,16 @@ masking:
   keep_worldcover_classes: [10, 20, 30]
   jrc_water_occurrence_threshold: 50.0
   open_buildings_confidence: 0.7
+  use_viirs: true            # match baseline; keep mask identical across configs
+  use_open_buildings: true   # match baseline
 
-# Variant phenology features: NIRv + dual harmonic.
+# Variant phenology features: NIRv + dual harmonic. time_reference matches
+# baseline so phase_annual values stay directly comparable.
 features_optical:
   index: nirv
   harmonic_mode: dual
   include_trend: true
+  time_reference: 2017-01-01
 
 # Radar features identical to baseline; only the optical variant differs.
 features_radar:
@@ -100,10 +104,16 @@ features:
   canopy_height: true
   terrain: true
 
+# Export identical to baseline so vector outputs are comparable.
 export:
   export_geotiff: true
   export_gee_asset: false
   analysis_scale_m: 10
+  drive_folder: fmu_exports
+  export_vector_snic: true
+  export_vector_dissolved: true
+  vector_formats: [shp, geojson]
+  vector_min_stand_pixels: 4
 
 metrics:
   reference_config_name: sanjay_van_baseline  # variant compares against baseline

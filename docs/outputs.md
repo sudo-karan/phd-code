@@ -132,7 +132,7 @@ Structure:
 ```json
 {
   "config_name": "sanjay_van_baseline",
-  "pipeline_version": "0.18.0",
+  "pipeline_version": "1.1.0",
   "run_timestamp": "2026-05-20T01:35:22+00:00",
   "roi": {
     "name": "sanjay_van",
@@ -175,16 +175,64 @@ Structure:
       { "cluster_id": 1, "pixel_count": 9882,  "area_ha":  9.88, "percent_of_habitat": 14.5 }
     ]
   },
-  "drive_export": {
-    "folder": "fmu_exports",
-    "filename": "sanjay_van_baseline_cluster_labels.tif",
-    "task_id": "ABCDEF123456",
-    "submitted_at": "2026-05-20T01:35:22+00:00",
-    "task_submitted": true
+  "drive_exports": {
+    "raster_cluster_labels": {
+      "folder": "fmu_exports",
+      "filename": "sanjay_van_baseline_cluster_labels.tif",
+      "format": "GeoTIFF",
+      "task_id": "ABCDEF123456",
+      "submitted_at": "2026-05-20T01:35:22+00:00",
+      "task_submitted": true
+    },
+    "vector_stands_snic_shp": {
+      "folder": "fmu_exports",
+      "filename": "sanjay_van_baseline_stands_snic.zip",
+      "format": "SHP",
+      "task_id": "GHIJKL234567",
+      "submitted_at": "2026-05-20T01:35:22+00:00",
+      "task_submitted": true
+    },
+    "vector_stands_snic_geojson": {
+      "folder": "fmu_exports",
+      "filename": "sanjay_van_baseline_stands_snic.geojson",
+      "format": "GEOJSON",
+      "task_id": "MNOPQR345678",
+      "submitted_at": "2026-05-20T01:35:22+00:00",
+      "task_submitted": true
+    },
+    "vector_stands_dissolved_shp":    { "...": "..." },
+    "vector_stands_dissolved_geojson":{ "...": "..." }
+  },
+  "vector_layers": {
+    "stands_snic": {
+      "description": "One polygon per SNIC superpixel ...",
+      "n_features": 1529,
+      "geometry_type": "Polygon",
+      "id_field": "stand_id",
+      "id_renumbering": "1..N, sorted by centroid lat desc then lon asc.",
+      "shp_attributes": ["stand_id", "snic_label", "cluster_id", "area_ha", "perim_m", "n_pixels"],
+      "geojson_attributes": "all SHP attributes plus per-superpixel means of every features_* band"
+    },
+    "stands_dissolved": {
+      "description": "One polygon per connected same-cluster region ...",
+      "n_features": 47,
+      "geometry_type": "Polygon",
+      "id_field": "unit_id",
+      "id_renumbering": "1..M, sorted by centroid lat desc then lon asc, after min-pixel filtering.",
+      "min_stand_pixels": 4,
+      "shp_attributes": ["unit_id", "cluster_id", "area_ha", "perim_m", "n_pixels"],
+      "geojson_attributes": "all SHP attributes plus profile_<band>_p50 columns from cluster_profiles.csv"
+    }
   },
   "decisions_source": "phd-notebook/decisions.md"
 }
 ```
+
+> **v1.1.0 schema change:** the previous singular `drive_export` field has
+> been removed; all Drive tasks are now keyed under `drive_exports` (dict).
+> Past on-disk manifests are unaffected (archival), but any code reading
+> `manifest["drive_export"]["task_id"]` must migrate to
+> `manifest["drive_exports"]["raster_cluster_labels"]["task_id"]`.
 
 ### How to use this
 
@@ -316,6 +364,99 @@ Drag-drop the `.tif`. Right-click, Properties, Symbology, Singleband
 pseudocolor, discrete. Build a color ramp with k stops. Use
 `cluster_profiles.csv` to label each cluster by its dominant feature
 (e.g., "dense canopy", "edge", "open vegetation").
+
+## Vector outputs (in Google Drive)
+
+As of v1.1.0 the export stage emits two vector layers, each in every
+format listed in `export.vector_formats` (default both SHP and GeoJSON).
+SHP files arrive zipped (GEE bundles the .shp/.shx/.dbf/.prj). GeoJSON
+files are single text files.
+
+| Layer | Filename pattern | What it is |
+|---|---|---|
+| **stands_snic** | `<config>_stands_snic.{zip,geojson}` | One polygon per SNIC superpixel. Debugging / methodology layer. |
+| **stands_dissolved** | `<config>_stands_dissolved.{zip,geojson}` | One polygon per connected same-cluster region. Forester-facing management units. |
+
+For a typical Sanjay Van run: ~1,500 SNIC polygons, ~10-100 dissolved
+polygons depending on cluster fragmentation. Both layers in EPSG:4326.
+
+### Attribute schemas
+
+#### `stands_snic`
+
+SHP attributes (capped at 10-char field-name limit):
+
+| Field | Type | Meaning |
+|---|---|---|
+| `stand_id` | int | Sequential 1..N. Sorted by centroid lat desc / lon asc. **Deterministic** — same SNIC geometry always produces the same numbering. Use as a stable ID across runs of the same config. |
+| `snic_label` | int | Raw SNIC superpixel hash. Use to cross-reference with the `snic_clusters` raster asset. |
+| `cluster_id` | int | The k-means cluster (0 to k-1) that this superpixel was assigned to. |
+| `area_ha` | float | Polygon area in hectares. |
+| `perim_m` | float | Polygon perimeter in metres. |
+| `n_pixels` | int | `area_m² / (analysis_scale_m)²`. Derived from area, consistent with `area_ha`. |
+
+GeoJSON attributes: every SHP attribute, **plus** per-superpixel means
+of every features_* band (ndvi_mean, ndvi_amplitude_annual, vv_p50,
+canopy_height, elevation, etc.) — typically 25-30 additional columns.
+Centroid lat/lon are also included for convenience.
+
+#### `stands_dissolved`
+
+SHP attributes:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `unit_id` | int | Sequential 1..M, after `vector_min_stand_pixels` filtering. Same lat-desc/lon-asc renumbering as stand_id; deterministic. |
+| `cluster_id` | int | The k-means cluster ID this unit corresponds to. |
+| `area_ha` | float | Polygon area in hectares. |
+| `perim_m` | float | Polygon perimeter in metres. |
+| `n_pixels` | int | Used by the min-pixel filter. |
+
+GeoJSON attributes: every SHP attribute, **plus** `profile_<band>_p50`
+columns for every feature band, looked up from `cluster_profiles.csv`
+by `cluster_id`. These are the per-cluster medians in original units,
+so e.g. `profile_canopy_height_p50` = median canopy height (in metres)
+of pixels in this unit's cluster.
+
+### Why both layers
+
+The two layers serve different audiences. `stands_snic` is for the
+researcher: every polygon traces back to a SNIC label and carries the
+exact feature vector that fed clustering. `stands_dissolved` is for the
+end user (forester, manager): one polygon per real-world management
+unit, with cluster-level summary statistics attached for symbology.
+
+### Renumbering caveat
+
+Both layers carry a sequential id (`stand_id`, `unit_id`) that is
+**deterministic but not stable across config changes**. If you change
+SNIC parameters, the superpixel boundaries shift, centroids shift, and
+the numbering changes. Use `snic_label` (raw SNIC hash) for stable
+cross-run reference within the same SNIC configuration, and the
+sequential IDs for display / printable maps where 1..N is more
+readable than the raw hash.
+
+### Loading in Python
+
+```python
+import geopandas as gpd
+gdf = gpd.read_file("sanjay_van_baseline_stands_dissolved.geojson")
+gdf.plot(column="cluster_id", categorical=True, legend=True)
+```
+
+### Loading in QGIS
+
+For SHP: unzip first, then drag the `.shp` in. For GeoJSON: drag in
+directly. Symbolize by `cluster_id` (categorical). For the dissolved
+layer, use `profile_<band>_p50` columns to construct labels like "high
+canopy / low elevation" per cluster.
+
+### SHP attribute caveat
+
+SHP's 10-char field-name limit means **only the SHP-safe subset** above
+is in the .dbf. GEE would otherwise truncate longer names and risk
+collisions. If you need the full attribute schema, use the GeoJSON
+output instead.
 
 ## Cached GEE assets
 

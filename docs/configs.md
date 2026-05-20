@@ -33,8 +33,8 @@ dates: { phenology, radar, optical_composite, climate }
 datasets: { phenology_collection, radar_collection, ... }
 cloud_mask: { max_cloud_pct, drop_scl_classes }
 data_load: { s1_orbit, s1_polarizations, s1_instrument_mode, s2_composite_reducer }
-masking: { ndvi_min, nightlights_threshold, keep_worldcover_classes, ... }
-features_optical: { index, harmonic_mode, include_trend }
+masking: { ndvi_min, nightlights_threshold, keep_worldcover_classes, jrc_water_occurrence_threshold, open_buildings_confidence, use_viirs, use_open_buildings }
+features_optical: { index, harmonic_mode, include_trend, time_reference }
 features_radar: { percentiles, include_iqr, include_cross_pol_contrast }
 features_structure: { include_neighborhood_stats, neighborhood_kernel_size }
 features_static: { include_climate, max_water_distance_pixels }
@@ -42,7 +42,7 @@ segmentation: { size, compactness, connectivity, neighborhood_size, normalize_in
 clustering: { k, n_training_samples, seed, skewness_threshold, superpixel_max_size }
 normalization: { method }
 features: { optical_harmonic, radar, canopy_height, terrain }
-export: { export_geotiff, export_gee_asset, analysis_scale_m }
+export: { export_geotiff, export_gee_asset, analysis_scale_m, drive_folder, export_vector_snic, export_vector_dissolved, vector_formats, vector_min_stand_pixels }
 metrics: { reference_config_name, n_comparison_samples, n_silhouette_samples_per_cluster }
 ```
 
@@ -215,6 +215,16 @@ for the full inventory.
 - `nightlights_threshold`: VIIRS radiance above this counts as
   built-up. **Region-specific calibration needed.** Default 30.0 is
   Delhi-calibrated.
+- `use_viirs`: bool (default `true`). Include VIIRS nightlights in the
+  built mask. Turn off for AOIs where the radiance calibration doesn't
+  transfer (e.g., rural areas with low light pollution but real
+  settlement, or other countries where 30 nW/cm²/sr means something
+  different).
+- `use_open_buildings`: bool (default `true`). Include Google Open
+  Buildings polygons in the built mask. Symmetric to `use_viirs`.
+  Turning both off leaves the built mask empty; the masking stage logs
+  a warning because this breaks the design's circularity protection
+  between mask and S2-derived features.
 - `ndvi_min`: reserved for future use; not applied yet.
 
 ### `features_optical`
@@ -222,6 +232,12 @@ for the full inventory.
 - `index`: `ndvi` or `nirv`.
 - `harmonic_mode`: `single` or `dual` (annual only, or annual + semi-annual).
 - `include_trend`: add a linear-in-time term to the regression.
+- `time_reference`: date (default `2017-01-01`). Reference epoch for the
+  time variable `t` in the harmonic regression (`t` = years since this
+  date). Shifts the numeric value of `phase_*` features by a constant
+  but does **not** affect amplitudes, the trend coefficient, or any
+  clustering outcome. Keep identical across configs you intend to
+  compare phases between — the metrics stage relies on this.
 
 ### `features_radar`
 
@@ -277,11 +293,29 @@ by the stage code but with `true` defaults rarely changed:
 
 ### `export`
 
-- `export_geotiff`: submit Drive GeoTIFF task (default `true`).
+- `export_geotiff`: submit raster Drive task for cluster_labels (default
+  `true`).
 - `export_gee_asset`: reserved for future use; cache layer already
   exports to GEE assets.
 - `analysis_scale_m`: pixel size in meters for the GeoTIFF export
   (default 10).
+- `drive_folder`: folder under My Drive where all Drive exports land
+  (default `"fmu_exports"`). Was a hardcoded class constant on
+  ExportStage pre-v1.1.0.
+- `export_vector_snic`: bool (default `true`). Emit the `stands_snic`
+  vector layer (one polygon per SNIC superpixel).
+- `export_vector_dissolved`: bool (default `true`). Emit the
+  `stands_dissolved` vector layer (one polygon per connected
+  same-cluster region, the forester-facing layer).
+- `vector_formats`: list of formats to export each vector layer in
+  (default `["shp", "geojson"]`; allowed values: `shp`, `geojson`;
+  rejects duplicates and unknown values). One Drive task per layer per
+  format, so the default settings can submit up to 5 Drive tasks total
+  (1 raster + 2 layers × 2 formats).
+- `vector_min_stand_pixels`: int 1-1000 (default 4). Minimum pixel
+  count for a `stands_dissolved` polygon to survive filtering. SNIC
+  layer is unfiltered because SNIC enforces its own minimum via
+  `segmentation.size`.
 
 ### `metrics`
 
