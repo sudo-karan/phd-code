@@ -182,9 +182,14 @@ class MetricsStage(Stage):
         else:
             log.info("  baseline mode — no reference config; intrinsic metrics only")
 
-        outputs: dict[str, Any] = {"comparison_metrics": metrics}
-        if agreement_map is not None:
-            outputs["agreement_map"] = agreement_map
+        # Output contract: `produces` always lists both keys, so we always
+        # write both. In baseline mode `agreement_map` is None (the reference
+        # asset doesn't exist to compare against). Downstream consumers
+        # (currently just the inspect script) must handle the None case.
+        outputs: dict[str, Any] = {
+            "comparison_metrics": metrics,
+            "agreement_map": agreement_map,
+        }
 
         return StageResult(
             outputs=outputs,

@@ -156,3 +156,103 @@ def test_agreement_map_is_image(ctx_ready_for_metrics):
     result = MetricsStage().run(ctx, config)
     agreement = result.outputs["agreement_map"]
     assert isinstance(agreement, ee.Image)
+
+
+# ---------------------------------------------------------------------
+# Baseline-mode tests: metrics.reference_config_name is null. The stage
+# should compute intrinsic silhouette only and leave agreement_map as None.
+# Importantly we ALSO exercise the orchestrator (not bare .run()) since
+# the orchestrator's output-validation step is what catches contract
+# violations.
+# ---------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def ctx_ready_for_baseline_metrics(real_gee):
+    """Same as ctx_ready_for_metrics but uses the baseline config (no reference)."""
+    repo_root = Path(__file__).parent.parent
+    config = load_config(repo_root / "configs" / "sanjay_van_baseline.yaml")
+    roi = load_roi_geometry(repo_root / "aois" / "sanjay_van.geojson")
+    ctx = PipelineContext()
+    ctx.set("roi", roi)
+
+    stages = [
+        MaskingStage(),
+        DataLoadStage(),
+        FeaturesOpticalStage(),
+        FeaturesRadarStage(),
+        FeaturesStructureStage(),
+        FeaturesStaticStage(),
+        SegmentationStage(),
+        ClusteringStage(),
+    ]
+    for stage in stages:
+        result = stage.run(ctx, config)
+        for key, value in result.outputs.items():
+            if not ctx.has(key):
+                ctx.set(key, value)
+    return ctx, config
+
+
+def test_baseline_mode_only_returns_intrinsic_metrics(ctx_ready_for_baseline_metrics):
+    """In baseline mode (no reference_config_name), comparison metrics are absent
+    but the silhouette is still computed."""
+    ctx, config = ctx_ready_for_baseline_metrics
+    # Sanity check the fixture
+    assert config.metrics.reference_config_name is None
+
+    result = MetricsStage().run(ctx, config)
+    metrics = result.outputs["comparison_metrics"]
+
+    # Intrinsic metric must be present
+    assert "silhouette_current" in metrics
+
+    # Comparison metrics must NOT be present (no reference to compare against)
+    for key in ("ari", "nmi", "agreement_rate", "correspondence", "confusion_matrix"):
+        assert key not in metrics, (
+            f"baseline mode unexpectedly produced {key!r}; "
+            "should only run when reference_config_name is set"
+        )
+
+
+def test_baseline_mode_still_produces_both_declared_outputs(ctx_ready_for_baseline_metrics):
+    """The stage's `produces` declaration is invariant; baseline mode must
+    still write both keys to outputs (with agreement_map = None).
+
+    This is the regression test for the bug found 2026-05-19: the stage
+    used to conditionally add agreement_map only in comparison mode,
+    which the orchestrator rejects with `output mismatch` error.
+    """
+    ctx, config = ctx_ready_for_baseline_metrics
+    result = MetricsStage().run(ctx, config)
+    assert set(result.outputs.keys()) == {"comparison_metrics", "agreement_map"}
+    assert result.outputs["agreement_map"] is None
+
+
+def test_baseline_mode_passes_orchestrator_validation(ctx_ready_for_baseline_metrics):
+    """The orchestrator's strict produced_keys==produces check must accept
+    baseline-mode metrics output.
+
+    Why this matters: the bare `MetricsStage().run(ctx, config)` calls in
+    other tests bypass the orchestrator. This test routes through Pipeline,
+    which means the framework's contract enforcement is exercised end-to-end.
+    """
+    import tempfile
+
+    from fmu.pipeline import Pipeline
+
+    ctx, config = ctx_ready_for_baseline_metrics
+    with tempfile.TemporaryDirectory() as tmp:
+        run_dir = Path(tmp)
+        # use_cache=False so this is a pure framework-level test, not a
+        # cache test — and so we don't pollute the user's GEE asset space.
+        pipeline = Pipeline(stage_names=["metrics"], use_cache=False)
+        result = pipeline.run(config=config, run_dir=run_dir, initial_context=ctx)
+
+    # If the orchestrator hadn't accepted the output, .run() would have
+    # raised a ValueError before getting here.
+    assert any(s.name == "metrics" for s in result.stages)
+    assert result.context.has("comparison_metrics")
+    assert result.context.has("agreement_map")
+    # agreement_map should be None in baseline mode
+    assert result.context.get("agreement_map") is None
