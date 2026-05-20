@@ -104,11 +104,11 @@ def test_pixel_counts_sum_to_habitat(ctx_ready_for_profiling):
     result = ProfilingStage().run(ctx, config)
     profiles = result.outputs["cluster_profiles"]
     total = sum(p["pixel_count"] for p in profiles)
-    # Sanjay Van ~13 km² → ~130k pixels at 10m. Habitat masking removes water
+    # Sanjay Van ~13 km² to ~130k pixels at 10m. Habitat masking removes water
     # and built-up; expect 40-80% habitat. Habitat pixels at superpixel
     # resolution should be in the tens of thousands.
-    assert total > 5000, f"only {total} pixels total — habitat mask too aggressive?"
-    assert total < 150000, f"{total} pixels — exceeds ROI pixel count?"
+    assert total > 5000, f"only {total} pixels total; habitat mask too aggressive?"
+    assert total < 150000, f"{total} pixels; exceeds ROI pixel count?"
 
 
 def test_area_ha_matches_count(ctx_ready_for_profiling):

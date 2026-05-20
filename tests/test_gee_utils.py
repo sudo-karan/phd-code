@@ -167,7 +167,7 @@ def test_safe_call_decorator_adds_context_to_gee_errors():
 
 
 def test_safe_call_decorator_passes_through_non_gee_errors():
-    """A regular ValueError should NOT be wrapped — only ee.EEException."""
+    """A regular ValueError should NOT be wrapped; only ee.EEException."""
     from fmu.utils.gee import safe_call
 
     @safe_call("doing the thing")

@@ -96,7 +96,7 @@ def main() -> None:
         print(f"var clusters = ee.Image('{clusters_path}');")
         print(f"var means = ee.Image('{means_path}');")
         print()
-        # Random-color visualization of cluster IDs — each superpixel gets a unique hue.
+        # Random-color visualization of cluster IDs; each superpixel gets a unique hue.
         print("// Random-color visualization (each cluster gets a different hue)")
         print(
             "Map.addLayer(clusters.randomVisualizer(), {}, 'Superpixels (random colors)', true);"
@@ -110,14 +110,14 @@ def main() -> None:
             "Map.addLayer(boundaries.updateMask(boundaries), "
             "{palette: ['000000']}, 'Boundaries', false);"
         )
-        # The per-cluster means — useful for sanity-checking that superpixels are sensible
-        print("// Per-cluster mean — canopy height (shows structural superpixel coherence)")
+        # The per-cluster means; useful for sanity-checking that superpixels are sensible
+        print("// Per-cluster mean; canopy height (shows structural superpixel coherence)")
         print(
             "Map.addLayer(means.select('canopy_height'), "
             "{min: 0, max: 25, palette: ['8B4513','D2B48C','9ACD32','228B22','006400']}, "
             "'Per-superpixel canopy_height', false);"
         )
-        print("// Per-cluster mean — NIRv")
+        print("// Per-cluster mean; NIRv")
         print(
             "Map.addLayer(means.select('composite_nirv'), "
             "{min: 0, max: 0.5, palette: ['8B4513','EDC9AF','F0E68C','9ACD32','228B22']}, "
@@ -135,7 +135,7 @@ def main() -> None:
             "https://code.earthengine.google.com/tasks)."
         )
         print(
-            "Re-run this script after exports complete (~10-30 min — "
+            "Re-run this script after exports complete (~10-30 min; "
             "SNIC is a heavy operation on a 5-band 10m-resolution ROI)."
         )
 

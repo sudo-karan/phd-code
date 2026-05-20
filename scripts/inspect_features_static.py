@@ -87,7 +87,7 @@ def main() -> None:
         print()
         print(f"var feats = ee.Image('{features_path}');")
         print()
-        # Elevation — terrain palette
+        # Elevation; terrain palette
         print(
             "Map.addLayer(feats.select('elevation'), "
             "{min: 180, max: 280, palette: ['006400','9ACD32','FFFF99','D2B48C','8B4513']}, "
@@ -98,7 +98,7 @@ def main() -> None:
             "{min: 0, max: 15, palette: ['FFFFFF','F0E68C','FFA500','8B0000']}, "
             "'Slope (deg)', false);"
         )
-        # Aspect — cyclic palette (matches phase_annual)
+        # Aspect; cyclic palette (matches phase_annual)
         print(
             "Map.addLayer(feats.select('aspect'), "
             "{min: 0, max: 360, palette: "
@@ -128,7 +128,7 @@ def main() -> None:
             "https://code.earthengine.google.com/tasks)."
         )
         print(
-            "Re-run this script after the export completes (~5-15 min — "
+            "Re-run this script after the export completes (~5-15 min; "
             "distance transform is the slowest part)."
         )
 

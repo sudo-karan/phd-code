@@ -1,7 +1,7 @@
 """Run the pipeline through clustering and emit info / JS to view the
 k-means cluster labels in the GEE Code Editor.
 
-This is the longest pipeline run yet — all 8 stages upstream of (and
+This is the longest pipeline run yet; all 8 stages upstream of (and
 including) clustering, with caching. First run will trigger exports for
 any stage that hasn't been cached yet.
 """
@@ -65,7 +65,7 @@ def main() -> None:
 
     print()
     print("=" * 70)
-    print(f"Clustering summary — k={config.clustering.k}")
+    print(f"Clustering summary; k={config.clustering.k}")
     print("=" * 70)
 
     if labels_cached:
@@ -131,7 +131,7 @@ def main() -> None:
         if stack_cached:
             print(f"var featStack = ee.Image('{stack_path}');")
             print()
-        # Discrete palette — one color per cluster (works for k up to ~12).
+        # Discrete palette; one color per cluster (works for k up to ~12).
         # Colors chosen to be ecologically suggestive but distinct.
         palette = [
             "1f78b4",  # 0: dark blue

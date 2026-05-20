@@ -1,4 +1,4 @@
-"""Mocked tests for caching utility — path construction and signatures.
+"""Mocked tests for caching utility; path construction and signatures.
 
 The actual asset existence check and export submission are GEE-only and
 tested live in test_caching_live.py.

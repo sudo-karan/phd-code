@@ -245,7 +245,7 @@ def test_baseline_mode_passes_orchestrator_validation(ctx_ready_for_baseline_met
     with tempfile.TemporaryDirectory() as tmp:
         run_dir = Path(tmp)
         # use_cache=False so this is a pure framework-level test, not a
-        # cache test — and so we don't pollute the user's GEE asset space.
+        # cache test; and so we don't pollute the user's GEE asset space.
         pipeline = Pipeline(stage_names=["metrics"], use_cache=False)
         result = pipeline.run(config=config, run_dir=run_dir, initial_context=ctx)
 

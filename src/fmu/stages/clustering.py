@@ -1,5 +1,5 @@
-"""Clustering stage. Per-superpixel feature stack → preprocessing →
-k-means → per-pixel cluster labels.
+"""Clustering stage. Per-superpixel feature stack, preprocessing,
+k-means, then per-pixel cluster labels.
 
 Implements DEC-001 (clustering operates on SNIC superpixel means, not
 pixels), DEC-003 (median/IQR robust scaling), DEC-004 (log-transform
@@ -14,7 +14,7 @@ Pipeline (server-side throughout):
        - Auto-detect optical band names (works for both ndvi_* and nirv_*).
 
   2. Cyclic decomposition
-       - Each *_phase_* and aspect band → sin/cos pair. Original dropped.
+       - Each *_phase_* and aspect band becomes a sin/cos pair. Original dropped.
 
   3. Per-superpixel means
        - reduceConnectedComponents with the SNIC clusters image as labels.
@@ -31,15 +31,15 @@ Pipeline (server-side throughout):
   6. Log-transform marked bands
        - log(x - min + 1e-3) so x can include zero/negative values safely.
 
-  7. Robust scaling (DEC-003 — method=robust in config)
-       - Per band: (x - median) / IQR. Drop bands with IQR ≈ 0 (constant).
+  7. Robust scaling (DEC-003, method=robust in config)
+       - Per band: (x - median) / IQR. Drop bands with IQR near 0 (constant).
        - Median/IQR computed over the habitat-masked sample.
 
   8. Train k-means
        - Sample n_training_samples pixels from the habitat-masked, scaled stack.
        - ee.Clusterer.wekaKMeans(nClusters=k, seed=seed).
 
-  9. Apply k-means to all habitat pixels → cluster_labels image (0..k-1).
+  9. Apply k-means to all habitat pixels, producing cluster_labels image (0..k-1).
 
   10. Attach all preprocessing params + k-means hyperparams as JSON
       string property "clustering_metadata" on cluster_labels image.
@@ -66,7 +66,7 @@ from fmu.utils.logging import get_logger
 log = get_logger(__name__)
 
 
-# Bands to always drop from clustering — metadata, not feature.
+# Bands to always drop from clustering. Metadata, not feature.
 _EXCLUDE_BANDS: frozenset[str] = frozenset(
     {
         # Metadata bands from features_optical
@@ -167,7 +167,7 @@ class ClusteringStage(Stage):
         # transformation changes the distribution of the affected bands,
         # so percentiles (median/IQR) computed from preprocessing_sample
         # would describe the WRONG distribution for scaling. Each sample
-        # uses the same seed → samples the same pixel positions, but with
+        # uses the same seed, samples the same pixel positions, but with
         # values reflecting their respective transform stages. Sampling
         # is cheap (~10k pixels × handful of bands per roundtrip).
         post_log_sample = transformed_stack.sample(
@@ -242,7 +242,7 @@ class ClusteringStage(Stage):
 
 
 # ---------------------------------------------------------------------
-# Step helpers — each focused, each tested.
+# Step helpers. Each focused, each tested.
 # ---------------------------------------------------------------------
 
 
@@ -281,11 +281,11 @@ def _decompose_cyclic_bands(image: ee.Image) -> tuple[ee.Image, list[str]]:
         return image, []
 
     # Phase bands are in radians (atan2 output ∈ [-π, π]).
-    # Aspect is in degrees ∈ [0, 360] from ee.Terrain.products — convert first.
+    # Aspect is in degrees [0, 360] from ee.Terrain.products; convert first.
     new_bands: list[ee.Image] = []
     for cb in cyclic_bands:
         original = image.select(cb)
-        if cb == "aspect":  # noqa: SIM108 — keep for the radians conversion comment
+        if cb == "aspect":  # noqa: SIM108  (keep for the radians conversion comment)
             # Aspect is in degrees ∈ [0, 360]; convert to radians first.
             radians = original.multiply(math.pi / 180.0)
         else:
@@ -307,7 +307,7 @@ def _compute_superpixel_means(
     Adds snic_clusters as a label band, then calls reduceConnectedComponents
     (the standard SNIC-aggregate pattern in GEE). Output has the same bands
     as the input but pixel values are constant within each superpixel.
-    Note: reduceConnectedComponents preserves input band names — no
+    Note: reduceConnectedComponents preserves input band names, no
     _mean suffix is added (unlike SNIC's mean output bands).
     """
     band_names = feature_image.bandNames()
@@ -333,7 +333,7 @@ def _identify_skewed_bands(
 
     Operates on a FeatureCollection sample (typically 10k features) rather
     than the full image to stay within GEE's user memory limit. Per-band
-    skewness uses `reduceColumns` — one server call per band, small payload.
+    skewness uses `reduceColumns`: one server call per band, small payload.
     Skewness estimates are stable with n=10k.
     """
     skewed: list[str] = []
@@ -414,7 +414,7 @@ def _apply_scaling(
     method="zscore":           center=mean,   spread=stdDev.
 
     Scaling parameters are derived from the sample (FeatureCollection),
-    not the full image — sidesteps GEE memory limits on percentile reducers.
+    not the full image. Sidesteps GEE memory limits on percentile reducers.
 
     Drops bands with spread ≤ epsilon (constant features can't be scaled
     and contribute nothing to clustering).
@@ -499,7 +499,7 @@ def _train_and_apply_kmeans(
     seed: int,
 ) -> ee.Image:
     """Train wekaKMeans on a sample, apply to the full habitat-masked stack."""
-    # Sample only within habitat — non-habitat pixels are masked out
+    # Sample only within habitat. Non-habitat pixels are masked out
     training_input = scaled_stack.updateMask(habitat_mask)
     training_sample = training_input.sample(
         region=roi,

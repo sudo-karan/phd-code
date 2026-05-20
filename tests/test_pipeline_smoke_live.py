@@ -1,12 +1,12 @@
 """End-to-end smoke test for the full pipeline.
 
-This test runs the complete pipeline (masking → ... → metrics) on the
+This test runs the complete pipeline (masking to ... to metrics) on the
 Sanjay Van AOI in cache-only mode: all upstream stages should hit cache,
 proving the full chain works without re-running heavy compute.
 
 This addresses the gap that per-stage live tests can't cover: each stage
-works in isolation, but the *chain* — output keys flowing from one stage's
-produces into the next stage's required_inputs — only gets exercised by
+works in isolation, but the *chain*; output keys flowing from one stage's
+produces into the next stage's required_inputs; only gets exercised by
 a real run. This test catches contract drift (e.g., stage A renames an
 output that stage B expects) immediately.
 
@@ -83,7 +83,7 @@ def real_gee():
 def baseline_assets_cached(real_gee):
     """Skip the smoke test if baseline assets aren't in the cache.
 
-    We don't want this test to *populate* the cache — that takes hours.
+    We don't want this test to *populate* the cache; that takes hours.
     The expectation is that the user has run `inspect_clustering.py` (or
     similar) at least once. If not, skip with a clear message.
     """
@@ -121,7 +121,7 @@ def test_full_pipeline_chain_runs_end_to_end(baseline_assets_cached, monkeypatch
     ctx = PipelineContext()
     ctx.set("roi", roi)
 
-    # Subclass ExportStage to skip the Drive task submission — we're
+    # Subclass ExportStage to skip the Drive task submission; we're
     # smoke-testing the chain, not the side-effecting export.
     from fmu.stages.base import _stage_registry
 
@@ -129,7 +129,7 @@ def test_full_pipeline_chain_runs_end_to_end(baseline_assets_cached, monkeypatch
         def _submit_drive_export(self, **_kwargs):
             return {"id": "SMOKE_TEST_NO_REAL_TASK"}
 
-    # Swap the registry entry via monkeypatch — auto-restored on test exit,
+    # Swap the registry entry via monkeypatch; auto-restored on test exit,
     # even if pytest aborts mid-test (KeyboardInterrupt, OOM). Avoids the
     # bug where a manual try/finally leaves the registry mutated if the
     # test process gets killed before finally runs.
@@ -153,8 +153,8 @@ def test_full_pipeline_chain_runs_end_to_end(baseline_assets_cached, monkeypatch
     # data_load is intentionally excluded: it produces ee.ImageCollections
     # (s2_collection, s1_collection) that aren't cacheable as assets, so
     # it always re-derives them live even when its s2_composite is cached.
-    # That's by design — the collections are cheap to rebuild.
-    # Asserting by name is more diagnostic than "at least 6 cached" — a name
+    # That's by design; the collections are cheap to rebuild.
+    # Asserting by name is more diagnostic than "at least 6 cached"; a name
     # match tells you WHICH stage was unexpectedly missing from cache.
     expected_cached_stages = {
         "masking",
@@ -184,7 +184,7 @@ def test_full_pipeline_chain_runs_end_to_end(baseline_assets_cached, monkeypatch
         "data_load should always run live (it produces uncacheable collections)"
     )
 
-    # profiling and export are never cached by design — they always run.
+    # profiling and export are never cached by design; they always run.
     # Make sure they ran (not cache-skipped) for the same reason.
     for always_run_stage in ("profiling", "export"):
         record = next((s for s in result.stages if s.name == always_run_stage), None)
@@ -195,7 +195,7 @@ def test_full_pipeline_chain_runs_end_to_end(baseline_assets_cached, monkeypatch
 
     # Final context should have every produced key from every stage.
     # NB: masking's `produces` is {habitat_mask, water_mask, landcover_summary}
-    # — built_up_mask is an internal intermediate inside the masking stage,
+    #; built_up_mask is an internal intermediate inside the masking stage,
     # not a context output. The export.py inventory list previously included
     # it by mistake; that's why the export manifest reports 11 cached assets
     # rather than 12.

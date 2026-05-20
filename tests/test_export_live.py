@@ -125,7 +125,7 @@ def test_cluster_distribution_present_and_consistent(ctx_ready_for_export):
 
     assert len(distribution) == config.clustering.k
     total = sum(c["pixel_count"] for c in distribution)
-    assert total > 5000, f"Only {total} pixels — habitat mask too aggressive?"
+    assert total > 5000, f"Only {total} pixels; habitat mask too aggressive?"
 
     # Percent of habitat should sum to ~100%
     total_pct = sum(c["percent_of_habitat"] for c in distribution)

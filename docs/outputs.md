@@ -19,7 +19,7 @@ fmu.log                                 always
 manifest.json                           always
 export_manifest_<config>.json           after export stage
 cluster_profiles.csv                    after profiling stage
-comparison_metrics_<config>.json        after metrics stage (via inspect script)
+metrics_<config>.json                   after metrics stage (via inspect script)
 ```
 
 The directory is gitignored; checking outputs into git is not the
@@ -54,7 +54,7 @@ everything needed to know what happened:
       "elapsed_sec": 18.244,
       "produced": ["habitat_mask", "landcover_summary", "water_mask"],
       "warnings": [],
-      "metadata": { ... stage-specific ... },
+      "metadata": { "...stage-specific..." },
       "cache_status": {
         "habitat_mask": "hit",
         "water_mask": "hit",
@@ -67,7 +67,7 @@ everything needed to know what happened:
       "elapsed_sec": 12.91,
       "produced": ["s1_collection", "s2_collection", "s2_composite"],
       "warnings": [],
-      "metadata": { "s2_count": 287, "s1_count": 142, ... },
+      "metadata": { "s2_count": 287, "s1_count": 142 },
       "cache_status": { "s2_composite": "miss-exported" },
       "export_tasks": [
         {
@@ -76,16 +76,14 @@ everything needed to know what happened:
           "description": "sanjay_van_baseline_data_load_s2_composite"
         }
       ]
-    },
-    ...
+    }
   ],
   "config": {
     "name": "sanjay_van_baseline",
     "description": "...",
-    "roi": { ... },
-    "dates": { ... },
-    "datasets": { ... },
-    ... entire config snapshot ...
+    "roi": { "...": "..." },
+    "dates": { "...": "..." },
+    "datasets": { "...": "..." }
   }
 }
 ```
@@ -103,28 +101,28 @@ everything needed to know what happened:
 | `stages[].metadata` | Stage-specific stats: band counts, sample sizes, etc. |
 | `stages[].cache_status` | Per-output-key: `"hit"`, `"miss"`, `"miss-exported"`, or `"off"` |
 | `stages[].export_tasks` | Async GEE export tasks submitted during this stage |
-| `config` | The entire input config, serialized — proves what was run |
+| `config` | The entire input config, serialized. Proves what was run. |
 
 ### Cache status values
 
-- `"hit"` — asset was already cached; cached version loaded into context
-- `"miss"` — asset wasn't cached; live computation used
-- `"miss-exported"` — asset wasn't cached; live computation used AND an
+- `"hit"`: asset was already cached; cached version loaded into context
+- `"miss"`: asset wasn't cached; live computation used
+- `"miss-exported"`: asset wasn't cached; live computation used AND an
   export task was started so next run will hit
-- `"off"` — caching was disabled for this run (`use_cache=False`)
-- Key absent — output is not cacheable (e.g., a Python dict, an
+- `"off"`: caching was disabled for this run (`use_cache=False`)
+- Key absent: output is not cacheable (e.g., a Python dict, an
   `ee.ImageCollection`)
 
 ### Stage source
 
 If `stages[i].metadata.source == "cache"`, the stage was skipped entirely
-because *all* its cacheable outputs were cached. The stage's `run()`
+because all its cacheable outputs were cached. The stage's `run()`
 method didn't execute; the cached assets were loaded into the context
 and the stage was marked done.
 
 ## `export_manifest_<config>.json` (after export stage)
 
-A standalone copy of the export-stage's manifest — same data is also
+A standalone copy of the export-stage's manifest. The same data is also
 embedded in `manifest.json` under `stages[?(@.name=='export')].metadata.manifest`,
 but the standalone file is convenient for collaborators who only need
 the artifact list.
@@ -141,10 +139,11 @@ Structure:
     "area_km2": 6.831,
     "geojson_path": "aois/sanjay_van.geojson"
   },
-  "config_snapshot": { ... entire YAML ... },
+  "config_snapshot": { "...entire YAML...": "..." },
   "asset_paths": {
     "habitat_mask": "projects/.../sanjay_van_baseline/masking/habitat_mask",
     "water_mask":   "projects/.../sanjay_van_baseline/masking/water_mask",
+    "landcover_summary": "projects/.../sanjay_van_baseline/masking/landcover_summary",
     "s2_composite": "projects/.../sanjay_van_baseline/data_load/s2_composite",
     "optical_features": "projects/.../sanjay_van_baseline/features_optical/optical_features",
     "radar_features":   "projects/.../sanjay_van_baseline/features_radar/radar_features",
@@ -161,21 +160,19 @@ Structure:
     "n_training_samples": 5000,
     "normalization_method": "robust",
     "skewness_threshold": 1.0,
-    "log_transformed_bands": ["distance_to_water", "vh_iqr", ...],
-    "log_offsets": { "distance_to_water": 4.234, ... },
+    "log_transformed_bands": ["distance_to_water", "vh_iqr"],
+    "log_offsets": { "distance_to_water": 4.234 },
     "scaling": {
       "ndvi_mean": { "center": 0.342, "spread": 0.071 },
-      "elevation": { "center": 218.0, "spread": 14.0 },
-      ...
+      "elevation": { "center": 218.0, "spread": 14.0 }
     },
-    "active_bands": [...],
-    "dropped_constant_bands": [...],
-    "raw_band_names": [...],
+    "active_bands": ["..."],
+    "dropped_constant_bands": ["..."],
+    "raw_band_names": ["..."],
     "cyclic_decomposition_log": ["aspect", "ndvi_phase_annual"],
     "cluster_distribution": [
       { "cluster_id": 0, "pixel_count": 12431, "area_ha": 12.43, "percent_of_habitat": 18.2 },
-      { "cluster_id": 1, "pixel_count": 9882,  "area_ha":  9.88, "percent_of_habitat": 14.5 },
-      ...
+      { "cluster_id": 1, "pixel_count": 9882,  "area_ha":  9.88, "percent_of_habitat": 14.5 }
     ]
   },
   "drive_export": {
@@ -191,13 +188,13 @@ Structure:
 
 ### How to use this
 
-- **Reproduce a past run:** the `config_snapshot` is verbatim what was
+- **Reproduce a past run.** The `config_snapshot` is verbatim what was
   fed in. Save it as `replay.yaml`, run the pipeline against it; the
   cache asset paths derive from `config_name`, so an identical config
   with the same `name` will hit the same cache.
-- **Build downstream analysis:** `asset_paths` are GEE asset references.
+- **Build downstream analysis.** `asset_paths` are GEE asset references.
   Load `cluster_labels` with `ee.Image(path)` in any other GEE notebook.
-- **Interpret cluster IDs:** `clustering.cluster_distribution` tells you
+- **Interpret cluster IDs.** `clustering.cluster_distribution` tells you
   the area of each cluster. `cluster_profiles.csv` (next section) tells
   you what each cluster's pixels look like in feature space.
 
@@ -219,7 +216,7 @@ Where `<band>` is each input feature band: `ndvi_mean`, `ndvi_amplitude_annual`,
 went into k-means. So `ndvi_mean` for a cluster is a real NDVI between
 -1 and 1; `elevation` is real meters; `canopy_height` is real meters.
 This is what makes clusters interpretable: cluster 3 might be "dense
-canopy, low NDVI amplitude, high elevation" — that's the ecological
+canopy, low NDVI amplitude, high elevation". That's the ecological
 interpretation, and it comes from the original-unit profiles, not the
 z-scored ones.
 
@@ -230,7 +227,7 @@ df = pd.read_csv("outputs/runs/sanjay_van_baseline_*/cluster_profiles.csv")
 # Plot ndvi_mean vs canopy_height per cluster, etc.
 ```
 
-## `comparison_metrics_<config>.json` (after metrics stage)
+## `metrics_<config>.json` (after metrics stage)
 
 Only present if `inspect_metrics.py` was run AND the config has
 `metrics.reference_config_name` set to another config's name.
@@ -249,8 +246,7 @@ Only present if `inspect_metrics.py` was run AND the config has
   "correspondence": { "0": 2, "1": 4, "2": 0, "3": 5, "4": 1, "5": 3 },
   "confusion_matrix": [
     [3201,   12,  178,   34,    9,   22],
-    [  44, 2876,    8,   91,   12,   17],
-    ...
+    [  44, 2876,    8,   91,   12,   17]
   ]
 }
 ```
@@ -263,9 +259,9 @@ Only present if `inspect_metrics.py` was run AND the config has
 | `silhouette_reference` | Same for the reference (only if reference's `feature_stack` is cached) | -1 to 1; higher is better |
 | `ari` | Adjusted Rand Index between current and reference partitions | -1 to 1; 0 = random, 1 = identical |
 | `nmi` | Normalized Mutual Information | 0 to 1; higher = more information shared |
-| `agreement_rate` | After Hungarian-matching cluster IDs, % of pixels that agree | 0 to 1; higher = more agreement |
-| `correspondence` | Best mapping: `current_id → reference_id` (Hungarian on confusion matrix) | k mappings |
-| `confusion_matrix` | k × k pixel-overlap counts (rows = current, cols = reference) | non-negative ints |
+| `agreement_rate` | After Hungarian-matching cluster IDs, fraction of pixels that agree | 0 to 1; higher = more agreement |
+| `correspondence` | Best mapping: `current_id -> reference_id` (Hungarian on confusion matrix) | k mappings |
+| `confusion_matrix` | k x k pixel-overlap counts (rows = current, cols = reference) | non-negative ints |
 | `n_samples_used` | Number of paired pixels used for ARI/NMI | int (target was `metrics.n_comparison_samples`) |
 
 **How to read silhouette:** values around 0 indicate overlapping
@@ -285,8 +281,8 @@ because NMI doesn't penalize size mismatches between clusters.
 
 **How to read the correspondence:** `{"0": 2, ...}` means "current
 config's cluster 0 best matches reference config's cluster 2 in terms
-of pixel overlap." The agreement_rate is computed AFTER this remapping
-— it answers "if we relabel current's clusters to match reference's,
+of pixel overlap." The agreement_rate is computed AFTER this remapping;
+it answers "if we relabel current's clusters to match reference's,
 what fraction of pixels end up with the same label?"
 
 ## The cluster_labels GeoTIFF (in Google Drive)
@@ -301,8 +297,8 @@ The export stage submits a GeoTIFF export to your Drive:
 - **Projection:** EPSG:4326 (GEE's default for export to Drive)
 - **Pixel scale:** `export.analysis_scale_m` (default 10 m)
 
-Submit-and-forget — the task ID is in the manifest. Monitor progress at
-https://code.earthengine.google.com/tasks. Typical wait: 5–15 min.
+Submit-and-forget. The task ID is in the manifest. Monitor progress at
+https://code.earthengine.google.com/tasks. Typical wait: 5-15 min.
 
 ### Loading in Python
 
@@ -316,8 +312,8 @@ with rasterio.open("sanjay_van_baseline_cluster_labels.tif") as src:
 
 ### Loading in QGIS
 
-Drag-drop the `.tif`. Right-click → Properties → Symbology → Singleband
-pseudocolor → discrete. Build a color ramp with k stops. Use
+Drag-drop the `.tif`. Right-click, Properties, Symbology, Singleband
+pseudocolor, discrete. Build a color ramp with k stops. Use
 `cluster_profiles.csv` to label each cluster by its dominant feature
 (e.g., "dense canopy", "edge", "open vegetation").
 
@@ -348,13 +344,13 @@ print(meta["scaling"])           # per-band center/spread
 
 ## What's NOT an output
 
-- Intermediate `ee.ImageCollection` objects (`s2_collection`, `s1_collection`)
-  — they're cheap to rebuild and not cacheable as single assets.
-- Stage `metadata` dicts whose values are not JSON-serializable —
+- Intermediate `ee.ImageCollection` objects (`s2_collection`, `s1_collection`).
+  They're cheap to rebuild and not cacheable as single assets.
+- Stage `metadata` dicts whose values are not JSON-serializable.
   `_json_safe` in pipeline.py falls back to `str()` for unknown types.
   This means a `metadata` value that's an `ee.Image` will appear as a
-  string in `manifest.json`, not a usable reference. (Use `asset_paths`
-  for that.)
+  string in `manifest.json`, not a usable reference. Use `asset_paths`
+  for that.
 - The `feature_stack` is cached as a GEE asset, but it's the *preprocessed*
   feature stack (post-log-transform, post-scaling). It's not directly
-  human-interpretable — use it for downstream ML, not visualization.
+  human-interpretable. Use it for downstream ML, not visualization.

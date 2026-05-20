@@ -47,7 +47,7 @@ def real_gee():
     settings = get_settings()
     if not settings.gee_project_id:
         pytest.skip(
-            "GEE_PROJECT_ID not set in environment or .env — cannot run live tests."
+            "GEE_PROJECT_ID not set in environment or .env; cannot run live tests."
         )
 
     try:
@@ -97,7 +97,7 @@ def test_safe_get_info_appends_context_on_real_error(real_gee):
     """A real GEE error should still come back with context attached."""
     from fmu.utils.gee import safe_get_info
 
-    # Reference a nonexistent asset — guaranteed to fail
+    # Reference a nonexistent asset; guaranteed to fail
     bad_img = ee.Image("users/this_user/does_not_exist_12345")
     with pytest.raises(ee.EEException) as exc_info:
         safe_get_info(bad_img, context="loading nonexistent asset")
@@ -116,7 +116,7 @@ def test_load_real_geojson_produces_usable_geometry(real_gee):
     assert roi_file.exists(), f"Missing test fixture: {roi_file}"
 
     geom = load_roi_geometry(roi_file)
-    # Force materialization — if the geometry is malformed, this will fail.
+    # Force materialization; if the geometry is malformed, this will fail.
     bounds = safe_get_info(geom.bounds(), context="getting bounds of loaded ROI")
     assert bounds["type"] == "Polygon"
 
@@ -167,12 +167,12 @@ def test_asset_path_format_is_valid_for_gee(real_gee):
     assert pid in p
     assert p.endswith("/does_not_exist_yet")
 
-    # Try to query asset info — should fail with "not found", NOT with
+    # Try to query asset info; should fail with "not found", NOT with
     # "malformed path". That distinguishes "GEE rejected the format" from
     # "GEE accepted the format but the asset doesn't exist."
     try:
         ee.data.getAsset(p)
-        # If it exists, that's fine too — no assertion needed
+        # If it exists, that's fine too; no assertion needed
     except ee.EEException as e:
         # "Asset 'projects/.../does_not_exist_yet' not found" is the GOOD failure
         # "Invalid asset id" would be the BAD failure

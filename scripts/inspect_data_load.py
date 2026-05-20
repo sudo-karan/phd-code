@@ -12,7 +12,7 @@ import argparse
 from fmu.config import load_config
 from fmu.pipeline import Pipeline
 from fmu.stages.base import PipelineContext
-from fmu.stages.data_load import DataLoadStage  # noqa: F401 — registers the stage
+from fmu.stages.data_load import DataLoadStage  # noqa: F401  # registers the stage
 from fmu.utils.caching import asset_exists, cached_asset_path
 from fmu.utils.gee import init_gee, load_roi_geometry, safe_get_info
 from fmu.utils.logging import init_logging
@@ -53,12 +53,12 @@ def main() -> None:
     n_s1 = safe_get_info(s1_coll.size(), context="s1_collection size")
     bands = safe_get_info(composite.bandNames(), context="composite bands")
     print(f"  S2 phenology images:     {n_s2:>6,d}  "
-          f"({config.dates.phenology.start} → {config.dates.phenology.end})")
+          f"({config.dates.phenology.start} to {config.dates.phenology.end})")
     print(f"  S1 radar images:         {n_s1:>6,d}  "
-          f"({config.dates.radar.start} → {config.dates.radar.end}, "
+          f"({config.dates.radar.start} to {config.dates.radar.end}, "
           f"{config.data_load.s1_orbit})")
     print(f"  S2 composite reducer:    {config.data_load.s2_composite_reducer}  "
-          f"({config.dates.optical_composite.start} → "
+          f"({config.dates.optical_composite.start} to "
           f"{config.dates.optical_composite.end})")
     print(f"  Composite bands ({len(bands)}):   {', '.join(bands[:6])}"
           f"{'...' if len(bands) > 6 else ''}")
@@ -83,7 +83,7 @@ def main() -> None:
         print()
         print(f"var composite = ee.Image('{composite_path}');")
         print()
-        # True color: B4/B3/B2 → red/green/blue. Reducer suffix is in band names.
+        # True color: B4/B3/B2 to red/green/blue. Reducer suffix is in band names.
         reducer = config.data_load.s2_composite_reducer
         if reducer == "median":
             suffix = "_median"

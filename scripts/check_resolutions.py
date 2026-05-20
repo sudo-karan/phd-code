@@ -3,7 +3,7 @@ Check the native resolution of every dataset and cached feature output
 the pipeline uses. Prints a clean table for design decisions about which
 features to feed SNIC.
 
-No exports, no clustering — just metadata queries against GEE.
+No exports, no clustering; just metadata queries against GEE.
 
 Run with either config; results are identical since both configs use the
 same datasets and analysis scale.
@@ -30,7 +30,7 @@ def _scale_of_image(img: ee.Image, sample_band: str | None = None) -> float | No
             context=f"projection scale (band={sample_band})",
         )
         return float(scale) if scale is not None else None
-    except Exception as e:  # noqa: BLE001 — best-effort metadata probe
+    except Exception as e:  # noqa: BLE001; best-effort metadata probe
         print(f"    [error] {e}")
         return None
 
@@ -65,12 +65,12 @@ def main() -> None:
 
     print()
     print("=" * 78)
-    print("NATIVE RESOLUTIONS — SOURCE DATASETS")
+    print("NATIVE RESOLUTIONS; SOURCE DATASETS")
     print("=" * 78)
     print(f"{'Source dataset':50s} {'Type':12s} {'Scale (m)':>12s}")
     print("-" * 78)
 
-    # Source datasets — these are what we read from
+    # Source datasets; these are what we read from
     sources: list[tuple[str, str, str, str]] = [
         # (label, asset_id, kind, sample_band_or_None)
         ("Sentinel-2 SR (phenology)", config.datasets.phenology_collection, "collection", "B8"),
@@ -98,14 +98,14 @@ def main() -> None:
     # Cached feature outputs
     print()
     print("=" * 78)
-    print(f"CACHED FEATURE OUTPUTS — {config.name}")
+    print(f"CACHED FEATURE OUTPUTS; {config.name}")
     print("=" * 78)
 
     feature_assets: list[tuple[str, str, str]] = [
         # (label, stage_name, output_key)
         ("S2 composite", "data_load", "s2_composite"),
-        ("Masking — habitat", "masking", "habitat_mask"),
-        ("Masking — water", "masking", "water_mask"),
+        ("Masking; habitat", "masking", "habitat_mask"),
+        ("Masking; water", "masking", "water_mask"),
         ("Optical features", "features_optical", "optical_features"),
         ("Radar features", "features_radar", "radar_features"),
         ("Structure features", "features_structure", "structure_features"),
@@ -139,9 +139,9 @@ def main() -> None:
     print("=" * 78)
     print("INTERPRETATION GUIDE")
     print("=" * 78)
-    print("Scales close to 10m → safe for SNIC at 10m analysis scale")
-    print("Scales close to 30m → 3× coarser; can include but degrades boundary precision")
-    print("Scales > 1000m       → much coarser than ROI extent; will not contribute to SNIC")
+    print("Scales close to 10m to safe for SNIC at 10m analysis scale")
+    print("Scales close to 30m to 3× coarser; can include but degrades boundary precision")
+    print("Scales > 1000m       to much coarser than ROI extent; will not contribute to SNIC")
     print()
     print("If a cached output reports a different scale than its source dataset, that's")
     print("because the export resampled to the analysis scale. The 'real' information")

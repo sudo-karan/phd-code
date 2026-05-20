@@ -78,7 +78,7 @@ def main() -> None:
     # Print a human-readable summary
     print()
     print("=" * 70)
-    print(f"Export summary — {config.name}")
+    print(f"Export summary; {config.name}")
     print("=" * 70)
     print(f"  pipeline version: {export_manifest['pipeline_version']}")
     print(f"  run timestamp:    {export_manifest['run_timestamp']}")

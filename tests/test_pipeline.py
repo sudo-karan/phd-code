@@ -10,7 +10,7 @@ synthetic stages, BEFORE any real GEE work happens. If this passes:
   - Manifest is written
   - Failures surface with the right stage name
 
-These tests use trivial stages (numbers, strings) — no GEE. The fast suite.
+These tests use trivial stages (numbers, strings); no GEE. The fast suite.
 """
 
 from __future__ import annotations
@@ -324,15 +324,15 @@ class TestCacheSkipBehavior:
     """Regression tests for a bug found 2026-05-14: when caching was on
     and `_try_load_cache` returned an empty dict (nothing cached), the
     orchestrator was *skipping* the stage instead of running it live.
-    The stage looked like "from cache" in logs and produced nothing —
-    no error, no output, downstream stages had no inputs.
+    The stage looked like "from cache" in logs and produced nothing.
+    No error, no output, downstream stages had no inputs.
 
     The fix requires `len(cached_outputs) == len(cacheable)` (and cacheable
     must be non-empty) before the skip path is taken.
     """
 
     def test_use_cache_off_runs_stage_normally(self, tmp_path):
-        """Sanity: cache off → stage runs every time, no cache logic."""
+        """Sanity: cache off to stage runs every time, no cache logic."""
         run_log = []
 
         @register_stage("counts_calls")
@@ -351,7 +351,7 @@ class TestCacheSkipBehavior:
         assert result.context.get("counter") == 1
 
     def test_use_cache_on_with_empty_cache_still_runs_stage(self, tmp_path):
-        """Cache on, nothing cached → stage MUST run live, not skip.
+        """Cache on, nothing cached to stage MUST run live, not skip.
 
         This is the explicit regression test for the bug. With the
         broken logic, the stage would be skipped silently and `counter`
@@ -371,7 +371,7 @@ class TestCacheSkipBehavior:
 
         # use_cache=True but the stage produces a non-ee.Image value;
         # the cache check will find nothing in GEE (and we don't even
-        # touch GEE here because asset_exists short-circuits — actually
+        # touch GEE here because asset_exists short-circuits; actually
         # it tries to hit GEE. We have to mock that.)
         from unittest.mock import patch
 
@@ -391,7 +391,7 @@ class TestExplicitNoCaching:
     `cacheable_outputs = set()` to mean "nothing in this stage should
     be cached as a GEE asset" (because it produces Python data rather
     than ee.Images), the orchestrator was treating the empty set as
-    falsy and falling back to caching ALL produces — which then warned
+    falsy and falling back to caching ALL produces; which then warned
     about non-ee.Image values being uncacheable.
 
     The fix: distinguish "stage explicitly set cacheable_outputs to set()"
@@ -434,7 +434,7 @@ class TestExplicitNoCaching:
         # The orchestrator never tried to check cache existence
         # because cacheable_outputs is explicitly empty
         assert mock_exists.call_count == 0, (
-            f"asset_exists called {mock_exists.call_count} times — "
+            f"asset_exists called {mock_exists.call_count} times; "
             "orchestrator tried to cache when stage opted out"
         )
 
@@ -442,7 +442,7 @@ class TestExplicitNoCaching:
         """Regression test for a bug found 2026-05-19: when a subclass
         inherits cacheable_outputs through MRO (rather than redeclaring it
         in its own __dict__), the orchestrator was falling back to the
-        "default to caching all produces" behavior — causing it to try
+        "default to caching all produces" behavior; causing it to try
         to cache the parent's non-image outputs.
 
         The fix: _resolve_cacheable_outputs walks the MRO instead of only
@@ -465,12 +465,12 @@ class TestExplicitNoCaching:
                 return StageResult(outputs={"py_data": [1, 2, 3]})
 
         # Subclass: register under a different name. Note that the subclass
-        # does NOT redeclare cacheable_outputs — it inherits the empty set
+        # does NOT redeclare cacheable_outputs; it inherits the empty set
         # through MRO. The orchestrator must still honor that.
         @register_stage("child_inherits_optout")
         class Child(Parent):
             name = "child_inherits_optout"
-            # cacheable_outputs intentionally not declared — inherited
+            # cacheable_outputs intentionally not declared; inherited
 
             def run(self, ctx, config):
                 run_log.append("child")
@@ -489,6 +489,6 @@ class TestExplicitNoCaching:
         # The orchestrator never checked cache because cacheable_outputs is
         # the empty set, inherited from Parent through MRO
         assert mock_exists.call_count == 0, (
-            f"asset_exists called {mock_exists.call_count} times — "
+            f"asset_exists called {mock_exists.call_count} times; "
             "MRO walk didn't find inherited cacheable_outputs=set()"
         )

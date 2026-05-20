@@ -46,8 +46,8 @@ export: { export_geotiff, export_gee_asset, analysis_scale_m }
 metrics: { reference_config_name, n_comparison_samples, n_silhouette_samples_per_cluster }
 ```
 
-For the canonical, authoritative field list and validators, read
-`src/fmu/config.py` directly — it's ~300 lines and self-documenting.
+For the canonical field list and validators, read `src/fmu/config.py`
+directly. It's around 300 lines and self-documenting.
 
 ### What each block does
 
@@ -69,10 +69,12 @@ For the canonical, authoritative field list and validators, read
 
 ## The locked baseline
 
-`configs/sanjay_van_baseline.yaml` is the **reference** — not necessarily
-the best version. It mirrors the working notebook approach (S2_SR_HARMONIZED,
-k=6, single annual harmonic, NDVI, ndvi-based features). New ideas
-become new configs that have to beat this one.
+`configs/sanjay_van_baseline.yaml` is the reference. Not necessarily
+the best version. It approximates the working notebook approach
+(S2_SR_HARMONIZED, k=6, single annual harmonic, NDVI) while applying
+the locked engineering decisions from `phd-notebook/decisions.md`,
+most notably robust scaling per DEC-003. New ideas become new configs
+that have to beat this one.
 
 This is deliberate. It's the mechanism for stopping the "endlessly
 tweaking parameters, never deciding what worked" pattern. See
@@ -191,7 +193,7 @@ for the full inventory.
 - `max_cloud_pct` (default 20.0): drop S2 scenes with `CLOUDY_PIXEL_PERCENTAGE`
   above this.
 - `drop_scl_classes` (default `[3, 8, 9, 10]`): per-pixel SCL classes
-  masked out — cloud shadow, cloud medium, cloud high, thin cirrus.
+  masked out (cloud shadow, cloud medium, cloud high, thin cirrus).
 
 ### `data_load`
 
@@ -224,8 +226,8 @@ for the full inventory.
 ### `features_radar`
 
 - `percentiles`: which percentiles to compute (default `[10, 50, 90]`).
-- `include_iqr`: bool (default `true`) — add `vv_iqr` / `vh_iqr` bands.
-- `include_cross_pol_contrast`: bool (default `true`) — add
+- `include_iqr`: bool (default `true`). Adds `vv_iqr` / `vh_iqr` bands.
+- `include_cross_pol_contrast`: bool (default `true`). Adds
   `vv_minus_vh_median`.
 
 ### `features_structure`
@@ -233,18 +235,18 @@ for the full inventory.
 - `include_neighborhood_stats`: bool (default `true`). False emits only
   `canopy_height`; true also emits `canopy_height_std` and
   `canopy_height_max`.
-- `neighborhood_kernel_size`: odd int 3-11 (default 3 → 30 m × 30 m
-  at 10 m resolution).
+- `neighborhood_kernel_size`: odd int 3-11 (default 3, a 30 m x 30 m
+  window at 10 m resolution).
 
 ### `features_static`
 
 - `include_climate`: bool (default `true`). False omits `annual_rainfall`.
-- `max_water_distance_pixels`: int 100-10000 (default 1000 → 10 km
+- `max_water_distance_pixels`: int 100-10000 (default 1000, a 10 km
   cap at 10 m scale).
 
 ### `segmentation`
 
-- `size`: SNIC seed spacing in pixels (default 10 → ~100 m on 10 m grid).
+- `size`: SNIC seed spacing in pixels (default 10, ~100 m on 10 m grid).
 - `compactness`: 0 = boundaries follow image edges, high = circular
   blobs (default 0.5).
 - `connectivity`: 4 or 8 (default 8).
@@ -264,11 +266,11 @@ for the full inventory.
 ### `normalization`
 
 - `method`: `robust` (default; median/IQR per DEC-003) or `zscore`
-  (mean/stddev — notebook approach, kept for comparison configs).
+  (mean/stddev, the notebook approach, kept for comparison configs).
 
 ### `features`
 
-High-level on/off toggles. Currently informational — all four are read
+High-level on/off toggles. Currently informational. All four are read
 by the stage code but with `true` defaults rarely changed:
 
 - `optical_harmonic`, `radar`, `canopy_height`, `terrain`
@@ -287,7 +289,7 @@ by the stage code but with `true` defaults rarely changed:
   baseline (intrinsic silhouette only).
 - `n_comparison_samples`: paired pixels for ARI/NMI (default 10,000).
 - `n_silhouette_samples_per_cluster`: stratified sample for silhouette
-  (default 833 — gives ~5000 total at k=6).
+  (default 833, ~5000 total at k=6).
 
 ## Schema validation
 
@@ -296,21 +298,21 @@ Every config is validated at load time. Common errors:
 ```
 ValidationError: extra fields not permitted (clustring)
 ```
-Typo in a field name — `clustering` is misspelled.
+Typo in a field name. `clustering` is misspelled.
 
 ```
-ValidationError: clustering.k → ensure this value is greater than 1
+ValidationError: clustering.k -> ensure this value is greater than 1
 ```
-Invalid value — `k=1` is meaningless for clustering.
+Invalid value. `k=1` is meaningless for clustering.
 
 ```
-ValidationError: roi.roi_file → file does not exist
+ValidationError: roi.roi_file -> file does not exist
 ```
 The path is wrong, or you're running from a different cwd than where
 the YAML expects.
 
 ```
-ValidationError: dates.phenology → end must be after start
+ValidationError: dates.phenology -> end must be after start
 ```
 Date validators enforce ordering.
 

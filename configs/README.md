@@ -3,7 +3,7 @@
 One YAML per pipeline run: ROI, dates, datasets, parameters, output settings.
 
 `sanjay_van_baseline.yaml` is the locked baseline. New experiments become new
-YAML files — don't edit the baseline in place. See `docs/design_notes.md`.
+YAML files. Don't edit the baseline in place. See `docs/design_notes.md`.
 
 ## How configs are loaded
 
@@ -13,7 +13,7 @@ YAML files — don't edit the baseline in place. See `docs/design_notes.md`.
 3. Returns a typed `Config` object
 
 Per-machine values (GEE project ID, output paths) come from `.env` via
-`fmu.settings.get_settings()` — that's a separate layer, not part of
+`fmu.settings.get_settings()`. That's a separate layer, not part of
 `load_config`.
 
 ## Adding a new config

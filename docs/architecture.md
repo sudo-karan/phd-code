@@ -1,9 +1,9 @@
 # Architecture
 
-How the code is organized internally — the Stage contract, the
+How the code is organized internally: the Stage contract, the
 PipelineContext, the registry, the caching layer, and how to add or
-swap a module. For *why* the architecture is this shape, see
-[design_notes.md](design_notes.md). For *what* each stage does, see
+swap a module. For why the architecture is this shape, see
+[design_notes.md](design_notes.md). For what each stage does, see
 [current_flow.md](current_flow.md).
 
 ## Source tree
@@ -39,7 +39,7 @@ Plus:
 
 ```
 tests/                   Per-stage live tests (`*_live.py`) + unit tests
-scripts/                 inspect_*.py — one per stage, drives the pipeline
+scripts/                 inspect_*.py, one per stage, drives the pipeline
 configs/                 YAML configs
 aois/                    GeoJSON polygons
 docs/                    This documentation
@@ -67,7 +67,7 @@ class ClusteringStage(Stage):
 - **`name`**: unique identifier, used by the orchestrator to look up the
   class and to construct cache asset paths.
 - **`required_inputs`**: set of context keys the stage reads. Validated
-  by the orchestrator *before* calling `run()`; failure raises `KeyError`.
+  by the orchestrator before calling `run()`. Failure raises `KeyError`.
 - **`produces`**: set of context keys the stage writes. The orchestrator
   validates that `run()` actually produces exactly these keys (no more,
   no less) and refuses to continue otherwise.
@@ -75,7 +75,7 @@ class ClusteringStage(Stage):
   GEE assets. Defaults to "cache everything in produces" if not declared;
   declare `set()` to opt out entirely; declare a non-empty subset for
   mixed-output stages.
-- **`run(ctx, config) → StageResult`**: the actual logic. Reads from `ctx`,
+- **`run(ctx, config) -> StageResult`**: the actual logic. Reads from `ctx`,
   reads from `config`, returns `StageResult(outputs={...}, metadata={...},
   warnings=[...])`.
 
@@ -91,13 +91,13 @@ Shared dict-like state between stages. Defined in `base.py`.
 ctx = PipelineContext()
 ctx.set("roi", roi_geometry)
 ctx.set("habitat_mask", masking_image)   # write-once
-ctx.has("habitat_mask")                  # → True
-ctx.get("habitat_mask")                  # → the image
+ctx.has("habitat_mask")                  # True
+ctx.get("habitat_mask")                  # the image
 ```
 
 **Write-once invariant:** calling `ctx.set("habitat_mask", ...)` again
 raises `KeyError`. This enforces "every context key has exactly one
-producing stage" — accidental clobbering is caught at runtime, not
+producing stage". Accidental clobbering is caught at runtime, not
 silently swallowed.
 
 To pre-populate (e.g., load `roi` before the pipeline runs), call
@@ -105,12 +105,12 @@ To pre-populate (e.g., load `roi` before the pipeline runs), call
 
 ### 3. Stage registry
 
-A module-level dict in `base.py` mapping `name → class`. Populated by the
+A module-level dict in `base.py` mapping `name` to class. Populated by the
 `@register_stage("name")` decorator.
 
 ```python
 from fmu.stages.base import get_stage_class
-cls = get_stage_class("clustering")     # → ClusteringStage
+cls = get_stage_class("clustering")     # ClusteringStage
 ```
 
 **Importing a stage module triggers registration.** So the inspect
@@ -120,7 +120,7 @@ resolution then catches typos at construction time, not after 10
 minutes of GEE work:
 
 ```python
-Pipeline(stage_names=["maskng"])   # → KeyError immediately
+Pipeline(stage_names=["maskng"])   # KeyError immediately
 ```
 
 ## The orchestrator
@@ -134,7 +134,7 @@ Pipeline(stage_names=["masking", "data_load", ...], use_cache=True)
 ```
 
 Resolves each name via the registry and stores the class list. Caching
-is opt-in — tests leave it off (default `False`).
+is opt-in (default `False`).
 
 ### Execution
 
@@ -142,7 +142,7 @@ is opt-in — tests leave it off (default `False`).
 classes. For each stage:
 
 1. Instantiate it (`stage_cls()`).
-2. Call `stage.validate(ctx, config)` — fails fast on missing inputs.
+2. Call `stage.validate(ctx, config)`. Fails fast on missing inputs.
 3. If `use_cache=True`:
    a. Check each cacheable output's asset path via `asset_exists`.
    b. If all cacheable outputs hit AND `cacheable == produces`, skip the
@@ -178,7 +178,7 @@ def _resolve_cacheable_outputs(stage: Stage) -> set[str]:
 
 This matters because subclasses (e.g., test mocks like `_SmokeExport(ExportStage)`)
 inherit `cacheable_outputs` from the parent without redeclaring it.
-A naïve `"cacheable_outputs" in stage.__class__.__dict__` would miss
+A naive `"cacheable_outputs" in stage.__class__.__dict__` would miss
 the inherited declaration and incorrectly default to "cache everything".
 
 Regression test: `tests/test_pipeline.py::test_subclass_inherits_cacheable_outputs`.
@@ -190,9 +190,9 @@ Regression test: `tests/test_pipeline.py::test_subclass_inherits_cacheable_outpu
 | Function | What it does |
 |---|---|
 | `cached_asset_path(config_name, stage_name, key)` | Build a deterministic GEE asset path: `{asset_root}/{config_name}/{stage_name}/{key}` |
-| `asset_exists(path) → bool` | True if the asset exists. Tries the underlying HttpError status (401/403 → propagate, 404 → False), falls back to message-text matching for older GEE client versions |
+| `asset_exists(path) -> bool` | True if the asset exists. Tries the underlying HttpError status (401/403 propagates, 404 returns False), falls back to message-text matching for older GEE client versions |
 | `start_export(image, asset_path, roi, scale)` | Submit an async export-to-asset task; return `ExportTaskInfo(task_id, asset_path, description)` |
-| `load_cached_image(path) → ee.Image` | Trivial wrapper for `ee.Image(path)` |
+| `load_cached_image(path) -> ee.Image` | Trivial wrapper for `ee.Image(path)` |
 
 **Stages don't know about caching.** They just produce `ee.Image`
 outputs as usual; the orchestrator wraps cache check / export around
@@ -204,7 +204,7 @@ each `run()` call.
 projects/<gcp-project>/assets/fmu/<config_name>/<stage_name>/<output_key>
 ```
 
-Stable across runs — same config name + same output key always maps to
+Stable across runs. Same config name + same output key always maps to
 the same asset. Changing config thresholds without renaming the config
 overwrites the asset. See [running.md](running.md#stable-paths-not-hashes).
 
@@ -213,16 +213,24 @@ overwrites the asset. See [running.md](running.md#stable-paths-not-hashes).
 Only `ee.Image` outputs can be cached as GEE assets. So:
 
 - `ee.ImageCollection` outputs (e.g., `data_load.s2_collection`) are NOT
-  cacheable. They get rebuilt every run (cheap — filtering is metadata).
+  cacheable. They get rebuilt every run (cheap, filtering is metadata).
 - Python dicts (e.g., `profiling.cluster_profiles`, `export.export_manifest`,
   `metrics.comparison_metrics`) are NOT cacheable. The producing stages
   declare `cacheable_outputs = set()` to opt out.
 - Images that exist on disk but not in GEE (none in this pipeline) would
   also not be cacheable via this layer.
 
-`data_load` is the canonical mixed case — it declares
+`data_load` is the canonical mixed case. It declares
 `cacheable_outputs = {"s2_composite"}` even though `produces =
 {"s1_collection", "s2_collection", "s2_composite"}`.
+
+### Export inventory in the manifest
+
+`src/fmu/stages/export.py::_inventory_cached_assets` walks the stage
+registry, asks each stage for its `cacheable_outputs` (via the same MRO
+helper the orchestrator uses), and probes each path. Whatever exists
+goes into the manifest's `asset_paths`. The list is dynamic and never
+goes stale.
 
 ## How a stage typically runs
 
@@ -248,7 +256,7 @@ def run(self, ctx: PipelineContext, config: Config) -> StageResult:
     # 4. Return outputs
     return StageResult(
         outputs={"cluster_labels": labels, "feature_stack": stack},
-        metadata={"k": params.k, "n_active_bands": len(active_bands), ...},
+        metadata={"k": params.k, "n_active_bands": len(active_bands)},
     )
 ```
 
@@ -260,7 +268,7 @@ Three patterns to follow:
 
 2. **`safe_get_info(server_obj, context="...")`** is the only sanctioned
    way to call `.getInfo()` (i.e., to materialize a server-side value to
-   the client). Same wrapping reason — GEE errors fire at materialization,
+   the client). Same wrapping reason: GEE errors fire at materialization,
    not at construction, and `safe_get_info` attaches the context label.
 
 3. **Step helpers** (`_build_raw_feature_stack`, `_decompose_cyclic_bands`,
@@ -271,14 +279,14 @@ Three patterns to follow:
 
 | Tier | Command | What it tests | Auth needed |
 |---|---|---|---|
-| Fast | `pytest` | Pure Python: config schema, pipeline orchestrator with mocked stages, registry, base classes, utility functions | None |
+| Fast | `pytest` | Pure Python: config schema, pipeline orchestrator with mocked stages, registry, base classes, utility functions, export inventory | None |
 | Live | `pytest -m live_gee` | Each stage against real GEE: actual asset loads, actual GEE computations | `earthengine authenticate` |
 
 **CI runs only the fast tier.** Live tests are run locally before
-locking a stage. Both must pass before a `MODULES.md` row flips to 🔒.
+locking a stage. Both must pass before a `MODULES.md` row flips to Locked.
 
 Per-stage test files: `tests/test_<stage>_live.py`. End-to-end
-chain test: `tests/test_pipeline_smoke_live.py` — uses the cache layer
+chain test: `tests/test_pipeline_smoke_live.py`. Uses the cache layer
 and skips if baseline assets aren't populated. Runs all 10 production
 stages back-to-back and asserts which ones came from cache vs ran live.
 
@@ -302,7 +310,7 @@ and `features_static`.
        name = "features_canopy_volume"
        required_inputs: ClassVar[set[str]] = {"roi", "structure_features"}
        produces: ClassVar[set[str]] = {"canopy_volume_features"}
-       # cacheable_outputs defaults to produces → cache everything
+       # cacheable_outputs defaults to produces, caches everything
 
        @safe_call("computing canopy volume features")
        def run(self, ctx: PipelineContext, config: Config) -> StageResult:
@@ -337,7 +345,7 @@ and `features_static`.
 5. **Update `docs/current_flow.md`** with a section describing the new stage,
    its inputs/outputs, datasets, and config knobs.
 
-6. **Wire it into the pipeline run order** — update the `FULL_PIPELINE_STAGES`
+6. **Wire it into the pipeline run order**. Update the `FULL_PIPELINE_STAGES`
    constant in `tests/test_pipeline_smoke_live.py` if the new stage should
    be part of the smoke test, and update any inspect scripts whose
    downstream stages now depend on it.
@@ -353,7 +361,7 @@ from fmu.stages.clustering import ClusteringStage
 from fmu.stages.base import _stage_registry
 
 class MyClusteringVariant(ClusteringStage):
-    name = "clustering"   # keep the same name — orchestrator looks up by name
+    name = "clustering"   # keep the same name, orchestrator looks up by name
     def run(self, ctx, config):
         # custom logic
         ...
@@ -387,9 +395,9 @@ This is the pattern when you want both versions runnable for comparison.
 Utilities in `src/fmu/utils/` are shared across stages. Three live there
 today:
 
-- `gee.py` — GEE init, safe wrappers, asset path, ROI loader
-- `logging.py` — per-run dir, Rich + file handler
-- `caching.py` — cache primitives used by the orchestrator
+- `gee.py`: GEE init, safe wrappers, asset path, ROI loader
+- `logging.py`: per-run dir, Rich + file handler
+- `caching.py`: cache primitives used by the orchestrator
 
 Add new utilities here when you have logic shared between two or more
 stages. If it's used by exactly one stage, keep it in that stage's

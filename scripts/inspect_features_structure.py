@@ -80,7 +80,7 @@ def main() -> None:
         print()
         print(f"var feats = ee.Image('{features_path}');")
         print()
-        # Canopy height — brown (bare) → yellow → green (tall canopy)
+        # Canopy height; brown (bare) to yellow to green (tall canopy)
         print(
             "Map.addLayer(feats.select('canopy_height'), "
             "{min: 0, max: 25, palette: ['8B4513','D2B48C','9ACD32','228B22','006400']}, "
@@ -108,7 +108,7 @@ def main() -> None:
             "https://code.earthengine.google.com/tasks)."
         )
         print(
-            "Re-run this script after the export completes (~3-10 min — "
+            "Re-run this script after the export completes (~3-10 min; "
             "small operation, just reduceNeighborhood)."
         )
 

@@ -64,7 +64,7 @@ def safe_get_info(ee_object: Any, *, context: str = "") -> Any:
 
 
 def safe_call(context: str) -> Callable[[Callable[..., T]], Callable[..., T]]:
-    """Decorator version of safe_get_info — adds context to ee.EEExceptions."""
+    """Decorator version of safe_get_info; adds context to ee.EEExceptions."""
 
     def decorator(fn: Callable[..., T]) -> Callable[..., T]:
         @wraps(fn)
@@ -93,7 +93,7 @@ def load_roi_geometry(roi_file: Path) -> ee.Geometry:
         feats = gj.get("features", [])
         if not feats:
             raise ValueError(f"ROI file {roi_file} has no features.")
-        # All coords come from the local JSON file — pass them directly as
+        # All coords come from the local JSON file; pass them directly as
         # Python lists. GEE constructs the geometry from them server-side.
         if len(feats) == 1:
             return ee.Geometry(feats[0]["geometry"])

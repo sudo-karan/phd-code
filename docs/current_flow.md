@@ -8,7 +8,7 @@ This file is the lookup index: "I want to find where X happens." For *why* we ma
 
 ## Testing policy
 
-- **GEE stages** (masking, data_load, feature stages, etc.) have **live tests only** — `tests/test_<stage>_live.py`. Run them locally with `pytest -m live_gee` before locking a module. These tests need `earthengine authenticate` to be set up.
+- **GEE stages** (masking, data_load, feature stages, etc.) have **live tests only**; `tests/test_<stage>_live.py`. Run them locally with `pytest -m live_gee` before locking a module. These tests need `earthengine authenticate` to be set up.
 - **Pure-Python infrastructure** (config, settings, pipeline, base, utils) has mocked unit tests that run in CI on every push.
 - CI (GitHub Actions) runs only the fast/mocked tier. **CI passing ≠ GEE stages working.** You have to run live tests locally.
 
@@ -18,27 +18,29 @@ See ENG-014 and ENG-018 in `decisions.md` for the rationale.
 
 ## Pipeline flow (current state)
 
-The pipeline runs a sequence of stages, each producing context keys consumed by later stages. Asset caching (Module 6 in build order) is **cross-cutting** — it doesn't have its own runtime step; it wraps every stage's read/write to GEE.
+The pipeline runs a sequence of stages, each producing context keys consumed by later stages. Asset caching (Module 6 in build order) is **cross-cutting**; it doesn't have its own runtime step; it wraps every stage's read/write to GEE.
 
 ```
 [ROI loaded into context]
-        ↓
-1. masking          → habitat_mask, water_mask, landcover_summary    [cached]
-        ↓
-2. data_load        → roi, s2_collection, s1_collection, s2_composite [cached]
-        ↓
-3. features_optical → optical_features                                [cached]
-4. features_radar   → radar_features                                  [cached]
-5. features_structure → structure_features                            [cached]
-6. features_static  → static_features                                 [cached]
-        ↓
-7. segmentation     → snic_clusters                                   [cached]
-        ↓
-8. clustering       → cluster_labels                                  [cached]
-        ↓
-9. profiling        → cluster_stats
-        ↓
-10. export          → final GeoTIFF, GEE asset, manifest
+        |
+1. masking          produces habitat_mask, water_mask, landcover_summary  [cached]
+        |
+2. data_load        produces s2_collection, s1_collection, s2_composite   [cached]
+        |
+3. features_optical    produces optical_features                          [cached]
+4. features_radar      produces radar_features                            [cached]
+5. features_structure  produces structure_features                        [cached]
+6. features_static     produces static_features                           [cached]
+        |
+7. segmentation     produces snic_clusters, snic_means                    [cached]
+        |
+8. clustering       produces cluster_labels, feature_stack                [cached]
+        |
+9. profiling        produces cluster_profiles
+        |
+10. export          submits Drive GeoTIFF + writes manifest
+        |
+11. metrics         produces comparison_metrics + agreement_map
 ```
 
 The orchestrator (`fmu.pipeline.Pipeline`) walks the stages, validates the context against each stage's declared inputs, and merges outputs back in. With Module 6 in place, the orchestrator also checks the asset cache before running each stage. See ENG-013 (orchestrator) and the asset-caching ENG entry (TBD) in decisions.md.
@@ -47,7 +49,7 @@ The orchestrator (`fmu.pipeline.Pipeline`) walks the stages, validates the conte
 
 ## Stage details
 
-### 1. masking — `src/fmu/stages/masking.py`
+### 1. masking - `src/fmu/stages/masking.py`
 
 Builds the habitat mask, water mask, and labeled landcover summary. Multi-source masking: WorldCover for vegetation, JRC GSW + WorldCover class 80 for water, Google Open Buildings + VIIRS for built-up. Three-phase masking structure (DEC-006): static habitat layer first, time-series data comes later.
 
@@ -55,10 +57,10 @@ Builds the habitat mask, water mask, and labeled landcover summary. Multi-source
 **Writes to context:** `habitat_mask`, `water_mask`, `landcover_summary`
 
 **Datasets:**
-- ESA WorldCover v200 (`ESA/WorldCover/v200`) — vegetation classification
-- JRC Global Surface Water 1.4 (`JRC/GSW1_4/GlobalSurfaceWater`) — permanent water from occurrence
-- Google Open Buildings v3 (`GOOGLE/Research/open-buildings/v3/polygons`) — building polygons, rasterized for the built mask
-- VIIRS Nightlights monthly (`NOAA/VIIRS/DNB/MONTHLY_V1/VCMSLCFG`) — broad urban / bright-light areas
+- ESA WorldCover v200 (`ESA/WorldCover/v200`); vegetation classification
+- JRC Global Surface Water 1.4 (`JRC/GSW1_4/GlobalSurfaceWater`); permanent water from occurrence
+- Google Open Buildings v3 (`GOOGLE/Research/open-buildings/v3/polygons`); building polygons, rasterized for the built mask
+- VIIRS Nightlights monthly (`NOAA/VIIRS/DNB/MONTHLY_V1/VCMSLCFG`); broad urban / bright-light areas
 
 **Logic:**
 - `veg` = WorldCover class ∈ keep list
@@ -68,49 +70,49 @@ Builds the habitat mask, water mask, and labeled landcover summary. Multi-source
 - `landcover_summary` = labeled image: 10/20/30 for veg, 50 for built, 80 for water, 0 for other
 
 **Config knobs** (in `configs/*.yaml` under `masking:`):
-- `keep_worldcover_classes` — vegetation classes (default `[10, 20, 30]`)
-- `jrc_water_occurrence_threshold` — % months water observed (default 50.0)
-- `open_buildings_confidence` — drop building polygons below this (default 0.7)
-- `nightlights_threshold` — VIIRS radiance threshold (default 30.0, Delhi-calibrated)
+- `keep_worldcover_classes`; vegetation classes (default `[10, 20, 30]`)
+- `jrc_water_occurrence_threshold`; % months water observed (default 50.0)
+- `open_buildings_confidence`; drop building polygons below this (default 0.7)
+- `nightlights_threshold`; VIIRS radiance threshold (default 30.0, Delhi-calibrated)
 
 **Not used in this stage** (kept in config for future use):
-- `ndvi_min` — applied later in a feature stage; requires S2 data, doesn't belong in static masking
+- `ndvi_min`; applied later in a feature stage; requires S2 data, doesn't belong in static masking
 
 **Why these data sources** (see also `docs/design_notes.md`):
-The built mask uses Open Buildings (vector, derived from commercial imagery — not S2) and VIIRS (different sensor) rather than e.g. GHSL Built-up. This avoids using S2-derived products to mask data that will later be fed S2 features — reduces circularity between mask and features.
+The built mask uses Open Buildings (vector, derived from commercial imagery; not S2) and VIIRS (different sensor) rather than e.g. GHSL Built-up. This avoids using S2-derived products to mask data that will later be fed S2 features; reduces circularity between mask and features.
 
-**Related decisions:** DEC-005 (ROI via GeoJSON), DEC-006 (three-phase masking), ENG-005, ENG-011, ENG-012, ENG-017 (new — multi-source masking).
+**Related decisions:** DEC-005 (ROI via GeoJSON), DEC-006 (three-phase masking), ENG-005, ENG-011, ENG-012, ENG-017 (new; multi-source masking).
 
-### 2. data_load — `src/fmu/stages/data_load.py`
+### 2. data_load - `src/fmu/stages/data_load.py`
 
-Loads Sentinel-2 and Sentinel-1 collections, applies S2 cloud masking (SCL-based), and builds the static optical composite SNIC will see. The phenology and radar windows are different from the composite window — each serves a different downstream stage.
+Loads Sentinel-2 and Sentinel-1 collections, applies S2 cloud masking (SCL-based), and builds the static optical composite SNIC will see. The phenology and radar windows are different from the composite window; each serves a different downstream stage.
 
 **Reads from context:** `roi`
 **Writes to context:** `s2_collection`, `s1_collection`, `s2_composite`
 
-**Cacheable outputs:** `s2_composite` only. Image collections can't be exported as single assets, so they're recomputed each run (filtering is cheap — composite calculation is the expensive part).
+**Cacheable outputs:** `s2_composite` only. Image collections can't be exported as single assets, so they're recomputed each run (filtering is cheap; composite calculation is the expensive part).
 
 **Datasets:**
-- Sentinel-2 SR Harmonized (`COPERNICUS/S2_SR_HARMONIZED`) — phenology + composite
-- Sentinel-1 GRD (`COPERNICUS/S1_GRD`) — radar
+- Sentinel-2 SR Harmonized (`COPERNICUS/S2_SR_HARMONIZED`); phenology + composite
+- Sentinel-1 GRD (`COPERNICUS/S1_GRD`); radar
 
 **Logic:**
 - S2 collection: filter by ROI + phenology window + `CLOUDY_PIXEL_PERCENTAGE ≤ max_cloud_pct`. Per-image SCL masking drops classes 3 (cloud shadow), 8 (cloud medium prob), 9 (cloud high prob), 10 (thin cirrus).
-- S1 collection: filter by IW mode, single orbit direction (default ASCENDING), VV+VH polarizations. **No dB conversion needed** — `COPERNICUS/S1_GRD` is already in dB ([source](https://developers.google.com/earth-engine/guides/sentinel1)).
+- S1 collection: filter by IW mode, single orbit direction (default ASCENDING), VV+VH polarizations. **No dB conversion needed**; `COPERNICUS/S1_GRD` is already in dB ([source](https://developers.google.com/earth-engine/guides/sentinel1)).
 - S2 composite: re-filter S2 by the optical_composite window, apply SCL mask, reduce by `s2_composite_reducer` (default median).
-- Empty windows → `RuntimeError` (fail-loud per ENG-012).
+- Empty windows to `RuntimeError` (fail-loud per ENG-012).
 
 **Config knobs** (in `configs/*.yaml`):
-- `cloud_mask.max_cloud_pct` — drop S2 images with cloud % above this (default 20)
-- `cloud_mask.drop_scl_classes` — which SCL pixel classes to mask out (default [3, 8, 9, 10])
-- `data_load.s1_orbit` — `ASCENDING` or `DESCENDING` (default ASCENDING)
-- `data_load.s1_polarizations` — list of `VV` / `VH` (default both)
-- `data_load.s1_instrument_mode` — `IW` / `EW` / `SM` (default IW)
-- `data_load.s2_composite_reducer` — `median` / `p25` / `p50` / `p75` (default median)
+- `cloud_mask.max_cloud_pct`; drop S2 images with cloud % above this (default 20)
+- `cloud_mask.drop_scl_classes`; which SCL pixel classes to mask out (default [3, 8, 9, 10])
+- `data_load.s1_orbit`; `ASCENDING` or `DESCENDING` (default ASCENDING)
+- `data_load.s1_polarizations`; list of `VV` / `VH` (default both)
+- `data_load.s1_instrument_mode`; `IW` / `EW` / `SM` (default IW)
+- `data_load.s2_composite_reducer`; `median` / `p25` / `p50` / `p75` (default median)
 
 **Related decisions:** DEC-005 (union mask sampling, handles missing bands), ENG-012 (fail-loud), ENG-018 (caching).
 
-### 3. features_optical — `src/fmu/stages/features_optical.py`
+### 3. features_optical - `src/fmu/stages/features_optical.py`
 
 Per-pixel phenology features via harmonic regression on a vegetation index (NDVI or NIRv) over the 8-year S2 phenology window. The output is the dominant input to clustering downstream.
 
@@ -131,18 +133,18 @@ Where `y` is the vegetation index (NDVI or NIRv) and `t` is years since 2017-01-
 **Derived metrics extracted from the coefficients** (per DEC-002):
 - `<prefix>_mean = a` (intercept)
 - `<prefix>_amplitude_annual = sqrt(b² + c²)`
-- `<prefix>_phase_annual = atan2(c, b)` — radians, when peak greenness happens
-- `<prefix>_amplitude_semi`, `<prefix>_phase_semi` — dual harmonic only
-- `<prefix>_trend = f` — per-year change
-- `<prefix>_residual_variance` — RMS of regression residuals; high = pixel poorly fit by smooth seasonal cycle
-- `<prefix>_obs_count` — number of valid observations per pixel (metadata, not for clustering)
+- `<prefix>_phase_annual = atan2(c, b)`; radians, when peak greenness happens
+- `<prefix>_amplitude_semi`, `<prefix>_phase_semi`; dual harmonic only
+- `<prefix>_trend = f`; per-year change
+- `<prefix>_residual_variance`; RMS of regression residuals; high = pixel poorly fit by smooth seasonal cycle
+- `<prefix>_obs_count`; number of valid observations per pixel (metadata, not for clustering)
 
 Where `<prefix>` is `ndvi` or `nirv` depending on the config.
 
 **Config knobs:**
-- `features_optical.index` — `ndvi` (default, baseline) or `nirv`
-- `features_optical.harmonic_mode` — `single` (default, baseline) or `dual`
-- `features_optical.include_trend` — bool (default `true`)
+- `features_optical.index`; `ndvi` (default, baseline) or `nirv`
+- `features_optical.harmonic_mode`; `single` (default, baseline) or `dual`
+- `features_optical.include_trend`; bool (default `true`)
 
 **Two configs run through this same stage:**
 - `sanjay_van_baseline.yaml`: NDVI + single annual harmonic + trend (6 bands)
@@ -152,9 +154,9 @@ The metrics module (Module 18) will compare their outputs (see DEC-013).
 
 **Related decisions:** DEC-002 (derived metrics not raw coefficients), DEC-013 (baseline vs variant), DEC-014 (compute over full ROI, mask at clustering), DEC-015 (which features included/skipped and why).
 
-### 4. features_radar — `src/fmu/stages/features_radar.py`
+### 4. features_radar - `src/fmu/stages/features_radar.py`
 
-Per-pixel radar features via statistical reducers over the 5-year S1 collection. No harmonic regression — SAR backscatter doesn't have a clean seasonal cycle (returns depend on geometry, moisture, biomass, not photosynthesis).
+Per-pixel radar features via statistical reducers over the 5-year S1 collection. No harmonic regression; SAR backscatter doesn't have a clean seasonal cycle (returns depend on geometry, moisture, biomass, not photosynthesis).
 
 **Reads from context:** `s1_collection`, `roi`
 **Writes to context:** `radar_features` (single multi-band image)
@@ -162,44 +164,44 @@ Per-pixel radar features via statistical reducers over the 5-year S1 collection.
 
 **Reducers applied:**
 - Per-percentile (default [10, 50, 90]): `vv_p10`, `vv_p50`, `vv_p90`, `vh_p10`, `vh_p50`, `vh_p90`
-- IQR (interquartile range, p75 - p25): `vv_iqr`, `vh_iqr` — variability metric
-- Cross-pol contrast: `vv_minus_vh_median` (VV_p50 − VH_p50 in dB) — vegetation structure proxy
+- IQR (interquartile range, p75 - p25): `vv_iqr`, `vh_iqr`; variability metric
+- Cross-pol contrast: `vv_minus_vh_median` (VV_p50 − VH_p50 in dB); vegetation structure proxy
 
 Total: 9 bands with default config.
 
-**On the cross-pol contrast (DEC-016):** Uses `VV − VH` in dB, equivalent to `10·log10(VV_linear / VH_linear)`. The notebook computed `VV / VH` on dB-scale values directly, which isn't mathematically meaningful — dB is a log-scale quantity, not a magnitude. This module fixes that.
+**On the cross-pol contrast (DEC-016):** Uses `VV − VH` in dB, equivalent to `10·log10(VV_linear / VH_linear)`. The notebook computed `VV / VH` on dB-scale values directly, which isn't mathematically meaningful; dB is a log-scale quantity, not a magnitude. This module fixes that.
 
 **On no speckle filtering:** Temporal median over 100+ S1 images suppresses speckle more strongly than any 3×3 or 5×5 spatial filter (variance reduction scales with the number of independent samples). Spatial filters would also blur edges, hurting the downstream SNIC segmentation. If individual-scene speckle becomes a concern, it's a variant config, not a baseline addition.
 
 **Config knobs:**
-- `features_radar.percentiles` — list of percentiles to compute (default `[10, 50, 90]`)
-- `features_radar.include_iqr` — bool (default `true`)
-- `features_radar.include_cross_pol_contrast` — bool (default `true`)
+- `features_radar.percentiles`; list of percentiles to compute (default `[10, 50, 90]`)
+- `features_radar.include_iqr`; bool (default `true`)
+- `features_radar.include_cross_pol_contrast`; bool (default `true`)
 
 **Related decisions:** DEC-014 (compute over full ROI, mask at clustering), DEC-016 (VV−VH in dB, no speckle filter), ENG-018 (caching).
 
-### 5. features_structure — `src/fmu/stages/features_structure.py`
+### 5. features_structure - `src/fmu/stages/features_structure.py`
 
-Per-pixel structural features from canopy height. Uses ETH Global Canopy Height 2020 (10 m, GEDI + S2 fusion — see DEC-009 for why over raw GEDI).
+Per-pixel structural features from canopy height. Uses ETH Global Canopy Height 2020 (10 m, GEDI + S2 fusion; see DEC-009 for why over raw GEDI).
 
 **Reads from context:** `roi`
 **Writes to context:** `structure_features` (single multi-band image)
 **Cacheable:** yes
 
 **Bands (default):**
-- `canopy_height` — point value from the ETH dataset (meters)
-- `canopy_height_std` — std-dev in a 3×3 window — local structural heterogeneity
-- `canopy_height_max` — max in 3×3 window — tallest neighbor (catches edges where short pixels neighbor tall trees)
+- `canopy_height`; point value from the ETH dataset (meters)
+- `canopy_height_std`; std-dev in a 3×3 window; local structural heterogeneity
+- `canopy_height_max`; max in 3×3 window; tallest neighbor (catches edges where short pixels neighbor tall trees)
 
 When `include_neighborhood_stats` is false, only `canopy_height` is emitted (notebook approach).
 
 **Config knobs:**
-- `features_structure.include_neighborhood_stats` — bool (default `true`)
-- `features_structure.neighborhood_kernel_size` — odd int 3-11 (default 3)
+- `features_structure.include_neighborhood_stats`; bool (default `true`)
+- `features_structure.neighborhood_kernel_size`; odd int 3-11 (default 3)
 
 **Related decisions:** DEC-009 (ETH over GEDI L2A), DEC-014 (compute over full ROI, mask at clustering).
 
-### 6. features_static — `src/fmu/stages/features_static.py`
+### 6. features_static - `src/fmu/stages/features_static.py`
 
 Per-pixel features that don't change meaningfully over the analysis time window: terrain, distance to water, long-term rainfall climatology.
 
@@ -208,11 +210,11 @@ Per-pixel features that don't change meaningfully over the analysis time window:
 **Cacheable:** yes
 
 **Bands (default):**
-- `elevation` — meters above sea level (NASADEM)
-- `slope` — degrees (derived from elevation via `ee.Terrain.products`)
-- `aspect` — degrees 0-360, cyclic raw (derived from elevation)
-- `distance_to_water` — meters to nearest water pixel (uses `water_mask` from masking stage, via `fastDistanceTransform`)
-- `annual_rainfall` — mm/year mean from CHIRPS PENTAD over 1991-2020 climatology
+- `elevation`; meters above sea level (NASADEM)
+- `slope`; degrees (derived from elevation via `ee.Terrain.products`)
+- `aspect`; degrees 0-360, cyclic raw (derived from elevation)
+- `distance_to_water`; meters to nearest water pixel (uses `water_mask` from masking stage, via `fastDistanceTransform`)
+- `annual_rainfall`; mm/year mean from CHIRPS PENTAD over 1991-2020 climatology
 
 When `include_climate` is false, only the first 4 bands are emitted.
 
@@ -223,131 +225,131 @@ When `include_climate` is false, only the first 4 bands are emitted.
 **On rainfall:** 30-year standard climatology (1991-2020). Long enough to smooth out year-to-year variation. For a small AOI like Sanjay Van, this band will be nearly constant; included for cross-AOI generality.
 
 **Config knobs:**
-- `features_static.include_climate` — bool (default `true`)
-- `features_static.max_water_distance_pixels` — int 100-10000 (default 1000)
-- `datasets.climate` — CHIRPS pentad path (default `UCSB-CHG/CHIRPS/PENTAD`)
-- `dates.climate` — climatology window (default 1991-01-01 → 2020-12-31)
+- `features_static.include_climate`; bool (default `true`)
+- `features_static.max_water_distance_pixels`; int 100-10000 (default 1000)
+- `datasets.climate`; CHIRPS pentad path (default `UCSB-CHG/CHIRPS/PENTAD`)
+- `dates.climate`; climatology window (default 1991-01-01 to 2020-12-31)
 
 **Related decisions:** DEC-014 (compute over full ROI, mask at clustering).
 
-### 7. segmentation — `src/fmu/stages/segmentation.py`
+### 7. segmentation - `src/fmu/stages/segmentation.py`
 
-SNIC superpixel segmentation. Draws boundaries that downstream clustering operates on (DEC-001 — clustering on superpixel means, not pixels).
+SNIC superpixel segmentation. Draws boundaries that downstream clustering operates on (DEC-001; clustering on superpixel means, not pixels).
 
 **Reads from context:** `roi`, `s2_composite`, `structure_features`, `radar_features`
 **Writes to context:** `snic_clusters` (single band, integer IDs), `snic_means` (5 bands, per-cluster means of input bands)
 **Cacheable:** yes, both outputs.
 
-**SNIC input stack** (5 bands, all 10 m native — chosen after the resolution analysis):
+**SNIC input stack** (5 bands, all 10 m native; chosen after the resolution analysis):
 - `B4_median` (S2 red, raw composite reflectance)
 - `B8_median` (S2 NIR, raw composite reflectance)
-- `composite_nirv` — NIRv derived in-stage from B4/B8: `(B8/10000) × NDVI`. Better than NDVI in dense canopy (no saturation, more within-forest spatial variation).
-- `canopy_height` (from `structure_features` — independent sensor)
-- `vv_minus_vh_median` (from `radar_features` — independent sensor)
+- `composite_nirv`; NIRv derived in-stage from B4/B8: `(B8/10000) × NDVI`. Better than NDVI in dense canopy (no saturation, more within-forest spatial variation).
+- `canopy_height` (from `structure_features`; independent sensor)
+- `vv_minus_vh_median` (from `radar_features`; independent sensor)
 
-These five capture four orthogonal information sources at the same 10 m resolution. NASADEM (30 m), CHIRPS (5,500 m), and cyclic features (phase, aspect) are excluded — resolution analysis showed they'd contribute nothing useful at SNIC's scale.
+These five capture four orthogonal information sources at the same 10 m resolution. NASADEM (30 m), CHIRPS (5,500 m), and cyclic features (phase, aspect) are excluded; resolution analysis showed they'd contribute nothing useful at SNIC's scale.
 
 **Z-score normalization (per band, over the ROI)** is applied before SNIC sees the stack. Without this, the larger-magnitude bands (raw S2 reflectance 0-3000) would dominate the spectral-distance term over `canopy_height` (0-30) and `vv_minus_vh_median` (~0-15 dB). All bands z-scored = all bands contribute roughly equally.
 
-**Same inputs across both configs.** `composite_nirv` is derived from `s2_composite`, which is identical between baseline and variant. So segmentation boundaries are bit-identical between the two configs — Module 18's comparison isolates the optical-features change to the clustering stage alone.
+**Same inputs across both configs.** `composite_nirv` is derived from `s2_composite`, which is identical between baseline and variant. So segmentation boundaries are bit-identical between the two configs; Module 18's comparison isolates the optical-features change to the clustering stage alone.
 
 **Config knobs:**
-- `segmentation.size` — seed spacing in pixels (default 10 ≈ 100 m on 10 m grid)
-- `segmentation.compactness` — 0 = boundaries follow image edges, high = circular blobs (default 0.5)
-- `segmentation.connectivity` — 4 or 8 (default 8)
-- `segmentation.neighborhood_size` — search window (default 128)
-- `segmentation.normalize_inputs` — bool (default `true`; z-score per band before SNIC)
+- `segmentation.size`; seed spacing in pixels (default 10 ≈ 100 m on 10 m grid)
+- `segmentation.compactness`; 0 = boundaries follow image edges, high = circular blobs (default 0.5)
+- `segmentation.connectivity`; 4 or 8 (default 8)
+- `segmentation.neighborhood_size`; search window (default 128)
+- `segmentation.normalize_inputs`; bool (default `true`; z-score per band before SNIC)
 
 **Related decisions:** DEC-001 (superpixels not pixels), DEC-014 (compute everywhere, mask at clustering), DEC-016 (cross-pol metric definition).
 
-### 8. clustering — `src/fmu/stages/clustering.py`
+### 8. clustering - `src/fmu/stages/clustering.py`
 
-Per-superpixel feature stack → preprocessing → k-means → per-pixel cluster labels. Implements the locked DEC-001 (cluster on superpixel means), DEC-003 (median/IQR robust scaling), DEC-004 (log-transform right-skewed bands).
+Per-superpixel feature stack to preprocessing to k-means to per-pixel cluster labels. Implements the locked DEC-001 (cluster on superpixel means), DEC-003 (median/IQR robust scaling), DEC-004 (log-transform right-skewed bands).
 
 **Reads from context:** `roi`, `snic_clusters`, `optical_features`, `radar_features`, `structure_features`, `static_features`, `habitat_mask`
-**Writes to context:** `cluster_labels` (per-pixel cluster ID 0..k-1, masked outside habitat), `feature_stack` (preprocessed multi-band feature image — kept for profiling stage)
+**Writes to context:** `cluster_labels` (per-pixel cluster ID 0..k-1, masked outside habitat), `feature_stack` (preprocessed multi-band feature image; kept for profiling stage)
 **Cacheable:** yes, both outputs. Plus preprocessing parameters cached as a `clustering_metadata` property on the `cluster_labels` asset (ENG-022).
 
 **Pipeline inside the stage (all server-side):**
 
-1. **Build raw feature stack** — auto-detect bands from each features_* asset (works for both `ndvi_*` and `nirv_*` configs). Drop `*_obs_count` (metadata) and `annual_rainfall` (constant in our ROI; kept in the static-features asset for cross-AOI generality).
+1. **Build raw feature stack**; auto-detect bands from each features_* asset (works for both `ndvi_*` and `nirv_*` configs). Drop `*_obs_count` (metadata) and `annual_rainfall` (constant in our ROI; kept in the static-features asset for cross-AOI generality).
 
-2. **Cyclic decomposition** — every `*_phase_*` band and `aspect` is replaced with a sin/cos pair. Aspect is converted from degrees to radians first.
+2. **Cyclic decomposition**; every `*_phase_*` band and `aspect` is replaced with a sin/cos pair. Aspect is converted from degrees to radians first.
 
-3. **Per-superpixel averaging** — `reduceConnectedComponents(reducer=mean, labelBand=snic_clusters, maxSize=1024)`. Every pixel now holds its superpixel's mean for each feature.
+3. **Per-superpixel averaging**; `reduceConnectedComponents(reducer=mean, labelBand=snic_clusters, maxSize=1024)`. Every pixel now holds its superpixel's mean for each feature.
 
-4. **Habitat filter** — `updateMask(habitat_mask)`. Non-habitat pixels excluded from training and labelling.
+4. **Habitat filter**; `updateMask(habitat_mask)`. Non-habitat pixels excluded from training and labelling.
 
-5. **Skewness detection** — `ee.Reducer.skew()` per band. Bands with `|skew| > 1.0` are marked for log-transform.
+5. **Skewness detection**; `ee.Reducer.skew()` per band. Bands with `|skew| > 1.0` are marked for log-transform.
 
-6. **Log-transform** — `log(x − band_min + 1e-3)` so log is defined even for zero/negative values (some bands like `trend` and `vv_minus_vh_median` include both).
+6. **Log-transform**; `log(x − band_min + 1e-3)` so log is defined even for zero/negative values (some bands like `trend` and `vv_minus_vh_median` include both).
 
-7. **Robust scaling** — per band: `(x − median) / IQR`. Bands with zero IQR (true constants) are dropped — they contribute nothing to clustering and would cause division-by-zero.
+7. **Robust scaling**; per band: `(x − median) / IQR`. Bands with zero IQR (true constants) are dropped; they contribute nothing to clustering and would cause division-by-zero.
 
-8. **K-means** — sample `n_training_samples=5000` habitat pixels, train `ee.Clusterer.wekaKMeans(k=6, init=KMeansPlusPlus, seed=42)`, apply to all habitat pixels.
+8. **K-means**; sample `n_training_samples=5000` habitat pixels, train `ee.Clusterer.wekaKMeans(k=6, init=KMeansPlusPlus, seed=42)`, apply to all habitat pixels.
 
-9. **Persist preprocessing metadata** — log_transform_bands, log_offsets, per-band scaling params, active bands list, dropped constant bands — all attached as `clustering_metadata` JSON property on the `cluster_labels` asset.
+9. **Persist preprocessing metadata**; log_transform_bands, log_offsets, per-band scaling params, active bands list, dropped constant bands; all attached as `clustering_metadata` JSON property on the `cluster_labels` asset.
 
 **Config knobs:**
-- `clustering.k` — number of clusters (default 6)
-- `clustering.n_training_samples` — sample size for k-means training (default 5000)
-- `clustering.seed` — random seed (default 42)
-- `clustering.skewness_threshold` — log-transform threshold (default 1.0 per DEC-004)
-- `clustering.superpixel_max_size` — max pixels per superpixel (default 1024)
-- `normalization.method` — `robust` (default, per DEC-003) or `zscore` (notebook baseline)
+- `clustering.k`; number of clusters (default 6)
+- `clustering.n_training_samples`; sample size for k-means training (default 5000)
+- `clustering.seed`; random seed (default 42)
+- `clustering.skewness_threshold`; log-transform threshold (default 1.0 per DEC-004)
+- `clustering.superpixel_max_size`; max pixels per superpixel (default 1024)
+- `normalization.method`; `robust` (default, per DEC-003) or `zscore` (notebook baseline)
 
 **Related decisions:** DEC-001, DEC-003, DEC-004, DEC-014.
 
-### 9. profiling — `src/fmu/stages/profiling.py`
+### 9. profiling - `src/fmu/stages/profiling.py`
 
 Per-cluster feature statistics in **original units** (un-scaled, un-log-transformed). Bridges from cluster IDs to ecological interpretation.
 
 **Reads from context:** `roi`, `cluster_labels`, `optical_features`, `radar_features`, `structure_features`, `static_features`
-**Writes to context:** `cluster_profiles` — a Python list of dicts, one per cluster
+**Writes to context:** `cluster_profiles`; a Python list of dicts, one per cluster
 **Cacheable:** no. Operation is fast (k small `reduceRegion` calls); cheaper to recompute than to manage a non-image cache type.
 
 **Per-cluster output:**
 - `cluster_id`, `pixel_count`, `area_ha`
 - For each feature band: `<band>_mean`, `<band>_p25`, `<band>_p50`, `<band>_p75`
 
-Cyclic bands (phase, aspect) are decomposed to sin/cos first — circular mean can be recovered from `atan2(sin_mean, cos_mean)` if needed for interpretation.
+Cyclic bands (phase, aspect) are decomposed to sin/cos first; circular mean can be recovered from `atan2(sin_mean, cos_mean)` if needed for interpretation.
 
 Profile data lives in the `manifest.json` `metadata.profiles` block, so it's automatically saved alongside every run. The inspect script also writes `cluster_profiles.csv` to the run dir for easy pandas loading.
 
-**Memory:** safe by construction — each cluster contains a subset of pixels, and the per-cluster reduceRegion calls are independent and small.
+**Memory:** safe by construction; each cluster contains a subset of pixels, and the per-cluster reduceRegion calls are independent and small.
 
-### 10. export — `src/fmu/stages/export.py`
+### 10. export - `src/fmu/stages/export.py`
 
-Packages the pipeline's final research-ready outputs. Two deliverables: a GeoTIFF of cluster_labels to the user's Google Drive (for collaborators without GEE access), and a comprehensive run manifest JSON for reproducibility / publication.
+Packages the pipeline's final research-ready outputs. Two deliverables: a GeoTIFF of cluster_labels to the user's Google Drive (for collaborators without GEE access), and a run manifest JSON for reproducibility / publication.
 
 **Reads from context:** `roi`, `cluster_labels`
-**Writes to context:** `export_manifest` — a comprehensive Python dict
+**Writes to context:** `export_manifest`; a Python dict of the manifest contents
 **Cacheable:** no. Always runs (Drive task submission + manifest assembly are cheap).
 
 **The manifest** captures:
 - `pipeline_version` (from `fmu.__version__`)
 - `run_timestamp` (UTC ISO 8601)
 - `roi` (name, area_km², path to geojson)
-- `config_snapshot` (entire YAML serialized — guarantees we can reproduce later)
-- `asset_paths` — every cached GEE asset path for this config (probed dynamically)
-- `clustering` — preprocessing params (read from the cluster_labels asset property, ENG-022) + per-cluster pixel distribution
-- `drive_export` — Drive task ID, filename, folder, submission timestamp
-- `decisions_referenced` — hand-maintained list of DEC-* / ENG-* entries the pipeline implements
+- `config_snapshot` (entire YAML serialized; guarantees we can reproduce later)
+- `asset_paths`; every cached GEE asset path for this config (probed dynamically)
+- `clustering`; preprocessing params (read from the cluster_labels asset property, ENG-022) + per-cluster pixel distribution
+- `drive_export`; Drive task ID, filename, folder, submission timestamp
+- `decisions_referenced`; hand-maintained list of DEC-* / ENG-* entries the pipeline implements
 
 The manifest goes into the orchestrator's `manifest.json` automatically (via stage metadata). The inspect script additionally saves a standalone `export_manifest_{config}.json` file for convenience.
 
-**Drive export** uses `ee.batch.Export.image.toDrive`. Submit-and-forget — the task ID goes into the manifest; user monitors at the GEE Tasks page. Typical wait: 5-15 minutes for a single-band 10m × 13km² uint8 image.
+**Drive export** uses `ee.batch.Export.image.toDrive`. Submit-and-forget; the task ID goes into the manifest; user monitors at the GEE Tasks page. Typical wait: 5-15 minutes for a single-band 10m × 13km² uint8 image.
 
 **Why uint8?** Cluster IDs are 0..k-1 ≤ 255 for any reasonable k. uint8 quarters the file size and most GIS tools handle it natively.
 
-### 11. metrics — `src/fmu/stages/metrics.py`
+### 11. metrics - `src/fmu/stages/metrics.py`
 
 The actual research deliverable. Quantitative comparison between the two clusterings, answering the thesis question "does NIRv + dual harmonic meaningfully improve clustering?"
 
 **Reads from context:** `roi`, `cluster_labels`, `habitat_mask`
 **Also reads (cross-config):** reference config's `cluster_labels` and `feature_stack` assets, if `metrics.reference_config_name` is set.
 **Writes to context:** `comparison_metrics` (Python dict), `agreement_map` (GEE image, only in comparison mode)
-**Cacheable:** no. Always runs (fast — sampling + scikit-learn).
+**Cacheable:** no. Always runs (fast; sampling + scikit-learn).
 
 **Two modes:**
 
@@ -396,27 +398,27 @@ Each one will get its own section here as it's built.
 | Static features logic | `src/fmu/stages/features_static.py` |
 | Segmentation (SNIC) logic | `src/fmu/stages/segmentation.py` |
 | Clustering (k-means) logic | `src/fmu/stages/clustering.py` |
-| Phenology config knobs | `configs/*.yaml` → `features_optical.{index, harmonic_mode, include_trend}` |
-| Radar config knobs | `configs/*.yaml` → `features_radar.{percentiles, include_iqr, include_cross_pol_contrast}` |
-| Structure config knobs | `configs/*.yaml` → `features_structure.{include_neighborhood_stats, neighborhood_kernel_size}` |
-| Static config knobs | `configs/*.yaml` → `features_static.{include_climate, max_water_distance_pixels}` |
-| Segmentation config knobs | `configs/*.yaml` → `segmentation.{size, compactness, connectivity, neighborhood_size, normalize_inputs}` |
-| Clustering config knobs | `configs/*.yaml` → `clustering.{k, n_training_samples, seed, skewness_threshold, superpixel_max_size}` + `normalization.method` |
-| Climate dataset + window | `configs/*.yaml` → `datasets.climate`, `dates.climate` |
+| Phenology config knobs | `configs/*.yaml` to `features_optical.{index, harmonic_mode, include_trend}` |
+| Radar config knobs | `configs/*.yaml` to `features_radar.{percentiles, include_iqr, include_cross_pol_contrast}` |
+| Structure config knobs | `configs/*.yaml` to `features_structure.{include_neighborhood_stats, neighborhood_kernel_size}` |
+| Static config knobs | `configs/*.yaml` to `features_static.{include_climate, max_water_distance_pixels}` |
+| Segmentation config knobs | `configs/*.yaml` to `segmentation.{size, compactness, connectivity, neighborhood_size, normalize_inputs}` |
+| Clustering config knobs | `configs/*.yaml` to `clustering.{k, n_training_samples, seed, skewness_threshold, superpixel_max_size}` + `normalization.method` |
+| Climate dataset + window | `configs/*.yaml` to `datasets.climate`, `dates.climate` |
 | NIRv + dual variant config | `configs/sanjay_van_nirv_dual.yaml` |
-| S2 cloud mask SCL classes | `configs/sanjay_van_baseline.yaml` → `cloud_mask.drop_scl_classes` |
-| S2 max cloud % | `configs/sanjay_van_baseline.yaml` → `cloud_mask.max_cloud_pct` |
-| S1 orbit direction | `configs/sanjay_van_baseline.yaml` → `data_load.s1_orbit` |
-| S1 polarizations | `configs/sanjay_van_baseline.yaml` → `data_load.s1_polarizations` |
-| S2 composite reducer | `configs/sanjay_van_baseline.yaml` → `data_load.s2_composite_reducer` |
-| WorldCover dataset ID | `configs/sanjay_van_baseline.yaml` → `datasets.worldcover` |
-| JRC water dataset ID | `configs/sanjay_van_baseline.yaml` → `datasets.water` |
-| Open Buildings dataset ID | `configs/sanjay_van_baseline.yaml` → `datasets.open_buildings` |
-| VIIRS nightlights dataset ID | `configs/sanjay_van_baseline.yaml` → `datasets.nightlights` |
-| WorldCover class filter | `configs/sanjay_van_baseline.yaml` → `masking.keep_worldcover_classes` |
-| JRC water threshold | `configs/sanjay_van_baseline.yaml` → `masking.jrc_water_occurrence_threshold` |
-| Open Buildings confidence | `configs/sanjay_van_baseline.yaml` → `masking.open_buildings_confidence` |
-| VIIRS threshold | `configs/sanjay_van_baseline.yaml` → `masking.nightlights_threshold` |
+| S2 cloud mask SCL classes | `configs/sanjay_van_baseline.yaml` to `cloud_mask.drop_scl_classes` |
+| S2 max cloud % | `configs/sanjay_van_baseline.yaml` to `cloud_mask.max_cloud_pct` |
+| S1 orbit direction | `configs/sanjay_van_baseline.yaml` to `data_load.s1_orbit` |
+| S1 polarizations | `configs/sanjay_van_baseline.yaml` to `data_load.s1_polarizations` |
+| S2 composite reducer | `configs/sanjay_van_baseline.yaml` to `data_load.s2_composite_reducer` |
+| WorldCover dataset ID | `configs/sanjay_van_baseline.yaml` to `datasets.worldcover` |
+| JRC water dataset ID | `configs/sanjay_van_baseline.yaml` to `datasets.water` |
+| Open Buildings dataset ID | `configs/sanjay_van_baseline.yaml` to `datasets.open_buildings` |
+| VIIRS nightlights dataset ID | `configs/sanjay_van_baseline.yaml` to `datasets.nightlights` |
+| WorldCover class filter | `configs/sanjay_van_baseline.yaml` to `masking.keep_worldcover_classes` |
+| JRC water threshold | `configs/sanjay_van_baseline.yaml` to `masking.jrc_water_occurrence_threshold` |
+| Open Buildings confidence | `configs/sanjay_van_baseline.yaml` to `masking.open_buildings_confidence` |
+| VIIRS threshold | `configs/sanjay_van_baseline.yaml` to `masking.nightlights_threshold` |
 | Per-run output folder | `outputs/runs/<config>_<timestamp>/` (created by `init_logging`) |
 | Manifest of a run | `outputs/runs/<config>_<timestamp>/manifest.json` |
 | Asset caching utility | `src/fmu/utils/caching.py` |
@@ -467,4 +469,4 @@ result = Pipeline(stage_names=["masking"]).run(
 
 ---
 
-*Last updated: v0.6-masking (Module 6).*
+*Last updated: v1.0.0 (Module 18, metrics).*

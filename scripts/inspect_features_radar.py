@@ -2,7 +2,7 @@
 Run the pipeline through features_radar and emit info / JS to view the
 radar features in the GEE Code Editor.
 
-Stages run: masking → data_load → features_radar, with caching on.
+Stages run: masking to data_load to features_radar, with caching on.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ import json
 from fmu.config import load_config
 from fmu.pipeline import Pipeline
 from fmu.stages.base import PipelineContext
-from fmu.stages.data_load import DataLoadStage  # noqa: F401 — registers stage
+from fmu.stages.data_load import DataLoadStage  # noqa: F401  # registers stage
 from fmu.stages.features_radar import FeaturesRadarStage  # noqa: F401
 from fmu.stages.masking import MaskingStage  # noqa: F401
 from fmu.utils.caching import asset_exists, cached_asset_path
@@ -86,25 +86,25 @@ def main() -> None:
         print()
         print(f"var feats = ee.Image('{features_path}');")
         print()
-        # VV median — grayscale, dB range
+        # VV median; grayscale, dB range
         print(
             "Map.addLayer(feats.select('vv_p50'), "
             "{min: -25, max: -5, palette: ['000000','555555','AAAAAA','FFFFFF']}, "
             "'VV median (dB)', true);"
         )
-        # VH median — grayscale, lower dB range (cross-pol is weaker)
+        # VH median; grayscale, lower dB range (cross-pol is weaker)
         print(
             "Map.addLayer(feats.select('vh_p50'), "
             "{min: -30, max: -10, palette: ['000000','555555','AAAAAA','FFFFFF']}, "
             "'VH median (dB)', false);"
         )
-        # Cross-pol contrast — vegetation has VV-VH ~5-10 dB; urban can be higher
+        # Cross-pol contrast; vegetation has VV-VH ~5-10 dB; urban can be higher
         print(
             "Map.addLayer(feats.select('vv_minus_vh_median'), "
             "{min: 0, max: 15, palette: ['000044','3366CC','99CCFF','FFFF99','FFCC00','CC3300']}, "
             "'VV-VH median (cross-pol contrast)', false);"
         )
-        # VV IQR — variability (dark=stable, bright=variable)
+        # VV IQR; variability (dark=stable, bright=variable)
         print(
             "Map.addLayer(feats.select('vv_iqr'), "
             "{min: 0, max: 8, palette: ['000033','3333AA','9999FF','FFFF99','FFCC00']}, "
@@ -116,7 +116,7 @@ def main() -> None:
             "{min: 0, max: 8, palette: ['000033','3333AA','9999FF','FFFF99','FFCC00']}, "
             "'VH IQR (variability)', false);"
         )
-        # VV p10 (low end — surface roughness floor)
+        # VV p10 (low end; surface roughness floor)
         print(
             "Map.addLayer(feats.select('vv_p10'), "
             "{min: -28, max: -8, palette: ['000000','555555','AAAAAA','FFFFFF']}, "

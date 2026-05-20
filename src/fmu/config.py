@@ -95,8 +95,8 @@ class FeaturesOpticalParams(BaseModel):
     # nirv: NIR * NDVI. Tracks productivity more linearly in dense canopy.
     index: Literal["ndvi", "nirv"] = "ndvi"
     # Harmonic mode.
-    # single: annual cycle only — matches notebook baseline.
-    # dual:   annual + semi-annual — catches double-peaked phenology.
+    # single: annual cycle only; matches notebook baseline.
+    # dual:   annual + semi-annual; catches double-peaked phenology.
     harmonic_mode: Literal["single", "dual"] = "single"
     # Whether to include a linear-trend term in the regression. Captures
     # multi-year greening or browning beyond seasonality.
@@ -128,7 +128,7 @@ class FeaturesStructureParams(BaseModel):
     # bands. When False, only canopy_height is emitted (notebook approach).
     include_neighborhood_stats: bool = True
     # Window size in pixels for the neighborhood. Must be odd. Default 3
-    # means a 3×3 window (radius=1) — small enough to preserve boundaries.
+    # means a 3×3 window (radius=1); small enough to preserve boundaries.
     neighborhood_kernel_size: int = Field(default=3, ge=3, le=11)
 
     @field_validator("neighborhood_kernel_size")
@@ -143,7 +143,7 @@ class FeaturesStaticParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
     # Include CHIRPS-derived mean annual rainfall as a band. Useful if
     # the AOI spans different climate regimes. For a small AOI like
-    # Sanjay Van it'll be nearly constant — kept for cross-AOI generality.
+    # Sanjay Van it'll be nearly constant; kept for cross-AOI generality.
     include_climate: bool = True
     # Max distance (in pixels at the analysis scale) for the distance-to-water
     # transform. Pixels farther than this are capped at this value.
@@ -199,7 +199,7 @@ class ClusteringParams(BaseModel):
 
 class NormalizationParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    # Default is "robust" (median/IQR scaling) per DEC-003 — outlier-resistant,
+    # Default is "robust" (median/IQR scaling) per DEC-003; outlier-resistant,
     # and what every shipped config uses. "zscore" remains available for ad-hoc
     # comparisons against earlier notebook behavior, but isn't the recommended
     # path forward.
