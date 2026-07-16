@@ -14,7 +14,7 @@ without code changes.
 | Sentinel-1 GRD | `COPERNICUS/S1_GRD` | data_load, features_radar, segmentation | 10 m | 2017-2022 |
 | ETH Global Canopy Height 2020 | `users/nlang/ETH_GlobalCanopyHeight_2020_10m_v1` | features_structure, segmentation | 10 m | static (2020 snapshot) |
 | NASADEM HGT v001 | `NASA/NASADEM_HGT/001` | features_static | 30 m | static |
-| IndiaSAT LULC | `projects/ee-indiasat/assets/LULC CombinedOutputs WithConfidence` | masking (primary habitat) | 30 m | 2017-2022 annual |
+| CoRE Stack LULC (IndiaSAT) | `projects/corestack-trees/assets/LULC_v4` (folder of per-year images) | masking (primary habitat) | 30 m | 2017-2022 hydrological years |
 | ESA WorldCover v200 | `ESA/WorldCover/v200` | masking (habitat fallback) | 10 m | 2021 |
 | JRC Global Surface Water v1.4 | `JRC/GSW1_4/GlobalSurfaceWater` | masking (distance-to-water only), features_static | 30 m | 1984-2021 |
 | CHIRPS Pentad | `UCSB-CHG/CHIRPS/PENTAD` | features_static | 5,500 m | 1991-2020 climatology |
@@ -93,21 +93,32 @@ meters.
   before k-means. Euclidean distance on raw degrees would treat 0 and
   359 as maximally different despite being identical compass directions.
 
-## IndiaSAT LULC
+## CoRE Stack LULC (IndiaSAT)
 
-`projects/ee-indiasat/assets/LULC CombinedOutputs WithConfidence`. A
-purpose-built Indian land-use / land-cover product (Bansal et al. 2021):
-a 30 m annual raster covering 2017-2022, one class label per pixel per
-year (plus a per-pixel confidence band we don't use here).
+`projects/corestack-trees/assets/LULC_v4`. A purpose-built Indian land-use /
+land-cover product (CoRE Stack, lineage from IndiaSAT / Bansal et al. 2021):
+30 m annual maps, one class label per pixel per year. The asset is a **folder
+of per-year single-band images** (`lulc_v4_2017_2018` … `lulc_v4_2023_2024`,
+class band `predicted_label`), not an ImageCollection, and the images carry no
+`system:time_start`. `masking.py` builds the annual collection from them —
+selecting the class band, keeping the configured hydrological-year window
+(`masking.indiasat_year_min/max`, default start-years 2017-2021 = the deck's
+"2017-2022 hydrological years"), and stamping each image with a timestamp
+parsed from its asset-id year so the recency tie-break can sort by year.
+
+> The original `projects/ee-indiasat/assets/LULC CombinedOutputs WithConfidence`
+> is the same product but is private; `corestack-trees/LULC_v4` is the mirror
+> readable by CoRE Stack accounts. Same legend, incl. `13` = Orchard/Plantation.
 
 - **Primary habitat source in masking.** Classes `6` (Trees) and `12`
   (Shrubs/Scrubs), from `masking.indiasat_habitat_classes`, are kept as
   `habitat_mask`. The stage decides habitat per pixel by a **majority vote
-  over the usable (non-cloud) years** — habitat if more usable years were
+  over the usable (non-masked) years** — habitat if more usable years were
   Trees/Shrubs than not — so a one-off yearly misclassification can't flip
   a pixel. A **tie** (equal habitat and non-habitat years) is broken by the
-  **most recent usable year**, cascading to the next-latest where the
-  newest year is cloud/no-data.
+  **most recent usable year** (sorted by the year in each asset id, since the
+  images carry no `system:time_start`), cascading to the next-latest where the
+  newest year is no-data.
 - **Single-phase exclusion.** Water, cropland, and built-up are dropped
   simply by *not* being in the habitat class set; there is no separate
   water or built-up subtraction. See
@@ -180,7 +191,7 @@ datasets:
   radar_collection: COPERNICUS/S1_GRD
   canopy_height: users/nlang/ETH_GlobalCanopyHeight_2020_10m_v1
   dem: NASA/NASADEM_HGT/001
-  indiasat: "projects/ee-indiasat/assets/LULC CombinedOutputs WithConfidence"
+  indiasat: "projects/corestack-trees/assets/LULC_v4"   # folder of per-year images
   worldcover: ESA/WorldCover/v200
   water: JRC/GSW1_4/GlobalSurfaceWater
   climate: UCSB-CHG/CHIRPS/PENTAD

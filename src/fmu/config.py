@@ -60,9 +60,11 @@ class DatasetIDs(BaseModel):
     radar_collection: str = "COPERNICUS/S1_GRD"
     canopy_height: str = "users/nlang/ETH_GlobalCanopyHeight_2020_10m_v1"
     dem: str = "NASA/NASADEM_HGT/001"
-    # IndiaSAT LULC (Bansal et al. 2021): annual 30 m land-cover raster,
-    # 2017-2022. Primary habitat source (class 6 = Trees, 12 = Shrubs/Scrubs).
-    indiasat: str = "projects/ee-indiasat/assets/LULC CombinedOutputs WithConfidence"
+    # CoRE Stack LULC_v4: annual 30 m land-cover, a folder of per-year images
+    # (lulc_v4_YYYY_YYYY, band 'predicted_label'). Primary habitat source
+    # (class 6 = Trees, 12 = Shrubs/Scrubs). Same product/legend as the private
+    # projects/ee-indiasat asset, but publicly readable to CoRE Stack accounts.
+    indiasat: str = "projects/corestack-trees/assets/LULC_v4"
     # ESA WorldCover v200: habitat fallback where IndiaSAT has no data.
     worldcover: str = "ESA/WorldCover/v200"
     water: str = "JRC/GSW1_4/GlobalSurfaceWater"
@@ -177,8 +179,15 @@ class MaskingParams(BaseModel):
     indiasat_habitat_classes: list[int] = Field(default=[6, 12], min_length=1)
     # Band holding the IndiaSAT class label. None -> use the first band of each
     # annual image (the class band; the collection also carries a confidence
-    # band). Set explicitly if the asset names its class band differently.
+    # band). Set explicitly if the asset names its class band differently
+    # (the CoRE Stack LULC_v4 product names it 'predicted_label').
     indiasat_class_band: str | None = None
+    # Hydrological-year window for the annual LULC images, matched on the start
+    # year in each per-year asset id (e.g. lulc_v4_2017_2018 -> 2017). Both
+    # bounds inclusive; None = use every year available under the asset. The
+    # deck's "2017-2022 hydrological years" = start years 2017..2021.
+    indiasat_year_min: int | None = None
+    indiasat_year_max: int | None = None
     # WorldCover fallback classes, used only where IndiaSAT has no data:
     # 10 = tree cover, 20 = shrubland, 30 = grassland.
     keep_worldcover_classes: list[int] = Field(

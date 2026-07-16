@@ -57,12 +57,12 @@ Builds the habitat mask, water mask, and labeled landcover summary. IndiaSAT-pri
 **Writes to context:** `habitat_mask`, `water_mask`, `landcover_summary`
 
 **Datasets:**
-- IndiaSAT LULC (`projects/ee-indiasat/assets/LULC CombinedOutputs WithConfidence`); primary habitat source, 30 m annual raster covering 2017-2022
+- CoRE Stack LULC (`projects/corestack-trees/assets/LULC_v4`, a folder of per-year images `lulc_v4_YYYY_YYYY`, class band `predicted_label`); primary habitat source, 30 m annual maps, hydrological-year window `masking.indiasat_year_min/max` (default 2017-2021). Mirror of the private `projects/ee-indiasat/...` product
 - ESA WorldCover v200 (`ESA/WorldCover/v200`); habitat fallback where IndiaSAT has no data
 - JRC Global Surface Water 1.4 (`JRC/GSW1_4/GlobalSurfaceWater`); permanent water from occurrence, for the downstream distance-to-water feature only
 
 **Logic:**
-- `veg_indiasat` = per-pixel **majority vote** of the yearly habitat indicator (IndiaSAT class ∈ `indiasat_habitat_classes`, default 6 = Trees, 12 = Shrubs/Scrubs) over the usable (non-cloud) 2017-2022 years — habitat if more usable years were Trees/Shrubs than not. A **tie** is broken by the **most recent usable year** (cascading to the next-latest where the newest is cloud/no-data). Masked where IndiaSAT has no usable year.
+- `veg_indiasat` = per-pixel **majority vote** of the yearly habitat indicator (IndiaSAT class ∈ `indiasat_habitat_classes`, default 6 = Trees, 12 = Shrubs/Scrubs) over the usable (non-masked) year images in the window — habitat if more usable years were Trees/Shrubs than not. A **tie** is broken by the **most recent usable year** (sorted by the year parsed from each asset id, since the images carry no `system:time_start`; cascading to the next-latest where the newest is no-data). Masked where IndiaSAT has no usable year.
 - `veg_wc` = WorldCover class ∈ `keep_worldcover_classes` (fallback)
 - `habitat_mask` = `veg_indiasat` where IndiaSAT has data, else `veg_wc`. Single-phase: no water or built-up subtraction — those classes are simply not in the habitat set.
 - `water_mask` = JRC occurrence ≥ threshold. Built for the distance-to-water feature; NOT used for habitat exclusion.

@@ -36,10 +36,24 @@ def _scale_of_image(img: ee.Image, sample_band: str | None = None) -> float | No
 
 
 def _scale_of_collection_first(asset_id: str, sample_band: str | None = None) -> float | None:
-    """For an ImageCollection asset, get the scale of the first image."""
+    """Scale of the first image in an ImageCollection, or in a folder of images.
+
+    The CoRE Stack LULC source is a folder of per-year images rather than an
+    ImageCollection, so fall back to listing the folder's children.
+    """
     try:
-        coll = ee.ImageCollection(asset_id)
-        first = ee.Image(coll.first())
+        try:
+            asset_type = ee.data.getAsset(asset_id).get("type")
+        except Exception:  # noqa: BLE001
+            asset_type = None
+        if asset_type == "FOLDER":
+            children = ee.data.listAssets({"parent": asset_id}).get("assets", [])
+            imgs = [c for c in children if c.get("type") in ("IMAGE", "Image")]
+            if not imgs:
+                return None
+            first = ee.Image(imgs[0].get("id") or imgs[0].get("name"))
+        else:
+            first = ee.Image(ee.ImageCollection(asset_id).first())
         return _scale_of_image(first, sample_band)
     except Exception as e:  # noqa: BLE001
         print(f"    [error] {e}")
@@ -78,7 +92,7 @@ def main() -> None:
         ("Sentinel-1 GRD (radar)", config.datasets.radar_collection, "collection", "VV"),
         ("ETH Global Canopy Height", config.datasets.canopy_height, "image", None),
         ("NASADEM (elevation)", config.datasets.dem, "image", "elevation"),
-        ("IndiaSAT LULC (habitat)", config.datasets.indiasat, "collection", None),
+        ("CoRE Stack LULC (habitat)", config.datasets.indiasat, "folder", None),
         ("ESA WorldCover (fallback)", config.datasets.worldcover, "collection", "Map"),
         ("JRC Global Surface Water", config.datasets.water, "image", "occurrence"),
         ("CHIRPS PENTAD (climate)", config.datasets.climate, "collection", None),

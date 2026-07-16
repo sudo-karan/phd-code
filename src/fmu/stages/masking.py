@@ -31,14 +31,95 @@ Output context keys:
 
 from __future__ import annotations
 
+import re
+
 import ee
 
-from fmu.config import Config
+from fmu.config import Config, MaskingParams
 from fmu.stages.base import PipelineContext, Stage, StageResult, register_stage
 from fmu.utils.gee import safe_call
 from fmu.utils.logging import get_logger
 
 log = get_logger(__name__)
+
+
+def _hydro_start_year(asset_id: str) -> int | None:
+    """Parse the hydrological start-year from a per-year LULC asset id.
+
+    CoRE Stack images are named like '.../lulc_v4_2017_2018'; the first of the
+    two years is the start of the hydrological year. Returns None if no
+    ``YYYY_YYYY`` token is present.
+    """
+    m = re.search(r"(\d{4})_(\d{4})", asset_id.rsplit("/", 1)[-1])
+    return int(m.group(1)) if m else None
+
+
+def _load_indiasat_collection(
+    asset: str, params: MaskingParams, roi: ee.Geometry
+) -> ee.ImageCollection:
+    """Load the annual LULC source as a single-band, time-stamped collection.
+
+    The CoRE Stack LULC_v4 product is a FOLDER of per-year single-band images
+    (band ``predicted_label``) that carry no ``system:time_start`` — so an
+    ``ee.ImageCollection(folder)`` load fails and the recency tie-break has
+    nothing to sort on. This lists the folder, keeps the images inside the
+    configured hydrological-year window, selects the class band, and stamps
+    each image with a ``system:time_start`` derived from the year in its asset
+    id so the majority-vote + most-recent-year logic downstream works unchanged.
+
+    If ``asset`` is instead a real ImageCollection, it is loaded directly
+    (preserving the pre-CoRE-Stack behaviour).
+    """
+    band = params.indiasat_class_band
+
+    try:
+        asset_type = ee.data.getAsset(asset).get("type")
+    except Exception:  # noqa: BLE001 - fall through to folder handling on any error
+        asset_type = None
+
+    if asset_type == "IMAGE_COLLECTION":
+        ic = ee.ImageCollection(asset).filterBounds(roi)
+        if band is not None:
+            return ic.select([band])
+        return ic.map(lambda img: img.select(0))
+
+    # FOLDER (or unknown): build the collection from the per-year child images.
+    children = ee.data.listAssets({"parent": asset}).get("assets", [])
+    images: list[ee.Image] = []
+    used_years: list[int] = []
+    for child in children:
+        if child.get("type") not in ("IMAGE", "Image"):
+            continue
+        cid = child.get("id") or child.get("name")
+        year = _hydro_start_year(cid)
+        if year is None:
+            continue
+        if params.indiasat_year_min is not None and year < params.indiasat_year_min:
+            continue
+        if params.indiasat_year_max is not None and year > params.indiasat_year_max:
+            continue
+        img = ee.Image(cid)
+        img = img.select([band]) if band is not None else img.select(0)
+        # Stamp a monotonic-in-year timestamp so .sort("system:time_start")
+        # orders the images by recency (the images carry no native timestamp).
+        img = img.set("system:time_start", ee.Date.fromYMD(year, 1, 1).millis())
+        images.append(img)
+        used_years.append(year)
+
+    if not images:
+        raise ee.EEException(
+            f"No annual LULC images found under {asset!r} within year window "
+            f"[{params.indiasat_year_min}, {params.indiasat_year_max}]. "
+            "Check the asset path and the indiasat_year_min/max config."
+        )
+
+    log.info(
+        "Built IndiaSAT collection from %d year-images (%s) under %s",
+        len(images),
+        ", ".join(str(y) for y in sorted(used_years)),
+        asset,
+    )
+    return ee.ImageCollection(images).filterBounds(roi).sort("system:time_start")
 
 
 @register_stage("masking")
@@ -53,16 +134,12 @@ class MaskingStage(Stage):
         ds = config.datasets
         params = config.masking
 
-        # ----- IndiaSAT LULC: primary habitat source -----
-        # Annual 30 m LULC (2017-2022). Decide habitat by majority vote over
-        # the usable years, tie-broken by the most recent usable year.
-        indiasat_ic = ee.ImageCollection(ds.indiasat).filterBounds(roi)
-        if params.indiasat_class_band is not None:
-            indiasat_ic = indiasat_ic.select([params.indiasat_class_band])
-        else:
-            # First band is the class label; the collection also carries a
-            # per-pixel confidence band we don't use here.
-            indiasat_ic = indiasat_ic.map(lambda img: img.select(0))
+        # ----- IndiaSAT / CoRE Stack LULC: primary habitat source -----
+        # Annual 30 m LULC. Decide habitat by majority vote over the usable
+        # years, tie-broken by the most recent usable year. The source is a
+        # folder of per-year images; _load_indiasat_collection selects the
+        # class band, applies the year window, and stamps a per-year timestamp.
+        indiasat_ic = _load_indiasat_collection(ds.indiasat, params, roi)
 
         habitat_classes = params.indiasat_habitat_classes
 
@@ -148,6 +225,7 @@ class MaskingStage(Stage):
                 "indiasat_dataset": ds.indiasat,
                 "indiasat_habitat_classes": habitat_classes,
                 "indiasat_class_band": params.indiasat_class_band,
+                "indiasat_year_window": [params.indiasat_year_min, params.indiasat_year_max],
                 "habitat_collapse": "majority_vote; ties -> most recent usable year",
                 "worldcover_fallback_classes": keep,
                 "worldcover_dataset": ds.worldcover,

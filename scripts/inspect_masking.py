@@ -153,13 +153,36 @@ def main() -> None:
         print(f"var roi = ee.Geometry.Polygon({roi_coords_js});")
         print("Map.centerObject(roi, 13);")
         print()
-        print("// Habitat from IndiaSAT LULC (annual 2017-2022) -> modal class")
+        # LULC_v4 is a FOLDER of per-year images, not an ImageCollection, so
+        # list the per-year assets in the configured window and build the
+        # collection explicitly. (mode is a viz approximation of the stage's
+        # majority-vote habitat logic.)
+        from fmu.stages.masking import _hydro_start_year
+        _ymin = config.masking.indiasat_year_min
+        _ymax = config.masking.indiasat_year_max
+        _band = config.masking.indiasat_class_band
+        _children = ee.data.listAssets({"parent": indiasat_id}).get("assets", [])
+        _year_ids = []
+        for _ch in _children:
+            if _ch.get("type") not in ("IMAGE", "Image"):
+                continue
+            _cid = _ch.get("id") or _ch.get("name")
+            _yr = _hydro_start_year(_cid)
+            if _yr is None:
+                continue
+            if _ymin is not None and _yr < _ymin:
+                continue
+            if _ymax is not None and _yr > _ymax:
+                continue
+            _year_ids.append(_cid)
+        _year_ids.sort()
+        _sel = f".select('{_band}')" if _band else ".select(0)"
+        _imgs_js = ", ".join(f"ee.Image('{cid}'){_sel}" for cid in _year_ids)
+        print("// Habitat from CoRE Stack LULC_v4 (per-year images) -> modal class")
+        print(f"var lulcYears = [{_imgs_js}];")
         print(
-            f"var indiasat = ee.ImageCollection('{indiasat_id}').filterBounds(roi)"
-            ".map(function(img) { return img.select(0); });"
-        )
-        print(
-            "var lulc = indiasat.reduce(ee.Reducer.mode()).rename('indiasat_lulc').clip(roi);"
+            "var lulc = ee.ImageCollection(lulcYears).reduce(ee.Reducer.mode())"
+            ".rename('indiasat_lulc').clip(roi);"
         )
         print(f"var habClasses = [{habitat_js}];")
         print("var vegIndiasat = lulc.eq(habClasses[0]);")

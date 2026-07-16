@@ -32,7 +32,9 @@ datasets:
   radar_collection: COPERNICUS/S1_GRD
   canopy_height: users/nlang/ETH_GlobalCanopyHeight_2020_10m_v1
   dem: NASA/NASADEM_HGT/001
-  indiasat: "projects/ee-indiasat/assets/LULC CombinedOutputs WithConfidence"
+  # CoRE Stack LULC_v4: FOLDER of per-year images, band 'predicted_label'
+  # (same legend/handling as the baseline; see that config for details).
+  indiasat: "projects/corestack-trees/assets/LULC_v4"
   worldcover: ESA/WorldCover/v200          # habitat fallback where IndiaSAT is unavailable
   water: JRC/GSW1_4/GlobalSurfaceWater
   climate: UCSB-CHG/CHIRPS/PENTAD
@@ -51,6 +53,9 @@ masking:
   # Habitat = IndiaSAT Trees (6) + Shrubs/Scrubs (12); identical to baseline so
   # the mask is the same across configs (deck Stage 1, single-phase).
   indiasat_habitat_classes: [6, 12]
+  indiasat_class_band: predicted_label    # CoRE Stack LULC_v4 class band name
+  indiasat_year_min: 2017                 # deck 2017-2022 hydrological years
+  indiasat_year_max: 2021
   keep_worldcover_classes: [10, 20, 30]   # WorldCover fallback where IndiaSAT is unavailable
   jrc_water_occurrence_threshold: 50.0    # JRC water for distance-to-water only
 

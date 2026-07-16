@@ -214,10 +214,16 @@ def test_masking_rejects_removed_builtup_fields():
 
 
 def test_baseline_masking_uses_indiasat():
-    """Both baseline and variant YAMLs define IndiaSAT-primary masking."""
+    """Baseline YAML defines IndiaSAT-primary masking against the CoRE Stack
+    LULC_v4 folder (the accessible mirror of the private ee-indiasat asset)."""
     cfg = load_config(BASELINE_YAML)
     assert cfg.masking.indiasat_habitat_classes == [6, 12]
-    assert "ee-indiasat" in cfg.datasets.indiasat
+    assert cfg.datasets.indiasat == "projects/corestack-trees/assets/LULC_v4"
+    # LULC_v4 names its class band 'predicted_label' and is a per-year folder,
+    # so the class band and hydrological-year window must be pinned.
+    assert cfg.masking.indiasat_class_band == "predicted_label"
+    assert cfg.masking.indiasat_year_min == 2017
+    assert cfg.masking.indiasat_year_max == 2021
 
 
 # ---------- v1.1.0: features_optical.time_reference ----------
