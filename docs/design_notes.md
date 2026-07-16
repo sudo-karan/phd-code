@@ -93,19 +93,22 @@ The baseline is the reference, not the best version. New ideas become new
 configs and have to beat it. This is the mechanism for stopping the
 "going-in-circles" pattern. See DEC-006.
 
-## Date windows differ by sensor
+## Date windows: one shared time-series window
 
-Three separate windows for three jobs:
+Phenology (S2), radar (S1), and the optical composite all use one shared
+6-year window, 2017-01-01 to 2022-12-31. Climate is the only exception: a
+30-year normal (1991-2020).
 
-- **phenology (long, 8y)**: harmonic regression needs many cycles for stable
-  amplitude/phase. Year-to-year anomalies have to average out.
-- **radar (5y)**: Sentinel-1B operational 2016 – Dec 2021 (mission ended Aug
-  2022). From late 2021 through 2024 only S1A operated, so revisit dropped
-  from 6 to 12 days. We cap at 2021 to keep per-month image counts
-  consistent. S1C launched Dec 2024, S1D Nov 2025; constellation back to
-  full multi-satellite operation in 2025.
-- **optical composite (1y)**: one cloud-free median, recent year, for SNIC
-  to draw boundaries on. Not a time series.
+- **phenology**: harmonic regression needs many cycles for stable
+  amplitude/phase. Six years lets year-to-year anomalies average out.
+- **radar**: same 2017-2022 window, summarized with percentile statistics
+  over the window rather than fit to a seasonal cycle.
+- **optical composite**: one cloud-free median over the same window, for
+  SNIC to draw boundaries on. Not a time series (a different reduction of
+  the same data).
+
+Sharing one window keeps the sensors temporally comparable and drops the
+bookkeeping of separate per-sensor windows.
 
 ## Pydantic v1 vs v2
 
@@ -212,10 +215,11 @@ and produces comparable outputs. Module 18 (metrics) does the actual
 comparison.
 
 The regression is fit per-pixel using `ee.Reducer.linearRegression(numX, numY=1)`,
-which returns coefficients as an array image plus residual RMS. The stage
+which returns coefficients as an array image plus the RMS residual. The stage
 extracts each coefficient by name, derives amplitude / phase per harmonic
-pair, and combines everything into one multi-band image whose band names
-encode the config (e.g., `ndvi_mean` vs `nirv_mean`). Downstream stages
+pair, squares the RMS residual into `residual_variance` (a diagnostic band,
+excluded from clustering), and combines everything into one multi-band image
+whose band names encode the config (e.g., `ndvi_mean` vs `nirv_mean`). Downstream stages
 can read either via the `optical_features` context key without knowing
 which index was used.
 
@@ -248,8 +252,8 @@ NDVI is unaffected; the 10000 scaling cancels in the ratio.
 Unlike optical phenology, SAR backscatter doesn't have a clean seasonal
 cycle to fit. Returns depend on surface geometry, soil moisture, and
 biomass; not on photosynthesis. So we don't fit harmonics; we summarize
-the 5-year time series with percentile statistics (p10, p50, p90),
-interquartile range, and one derived ratio (VV − VH in dB).
+the 6-year time series with percentile statistics (p10, p50, p90),
+temporal spread (p90 − p10), and one derived ratio (VV − VH in dB).
 
 Two specific choices worth documenting because they deviate from the
 notebook approach:
@@ -337,12 +341,13 @@ All 10 m native, four orthogonal information sources (visible color, NIR,
 structural height, microwave roughness).
 
 `composite_nirv` is derived in the segmentation stage from B4/B8 of the
-2023 S2 composite: `(B8/10000) × NDVI`. Not the same as `nirv_mean` from
-features_optical (that's a harmonic-regression intercept over 8 years).
+S2 composite (2017-2022): `(B8/10000) × NDVI`. Not the same as `nirv_mean`
+from features_optical (that's a harmonic-regression intercept over 6 years).
 This in-stage derivation has two advantages:
   1. Available identically to both baseline and nirv_dual configs without
      either re-export or per-config code branches
-  2. Spatial signal from a single 2023 snapshot; good for boundaries
+  2. Spatial signal from a single median composite over the 2017-2022
+     window; good for boundaries
 
 Why NIRv over NDVI for SNIC input: NDVI saturates in dense canopy. Sanjay
 Van is exactly such a case; its forest interior would map to one NDVI
@@ -412,6 +417,6 @@ the same inputs and same seed, runs are bit-identical.
 
 **Same configuration, both variants**: both baseline and nirv_dual run
 through identical clustering code. Their feature stacks differ (baseline
-has 5 optical bands after dropping obs_count; variant has 7 due to dual
-harmonic), and that's the entire experiment; does NIRv+dual give better
-clusters? Module 18's metrics will answer that.
+has 4 optical bands after dropping obs_count and residual_variance;
+variant has 6 due to dual harmonic), and that's the entire experiment;
+does NIRv+dual give better clusters? Module 18's metrics will answer that.

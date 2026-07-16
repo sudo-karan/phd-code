@@ -10,7 +10,8 @@ Pipeline (server-side throughout):
 
   1. Build raw feature stack
        - All bands from optical, radar, structure, static features.
-       - Drop *_obs_count (metadata) and annual_rainfall (constant in ROI).
+       - Drop *_obs_count (metadata), *_residual_variance (fit diagnostic),
+         and annual_rainfall (constant in ROI).
        - Auto-detect optical band names (works for both ndvi_* and nirv_*).
 
   2. Cyclic decomposition
@@ -72,6 +73,12 @@ _EXCLUDE_BANDS: frozenset[str] = frozenset(
         # Metadata bands from features_optical
         "ndvi_obs_count",
         "nirv_obs_count",
+        # Harmonic fit-quality diagnostic. Exported per-pixel as a diagnostic
+        # (deck v3.0, Stage 3) but NOT a clustering feature: clustering on how
+        # well the harmonic fit each pixel would split otherwise-identical
+        # phenology by noise, not ecology.
+        "ndvi_residual_variance",
+        "nirv_residual_variance",
         # Constant within the Sanjay Van ROI (CHIRPS 5500m resolution).
         # Kept in features_static for cross-AOI generality; dropped here.
         "annual_rainfall",

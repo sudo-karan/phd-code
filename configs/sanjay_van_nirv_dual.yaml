@@ -15,13 +15,13 @@ roi:
 dates:
   phenology:
     start: 2017-01-01
-    end: 2024-12-31
+    end: 2022-12-31
   radar:
     start: 2017-01-01
-    end: 2021-12-01
+    end: 2022-12-31
   optical_composite:
-    start: 2023-01-01
-    end: 2023-12-31
+    start: 2017-01-01
+    end: 2022-12-31
   climate:
     start: 1991-01-01
     end: 2020-12-31
@@ -90,7 +90,7 @@ segmentation:
 
 clustering:
   k: 6
-  n_training_samples: 5000
+  n_training_samples: 10000
   seed: 42
   skewness_threshold: 1.0
   superpixel_max_size: 1024

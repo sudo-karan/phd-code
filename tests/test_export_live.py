@@ -152,6 +152,8 @@ def test_drive_exports_has_all_vector_layer_format_entries(ctx_ready_for_export)
     expected_keys = set()
     if config.export.export_geotiff:
         expected_keys.add("raster_cluster_labels")
+        expected_keys.add("raster_features_raw")
+        expected_keys.add("raster_features_scaled")
     if config.export.export_vector_snic:
         for fmt in config.export.vector_formats:
             expected_keys.add(f"vector_stands_snic_{fmt}")

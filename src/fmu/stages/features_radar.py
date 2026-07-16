@@ -49,7 +49,7 @@ class FeaturesRadarStage(Stage):
         requested = sorted(set(params.percentiles))
         needed = set(requested)
         if params.include_iqr:
-            needed.update([25, 75])
+            needed.update([10, 90])  # temporal spread = p90 - p10 (deck v3.0)
         if params.include_cross_pol_contrast:
             needed.add(50)
         all_pcts = sorted(needed)
@@ -66,16 +66,17 @@ class FeaturesRadarStage(Stage):
             output_bands.append(reduced.select(f"VV_p{p}").rename(f"vv_p{p}"))
             output_bands.append(reduced.select(f"VH_p{p}").rename(f"vh_p{p}"))
 
-        # IQR derived from p75 - p25
+        # Temporal spread = p90 - p10 (deck v3.0, Stage 4). Kept under the
+        # vv_iqr / vh_iqr band names the rest of the pipeline expects.
         if params.include_iqr:
             vv_iqr = (
-                reduced.select("VV_p75")
-                .subtract(reduced.select("VV_p25"))
+                reduced.select("VV_p90")
+                .subtract(reduced.select("VV_p10"))
                 .rename("vv_iqr")
             )
             vh_iqr = (
-                reduced.select("VH_p75")
-                .subtract(reduced.select("VH_p25"))
+                reduced.select("VH_p90")
+                .subtract(reduced.select("VH_p10"))
                 .rename("vh_iqr")
             )
             output_bands.extend([vv_iqr, vh_iqr])

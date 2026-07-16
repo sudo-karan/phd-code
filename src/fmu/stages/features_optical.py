@@ -21,7 +21,7 @@ Derived metrics (per DEC-002; derived metrics, not raw coefficients):
 - amplitude_semi = sqrt(d² + e²)    # dual only
 - phase_semi = atan2(e, d)          # dual only
 - trend = f                          # if include_trend
-- residual_variance = RMS of regression residuals
+- residual_variance = var(residuals) (square of the regression RMS residual)
 - obs_count = number of valid S2 observations per pixel
 
 Features are computed over the full ROI; the habitat_mask is applied at
@@ -226,9 +226,14 @@ def _derive_metrics(
         trend = coefficients.select("t").rename(f"{prefix}_trend")
         bands.append(trend)
 
-    # Residual variance; diagnostic for how well-fit each pixel is by the harmonic
-    residual_variance = residuals_image.arrayFlatten([["residuals"]]).rename(
-        f"{prefix}_residual_variance"
+    # Residual variance; diagnostic for how well-fit each pixel is by the harmonic.
+    # ee.Reducer.linearRegression emits the ROOT-mean-square of the residuals;
+    # square it to get var(residuals) (the mean residual is ~0 given the constant
+    # term), matching the deck's definition residual_variance = var(residuals).
+    residual_variance = (
+        residuals_image.arrayFlatten([["residuals"]])
+        .pow(2)
+        .rename(f"{prefix}_residual_variance")
     )
     bands.append(residual_variance)
 

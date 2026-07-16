@@ -2,9 +2,14 @@
 
 Three deliverable classes, all driven by toggles in `config.export`:
 
-  1. **Raster GeoTIFF** of `cluster_labels` exported to the user's Google
-     Drive (loadable in QGIS / ArcGIS / rasterio for collaborators without
-     GEE access). Toggled via `export_geotiff`.
+  1. **Raster GeoTIFFs** exported to the user's Google Drive (loadable in
+     QGIS / ArcGIS / rasterio for collaborators without GEE access). Toggled
+     via `export_geotiff`. Three products:
+       - the single-band cluster-label map;
+       - a multiband raster of every feature in ORIGINAL units + the cluster
+         label (human-readable / GIS-ready);
+       - a multiband raster of the SCALED feature_stack (exactly what k-means
+         saw) + the cluster label.
 
   2. **SNIC superpixel vectors** (`stands_snic`): one polygon per SNIC
      superpixel with all per-superpixel feature means attached. The
@@ -45,7 +50,9 @@ also saves a standalone export_manifest_{config}.json for convenience.
 Schema note (v1.1.0 — breaking change from v0.18.0):
   The previous `drive_export` (singular) manifest field is gone.
   All Drive tasks are now keyed under a single `drive_exports` dict:
-    - "raster_cluster_labels"          (always present if export_geotiff)
+    - "raster_cluster_labels"          (present if export_geotiff)
+    - "raster_features_raw"            (present if export_geotiff)
+    - "raster_features_scaled"         (present if export_geotiff)
     - "vector_stands_snic_{fmt}"       (one per format, if export_vector_snic)
     - "vector_stands_dissolved_{fmt}"  (one per format, if export_vector_dissolved)
   Past on-disk manifests are unaffected (archival), but any downstream
@@ -120,6 +127,7 @@ class ExportStage(Stage):
     required_inputs = {
         "roi",
         "cluster_labels",
+        "feature_stack",
         "snic_clusters",
         "optical_features",
         "radar_features",
@@ -160,23 +168,52 @@ class ExportStage(Stage):
         drive_exports: dict[str, dict[str, Any]] = {}
         vector_layers: dict[str, dict[str, Any]] = {}
 
-        # 4a. Raster GeoTIFF (preserves prior behavior, just keyed differently)
+        # 4a. Raster GeoTIFFs. Three multiband products (deck v3.0, Stage 10):
+        #   - raster_cluster_labels : single-band uint8 cluster-label map.
+        #   - raster_features_raw   : every feature band in ORIGINAL units
+        #                             (metres, dB, NDVI, ...) + the cluster_id
+        #                             band. The human-readable, GIS-ready map.
+        #   - raster_features_scaled: the preprocessed feature_stack exactly as
+        #                             k-means saw it (log / robust-scaled,
+        #                             cyclic-decomposed) + the cluster_id band.
         if config.export.export_geotiff:
-            raster_filename = f"{config.name}_cluster_labels"
-            raster_task = self._submit_drive_export(
-                cluster_labels=cluster_labels,
-                roi=roi,
-                scale=scale,
-                filename=raster_filename,
-                drive_folder=drive_folder,
-            )
-            drive_exports["raster_cluster_labels"] = _format_task_entry(
-                folder=drive_folder,
-                filename=f"{raster_filename}.tif",
-                file_format="GeoTIFF",
-                task=raster_task,
-                submitted_at=now_iso_initial,
-            )
+            # cluster_id band, shared by the two feature rasters. Kept as a
+            # plain band (GeoTIFF casts the whole image to a common type, so
+            # it rides along as a float next to the feature bands).
+            label_band = cluster_labels.rename("cluster_id")
+
+            raster_specs = [
+                (
+                    "raster_cluster_labels",
+                    f"{config.name}_cluster_labels",
+                    cluster_labels.toUint8(),  # compact single-band label map
+                ),
+                (
+                    "raster_features_raw",
+                    f"{config.name}_features_raw",
+                    _build_raw_feature_export_image(ctx).addBands(label_band),
+                ),
+                (
+                    "raster_features_scaled",
+                    f"{config.name}_features_scaled",
+                    ctx.get("feature_stack").addBands(label_band),
+                ),
+            ]
+            for manifest_key, raster_filename, raster_image in raster_specs:
+                raster_task = self._submit_drive_export(
+                    image=raster_image,
+                    roi=roi,
+                    scale=scale,
+                    filename=raster_filename,
+                    drive_folder=drive_folder,
+                )
+                drive_exports[manifest_key] = _format_task_entry(
+                    folder=drive_folder,
+                    filename=f"{raster_filename}.tif",
+                    file_format="GeoTIFF",
+                    task=raster_task,
+                    submitted_at=now_iso_initial,
+                )
 
         # 4b. SNIC superpixel vectors
         if config.export.export_vector_snic:
@@ -339,7 +376,7 @@ class ExportStage(Stage):
     def _submit_drive_export(
         self,
         *,
-        cluster_labels: ee.Image,
+        image: ee.Image,
         roi: ee.Geometry,
         scale: int,
         filename: str,
@@ -347,15 +384,13 @@ class ExportStage(Stage):
     ) -> dict[str, Any] | None:
         """Submit a raster Drive export and return the task descriptor.
 
+        `image` is exported as-is; the caller is responsible for band
+        selection and pixel typing (e.g. toUint8() for the label map).
         Default implementation actually submits. Tests can override this
         to return a fake task descriptor without hitting GEE batch.
         """
-        # Cast to integer; cluster IDs are inherently integer; this also
-        # makes the resulting GeoTIFF smaller (uint8 if k ≤ 256).
-        labels_int = cluster_labels.toUint8()
-
         task = ee.batch.Export.image.toDrive(
-            image=labels_int,
+            image=image,
             description=filename,
             folder=drive_folder,
             fileNamePrefix=filename,
@@ -423,6 +458,25 @@ class ExportStage(Stage):
 # ---------------------------------------------------------------------
 # Pure helpers (existing)
 # ---------------------------------------------------------------------
+
+
+def _build_raw_feature_export_image(ctx: PipelineContext) -> ee.Image:
+    """Concatenate every features_* image in ORIGINAL units for the raster.
+
+    Drops only the obs_count metadata bands (matching the vector path and
+    profiling's _EXCLUDE_BANDS); keeps the interpretable per-pixel features
+    (including residual_variance and annual_rainfall) so the exported GeoTIFF
+    is self-describing in real units.
+    """
+    all_features = ee.Image.cat([
+        ctx.get("optical_features"),
+        ctx.get("radar_features"),
+        ctx.get("structure_features"),
+        ctx.get("static_features"),
+    ])
+    excluded_metadata_bands = ee.List(["ndvi_obs_count", "nirv_obs_count"])
+    kept = all_features.bandNames().removeAll(excluded_metadata_bands)
+    return all_features.select(kept)
 
 
 def _read_clustering_metadata(cluster_labels: ee.Image) -> dict[str, Any]:
