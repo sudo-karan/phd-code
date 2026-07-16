@@ -525,3 +525,33 @@ print(meta["scaling"])           # per-band center/spread
 - The `feature_stack` is cached as a GEE asset, but it's the *preprocessed*
   feature stack (post-log-transform, post-scaling). It's not directly
   human-interpretable. Use it for downstream ML, not visualization.
+
+## Reports (`scripts/report.py`)
+
+A mentor-facing report is generated *from* the artifacts above — no Earth
+Engine access needed. Install the extra (`pip install -e ".[report]"`;
+matplotlib + shapely, numpy/pandas are already core) and run:
+
+```bash
+# single config
+python scripts/report.py --config sanjay_van_baseline
+# with the baseline-vs-variant comparison
+python scripts/report.py --config sanjay_van_nirv_dual --reference sanjay_van_baseline
+```
+
+It discovers `cluster_profiles.csv`, `export_manifest_<config>.json`, and
+`metrics_<config>.json` under `runs/<config>_*/`, plus the exported
+`stands_dissolved` / `stands_snic` vectors under `fmu_exports_clean/`, and
+writes to `reports/<config>/`:
+
+- **PNG figures** — stand map, cluster fingerprint (z-scored heatmap),
+  feature separating-power, stand composition, per-stand phenology curves,
+  and structural / terrain / radar signatures.
+- **`report.html`** — a single self-contained dashboard embedding all of
+  the above (figures inlined as base64; opens in any browser).
+
+With `--reference`, a comparison section is added (row-normalised confusion
+matrix with the Hungarian best-match rings, plus ARI / NMI / agreement /
+silhouette). Colours follow the validated categorical palette; stand
+identity is always carried by a legend + direct labels, never colour alone.
+`reports/` is gitignored (regenerable from the committed run artifacts).
