@@ -453,6 +453,145 @@ footer{{color:{MUTED};font-size:12px;margin-top:30px}}
 
 
 # --------------------------------------------------------------------------
+# Comparison report (standalone: baseline vs variant, side by side)
+# --------------------------------------------------------------------------
+
+def _cards_html(summary: dict[str, str]) -> str:
+    return "".join(
+        f'<div class="kv"><div class="k">{k}</div><div class="v">{v}</div></div>'
+        for k, v in summary.items()
+    )
+
+
+def comparison_metrics_rows(cur: ConfigRun) -> list[tuple[str, str]]:
+    """ARI / NMI / agreement / both silhouettes, from the variant's metrics JSON."""
+    m = cur.metrics
+    rows: list[tuple[str, str]] = []
+    for key, lbl in [
+        ("ari", "Adjusted Rand Index"),
+        ("nmi", "Normalized Mutual Info"),
+        ("agreement_rate", "Agreement (Hungarian-aligned)"),
+        ("silhouette_current", "Silhouette — variant"),
+        ("silhouette_reference", "Silhouette — baseline"),
+    ]:
+        if m.get(key) is not None:
+            v = m[key]
+            if key == "agreement_rate":
+                rows.append((lbl, f"{v * 100:.0f}%"))
+            elif "silhouette" in key:
+                rows.append((lbl, f"{v:+.3f}"))
+            else:
+                rows.append((lbl, f"{v:.3f}"))
+    return rows
+
+
+def build_comparison_html(
+    cur: ConfigRun, ref: ConfigRun, cur_sum: dict[str, str], ref_sum: dict[str, str],
+    pairs: list[tuple[str, str, Path | None, Path | None]],
+    conf_fig: Path | None, metrics_rows: list[tuple[str, str]],
+) -> str:
+    title = f"FMU comparison — {ref.name} vs {cur.name}"
+    mtable = ""
+    if metrics_rows:
+        rows = "".join(f"<tr><td>{k}</td><td>{v}</td></tr>" for k, v in metrics_rows)
+        mtable = f'<table class="metrics"><tbody>{rows}</tbody></table>'
+    conf_html = ""
+    if conf_fig is not None:
+        conf_html = (
+            '<section><h2>Where the stands overlap</h2>'
+            '<p class="blurb">Row-normalised confusion between the two partitions; the green '
+            "ring marks each variant stand's best-matching baseline stand (Hungarian alignment). "
+            'This is the key: stand colours are per-config, so use this — not colour — to read the correspondence.</p>'
+            f'<figure><img src="{_b64(conf_fig)}" alt="confusion"></figure></section>'
+        )
+    pair_html = ""
+    for heading, blurb, rfig, cfig in pairs:
+        cols = ""
+        if rfig is not None:
+            cols += f'<figure><figcaption>{ref.name}</figcaption><img src="{_b64(rfig)}"></figure>'
+        if cfig is not None:
+            cols += f'<figure><figcaption>{cur.name}</figcaption><img src="{_b64(cfig)}"></figure>'
+        if cols:
+            pair_html += (
+                f'<section><h2>{heading}</h2><p class="blurb">{blurb}</p>'
+                f'<div class="pair">{cols}</div></section>'
+            )
+    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{title}</title><style>
+:root{{color-scheme:light}}
+*{{box-sizing:border-box}}
+body{{margin:0;background:{PLANE};color:{INK};
+ font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.5}}
+.wrap{{max-width:1040px;margin:0 auto;padding:32px 20px 80px}}
+h1{{font-size:26px;margin:0 0 4px}}
+.sub{{color:{INK2};margin:0 0 24px}}
+.cfgwrap{{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:26px}}
+.cfghead{{font-weight:700;font-size:15px;margin-bottom:8px}}
+.cards{{display:flex;flex-wrap:wrap;gap:8px}}
+.kv{{background:{SURFACE};border:1px solid rgba(11,11,11,.10);border-radius:10px;
+ padding:8px 12px;min-width:96px}}
+.kv .k{{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:{MUTED}}}
+.kv .v{{font-size:15px;font-weight:600;margin-top:2px}}
+section{{background:{SURFACE};border:1px solid rgba(11,11,11,.10);border-radius:14px;
+ padding:22px 24px;margin-bottom:22px}}
+h2{{font-size:18px;margin:0 0 4px}}
+.blurb{{color:{INK2};margin:0 0 16px;font-size:14px}}
+.pair{{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}}
+@media (max-width:720px){{.pair,.cfgwrap{{grid-template-columns:1fr}}}}
+figure{{margin:0;text-align:center}}
+figcaption{{font-size:12px;color:{MUTED};margin-bottom:6px;font-weight:600}}
+img{{max-width:100%;height:auto;border-radius:8px}}
+table.metrics{{border-collapse:collapse;font-size:14px;margin-top:4px}}
+table.metrics td{{padding:6px 18px 6px 0;border-bottom:1px solid {GRID}}}
+table.metrics td:last-child{{font-weight:600;font-variant-numeric:tabular-nums}}
+footer{{color:{MUTED};font-size:12px;margin-top:30px}}
+</style></head><body><div class="wrap">
+<h1>{title}</h1>
+<p class="sub">Same AOI, same segmentation, same k={cur.k} — only the optical features differ
+ ({ref.index.upper()} / {ref_sum.get('harmonic', '?')} harmonic vs
+ {cur.index.upper()} / {cur_sum.get('harmonic', '?')} harmonic). Any difference below is the feature choice alone.</p>
+<div class="cfgwrap">
+ <div><div class="cfghead" style="color:{CLUSTER_COLORS[0]}">{ref.name} (reference)</div><div class="cards">{_cards_html(ref_sum)}</div></div>
+ <div><div class="cfghead" style="color:{CLUSTER_COLORS[5]}">{cur.name} (variant)</div><div class="cards">{_cards_html(cur_sum)}</div></div>
+</div>
+<section><h2>Agreement metrics</h2><p class="blurb">How similar the two clusterings are overall — 1.0 would be identical partitions.</p>{mtable}</section>
+{conf_html}
+{pair_html}
+<footer>Generated by scripts/report.py (comparison mode). Stand colours are per-config and NOT comparable across panels; the overlap matrix gives the true correspondence.</footer>
+</div></body></html>"""
+
+
+def comparison_report(cur: ConfigRun, ref: ConfigRun, out: Path) -> Path:
+    cur_dir = out / f"_{cur.name}"
+    ref_dir = out / f"_{ref.name}"
+    cur_dir.mkdir(parents=True, exist_ok=True)
+    ref_dir.mkdir(parents=True, exist_ok=True)
+    pairs: list[tuple[str, str, Path | None, Path | None]] = [
+        ("Stand maps",
+         "The management-unit map each config produces. Stand colours/IDs are per-config — the same colour is a different stand in each panel; read the overlap matrix above for the correspondence.",
+         fig_stand_map(ref, ref_dir), fig_stand_map(cur, cur_dir)),
+        ("Composition",
+         "Area of each stand type across the AOI, per config.",
+         fig_sizes(ref, ref_dir), fig_sizes(cur, cur_dir)),
+        ("Phenology",
+         "Reconstructed seasonal greenness per stand — baseline single-harmonic NDVI vs variant dual-harmonic NIRv.",
+         fig_phenology(ref, ref_dir), fig_phenology(cur, cur_dir)),
+        ("Cluster fingerprint",
+         "Per-stand feature means, z-scored across stands within each config (blue = low, orange = high).",
+         fig_fingerprint(ref, ref_dir), fig_fingerprint(cur, cur_dir)),
+    ]
+    conf = fig_confusion(cur, out)
+    html = build_comparison_html(
+        cur, ref, _cfg_summary(cur), _cfg_summary(ref), pairs, conf,
+        comparison_metrics_rows(cur),
+    )
+    path = out / "report.html"
+    path.write_text(html)
+    return path
+
+
+# --------------------------------------------------------------------------
 # Orchestration
 # --------------------------------------------------------------------------
 
@@ -475,12 +614,28 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--config", required=True, help="config name, e.g. sanjay_van_baseline")
     ap.add_argument("--reference", default=None, help="reference config for the comparison section")
+    ap.add_argument("--compare", action="store_true",
+                    help="build a STANDALONE comparison report (--config = variant, --reference = baseline)")
     ap.add_argument("--runs-root", default="runs", type=Path)
     ap.add_argument("--vectors-dir", default="fmu_exports_clean", type=Path)
     ap.add_argument("--out", default="reports", type=Path)
     args = ap.parse_args()
 
     _style()
+
+    # Standalone comparison report: baseline vs variant, side by side.
+    if args.compare:
+        if not args.reference:
+            raise SystemExit("--compare requires --reference (the baseline config)")
+        cur = discover(args.config, args.runs_root, args.vectors_dir)
+        ref = discover(args.reference, args.runs_root, args.vectors_dir)
+        out = args.out / f"comparison_{args.config}_vs_{args.reference}"
+        out.mkdir(parents=True, exist_ok=True)
+        path = comparison_report(cur, ref, out)
+        print(f"Wrote {path}")
+        print(f"Figures in {out}/")
+        return
+
     run = discover(args.config, args.runs_root, args.vectors_dir)
     out = args.out / args.config
     out.mkdir(parents=True, exist_ok=True)
