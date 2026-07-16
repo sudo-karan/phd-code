@@ -120,11 +120,19 @@ compatible.
 
 Habitat comes from the **IndiaSAT LULC** product (Bansal et al. 2021), a
 30 m annual land-cover raster for 2017-2022 built specifically for Indian
-landscapes. We take the **per-pixel modal class over the 2017-2022
-collection** (majority vote across the six annual images) and keep class
-**6 (Trees)** and **12 (Shrubs/Scrubs)** as habitat. Taking the mode
-rather than any single year keeps a one-off annual misclassification from
-flipping a pixel in or out of the mask.
+landscapes. We keep class **6 (Trees)** and **12 (Shrubs/Scrubs)** as
+habitat, and decide each pixel by a **majority vote over its usable
+(non-cloud) years** — habitat if more usable years were Trees/Shrubs than
+not — so a one-off annual misclassification can't flip a pixel in or out
+of the mask.
+
+Voting is done on the *binary* habitat question (is this year Trees/Shrubs?)
+rather than on the multi-class mode. A multi-class mode would break a
+habitat-vs-non-habitat tie by the smallest class code — an arbitrary,
+ecology-free rule that quietly biases ties against habitat (since Trees=6
+and Shrubs=12 carry high codes). Instead a **tie is broken by the most
+recent usable year** (cascading to the next-latest where the newest is
+cloud/no-data): an explicit, defensible "what was it most recently" rule.
 
 The mask is **single-phase**: water, cropland, and built-up are excluded
 simply because their classes are not in the habitat set. There is no

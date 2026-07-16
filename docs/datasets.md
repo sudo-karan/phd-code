@@ -100,11 +100,14 @@ purpose-built Indian land-use / land-cover product (Bansal et al. 2021):
 a 30 m annual raster covering 2017-2022, one class label per pixel per
 year (plus a per-pixel confidence band we don't use here).
 
-- **Primary habitat source in masking.** The stage takes the **per-pixel
-  modal class over the 2017-2022 collection** (majority vote across the
-  six annual images) so a one-off yearly misclassification can't flip a
-  pixel's habitat status. Classes `6` (Trees) and `12` (Shrubs/Scrubs),
-  from `masking.indiasat_habitat_classes`, are kept as `habitat_mask`.
+- **Primary habitat source in masking.** Classes `6` (Trees) and `12`
+  (Shrubs/Scrubs), from `masking.indiasat_habitat_classes`, are kept as
+  `habitat_mask`. The stage decides habitat per pixel by a **majority vote
+  over the usable (non-cloud) years** — habitat if more usable years were
+  Trees/Shrubs than not — so a one-off yearly misclassification can't flip
+  a pixel. A **tie** (equal habitat and non-habitat years) is broken by the
+  **most recent usable year**, cascading to the next-latest where the
+  newest year is cloud/no-data.
 - **Single-phase exclusion.** Water, cropland, and built-up are dropped
   simply by *not* being in the habitat class set; there is no separate
   water or built-up subtraction. See
