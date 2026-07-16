@@ -116,7 +116,7 @@ Loads Sentinel-2 and Sentinel-1 collections, applies S2 cloud masking (SCL-based
 
 ### 3. features_optical - `src/fmu/stages/features_optical.py`
 
-Per-pixel phenology features via harmonic regression on a vegetation index (NDVI or NIRv) over the 8-year S2 phenology window. The output is the dominant input to clustering downstream.
+Per-pixel phenology features via harmonic regression on a vegetation index (NDVI or NIRv) over the 6-year S2 phenology window. The output is the dominant input to clustering downstream.
 
 **Reads from context:** `s2_collection`, `roi`
 **Writes to context:** `optical_features` (single multi-band image)
@@ -138,7 +138,7 @@ Where `y` is the vegetation index (NDVI or NIRv) and `t` is years since `feature
 - `<prefix>_phase_annual = atan2(c, b)`; radians, when peak greenness happens
 - `<prefix>_amplitude_semi`, `<prefix>_phase_semi`; dual harmonic only
 - `<prefix>_trend = f`; per-year change
-- `<prefix>_residual_variance`; RMS of regression residuals; high = pixel poorly fit by smooth seasonal cycle
+- `<prefix>_residual_variance`; var(residuals) (square of the regression RMS residual; the mean residual is ~0 given the constant term); high = pixel poorly fit by smooth seasonal cycle. Diagnostic-only; excluded from clustering
 - `<prefix>_obs_count`; number of valid observations per pixel (metadata, not for clustering)
 
 Where `<prefix>` is `ndvi` or `nirv` depending on the config.
@@ -159,7 +159,7 @@ The metrics module (Module 18) will compare their outputs (see DEC-013).
 
 ### 4. features_radar - `src/fmu/stages/features_radar.py`
 
-Per-pixel radar features via statistical reducers over the 5-year S1 collection. No harmonic regression; SAR backscatter doesn't have a clean seasonal cycle (returns depend on geometry, moisture, biomass, not photosynthesis).
+Per-pixel radar features via statistical reducers over the 6-year S1 collection. No harmonic regression; SAR backscatter doesn't have a clean seasonal cycle (returns depend on geometry, moisture, biomass, not photosynthesis).
 
 **Reads from context:** `s1_collection`, `roi`
 **Writes to context:** `radar_features` (single multi-band image)
@@ -167,7 +167,7 @@ Per-pixel radar features via statistical reducers over the 5-year S1 collection.
 
 **Reducers applied:**
 - Per-percentile (default [10, 50, 90]): `vv_p10`, `vv_p50`, `vv_p90`, `vh_p10`, `vh_p50`, `vh_p90`
-- IQR (interquartile range, p75 - p25): `vv_iqr`, `vh_iqr`; variability metric
+- Temporal spread (p90 - p10): `vv_iqr`, `vh_iqr`; interdecile range / variability metric
 - Cross-pol contrast: `vv_minus_vh_median` (VV_p50 − VH_p50 in dB); vegetation structure proxy
 
 Total: 9 bands with default config.
@@ -275,7 +275,7 @@ Per-superpixel feature stack to preprocessing to k-means to per-pixel cluster la
 
 **Pipeline inside the stage (all server-side):**
 
-1. **Build raw feature stack**; auto-detect bands from each features_* asset (works for both `ndvi_*` and `nirv_*` configs). Drop `*_obs_count` (metadata) and `annual_rainfall` (constant in our ROI; kept in the static-features asset for cross-AOI generality).
+1. **Build raw feature stack**; auto-detect bands from each features_* asset (works for both `ndvi_*` and `nirv_*` configs). Drop `*_obs_count` (metadata), `*_residual_variance` (diagnostic-only, not a clustering feature), and `annual_rainfall` (constant in our ROI; kept in the static-features asset for cross-AOI generality).
 
 2. **Cyclic decomposition**; every `*_phase_*` band and `aspect` is replaced with a sin/cos pair. Aspect is converted from degrees to radians first.
 
@@ -289,13 +289,13 @@ Per-superpixel feature stack to preprocessing to k-means to per-pixel cluster la
 
 7. **Robust scaling**; per band: `(x − median) / IQR`. Bands with zero IQR (true constants) are dropped; they contribute nothing to clustering and would cause division-by-zero.
 
-8. **K-means**; sample `n_training_samples=5000` habitat pixels, train `ee.Clusterer.wekaKMeans(k=6, init=KMeansPlusPlus, seed=42)`, apply to all habitat pixels.
+8. **K-means**; sample `n_training_samples=10000` habitat pixels, train `ee.Clusterer.wekaKMeans(k=6, init=KMeansPlusPlus, seed=42)`, apply to all habitat pixels.
 
 9. **Persist preprocessing metadata**; log_transform_bands, log_offsets, per-band scaling params, active bands list, dropped constant bands; all attached as `clustering_metadata` JSON property on the `cluster_labels` asset.
 
 **Config knobs:**
 - `clustering.k`; number of clusters (default 6)
-- `clustering.n_training_samples`; sample size for k-means training (default 5000)
+- `clustering.n_training_samples`; sample size for k-means training (default 10000)
 - `clustering.seed`; random seed (default 42)
 - `clustering.skewness_threshold`; log-transform threshold (default 1.0 per DEC-004)
 - `clustering.superpixel_max_size`; max pixels per superpixel (default 1024)
@@ -325,7 +325,7 @@ Profile data lives in the `manifest.json` `metadata.profiles` block, so it's aut
 
 Packages the pipeline's final research-ready outputs. As of v1.1.0 there are three deliverable classes plus a run manifest, all driven by config toggles:
 
-1. **Raster GeoTIFF** of `cluster_labels` to the user's Google Drive (for collaborators without GEE access). Toggle: `export.export_geotiff`.
+1. **Raster GeoTIFFs** to the user's Google Drive (for collaborators without GEE access): a single-band `cluster_labels` map, a raw-units feature raster, and a scaled feature raster (the two feature rasters each carry a `cluster_id` band). Toggle: `export.export_geotiff`.
 2. **SNIC superpixel vectors** (`stands_snic`): one polygon per SNIC superpixel with per-superpixel means of every features_* band attached. The debugging / methodology layer; lets you trace a polygon back to the SNIC label and inspect what fed clustering. Toggle: `export.export_vector_snic`.
 3. **Dissolved cluster vectors** (`stands_dissolved`): one polygon per connected same-cluster region, with cluster profile statistics attached. The forester-facing management-units layer. Toggle: `export.export_vector_dissolved`.
 
@@ -342,13 +342,16 @@ Each vector layer is exported in every format listed in `export.vector_formats` 
 - `config_snapshot` (entire YAML serialized; guarantees we can reproduce later)
 - `asset_paths`; every cached GEE asset path for this config (probed dynamically)
 - `clustering`; preprocessing params (read from the cluster_labels asset property, ENG-022) + per-cluster pixel distribution
-- `drive_exports` (v1.1.0: dict, was singular `drive_export`); one entry per submitted Drive task. Keys: `raster_cluster_labels`, `vector_stands_snic_{fmt}`, `vector_stands_dissolved_{fmt}`. Each entry carries `folder`, `filename`, `format`, `task_id`, `submitted_at`, `task_submitted`.
+- `drive_exports` (v1.1.0: dict, was singular `drive_export`); one entry per submitted Drive task. Keys: `raster_cluster_labels`, `raster_features_raw`, `raster_features_scaled`, `vector_stands_snic_{fmt}`, `vector_stands_dissolved_{fmt}`. Each entry carries `folder`, `filename`, `format`, `task_id`, `submitted_at`, `task_submitted`.
 - `vector_layers`; per-layer metadata (description, n_features, geometry type, id renumbering scheme, SHP and GeoJSON attribute lists)
 - `decisions_source`; pointer to `phd-notebook/decisions.md` as the source of truth
 
 The manifest goes into the orchestrator's `manifest.json` automatically (via stage metadata). The inspect script additionally saves a standalone `export_manifest_{config}.json` file for convenience.
 
-**Raster export** uses `ee.batch.Export.image.toDrive`. Submit-and-forget; the task ID goes into the manifest; user monitors at the GEE Tasks page. Typical wait: 5-15 minutes for a single-band 10m × 13km² uint8 image. cluster_labels is cast to uint8 (k ≤ 256, quarters file size).
+**Raster export** uses `ee.batch.Export.image.toDrive`. Submit-and-forget; the task IDs go into the manifest; user monitors at the GEE Tasks page. Typical wait: 5-15 minutes each for 10m × ~13km² images. Three rasters are emitted:
+- `raster_cluster_labels`: single-band cluster-label map, cast to uint8 (k ≤ 256, quarters file size).
+- `raster_features_raw`: every feature band in original units (metres, dB, NDVI, ...) plus a `cluster_id` band; multiband float, human-readable / GIS-ready.
+- `raster_features_scaled`: the preprocessed `feature_stack` exactly as k-means saw it (log/robust-scaled, cyclic-decomposed) plus a `cluster_id` band; multiband float.
 
 **Vector exports** use `ee.batch.Export.table.toDrive`. The SNIC layer is built server-side via `reduceToVectors` on the snic_clusters image, then `reduceRegions(mean)` on the concatenated features_* stack, then `reduceRegions(mode)` for cluster_id, then geometry-derived attributes (area_ha, perim_m, n_pixels, centroid lat/lon), then renumbered 1..N by centroid (sorted lat desc / lon asc; deterministic). The dissolved layer is built via `reduceToVectors(eightConnected=true)` on cluster_labels, filtered by `vector_min_stand_pixels`, with `profile_<band>_p50` columns attached from cluster_profiles, then renumbered 1..M by the same centroid scheme.
 

@@ -157,7 +157,7 @@ Structure:
   "clustering": {
     "k": 6,
     "seed": 42,
-    "n_training_samples": 5000,
+    "n_training_samples": 10000,
     "normalization_method": "robust",
     "skewness_threshold": 1.0,
     "log_transformed_bands": ["distance_to_water", "vh_iqr"],
@@ -181,6 +181,22 @@ Structure:
       "filename": "sanjay_van_baseline_cluster_labels.tif",
       "format": "GeoTIFF",
       "task_id": "ABCDEF123456",
+      "submitted_at": "2026-05-20T01:35:22+00:00",
+      "task_submitted": true
+    },
+    "raster_features_raw": {
+      "folder": "fmu_exports",
+      "filename": "sanjay_van_baseline_features_raw.tif",
+      "format": "GeoTIFF",
+      "task_id": "BCDEFG234567",
+      "submitted_at": "2026-05-20T01:35:22+00:00",
+      "task_submitted": true
+    },
+    "raster_features_scaled": {
+      "folder": "fmu_exports",
+      "filename": "sanjay_van_baseline_features_scaled.tif",
+      "format": "GeoTIFF",
+      "task_id": "CDEFGH345678",
       "submitted_at": "2026-05-20T01:35:22+00:00",
       "task_submitted": true
     },
@@ -333,35 +349,49 @@ of pixel overlap." The agreement_rate is computed AFTER this remapping;
 it answers "if we relabel current's clusters to match reference's,
 what fraction of pixels end up with the same label?"
 
-## The cluster_labels GeoTIFF (in Google Drive)
+## The raster GeoTIFFs (in Google Drive)
 
-The export stage submits a GeoTIFF export to your Drive:
+The export stage submits three GeoTIFF exports to your Drive:
 
 - **Folder:** `fmu_exports/`
-- **Filename:** `<config_name>_cluster_labels.tif`
-- **Format:** `uint8`, single band
-- **Values:** `0` to `k-1` (cluster IDs), with masked (non-habitat) pixels
-  having the default uint8 nodata
+- **Filenames:**
+  - `<config_name>_cluster_labels.tif` — single-band `uint8` cluster-label
+    map. **Values:** `0` to `k-1` (cluster IDs), with masked (non-habitat)
+    pixels having the default uint8 nodata.
+  - `<config_name>_features_raw.tif` — every feature band in **original
+    units** (metres, dB, NDVI, ...) plus a `cluster_id` band. Multiband
+    float; human-readable / GIS-ready.
+  - `<config_name>_features_scaled.tif` — the preprocessed `feature_stack`
+    exactly as k-means saw it (log/robust-scaled, cyclic-decomposed) plus a
+    `cluster_id` band. Multiband float.
 - **Projection:** EPSG:4326 (GEE's default for export to Drive)
 - **Pixel scale:** `export.analysis_scale_m` (default 10 m)
 
-Submit-and-forget. The task ID is in the manifest. Monitor progress at
-https://code.earthengine.google.com/tasks. Typical wait: 5-15 min.
+Submit-and-forget. The task IDs are in the manifest. Monitor progress at
+https://code.earthengine.google.com/tasks. Typical wait: 5-15 min each.
 
 ### Loading in Python
 
 ```python
 import rasterio
+
+# Cluster-label map: single band, uint8
 with rasterio.open("sanjay_van_baseline_cluster_labels.tif") as src:
     labels = src.read(1)              # numpy array, shape (H, W), dtype uint8
     bounds = src.bounds
     transform = src.transform
+
+# Feature rasters (features_raw / features_scaled): multiband float,
+# one band per feature plus a cluster_id band
+with rasterio.open("sanjay_van_baseline_features_raw.tif") as src:
+    stack = src.read()                # shape (n_bands, H, W)
+    band_names = src.descriptions     # feature band names, incl. "cluster_id"
 ```
 
 ### Loading in QGIS
 
-Drag-drop the `.tif`. Right-click, Properties, Symbology, Singleband
-pseudocolor, discrete. Build a color ramp with k stops. Use
+Drag-drop the `cluster_labels` `.tif`. Right-click, Properties, Symbology,
+Singleband pseudocolor, discrete. Build a color ramp with k stops. Use
 `cluster_profiles.csv` to label each cluster by its dominant feature
 (e.g., "dense canopy", "edge", "open vegetation").
 

@@ -172,14 +172,14 @@ it is, see [design_notes.md](design_notes.md).
 
 ### `dates`
 
-Three separate windows for three jobs:
+One shared 6-year time-series window, plus a separate climatology window:
 
-- `phenology` (default 2017-2024, 8 years): for harmonic regression.
-  Long window so year-to-year anomalies average out.
-- `radar` (default 2017-2021): hard cap at S1B end-of-life. See
-  [datasets.md](datasets.md#sentinel-1-grd) for why.
-- `optical_composite` (default 2023): one recent cloud-free year for
-  the static composite SNIC sees.
+- `phenology` (default 2017-2022, 6 years): for harmonic regression.
+  The 6-year window lets year-to-year anomalies average out.
+- `radar` (default 2017-2022): shares the unified time-series window.
+  See [datasets.md](datasets.md#sentinel-1-grd).
+- `optical_composite` (default 2017-2022): the same 6-year window,
+  reduced to a single static composite SNIC sees.
 - `climate` (default 1991-2020): standard 30-year climatology window
   for CHIRPS.
 
@@ -272,7 +272,7 @@ for the full inventory.
 ### `clustering`
 
 - `k`: number of clusters (default 6).
-- `n_training_samples`: pixels sampled for k-means training (default 5000).
+- `n_training_samples`: pixels sampled for k-means training (default 10000).
 - `seed`: random seed (default 42).
 - `skewness_threshold`: bands with `|skew|` above this get log-transformed
   (default 1.0 per DEC-004).
@@ -293,8 +293,8 @@ by the stage code but with `true` defaults rarely changed:
 
 ### `export`
 
-- `export_geotiff`: submit raster Drive task for cluster_labels (default
-  `true`).
+- `export_geotiff`: submit the raster Drive tasks — the cluster-label map
+  plus the raw and scaled feature rasters (default `true`).
 - `export_gee_asset`: reserved for future use; cache layer already
   exports to GEE assets.
 - `analysis_scale_m`: pixel size in meters for the GeoTIFF export
@@ -310,8 +310,8 @@ by the stage code but with `true` defaults rarely changed:
 - `vector_formats`: list of formats to export each vector layer in
   (default `["shp", "geojson"]`; allowed values: `shp`, `geojson`;
   rejects duplicates and unknown values). One Drive task per layer per
-  format, so the default settings can submit up to 5 Drive tasks total
-  (1 raster + 2 layers × 2 formats).
+  format, so the default settings can submit up to 7 Drive tasks total
+  (3 rasters + 2 layers × 2 formats).
 - `vector_min_stand_pixels`: int 1-1000 (default 4). Minimum pixel
   count for a `stands_dissolved` polygon to survive filtering. SNIC
   layer is unfiltered because SNIC enforces its own minimum via

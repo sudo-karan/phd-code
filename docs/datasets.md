@@ -10,8 +10,8 @@ without code changes.
 
 | Dataset | GEE ID | Used by | Resolution | Window |
 |---|---|---|---|---|
-| Sentinel-2 SR Harmonized | `COPERNICUS/S2_SR_HARMONIZED` | data_load, features_optical, segmentation | 10 m | 2017-2024 phenology, 2023 composite |
-| Sentinel-1 GRD | `COPERNICUS/S1_GRD` | data_load, features_radar, segmentation | 10 m | 2017-2021 |
+| Sentinel-2 SR Harmonized | `COPERNICUS/S2_SR_HARMONIZED` | data_load, features_optical, segmentation | 10 m | 2017-2022 (phenology + composite) |
+| Sentinel-1 GRD | `COPERNICUS/S1_GRD` | data_load, features_radar, segmentation | 10 m | 2017-2022 |
 | ETH Global Canopy Height 2020 | `users/nlang/ETH_GlobalCanopyHeight_2020_10m_v1` | features_structure, segmentation | 10 m | static (2020 snapshot) |
 | NASADEM HGT v001 | `NASA/NASADEM_HGT/001` | features_static | 30 m | static |
 | ESA WorldCover v200 | `ESA/WorldCover/v200` | masking | 10 m | 2021 |
@@ -31,13 +31,14 @@ harmonized across S2A/S2B to handle the 2022 processing baseline change.
 - **Cloud masking:** SCL classes `[3, 8, 9, 10]` dropped (cloud shadow,
   cloud medium prob, cloud high prob, thin cirrus). Per-image
   `CLOUDY_PIXEL_PERCENTAGE` filter caps scene-level cloud at 20%.
-- **Two separate windows on the same collection:**
-  - **phenology** (long, 8y): `dates.phenology`. Used for harmonic regression
-    in `features_optical`. Long window lets year-to-year anomalies average
+- **Two uses of the same 6-year window (2017-2022):**
+  - **phenology**: `dates.phenology`. Used for harmonic regression
+    in `features_optical`. The 6-year window lets year-to-year anomalies average
     out when fitting the smooth seasonal cycle.
-  - **optical_composite** (1y): `dates.optical_composite`. Used to build a
+  - **optical_composite**: `dates.optical_composite`. Used to build a
     single static median composite that SNIC sees in `segmentation`.
-    Different problem from phenology (clean snapshot, not a time series).
+    Different reduction from phenology (clean median snapshot, not a time
+    series), computed over the same window.
 
 **Why S2_SR_HARMONIZED over Landsat or HLS:** 10 m resolution captures
 within-stand variation that 30 m can't. Harmonized variant avoids the
@@ -51,11 +52,9 @@ SAR, sensitive to surface roughness, moisture, and biomass.
 
 - **Bands used:** `VV`, `VH`
 - **Filters:** instrument mode `IW`, single orbit direction (default `ASCENDING`)
-- **Window:** 2017-01-01 to 2021-12-01. Hard cap at Dec 2021 because S1B
-  failed in Dec 2021. From 2022 through Dec 2024 only S1A operated,
-  halving revisit from 6 days to 12. Capping at 2021 keeps per-month
-  image counts consistent across the analysis. S1C launched Dec 2024,
-  S1D Nov 2025; full constellation will be available again from 2025.
+- **Window:** 2017-01-01 to 2022-12-31. Shares the unified 6-year
+  time-series window with the S2 phenology and composite; radar,
+  phenology, and the SNIC composite all cover 2017-2022.
 
 **Why no speckle filter:** temporal median over 100+ S1 images reduces
 variance much more than any 3x3 / 5x5 spatial filter could
@@ -237,8 +236,8 @@ Delhi. Before running on a different AOI, review:
 - `masking.nightlights_threshold` (30.0 is Delhi-calibrated)
 - `masking.keep_worldcover_classes` (default = [10, 20, 30]; tropical
   AOIs may want to also include 40 if cropland is part of "habitat")
-- `dates.radar` end (2021-12-01 caps at S1B end-of-life; if you only
-  need post-2024 data, the constraint can be relaxed)
+- `dates.radar` (2017-2022; shares the unified time-series window with
+  phenology and the composite)
 - `dates.climate` (30-year standard climatology is generally fine)
 - `features_static.max_water_distance_pixels` (default 1000 = 10 km;
   for AOIs near coasts or large rivers, may need larger)

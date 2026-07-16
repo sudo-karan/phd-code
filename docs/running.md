@@ -262,7 +262,9 @@ outputs/runs/<config>_<YYYYMMDD-HHMMSS>/
 └── metrics_<config>.json             # added by inspect_metrics
 ```
 
-Plus the cluster_labels GeoTIFF in your Google Drive at
-`fmu_exports/<config>_cluster_labels.tif`.
+Plus three raster GeoTIFFs in your Google Drive under `fmu_exports/`:
+`<config>_cluster_labels.tif`, `<config>_features_raw.tif`, and
+`<config>_features_scaled.tif` (the two feature rasters carry a `cluster_id`
+band alongside the feature bands).
 
 Full output spec: [outputs.md](outputs.md).
