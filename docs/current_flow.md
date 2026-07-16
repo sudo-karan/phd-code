@@ -62,8 +62,7 @@ Builds the habitat mask, water mask, and labeled landcover summary. IndiaSAT-pri
 - JRC Global Surface Water 1.4 (`JRC/GSW1_4/GlobalSurfaceWater`); permanent water from occurrence, for the downstream distance-to-water feature only
 
 **Logic:**
-- `lulc` = per-pixel MODAL IndiaSAT class over the 2017-2022 collection (majority vote across the six annual images; a single bad year can't flip a pixel)
-- `veg_indiasat` = `lulc` ∈ `indiasat_habitat_classes` (default 6 = Trees, 12 = Shrubs/Scrubs)
+- `veg_indiasat` = per-pixel **majority vote** of the yearly habitat indicator (IndiaSAT class ∈ `indiasat_habitat_classes`, default 6 = Trees, 12 = Shrubs/Scrubs) over the usable (non-cloud) 2017-2022 years — habitat if more usable years were Trees/Shrubs than not. A **tie** is broken by the **most recent usable year** (cascading to the next-latest where the newest is cloud/no-data). Masked where IndiaSAT has no usable year.
 - `veg_wc` = WorldCover class ∈ `keep_worldcover_classes` (fallback)
 - `habitat_mask` = `veg_indiasat` where IndiaSAT has data, else `veg_wc`. Single-phase: no water or built-up subtraction — those classes are simply not in the habitat set.
 - `water_mask` = JRC occurrence ≥ threshold. Built for the distance-to-water feature; NOT used for habitat exclusion.
@@ -76,7 +75,7 @@ Builds the habitat mask, water mask, and labeled landcover summary. IndiaSAT-pri
 - `jrc_water_occurrence_threshold`; % months water observed (default 50.0); builds `water_mask` for the distance-to-water feature only
 
 **Why these data sources** (see also `docs/design_notes.md`):
-IndiaSAT is a purpose-built Indian LULC (Bansal et al. 2021) whose Trees/Shrubs classes give a habitat definition tailored to Indian landscapes; taking the modal class across 2017-2022 makes that definition robust to single-year misclassification. WorldCover is a global 10 m fallback for the rare pixels IndiaSAT doesn't cover.
+IndiaSAT is a purpose-built Indian LULC (Bansal et al. 2021) whose Trees/Shrubs classes give a habitat definition tailored to Indian landscapes; the majority vote across the usable 2017-2022 years (ties broken by the most recent usable year) makes that definition robust to single-year misclassification. WorldCover is a global 10 m fallback for the rare pixels IndiaSAT doesn't cover.
 
 **Related decisions:** DEC-005 (ROI via GeoJSON), DEC-006 (masking runs first), ENG-005, ENG-011, ENG-012.
 
