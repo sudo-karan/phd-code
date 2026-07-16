@@ -57,6 +57,12 @@ dev = [
     "jupyter>=1.0",
     "types-PyYAML>=6.0",
 ]
+# Figures + HTML dashboard from a finished run (scripts/report.py).
+# numpy/pandas are already core deps; these add plotting + geometry.
+report = [
+    "matplotlib>=3.7",
+    "shapely>=2.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
