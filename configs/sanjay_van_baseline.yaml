@@ -39,10 +39,9 @@ datasets:
   radar_collection: COPERNICUS/S1_GRD
   canopy_height: users/nlang/ETH_GlobalCanopyHeight_2020_10m_v1
   dem: NASA/NASADEM_HGT/001
-  worldcover: ESA/WorldCover/v200
+  indiasat: "projects/ee-indiasat/assets/LULC CombinedOutputs WithConfidence"
+  worldcover: ESA/WorldCover/v200          # habitat fallback where IndiaSAT is unavailable
   water: JRC/GSW1_4/GlobalSurfaceWater
-  nightlights: NOAA/VIIRS/DNB/MONTHLY_V1/VCMSLCFG
-  open_buildings: GOOGLE/Research/open-buildings/v3/polygons
   climate: UCSB-CHG/CHIRPS/PENTAD
 
 cloud_mask:
@@ -56,13 +55,11 @@ data_load:
   s2_composite_reducer: median  # single static image for SNIC
 
 masking:
-  ndvi_min: 0.2  # reserved, applied later (needs S2)
-  nightlights_threshold: 30.0  # VIIRS, Delhi-calibrated, won't generalize
-  keep_worldcover_classes: [10, 20, 30]  # trees, shrubs, grass
-  jrc_water_occurrence_threshold: 50.0  # >= this% of months observed = permanent water
-  open_buildings_confidence: 0.7  # drop low-confidence building polygons
-  use_viirs: true            # include VIIRS in built mask; turn off where calibration is uncertain
-  use_open_buildings: true   # include Google Open Buildings in built mask
+  # Habitat = IndiaSAT Trees (6) + Shrubs/Scrubs (12), single-phase (deck Stage 1).
+  # Water/crops/built-up are excluded by not being in this set.
+  indiasat_habitat_classes: [6, 12]
+  keep_worldcover_classes: [10, 20, 30]   # WorldCover fallback where IndiaSAT is unavailable
+  jrc_water_occurrence_threshold: 50.0    # JRC water for distance-to-water only (>= % = permanent)
 
 # Phenology features from the S2 collection. The baseline mirrors the
 # locked notebook approach: NDVI + single annual harmonic. The variant
