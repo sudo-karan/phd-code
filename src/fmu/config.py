@@ -123,9 +123,9 @@ class FeaturesRadarParams(BaseModel):
     # covers the typical "low / median / high" backscatter summary.
     # Each percentile becomes a band (vv_p10, vv_p50, vv_p90, vh_p10, ...).
     percentiles: list[int] = Field(default=[10, 50, 90], min_length=1)
-    # Add interquartile range (p75 - p25) as a variability metric. Adds
-    # vv_iqr and vh_iqr bands. p25 and p75 are computed internally but
-    # not exposed as bands unless they're also in `percentiles`.
+    # Add temporal spread (p90 - p10) as a variability metric (deck v3.0,
+    # Stage 4). Adds vv_iqr and vh_iqr bands. p10 and p90 are computed
+    # internally and also exposed as bands when listed in `percentiles`.
     include_iqr: bool = True
     # Cross-pol contrast: VV_median - VH_median in dB. Equivalent to
     # 10*log10(VV_linear / VH_linear). Standard SAR vegetation metric;
@@ -211,7 +211,7 @@ class ClusteringParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     k: int = Field(default=6, ge=2, le=50)
-    n_training_samples: int = Field(default=5000, ge=100)
+    n_training_samples: int = Field(default=10000, ge=100)
     seed: int = 42
     # Skewness threshold above which a feature gets log-transformed before scaling.
     # Per DEC-004: a feature with |skew| > 1.0 is log-transformed via log(x - min + 1e-3).

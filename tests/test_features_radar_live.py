@@ -135,7 +135,7 @@ def test_cross_pol_contrast_positive_for_vegetation(baseline_ctx_and_config):
 
 
 def test_iqr_is_non_negative(baseline_ctx_and_config):
-    """IQR = p75 - p25, must be >= 0 by construction."""
+    """Temporal spread = p90 - p10, must be >= 0 by construction."""
     ctx, config = baseline_ctx_and_config
     roi = ctx.get("roi")
     result = FeaturesRadarStage().run(ctx, config)

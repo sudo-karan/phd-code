@@ -62,9 +62,10 @@ def test_baseline_fields_have_expected_values():
 
 def test_baseline_dates_parse():
     cfg = load_config(BASELINE_YAML)
+    # Single shared 2017-2022 window across all time-series features (deck v3.0).
     assert cfg.dates.phenology.start.year == 2017
-    assert cfg.dates.phenology.end.year == 2024
-    assert cfg.dates.radar.end.year == 2021
+    assert cfg.dates.phenology.end.year == 2022
+    assert cfg.dates.radar.end.year == 2022
 
 
 # ---------- ROI validation ----------

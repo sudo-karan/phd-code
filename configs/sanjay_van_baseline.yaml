@@ -14,21 +14,21 @@ roi:
   name: sanjay_van
   roi_file: aois/sanjay_van.geojson
 
-# Three windows for three jobs. Don't unify them.
-# - phenology: long, for stable harmonic fits.
-# - radar: 2017-2021, density-consistent (S1B died Dec 2021, halving revisit).
-# - optical_composite: one recent year for the static image SNIC sees.
-# - climate: 30-year standard normal for rainfall climatology.
+# Single shared 2017-2022 window for every time-series feature, so they all
+# rest on the same temporal support (deck v3.0, Stage 2). Phenology, radar,
+# and the static composite SNIC sees all span 2017-2022.
+# - climate: a 30-year standard normal for rainfall climatology, deliberately
+#   NOT the 6-year feature window (a climatology needs a long baseline).
 dates:
   phenology:
     start: 2017-01-01
-    end: 2024-12-31
+    end: 2022-12-31
   radar:
     start: 2017-01-01
-    end: 2021-12-01
+    end: 2022-12-31
   optical_composite:
-    start: 2023-01-01
-    end: 2023-12-31
+    start: 2017-01-01
+    end: 2022-12-31
   climate:
     start: 1991-01-01
     end: 2020-12-31
@@ -79,9 +79,9 @@ features_optical:
   time_reference: 2017-01-01
 
 # Radar features from the S1 collection. Statistical reducers over the
-# 5-year window (notebook approach; no harmonic). VV-VH dB difference
-# replaces notebook's VV/VH (which was a literal division of dB values,
-# not mathematically meaningful; see DEC-016).
+# 2017-2022 window (no harmonic). VV-VH dB difference replaces notebook's
+# VV/VH (which was a literal division of dB values, not mathematically
+# meaningful; see DEC-016).
 features_radar:
   percentiles: [10, 50, 90]
   include_iqr: true
@@ -108,7 +108,7 @@ segmentation:
 
 clustering:
   k: 6
-  n_training_samples: 5000
+  n_training_samples: 10000
   seed: 42
   skewness_threshold: 1.0   # log-transform features with |skew| > this (DEC-004)
   superpixel_max_size: 1024 # max pixels in a single SNIC superpixel; must exceed largest
