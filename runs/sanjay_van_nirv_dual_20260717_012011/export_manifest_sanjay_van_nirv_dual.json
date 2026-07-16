@@ -1,0 +1,485 @@
+{
+  "asset_paths": {
+    "cluster_labels": "projects/replicating-paper/assets/fmu/sanjay_van_nirv_dual/clustering/cluster_labels",
+    "feature_stack": "projects/replicating-paper/assets/fmu/sanjay_van_nirv_dual/clustering/feature_stack",
+    "habitat_mask": "projects/replicating-paper/assets/fmu/sanjay_van_nirv_dual/masking/habitat_mask",
+    "landcover_summary": "projects/replicating-paper/assets/fmu/sanjay_van_nirv_dual/masking/landcover_summary",
+    "optical_features": "projects/replicating-paper/assets/fmu/sanjay_van_nirv_dual/features_optical/optical_features",
+    "radar_features": "projects/replicating-paper/assets/fmu/sanjay_van_nirv_dual/features_radar/radar_features",
+    "s2_composite": "projects/replicating-paper/assets/fmu/sanjay_van_nirv_dual/data_load/s2_composite",
+    "snic_clusters": "projects/replicating-paper/assets/fmu/sanjay_van_nirv_dual/segmentation/snic_clusters",
+    "snic_means": "projects/replicating-paper/assets/fmu/sanjay_van_nirv_dual/segmentation/snic_means",
+    "static_features": "projects/replicating-paper/assets/fmu/sanjay_van_nirv_dual/features_static/static_features",
+    "structure_features": "projects/replicating-paper/assets/fmu/sanjay_van_nirv_dual/features_structure/structure_features",
+    "water_mask": "projects/replicating-paper/assets/fmu/sanjay_van_nirv_dual/masking/water_mask"
+  },
+  "clustering": {
+    "active_bands": [
+      "nirv_mean",
+      "nirv_amplitude_annual",
+      "nirv_amplitude_semi",
+      "nirv_trend",
+      "vv_p10",
+      "vh_p10",
+      "vv_p50",
+      "vh_p50",
+      "vv_p90",
+      "vh_p90",
+      "vv_iqr",
+      "vh_iqr",
+      "vv_minus_vh_median",
+      "canopy_height",
+      "canopy_height_std",
+      "canopy_height_max",
+      "elevation",
+      "slope",
+      "nirv_phase_annual_sin",
+      "nirv_phase_annual_cos",
+      "nirv_phase_semi_sin",
+      "nirv_phase_semi_cos",
+      "aspect_sin",
+      "aspect_cos"
+    ],
+    "cluster_distribution": [
+      {
+        "area_ha": 146.22,
+        "cluster_id": 0,
+        "percent_of_habitat": 15.11,
+        "pixel_count": 14622
+      },
+      {
+        "area_ha": 150.58,
+        "cluster_id": 1,
+        "percent_of_habitat": 15.56,
+        "pixel_count": 15058
+      },
+      {
+        "area_ha": 157.08,
+        "cluster_id": 2,
+        "percent_of_habitat": 16.23,
+        "pixel_count": 15708
+      },
+      {
+        "area_ha": 195.08,
+        "cluster_id": 3,
+        "percent_of_habitat": 20.15,
+        "pixel_count": 19508
+      },
+      {
+        "area_ha": 102.17,
+        "cluster_id": 4,
+        "percent_of_habitat": 10.56,
+        "pixel_count": 10217
+      },
+      {
+        "area_ha": 216.77,
+        "cluster_id": 5,
+        "percent_of_habitat": 22.39,
+        "pixel_count": 21677
+      }
+    ],
+    "cyclic_decomposition_log": [
+      "nirv_phase_annual",
+      "nirv_phase_semi",
+      "aspect"
+    ],
+    "dropped_constant_bands": [
+      "distance_to_water"
+    ],
+    "k": 6,
+    "log_offsets": {
+      "canopy_height_std": 0.001,
+      "nirv_phase_annual_cos": 0.998372125686386,
+      "nirv_phase_semi_sin": 0.9965978302989041,
+      "nirv_trend": 0.017074617942298587,
+      "slope": -0.999,
+      "vh_iqr": -4.331976566268389,
+      "vh_p10": 27.608996179859744,
+      "vh_p50": 22.5240668891409,
+      "vh_p90": 19.189963857376092,
+      "vv_iqr": -4.1958414350589885,
+      "vv_minus_vh_median": -2.3597619652585693,
+      "vv_p10": 19.675928744304503
+    },
+    "log_transformed_bands": [
+      "nirv_trend",
+      "vv_p10",
+      "vh_p10",
+      "vh_p50",
+      "vh_p90",
+      "vv_iqr",
+      "vh_iqr",
+      "vv_minus_vh_median",
+      "canopy_height_std",
+      "slope",
+      "nirv_phase_annual_cos",
+      "nirv_phase_semi_sin"
+    ],
+    "n_training_samples": 10000,
+    "normalization_method": "robust",
+    "raw_band_names": [
+      "nirv_mean",
+      "nirv_amplitude_annual",
+      "nirv_phase_annual",
+      "nirv_amplitude_semi",
+      "nirv_phase_semi",
+      "nirv_trend",
+      "vv_p10",
+      "vh_p10",
+      "vv_p50",
+      "vh_p50",
+      "vv_p90",
+      "vh_p90",
+      "vv_iqr",
+      "vh_iqr",
+      "vv_minus_vh_median",
+      "canopy_height",
+      "canopy_height_std",
+      "canopy_height_max",
+      "elevation",
+      "slope",
+      "aspect",
+      "distance_to_water"
+    ],
+    "scaling": {
+      "aspect_cos": {
+        "center": 0.09920129381974774,
+        "spread": 0.4758685484770239
+      },
+      "aspect_sin": {
+        "center": 0.15884799537431715,
+        "spread": 0.5372704802480346
+      },
+      "canopy_height": {
+        "center": 11.435500452851086,
+        "spread": 4.376341139195418
+      },
+      "canopy_height_max": {
+        "center": 12.44583822270277,
+        "spread": 3.9915402667953988
+      },
+      "canopy_height_std": {
+        "center": -0.34376475142733165,
+        "spread": 0.5045981734881776
+      },
+      "distance_to_water": {
+        "center": 463409.50001051987,
+        "spread": 0.0
+      },
+      "elevation": {
+        "center": 250.3639713494754,
+        "spread": 17.44909375834905
+      },
+      "nirv_amplitude_annual": {
+        "center": 0.054469257349002854,
+        "spread": 0.019594011017513145
+      },
+      "nirv_amplitude_semi": {
+        "center": 0.025978827046606662,
+        "spread": 0.016129970229959833
+      },
+      "nirv_mean": {
+        "center": 0.10820999154162712,
+        "spread": 0.04124915091536295
+      },
+      "nirv_phase_annual_cos": {
+        "center": -1.7059158130503556,
+        "spread": 1.402019753527199
+      },
+      "nirv_phase_annual_sin": {
+        "center": -0.5188674985344925,
+        "spread": 0.32962358248227885
+      },
+      "nirv_phase_semi_cos": {
+        "center": 0.31685042317185996,
+        "spread": 0.41488624439639843
+      },
+      "nirv_phase_semi_sin": {
+        "center": -1.607889328175641,
+        "spread": 1.3456740882460487
+      },
+      "nirv_trend": {
+        "center": -3.5447521230872923,
+        "spread": 0.2799044922882281
+      },
+      "slope": {
+        "center": 0.967753413668582,
+        "spread": 0.5568449241579541
+      },
+      "vh_iqr": {
+        "center": -0.09631320001273887,
+        "spread": 0.3094183673729379
+      },
+      "vh_p10": {
+        "center": 2.4065745321418883,
+        "spread": 0.05869897989602979
+      },
+      "vh_p50": {
+        "center": 2.157017868692348,
+        "spread": 0.12106283580656196
+      },
+      "vh_p90": {
+        "center": 2.031503042104978,
+        "spread": 0.12479894289305582
+      },
+      "vv_iqr": {
+        "center": -0.28209060653951734,
+        "spread": 0.306143230061928
+      },
+      "vv_minus_vh_median": {
+        "center": 1.0912280923828126,
+        "spread": 0.18058231850233497
+      },
+      "vv_p10": {
+        "center": 2.1579872181979294,
+        "spread": 0.11052685391055839
+      },
+      "vv_p50": {
+        "center": -8.430013919396,
+        "spread": 0.7661580911102526
+      },
+      "vv_p90": {
+        "center": -6.062656367930964,
+        "spread": 0.7525730254044021
+      }
+    },
+    "seed": 42,
+    "skewness_threshold": 1.0
+  },
+  "config_name": "sanjay_van_nirv_dual",
+  "config_snapshot": {
+    "cloud_mask": {
+      "drop_scl_classes": [
+        3,
+        8,
+        9,
+        10
+      ],
+      "max_cloud_pct": 20.0
+    },
+    "clustering": {
+      "k": 6,
+      "n_training_samples": 10000,
+      "seed": 42,
+      "skewness_threshold": 1.0,
+      "superpixel_max_size": 1024
+    },
+    "data_load": {
+      "s1_instrument_mode": "IW",
+      "s1_orbit": "ASCENDING",
+      "s1_polarizations": [
+        "VV",
+        "VH"
+      ],
+      "s2_composite_reducer": "median"
+    },
+    "datasets": {
+      "canopy_height": "users/nlang/ETH_GlobalCanopyHeight_2020_10m_v1",
+      "climate": "UCSB-CHG/CHIRPS/PENTAD",
+      "dem": "NASA/NASADEM_HGT/001",
+      "indiasat": "projects/corestack-trees/assets/LULC_v4",
+      "optical_composite_collection": "COPERNICUS/S2_SR_HARMONIZED",
+      "phenology_collection": "COPERNICUS/S2_SR_HARMONIZED",
+      "radar_collection": "COPERNICUS/S1_GRD",
+      "water": "JRC/GSW1_4/GlobalSurfaceWater",
+      "worldcover": "ESA/WorldCover/v200"
+    },
+    "dates": {
+      "climate": {
+        "end": "2020-12-31",
+        "start": "1991-01-01"
+      },
+      "optical_composite": {
+        "end": "2022-12-31",
+        "start": "2017-01-01"
+      },
+      "phenology": {
+        "end": "2022-12-31",
+        "start": "2017-01-01"
+      },
+      "radar": {
+        "end": "2022-12-31",
+        "start": "2017-01-01"
+      }
+    },
+    "description": "NIRv + dual harmonic variant of the Sanjay Van baseline (DEC-013).",
+    "export": {
+      "analysis_scale_m": 10,
+      "drive_folder": "fmu_exports",
+      "export_gee_asset": false,
+      "export_geotiff": true,
+      "export_vector_dissolved": true,
+      "export_vector_snic": true,
+      "vector_formats": [
+        "shp",
+        "geojson"
+      ],
+      "vector_min_stand_pixels": 4
+    },
+    "features": {
+      "canopy_height": true,
+      "optical_harmonic": true,
+      "radar": true,
+      "terrain": true
+    },
+    "features_optical": {
+      "harmonic_mode": "dual",
+      "include_trend": true,
+      "index": "nirv",
+      "time_reference": "2017-01-01"
+    },
+    "features_radar": {
+      "include_cross_pol_contrast": true,
+      "include_iqr": true,
+      "percentiles": [
+        10,
+        50,
+        90
+      ]
+    },
+    "features_static": {
+      "include_climate": true,
+      "max_water_distance_pixels": 1000
+    },
+    "features_structure": {
+      "include_neighborhood_stats": true,
+      "neighborhood_kernel_size": 3
+    },
+    "masking": {
+      "indiasat_class_band": "predicted_label",
+      "indiasat_habitat_classes": [
+        6,
+        12
+      ],
+      "indiasat_year_max": 2021,
+      "indiasat_year_min": 2017,
+      "jrc_water_occurrence_threshold": 50.0,
+      "keep_worldcover_classes": [
+        10,
+        20,
+        30
+      ]
+    },
+    "metrics": {
+      "n_comparison_samples": 10000,
+      "n_silhouette_samples_per_cluster": 833,
+      "reference_config_name": "sanjay_van_baseline"
+    },
+    "name": "sanjay_van_nirv_dual",
+    "normalization": {
+      "method": "robust"
+    },
+    "roi": {
+      "name": "sanjay_van",
+      "roi_asset": null,
+      "roi_file": "aois/sanjay_van.geojson"
+    },
+    "segmentation": {
+      "compactness": 0.5,
+      "connectivity": 8,
+      "neighborhood_size": 128,
+      "normalize_inputs": true,
+      "size": 10
+    }
+  },
+  "decisions_source": "phd-notebook/decisions.md",
+  "drive_exports": {
+    "raster_cluster_labels": {
+      "filename": "sanjay_van_nirv_dual_cluster_labels.tif",
+      "folder": "fmu_exports",
+      "format": "GeoTIFF",
+      "submitted_at": "2026-07-16T19:50:46.185855+00:00",
+      "task_id": "HPDAMPQQROEVC2SJFFWCEP55",
+      "task_submitted": true
+    },
+    "raster_features_raw": {
+      "filename": "sanjay_van_nirv_dual_features_raw.tif",
+      "folder": "fmu_exports",
+      "format": "GeoTIFF",
+      "submitted_at": "2026-07-16T19:50:46.185855+00:00",
+      "task_id": "YULWVMQWARRT6O2XSFWXMP4Q",
+      "task_submitted": true
+    },
+    "raster_features_scaled": {
+      "filename": "sanjay_van_nirv_dual_features_scaled.tif",
+      "folder": "fmu_exports",
+      "format": "GeoTIFF",
+      "submitted_at": "2026-07-16T19:50:46.185855+00:00",
+      "task_id": "V52Q6ZD6GHFQXFSTUI47RLMB",
+      "task_submitted": true
+    },
+    "vector_stands_dissolved_geojson": {
+      "filename": "sanjay_van_nirv_dual_stands_dissolved.geojson",
+      "folder": "fmu_exports",
+      "format": "GEOJSON",
+      "submitted_at": "2026-07-16T19:50:46.185855+00:00",
+      "task_id": "ABS5NU7P2YCUM7WZXLFAC3IX",
+      "task_submitted": true
+    },
+    "vector_stands_dissolved_shp": {
+      "filename": "sanjay_van_nirv_dual_stands_dissolved.zip",
+      "folder": "fmu_exports",
+      "format": "SHP",
+      "submitted_at": "2026-07-16T19:50:46.185855+00:00",
+      "task_id": "LNVAHW4HK3BPZLDQ5O6HHFXI",
+      "task_submitted": true
+    },
+    "vector_stands_snic_geojson": {
+      "filename": "sanjay_van_nirv_dual_stands_snic.geojson",
+      "folder": "fmu_exports",
+      "format": "GEOJSON",
+      "submitted_at": "2026-07-16T19:50:46.185855+00:00",
+      "task_id": "LTGZNEHHRNJQHNC5FXTKCT6U",
+      "task_submitted": true
+    },
+    "vector_stands_snic_shp": {
+      "filename": "sanjay_van_nirv_dual_stands_snic.zip",
+      "folder": "fmu_exports",
+      "format": "SHP",
+      "submitted_at": "2026-07-16T19:50:46.185855+00:00",
+      "task_id": "2JYND5UWSNYMVWUIOSCTM4FH",
+      "task_submitted": true
+    }
+  },
+  "pipeline_version": "1.1.0",
+  "roi": {
+    "area_km2": 13.035,
+    "geojson_path": "aois/sanjay_van.geojson",
+    "name": "sanjay_van"
+  },
+  "run_timestamp": "2026-07-16T19:50:57.934826+00:00",
+  "vector_layers": {
+    "stands_dissolved": {
+      "description": "One polygon per connected same-cluster region. Forester-facing management units. Filtered by vector_min_stand_pixels=4 to drop speckle from misclassification.",
+      "geojson_attributes": "all SHP attributes plus profile_<band>_p50 columns from cluster_profiles.csv (median of each feature band over the unit's cluster, in original units)",
+      "geometry_type": "Polygon",
+      "id_field": "unit_id",
+      "id_renumbering": "1..M, sorted by centroid latitude descending then longitude ascending, AFTER min-pixel filtering. Deterministic pure function of the cluster geometry.",
+      "min_stand_pixels": 4,
+      "n_features": 494,
+      "shp_attributes": [
+        "unit_id",
+        "cluster_id",
+        "area_ha",
+        "perim_m",
+        "n_pixels"
+      ]
+    },
+    "stands_snic": {
+      "description": "One polygon per SNIC superpixel. Attributes include the raw SNIC label (snic_label), the assigned cluster_id, and per-superpixel means of every features_* band fed to clustering. Use for methodology / debugging.",
+      "geojson_attributes": "all SHP attributes plus per-superpixel means of every features_* band",
+      "geometry_type": "Polygon",
+      "id_field": "stand_id",
+      "id_renumbering": "1..N, sorted by centroid latitude descending then longitude ascending. Deterministic pure function of the SNIC geometry; same inputs always produce the same numbering.",
+      "n_features": 1251,
+      "shp_attributes": [
+        "stand_id",
+        "snic_label",
+        "cluster_id",
+        "area_ha",
+        "perim_m",
+        "n_pixels"
+      ]
+    }
+  }
+}
