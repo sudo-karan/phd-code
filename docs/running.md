@@ -234,7 +234,7 @@ clustering against a reference config. Setup:
 | `ee.EEException: ... not authenticated ...` | Earth Engine auth missing or expired | `earthengine authenticate` |
 | `KeyError: 'roi' not found` | Forgot to seed the context | `ctx.set("roi", load_roi_geometry(config.roi.roi_file))` |
 | `KeyError: 'habitat_mask' not found` (or any other context key) | Ran a stage out of order, its `required_inputs` weren't produced yet | Run upstream stages first; the orchestrator validates this and tells you which input is missing |
-| Stage fails with "image computation user memory limit exceeded" | Live tile rendering of a vector-rasterized layer (typically built-up) | Enable caching (`use_cache=True`). The next run loads the static asset |
+| Stage fails with "image computation user memory limit exceeded" | Live tile rendering of a compute-heavy layer | Enable caching (`use_cache=True`). The next run loads the static asset |
 | `ValueError: cluster_labels asset is missing the 'clustering_metadata' property` in export | The cached `cluster_labels` asset was produced by an older clustering stage | Re-run the clustering stage to overwrite the asset with a current-version one |
 | Live tests skip with "Baseline cache not populated" | `test_pipeline_smoke_live.py` needs baseline assets first | Run `inspect_clustering.py --config configs/sanjay_van_baseline.yaml` |
 | Drive export task never appears | GEE Tasks page shows the task with FAILED, usually GEE quota or permission issues | Check the task error message; may need to wait an hour for quota reset |

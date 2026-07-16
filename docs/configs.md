@@ -33,7 +33,7 @@ dates: { phenology, radar, optical_composite, climate }
 datasets: { phenology_collection, radar_collection, ... }
 cloud_mask: { max_cloud_pct, drop_scl_classes }
 data_load: { s1_orbit, s1_polarizations, s1_instrument_mode, s2_composite_reducer }
-masking: { ndvi_min, nightlights_threshold, keep_worldcover_classes, jrc_water_occurrence_threshold, open_buildings_confidence, use_viirs, use_open_buildings }
+masking: { indiasat_habitat_classes, indiasat_class_band, keep_worldcover_classes, jrc_water_occurrence_threshold }
 features_optical: { index, harmonic_mode, include_trend, time_reference }
 features_radar: { percentiles, include_iqr, include_cross_pol_contrast }
 features_structure: { include_neighborhood_stats, neighborhood_kernel_size }
@@ -58,7 +58,7 @@ directly. It's around 300 lines and self-documenting.
 | `datasets` | GEE dataset IDs | All stages that hit a specific collection |
 | `cloud_mask` | S2 cloud filtering | `data_load` |
 | `data_load` | S1 acquisition geometry, S2 composite reducer | `data_load` |
-| `masking` | Class lists, confidence thresholds for habitat exclusion | `masking` |
+| `masking` | Habitat class definition (IndiaSAT primary, WorldCover fallback) + water threshold | `masking` |
 | `features_*` | Per-feature-stage toggles and parameters | The matching `features_*` stage |
 | `segmentation` | SNIC parameters | `segmentation` |
 | `clustering` | k-means hyperparameters and preprocessing | `clustering` |
@@ -206,26 +206,21 @@ for the full inventory.
 
 ### `masking`
 
-- `keep_worldcover_classes`: WorldCover classes to *keep* as vegetation
-  (default `[10, 20, 30]` = trees, shrubs, grass).
+- `indiasat_habitat_classes`: IndiaSAT LULC classes kept as habitat
+  (default `[6, 12]` = Trees, Shrubs/Scrubs). Every other class (water,
+  cropland, built-up, barren, ...) is excluded simply by not being in
+  this set — the mask is single-phase.
+- `indiasat_class_band`: which band of each annual IndiaSAT image holds
+  the class label (default `null` = use the first band of each image;
+  the collection also carries a confidence band we don't use). Set
+  explicitly only if the asset names its class band differently.
+- `keep_worldcover_classes`: WorldCover classes used as the habitat
+  **fallback**, applied only where IndiaSAT has no data (default
+  `[10, 20, 30]` = tree cover, shrubland, grassland).
 - `jrc_water_occurrence_threshold`: minimum % of months a pixel was
-  water for it to be permanent water (default 50.0).
-- `open_buildings_confidence`: drop building polygons below this
-  confidence (default 0.7).
-- `nightlights_threshold`: VIIRS radiance above this counts as
-  built-up. **Region-specific calibration needed.** Default 30.0 is
-  Delhi-calibrated.
-- `use_viirs`: bool (default `true`). Include VIIRS nightlights in the
-  built mask. Turn off for AOIs where the radiance calibration doesn't
-  transfer (e.g., rural areas with low light pollution but real
-  settlement, or other countries where 30 nW/cm²/sr means something
-  different).
-- `use_open_buildings`: bool (default `true`). Include Google Open
-  Buildings polygons in the built mask. Symmetric to `use_viirs`.
-  Turning both off leaves the built mask empty; the masking stage logs
-  a warning because this breaks the design's circularity protection
-  between mask and S2-derived features.
-- `ndvi_min`: reserved for future use; not applied yet.
+  water for it to count as permanent water (default 50.0). Builds
+  `water_mask` for the **distance-to-water feature only**; it does not
+  affect the habitat mask.
 
 ### `features_optical`
 

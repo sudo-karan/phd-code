@@ -51,39 +51,34 @@ The orchestrator (`fmu.pipeline.Pipeline`) walks the stages, validates the conte
 
 ### 1. masking - `src/fmu/stages/masking.py`
 
-Builds the habitat mask, water mask, and labeled landcover summary. Multi-source masking: WorldCover for vegetation, JRC GSW + WorldCover class 80 for water, Google Open Buildings + VIIRS for built-up. Three-phase masking structure (DEC-006): static habitat layer first, time-series data comes later.
+Builds the habitat mask, water mask, and labeled landcover summary. IndiaSAT-primary, single-phase masking (deck Stage 1): habitat is the IndiaSAT LULC Trees/Shrubs classes, with ESA WorldCover as a fallback only where IndiaSAT has no data. Water, cropland, and built-up are excluded simply because their classes are not in the habitat set — there is no separate water-mask or built-up subtraction.
 
 **Reads from context:** `roi`
 **Writes to context:** `habitat_mask`, `water_mask`, `landcover_summary`
 
 **Datasets:**
-- ESA WorldCover v200 (`ESA/WorldCover/v200`); vegetation classification
-- JRC Global Surface Water 1.4 (`JRC/GSW1_4/GlobalSurfaceWater`); permanent water from occurrence
-- Google Open Buildings v3 (`GOOGLE/Research/open-buildings/v3/polygons`); building polygons, rasterized for the built mask
-- VIIRS Nightlights monthly (`NOAA/VIIRS/DNB/MONTHLY_V1/VCMSLCFG`); broad urban / bright-light areas
+- IndiaSAT LULC (`projects/ee-indiasat/assets/LULC CombinedOutputs WithConfidence`); primary habitat source, 30 m annual raster covering 2017-2022
+- ESA WorldCover v200 (`ESA/WorldCover/v200`); habitat fallback where IndiaSAT has no data
+- JRC Global Surface Water 1.4 (`JRC/GSW1_4/GlobalSurfaceWater`); permanent water from occurrence, for the downstream distance-to-water feature only
 
 **Logic:**
-- `veg` = WorldCover class ∈ keep list
-- `water_mask` = (JRC occurrence ≥ threshold) OR (WorldCover == 80)
-- `built_mask` = (Open Buildings polygons rasterized) OR (VIIRS ≥ threshold)
-- `habitat_mask` = `veg` AND NOT `water_mask` AND NOT `built_mask`
-- `landcover_summary` = labeled image: 10/20/30 for veg, 50 for built, 80 for water, 0 for other
+- `lulc` = per-pixel MODAL IndiaSAT class over the 2017-2022 collection (majority vote across the six annual images; a single bad year can't flip a pixel)
+- `veg_indiasat` = `lulc` ∈ `indiasat_habitat_classes` (default 6 = Trees, 12 = Shrubs/Scrubs)
+- `veg_wc` = WorldCover class ∈ `keep_worldcover_classes` (fallback)
+- `habitat_mask` = `veg_indiasat` where IndiaSAT has data, else `veg_wc`. Single-phase: no water or built-up subtraction — those classes are simply not in the habitat set.
+- `water_mask` = JRC occurrence ≥ threshold. Built for the distance-to-water feature; NOT used for habitat exclusion.
+- `landcover_summary` = labeled image: `6` / `12` for the IndiaSAT habitat classes kept, `80` for JRC water (water wins where they overlap), `0` for other/excluded.
 
 **Config knobs** (in `configs/*.yaml` under `masking:`):
-- `keep_worldcover_classes`; vegetation classes (default `[10, 20, 30]`)
-- `jrc_water_occurrence_threshold`; % months water observed (default 50.0)
-- `open_buildings_confidence`; drop building polygons below this (default 0.7)
-- `nightlights_threshold`; VIIRS radiance threshold (default 30.0, Delhi-calibrated)
-- `use_viirs`; include VIIRS in the built mask (default `true`). Turn off for AOIs where the radiance threshold doesn't transfer (the default is Delhi-calibrated).
-- `use_open_buildings`; include Open Buildings in the built mask (default `true`). Symmetric to `use_viirs`. Turning both off leaves `built_mask` empty and is logged as a warning, since the circularity protection between mask and S2 features depends on at least one non-S2 built-up source.
-
-**Not used in this stage** (kept in config for future use):
-- `ndvi_min`; applied later in a feature stage; requires S2 data, doesn't belong in static masking
+- `indiasat_habitat_classes`; IndiaSAT classes kept as habitat (default `[6, 12]`)
+- `indiasat_class_band`; band holding the IndiaSAT class label (default `null` = first band of each annual image)
+- `keep_worldcover_classes`; WorldCover fallback classes, used only where IndiaSAT has no data (default `[10, 20, 30]`)
+- `jrc_water_occurrence_threshold`; % months water observed (default 50.0); builds `water_mask` for the distance-to-water feature only
 
 **Why these data sources** (see also `docs/design_notes.md`):
-The built mask uses Open Buildings (vector, derived from commercial imagery; not S2) and VIIRS (different sensor) rather than e.g. GHSL Built-up. This avoids using S2-derived products to mask data that will later be fed S2 features; reduces circularity between mask and features.
+IndiaSAT is a purpose-built Indian LULC (Bansal et al. 2021) whose Trees/Shrubs classes give a habitat definition tailored to Indian landscapes; taking the modal class across 2017-2022 makes that definition robust to single-year misclassification. WorldCover is a global 10 m fallback for the rare pixels IndiaSAT doesn't cover.
 
-**Related decisions:** DEC-005 (ROI via GeoJSON), DEC-006 (three-phase masking), ENG-005, ENG-011, ENG-012, ENG-017 (new; multi-source masking).
+**Related decisions:** DEC-005 (ROI via GeoJSON), DEC-006 (masking runs first), ENG-005, ENG-011, ENG-012.
 
 ### 2. data_load - `src/fmu/stages/data_load.py`
 
@@ -438,14 +433,12 @@ Each one will get its own section here as it's built.
 | S1 orbit direction | `configs/sanjay_van_baseline.yaml` to `data_load.s1_orbit` |
 | S1 polarizations | `configs/sanjay_van_baseline.yaml` to `data_load.s1_polarizations` |
 | S2 composite reducer | `configs/sanjay_van_baseline.yaml` to `data_load.s2_composite_reducer` |
-| WorldCover dataset ID | `configs/sanjay_van_baseline.yaml` to `datasets.worldcover` |
+| IndiaSAT dataset ID | `configs/sanjay_van_baseline.yaml` to `datasets.indiasat` |
+| WorldCover dataset ID (habitat fallback) | `configs/sanjay_van_baseline.yaml` to `datasets.worldcover` |
 | JRC water dataset ID | `configs/sanjay_van_baseline.yaml` to `datasets.water` |
-| Open Buildings dataset ID | `configs/sanjay_van_baseline.yaml` to `datasets.open_buildings` |
-| VIIRS nightlights dataset ID | `configs/sanjay_van_baseline.yaml` to `datasets.nightlights` |
-| WorldCover class filter | `configs/sanjay_van_baseline.yaml` to `masking.keep_worldcover_classes` |
+| IndiaSAT habitat classes | `configs/sanjay_van_baseline.yaml` to `masking.indiasat_habitat_classes` |
+| WorldCover fallback class filter | `configs/sanjay_van_baseline.yaml` to `masking.keep_worldcover_classes` |
 | JRC water threshold | `configs/sanjay_van_baseline.yaml` to `masking.jrc_water_occurrence_threshold` |
-| Open Buildings confidence | `configs/sanjay_van_baseline.yaml` to `masking.open_buildings_confidence` |
-| VIIRS threshold | `configs/sanjay_van_baseline.yaml` to `masking.nightlights_threshold` |
 | Per-run output folder | `outputs/runs/<config>_<timestamp>/` (created by `init_logging`) |
 | Manifest of a run | `outputs/runs/<config>_<timestamp>/manifest.json` |
 | Asset caching utility | `src/fmu/utils/caching.py` |
@@ -459,7 +452,7 @@ Each one will get its own section here as it's built.
 | Decision | Affects | Where to read more |
 |---|---|---|
 | DEC-005 | ROI loaded from GeoJSON | `decisions.md` |
-| DEC-006 | Three-phase masking; masking runs first | `decisions.md` |
+| DEC-006 | Masking runs first (single-phase habitat mask) | `decisions.md` |
 | ENG-005 | `roi_file` in YAML, `roi_asset` reserved | `decisions.md` |
 | ENG-007 | Explicit GEE init (`init_gee()`) | `decisions.md` |
 | ENG-009 | `safe_get_info` wrapper for materialization | `decisions.md` |

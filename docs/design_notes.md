@@ -116,43 +116,47 @@ v2 throughout. Faster, better error messages, official pydantic-settings
 companion, current standard. Don't accidentally install v1; they're not
 compatible.
 
-## Masking: avoiding circularity with the feature data
+## Masking: IndiaSAT-primary, single-phase habitat
 
-A mask that's derived from the same data we cluster on is at risk of
-forcing the clustering to find what the mask put there. Strongest case:
-NDVI mask + NDVI feature is pure leakage. Less obvious: anything S2-derived
-used to mask data that will later be fed S2 features.
+Habitat comes from the **IndiaSAT LULC** product (Bansal et al. 2021), a
+30 m annual land-cover raster for 2017-2022 built specifically for Indian
+landscapes. We take the **per-pixel modal class over the 2017-2022
+collection** (majority vote across the six annual images) and keep class
+**6 (Trees)** and **12 (Shrubs/Scrubs)** as habitat. Taking the mode
+rather than any single year keeps a one-off annual misclassification from
+flipping a pixel in or out of the mask.
 
-We accept moderate circularity for **WorldCover** (S2/S1-derived) because
-the signal it extracts (categorical land cover) is qualitatively different
-from the continuous phenology features we'll compute. Replacing it would
-cost more (lose 10 m, lose convenient veg classes) than the residual bias
-costs.
+The mask is **single-phase**: water, cropland, and built-up are excluded
+simply because their classes are not in the habitat set. There is no
+separate water-mask subtraction and no built-up mask. With a purpose-built
+LULC that already distinguishes trees/shrubs from water, crops, and
+built-up, a habitat definition is just "which classes count as habitat,"
+and everything else falls out for free.
 
-We avoid it for the **built-up mask** because that's the layer the
-downstream urban-vs-vegetation distinction depends on. Built-up uses:
-- **Google Open Buildings** (vector polygons from commercial high-res
-  imagery; different sensor altogether), rasterized at 10 m
-- **VIIRS Nightlights** (Day/Night Band; different sensor entirely)
+**ESA WorldCover v200** (classes 10/20/30) is kept only as a **fallback**,
+used where IndiaSAT has no data (coverage gaps, or AOIs outside its
+footprint). IndiaSAT covers all of India, so in practice the fallback
+rarely fires. No WorldCover class is used for water.
 
-Both are independent of S2/Landsat. Their failure modes (low confidence
-polygons, coarse 463 m resolution) are different from each other and
-different from WorldCover, so combining them recovers from each one's
-weaknesses.
+**JRC Global Surface Water** is still loaded, but only to build
+`water_mask` for the downstream distance-to-water feature (see
+`features_static`). It plays no part in habitat masking. `water_mask` is
+JRC occurrence ≥ threshold; nothing else is OR'd in.
 
-Water uses **JRC GSW** (Landsat-derived; different mission from S2)
-OR **WorldCover class 80** for redundancy.
-
-This is one of the few places where the framework explicitly does better
-than the notebooks: in the notebooks, masking was a single-source
-afterthought.
+There is no built-up mask any more, so the old concern about deriving that
+layer from a source independent of the S2 features we later cluster on is
+moot. Habitat now rests on IndiaSAT class labels — a categorical
+land-cover signal, qualitatively different from the continuous phenology
+features in the feature stack — the same reasoning that made a class-based
+keep-list acceptable before, now applied to a product built for this
+region.
 
 ## Asset caching: cross-cutting, opt-in
 
 Stages that materialize ee.Image outputs can be expensive to recompute and
 expensive to visualize (per-tile compute hits GEE's memory limit at high
-zoom for stages with lots of vector rasterization, like Open Buildings).
-Caching solves both: compute once, save as an asset, reuse forever.
+zoom for compute-heavy stages). Caching solves both: compute once, save as
+an asset, reuse forever.
 
 Three design points:
 
