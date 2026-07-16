@@ -85,8 +85,8 @@ def test_habitat_mask_has_nonzero_coverage(sanjay_van_ctx, baseline_config):
 
 
 def test_landcover_summary_has_expected_label_values(sanjay_van_ctx, baseline_config):
-    """Labeled summary should contain at least one of the veg classes (10/20/30).
-    Built (50) and water (80) may or may not appear depending on the ROI."""
+    """Labeled summary should contain at least one IndiaSAT habitat class
+    (6 Trees / 12 Shrubs). Water (80) may or may not appear depending on the ROI."""
     result = MaskingStage().run(sanjay_van_ctx, baseline_config)
     summary = result.outputs["landcover_summary"]
 
@@ -102,36 +102,13 @@ def test_landcover_summary_has_expected_label_values(sanjay_van_ctx, baseline_co
     )
     values = hist.get("landcover_summary", {})
     keys_seen = {int(k) for k in values}
-    # At least one veg class should be present
-    assert keys_seen & {10, 20, 30}, (
-        f"Expected at least one of 10/20/30 in landcover_summary, saw: {keys_seen}"
+    # At least one habitat class should be present
+    assert keys_seen & {6, 12}, (
+        f"Expected at least one of 6/12 in landcover_summary, saw: {keys_seen}"
     )
     # All values should be from the expected set
-    assert keys_seen <= {0, 10, 20, 30, 50, 80}, (
-        f"Unexpected labels in landcover_summary: {keys_seen - {0, 10, 20, 30, 50, 80}}"
-    )
-
-
-def test_built_areas_appear_in_summary(sanjay_van_ctx, baseline_config):
-    """Sanjay Van bbox includes surrounding colonies, so built-up (50)
-    should be picked up by Open Buildings + VIIRS combined mask."""
-    result = MaskingStage().run(sanjay_van_ctx, baseline_config)
-    summary = result.outputs["landcover_summary"]
-    roi = sanjay_van_ctx.get("roi")
-    hist = safe_get_info(
-        summary.reduceRegion(
-            reducer=ee.Reducer.frequencyHistogram(),
-            geometry=roi,
-            scale=10,
-            maxPixels=1e7,
-        ),
-        context="landcover_summary built-up presence",
-    )
-    values = hist.get("landcover_summary", {})
-    built_count = values.get("50", 0)
-    assert built_count > 0, (
-        "Expected at least some built-up pixels (code 50) in the ROI; "
-        "Open Buildings should cover colonies around Sanjay Van."
+    assert keys_seen <= {0, 6, 12, 80}, (
+        f"Unexpected labels in landcover_summary: {keys_seen - {0, 6, 12, 80}}"
     )
 
 
@@ -153,18 +130,19 @@ def test_water_mask_is_binary(sanjay_van_ctx, baseline_config):
     assert wmax in (0, 1)
 
 
-def test_habitat_and_water_are_disjoint(sanjay_van_ctx, baseline_config):
-    """A pixel should never be in both habitat_mask AND water_mask."""
+def test_habitat_mask_is_binary(sanjay_van_ctx, baseline_config):
+    """habitat_mask should only have values 0 and 1."""
     result = MaskingStage().run(sanjay_van_ctx, baseline_config)
-    overlap = result.outputs["habitat_mask"].And(result.outputs["water_mask"])
+    habitat = result.outputs["habitat_mask"]
 
     roi = sanjay_van_ctx.get("roi")
-    s = safe_get_info(
-        overlap.reduceRegion(
-            reducer=ee.Reducer.sum(), geometry=roi, scale=10, maxPixels=1e7
+    minmax = safe_get_info(
+        habitat.reduceRegion(
+            reducer=ee.Reducer.minMax(), geometry=roi, scale=10, maxPixels=1e7
         ),
-        context="habitat ∩ water overlap",
+        context="habitat_mask min/max",
     )
-    # The reducer keys depend on input band name; just check the value
-    val = next(iter(s.values()), 0) if s else 0
-    assert val == 0, f"habitat and water should be disjoint, found {val} overlap pixels"
+    hmin = minmax.get("habitat_mask_min", 0)
+    hmax = minmax.get("habitat_mask_max", 0)
+    assert hmin in (0, 1)
+    assert hmax in (0, 1)

@@ -14,10 +14,9 @@ without code changes.
 | Sentinel-1 GRD | `COPERNICUS/S1_GRD` | data_load, features_radar, segmentation | 10 m | 2017-2022 |
 | ETH Global Canopy Height 2020 | `users/nlang/ETH_GlobalCanopyHeight_2020_10m_v1` | features_structure, segmentation | 10 m | static (2020 snapshot) |
 | NASADEM HGT v001 | `NASA/NASADEM_HGT/001` | features_static | 30 m | static |
-| ESA WorldCover v200 | `ESA/WorldCover/v200` | masking | 10 m | 2021 |
-| JRC Global Surface Water v1.4 | `JRC/GSW1_4/GlobalSurfaceWater` | masking, features_static | 30 m | 1984-2021 |
-| Google Open Buildings v3 | `GOOGLE/Research/open-buildings/v3/polygons` | masking | vector, rasterized at 10 m | static |
-| VIIRS Day/Night Band Monthly | `NOAA/VIIRS/DNB/MONTHLY_V1/VCMSLCFG` | masking | 463 m | most recent month |
+| IndiaSAT LULC | `projects/ee-indiasat/assets/LULC CombinedOutputs WithConfidence` | masking (primary habitat) | 30 m | 2017-2022 annual |
+| ESA WorldCover v200 | `ESA/WorldCover/v200` | masking (habitat fallback) | 10 m | 2021 |
+| JRC Global Surface Water v1.4 | `JRC/GSW1_4/GlobalSurfaceWater` | masking (distance-to-water only), features_static | 30 m | 1984-2021 |
 | CHIRPS Pentad | `UCSB-CHG/CHIRPS/PENTAD` | features_static | 5,500 m | 1991-2020 climatology |
 
 ---
@@ -94,21 +93,39 @@ meters.
   before k-means. Euclidean distance on raw degrees would treat 0 and
   359 as maximally different despite being identical compass directions.
 
+## IndiaSAT LULC
+
+`projects/ee-indiasat/assets/LULC CombinedOutputs WithConfidence`. A
+purpose-built Indian land-use / land-cover product (Bansal et al. 2021):
+a 30 m annual raster covering 2017-2022, one class label per pixel per
+year (plus a per-pixel confidence band we don't use here).
+
+- **Primary habitat source in masking.** The stage takes the **per-pixel
+  modal class over the 2017-2022 collection** (majority vote across the
+  six annual images) so a one-off yearly misclassification can't flip a
+  pixel's habitat status. Classes `6` (Trees) and `12` (Shrubs/Scrubs),
+  from `masking.indiasat_habitat_classes`, are kept as `habitat_mask`.
+- **Single-phase exclusion.** Water, cropland, and built-up are dropped
+  simply by *not* being in the habitat class set; there is no separate
+  water or built-up subtraction. See
+  [design_notes.md](design_notes.md#masking-indiasat-primary-single-phase-habitat).
+- **Why IndiaSAT as primary over WorldCover:** it's an India-specific
+  LULC with a class scheme built for Indian landscapes, and its
+  Trees/Shrubs classes give a direct habitat definition. WorldCover is
+  kept only as a fallback for coverage gaps.
+
 ## ESA WorldCover v200
 
 `ESA/WorldCover/v200`. 11-class global landcover at 10 m, derived
 from S2 + S1.
 
-- **Used in masking** for two things:
-  - Vegetation keep-list (default classes `[10, 20, 30]`, trees/shrubs/grass)
-    contributes to `habitat_mask`.
-  - Class 80 (permanent water) is a redundant water source layered with JRC.
-- **Why accept the moderate circularity** (WorldCover is S2-derived,
-  and we'll later feed S2 features to clustering): the signal WorldCover
-  extracts is categorical (land-cover class), qualitatively different
-  from the continuous phenology features in `features_optical`.
-  Replacing it would cost more (lose 10 m, lose convenient classes) than
-  the residual bias costs. See [design_notes.md](design_notes.md#masking-avoiding-circularity-with-the-feature-data).
+- **Habitat fallback only.** Where IndiaSAT has no data, the WorldCover
+  keep-list (default classes `[10, 20, 30]` = tree cover / shrubland /
+  grassland, from `masking.keep_worldcover_classes`) supplies the
+  habitat value. IndiaSAT covers all of India, so this is a safety net
+  for coverage gaps or AOIs outside its footprint. It is no longer the
+  primary vegetation source, and no WorldCover class contributes to the
+  water mask.
 
 ## JRC Global Surface Water
 
@@ -116,56 +133,21 @@ from S2 + S1.
 observations 1984-2021. Per-pixel band `occurrence` (0-100%) is what we
 use.
 
-- **In masking:** `occurrence >= jrc_water_occurrence_threshold` (default
-  50%) means permanent water, which is excluded from `habitat_mask`.
+- **In masking:** builds `water_mask` only
+  (`occurrence >= jrc_water_occurrence_threshold`, default 50%, = permanent
+  water). This mask is **not** used for habitat exclusion — habitat comes
+  from the IndiaSAT classes alone. `water_mask` exists solely to feed the
+  downstream distance-to-water feature.
 - **In features_static:** `water_mask` from masking is reused as the
   source for `distance_to_water`. `fastDistanceTransform` returns
   squared-euclidean distance in pixels; we sqrt and multiply by scale
   to get meters. Capped at `max_water_distance_pixels * analysis_scale_m`
   (default 10 km).
 
-**Why JRC over WorldCover class 80:** different sensor (Landsat vs S2),
-longer baseline (1984 vs 2021 single year), and a confidence dimension
-(`occurrence` is continuous, not binary). Combined with WorldCover class
-80 for redundancy.
-
-## Google Open Buildings v3
-
-`GOOGLE/Research/open-buildings/v3/polygons`. Vector building
-footprints derived from commercial high-resolution imagery (NOT
-Sentinel/Landsat). Each polygon has a `confidence` score 0-1.
-
-- **Used in masking** for the built-up exclusion: filter by
-  `open_buildings_confidence` (default 0.7), rasterize at 10 m, add to
-  `built_mask`.
-- **Critical for the no-circularity property.** Built-up exclusion is
-  what separates urban from vegetation, and the features we'll cluster
-  on are S2-derived. Using an S2-derived built-up mask would let the
-  mask's errors propagate directly into the clustering result. Open
-  Buildings + VIIRS are both independent of S2.
-
-**Known issue:** rasterizing all building polygons over a large AOI hits
-GEE's per-tile memory limit at high zoom levels in the Code Editor. The
-caching layer fixes this: once the masking outputs are exported to
-assets, visualization reads the static raster instead of recomputing live.
-
-## VIIRS Day/Night Band Monthly
-
-`NOAA/VIIRS/DNB/MONTHLY_V1/VCMSLCFG`. 463 m monthly composite of
-nighttime light radiance.
-
-- **Used in masking:** `radiance >= nightlights_threshold` (default 30,
-  Delhi-calibrated; won't generalize to other regions without recalibration)
-  contributes to `built_mask`.
-- **Why combine with Open Buildings:** different failure modes. Open
-  Buildings can miss recent / informal construction (poly confidence too
-  low); VIIRS misses dark / low-electrification settlements but catches
-  bright urban cores at coarse resolution. Combining them recovers from
-  each one's weaknesses.
-
-**This threshold needs region-specific calibration.** For non-Delhi
-AOIs, sample VIIRS over known built-up and known rural pixels and
-choose a threshold that separates them.
+**Why JRC for the water layer:** a different sensor from S2 (Landsat), a
+long baseline (1984-2021), and a confidence dimension (`occurrence` is
+continuous, not binary), which makes it the right source for a
+distance-to-water feature.
 
 ## CHIRPS Pentad
 
@@ -195,10 +177,9 @@ datasets:
   radar_collection: COPERNICUS/S1_GRD
   canopy_height: users/nlang/ETH_GlobalCanopyHeight_2020_10m_v1
   dem: NASA/NASADEM_HGT/001
+  indiasat: "projects/ee-indiasat/assets/LULC CombinedOutputs WithConfidence"
   worldcover: ESA/WorldCover/v200
   water: JRC/GSW1_4/GlobalSurfaceWater
-  nightlights: NOAA/VIIRS/DNB/MONTHLY_V1/VCMSLCFG
-  open_buildings: GOOGLE/Research/open-buildings/v3/polygons
   climate: UCSB-CHG/CHIRPS/PENTAD
 ```
 
@@ -233,9 +214,11 @@ If a new feature wants a dataset not yet on the list:
 The defaults in `sanjay_van_baseline.yaml` are tuned for Sanjay Van,
 Delhi. Before running on a different AOI, review:
 
-- `masking.nightlights_threshold` (30.0 is Delhi-calibrated)
-- `masking.keep_worldcover_classes` (default = [10, 20, 30]; tropical
-  AOIs may want to also include 40 if cropland is part of "habitat")
+- `masking.indiasat_habitat_classes` (default = [6, 12] = Trees,
+  Shrubs/Scrubs; add classes if your habitat definition is broader)
+- `masking.keep_worldcover_classes` (fallback only, default = [10, 20,
+  30]; tropical AOIs may want to also include 40 if cropland is part of
+  "habitat")
 - `dates.radar` (2017-2022; shares the unified time-series window with
   phenology and the composite)
 - `dates.climate` (30-year standard climatology is generally fine)

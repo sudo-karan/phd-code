@@ -65,11 +65,9 @@ def main() -> None:
     total = sum(values.values()) or 1
     label_names = {
         "0": "Other (excluded)",
-        "10": "Trees",
-        "20": "Shrubland",
-        "30": "Grass",
-        "50": "Built-up",
-        "80": "Water",
+        "6": "Trees (IndiaSAT)",
+        "12": "Shrubs/Scrubs (IndiaSAT)",
+        "80": "Water (JRC)",
     }
     for code, count in sorted(values.items(), key=lambda kv: -kv[1]):
         name = label_names.get(code, f"Class {code}")
@@ -77,11 +75,12 @@ def main() -> None:
         print(f"  {code:>3} {name:<20s} {count:>10,.0f} px  ({pct:5.1f}%)")
 
     # JavaScript snippet for the Code Editor
+    habitat_classes = config.masking.indiasat_habitat_classes
+    habitat_js = ", ".join(str(c) for c in habitat_classes)
     keep = config.masking.keep_worldcover_classes
     keep_js = ", ".join(str(c) for c in keep)
     water_thresh = config.masking.jrc_water_occurrence_threshold
-    nl_thresh = config.masking.nightlights_threshold
-    ob_conf = config.masking.open_buildings_confidence
+    indiasat_id = config.datasets.indiasat
 
     import json as _json
     roi_coords_js = _json.dumps(roi_coords)
@@ -124,8 +123,8 @@ def main() -> None:
         print(
             "Map.addLayer(summary, "
             "{min: 0, max: 80, palette: "
-            "['888888','1d6f1d','85c285','c9d63a','cc4444','1f78b4']}, "
-            "'Landcover summary (0/10/20/30/50/80)', true);"
+            "['888888','1d6f1d','85c285','1f78b4']}, "
+            "'Landcover summary (0/6/12/80)', true);"
         )
         print(
             "Map.addLayer(roi, {color: 'red', fillColor: '00000000'}, 'ROI boundary');"
@@ -154,61 +153,47 @@ def main() -> None:
         print(f"var roi = ee.Geometry.Polygon({roi_coords_js});")
         print("Map.centerObject(roi, 13);")
         print()
-        print("// Vegetation from WorldCover")
+        print("// Habitat from IndiaSAT LULC (annual 2017-2022) -> modal class")
+        print(
+            f"var indiasat = ee.ImageCollection('{indiasat_id}').filterBounds(roi)"
+            ".map(function(img) { return img.select(0); });"
+        )
+        print(
+            "var lulc = indiasat.reduce(ee.Reducer.mode()).rename('indiasat_lulc').clip(roi);"
+        )
+        print(f"var habClasses = [{habitat_js}];")
+        print("var vegIndiasat = lulc.eq(habClasses[0]);")
+        print("for (var i = 1; i < habClasses.length; i++) {")
+        print("  vegIndiasat = vegIndiasat.or(lulc.eq(habClasses[i]));")
+        print("}")
+        print()
+        print("// WorldCover fallback where IndiaSAT has no data")
         print(
             f"var wc = ee.ImageCollection('{config.datasets.worldcover}')"
             ".first().select('Map').clip(roi);"
         )
         print(f"var keepClasses = [{keep_js}];")
-        print("var veg = wc.eq(keepClasses[0]);")
-        print("for (var i = 1; i < keepClasses.length; i++) {")
-        print("  veg = veg.or(wc.eq(keepClasses[i]));")
+        print("var vegWc = wc.eq(keepClasses[0]);")
+        print("for (var j = 1; j < keepClasses.length; j++) {")
+        print("  vegWc = vegWc.or(wc.eq(keepClasses[j]));")
         print("}")
-        print("var wcWater = wc.eq(80);")
+        print("var habitatMask = vegIndiasat.unmask(vegWc);")
         print()
-        print("// Water from JRC GSW + WorldCover class 80")
+        print("// JRC water (for distance-to-water feature only, not masking)")
         print(
             f"var gsw = ee.Image('{config.datasets.water}').select('occurrence').clip(roi);"
         )
-        print(f"var waterMask = gsw.gte({water_thresh}).unmask(0).or(wcWater);")
-        print()
-        print("// Built-up from Open Buildings (vector, independent of S2)")
-        print(
-            f"var buildings = ee.FeatureCollection('{config.datasets.open_buildings}')"
-            ".filterBounds(roi)"
-        )
-        print(f"  .filter(ee.Filter.gte('confidence', {ob_conf}));")
-        print(
-            "var builtFromBuildings = buildings"
-            ".reduceToImage(['confidence'], ee.Reducer.first()).gt(0).unmask(0);"
-        )
-        print()
-        print("// Bright urban from VIIRS")
-        print(
-            f"var viirs = ee.ImageCollection('{config.datasets.nightlights}')"
-            ".select('avg_rad').sort('system:time_start', false).first().clip(roi);"
-        )
-        print(f"var brightUrban = viirs.gte({nl_thresh}).unmask(0);")
-        print()
-        print("var builtMask = builtFromBuildings.or(brightUrban);")
-        print(
-            "var habitatMask = veg.and(waterMask.not()).and(builtMask.not());"
-        )
+        print(f"var waterMask = gsw.gte({water_thresh}).unmask(0);")
         print()
         print("var summary = ee.Image(0).int();")
         print(
-            "keepClasses.forEach(function(c) { summary = summary.where(wc.eq(c), c); });"
+            "habClasses.forEach(function(c) { summary = summary.where(lulc.eq(c), c); });"
         )
-        print("summary = summary.where(builtMask, 50);")
         print("summary = summary.where(waterMask, 80);")
         print()
         print(
             "Map.addLayer(habitatMask.selfMask(), {palette: ['33aa33']}, "
             "'Habitat mask (green)', true);"
-        )
-        print(
-            "Map.addLayer(builtMask.selfMask(), {palette: ['cc4444']}, "
-            "'Built mask (red)', true);"
         )
         print(
             "Map.addLayer(waterMask.selfMask(), {palette: ['1f78b4']}, "
@@ -217,8 +202,8 @@ def main() -> None:
         print(
             "Map.addLayer(summary, "
             "{min: 0, max: 80, palette: "
-            "['888888','1d6f1d','85c285','c9d63a','cc4444','1f78b4']}, "
-            "'Landcover summary (0/10/20/30/50/80)', false);"
+            "['888888','1d6f1d','85c285','1f78b4']}, "
+            "'Landcover summary (0/6/12/80)', false);"
         )
         print(
             "Map.addLayer(roi, {color: 'red', fillColor: '00000000'}, 'ROI boundary');"

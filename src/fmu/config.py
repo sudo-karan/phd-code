@@ -60,10 +60,12 @@ class DatasetIDs(BaseModel):
     radar_collection: str = "COPERNICUS/S1_GRD"
     canopy_height: str = "users/nlang/ETH_GlobalCanopyHeight_2020_10m_v1"
     dem: str = "NASA/NASADEM_HGT/001"
+    # IndiaSAT LULC (Bansal et al. 2021): annual 30 m land-cover raster,
+    # 2017-2022. Primary habitat source (class 6 = Trees, 12 = Shrubs/Scrubs).
+    indiasat: str = "projects/ee-indiasat/assets/LULC CombinedOutputs WithConfidence"
+    # ESA WorldCover v200: habitat fallback where IndiaSAT has no data.
     worldcover: str = "ESA/WorldCover/v200"
     water: str = "JRC/GSW1_4/GlobalSurfaceWater"
-    nightlights: str = "NOAA/VIIRS/DNB/MONTHLY_V1/VCMSLCFG"
-    open_buildings: str = "GOOGLE/Research/open-buildings/v3/polygons"
     # CHIRPS pentad rainfall (5-day totals, ~5 km). Long climatology source.
     climate: str = "UCSB-CHG/CHIRPS/PENTAD"
 
@@ -169,28 +171,23 @@ class FeaturesStaticParams(BaseModel):
 class MaskingParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    ndvi_min: float = Field(default=0.2, ge=-1.0, le=1.0)  # reserved, applied later (needs S2)
-    # VIIRS radiance threshold (nW/cm²/sr). Delhi-calibrated; won't generalize.
-    nightlights_threshold: float = Field(default=30.0, ge=0.0)
+    # IndiaSAT LULC classes kept as habitat: 6 = Trees, 12 = Shrubs/Scrubs.
+    # Everything else (water 2-4, crops 5/8-11, built-up 1, barren 7, ...) is
+    # excluded simply by not being in this set — the deck's single-phase mask.
+    indiasat_habitat_classes: list[int] = Field(default=[6, 12], min_length=1)
+    # Band holding the IndiaSAT class label. None -> use the first band of each
+    # annual image (the class band; the collection also carries a confidence
+    # band). Set explicitly if the asset names its class band differently.
+    indiasat_class_band: str | None = None
+    # WorldCover fallback classes, used only where IndiaSAT has no data:
+    # 10 = tree cover, 20 = shrubland, 30 = grassland.
     keep_worldcover_classes: list[int] = Field(
         default=[10, 20, 30], min_length=1
-    )  # trees/shrub/grass
-    # JRC GSW occurrence is 0-100 (% of months observed as water).
-    # >= 50 means water at least half the time = "permanent" water.
+    )
+    # JRC GSW occurrence is 0-100 (% of months observed as water). >= this =
+    # "permanent" water. Used ONLY to build water_mask for the downstream
+    # distance-to-water feature, NOT for habitat masking.
     jrc_water_occurrence_threshold: float = Field(default=50.0, ge=0.0, le=100.0)
-    # Open Buildings polygons have a per-feature confidence in [0,1].
-    # Drop polygons below this threshold to avoid noisy / low-confidence buildings.
-    open_buildings_confidence: float = Field(default=0.7, ge=0.0, le=1.0)
-    # Whether to include VIIRS nightlights in the built-up mask. VIIRS catches
-    # bright settlements that Open Buildings misses, but the radiance threshold
-    # is region-specific (the default is Delhi-calibrated). Turn off when
-    # running on AOIs where VIIRS calibration is uncertain or where Open
-    # Buildings alone is sufficient.
-    use_viirs: bool = True
-    # Whether to include Google Open Buildings in the built-up mask. Symmetric
-    # with use_viirs. Turning both off leaves built_mask empty (habitat_mask
-    # becomes "veg AND NOT water"); the stage logs a warning in that case.
-    use_open_buildings: bool = True
 
 
 class SegmentationParams(BaseModel):

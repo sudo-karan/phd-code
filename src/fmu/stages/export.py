@@ -766,7 +766,7 @@ def _build_dissolved_feature_collection(
     # reduceRegion returns when a cluster has zero pixels in the ROI).
     if cluster_profiles:
         profile_cols = sorted({
-            c for p in cluster_profiles for c in p.keys() if c.endswith("_p50")
+            c for p in cluster_profiles for c in p if c.endswith("_p50")
         })
         lookup: dict[str, ee.Dictionary] = {}
         for col in profile_cols:

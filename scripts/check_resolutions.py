@@ -78,9 +78,9 @@ def main() -> None:
         ("Sentinel-1 GRD (radar)", config.datasets.radar_collection, "collection", "VV"),
         ("ETH Global Canopy Height", config.datasets.canopy_height, "image", None),
         ("NASADEM (elevation)", config.datasets.dem, "image", "elevation"),
-        ("ESA WorldCover", config.datasets.worldcover, "collection", "Map"),
+        ("IndiaSAT LULC (habitat)", config.datasets.indiasat, "collection", None),
+        ("ESA WorldCover (fallback)", config.datasets.worldcover, "collection", "Map"),
         ("JRC Global Surface Water", config.datasets.water, "image", "occurrence"),
-        ("VIIRS Nightlights", config.datasets.nightlights, "collection", "avg_rad"),
         ("CHIRPS PENTAD (climate)", config.datasets.climate, "collection", None),
     ]
 
@@ -91,9 +91,6 @@ def main() -> None:
             scale = _scale_of_collection_first(asset_id, sample_band)
         scale_str = f"{scale:>10.2f}" if scale is not None else "         ?"
         print(f"  {label:48s} {kind:12s} {scale_str}")
-
-    # Note about Open Buildings (it's a FeatureCollection, no scale)
-    print(f"  {'Google Open Buildings':48s} {'features':12s} {'(vector)':>12s}")
 
     # Cached feature outputs
     print()

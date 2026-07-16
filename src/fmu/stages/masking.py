@@ -1,26 +1,28 @@
-"""Masking stage. Builds habitat_mask, water_mask, landcover_summary from
-WorldCover, JRC GSW, Google Open Buildings, and VIIRS nightlights.
+"""Masking stage. Builds habitat_mask, water_mask, landcover_summary.
+
+Habitat is defined from the IndiaSAT LULC product (Bansal et al. 2021): the
+per-pixel classes 6 = Trees and 12 = Shrubs/Scrubs are kept as habitat, every
+other class excluded. Where IndiaSAT has no data, ESA WorldCover v200 (classes
+10/20/30) is used as a fallback.
+
+This is a SINGLE-PHASE habitat mask (deck v3.0, Stage 1): water, cropland, and
+built-up are removed simply because their classes are not in the habitat set —
+there is no separate water or built-up subtraction. JRC Global Surface Water is
+loaded only to build `water_mask` for the downstream distance-to-water feature,
+not for habitat masking.
+
+IndiaSAT is an annual collection (2017-2022). We take the per-pixel MODAL class
+over the collection, so a one-off yearly misclassification does not flip a
+pixel's habitat status.
 
 Output context keys:
-  - habitat_mask: binary, 1 where pixel is forest-relevant (veg AND NOT water
-    AND NOT built AND NOT bright_urban)
-  - water_mask: binary, 1 where pixel is permanent water
+  - habitat_mask: binary, 1 where the pixel is IndiaSAT Trees/Shrubs
+    (WorldCover 10/20/30 where IndiaSAT is unavailable)
+  - water_mask: binary, 1 where JRC permanent water; feeds distance-to-water
   - landcover_summary: labeled image for visualization
-      10/20/30 = WorldCover veg classes kept
-      50 = built-up (from Open Buildings or VIIRS)
-      80 = water
-      0  = other (excluded but not in any specific category)
-
-Note on data sources:
-  WorldCover is S2-derived. The built-up signal comes from Open Buildings
-  (vector, independent of S2) and VIIRS (different sensor) to avoid
-  circularity with the S2 features used in downstream stages.
-  See docs/design_notes.md.
-
-Source toggles (`masking.use_viirs`, `masking.use_open_buildings`) let
-users disable either built-up source. With both off, `built_mask` is
-empty and `habitat_mask` reduces to "veg AND NOT water"; a warning is
-logged in that case because masking accuracy degrades.
+      6 / 12 = IndiaSAT habitat classes kept
+      80     = JRC permanent water
+      0      = other (excluded)
 """
 
 from __future__ import annotations
@@ -47,86 +49,54 @@ class MaskingStage(Stage):
         ds = config.datasets
         params = config.masking
 
-        # ----- WorldCover: vegetation + a backup water signal -----
+        # ----- IndiaSAT LULC: primary habitat source -----
+        # Annual 30 m LULC raster; reduce to the per-pixel modal class over the
+        # collection so a single bad year cannot flip a pixel's habitat status.
+        indiasat_ic = ee.ImageCollection(ds.indiasat).filterBounds(roi)
+        if params.indiasat_class_band is not None:
+            indiasat_ic = indiasat_ic.select([params.indiasat_class_band])
+        else:
+            # First band is the class label; the collection also carries a
+            # per-pixel confidence band we don't use here.
+            indiasat_ic = indiasat_ic.map(lambda img: img.select(0))
+        lulc = indiasat_ic.reduce(ee.Reducer.mode()).rename("indiasat_lulc").clip(roi)
+
+        habitat_classes = params.indiasat_habitat_classes
+        veg_indiasat = lulc.eq(habitat_classes[0])
+        for cls in habitat_classes[1:]:
+            veg_indiasat = veg_indiasat.Or(lulc.eq(cls))
+
+        # ----- WorldCover fallback (only where IndiaSAT has no data) -----
         wc = ee.ImageCollection(ds.worldcover).first().select("Map").clip(roi)
         keep = params.keep_worldcover_classes
-        veg = wc.eq(keep[0])
+        veg_wc = wc.eq(keep[0])
         for cls in keep[1:]:
-            veg = veg.Or(wc.eq(cls))
-        wc_water = wc.eq(80)  # WorldCover permanent water class
+            veg_wc = veg_wc.Or(wc.eq(cls))
 
-        # ----- JRC GSW: occurrence-based water -----
+        # IndiaSAT where present; WorldCover where IndiaSAT is masked (no data).
+        # IndiaSAT covers all of India, so the fallback is a safety net for
+        # coverage gaps or AOIs outside its footprint.
+        veg = veg_indiasat.unmask(veg_wc)
+
+        # ----- habitat_mask: single-phase, habitat classes only -----
+        # Water / built-up / cropland are excluded implicitly (they are not in
+        # the habitat class set); no separate water or built subtraction.
+        habitat_mask = veg.rename("habitat_mask")
+
+        # ----- JRC water: distance-to-water feature only, NOT masking -----
         gsw = ee.Image(ds.water).select("occurrence").clip(roi)
-        gsw_water = gsw.gte(params.jrc_water_occurrence_threshold).unmask(0)
-
-        # Combined water: either source counts
-        water_mask = gsw_water.Or(wc_water).rename("water_mask")
-
-        # ----- Open Buildings: vector polygons to rasterized built mask -----
-        # Filter to ROI and confidence threshold, then rasterize at the pipeline
-        # analysis scale. Anything inside a building polygon becomes 1.
-        # When use_open_buildings is False, contributes a zero image (so the
-        # downstream Or() with VIIRS still works without branching).
-        if params.use_open_buildings:
-            buildings = (
-                ee.FeatureCollection(ds.open_buildings)
-                .filterBounds(roi)
-                .filter(ee.Filter.gte("confidence", params.open_buildings_confidence))
-            )
-            built_from_buildings = (
-                buildings.reduceToImage(properties=["confidence"], reducer=ee.Reducer.first())
-                .gt(0)
-                .unmask(0)
-            )
-        else:
-            built_from_buildings = ee.Image(0)
-            log.info("  Open Buildings disabled via masking.use_open_buildings=false")
-
-        # ----- VIIRS: broad urban / bright-light areas -----
-        # Use the latest available VIIRS monthly composite.
-        # When use_viirs is False, contributes a zero image. Threshold is
-        # region-specific (default is Delhi-calibrated), so disabling is a
-        # legitimate option for AOIs where the calibration doesn't transfer.
-        if params.use_viirs:
-            viirs = (
-                ee.ImageCollection(ds.nightlights)
-                .select("avg_rad")
-                .sort("system:time_start", False)
-                .first()
-                .clip(roi)
-            )
-            bright_urban = viirs.gte(params.nightlights_threshold).unmask(0)
-        else:
-            bright_urban = ee.Image(0)
-            log.info("  VIIRS nightlights disabled via masking.use_viirs=false")
-
-        # ----- Combined built mask (either source) -----
-        built_mask = built_from_buildings.Or(bright_urban)
-
-        # Warn loudly if both sources are off; downstream urban-vs-vegetation
-        # circularity protection (the design point in docs/design_notes.md)
-        # depends on at least one non-S2 built-up source being active.
-        if not params.use_viirs and not params.use_open_buildings:
-            log.warning(
-                "  ALL built-up sources disabled (use_viirs=false, "
-                "use_open_buildings=false). habitat_mask = veg AND NOT water; "
-                "built-up areas will not be excluded. This breaks the design's "
-                "circularity protection between mask and S2-derived features."
-            )
-
-        # ----- habitat_mask: veg AND NOT water AND NOT built -----
-        habitat_mask = (
-            veg.And(water_mask.Not()).And(built_mask.Not()).rename("habitat_mask")
+        water_mask = (
+            gsw.gte(params.jrc_water_occurrence_threshold)
+            .unmask(0)
+            .rename("water_mask")
         )
 
         # ----- landcover_summary: labeled output for visualization -----
-        # Layered: WorldCover veg classes, then built (50), then water (80).
-        # Later layers win where they overlap, so water/built take precedence
-        # over a noisy WorldCover veg label at the same pixel.
+        # IndiaSAT habitat classes, then water on top (water wins where they
+        # overlap, since JRC and IndiaSAT are independent sources).
         summary = ee.Image(0).int()
-        for cls in keep:
-            summary = summary.where(wc.eq(cls), cls)
-        summary = summary.where(built_mask, 50)
+        for cls in habitat_classes:
+            summary = summary.where(lulc.eq(cls), cls)
         summary = summary.where(water_mask, 80).rename("landcover_summary")
 
         return StageResult(
@@ -136,15 +106,12 @@ class MaskingStage(Stage):
                 "landcover_summary": summary,
             },
             metadata={
-                "worldcover_classes_kept": keep,
-                "water_occurrence_threshold": params.jrc_water_occurrence_threshold,
-                "open_buildings_confidence": params.open_buildings_confidence,
-                "nightlights_threshold": params.nightlights_threshold,
-                "use_viirs": params.use_viirs,
-                "use_open_buildings": params.use_open_buildings,
+                "indiasat_dataset": ds.indiasat,
+                "indiasat_habitat_classes": habitat_classes,
+                "indiasat_class_band": params.indiasat_class_band,
+                "worldcover_fallback_classes": keep,
                 "worldcover_dataset": ds.worldcover,
+                "water_occurrence_threshold": params.jrc_water_occurrence_threshold,
                 "water_dataset": ds.water,
-                "open_buildings_dataset": ds.open_buildings,
-                "nightlights_dataset": ds.nightlights,
             },
         )

@@ -190,35 +190,34 @@ def test_load_non_mapping_raises(tmp_path):
         load_config(bad)
 
 
-# ---------- v1.1.0: masking source toggles ----------
+# ---------- masking: IndiaSAT-primary habitat ----------
 
 
-def test_masking_toggles_default_to_true():
-    """Defaults must preserve pre-v1.1.0 behavior (both sources on)."""
+def test_masking_habitat_classes_default():
+    """Default habitat = IndiaSAT Trees (6) + Shrubs/Scrubs (12)."""
     mp = MaskingParams()
-    assert mp.use_viirs is True
-    assert mp.use_open_buildings is True
+    assert mp.indiasat_habitat_classes == [6, 12]
+    assert mp.indiasat_class_band is None
+    assert mp.keep_worldcover_classes == [10, 20, 30]  # WorldCover fallback
 
 
-def test_masking_toggles_accept_false():
-    mp = MaskingParams(use_viirs=False, use_open_buildings=False)
-    assert mp.use_viirs is False
-    assert mp.use_open_buildings is False
+def test_masking_habitat_classes_settable():
+    mp = MaskingParams(indiasat_habitat_classes=[6], indiasat_class_band="label")
+    assert mp.indiasat_habitat_classes == [6]
+    assert mp.indiasat_class_band == "label"
 
 
-def test_masking_toggles_individually_settable():
-    """The two sources are independent; either alone should be accepted."""
-    only_viirs = MaskingParams(use_viirs=True, use_open_buildings=False)
-    assert only_viirs.use_viirs is True and only_viirs.use_open_buildings is False
-    only_ob = MaskingParams(use_viirs=False, use_open_buildings=True)
-    assert only_ob.use_viirs is False and only_ob.use_open_buildings is True
+def test_masking_rejects_removed_builtup_fields():
+    """The VIIRS / Open Buildings toggles are gone (single-phase mask)."""
+    with pytest.raises(ValidationError):
+        MaskingParams(use_viirs=True)  # type: ignore[call-arg]
 
 
-def test_baseline_masking_toggles_on():
-    """Both baseline and variant YAMLs rely on the True defaults."""
+def test_baseline_masking_uses_indiasat():
+    """Both baseline and variant YAMLs define IndiaSAT-primary masking."""
     cfg = load_config(BASELINE_YAML)
-    assert cfg.masking.use_viirs is True
-    assert cfg.masking.use_open_buildings is True
+    assert cfg.masking.indiasat_habitat_classes == [6, 12]
+    assert "ee-indiasat" in cfg.datasets.indiasat
 
 
 # ---------- v1.1.0: features_optical.time_reference ----------
@@ -363,8 +362,8 @@ def test_baseline_yaml_has_v1_1_0_defaults():
     """The shipped baseline relies on v1.1.0 fields defaulting correctly."""
     cfg = load_config(BASELINE_YAML)
     # masking
-    assert cfg.masking.use_viirs is True
-    assert cfg.masking.use_open_buildings is True
+    assert cfg.masking.indiasat_habitat_classes == [6, 12]
+    assert cfg.masking.keep_worldcover_classes == [10, 20, 30]
     # features_optical
     assert cfg.features_optical.time_reference == date(2017, 1, 1)
     # export
