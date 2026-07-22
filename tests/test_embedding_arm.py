@@ -186,3 +186,43 @@ def test_stage_names_embedding_feeds_clustering_and_snic():
     for needed in ("data_load", "features_radar", "features_structure"):
         assert stages.index(needed) < stages.index("segmentation")
     assert stages.index("features_embedding") < stages.index("clustering")
+
+
+# ---------- default_stage_names(through=...) ----------
+
+
+def test_stage_names_through_clustering_stops_at_clustering():
+    """inspect_clustering asks for the clustering tail (no profiling/export/metrics)."""
+    for yaml_path in (BASELINE_YAML, ALPHAEARTH_YAML):
+        stages = default_stage_names(load_config(yaml_path), through="clustering")
+        assert stages[-1] == "clustering"
+        assert not ({"profiling", "export", "metrics"} & set(stages))
+
+
+def test_stage_names_through_export_runs_profiling_then_export():
+    """inspect_export needs profiling (dissolved layer) before export, no metrics."""
+    stages = default_stage_names(load_config(ALPHAEARTH_YAML), through="export")
+    assert stages[-2:] == ["profiling", "export"]
+    assert "metrics" not in stages
+    # embedding feature stage still swapped in
+    assert "features_embedding" in stages
+    assert "features_optical" not in stages
+
+
+def test_stage_names_through_profiling():
+    stages = default_stage_names(load_config(BASELINE_YAML), through="profiling")
+    assert stages[-1] == "profiling"
+    assert "export" not in stages and "metrics" not in stages
+
+
+def test_stage_names_through_metrics_is_default():
+    cfg = load_config(BASELINE_YAML)
+    assert default_stage_names(cfg) == default_stage_names(cfg, through="metrics")
+    assert default_stage_names(cfg)[-1] == "metrics"
+    # metrics tail does NOT run profiling/export (only needs cluster_labels)
+    assert "profiling" not in default_stage_names(cfg)
+
+
+def test_stage_names_rejects_unknown_through():
+    with pytest.raises(ValueError, match="through must be one of"):
+        default_stage_names(load_config(BASELINE_YAML), through="segmentation")

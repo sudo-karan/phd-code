@@ -22,8 +22,22 @@ from fmu.utils.logging import get_logger
 log = get_logger(__name__)
 
 
-def default_stage_names(config: Config) -> list[str]:
-    """Canonical full-pipeline stage order (through metrics) for a config.
+# Stages that run after clustering, keyed by how far a run should go. Each
+# inspect script asks for the tail it needs (clustering / profiling / export /
+# metrics); the base masking->clustering prefix is shared. metrics does NOT run
+# profiling+export (it only needs cluster_labels), matching the historical
+# inspect_metrics behavior; export runs profiling first (its dissolved layer
+# consumes cluster_profiles).
+_STAGE_TAILS: dict[str, list[str]] = {
+    "clustering": [],
+    "profiling": ["profiling"],
+    "export": ["profiling", "export"],
+    "metrics": ["metrics"],
+}
+
+
+def default_stage_names(config: Config, through: str = "metrics") -> list[str]:
+    """Canonical stage order for a config, up to and including `through`.
 
     The clustering feature source decides which feature stages run:
 
@@ -37,31 +51,32 @@ def default_stage_names(config: Config) -> list[str]:
         which is what makes the metrics comparison attributable to the feature
         vector alone.
 
-    The stage list is otherwise passed explicitly to `Pipeline(...)`; this
-    helper centralizes the one place it varies. Callers must still import the
-    stage modules so `@register_stage` has run (see the inspect scripts).
+    `through` selects the post-clustering tail: "clustering" (stop there),
+    "profiling", "export" (profiling then export), or "metrics" (default).
+    The inspect scripts each pass the tail they need; this helper is the one
+    place the feature-source branch lives. Callers must still import the stage
+    modules so `@register_stage` has run (see the inspect scripts).
     """
+    if through not in _STAGE_TAILS:
+        raise ValueError(
+            f"through must be one of {sorted(_STAGE_TAILS)}, got {through!r}"
+        )
     if config.clustering.feature_source == "embedding":
-        return [
-            "masking",
-            "data_load",
+        feature_stages = ["features_radar", "features_structure", "features_embedding"]
+    else:
+        feature_stages = [
+            "features_optical",
             "features_radar",
             "features_structure",
-            "features_embedding",
-            "segmentation",
-            "clustering",
-            "metrics",
+            "features_static",
         ]
     return [
         "masking",
         "data_load",
-        "features_optical",
-        "features_radar",
-        "features_structure",
-        "features_static",
+        *feature_stages,
         "segmentation",
         "clustering",
-        "metrics",
+        *_STAGE_TAILS[through],
     ]
 
 
