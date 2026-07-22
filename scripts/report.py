@@ -596,9 +596,9 @@ table.metrics td:last-child{{font-weight:600;font-variant-numeric:tabular-nums}}
 footer{{color:{MUTED};font-size:12px;margin-top:30px}}
 </style></head><body><div class="wrap">
 <h1>{title}</h1>
-<p class="sub">Same AOI, same segmentation, same k={cur.k} — only the optical features differ
- ({ref.index.upper()} / {ref_sum.get('harmonic', '?')} harmonic vs
- {cur.index.upper()} / {cur_sum.get('harmonic', '?')} harmonic). Any difference below is the feature choice alone.</p>
+<p class="sub">Same AOI, same segmentation, same k={cur.k} — only the clustering feature vector differs
+ ({ref.name} vs {cur.name}; see the per-config summaries below). Any difference below is the
+ feature representation alone.</p>
 <div class="cfgwrap">
  <div><div class="cfghead" style="color:{CLUSTER_COLORS[0]}">{ref.name} (reference)</div><div class="cards">{_cards_html(ref_sum)}</div></div>
  <div><div class="cfghead" style="color:{CLUSTER_COLORS[5]}">{cur.name} (variant)</div><div class="cards">{_cards_html(cur_sum)}</div></div>

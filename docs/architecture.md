@@ -23,6 +23,7 @@ src/fmu/
 │   ├── features_radar.py
 │   ├── features_structure.py
 │   ├── features_static.py
+│   ├── features_embedding.py  (optional embedding feature source; see clustering.feature_source)
 │   ├── segmentation.py
 │   ├── clustering.py
 │   ├── profiling.py
@@ -56,7 +57,7 @@ and declares four things:
 @register_stage("clustering")
 class ClusteringStage(Stage):
     name = "clustering"
-    required_inputs = {"roi", "snic_clusters", "optical_features", ...}
+    required_inputs = {"roi", "snic_clusters", "habitat_mask"}  # invariant subset; validate() adds source-specific keys
     produces = {"cluster_labels", "feature_stack"}
     cacheable_outputs = {"cluster_labels", "feature_stack"}
 
@@ -82,6 +83,12 @@ class ClusteringStage(Stage):
 The optional `validate(ctx, config)` method runs before `run()`. The
 default checks that every `required_inputs` key is present in the
 context; override to add custom checks (e.g., projection sanity).
+`ClusteringStage` uses this to require its feature-source-specific inputs
+on top of the invariant `required_inputs`: the four hand-crafted feature
+images when `clustering.feature_source == "handcrafted"`, or the single
+`embedding_features` image (from `features_embedding`) when `"embedding"`.
+Keeping `required_inputs` static and branching in `validate()` means an
+embedding run isn't forced to produce the hand-crafted stack it never uses.
 
 ### 2. `PipelineContext`
 
@@ -135,6 +142,25 @@ Pipeline(stage_names=["masking", "data_load", ...], use_cache=True)
 
 Resolves each name via the registry and stores the class list. Caching
 is opt-in (default `False`).
+
+The canonical stage order is composed by `default_stage_names(config)` in
+`pipeline.py`, which branches on `config.clustering.feature_source`:
+
+- **`"handcrafted"`** (default): `masking`, `data_load`, `features_optical`,
+  `features_radar`, `features_structure`, `features_static`, `segmentation`,
+  `clustering`, `metrics`.
+- **`"embedding"`**: drops `features_optical` and `features_static` and
+  inserts `features_embedding`, giving `masking`, `data_load`,
+  `features_radar`, `features_structure`, `features_embedding`,
+  `segmentation`, `clustering`, `metrics`.
+
+`data_load` + `features_radar` + `features_structure` stay in both arms
+because segmentation (SNIC) draws its 5 input bands from them (S2 composite,
+canopy height, cross-pol contrast), never from the clustering stack — so
+boundaries are byte-identical across arms and the metrics comparison is
+attributable to the feature vector alone. Callers still pass the resulting
+list explicitly to `Pipeline(...)` (and must import the stage modules so
+`@register_stage` has run).
 
 ### Execution
 

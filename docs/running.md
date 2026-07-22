@@ -226,6 +226,67 @@ clustering against a reference config. Setup:
    `cluster_labels` from the cache, computes ARI/NMI/silhouette/agreement,
    and writes the results to the run dir.
 
+## Running the embedding arm
+
+The embedding arm clusters a pretrained per-pixel embedding (AlphaEarth or
+Tessera) instead of the hand-crafted feature stack, then compares the result
+against the hand-crafted baseline. `clustering.feature_source: embedding` in
+the config drives this; `inspect_metrics.py` picks the right stage list
+automatically (`default_stage_names` drops features_optical / features_static
+and inserts features_embedding, holding SNIC byte-identical to the baseline so
+any difference is attributable to the feature representation alone). There is
+no `inspect_features_embedding.py`; the new stage runs inside the pipeline that
+`inspect_metrics.py` (or `inspect_clustering.py`) drives.
+
+### AlphaEarth
+
+`configs/sanjay_van_alphaearth.yaml` already sets
+`metrics.reference_config_name: sanjay_van_baseline`, so the only prerequisite
+is a populated baseline cache.
+
+1. Run the baseline through clustering (so its `cluster_labels` and
+   `feature_stack` are cached), exactly as for any comparison:
+
+   ```bash
+   python scripts/inspect_clustering.py --config configs/sanjay_van_baseline.yaml
+   # wait for asset exports to complete (5-15 min, check GEE Tasks)
+   ```
+
+2. Run metrics on the AlphaEarth config. This single command runs the full
+   embedding pipeline (masking through clustering) live, then compares it
+   against the cached baseline:
+
+   ```bash
+   python scripts/inspect_metrics.py --config configs/sanjay_van_alphaearth.yaml
+   ```
+
+   It prints the same ARI / NMI / agreement-rate table as any comparison, plus
+   the per-stand `confidence` layer — each stand's fraction of pixels that
+   agree with the baseline after Hungarian alignment (0..1; consensus between
+   the two representations, not correctness) — and a scalar `confidence_summary`
+   in `metrics_sanjay_van_alphaearth.json`.
+
+### Tessera
+
+Same recipe, but Tessera lives OFF Earth Engine (CC0, via the `geotessera`
+library), so it must be ingested into an EE asset ONCE before its config can
+run:
+
+```bash
+python scripts/prep_tessera.py --config configs/sanjay_van_tessera.yaml \
+    --years 2017 2018 2019 2020 2021 2022 \
+    --asset projects/<proj>/assets/tessera_sanjay_van_2017_2022
+```
+
+`geotessera` needs Python 3.12+ (the `tessera` optional extra), so run
+`prep_tessera.py` in a separate 3.12+ environment
+(`pip install -e ".[tessera]"`); it is a documented one-shot, not part of the
+tested pipeline. The script fetches the ROI's Tessera tiles, mosaics them to
+one GeoTIFF, and helps you upload it. Paste the printed asset id into
+`datasets.embedding` in `configs/sanjay_van_tessera.yaml` (it ships as a
+`projects/REPLACE_ME/...` placeholder), then run the same two steps as the
+AlphaEarth arm with `--config configs/sanjay_van_tessera.yaml`.
+
 ## Troubleshooting
 
 | Symptom | Likely cause | Fix |

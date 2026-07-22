@@ -7,8 +7,12 @@ Covers the parts that need no Earth Engine:
     (the sanctioned hook, since required_inputs is a static class attribute);
   - default_stage_names() picking the handcrafted vs embedding stage list.
 
-The live behaviour (actually loading AlphaEarth, clustering the embedding, the
-confidence roll-up) is exercised by the *_live tests under GEE auth.
+The live server-side behaviour (loading AlphaEarth/Tessera, clustering the
+embedding, the confidence roll-up) has no dedicated *_live test yet — the
+existing live fixtures all load hand-crafted configs. Covering it needs a
+GEE-authed run of an embedding config, e.g.
+`python scripts/inspect_metrics.py --config configs/sanjay_van_alphaearth.yaml`;
+these non-live tests are the current automated coverage.
 """
 
 from __future__ import annotations
