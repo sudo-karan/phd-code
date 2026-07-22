@@ -18,6 +18,8 @@ without code changes.
 | ESA WorldCover v200 | `ESA/WorldCover/v200` | masking (habitat fallback) | 10 m | 2021 |
 | JRC Global Surface Water v1.4 | `JRC/GSW1_4/GlobalSurfaceWater` | masking (distance-to-water only), features_static | 30 m | 1984-2021 |
 | CHIRPS Pentad | `UCSB-CHG/CHIRPS/PENTAD` | features_static | 5,500 m | 1991-2020 climatology |
+| AlphaEarth Satellite Embedding | `GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL` | features_embedding (embedding mode only) | 10 m | annual from 2017, collapsed over 2017-2022 |
+| Tessera | `projects/<proj>/assets/tessera_…` (user upload, off-GEE via geotessera) | features_embedding (embedding mode only) | 10 m | 2017-2022 (uploaded) |
 
 ---
 
@@ -177,6 +179,52 @@ distance-to-water feature.
   (e.g., elevation transects, monsoon margins), rainfall is informative.
   The clustering stage drops it automatically if IQR <= 1e-9 (zero
   spread, uninformative, dropped via DEC-004).
+
+## AlphaEarth Satellite Embedding
+
+`GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL`. A pretrained per-pixel embedding:
+a 64-band annual ImageCollection (one image per year from 2017, bands
+`A00`..`A63`) at 10 m, learned from multi-sensor satellite time series.
+
+- **Embedding mode only.** Read solely by `features_embedding`, which
+  runs only when `clustering.feature_source: embedding`. In the default
+  hand-crafted arm this dataset is never touched.
+- **Collapsed to one image over the feature window.** The annual images
+  are filtered to `dates.phenology` (2017-2022) and reduced to a single
+  embedding image by `features_embedding.collapse_reducer` (default
+  `mean`; `median` available), matching the 2017-2022 averaging the
+  hand-crafted features rest on.
+- **All 64 bands by default.** `features_embedding.band_names: null`
+  keeps every embedding dimension; the dimensions are jointly meaningful,
+  so restricting to a subset is rarely useful.
+
+**Why an embedding arm:** it swaps the four hand-crafted feature images
+for a single pretrained embedding with segmentation held fixed, so the
+metrics stage attributes any difference to the feature representation
+alone. Google's own dataset guidance recommends grouping these embeddings
+with unsupervised clustering — exactly what the clustering stage does.
+Used by `configs/sanjay_van_alphaearth.yaml`.
+
+## Tessera
+
+An uploaded user Earth Engine Image. Tessera is a 128-channel, 10 m
+pretrained embedding distributed CC0 through the `geotessera` library,
+but it lives **off** Earth Engine — so it must be ingested to an EE asset
+before the pipeline can read it. Its GEE ID is therefore whatever asset id
+you upload to (placeholder `projects/REPLACE_ME/assets/tessera_sanjay_van_2017_2022`
+in `configs/sanjay_van_tessera.yaml` until upload).
+
+- **Embedding mode only.** Like AlphaEarth, read solely by
+  `features_embedding` when `clustering.feature_source: embedding`.
+- **Ingest once with `scripts/prep_tessera.py`.** The one-shot fetches
+  the ROI's Tessera tiles via geotessera, mosaics them to a GeoTIFF
+  (optionally averaging several years to match AlphaEarth's 2017-2022
+  mean), and uploads the result to an EE asset. Paste the printed asset
+  id into `datasets.embedding` in `configs/sanjay_van_tessera.yaml`.
+  `geotessera` is the optional `tessera` extra and needs Python 3.12+.
+- **Loaded as-is (single Image).** The stage sniffs the asset type; a
+  single Image is used without any annual collapse, so `collapse_reducer`
+  is ignored. `band_names: null` keeps all 128 dimensions.
 
 ---
 

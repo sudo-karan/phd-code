@@ -27,10 +27,11 @@ The pipeline runs a sequence of stages, each producing context keys consumed by 
         |
 2. data_load        produces s2_collection, s1_collection, s2_composite   [cached]
         |
-3. features_optical    produces optical_features                          [cached]
+3. features_optical    produces optical_features                          [cached]  handcrafted arm
 4. features_radar      produces radar_features                            [cached]
 5. features_structure  produces structure_features                        [cached]
-6. features_static     produces static_features                           [cached]
+6. features_static     produces static_features                           [cached]  handcrafted arm
+   features_embedding  produces embedding_features                        [cached]  embedding arm (replaces 3 + 6)
         |
 7. segmentation     produces snic_clusters, snic_means                    [cached]
         |
@@ -40,10 +41,12 @@ The pipeline runs a sequence of stages, each producing context keys consumed by 
         |
 10. export          submits Drive GeoTIFF + writes manifest
         |
-11. metrics         produces comparison_metrics + agreement_map
+11. metrics         produces comparison_metrics + agreement_map + confidence
 ```
 
 The orchestrator (`fmu.pipeline.Pipeline`) walks the stages, validates the context against each stage's declared inputs, and merges outputs back in. With Module 6 in place, the orchestrator also checks the asset cache before running each stage. See ENG-013 (orchestrator) and the asset-caching ENG entry (TBD) in decisions.md.
+
+**Feature source (`clustering.feature_source`).** The stage list above is the *handcrafted* arm (the default). Setting `clustering.feature_source: embedding` selects the *embedding* arm: `features_optical` and `features_static` are dropped and a single `features_embedding` stage produces `embedding_features` in their place. `features_radar` and `features_structure` run in **both** arms — SNIC's 5-band input stack is built from the S2 composite, canopy height, and the cross-pol contrast (never the clustering feature stack), so segmentation is byte-identical across arms and any difference the metrics stage reports is attributable to the feature vector alone. The per-arm stage order is returned by `default_stage_names(config)` in `pipeline.py`.
 
 ---
 
@@ -229,6 +232,35 @@ When `include_climate` is false, only the first 4 bands are emitted.
 
 **Related decisions:** DEC-014 (compute over full ROI, mask at clustering).
 
+### 6b. features_embedding - `src/fmu/stages/features_embedding.py`
+
+The *embedding arm's* single feature stage. Runs only when `clustering.feature_source: embedding`, in place of `features_optical` + `features_static`. Supplies one pretrained per-pixel embedding image where the handcrafted arm supplies four hand-engineered feature images. `features_radar` and `features_structure` still run alongside it (SNIC needs them; see the feature-source note above).
+
+**Reads from context:** `roi`
+**Writes to context:** `embedding_features` (single multi-band image)
+**Cacheable:** yes
+
+**Datasets** (`datasets.embedding`, default `GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL`):
+- AlphaEarth Satellite Embedding; a 64-band annual `ImageCollection` (bands `A00..A63`, one image per year from 2017). The default source.
+- Tessera (or any other pretrained embedding) uploaded to Earth Engine as a single `Image`; point `datasets.embedding` at the uploaded asset id.
+
+**Logic:**
+- Sniff the asset type with `ee.data.getAsset` (the same tolerant pattern as masking).
+- **Single `Image` (Tessera):** loaded as-is; no collapse.
+- **`ImageCollection` (AlphaEarth) or unknown:** filter to the ROI + the `dates.phenology` window (2017-2022, the shared time-series support the handcrafted features rest on; end date made inclusive via `advance(1, "day")`) and collapse to ONE image by `mean` (default) or `median`. An empty window (no images intersecting the ROI) is a hard error (fail-loud per ENG-012).
+- Optional band restriction via `band_names` (None keeps every embedding dimension), then `clip(roi)`.
+- The embedding is **not** masked or otherwise altered here; the experiment holds everything but the clustering feature vector fixed.
+
+**Config knobs:**
+- `clustering.feature_source`; `handcrafted` (default) or `embedding` (selects whether this stage runs at all)
+- `datasets.embedding`; embedding asset id (AlphaEarth collection or an uploaded Tessera image)
+- `features_embedding.collapse_reducer`; `mean` (default) or `median`; how an annual collection is collapsed to one image (ignored for a single-image source)
+- `features_embedding.band_names`; explicit band subset, or `null` to keep all
+
+**No dedicated inspect script.** There is no `inspect_features_embedding.py`; the stage runs inside the pipeline via `scripts/inspect_metrics.py` (or `inspect_clustering.py`) whenever `clustering.feature_source: embedding`.
+
+**Related decisions:** DEC-013 (variants exist to be tested via metrics), DEC-014 (compute over full ROI, mask at clustering).
+
 ### 7. segmentation - `src/fmu/stages/segmentation.py`
 
 SNIC superpixel segmentation. Draws boundaries that downstream clustering operates on (DEC-001; clustering on superpixel means, not pixels).
@@ -248,7 +280,7 @@ These five capture four orthogonal information sources at the same 10 m resoluti
 
 **Z-score normalization (per band, over the ROI)** is applied before SNIC sees the stack. Without this, the larger-magnitude bands (raw S2 reflectance 0-3000) would dominate the spectral-distance term over `canopy_height` (0-30) and `vv_minus_vh_median` (~0-15 dB). All bands z-scored = all bands contribute roughly equally.
 
-**Same inputs across both configs.** `composite_nirv` is derived from `s2_composite`, which is identical between baseline and variant. So segmentation boundaries are bit-identical between the two configs; Module 18's comparison isolates the optical-features change to the clustering stage alone.
+**Same inputs across both configs.** `composite_nirv` is derived from `s2_composite`, which is identical between baseline and variant. So segmentation boundaries are bit-identical between the two configs; Module 18's comparison isolates the optical-features change to the clustering stage alone. The same holds across the **handcrafted vs embedding arms**: SNIC's 5 input bands come only from `s2_composite`, `structure_features`, and `radar_features` (never the clustering feature stack), so `features_radar` and `features_structure` run in both arms and segmentation stays byte-identical — the experiment's control.
 
 **Config knobs:**
 - `segmentation.size`; seed spacing in pixels (default 10 ≈ 100 m on 10 m grid)
@@ -263,13 +295,13 @@ These five capture four orthogonal information sources at the same 10 m resoluti
 
 Per-superpixel feature stack to preprocessing to k-means to per-pixel cluster labels. Implements the locked DEC-001 (cluster on superpixel means), DEC-003 (median/IQR robust scaling), DEC-004 (log-transform right-skewed bands).
 
-**Reads from context:** `roi`, `snic_clusters`, `optical_features`, `radar_features`, `structure_features`, `static_features`, `habitat_mask`
+**Reads from context:** the invariant subset `roi`, `snic_clusters`, `habitat_mask` (the static `required_inputs`), **plus the feature-source inputs**: the four hand images (`optical_features`, `radar_features`, `structure_features`, `static_features`) when `feature_source: handcrafted`, or `embedding_features` when `feature_source: embedding`. A `validate()` override adds the source-specific keys so an embedding run isn't forced to produce the handcrafted stack it never uses.
 **Writes to context:** `cluster_labels` (per-pixel cluster ID 0..k-1, masked outside habitat), `feature_stack` (preprocessed multi-band feature image; kept for profiling stage)
 **Cacheable:** yes, both outputs. Plus preprocessing parameters cached as a `clustering_metadata` property on the `cluster_labels` asset (ENG-022).
 
 **Pipeline inside the stage (all server-side):**
 
-1. **Build raw feature stack**; auto-detect bands from each features_* asset (works for both `ndvi_*` and `nirv_*` configs). Drop `*_obs_count` (metadata), `*_residual_variance` (diagnostic-only, not a clustering feature), and `annual_rainfall` (constant in our ROI; kept in the static-features asset for cross-AOI generality).
+1. **Build raw feature stack**; in the handcrafted arm, auto-detect bands from each features_* asset (works for both `ndvi_*` and `nirv_*` configs) and drop `*_obs_count` (metadata), `*_residual_variance` (diagnostic-only, not a clustering feature), and `annual_rainfall` (constant in our ROI; kept in the static-features asset for cross-AOI generality). In the embedding arm the raw stack is simply the `embedding_features` image itself (every embedding dimension is a feature; nothing to concatenate or exclude). Everything from step 2 onward is band-name-agnostic and runs identically for both arms.
 
 2. **Cyclic decomposition**; every `*_phase_*` band and `aspect` is replaced with a sin/cos pair. Aspect is converted from degrees to radians first.
 
@@ -288,6 +320,7 @@ Per-superpixel feature stack to preprocessing to k-means to per-pixel cluster la
 9. **Persist preprocessing metadata**; log_transform_bands, log_offsets, per-band scaling params, active bands list, dropped constant bands; all attached as `clustering_metadata` JSON property on the `cluster_labels` asset.
 
 **Config knobs:**
+- `clustering.feature_source`; `handcrafted` (default) or `embedding`; selects which feature vector k-means clusters (and, via `default_stage_names`, which feature stages run)
 - `clustering.k`; number of clusters (default 6)
 - `clustering.n_training_samples`; sample size for k-means training (default 10000)
 - `clustering.seed`; random seed (default 42)
@@ -367,9 +400,9 @@ SHP outputs use the `selectors` argument to pick a minimal SHP-safe attribute su
 
 The actual research deliverable. Quantitative comparison between the two clusterings, answering the thesis question "does NIRv + dual harmonic meaningfully improve clustering?"
 
-**Reads from context:** `roi`, `cluster_labels`, `habitat_mask`
+**Reads from context:** `roi`, `cluster_labels`, `habitat_mask`, `snic_clusters`
 **Also reads (cross-config):** reference config's `cluster_labels` and `feature_stack` assets, if `metrics.reference_config_name` is set.
-**Writes to context:** `comparison_metrics` (Python dict), `agreement_map` (GEE image, only in comparison mode)
+**Writes to context:** `comparison_metrics` (Python dict), `agreement_map` (GEE image, only in comparison mode), `confidence` (GEE image, only in comparison mode)
 **Cacheable:** no. Always runs (fast; sampling + scikit-learn).
 
 **Two modes:**
@@ -384,6 +417,9 @@ The actual research deliverable. Quantitative comparison between the two cluster
 - **Agreement rate**: % of pixels matching after correspondence
 - **Silhouette scores**: intrinsic quality for both configs
 - **Agreement map**: server-side image showing per-pixel agreement (0=disagree, 1=agree after correspondence remapping)
+- **Confidence** (per-stand): the `agreement_map` rolled up to SNIC superpixels (`reduceConnectedComponents` mean over `snic_clusters`) to a per-stand `confidence` image; each stand's fraction of pixels agreeing with the reference after Hungarian alignment (0..1). This is a **consensus/stability** layer, **not correctness** — there is no ground-truth stand map; it flags where a boundary is robust to the choice of feature source and where it should be read with caution. A scalar `confidence_summary` (`{mean, frac_area_ge_high, high_threshold: 0.8}`) is written into `metrics_<config>.json`.
+
+Both `agreement_map` and `confidence` are `null`/`None` in baseline mode (no reference to compare against).
 
 **Sampling strategy:**
 - ARI/NMI: 10,000 paired pixels via stacked-image `.sample()` (both labels at identical locations)
@@ -417,16 +453,20 @@ Each one will get its own section here as it's built.
 | Radar features logic | `src/fmu/stages/features_radar.py` |
 | Structure features logic | `src/fmu/stages/features_structure.py` |
 | Static features logic | `src/fmu/stages/features_static.py` |
+| Embedding features logic | `src/fmu/stages/features_embedding.py` |
 | Segmentation (SNIC) logic | `src/fmu/stages/segmentation.py` |
 | Clustering (k-means) logic | `src/fmu/stages/clustering.py` |
 | Phenology config knobs | `configs/*.yaml` to `features_optical.{index, harmonic_mode, include_trend}` |
 | Radar config knobs | `configs/*.yaml` to `features_radar.{percentiles, include_iqr, include_cross_pol_contrast}` |
 | Structure config knobs | `configs/*.yaml` to `features_structure.{include_neighborhood_stats, neighborhood_kernel_size}` |
 | Static config knobs | `configs/*.yaml` to `features_static.{include_climate, max_water_distance_pixels}` |
+| Embedding config knobs | `configs/*.yaml` to `clustering.feature_source` + `features_embedding.{collapse_reducer, band_names}` |
 | Segmentation config knobs | `configs/*.yaml` to `segmentation.{size, compactness, connectivity, neighborhood_size, normalize_inputs}` |
-| Clustering config knobs | `configs/*.yaml` to `clustering.{k, n_training_samples, seed, skewness_threshold, superpixel_max_size}` + `normalization.method` |
+| Clustering config knobs | `configs/*.yaml` to `clustering.{feature_source, k, n_training_samples, seed, skewness_threshold, superpixel_max_size}` + `normalization.method` |
 | Climate dataset + window | `configs/*.yaml` to `datasets.climate`, `dates.climate` |
 | NIRv + dual variant config | `configs/sanjay_van_nirv_dual.yaml` |
+| AlphaEarth embedding arm config | `configs/sanjay_van_alphaearth.yaml` |
+| Tessera embedding arm config | `configs/sanjay_van_tessera.yaml` |
 | S2 cloud mask SCL classes | `configs/sanjay_van_baseline.yaml` to `cloud_mask.drop_scl_classes` |
 | S2 max cloud % | `configs/sanjay_van_baseline.yaml` to `cloud_mask.max_cloud_pct` |
 | S1 orbit direction | `configs/sanjay_van_baseline.yaml` to `data_load.s1_orbit` |
@@ -435,6 +475,7 @@ Each one will get its own section here as it's built.
 | IndiaSAT dataset ID | `configs/sanjay_van_baseline.yaml` to `datasets.indiasat` |
 | WorldCover dataset ID (habitat fallback) | `configs/sanjay_van_baseline.yaml` to `datasets.worldcover` |
 | JRC water dataset ID | `configs/sanjay_van_baseline.yaml` to `datasets.water` |
+| Embedding dataset ID (AlphaEarth / Tessera) | `configs/sanjay_van_alphaearth.yaml` to `datasets.embedding` |
 | IndiaSAT habitat classes | `configs/sanjay_van_baseline.yaml` to `masking.indiasat_habitat_classes` |
 | WorldCover fallback class filter | `configs/sanjay_van_baseline.yaml` to `masking.keep_worldcover_classes` |
 | JRC water threshold | `configs/sanjay_van_baseline.yaml` to `masking.jrc_water_occurrence_threshold` |
@@ -488,4 +529,4 @@ result = Pipeline(stage_names=["masking"]).run(
 
 ---
 
-*Last updated: v1.0.0 (Module 18, metrics).*
+*Last updated: embedding feature arm (`features_embedding`, `clustering.feature_source`) + metrics per-stand `confidence` layer.*

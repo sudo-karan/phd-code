@@ -38,8 +38,9 @@ features_optical: { index, harmonic_mode, include_trend, time_reference }
 features_radar: { percentiles, include_iqr, include_cross_pol_contrast }
 features_structure: { include_neighborhood_stats, neighborhood_kernel_size }
 features_static: { include_climate, max_water_distance_pixels }
+features_embedding: { collapse_reducer, band_names }
 segmentation: { size, compactness, connectivity, neighborhood_size, normalize_inputs }
-clustering: { k, n_training_samples, seed, skewness_threshold, superpixel_max_size }
+clustering: { k, n_training_samples, seed, feature_source, skewness_threshold, superpixel_max_size }
 normalization: { method }
 features: { optical_harmonic, radar, canopy_height, terrain }
 export: { export_geotiff, export_gee_asset, analysis_scale_m, drive_folder, export_vector_snic, export_vector_dissolved, vector_formats, vector_min_stand_pixels }
@@ -94,6 +95,39 @@ The variant config differs from baseline in three ways:
 Everything else is identical. This is the intended pattern: one
 controlled change at a time, the framework computes both, the metrics
 stage quantifies the difference.
+
+## The embedding variants: `sanjay_van_alphaearth.yaml` / `sanjay_van_tessera.yaml`
+
+Two further variants isolate a different question: do the clusters change when
+the feature vector is a **pretrained per-pixel embedding** instead of the
+hand-crafted stack? They swap the feature representation and nothing else. See
+[design_notes.md](design_notes.md#embedding-arm-cluster-a-pretrained-embedding-instead-of-the-hand-stack)
+for the framing — this is a *methods comparison under label scarcity*, not a
+claim that either representation is more correct (there is no ground-truth stand
+map).
+
+Both differ from baseline in the same three ways:
+
+1. `clustering.feature_source: embedding` (was `handcrafted`) — clusters one
+   image from the `features_embedding` stage instead of the
+   optical + radar + structure + static stack.
+2. `datasets.embedding` — the embedding source. `sanjay_van_alphaearth.yaml`
+   uses `GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL` (AlphaEarth, a 64-band annual
+   ImageCollection the stage collapses by `mean` over 2017-2022).
+   `sanjay_van_tessera.yaml` points at an uploaded Tessera Image (a placeholder
+   `projects/REPLACE_ME/assets/tessera_sanjay_van_2017_2022` until you ingest it
+   with `scripts/prep_tessera.py` and paste in the printed asset id).
+3. `metrics.reference_config_name: sanjay_van_baseline` (was `null`).
+
+What makes this a **controlled swap**: SNIC segmentation (`size`, `compactness`,
+`connectivity`, `neighborhood_size`), `clustering.k`, and `clustering.seed` are
+held identical to baseline. Segmentation is in fact byte-identical across arms —
+in embedding mode it still runs `data_load + features_radar +
+features_structure`, because SNIC's 5 input bands come from the S2 composite,
+canopy height, and cross-pol contrast, never from the clustered feature vector.
+Only `features_optical` and `features_static` drop out (see
+`default_stage_names` in `pipeline.py`). Any difference the metrics stage reports
+is therefore attributable to the feature representation alone.
 
 ## Adding a new experiment
 
@@ -188,6 +222,14 @@ One shared 6-year time-series window, plus a separate climatology window:
 Dataset IDs for every external source. See [datasets.md](datasets.md)
 for the full inventory.
 
+- `embedding`: the pretrained per-pixel embedding source, read **only** when
+  `clustering.feature_source: embedding` (default
+  `GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL` = AlphaEarth's 64-band annual Satellite
+  Embedding, bands `A00..A63`). Point it at an uploaded Tessera Image to run
+  that arm instead; the `features_embedding` stage handles both an annual
+  ImageCollection (collapsed over the feature window) and a single Image
+  (loaded as-is).
+
 ### `cloud_mask`
 
 - `max_cloud_pct` (default 20.0): drop S2 scenes with `CLOUDY_PIXEL_PERCENTAGE`
@@ -255,6 +297,22 @@ for the full inventory.
 - `max_water_distance_pixels`: int 100-10000 (default 1000, a 10 km
   cap at 10 m scale).
 
+### `features_embedding`
+
+Only read when `clustering.feature_source: embedding`; ignored otherwise. In
+embedding mode this single pretrained per-pixel image replaces the four
+hand-crafted feature images (optical / radar / structure / static).
+
+- `collapse_reducer`: `mean` (default) or `median`. How an annual embedding
+  ImageCollection (AlphaEarth ships one image per year) is collapsed to a single
+  image over the `dates.phenology` window. `mean` matches the 2017-2022
+  averaging the hand-crafted arm rests on. Ignored for a single uploaded Image
+  (Tessera), which is loaded as-is.
+- `band_names`: list of band names, or `null` (default) to keep every band the
+  source provides (AlphaEarth: 64 bands `A00..A63`). Set a list only to restrict
+  to a subset — the embedding dimensions are jointly meaningful, so this is
+  rarely needed.
+
 ### `segmentation`
 
 - `size`: SNIC seed spacing in pixels (default 10, ~100 m on 10 m grid).
@@ -269,6 +327,13 @@ for the full inventory.
 - `k`: number of clusters (default 6).
 - `n_training_samples`: pixels sampled for k-means training (default 10000).
 - `seed`: random seed (default 42).
+- `feature_source`: `handcrafted` (default) or `embedding`. `handcrafted`
+  clusters the multi-sensor hand-engineered stack (optical + radar + structure
+  + static); `embedding` clusters a single pretrained per-pixel image from the
+  `features_embedding` stage (AlphaEarth or Tessera). Everything downstream of
+  the raw stack (superpixel means, skew/log-transform, robust scaling, k-means)
+  is band-name-agnostic and runs identically for both, so the two arms are
+  directly comparable through the metrics stage.
 - `skewness_threshold`: bands with `|skew|` above this get log-transformed
   (default 1.0 per DEC-004).
 - `superpixel_max_size`: max pixels per SNIC superpixel; must exceed the

@@ -311,7 +311,12 @@ Only present if `inspect_metrics.py` was run AND the config has
   "confusion_matrix": [
     [3201,   12,  178,   34,    9,   22],
     [  44, 2876,    8,   91,   12,   17]
-  ]
+  ],
+  "confidence_summary": {
+    "mean": 0.842,
+    "frac_area_ge_high": 0.713,
+    "high_threshold": 0.8
+  }
 }
 ```
 
@@ -327,6 +332,10 @@ Only present if `inspect_metrics.py` was run AND the config has
 | `correspondence` | Best mapping: `current_id -> reference_id` (Hungarian on confusion matrix) | k mappings |
 | `confusion_matrix` | k x k pixel-overlap counts (rows = current, cols = reference) | non-negative ints |
 | `n_samples_used` | Number of paired pixels used for ARI/NMI | int (target was `metrics.n_comparison_samples`) |
+| `confidence_summary` | Scalar roll-up of the per-stand `confidence` image (see below). Comparison mode only; absent in baseline mode | object (fields below) |
+| `confidence_summary.mean` | Area-weighted mean per-stand confidence | 0 to 1; `null` if unavailable |
+| `confidence_summary.frac_area_ge_high` | Fraction of habitat area sitting in high-agreement stands (per-stand confidence >= `high_threshold`) | 0 to 1; `null` if unavailable |
+| `confidence_summary.high_threshold` | Cutoff that defines a "high-agreement" stand | fixed at `0.8` |
 
 **How to read silhouette:** values around 0 indicate overlapping
 clusters; values approaching 1 indicate well-separated, tight clusters.
@@ -348,6 +357,26 @@ config's cluster 0 best matches reference config's cluster 2 in terms
 of pixel overlap." The agreement_rate is computed AFTER this remapping;
 it answers "if we relabel current's clusters to match reference's,
 what fraction of pixels end up with the same label?"
+
+### The `confidence` and `agreement_map` images (comparison mode)
+
+Alongside the JSON scalars, the metrics stage produces two server-side
+images as context outputs (not files on disk): an `agreement_map` (per
+pixel: `1` where the two configs' Hungarian-aligned labels match, `0`
+where they differ) and a per-stand `confidence` image. `confidence` rolls
+the agreement map up to SNIC superpixels (`reduceConnectedComponents`
+mean), so every stand carries a single value: the **fraction of its
+pixels that agree with the reference**, 0..1. Both are `None` in baseline
+mode (there is no reference to compare against), which is why
+`confidence_summary` is absent from the JSON there too.
+
+Read `confidence` as **consensus / stability, not correctness**: there is
+no ground-truth stand map to score against. High values mark stands whose
+boundary is robust to the choice of feature source (handcrafted vs.
+embedding); low values flag stands that should be read with caution. The
+`confidence_summary` fields above summarise this image, and
+`inspect_metrics.py` emits GEE Code Editor JS that renders it as a
+red-to-green layer.
 
 ## The raster GeoTIFFs (in Google Drive)
 
@@ -498,6 +527,12 @@ projects/<your-gcp-project>/assets/fmu/<config_name>/<stage_name>/<output_key>
 
 Listed in `export_manifest_<config>.json` under `asset_paths`. Load any
 of them in another GEE script via `ee.Image(path)`.
+
+In embedding-mode runs (`clustering.feature_source: embedding`) the
+`features_optical` and `features_static` assets are absent; the
+`features_embedding` stage contributes an `embedding_features` asset in
+their place (`.../<config_name>/features_embedding/embedding_features`),
+cacheable like every other feature image.
 
 Special property on `cluster_labels`: the asset carries a JSON-encoded
 `clustering_metadata` property listing every preprocessing parameter

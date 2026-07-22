@@ -5,9 +5,13 @@ from open satellite data. Runs server-side on Google Earth Engine; the
 Python package wires up config, orchestration, caching, and inspect/run
 scripts.
 
-Pipeline is at v1.1 with all 11 runtime stages implemented. See
-`MODULES.md` for the build-order roadmap and `docs/current_flow.md` for
-the runtime flow and per-stage details.
+Pipeline is at v1.1 with all 12 runtime stages implemented. Eleven run in
+the default hand-crafted arm; the twelfth, `features_embedding`, is an
+optional alternative feature source that runs in place of
+`features_optical` + `features_static` when
+`clustering.feature_source: embedding`. See `MODULES.md` for the
+build-order roadmap and `docs/current_flow.md` for the runtime flow and
+per-stage details.
 
 ## What it does
 
@@ -175,11 +179,12 @@ and default to `configs/sanjay_van_baseline.yaml`.
 | 4. features_radar | `python scripts/inspect_features_radar.py` | masking, data_load | `radar_features` |
 | 5. features_structure | `python scripts/inspect_features_structure.py` | (uses ROI only) | `structure_features` |
 | 6. features_static | `python scripts/inspect_features_static.py` | masking (for `water_mask`) | `static_features` |
+| 6b. features_embedding (embedding arm) | no dedicated script — runs via `inspect_metrics.py` / `inspect_clustering.py` with an embedding config (`clustering.feature_source: embedding`) | (uses ROI only) | `embedding_features` |
 | 7. segmentation | `python scripts/inspect_segmentation.py` | masking, data_load, features_radar, features_structure | `snic_clusters`, `snic_means` |
 | 8. clustering | `python scripts/inspect_clustering.py` | all of 1-7 | `cluster_labels`, `feature_stack` |
 | 9. profiling | `python scripts/inspect_profiling.py` | all of 1-8 | not cached, writes `cluster_profiles.csv` to the run dir |
 | 10. export | `python scripts/inspect_export.py` | all of 1-9 | not cached, submits Drive GeoTIFF task and writes manifest JSON |
-| 11. metrics | `python scripts/inspect_metrics.py` | all of 1-8 | not cached, writes `metrics_<config>.json` to the run dir |
+| 11. metrics | `python scripts/inspect_metrics.py` | all of 1-8 | not cached; writes `metrics_<config>.json` to the run dir (incl. a scalar `confidence_summary` in comparison mode) and produces a per-pixel `agreement_map` + per-stand `confidence` image (both `None` in baseline mode) |
 
 Examples:
 
@@ -217,6 +222,22 @@ One YAML per experiment under `configs/`. The schema lives in
   harmonic, k=6, robust (median/IQR) scaling.
 - `sanjay_van_nirv_dual.yaml`: NIRv + dual harmonic variant. Everything
   else identical so the metrics stage can isolate the difference.
+- `sanjay_van_alphaearth.yaml`: embedding arm. Clusters AlphaEarth's
+  64-band Satellite Embedding (`clustering.feature_source: embedding`)
+  in place of the hand-crafted stack; segmentation, k=6, and seed are
+  identical to the baseline, which it names as `reference_config_name`
+  so the metrics stage compares the two.
+- `sanjay_van_tessera.yaml`: same embedding arm, but `datasets.embedding`
+  points at an uploaded Tessera Image (a `projects/REPLACE_ME/...`
+  placeholder until you ingest one with `scripts/prep_tessera.py`).
+
+`clustering.feature_source` selects which vector k-means clusters:
+`handcrafted` (the multi-sensor stack, default) or `embedding` (a
+pretrained per-pixel embedding from the `features_embedding` stage). In
+comparison mode the metrics stage also emits a per-stand `confidence`
+layer — each stand's fraction of pixels agreeing with the reference after
+Hungarian alignment. It measures consensus between the two representations,
+not correctness: there is no ground-truth stand map.
 
 Don't edit a locked baseline in place. Copy it and change what you need;
 the new config's outputs cache to their own asset folder.
