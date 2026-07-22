@@ -13,9 +13,14 @@ needed. Single-config by default; pass --reference to add a baseline-vs-variant
 comparison (confusion matrix + agreement metrics).
 
 Usage:
+    # single-config report
     python scripts/report.py --config sanjay_van_baseline
+    # 2-way comparison (variant vs baseline)
     python scripts/report.py --config sanjay_van_nirv_dual \
         --reference sanjay_van_baseline
+    # N-way comparison (baseline vs several versions, side by side)
+    python scripts/report.py --multi --reference sanjay_van_baseline \
+        --configs sanjay_van_alphaearth sanjay_van_tessera
 """
 
 from __future__ import annotations
@@ -132,6 +137,7 @@ class ConfigRun:
     snic_path: Path | None
     index: str                      # "ndvi" or "nirv"
     clustered_bands: list[str]      # feature bands that fed k-means
+    feature_source: str = "handcrafted"  # "handcrafted" or "embedding"
 
     @property
     def k(self) -> int:
@@ -167,14 +173,44 @@ def discover(config: str, runs_root: Path, vectors_dir: Path) -> ConfigRun:
     mean_cols = [c[:-5] for c in profiles.columns if c.endswith("_mean")]
     clustered = [b for b in mean_cols if b not in _DIAGNOSTIC]
 
+    # feature_source from the config snapshot; absent in pre-embedding manifests,
+    # so default to handcrafted.
+    feature_source = (
+        manifest.get("config_snapshot", {})
+        .get("clustering", {})
+        .get("feature_source", "handcrafted")
+    )
+
     dissolved = vectors_dir / f"{config}_stands_dissolved.geojson"
     snic = vectors_dir / f"{config}_stands_snic.geojson"
     return ConfigRun(
         name=config, profiles=profiles, dist=dist, manifest=manifest, metrics=metrics,
         dissolved_path=dissolved if dissolved.exists() else None,
         snic_path=snic if snic.exists() else None,
-        index=index, clustered_bands=clustered,
+        index=index, clustered_bands=clustered, feature_source=feature_source,
     )
+
+
+def _feature_label(run: ConfigRun) -> str:
+    """Human-readable description of what fed k-means, for the summary cards."""
+    if run.feature_source != "embedding":
+        harm = (
+            run.manifest.get("config_snapshot", {})
+            .get("features_optical", {})
+            .get("harmonic_mode", "?")
+        )
+        return f"{run.index.upper()} / {harm} harmonic"
+    emb = (
+        run.manifest.get("config_snapshot", {})
+        .get("datasets", {})
+        .get("embedding", "")
+    )
+    n = len(run.clustered_bands)
+    if "SATELLITE_EMBEDDING" in emb:
+        return f"AlphaEarth embedding ({n}-band)"
+    if "tessera" in emb.lower():
+        return f"Tessera embedding ({n}-band)"
+    return f"Pretrained embedding ({n}-band)"
 
 
 # --------------------------------------------------------------------------
@@ -329,15 +365,24 @@ def fig_phenology(run: ConfigRun, out: Path) -> Path | None:
     return _save(fig, out, "phenology")
 
 
-def fig_signatures(run: ConfigRun, out: Path) -> Path:
+def fig_signatures(run: ConfigRun, out: Path) -> Path | None:
     groups = [
         ("Structure (m)", ["canopy_height", "canopy_height_std", "canopy_height_max"]),
         ("Terrain", ["elevation", "slope", "distance_to_water"]),
         ("Radar (dB)", ["vv_p50", "vh_p50", "vv_minus_vh_median"]),
     ]
-    fig, axes = plt.subplots(1, 3, figsize=(11.5, 3.8))
-    for ax, (title, bands) in zip(axes, groups, strict=False):
-        bands = [b for b in bands if f"{b}_mean" in run.profiles.columns]
+    # Keep only groups whose bands exist in this config's profiles. Embedding
+    # configs carry none of these (their bands are the raw embedding dims), so
+    # the figure is skipped entirely rather than drawn empty.
+    present = [
+        (title, [b for b in bands if f"{b}_mean" in run.profiles.columns])
+        for title, bands in groups
+    ]
+    present = [(t, b) for t, b in present if b]
+    if not present:
+        return None
+    fig, axes = plt.subplots(1, len(present), figsize=(3.9 * len(present), 3.8), squeeze=False)
+    for ax, (title, bands) in zip(axes[0], present, strict=False):
         x = np.arange(len(bands))
         width = 0.8 / run.k
         for i in range(run.k):
@@ -423,17 +468,16 @@ def _b64(p: Path) -> str:
 
 def _cfg_summary(run: ConfigRun) -> dict[str, str]:
     snap = run.manifest.get("config_snapshot", {})
-    opt = snap.get("features_optical", {})
     roi = run.manifest.get("roi", {})
     dates = snap.get("dates", {}).get("phenology", {})
-    return {
+    summary = {
+        "features": _feature_label(run),
         "k": str(run.k),
-        "index": run.index.upper(),
-        "harmonic": opt.get("harmonic_mode", "?"),
+        "bands": str(len(run.clustered_bands)),
         "roi": f"{roi.get('name', '?')} ({roi.get('area_km2', '?')} km²)",
         "window": f"{dates.get('start', '?')} → {dates.get('end', '?')}",
-        "features": str(len(run.clustered_bands)),
     }
+    return summary
 
 
 def build_html(title: str, sections: list[tuple[str, str, list[Path]]],
@@ -641,6 +685,205 @@ def comparison_report(cur: ConfigRun, ref: ConfigRun, out: Path) -> Path:
 
 
 # --------------------------------------------------------------------------
+# Multi-config comparison (N versions: baseline + AlphaEarth + Tessera + ...)
+# --------------------------------------------------------------------------
+
+def fig_silhouette_bars(configs: list[ConfigRun], out: Path) -> Path | None:
+    """Intrinsic silhouette per config, side by side.
+
+    Silhouette is intrinsic (no reference needed), so it is the one number that
+    is directly comparable across ALL versions at once — higher = tighter,
+    better-separated stands. This is the headline "which representation
+    separates the forest better" figure.
+    """
+    names, vals = [], []
+    for r in configs:
+        s = r.metrics.get("silhouette_current")
+        if s is None:
+            continue
+        names.append(r.name)
+        vals.append(float(s))
+    if len(names) < 2:
+        return None
+    fig, ax = plt.subplots(figsize=(max(5.0, 1.7 * len(names)), 3.9))
+    x = np.arange(len(names))
+    ax.bar(x, vals, color=[cluster_color(i) for i in range(len(names))], width=0.6)
+    ax.axhline(0, color=AXIS, lw=0.8)
+    ax.set_xticks(x)
+    ax.set_xticklabels(names, rotation=15, ha="right", fontsize=9)
+    ax.set_ylabel("silhouette (intrinsic separation)")
+    ax.grid(axis="x", visible=False)
+    for xi, v in zip(x, vals, strict=False):
+        ax.text(xi, v, f"{v:+.3f}", ha="center",
+                va="bottom" if v >= 0 else "top", fontsize=8.5, color=INK2)
+    ax.set_title("Cluster separation by feature source\nintrinsic silhouette — higher = tighter, better-separated stands (directly comparable across versions)", loc="left")
+    return _save(fig, out, "silhouette_bars")
+
+
+def _multi_metrics_table_html(ref: ConfigRun, variants: list[ConfigRun]) -> str:
+    """Metrics matrix: rows = metrics, columns = configs (ref first).
+
+    Silhouette is intrinsic (shown for every config). ARI / NMI / agreement /
+    confidence are measured against the reference, so the reference column shows
+    "— (reference)" for those rows.
+    """
+    configs = [ref, *variants]
+
+    def sil(r: ConfigRun) -> str:
+        s = r.metrics.get("silhouette_current")
+        return f"{float(s):+.3f}" if s is not None else "—"
+
+    def cmp_cells(key: str, pct: bool) -> str:
+        cells = "<td>— (reference)</td>"
+        for v in variants:
+            val = v.metrics.get(key)
+            if val is None:
+                cells += "<td>—</td>"
+            elif pct:
+                cells += f"<td>{val * 100:.0f}%</td>"
+            else:
+                cells += f"<td>{val:.3f}</td>"
+        return cells
+
+    def conf_cells(field: str) -> str:
+        cells = "<td>— (reference)</td>"
+        for v in variants:
+            val = (v.metrics.get("confidence_summary") or {}).get(field)
+            cells += f"<td>{val * 100:.0f}%</td>" if val is not None else "<td>—</td>"
+        return cells
+
+    rows = [
+        f"<tr><th>Silhouette (intrinsic)</th>{''.join(f'<td>{sil(c)}</td>' for c in configs)}</tr>",
+        f"<tr><th>ARI vs {ref.name}</th>{cmp_cells('ari', False)}</tr>",
+        f"<tr><th>NMI vs {ref.name}</th>{cmp_cells('nmi', False)}</tr>",
+        f"<tr><th>Agreement vs {ref.name}</th>{cmp_cells('agreement_rate', True)}</tr>",
+        f"<tr><th>Mean stand confidence</th>{conf_cells('mean')}</tr>",
+        f"<tr><th>High-confidence area (≥80%)</th>{conf_cells('frac_area_ge_high')}</tr>",
+    ]
+    header = "<th></th>" + "".join(f"<th>{c.name}</th>" for c in configs)
+    return (
+        f'<table class="matrix"><thead><tr>{header}</tr></thead>'
+        f'<tbody>{"".join(rows)}</tbody></table>'
+    )
+
+
+def _fig_grid(items: list[tuple[str, Path | None]]) -> str:
+    cells = "".join(
+        f'<figure><figcaption>{cap}</figcaption><img src="{_b64(p)}"></figure>'
+        for cap, p in items if p is not None
+    )
+    return f'<div class="grid">{cells}</div>'
+
+
+def build_multi_html(
+    ref: ConfigRun, variants: list[ConfigRun], sil_fig: Path | None,
+    stand_maps: list[tuple[str, Path | None]], comp_figs: list[tuple[str, Path | None]],
+    per_variant: list[tuple[ConfigRun, Path | None, Path | None]],
+) -> str:
+    configs = [ref, *variants]
+    title = f"FMU comparison — {ref.name} vs {', '.join(v.name for v in variants)}"
+    cfg_cards = "".join(
+        f'<div class="cfg"><div class="cfghead">{c.name}'
+        f'{" (reference)" if c is ref else ""}</div>'
+        f'<div class="cards">{_cards_html(_cfg_summary(c))}</div></div>'
+        for c in configs
+    )
+    sil_html = ""
+    if sil_fig is not None:
+        sil_html = (
+            '<section><h2>Which representation separates the stands better</h2>'
+            '<p class="blurb">Intrinsic silhouette per version — needs no reference, so it is '
+            'directly comparable across all of them. Higher = tighter, better-separated stands. '
+            'This is the cleanest single-number answer to "hand-crafted vs pretrained".</p>'
+            f'<figure><img src="{_b64(sil_fig)}"></figure></section>'
+        )
+    per_variant_html = ""
+    for v, conf, gauge in per_variant:
+        cols = _fig_grid([("overlap vs " + ref.name, conf), ("per-stand confidence", gauge)])
+        if conf is None and gauge is None:
+            continue
+        per_variant_html += (
+            f'<section><h2>{v.name} vs {ref.name}</h2>'
+            '<p class="blurb">Row-normalised overlap (green ring = each variant stand\'s '
+            'best-matching reference stand, Hungarian-aligned) and the per-stand confidence '
+            'gauge (consensus between the two representations, not correctness).</p>'
+            f'{cols}</section>'
+        )
+    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{title}</title><style>
+:root{{color-scheme:light}}
+*{{box-sizing:border-box}}
+body{{margin:0;background:{PLANE};color:{INK};
+ font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.5}}
+.wrap{{max-width:1120px;margin:0 auto;padding:32px 20px 80px}}
+h1{{font-size:26px;margin:0 0 4px}}
+.sub{{color:{INK2};margin:0 0 24px}}
+.cfgwrap{{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:26px}}
+.cfghead{{font-weight:700;font-size:15px;margin-bottom:8px}}
+.cards{{display:flex;flex-wrap:wrap;gap:8px}}
+.kv{{background:{SURFACE};border:1px solid rgba(11,11,11,.10);border-radius:10px;
+ padding:8px 12px;min-width:92px}}
+.kv .k{{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:{MUTED}}}
+.kv .v{{font-size:14px;font-weight:600;margin-top:2px}}
+section{{background:{SURFACE};border:1px solid rgba(11,11,11,.10);border-radius:14px;
+ padding:22px 24px;margin-bottom:22px}}
+h2{{font-size:18px;margin:0 0 4px}}
+.blurb{{color:{INK2};margin:0 0 16px;font-size:14px}}
+.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;align-items:start}}
+figure{{margin:0;text-align:center}}
+figcaption{{font-size:12px;color:{MUTED};margin-bottom:6px;font-weight:600}}
+img{{max-width:100%;height:auto;border-radius:8px}}
+table.matrix{{border-collapse:collapse;font-size:14px;width:100%;overflow-x:auto;display:block}}
+table.matrix th,table.matrix td{{padding:8px 14px;border-bottom:1px solid {GRID};text-align:right;font-variant-numeric:tabular-nums}}
+table.matrix thead th{{border-bottom:2px solid {AXIS};color:{INK}}}
+table.matrix tbody th{{text-align:left;font-weight:600;color:{INK2}}}
+footer{{color:{MUTED};font-size:12px;margin-top:30px}}
+</style></head><body><div class="wrap">
+<h1>{title}</h1>
+<p class="sub">Same AOI, same segmentation, same k={ref.k} across every version — only the clustering
+ feature vector differs. Agreement and confidence are measured against <b>{ref.name}</b>; silhouette
+ is intrinsic and directly comparable. No ground-truth stand map exists, so these compare
+ representations (consensus + separation), not correctness.</p>
+<div class="cfgwrap">{cfg_cards}</div>
+<section><h2>Metrics at a glance</h2><p class="blurb">One row per metric, one column per version. Silhouette is intrinsic (all versions); ARI / NMI / agreement / confidence are each version measured against the reference.</p>{_multi_metrics_table_html(ref, variants)}</section>
+{sil_html}
+<section><h2>Stand maps</h2><p class="blurb">The management-unit map each version produces. Stand colours/IDs are per-config — the same colour is a different stand in each panel; use the overlap matrices below for the correspondence.</p>{_fig_grid(stand_maps)}</section>
+<section><h2>Composition</h2><p class="blurb">Area of each stand type across the AOI, per version.</p>{_fig_grid(comp_figs)}</section>
+{per_variant_html}
+<footer>Generated by scripts/report.py (multi mode). Stand colours are per-config and NOT comparable across panels; silhouette (intrinsic) and the overlap matrices carry the cross-version story.</footer>
+</div></body></html>"""
+
+
+def multi_report(ref: ConfigRun, variants: list[ConfigRun], out: Path) -> Path:
+    configs = [ref, *variants]
+    dirs = {c.name: out / f"_{c.name}" for c in configs}
+    for d in dirs.values():
+        d.mkdir(parents=True, exist_ok=True)
+
+    # The reference's silhouette may live only in a variant's metrics JSON (as
+    # silhouette_reference) if the baseline was never run through metrics itself.
+    if ref.metrics.get("silhouette_current") is None:
+        for v in variants:
+            sr = v.metrics.get("silhouette_reference")
+            if sr is not None:
+                ref.metrics["silhouette_current"] = sr
+                break
+
+    sil_fig = fig_silhouette_bars(configs, out)
+    stand_maps = [(c.name, fig_stand_map(c, dirs[c.name])) for c in configs]
+    comp_figs = [(c.name, fig_sizes(c, dirs[c.name])) for c in configs]
+    per_variant = [
+        (v, fig_confusion(v, dirs[v.name]), fig_confidence(v, dirs[v.name]))
+        for v in variants
+    ]
+    html = build_multi_html(ref, variants, sil_fig, stand_maps, comp_figs, per_variant)
+    path = out / "report.html"
+    path.write_text(html)
+    return path
+
+
+# --------------------------------------------------------------------------
 # Orchestration
 # --------------------------------------------------------------------------
 
@@ -655,16 +898,22 @@ def single_config_sections(run: ConfigRun, out: Path) -> list[tuple[str, str, li
     ph = fig_phenology(run, out)
     if ph:
         secs.append(("Phenology", "Reconstructed seasonal greenness cycle per stand, from the fitted harmonic coefficients.", [ph]))
-    secs.append(("Sensor signatures", "Per-stand median values across the structural, terrain, and radar features.", [fig_signatures(run, out)]))
+    sig = fig_signatures(run, out)
+    if sig:  # absent for embedding configs (no structural/terrain/radar bands)
+        secs.append(("Sensor signatures", "Per-stand median values across the structural, terrain, and radar features.", [sig]))
     return secs
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--config", required=True, help="config name, e.g. sanjay_van_baseline")
-    ap.add_argument("--reference", default=None, help="reference config for the comparison section")
+    ap.add_argument("--config", default=None, help="config name, e.g. sanjay_van_baseline (single/compare modes)")
+    ap.add_argument("--reference", default=None, help="reference config (comparison / multi baseline)")
     ap.add_argument("--compare", action="store_true",
-                    help="build a STANDALONE comparison report (--config = variant, --reference = baseline)")
+                    help="build a STANDALONE 2-way comparison report (--config = variant, --reference = baseline)")
+    ap.add_argument("--multi", action="store_true",
+                    help="build a STANDALONE N-way comparison: --reference = baseline, --configs = versions to compare")
+    ap.add_argument("--configs", nargs="+", default=None,
+                    help="variant configs for --multi (each compared against --reference)")
     ap.add_argument("--runs-root", default="runs", type=Path)
     ap.add_argument("--vectors-dir", default="fmu_exports_clean", type=Path)
     ap.add_argument("--out", default="reports", type=Path)
@@ -672,8 +921,24 @@ def main() -> None:
 
     _style()
 
+    # Standalone N-way comparison: baseline + each variant (e.g. baseline,
+    # AlphaEarth, Tessera), side by side.
+    if args.multi:
+        if not args.reference or not args.configs:
+            raise SystemExit("--multi requires --reference (baseline) and --configs v1 [v2 ...]")
+        ref = discover(args.reference, args.runs_root, args.vectors_dir)
+        variants = [discover(c, args.runs_root, args.vectors_dir) for c in args.configs]
+        out = args.out / f"multi_{args.reference}"
+        out.mkdir(parents=True, exist_ok=True)
+        path = multi_report(ref, variants, out)
+        print(f"Wrote {path}")
+        print(f"Figures in {out}/")
+        return
+
     # Standalone comparison report: baseline vs variant, side by side.
     if args.compare:
+        if not args.config:
+            raise SystemExit("--compare requires --config (the variant) and --reference (the baseline)")
         if not args.reference:
             raise SystemExit("--compare requires --reference (the baseline config)")
         cur = discover(args.config, args.runs_root, args.vectors_dir)
@@ -685,6 +950,9 @@ def main() -> None:
         print(f"Figures in {out}/")
         return
 
+    # Single-config report.
+    if not args.config:
+        raise SystemExit("--config is required (single-config report). Use --compare or --multi for comparisons.")
     run = discover(args.config, args.runs_root, args.vectors_dir)
     out = args.out / args.config
     out.mkdir(parents=True, exist_ok=True)
