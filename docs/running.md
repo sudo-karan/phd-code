@@ -287,6 +287,33 @@ one GeoTIFF, and helps you upload it. Paste the printed asset id into
 `projects/REPLACE_ME/...` placeholder), then run the same two steps as the
 AlphaEarth arm with `--config configs/sanjay_van_tessera.yaml`.
 
+## Reports and figures for slides
+
+Once the configs have run (their `cluster_profiles.csv`, `metrics_<config>.json`,
+and exported `stands_*` vectors are on disk), `scripts/report.py` turns them into
+PNG figures + a self-contained HTML dashboard — no Earth Engine needed. Three
+modes:
+
+```bash
+# one version on its own (stand map, fingerprint, separating power, composition, ...)
+python scripts/report.py --config sanjay_van_alphaearth
+
+# a 2-way comparison (variant vs baseline: confusion matrix, confidence gauge, metrics)
+python scripts/report.py --config sanjay_van_alphaearth --reference sanjay_van_baseline --compare
+
+# an N-way comparison, all versions side by side (the slide-ready one)
+python scripts/report.py --multi --reference sanjay_van_baseline \
+    --configs sanjay_van_alphaearth sanjay_van_tessera
+```
+
+`--multi` writes `reports/multi_<baseline>/report.html` with a metrics-at-a-glance
+matrix (silhouette per version; ARI / NMI / agreement / confidence per version vs
+the baseline), an intrinsic-silhouette bar chart (the one number directly
+comparable across versions), side-by-side stand maps + composition, and a
+per-variant overlap matrix. Drop those PNGs straight into the deck. The spatial
+agreement / confidence maps come from the Code-Editor JS that `inspect_metrics.py`
+prints (screenshot them).
+
 ## Troubleshooting
 
 | Symptom | Likely cause | Fix |
