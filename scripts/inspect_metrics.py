@@ -12,10 +12,11 @@ import argparse
 import json
 
 from fmu.config import load_config
-from fmu.pipeline import Pipeline
+from fmu.pipeline import Pipeline, default_stage_names
 from fmu.stages.base import PipelineContext
 from fmu.stages.clustering import ClusteringStage  # noqa: F401
 from fmu.stages.data_load import DataLoadStage  # noqa: F401
+from fmu.stages.features_embedding import FeaturesEmbeddingStage  # noqa: F401
 from fmu.stages.features_optical import FeaturesOpticalStage  # noqa: F401
 from fmu.stages.features_radar import FeaturesRadarStage  # noqa: F401
 from fmu.stages.features_static import FeaturesStaticStage  # noqa: F401
@@ -44,18 +45,10 @@ def main() -> None:
     ctx.set("roi", roi)
 
     run_dir = init_logging(config_name=config.name)
+    # Stage list depends on clustering.feature_source (handcrafted vs embedding);
+    # default_stage_names picks the right one and keeps SNIC fixed across arms.
     Pipeline(
-        stage_names=[
-            "masking",
-            "data_load",
-            "features_optical",
-            "features_radar",
-            "features_structure",
-            "features_static",
-            "segmentation",
-            "clustering",
-            "metrics",
-        ],
+        stage_names=default_stage_names(config),
         use_cache=True,
     ).run(config=config, run_dir=run_dir, initial_context=ctx)
 
@@ -137,6 +130,8 @@ def main() -> None:
         reference_path = cached_asset_path(
             metrics["reference_config"], "clustering", "cluster_labels"
         )
+        snic_path = cached_asset_path(config.name, "segmentation", "snic_clusters")
+        max_size = config.clustering.superpixel_max_size
         # Build the remap arrays
         correspondence = metrics["correspondence"]
         # JSON keys are strings; convert to int for ordering
@@ -163,6 +158,16 @@ def main() -> None:
         print("Map.addLayer(agreement,")
         print("  {min: 0, max: 1, palette: ['e31a1c', '33a02c']},")
         print(f"  'Agreement map ({100 * metrics['agreement_rate']:.1f}%%)', true);")
+        # Per-stand confidence = agreement rolled up to SNIC superpixels.
+        print()
+        print("// Per-stand confidence: fraction of each SNIC stand's pixels that agree.")
+        print(f"var snic = ee.Image('{snic_path}');")
+        print("var confidence = agreement.addBands(snic.rename('snic_label'))")
+        print(f"  .reduceConnectedComponents(ee.Reducer.mean(), 'snic_label', {max_size})")
+        print("  .select(['agrees'], ['confidence']);")
+        print("Map.addLayer(confidence,")
+        print("  {min: 0, max: 1, palette: ['e31a1c', 'ffff99', '33a02c']},")
+        print("  'Per-stand confidence (red=low, green=high)', true);")
         # Also show both maps for context
         print()
         print("var clusterPalette = ['1f78b4','33a02c','e31a1c','ff7f00','6a3d9a','b15928'];")

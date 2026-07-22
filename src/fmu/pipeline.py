@@ -22,6 +22,49 @@ from fmu.utils.logging import get_logger
 log = get_logger(__name__)
 
 
+def default_stage_names(config: Config) -> list[str]:
+    """Canonical full-pipeline stage order (through metrics) for a config.
+
+    The clustering feature source decides which feature stages run:
+
+      - "handcrafted": optical + radar + structure + static all feed clustering
+        (and SNIC needs data_load + radar + structure).
+      - "embedding": a single features_embedding stage feeds clustering, so
+        features_optical and features_static are dropped. SNIC still needs
+        data_load + features_radar + features_structure (its 5 input bands come
+        only from the S2 composite, canopy height, and cross-pol contrast), so
+        those stages remain — segmentation is held byte-identical across arms,
+        which is what makes the metrics comparison attributable to the feature
+        vector alone.
+
+    The stage list is otherwise passed explicitly to `Pipeline(...)`; this
+    helper centralizes the one place it varies. Callers must still import the
+    stage modules so `@register_stage` has run (see the inspect scripts).
+    """
+    if config.clustering.feature_source == "embedding":
+        return [
+            "masking",
+            "data_load",
+            "features_radar",
+            "features_structure",
+            "features_embedding",
+            "segmentation",
+            "clustering",
+            "metrics",
+        ]
+    return [
+        "masking",
+        "data_load",
+        "features_optical",
+        "features_radar",
+        "features_structure",
+        "features_static",
+        "segmentation",
+        "clustering",
+        "metrics",
+    ]
+
+
 @dataclass
 class StageRecord:
     name: str

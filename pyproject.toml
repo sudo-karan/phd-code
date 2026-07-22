@@ -63,6 +63,12 @@ report = [
     "matplotlib>=3.7",
     "shapely>=2.0",
 ]
+# One-shot Tessera ingestion (scripts/prep_tessera.py). Off-GEE embedding source
+# fetched via geotessera (CC0), mosaicked with rasterio (already a core dep),
+# then uploaded to an EE asset. geotessera requires Python 3.12+.
+tessera = [
+    "geotessera>=0.1",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

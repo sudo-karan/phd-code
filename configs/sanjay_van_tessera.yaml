@@ -1,0 +1,116 @@
+# Sanjay Van embedding arm: cluster the Tessera pretrained embedding.
+#
+# Identical to sanjay_van_alphaearth.yaml except datasets.embedding points at an
+# uploaded Tessera asset instead of AlphaEarth. Tessera is off-GEE (CC0, via the
+# geotessera library), so it must be ingested to an Earth Engine asset ONCE
+# before this config can run — see scripts/prep_tessera.py, which fetches the
+# ROI's Tessera embedding, writes a GeoTIFF, and uploads it. Paste the printed
+# asset id into datasets.embedding below.
+#
+# The features_embedding stage is source-agnostic: a single uploaded Image
+# (Tessera) is loaded as-is, no annual collapse. Everything downstream — SNIC,
+# k=6/seed=42 clustering, metrics vs the baseline — is held identical to the
+# AlphaEarth arm, so the three configs (baseline / alphaearth / tessera) form a
+# controlled hand-crafted-vs-pretrained comparison.
+
+name: sanjay_van_tessera
+description: Embedding arm — clusters the uploaded Tessera embedding vs the hand-crafted baseline.
+
+roi:
+  name: sanjay_van
+  roi_file: aois/sanjay_van.geojson
+
+dates:
+  phenology:
+    start: 2017-01-01
+    end: 2022-12-31
+  radar:
+    start: 2017-01-01
+    end: 2022-12-31
+  optical_composite:
+    start: 2017-01-01
+    end: 2022-12-31
+  climate:
+    start: 1991-01-01
+    end: 2020-12-31
+
+datasets:
+  phenology_collection: COPERNICUS/S2_SR_HARMONIZED
+  optical_composite_collection: COPERNICUS/S2_SR_HARMONIZED
+  radar_collection: COPERNICUS/S1_GRD
+  canopy_height: users/nlang/ETH_GlobalCanopyHeight_2020_10m_v1
+  dem: NASA/NASADEM_HGT/001
+  indiasat: "projects/corestack-trees/assets/LULC_v4"
+  worldcover: ESA/WorldCover/v200
+  water: JRC/GSW1_4/GlobalSurfaceWater
+  climate: UCSB-CHG/CHIRPS/PENTAD
+  # Uploaded Tessera embedding (a single Image). REPLACE with the asset id that
+  # scripts/prep_tessera.py prints after upload, e.g.
+  #   projects/<your-ee-project>/assets/tessera_sanjay_van_2017_2022
+  embedding: "projects/REPLACE_ME/assets/tessera_sanjay_van_2017_2022"
+
+cloud_mask:
+  max_cloud_pct: 20.0
+  drop_scl_classes: [3, 8, 9, 10]
+
+data_load:
+  s1_orbit: ASCENDING
+  s1_polarizations: [VV, VH]
+  s1_instrument_mode: IW
+  s2_composite_reducer: median
+
+masking:
+  indiasat_habitat_classes: [6, 12]
+  indiasat_class_band: predicted_label
+  indiasat_year_min: 2017
+  indiasat_year_max: 2021
+  keep_worldcover_classes: [10, 20, 30]
+  jrc_water_occurrence_threshold: 50.0
+
+features_radar:
+  percentiles: [10, 50, 90]
+  include_iqr: true
+  include_cross_pol_contrast: true
+
+features_structure:
+  include_neighborhood_stats: true
+  neighborhood_kernel_size: 3
+
+# Tessera is a single uploaded Image, so collapse_reducer is ignored (kept for
+# schema symmetry). band_names: null keeps all embedding dimensions.
+features_embedding:
+  collapse_reducer: mean
+  band_names: null
+
+segmentation:
+  size: 10
+  compactness: 0.5
+  connectivity: 8
+  neighborhood_size: 128
+  normalize_inputs: true
+
+clustering:
+  feature_source: embedding
+  k: 6
+  n_training_samples: 10000
+  seed: 42
+  skewness_threshold: 1.0
+  superpixel_max_size: 1024
+
+normalization:
+  method: robust
+
+export:
+  export_geotiff: true
+  export_gee_asset: false
+  analysis_scale_m: 10
+  drive_folder: fmu_exports
+  export_vector_snic: true
+  export_vector_dissolved: true
+  vector_formats: [shp, geojson]
+  vector_min_stand_pixels: 4
+
+metrics:
+  reference_config_name: sanjay_van_baseline
+  n_comparison_samples: 10000
+  n_silhouette_samples_per_cluster: 833

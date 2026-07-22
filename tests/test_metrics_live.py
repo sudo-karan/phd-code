@@ -112,6 +112,21 @@ def test_agreement_map_is_image(ctx_ready_for_metrics):
     assert isinstance(agreement, ee.Image)
 
 
+def test_confidence_is_image_and_summarised(ctx_ready_for_metrics):
+    """Comparison mode rolls agreement up to a per-stand confidence image and
+    writes a scalar summary into the metrics dict."""
+    ctx, config = ctx_ready_for_metrics
+    result = MetricsStage().run(ctx, config)
+    confidence = result.outputs["confidence"]
+    assert isinstance(confidence, ee.Image)
+
+    summary = result.outputs["comparison_metrics"].get("confidence_summary")
+    assert summary is not None
+    assert summary["mean"] is None or 0.0 <= summary["mean"] <= 1.0
+    if summary["frac_area_ge_high"] is not None:
+        assert 0.0 <= summary["frac_area_ge_high"] <= 1.0
+
+
 # ---------------------------------------------------------------------
 # Baseline-mode tests: metrics.reference_config_name is null. The stage
 # should compute intrinsic silhouette only and leave agreement_map as None.
@@ -160,8 +175,11 @@ def test_baseline_mode_still_produces_both_declared_outputs(ctx_ready_for_baseli
     """
     ctx, config = ctx_ready_for_baseline_metrics
     result = MetricsStage().run(ctx, config)
-    assert set(result.outputs.keys()) == {"comparison_metrics", "agreement_map"}
+    assert set(result.outputs.keys()) == {
+        "comparison_metrics", "agreement_map", "confidence"
+    }
     assert result.outputs["agreement_map"] is None
+    assert result.outputs["confidence"] is None
 
 
 def test_baseline_mode_passes_orchestrator_validation(ctx_ready_for_baseline_metrics):
@@ -189,5 +207,7 @@ def test_baseline_mode_passes_orchestrator_validation(ctx_ready_for_baseline_met
     assert any(s.name == "metrics" for s in result.stages)
     assert result.context.has("comparison_metrics")
     assert result.context.has("agreement_map")
-    # agreement_map should be None in baseline mode
+    assert result.context.has("confidence")
+    # agreement_map and confidence should be None in baseline mode
     assert result.context.get("agreement_map") is None
+    assert result.context.get("confidence") is None

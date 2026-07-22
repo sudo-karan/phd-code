@@ -86,20 +86,41 @@ _EXCLUDE_BANDS: frozenset[str] = frozenset(
 )
 
 
+# Context keys the raw feature stack is assembled from, per feature source.
+# `_INVARIANT_INPUTS` are needed no matter the source; validate() adds the
+# source-specific keys. (required_inputs stays the invariant subset because it
+# is a static class attribute; the conditional check lives in validate().)
+_INVARIANT_INPUTS: frozenset[str] = frozenset({"roi", "snic_clusters", "habitat_mask"})
+_HANDCRAFTED_INPUTS: frozenset[str] = frozenset(
+    {"optical_features", "radar_features", "structure_features", "static_features"}
+)
+_EMBEDDING_INPUTS: frozenset[str] = frozenset({"embedding_features"})
+
+
 @register_stage("clustering")
 class ClusteringStage(Stage):
     name = "clustering"
-    required_inputs = {
-        "roi",
-        "snic_clusters",
-        "optical_features",
-        "radar_features",
-        "structure_features",
-        "static_features",
-        "habitat_mask",
-    }
+    required_inputs = set(_INVARIANT_INPUTS)
     produces = {"cluster_labels", "feature_stack"}
     cacheable_outputs = {"cluster_labels", "feature_stack"}
+
+    def validate(self, ctx: PipelineContext, config: Config) -> None:
+        """Require the context keys the configured feature source needs.
+
+        The static `required_inputs` only lists the always-needed keys; the
+        feature-source-specific inputs (the four hand-crafted images, or the
+        single embedding image) are checked here so an embedding run isn't
+        forced to produce the hand-crafted stack it never uses.
+        """
+        source = config.clustering.feature_source
+        extra = _EMBEDDING_INPUTS if source == "embedding" else _HANDCRAFTED_INPUTS
+        needed = _INVARIANT_INPUTS | extra
+        missing = needed - ctx.keys()
+        if missing:
+            raise KeyError(
+                f"{self.name} (feature_source={source!r}): missing required "
+                f"context inputs: {sorted(missing)}. Context has: {sorted(ctx.keys())}"
+            )
 
     @safe_call("running k-means clustering")
     def run(self, ctx: PipelineContext, config: Config) -> StageResult:
@@ -109,13 +130,20 @@ class ClusteringStage(Stage):
         params = config.clustering
         scale = config.export.analysis_scale_m
 
-        # 1. Build raw feature stack
-        raw_stack = _build_raw_feature_stack(
-            optical=ctx.get("optical_features"),
-            radar=ctx.get("radar_features"),
-            structure=ctx.get("structure_features"),
-            static=ctx.get("static_features"),
-        )
+        # 1. Build raw feature stack (hand-crafted multi-sensor stack, or a
+        #    single pretrained embedding image — the rest of the stage is
+        #    identical either way).
+        if params.feature_source == "embedding":
+            raw_stack = _build_embedding_feature_stack(
+                embedding=ctx.get("embedding_features")
+            )
+        else:
+            raw_stack = _build_raw_feature_stack(
+                optical=ctx.get("optical_features"),
+                radar=ctx.get("radar_features"),
+                structure=ctx.get("structure_features"),
+                static=ctx.get("static_features"),
+            )
         raw_band_names = safe_get_info(
             raw_stack.bandNames(), context="raw clustering bands"
         )
@@ -219,6 +247,7 @@ class ClusteringStage(Stage):
         clustering_metadata = {
             "k": params.k,
             "seed": params.seed,
+            "feature_source": params.feature_source,
             "n_training_samples": params.n_training_samples,
             "normalization_method": method,
             "skewness_threshold": params.skewness_threshold,
@@ -240,6 +269,7 @@ class ClusteringStage(Stage):
             },
             metadata={
                 "k": params.k,
+                "feature_source": params.feature_source,
                 "n_active_bands": len(active_bands),
                 "n_log_transformed": len(skewed_bands),
                 "n_dropped_constant": len(dropped_bands),
@@ -270,6 +300,18 @@ def _build_raw_feature_stack(
     all_bands = safe_get_info(combined.bandNames(), context="combined feature bands")
     kept = [b for b in all_bands if b not in _EXCLUDE_BANDS]
     return combined.select(kept)
+
+
+def _build_embedding_feature_stack(*, embedding: ee.Image) -> ee.Image:
+    """Raw feature stack for the embedding arm: the embedding image itself.
+
+    Unlike the hand-crafted stack there is nothing to concatenate or exclude —
+    every embedding dimension is a feature (the band selection already happened
+    in the features_embedding stage). Returned as-is so the rest of the
+    clustering pipeline (superpixel means, skew/log, robust scaling, k-means)
+    runs unchanged on the embedding bands.
+    """
+    return embedding
 
 
 def _decompose_cyclic_bands(image: ee.Image) -> tuple[ee.Image, list[str]]:

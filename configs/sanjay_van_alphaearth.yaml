@@ -1,0 +1,129 @@
+# Sanjay Van embedding arm: cluster AlphaEarth's pretrained per-pixel
+# embedding instead of the hand-crafted multi-sensor stack.
+#
+# Everything downstream of the feature vector is held identical to
+# sanjay_van_baseline.yaml — same AOI, same 2017-2022 window, same SNIC
+# segmentation, same k=6 / seed=42 clustering. The ONLY change is
+# clustering.feature_source: embedding, which swaps the four hand-crafted
+# feature images for AlphaEarth's 64-band Satellite Embedding. Any difference
+# the metrics stage reports against the baseline is therefore attributable to
+# the feature representation alone.
+#
+# AlphaEarth (GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL) is an annual ImageCollection;
+# the features_embedding stage averages the 2017-2022 images to one embedding
+# image. Google's dataset guidance explicitly recommends unsupervised clustering
+# of these embeddings, which is what the clustering stage does.
+
+name: sanjay_van_alphaearth
+description: Embedding arm — clusters AlphaEarth Satellite Embedding vs the hand-crafted baseline.
+
+roi:
+  name: sanjay_van
+  roi_file: aois/sanjay_van.geojson
+
+# Same unified 2017-2022 window as the baseline. dates.phenology doubles as the
+# collapse window for the annual embeddings (features_embedding averages the
+# yearly images over it), so the embedding rests on the same temporal support
+# as the hand-crafted features it is compared against.
+dates:
+  phenology:
+    start: 2017-01-01
+    end: 2022-12-31
+  radar:
+    start: 2017-01-01
+    end: 2022-12-31
+  optical_composite:
+    start: 2017-01-01
+    end: 2022-12-31
+  climate:
+    start: 1991-01-01
+    end: 2020-12-31
+
+datasets:
+  phenology_collection: COPERNICUS/S2_SR_HARMONIZED
+  optical_composite_collection: COPERNICUS/S2_SR_HARMONIZED
+  radar_collection: COPERNICUS/S1_GRD
+  canopy_height: users/nlang/ETH_GlobalCanopyHeight_2020_10m_v1
+  dem: NASA/NASADEM_HGT/001
+  # Habitat mask source, identical to baseline (CoRE Stack LULC_v4 folder).
+  indiasat: "projects/corestack-trees/assets/LULC_v4"
+  worldcover: ESA/WorldCover/v200
+  water: JRC/GSW1_4/GlobalSurfaceWater
+  climate: UCSB-CHG/CHIRPS/PENTAD
+  # AlphaEarth Satellite Embedding: 64-band annual per-pixel embedding.
+  embedding: GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL
+
+cloud_mask:
+  max_cloud_pct: 20.0
+  drop_scl_classes: [3, 8, 9, 10]
+
+data_load:
+  s1_orbit: ASCENDING
+  s1_polarizations: [VV, VH]
+  s1_instrument_mode: IW
+  s2_composite_reducer: median  # feeds SNIC (held identical to baseline)
+
+masking:
+  # Identical to baseline so the habitat mask is the same across arms.
+  indiasat_habitat_classes: [6, 12]
+  indiasat_class_band: predicted_label
+  indiasat_year_min: 2017
+  indiasat_year_max: 2021
+  keep_worldcover_classes: [10, 20, 30]
+  jrc_water_occurrence_threshold: 50.0
+
+# Optical/static feature params are unused in embedding mode (those stages
+# don't run — see default_stage_names). Radar + structure params still matter:
+# SNIC's 5 input bands come from the S2 composite, canopy height, and cross-pol
+# contrast, so those two stages run and are held identical to the baseline.
+features_radar:
+  percentiles: [10, 50, 90]
+  include_iqr: true
+  include_cross_pol_contrast: true
+
+features_structure:
+  include_neighborhood_stats: true
+  neighborhood_kernel_size: 3
+
+# Embedding feature source. Collapse the annual AlphaEarth images to one image
+# by mean over the 2017-2022 window; keep all 64 bands.
+features_embedding:
+  collapse_reducer: mean
+  band_names: null   # keep every embedding dimension (A00..A63)
+
+# SNIC identical to baseline — boundaries are a constant of the experiment.
+segmentation:
+  size: 10
+  compactness: 0.5
+  connectivity: 8
+  neighborhood_size: 128
+  normalize_inputs: true
+
+clustering:
+  feature_source: embedding   # <-- the only substantive change vs baseline
+  k: 6
+  n_training_samples: 10000
+  seed: 42
+  skewness_threshold: 1.0
+  superpixel_max_size: 1024
+
+normalization:
+  method: robust
+
+export:
+  export_geotiff: true
+  export_gee_asset: false
+  analysis_scale_m: 10
+  drive_folder: fmu_exports
+  export_vector_snic: true
+  export_vector_dissolved: true
+  vector_formats: [shp, geojson]
+  vector_min_stand_pixels: 4
+
+metrics:
+  # Compare the embedding clustering against the hand-crafted baseline: ARI,
+  # NMI, Hungarian correspondence, agreement map, and the per-stand confidence
+  # roll-up all come from this comparison.
+  reference_config_name: sanjay_van_baseline
+  n_comparison_samples: 10000
+  n_silhouette_samples_per_cluster: 833

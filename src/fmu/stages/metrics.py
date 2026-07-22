@@ -18,6 +18,14 @@ The stage runs in two modes depending on `metrics.reference_config_name`:
       Confusion matrix: k x k pixel-overlap counts
       Agreement map: server-side image showing per-pixel agreement (1 where
                      configs agree, 0 where they differ)
+      Confidence:    the agreement map rolled up to SNIC superpixels — each
+                     stand's fraction of pixels that agree with the reference
+                     (0..1). This is a *consensus/stability* layer: high where
+                     the two representations delineate the same stand, low where
+                     they disagree. It is NOT a correctness score (there is no
+                     ground-truth stand map to score against); it flags where a
+                     stand boundary is robust to the choice of feature source
+                     and where it should be read with caution.
 
 Implementation notes:
   - ARI/NMI computed on a random sample of habitat pixels (both labels
@@ -55,15 +63,16 @@ log = get_logger(__name__)
 @register_stage("metrics")
 class MetricsStage(Stage):
     name = "metrics"
-    required_inputs = {"roi", "cluster_labels", "habitat_mask"}
-    produces = {"comparison_metrics", "agreement_map"}
-    cacheable_outputs: ClassVar[set[str]] = set()  # always run; produces Python dict + image
+    required_inputs = {"roi", "cluster_labels", "habitat_mask", "snic_clusters"}
+    produces = {"comparison_metrics", "agreement_map", "confidence"}
+    cacheable_outputs: ClassVar[set[str]] = set()  # always run; produces Python dict + images
 
     @safe_call("metrics stage")
     def run(self, ctx: PipelineContext, config: Config) -> StageResult:
         roi = ctx.get("roi")
         current_labels: ee.Image = ctx.get("cluster_labels")
         habitat_mask: ee.Image = ctx.get("habitat_mask")
+        snic_clusters: ee.Image = ctx.get("snic_clusters")
         scale = config.export.analysis_scale_m
         params = config.metrics
         k = config.clustering.k
@@ -90,6 +99,7 @@ class MetricsStage(Stage):
 
         # --- Comparison mode (only if reference set) ---
         agreement_map = None
+        confidence = None
         if params.reference_config_name:
             log.info(
                 "  comparison mode: against reference '%s'",
@@ -179,16 +189,64 @@ class MetricsStage(Stage):
                 .updateMask(habitat_mask)
                 .clip(roi)
             )
+
+            # --- Per-stand confidence: roll the per-pixel agreement up to SNIC
+            # superpixels. Each stand's confidence = fraction of its pixels that
+            # agree with the reference (0..1). Consensus/stability, not
+            # correctness (no ground-truth stand map exists to score against).
+            confidence = (
+                agreement_map.addBands(snic_clusters.rename("snic_label"))
+                .reduceConnectedComponents(
+                    reducer=ee.Reducer.mean(),
+                    labelBand="snic_label",
+                    maxSize=config.clustering.superpixel_max_size,
+                )
+                .select(["agrees"], ["confidence"])
+                .updateMask(habitat_mask)
+                .clip(roi)
+            )
+
+            # Scalar summary for the metrics JSON / report. mean is the
+            # area-weighted mean stand confidence; frac_area_ge_high is the
+            # share of habitat sitting in high-agreement stands (the number that
+            # says "how much of the map is robust to the feature choice").
+            high_threshold = 0.8
+            summary_stats = safe_get_info(
+                confidence.addBands(
+                    confidence.gte(high_threshold).rename("high")
+                ).reduceRegion(
+                    reducer=ee.Reducer.mean(),
+                    geometry=roi,
+                    scale=scale,
+                    maxPixels=1e9,
+                    bestEffort=True,
+                ),
+                context="confidence summary",
+            )
+            mean_conf = summary_stats.get("confidence") if summary_stats else None
+            frac_high = summary_stats.get("high") if summary_stats else None
+            metrics["confidence_summary"] = {
+                "mean": float(mean_conf) if mean_conf is not None else None,
+                "frac_area_ge_high": float(frac_high) if frac_high is not None else None,
+                "high_threshold": high_threshold,
+            }
+            log.info(
+                "    confidence: mean=%s, frac_area>=%.1f=%s",
+                None if mean_conf is None else f"{mean_conf:.3f}",
+                high_threshold,
+                None if frac_high is None else f"{frac_high:.3f}",
+            )
         else:
             log.info("  baseline mode: no reference config, intrinsic metrics only")
 
-        # Output contract: `produces` always lists both keys, so we always
-        # write both. In baseline mode `agreement_map` is None (the reference
-        # asset doesn't exist to compare against). Downstream consumers
+        # Output contract: `produces` always lists all three keys, so we always
+        # write all three. In baseline mode `agreement_map` and `confidence` are
+        # None (there is no reference to compare against). Downstream consumers
         # (currently just the inspect script) must handle the None case.
         outputs: dict[str, Any] = {
             "comparison_metrics": metrics,
             "agreement_map": agreement_map,
+            "confidence": confidence,
         }
 
         return StageResult(
@@ -196,6 +254,7 @@ class MetricsStage(Stage):
             metadata={
                 "metrics": metrics,
                 "has_agreement_map": agreement_map is not None,
+                "has_confidence": confidence is not None,
             },
         )
 
