@@ -432,3 +432,57 @@ through identical clustering code. Their feature stacks differ (baseline
 has 4 optical bands after dropping obs_count and residual_variance;
 variant has 6 due to dual harmonic), and that's the entire experiment;
 does NIRv+dual give better clusters? Module 18's metrics will answer that.
+
+## Embedding arm: cluster a pretrained embedding instead of the hand stack
+
+The field has moved from hand-engineering multi-sensor feature stacks toward
+clustering **pretrained per-pixel embeddings** (AlphaEarth, Tessera). We run
+that as a controlled swap rather than a rewrite, because the pipeline was
+already ~90% set up for it:
+
+- `clustering.feature_source` selects the feature vector. `"handcrafted"`
+  (default) clusters the optical+radar+structure+static stack; `"embedding"`
+  clusters a single image from the new **features_embedding** stage. Everything
+  after the raw stack — superpixel means, skew/log, robust scaling, k-means — is
+  band-name-agnostic and runs unchanged, so the two arms are directly
+  comparable.
+- **SNIC is held fixed.** Its 5 input bands come only from the S2 composite,
+  canopy height, and cross-pol contrast (never the clustering stack), so
+  boundaries are byte-identical across arms. `default_stage_names()` therefore
+  keeps data_load + features_radar + features_structure in the embedding stage
+  list and drops only features_optical + features_static.
+- **Source-agnostic stage.** features_embedding loads either an annual
+  ImageCollection (AlphaEarth, collapsed by mean over the 2017-2022 window, the
+  same support the hand-crafted features use) or a single uploaded Image
+  (Tessera, loaded as-is). Same `ee.data.getAsset` type-sniff the masking stage
+  uses.
+- `required_inputs` is a static class attribute, so the source-specific inputs
+  (four hand images vs one embedding image) are enforced in an **overridden
+  `validate()`**, not by mutating the class attribute per run.
+
+**No ground truth.** There is no hand-drawn / operational / field reference
+stand map — only the hand-crafted stack and the pretrained embeddings. So this
+is a *methods comparison under label scarcity*, not a validated map. The
+conclusion is bounded to three signals we actually have: internal separation
+(silhouette per config), cross-representation agreement (ARI / NMI / Hungarian /
+agreement_map), and interpretability (does profiling still describe the
+embedding clusters as forest types?). We do **not** claim either representation
+is "more correct" — that needs a reference we don't have.
+
+## Confidence layer: consensus between representations, not correctness
+
+The metrics stage rolls its per-pixel `agreement_map` up to SNIC superpixels
+(`reduceConnectedComponents` mean over `snic_clusters`) to produce a per-stand
+**confidence** image: each stand's fraction of pixels that agree with the
+reference clustering after Hungarian alignment (0..1). High where the
+hand-crafted and pretrained representations delineate the *same* stand, low
+where they disagree.
+
+This is deliberately framed as **consensus/stability**, not accuracy: with no
+ground-truth map, "both representations agree here" is the strongest defensible
+statement — it flags where a boundary is robust to the choice of feature source
+and where it should be read with caution. The stage also writes a scalar
+`confidence_summary` (area-weighted mean, and the share of habitat in stands
+that agree at/above 0.8) into the metrics JSON, which `report.py` surfaces as a
+gauge and the inspect script emits as a Code-Editor layer. Like `agreement_map`,
+`confidence` is `None` in baseline mode (no reference to compare against).

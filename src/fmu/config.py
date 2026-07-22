@@ -70,6 +70,14 @@ class DatasetIDs(BaseModel):
     water: str = "JRC/GSW1_4/GlobalSurfaceWater"
     # CHIRPS pentad rainfall (5-day totals, ~5 km). Long climatology source.
     climate: str = "UCSB-CHG/CHIRPS/PENTAD"
+    # AlphaEarth Satellite Embedding: a 64-band annual per-pixel embedding
+    # (bands A00..A63), one image per year from 2017. Read ONLY when
+    # clustering.feature_source == "embedding". Point this at an uploaded
+    # Tessera asset (a single Image) to run the Tessera arm instead — the
+    # features_embedding stage handles both an ImageCollection (annual
+    # AlphaEarth, collapsed over the feature window) and a single Image
+    # (Tessera) source.
+    embedding: str = "GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL"
 
 
 class CloudMaskParams(BaseModel):
@@ -170,6 +178,31 @@ class FeaturesStaticParams(BaseModel):
     max_water_distance_pixels: int = Field(default=1000, ge=100, le=10000)
 
 
+class FeaturesEmbeddingParams(BaseModel):
+    """Pretrained-embedding feature source (the embedding-vs-hand-crafted arm).
+
+    When `clustering.feature_source == "embedding"`, the four hand-crafted
+    feature images (optical / radar / structure / static) are replaced by a
+    single pretrained per-pixel embedding image — AlphaEarth's 64-band
+    Satellite Embedding (an annual ImageCollection) or an uploaded Tessera
+    asset (a single Image). Only read in embedding mode; ignored otherwise.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    # How to collapse an annual embedding ImageCollection (AlphaEarth ships one
+    # image per year) to a single image over the feature window. "mean" matches
+    # the 2017-2022 averaging the hand-crafted arm rests on; "median" is a
+    # robust alternative. Ignored when the source is a single uploaded image
+    # (Tessera), which is loaded as-is.
+    collapse_reducer: Literal["mean", "median"] = "mean"
+    # Optional explicit band selection. None keeps every band the source
+    # provides (AlphaEarth: 64 bands A00..A63; Tessera: 128). Set a list only to
+    # restrict to a subset — the embedding dimensions are jointly meaningful, so
+    # this is rarely needed.
+    band_names: list[str] | None = None
+
+
 class MaskingParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -219,6 +252,15 @@ class ClusteringParams(BaseModel):
     k: int = Field(default=6, ge=2, le=50)
     n_training_samples: int = Field(default=10000, ge=100)
     seed: int = 42
+    # Which feature vector k-means clusters.
+    #   "handcrafted" (default): the multi-sensor hand-engineered stack
+    #     (optical + radar + structure + static), the pipeline's original arm.
+    #   "embedding": a single pretrained per-pixel embedding image from the
+    #     features_embedding stage (AlphaEarth or Tessera).
+    # Everything downstream of the raw stack (superpixel means, log/robust
+    # scaling, k-means) is band-name-agnostic and runs identically for both, so
+    # the two arms are directly comparable through the metrics stage.
+    feature_source: Literal["handcrafted", "embedding"] = "handcrafted"
     # Skewness threshold above which a feature gets log-transformed before scaling.
     # Per DEC-004: a feature with |skew| > 1.0 is log-transformed via log(x - min + 1e-3).
     skewness_threshold: float = Field(default=1.0, ge=0.0)
@@ -319,6 +361,7 @@ class Config(BaseModel):
     features_radar: FeaturesRadarParams = Field(default_factory=FeaturesRadarParams)
     features_structure: FeaturesStructureParams = Field(default_factory=FeaturesStructureParams)
     features_static: FeaturesStaticParams = Field(default_factory=FeaturesStaticParams)
+    features_embedding: FeaturesEmbeddingParams = Field(default_factory=FeaturesEmbeddingParams)
     segmentation: SegmentationParams = Field(default_factory=SegmentationParams)
     clustering: ClusteringParams = Field(default_factory=ClusteringParams)
     normalization: NormalizationParams = Field(default_factory=NormalizationParams)
