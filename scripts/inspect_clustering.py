@@ -12,10 +12,11 @@ import argparse
 import json as json_mod
 
 from fmu.config import load_config
-from fmu.pipeline import Pipeline
+from fmu.pipeline import Pipeline, default_stage_names
 from fmu.stages.base import PipelineContext
 from fmu.stages.clustering import ClusteringStage  # noqa: F401
 from fmu.stages.data_load import DataLoadStage  # noqa: F401
+from fmu.stages.features_embedding import FeaturesEmbeddingStage  # noqa: F401
 from fmu.stages.features_optical import FeaturesOpticalStage  # noqa: F401
 from fmu.stages.features_radar import FeaturesRadarStage  # noqa: F401
 from fmu.stages.features_static import FeaturesStaticStage  # noqa: F401
@@ -44,17 +45,10 @@ def main() -> None:
     ctx.set("roi", roi)
 
     run_dir = init_logging(config_name=config.name)
+    # Stage list depends on clustering.feature_source (handcrafted vs embedding);
+    # default_stage_names picks the right feature stages and keeps SNIC fixed.
     Pipeline(
-        stage_names=[
-            "masking",
-            "data_load",
-            "features_optical",
-            "features_radar",
-            "features_structure",
-            "features_static",
-            "segmentation",
-            "clustering",
-        ],
+        stage_names=default_stage_names(config, through="clustering"),
         use_cache=True,
     ).run(config=config, run_dir=run_dir, initial_context=ctx)
 
