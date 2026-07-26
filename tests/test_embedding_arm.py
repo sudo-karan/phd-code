@@ -226,3 +226,49 @@ def test_stage_names_through_metrics_is_default():
 def test_stage_names_rejects_unknown_through():
     with pytest.raises(ValueError, match="through must be one of"):
         default_stage_names(load_config(BASELINE_YAML), through="segmentation")
+
+
+# ---------- ProfilingStage / ExportStage validate() (feature-source-aware) ----------
+
+_PROFILING_INVARIANT = {"roi", "cluster_labels"}
+_EXPORT_INVARIANT = {"roi", "cluster_labels", "feature_stack", "snic_clusters", "cluster_profiles"}
+_HANDCRAFTED_FEATURES = {
+    "optical_features", "radar_features", "structure_features", "static_features",
+}
+
+
+def test_profiling_validate_handcrafted_needs_four_images():
+    from fmu.stages.profiling import ProfilingStage
+
+    cfg = load_config(BASELINE_YAML)
+    ProfilingStage().validate(_ctx_with(_PROFILING_INVARIANT | _HANDCRAFTED_FEATURES), cfg)
+    with pytest.raises(KeyError, match="optical_features"):
+        ProfilingStage().validate(_ctx_with(_PROFILING_INVARIANT), cfg)
+
+
+def test_profiling_validate_embedding_needs_only_embedding_features():
+    from fmu.stages.profiling import ProfilingStage
+
+    cfg = load_config(ALPHAEARTH_YAML)
+    # embedding run has no optical/static — must still validate
+    ProfilingStage().validate(_ctx_with(_PROFILING_INVARIANT | {"embedding_features"}), cfg)
+    with pytest.raises(KeyError, match="embedding_features"):
+        ProfilingStage().validate(_ctx_with(_PROFILING_INVARIANT), cfg)
+
+
+def test_export_validate_handcrafted_needs_four_images():
+    from fmu.stages.export import ExportStage
+
+    cfg = load_config(BASELINE_YAML)
+    ExportStage().validate(_ctx_with(_EXPORT_INVARIANT | _HANDCRAFTED_FEATURES), cfg)
+    with pytest.raises(KeyError, match="optical_features"):
+        ExportStage().validate(_ctx_with(_EXPORT_INVARIANT), cfg)
+
+
+def test_export_validate_embedding_needs_only_embedding_features():
+    from fmu.stages.export import ExportStage
+
+    cfg = load_config(ALPHAEARTH_YAML)
+    ExportStage().validate(_ctx_with(_EXPORT_INVARIANT | {"embedding_features"}), cfg)
+    with pytest.raises(KeyError, match="embedding_features"):
+        ExportStage().validate(_ctx_with(_EXPORT_INVARIANT), cfg)
