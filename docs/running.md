@@ -289,6 +289,23 @@ AlphaEarth arm with `--config configs/sanjay_van_tessera.yaml`.
 
 ## Reports and figures for slides
 
+The export stage writes the `stands_*` vectors to a Google Drive folder
+(`export.drive_folder`, default `fmu_exports`), and repeated runs leave `(1)`/`(2)`
+duplicate copies there. Rather than download them by hand, pull the newest of each
+straight into `fmu_exports_clean/`:
+
+```bash
+# one-time: grant a Drive read scope (you likely have gcloud from the GCS/Tessera steps)
+gcloud auth application-default login \
+    --scopes=openid,https://www.googleapis.com/auth/drive.readonly,https://www.googleapis.com/auth/cloud-platform
+pip install -e '.[drive]'
+
+python scripts/fetch_drive_vectors.py                                  # all configs found
+python scripts/fetch_drive_vectors.py --configs sanjay_van_alphaearth  # just one
+```
+It keeps only the newest `<config>_stands_<layer>.geojson` (normalizing the `(n)`
+suffixes) and skips the SHP/DBF.
+
 Once the configs have run (their `cluster_profiles.csv`, `metrics_<config>.json`,
 and exported `stands_*` vectors are on disk), `scripts/report.py` turns them into
 PNG figures + a self-contained HTML dashboard — no Earth Engine needed. Three
