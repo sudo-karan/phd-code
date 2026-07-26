@@ -1,0 +1,296 @@
+{
+  "config_name": "sanjay_van_baseline",
+  "run_dir": "runs/sanjay_van_baseline_20260726_204328",
+  "total_elapsed_sec": 13.765,
+  "stages": [
+    {
+      "name": "masking",
+      "elapsed_sec": 2.651,
+      "produced": [
+        "habitat_mask",
+        "landcover_summary",
+        "water_mask"
+      ],
+      "warnings": [],
+      "metadata": {
+        "source": "cache"
+      },
+      "cache_status": {
+        "habitat_mask": "hit",
+        "landcover_summary": "hit",
+        "water_mask": "hit"
+      },
+      "export_tasks": []
+    },
+    {
+      "name": "data_load",
+      "elapsed_sec": 3.823,
+      "produced": [
+        "s1_collection",
+        "s2_collection",
+        "s2_composite"
+      ],
+      "warnings": [],
+      "metadata": {
+        "s2_dataset": "COPERNICUS/S2_SR_HARMONIZED",
+        "s1_dataset": "COPERNICUS/S1_GRD",
+        "s2_phenology_window": "2017-01-01 to 2022-12-31",
+        "s1_radar_window": "2017-01-01 to 2022-12-31",
+        "s2_composite_window": "2017-01-01 to 2022-12-31",
+        "s1_orbit": "ASCENDING",
+        "s1_polarizations": [
+          "VV",
+          "VH"
+        ],
+        "s1_instrument_mode": "IW",
+        "s2_composite_reducer": "median",
+        "cloud_max_pct": 20.0,
+        "scl_drop_classes": [
+          3,
+          8,
+          9,
+          10
+        ]
+      },
+      "cache_status": {
+        "s2_composite": "hit"
+      },
+      "export_tasks": []
+    },
+    {
+      "name": "features_optical",
+      "elapsed_sec": 0.52,
+      "produced": [
+        "optical_features"
+      ],
+      "warnings": [],
+      "metadata": {
+        "source": "cache"
+      },
+      "cache_status": {
+        "optical_features": "hit"
+      },
+      "export_tasks": []
+    },
+    {
+      "name": "features_radar",
+      "elapsed_sec": 0.495,
+      "produced": [
+        "radar_features"
+      ],
+      "warnings": [],
+      "metadata": {
+        "source": "cache"
+      },
+      "cache_status": {
+        "radar_features": "hit"
+      },
+      "export_tasks": []
+    },
+    {
+      "name": "features_structure",
+      "elapsed_sec": 1.767,
+      "produced": [
+        "structure_features"
+      ],
+      "warnings": [],
+      "metadata": {
+        "source": "cache"
+      },
+      "cache_status": {
+        "structure_features": "hit"
+      },
+      "export_tasks": []
+    },
+    {
+      "name": "features_static",
+      "elapsed_sec": 1.591,
+      "produced": [
+        "static_features"
+      ],
+      "warnings": [],
+      "metadata": {
+        "source": "cache"
+      },
+      "cache_status": {
+        "static_features": "hit"
+      },
+      "export_tasks": []
+    },
+    {
+      "name": "segmentation",
+      "elapsed_sec": 1.005,
+      "produced": [
+        "snic_clusters",
+        "snic_means"
+      ],
+      "warnings": [],
+      "metadata": {
+        "source": "cache"
+      },
+      "cache_status": {
+        "snic_clusters": "hit",
+        "snic_means": "hit"
+      },
+      "export_tasks": []
+    },
+    {
+      "name": "clustering",
+      "elapsed_sec": 1.898,
+      "produced": [
+        "cluster_labels",
+        "feature_stack"
+      ],
+      "warnings": [],
+      "metadata": {
+        "source": "cache"
+      },
+      "cache_status": {
+        "cluster_labels": "hit",
+        "feature_stack": "hit"
+      },
+      "export_tasks": []
+    }
+  ],
+  "config": {
+    "name": "sanjay_van_baseline",
+    "description": "Locked baseline for Sanjay Van.",
+    "roi": {
+      "name": "sanjay_van",
+      "roi_file": "aois/sanjay_van.geojson",
+      "roi_asset": null
+    },
+    "dates": {
+      "phenology": {
+        "start": "2017-01-01",
+        "end": "2022-12-31"
+      },
+      "radar": {
+        "start": "2017-01-01",
+        "end": "2022-12-31"
+      },
+      "optical_composite": {
+        "start": "2017-01-01",
+        "end": "2022-12-31"
+      },
+      "climate": {
+        "start": "1991-01-01",
+        "end": "2020-12-31"
+      }
+    },
+    "datasets": {
+      "phenology_collection": "COPERNICUS/S2_SR_HARMONIZED",
+      "optical_composite_collection": "COPERNICUS/S2_SR_HARMONIZED",
+      "radar_collection": "COPERNICUS/S1_GRD",
+      "canopy_height": "users/nlang/ETH_GlobalCanopyHeight_2020_10m_v1",
+      "dem": "NASA/NASADEM_HGT/001",
+      "indiasat": "projects/corestack-trees/assets/LULC_v4",
+      "worldcover": "ESA/WorldCover/v200",
+      "water": "JRC/GSW1_4/GlobalSurfaceWater",
+      "climate": "UCSB-CHG/CHIRPS/PENTAD",
+      "embedding": "GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL"
+    },
+    "cloud_mask": {
+      "max_cloud_pct": 20.0,
+      "drop_scl_classes": [
+        3,
+        8,
+        9,
+        10
+      ]
+    },
+    "data_load": {
+      "s1_orbit": "ASCENDING",
+      "s1_polarizations": [
+        "VV",
+        "VH"
+      ],
+      "s1_instrument_mode": "IW",
+      "s2_composite_reducer": "median"
+    },
+    "masking": {
+      "indiasat_habitat_classes": [
+        6,
+        12
+      ],
+      "indiasat_class_band": "predicted_label",
+      "indiasat_year_min": 2017,
+      "indiasat_year_max": 2021,
+      "keep_worldcover_classes": [
+        10,
+        20,
+        30
+      ],
+      "jrc_water_occurrence_threshold": 50.0
+    },
+    "features_optical": {
+      "index": "ndvi",
+      "harmonic_mode": "single",
+      "include_trend": true,
+      "time_reference": "2017-01-01"
+    },
+    "features_radar": {
+      "percentiles": [
+        10,
+        50,
+        90
+      ],
+      "include_iqr": true,
+      "include_cross_pol_contrast": true
+    },
+    "features_structure": {
+      "include_neighborhood_stats": true,
+      "neighborhood_kernel_size": 3
+    },
+    "features_static": {
+      "include_climate": true,
+      "max_water_distance_pixels": 1000
+    },
+    "features_embedding": {
+      "collapse_reducer": "mean",
+      "band_names": null
+    },
+    "segmentation": {
+      "size": 10,
+      "compactness": 0.5,
+      "connectivity": 8,
+      "neighborhood_size": 128,
+      "normalize_inputs": true
+    },
+    "clustering": {
+      "k": 6,
+      "n_training_samples": 10000,
+      "seed": 42,
+      "feature_source": "handcrafted",
+      "skewness_threshold": 1.0,
+      "superpixel_max_size": 1024
+    },
+    "normalization": {
+      "method": "robust"
+    },
+    "features": {
+      "optical_harmonic": true,
+      "radar": true,
+      "canopy_height": true,
+      "terrain": true
+    },
+    "export": {
+      "export_geotiff": true,
+      "export_gee_asset": false,
+      "analysis_scale_m": 10,
+      "drive_folder": "fmu_exports",
+      "export_vector_snic": true,
+      "export_vector_dissolved": true,
+      "vector_formats": [
+        "shp",
+        "geojson"
+      ],
+      "vector_min_stand_pixels": 4
+    },
+    "metrics": {
+      "reference_config_name": null,
+      "n_comparison_samples": 10000,
+      "n_silhouette_samples_per_cluster": 833
+    }
+  }
+}
