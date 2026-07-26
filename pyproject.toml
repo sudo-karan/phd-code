@@ -69,6 +69,11 @@ report = [
 tessera = [
     "geotessera>=0.1",
 ]
+# Fetch exported stand vectors from Google Drive (scripts/fetch_drive_vectors.py).
+# google-auth ships with earthengine-api; this adds the Drive API client.
+drive = [
+    "google-api-python-client>=2.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
