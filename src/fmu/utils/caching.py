@@ -82,6 +82,41 @@ def asset_exists(path: str) -> bool:
         raise
 
 
+def ensure_parent_folders(asset_path: str) -> None:
+    """Create any missing parent FOLDER assets for `asset_path`.
+
+    GEE's ``Export.image.toAsset`` fails if the target's parent folder doesn't
+    exist and does NOT auto-create the hierarchy. A brand-new config's cache
+    path (``{root}/{config}/{stage}/{key}``) therefore has no folders yet, so the
+    first run's exports all fail with
+    ``Asset '.../{config}/{stage}' does not exist or doesn't allow this
+    operation`` and nothing ever caches. Walk the ancestors below the project
+    assets root and create each missing folder.
+
+    Best-effort: log and continue on any error. A genuine permission problem
+    still surfaces later as an export failure, but a plain "folder missing"
+    (the common case for a new config) is fixed transparently.
+    """
+    parts = asset_path.split("/")
+    if "assets" not in parts:
+        return  # unrecognized layout; nothing safe to do
+    base = parts.index("assets") + 1  # first component below projects/<p>/assets
+    for i in range(base, len(parts) - 1):  # ancestors only, excluding the leaf asset
+        folder = "/".join(parts[: i + 1])
+        try:
+            if asset_exists(folder):
+                continue
+        except ee.EEException:
+            # Permission/other error checking existence; try to create anyway.
+            pass
+        try:
+            ee.data.createFolder(folder)
+            log.info("Created cache folder %s", folder)
+        except ee.EEException as e:
+            # Already exists (benign race) or a real permission issue.
+            log.debug("ensure_parent_folders: %s not created (%s)", folder, e)
+
+
 @dataclass
 class ExportTaskInfo:
     """Info about a submitted export task."""
@@ -111,6 +146,10 @@ def start_export(
         # the last two segments only.
         parts = asset_path.split("/")
         description = "_".join(parts[-2:])[:100]
+
+    # A new config's cache folders don't exist yet; toAsset won't create them
+    # and would fail every export. Create the parent hierarchy first.
+    ensure_parent_folders(asset_path)
 
     task = ee.batch.Export.image.toAsset(
         image=image,
