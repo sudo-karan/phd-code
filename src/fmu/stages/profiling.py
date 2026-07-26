@@ -37,19 +37,32 @@ log = get_logger(__name__)
 _EXCLUDE_BANDS: frozenset[str] = frozenset({"ndvi_obs_count", "nirv_obs_count"})
 
 
+# Feature-source-specific context inputs (mirrors the clustering stage).
+_HANDCRAFTED_INPUTS = frozenset(
+    {"optical_features", "radar_features", "structure_features", "static_features"}
+)
+_EMBEDDING_INPUTS = frozenset({"embedding_features"})
+
+
 @register_stage("profiling")
 class ProfilingStage(Stage):
     name = "profiling"
-    required_inputs = {
-        "roi",
-        "cluster_labels",
-        "optical_features",
-        "radar_features",
-        "structure_features",
-        "static_features",
-    }
+    # Invariant subset; the feature-source-specific inputs are enforced in
+    # validate() so the embedding arm isn't forced to produce the hand-crafted
+    # stack it never builds.
+    required_inputs = {"roi", "cluster_labels"}
     produces = {"cluster_profiles"}
     cacheable_outputs = set()  # always run; small operation, no GEE asset
+
+    def validate(self, ctx: PipelineContext, config: Config) -> None:
+        source = config.clustering.feature_source
+        extra = _EMBEDDING_INPUTS if source == "embedding" else _HANDCRAFTED_INPUTS
+        missing = ({"roi", "cluster_labels"} | extra) - ctx.keys()
+        if missing:
+            raise KeyError(
+                f"{self.name} (feature_source={source!r}): missing required "
+                f"context inputs: {sorted(missing)}. Context has: {sorted(ctx.keys())}"
+            )
 
     @safe_call("computing cluster profiles")
     def run(self, ctx: PipelineContext, config: Config) -> StageResult:
@@ -59,17 +72,21 @@ class ProfilingStage(Stage):
         k = config.clustering.k
 
         # Build feature stack in ORIGINAL UNITS.
-        # Same logic as clustering's _build_raw_feature_stack except we keep
-        # annual_rainfall (informational even if constant in this ROI) and
-        # we decompose cyclic bands to sin/cos so means are meaningful.
-        raw_stack = ee.Image.cat(
-            [
-                ctx.get("optical_features"),
-                ctx.get("radar_features"),
-                ctx.get("structure_features"),
-                ctx.get("static_features"),
-            ]
-        )
+        # Handcrafted arm: concatenate the four feature images (keeping
+        # annual_rainfall, informational even if constant, and decomposing
+        # cyclic bands below). Embedding arm: the single embedding image is the
+        # stack (no cyclic bands, nothing to exclude).
+        if config.clustering.feature_source == "embedding":
+            raw_stack = ctx.get("embedding_features")
+        else:
+            raw_stack = ee.Image.cat(
+                [
+                    ctx.get("optical_features"),
+                    ctx.get("radar_features"),
+                    ctx.get("structure_features"),
+                    ctx.get("static_features"),
+                ]
+            )
         raw_band_names = safe_get_info(
             raw_stack.bandNames(), context="profiling raw bands"
         )

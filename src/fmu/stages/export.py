@@ -124,19 +124,35 @@ class ExportStage(Stage):
     # for the attached profile attributes. Toggling individual outputs off
     # via config.export.* doesn't relax these inputs — the toggles control
     # whether we BUILD an output, not whether the upstream stage ran.
+    # Invariant subset; the feature-source-specific inputs (four hand-crafted
+    # images, or the single embedding image) are enforced in validate() so the
+    # embedding arm isn't forced to produce the hand-crafted stack.
     required_inputs = {
         "roi",
         "cluster_labels",
         "feature_stack",
         "snic_clusters",
-        "optical_features",
-        "radar_features",
-        "structure_features",
-        "static_features",
         "cluster_profiles",
     }
     produces = {"export_manifest"}
     cacheable_outputs: ClassVar[set[str]] = set()  # always run; no GEE asset
+
+    def validate(self, ctx: PipelineContext, config: Config) -> None:
+        source = config.clustering.feature_source
+        extra = (
+            {"embedding_features"}
+            if source == "embedding"
+            else {"optical_features", "radar_features", "structure_features", "static_features"}
+        )
+        needed = {
+            "roi", "cluster_labels", "feature_stack", "snic_clusters", "cluster_profiles",
+        } | extra
+        missing = needed - ctx.keys()
+        if missing:
+            raise KeyError(
+                f"{self.name} (feature_source={source!r}): missing required "
+                f"context inputs: {sorted(missing)}. Context has: {sorted(ctx.keys())}"
+            )
 
     @safe_call("export stage")
     def run(self, ctx: PipelineContext, config: Config) -> StageResult:
@@ -468,15 +484,27 @@ def _build_raw_feature_export_image(ctx: PipelineContext) -> ee.Image:
     (including residual_variance and annual_rainfall) so the exported GeoTIFF
     is self-describing in real units.
     """
-    all_features = ee.Image.cat([
+    all_features = _feature_source_image(ctx)
+    excluded_metadata_bands = ee.List(["ndvi_obs_count", "nirv_obs_count"])
+    kept = all_features.bandNames().removeAll(excluded_metadata_bands)
+    return all_features.select(kept)
+
+
+def _feature_source_image(ctx: PipelineContext) -> ee.Image:
+    """The per-pixel feature image in ORIGINAL units for the active arm.
+
+    Embedding arm: the single embedding image (present in context only then).
+    Handcrafted arm: the four feature images concatenated. Band-name-based
+    exclusions downstream are no-ops on embedding bands (A00..A63).
+    """
+    if ctx.has("embedding_features"):
+        return ctx.get("embedding_features")
+    return ee.Image.cat([
         ctx.get("optical_features"),
         ctx.get("radar_features"),
         ctx.get("structure_features"),
         ctx.get("static_features"),
     ])
-    excluded_metadata_bands = ee.List(["ndvi_obs_count", "nirv_obs_count"])
-    kept = all_features.bandNames().removeAll(excluded_metadata_bands)
-    return all_features.select(kept)
 
 
 def _read_clustering_metadata(cluster_labels: ee.Image) -> dict[str, Any]:
@@ -661,12 +689,7 @@ def _build_snic_feature_collection(
     # canopy_*, elevation/slope/aspect/...). We drop the obs_count metadata
     # bands first; they aren't features and shouldn't be in stand attrs
     # (matches profiling.py's _EXCLUDE_BANDS).
-    all_features = ee.Image.cat([
-        ctx.get("optical_features"),
-        ctx.get("radar_features"),
-        ctx.get("structure_features"),
-        ctx.get("static_features"),
-    ])
+    all_features = _feature_source_image(ctx)
     feature_band_names = all_features.bandNames()
     excluded_metadata_bands = ee.List(["ndvi_obs_count", "nirv_obs_count"])
     kept_feature_bands = feature_band_names.removeAll(excluded_metadata_bands)
