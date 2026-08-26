@@ -248,3 +248,54 @@ def test_no_merging_at_all_is_loud():
     working run: every stand map looks plausible at 1249 units."""
     w = _warnings_from({**_CLEAN, "n_stands": 1000, "n_superpixels": 1000}, _Params())
     assert any("No superpixels merged" in x for x in w)
+
+
+# ---------- k-means fits on units, not pixels ----------
+
+
+def test_n_training_samples_is_retired():
+    """It sampled 10,000 *pixels* -- ~37 per superpixel -- from a stack that is
+    constant within a unit, so it drew each unit once per pixel and
+    area-weighted every statistic computed from it. A config still carrying it
+    now fails to load."""
+    raw = yaml.safe_load(BASELINE_YAML.read_text())
+    raw["clustering"]["n_training_samples"] = 10000
+    with pytest.raises(Exception):  # noqa: B017 - pydantic ValidationError
+        Config.model_validate(raw)
+
+
+@pytest.mark.parametrize(
+    "path", sorted(CONFIG_DIR.glob("sanjay_van_*.yaml")), ids=lambda p: p.stem
+)
+def test_shipped_configs_no_longer_carry_n_training_samples(path: Path):
+    raw = yaml.safe_load(path.read_text())
+    assert "n_training_samples" not in raw.get("clustering", {})
+
+
+def test_sampler_stratifies_one_point_per_unit():
+    """Pin the call shape: numPoints=1 with no classValues takes one point from
+    every class present, so no unit is dropped for being small."""
+    from fmu.stages.clustering import _sample_one_point_per_unit
+
+    captured = {}
+
+    class _Img:
+        def addBands(self, other):
+            return self
+
+        def rename(self, name):
+            return self
+
+        def stratifiedSample(self, **kw):  # noqa: N802
+            captured.update(kw)
+            return "<fc>"
+
+    _sample_one_point_per_unit(
+        _Img(), _Img(), "<roi>", 10, seed=42, context="test"
+    )
+    assert captured["numPoints"] == 1
+    assert captured["classBand"] == "_unit_label"
+    assert captured["scale"] == 10
+    assert captured["dropNulls"] is True
+    # No classValues: every class present is sampled, small units included.
+    assert "classValues" not in captured

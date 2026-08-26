@@ -35,8 +35,9 @@ For the **hand-crafted baseline** arm:
   (`segmentation.input_bands`), and it is **not** the same across arms any more.
 - **k-means input: 22 bands** (baseline) / **25 bands** (variant), after sin/cos expansion
 - **AlphaEarth arm: 64 bands** (`A00`–`A63`) for **both** SNIC and k-means — the embedding
-  replaces the hand-crafted stack everywhere, and the hand-crafted feature stages do not run
-  at all.
+  replaces the hand-crafted stack as the *feature vector*. `features_optical` and
+  `features_structure` still run there, but only to supply the **merge criteria**, which are
+  held identical across arms (see §6).
 
 > **This reverses the earlier design**, in which SNIC was held byte-identical across arms and
 > that was called the experiment's control. See §6 and §7 for why.
@@ -214,10 +215,12 @@ baseline:
 
 - **k-means input** becomes the 64 embedding bands `A00 … A63`.
 - **SNIC input** becomes the same 64 bands (`{source: embedding_features, band: "*"}`).
-- Consequently **none of the hand-crafted feature stages run** — not `features_optical`, not
-  `features_static`, and (unlike before) not `features_radar` or `features_structure` either.
-  `default_stage_names()` derives the stage list from the union of what clustering and
-  segmentation actually ask for, so this follows from config rather than from a hardcoded branch.
+- Consequently `features_radar` and `features_static` **do not run** — nothing in the arm reads
+  them. `features_optical` and `features_structure` **do**, because the **merge criteria are held
+  identical across arms** and read `canopy_height`, `canopy_height_std` and
+  `ndvi_amplitude_annual`. `default_stage_names()` derives the stage list from the union of what
+  clustering, segmentation and merge each ask for, so this follows from config rather than from a
+  hardcoded branch.
 - No exclude-list and no cyclic decomposition apply (there are no metadata or angular bands).
 
 **Why this changed.** Under the merge design, SNIC + `merge` *produces the stand* — clustering

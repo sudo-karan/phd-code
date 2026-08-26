@@ -41,7 +41,7 @@ features_static: { include_climate, max_water_distance_pixels }
 features_embedding: { collapse_reducer, band_names }
 segmentation: { size, compactness, connectivity, neighborhood_size, normalize_inputs, normalize_distance_scale, input_bands }
 merge: { enabled, criteria, relax_factor, min_area_ha, max_area_ha, min_defined_criteria, min_frac_valid, tie_break, max_pass2_iterations, max_superpixels }
-clustering: { k, n_training_samples, seed, feature_source, skewness_threshold }
+clustering: { k, seed, feature_source, skewness_threshold }
 normalization: { method }
 features: { optical_harmonic, radar, canopy_height, terrain }
 export: { export_geotiff, export_gee_asset, analysis_scale_m, drive_folder, export_vector_snic, export_vector_dissolved, vector_formats, vector_min_stand_pixels }
@@ -124,13 +124,22 @@ Both differ from baseline in the same three ways:
 4. `segmentation.input_bands: [{source: embedding_features, band: "*"}]` — SNIC
    segments on the embedding too.
 
-**The embedding arm is a fully independent pipeline, not a variant of the
-baseline.** AlphaEarth supplies the feature vector for both steps that see
-features: SNIC draws the boundaries and k-means labels them. Consequently none
-of the hand-crafted feature stages run — not `features_optical` or
-`features_static`, and (unlike the earlier design) not `features_radar` or
-`features_structure` either. `default_stage_names()` derives the stage list from
-the union of what clustering and segmentation ask for, so this follows from
+**AlphaEarth supplies the feature vector for both steps that see features:**
+SNIC draws the boundaries and k-means labels them. So `features_radar` and
+`features_static` drop out — nothing in the arm reads them.
+
+`features_optical` and `features_structure` **do** still run, for one reason:
+the **merge criteria are held identical across arms** and read `canopy_height`,
+`canopy_height_std` and `ndvi_amplitude_annual`. "What makes two adjacent
+patches one stand" is a fact about forestry, not about the sensor pipeline, and
+holding the merge rule constant is what leaves *delineation* as the only thing
+differing between the arms — the thesis question. If each arm merged on its own
+features, differences in stand geometry would confound "different boundaries"
+with "different merge rules", and the thresholds would lose their physical units
+along with their meaning.
+
+`default_stage_names()` derives the stage list from the union of what
+clustering, segmentation and merge each ask for, so all of this follows from
 config rather than a hardcoded branch.
 
 **What is controlled** is everything that is *not* the feature representation:
@@ -388,7 +397,18 @@ hand-crafted feature images (optical / radar / structure / static).
 ### `clustering`
 
 - `k`: number of clusters (default 6).
-- `n_training_samples`: pixels sampled for k-means training (default 10000).
+`n_training_samples` **no longer exists** and a config still carrying it will
+fail to load. It sampled 10,000 *pixels* — roughly 37 per superpixel — from a
+stack that is **constant within a unit**, so it drew each unit's vector once per
+pixel and area-weighted every statistic computed from it: skewness, median, IQR,
+and the k-means fit itself. A 10 ha stand outweighed a 0.1 ha stand 100 to 1,
+which is a property of stand size, not of what a stand is, and nothing in the
+output declared it. k-means now fits on one row per unit and **every** unit
+(~269 stands x ~21 dims), via `stratifiedSample(numPoints=1)`. The manifest
+records `n_training_units` and `training_unit_key` instead.
+
+This also retires the "10,000 superpixels" figure that appears in older docs and
+decks — that number was always 10,000 pixels.
 - `seed`: random seed (default 42).
 - `feature_source`: `handcrafted` (default) or `embedding`. `handcrafted`
   clusters the multi-sensor hand-engineered stack (optical + radar + structure

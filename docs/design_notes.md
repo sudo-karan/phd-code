@@ -520,10 +520,13 @@ already ~90% set up for it:
   `segmentation.input_bands: [{source: embedding_features, band: "*"}]`, so the
   arm is a fully independent pipeline rather than a relabelling of baseline
   boundaries (see *segmentation: config-driven stack, independent per arm*).
-  `default_stage_names()` therefore drops **all four** hand-crafted feature
-  stages, `features_radar` and `features_structure` included — it derives the
-  stage list from the union of what clustering and segmentation ask for, so
-  nothing runs that nothing reads.
+  `default_stage_names()` therefore drops `features_radar` and
+  `features_static`, and keeps `features_optical` and `features_structure` —
+  not for the feature vector, but because the **merge criteria are held
+  identical across arms** and read `canopy_height`, `canopy_height_std` and
+  `ndvi_amplitude_annual`. It derives the stage list from the union of what
+  clustering, segmentation and merge each ask for, so nothing runs that nothing
+  reads.
 - **Source-agnostic stage.** features_embedding loads either an annual
   ImageCollection (AlphaEarth, collapsed by mean over the 2017-2022 window, the
   same support the hand-crafted features use) or a single uploaded Image

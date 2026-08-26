@@ -1,10 +1,15 @@
-"""Clustering stage. Per-superpixel feature stack, preprocessing,
-k-means, then per-pixel cluster labels.
+"""Clustering stage. Per-unit feature stack, preprocessing, k-means, then
+per-pixel cluster labels.
 
-Implements DEC-001 (clustering operates on SNIC superpixel means, not
-pixels), DEC-003 (median/IQR robust scaling), DEC-004 (log-transform
-right-skewed bands), and the cyclic-feature decomposition for phase and
-aspect (sin/cos pair).
+Under the merge design this stage no longer decides *what a stand is* -- SNIC
+plus `merge` produce the stand, and clustering is demoted to attaching a **type
+label** to a finished one. The unit it reduces over is therefore
+`stand_clusters` when merge ran and `snic_clusters` when it did not; see
+`Config.unit_label_key()`, the single definition every downstream stage shares.
+
+Implements DEC-001 (clustering operates on unit means, not pixels), DEC-003
+(median/IQR robust scaling), DEC-004 (log-transform right-skewed bands), and the
+cyclic-feature decomposition for phase and aspect (sin/cos pair).
 
 Pipeline (server-side throughout):
 
@@ -17,9 +22,9 @@ Pipeline (server-side throughout):
   2. Cyclic decomposition
        - Each *_phase_* and aspect band becomes a sin/cos pair. Original dropped.
 
-  3. Per-superpixel means
-       - reduceConnectedComponents with the SNIC clusters image as labels.
-       - Every pixel now holds the mean of its superpixel for each feature.
+  3. Per-unit means
+       - reduceConnectedComponents with the stand (or superpixel) labels.
+       - Every pixel now holds the mean of its unit for each feature.
 
   4. Habitat filter
        - updateMask(habitat_mask). Non-habitat pixels excluded from
@@ -37,7 +42,11 @@ Pipeline (server-side throughout):
        - Median/IQR computed over the habitat-masked sample.
 
   8. Train k-means
-       - Sample n_training_samples pixels from the habitat-masked, scaled stack.
+       - ONE row per unit, and every unit -- no pixel sampling. The stack is
+         constant within a unit, so a pixel sample drew the same vector once per
+         pixel and area-weighted every statistic computed from it: a 10 ha stand
+         outweighed a 0.1 ha stand 100 to 1 in the skewness, the median/IQR and
+         the fit. That is a property of stand size, not of what a stand is.
        - ee.Clusterer.wekaKMeans(nClusters=k, seed=seed).
 
   9. Apply k-means to all habitat pixels, producing cluster_labels image (0..k-1).
@@ -188,19 +197,29 @@ class ClusteringStage(Stage):
         # 4. Habitat filter
         habitat_masked = superpixel_stack.updateMask(habitat_mask)
 
-        # Take a sample now and use it for all subsequent preprocessing stats.
-        # Computing skew / percentiles via reduceRegion on the full image hits
-        # GEE's user memory limit when there are many bands. A 10k-pixel sample
-        # gives stable estimates of median/IQR/skewness without the memory cost.
+        # One row per unit, and every unit -- not a pixel sample.
+        #
+        # The feature stack is constant within a unit (it *is* the per-unit
+        # mean), so a pixel sample was drawing the same vector once per pixel:
+        # a 10 ha stand contributed 100x the rows of a 0.1 ha one. Every
+        # statistic downstream -- skewness, median, IQR, and the k-means fit
+        # itself -- was therefore area-weighted, which is a property of stand
+        # size, not of what a stand is. With ~269 stands there is no reason to
+        # sample at all: fit on all of them.
+        #
+        # This also retires the "10,000 superpixels" confusion in the docs. The
+        # old `n_training_samples: 10000` was 10,000 *pixels*, roughly 37 per
+        # superpixel, never 10,000 superpixels.
         candidate_bands = safe_get_info(
             habitat_masked.bandNames(), context="post-decomposition bands"
         )
-        preprocessing_sample = habitat_masked.sample(
-            region=roi,
-            scale=scale,
-            numPixels=10000,
+        preprocessing_sample = _sample_one_point_per_unit(
+            habitat_masked,
+            unit_labels,
+            roi,
+            scale,
             seed=params.seed,
-            dropNulls=True,
+            context=f"preprocessing stats per {unit_key}",
         )
 
         # 5. Skewness detection (sample-based)
@@ -224,16 +243,16 @@ class ClusteringStage(Stage):
         # Re-sample after log transform. NOT a redundant call: log
         # transformation changes the distribution of the affected bands,
         # so percentiles (median/IQR) computed from preprocessing_sample
-        # would describe the WRONG distribution for scaling. Each sample
-        # uses the same seed, samples the same pixel positions, but with
-        # values reflecting their respective transform stages. Sampling
-        # is cheap (~10k pixels × handful of bands per roundtrip).
-        post_log_sample = transformed_stack.sample(
-            region=roi,
-            scale=scale,
-            numPixels=10000,
+        # would describe the WRONG distribution for scaling. Same seed and
+        # same one-point-per-unit stratification, so the same units are
+        # represented -- only the values differ, by construction.
+        post_log_sample = _sample_one_point_per_unit(
+            transformed_stack,
+            unit_labels,
+            roi,
+            scale,
             seed=params.seed,
-            dropNulls=True,
+            context=f"scaling stats per {unit_key}",
         )
 
         # 7. Robust scaling (sample-based). drop constant bands (IQR ~ 0).
@@ -254,16 +273,17 @@ class ClusteringStage(Stage):
             method,
         )
 
-        # 8-9. Train k-means and apply
-        cluster_labels = _train_and_apply_kmeans(
+        # 8-9. Train k-means on every unit, then apply to all habitat pixels.
+        cluster_labels, n_training_units = _train_and_apply_kmeans(
             scaled_stack=scaled_stack,
             active_bands=active_bands,
+            unit_labels=unit_labels,
             habitat_mask=habitat_mask,
             roi=roi,
             scale=scale,
-            n_training_samples=params.n_training_samples,
             k=params.k,
             seed=params.seed,
+            unit_key=unit_key,
         )
 
         # 10. Attach preprocessing metadata
@@ -271,7 +291,9 @@ class ClusteringStage(Stage):
             "k": params.k,
             "seed": params.seed,
             "feature_source": params.feature_source,
-            "n_training_samples": params.n_training_samples,
+            # Every unit, not a pixel sample: see _sample_one_point_per_unit.
+            "n_training_units": n_training_units,
+            "training_unit_key": unit_key,
             "normalization_method": method,
             "skewness_threshold": params.skewness_threshold,
             "log_transformed_bands": skewed_bands,
@@ -571,27 +593,85 @@ def _apply_scaling(
     return ee.Image.cat(scaled_bands), scaling_params, active_bands
 
 
+def _sample_one_point_per_unit(
+    image: ee.Image,
+    unit_labels: ee.Image,
+    roi: ee.Geometry,
+    scale: int,
+    *,
+    seed: int,
+    context: str,
+) -> ee.FeatureCollection:
+    """One feature per unit, carrying that unit's feature vector.
+
+    The image handed in is constant within a unit (it is the per-unit mean), so
+    a single pixel per unit reproduces the unit's vector exactly -- this is not
+    an approximation of a larger sample, it is the complete set of distinct rows
+    with the duplicates removed.
+
+    Removing them matters. A pixel sample draws each unit once per pixel, so a
+    10 ha stand outweighs a 0.1 ha stand 100 to 1 in every statistic computed
+    from it -- skewness, median, IQR, and the k-means fit. That weighting is a
+    property of stand size, not of what a stand is, and nothing downstream
+    declares it.
+
+    `stratifiedSample` with `numPoints=1` and no `classValues` takes one point
+    from every class present, so no unit is dropped for being small.
+    """
+    label_band = "_unit_label"
+    stacked = image.addBands(unit_labels.rename(label_band))
+    return stacked.stratifiedSample(
+        numPoints=1,
+        classBand=label_band,
+        region=roi,
+        scale=scale,
+        seed=seed,
+        dropNulls=True,
+        geometries=False,
+    )
+
+
 def _train_and_apply_kmeans(
     *,
     scaled_stack: ee.Image,
     active_bands: list[str],
+    unit_labels: ee.Image,
     habitat_mask: ee.Image,
     roi: ee.Geometry,
     scale: int,
-    n_training_samples: int,
     k: int,
     seed: int,
-) -> ee.Image:
-    """Train wekaKMeans on a sample, apply to the full habitat-masked stack."""
-    # Sample only within habitat. Non-habitat pixels are masked out
+    unit_key: str,
+) -> tuple[ee.Image, int]:
+    """Train wekaKMeans on every unit, apply to the full habitat-masked stack.
+
+    Returns the label image and the number of units actually fitted on, which
+    goes into the manifest: k-means over 269 stands and k-means over 10,000
+    pixels drawn from those stands are different fits, and the record has to say
+    which one produced the labels.
+    """
+    # Sample only within habitat. Non-habitat pixels are masked out.
     training_input = scaled_stack.updateMask(habitat_mask)
-    training_sample = training_input.sample(
-        region=roi,
-        scale=scale,
-        numPixels=n_training_samples,
+    training_sample = _sample_one_point_per_unit(
+        training_input,
+        unit_labels,
+        roi,
+        scale,
         seed=seed,
-        dropNulls=True,
+        context=f"k-means training rows per {unit_key}",
     )
+
+    n_units = int(
+        safe_get_info(training_sample.size(), context="k-means training row count")
+    )
+    log.info("  k-means training rows: %d (one per %s)", n_units, unit_key)
+    if n_units < k:
+        raise ValueError(
+            f"clustering: only {n_units} {unit_key} unit(s) available to fit "
+            f"k={k} clusters on. Either the merge collapsed the ROI too far "
+            f"(check merge.criteria and the threshold_calibration in the merge "
+            f"stage metadata) or the habitat mask leaves too little standing."
+        )
 
     # wekaKMeans: init=1 is k-means++ (better init than random).
     clusterer = ee.Clusterer.wekaKMeans(
@@ -600,4 +680,4 @@ def _train_and_apply_kmeans(
         seed=seed,
     ).train(features=training_sample, inputProperties=active_bands)
 
-    return training_input.cluster(clusterer).rename("cluster_id")
+    return training_input.cluster(clusterer).rename("cluster_id"), n_units

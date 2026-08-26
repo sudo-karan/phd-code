@@ -353,7 +353,12 @@ class ClusteringParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     k: int = Field(default=6, ge=2, le=50)
-    n_training_samples: int = Field(default=10000, ge=100)
+    # NOTE: `n_training_samples` is retired. It sampled 10,000 *pixels* -- about
+    # 37 per superpixel -- from a stack that is constant within a unit, so it
+    # drew each unit's vector once per pixel and area-weighted every statistic
+    # computed from it. k-means now fits on one row per unit, all of them; see
+    # `_sample_one_point_per_unit` in stages/clustering.py. It also retires the
+    # "10,000 superpixels" confusion in the older docs and decks.
     seed: int = 42
     # Which feature vector k-means clusters.
     #   "handcrafted" (default): the multi-sensor hand-engineered stack
