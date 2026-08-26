@@ -64,16 +64,28 @@ log = get_logger(__name__)
 @register_stage("metrics")
 class MetricsStage(Stage):
     name = "metrics"
-    required_inputs = {"roi", "cluster_labels", "habitat_mask", "snic_clusters"}
+    # The unit label key is `stand_clusters` or `snic_clusters` depending on
+    # whether merge ran, so it is checked in validate() rather than here.
+    required_inputs = {"roi", "cluster_labels", "habitat_mask"}
     produces = {"comparison_metrics", "agreement_map", "confidence"}
     cacheable_outputs: ClassVar[set[str]] = set()  # always run; produces Python dict + images
+
+    def validate(self, ctx: PipelineContext, config: Config) -> None:
+        needed = self.required_inputs | {config.unit_label_key()}
+        missing = needed - ctx.keys()
+        if missing:
+            raise KeyError(
+                f"{self.name}: missing required context inputs: {sorted(missing)}. "
+                f"Context has: {sorted(ctx.keys())}"
+            )
 
     @safe_call("metrics stage")
     def run(self, ctx: PipelineContext, config: Config) -> StageResult:
         roi = ctx.get("roi")
         current_labels: ee.Image = ctx.get("cluster_labels")
         habitat_mask: ee.Image = ctx.get("habitat_mask")
-        snic_clusters: ee.Image = ctx.get("snic_clusters")
+        unit_key = config.unit_label_key()
+        unit_labels: ee.Image = ctx.get(unit_key)
         scale = config.export.analysis_scale_m
         params = config.metrics
         k = config.clustering.k
@@ -196,15 +208,16 @@ class MetricsStage(Stage):
             # agree with the reference (0..1). Consensus/stability, not
             # correctness (no ground-truth stand map exists to score against).
             max_component_px = config.max_component_pixels()
+            metrics["unit_key"] = unit_key
             metrics["component_stats"] = assert_components_fit(
-                snic_clusters,
+                unit_labels,
                 roi,
                 scale,
                 max_component_px,
-                context="metrics per-stand confidence",
+                context=f"metrics per-{unit_key} confidence",
             )
             confidence = (
-                agreement_map.addBands(snic_clusters.rename("snic_label"))
+                agreement_map.addBands(unit_labels.rename("snic_label"))
                 .reduceConnectedComponents(
                     reducer=ee.Reducer.mean(),
                     labelBand="snic_label",

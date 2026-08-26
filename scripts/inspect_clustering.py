@@ -22,6 +22,7 @@ from fmu.stages.features_radar import FeaturesRadarStage  # noqa: F401
 from fmu.stages.features_static import FeaturesStaticStage  # noqa: F401
 from fmu.stages.features_structure import FeaturesStructureStage  # noqa: F401
 from fmu.stages.masking import MaskingStage  # noqa: F401
+from fmu.stages.merge import MergeStage  # noqa: F401
 from fmu.stages.segmentation import SegmentationStage  # noqa: F401
 from fmu.utils.caching import asset_exists, cached_asset_path
 from fmu.utils.gee import init_gee, load_roi_geometry, safe_get_info

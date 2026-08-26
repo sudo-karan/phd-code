@@ -103,6 +103,18 @@ segmentation:
     - {source: optical_features,   band: nirv_amplitude_annual}
     - {source: radar_features,     band: vv_minus_vh_median}
 
+# Same merge rule as the baseline, but the composition criterion has to be
+# spelled out for the same reason input_bands did: features_optical.index: nirv
+# renames the harmonic bands, so the default's `ndvi_amplitude_annual` does not
+# exist here. Tolerances are unchanged — the amplitude of NIRv and of NDVI are
+# not the same quantity, so a shared tolerance is an assumption, and this arm
+# is where that assumption gets tested rather than asserted.
+merge:
+  criteria:
+    - {source: structure_features, band: canopy_height,        tolerance: 2.00}
+    - {source: structure_features, band: canopy_height_std,    tolerance: 0.45}
+    - {source: optical_features,   band: nirv_amplitude_annual, tolerance: 0.030}
+
 clustering:
   k: 6
   n_training_samples: 10000

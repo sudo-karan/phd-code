@@ -31,10 +31,24 @@ SHIPPED_CONFIGS = sorted(CONFIG_DIR.glob("sanjay_van_*.yaml"))
 def test_default_criteria_are_xiongs_three_axes():
     """Vertical structure, canopy completeness, composition -- the closest
     analogue FMU has to Xiong et al. 2024's height / closure / species."""
-    assert MergeParams().criteria == {
+    assert [(c.source, c.band, c.tolerance) for c in MergeParams().criteria] == [
+        ("structure_features", "canopy_height", 2.00),
+        ("structure_features", "canopy_height_std", 0.45),
+        ("optical_features", "ndvi_amplitude_annual", 0.030),
+    ]
+    assert MergeParams().tolerances() == {
         "canopy_height": 2.00,
         "canopy_height_std": 0.45,
         "ndvi_amplitude_annual": 0.030,
+    }
+
+
+def test_criteria_sources_drive_which_stages_run():
+    """A criterion's source is load-bearing: it decides which feature stages a
+    run needs, exactly as segmentation.input_bands does."""
+    assert MergeParams().input_sources() == {
+        "structure_features",
+        "optical_features",
     }
 
 
@@ -43,13 +57,13 @@ def test_elevation_is_not_a_default_criterion():
     total relief and a within-cluster elevation IQR of 10-12 m, so including it
     means two structurally identical patches refuse to merge over 10 m of
     altitude. Terrain is a site variable, not a forest-condition variable."""
-    assert "elevation" not in MergeParams().criteria
+    assert "elevation" not in MergeParams().tolerances()
 
 
 def test_radar_criterion_is_off_by_default():
     """No paper in the 20-paper survey uses radar for stand delineation, so it
     ships as a novelty claim to be ablated, not as a default."""
-    assert "vv_minus_vh_median" not in MergeParams().criteria
+    assert "vv_minus_vh_median" not in MergeParams().tolerances()
 
 
 def test_default_area_bounds_and_relaxation():
@@ -87,21 +101,47 @@ def test_rejects_equal_area_bounds():
         MergeParams(min_area_ha=10.0, max_area_ha=10.0)
 
 
+def _criterion(band: str = "canopy_height", tolerance: float = 2.0) -> dict:
+    return {"source": "structure_features", "band": band, "tolerance": tolerance}
+
+
 def test_rejects_zero_tolerance():
-    """0 rejects every pair including identical ones; removing the key is how
+    """0 rejects every pair including identical ones; dropping the entry is how
     you disable a criterion."""
-    with pytest.raises(ValidationError, match="tolerance must be > 0"):
-        MergeParams(criteria={"canopy_height": 0.0})
+    with pytest.raises(ValidationError):
+        MergeParams(criteria=[_criterion(tolerance=0.0)], min_defined_criteria=1)
 
 
 def test_rejects_negative_tolerance():
-    with pytest.raises(ValidationError, match="tolerance must be > 0"):
-        MergeParams(criteria={"canopy_height": -1.0})
+    with pytest.raises(ValidationError):
+        MergeParams(criteria=[_criterion(tolerance=-1.0)], min_defined_criteria=1)
 
 
 def test_rejects_empty_criteria():
     with pytest.raises(ValidationError):
-        MergeParams(criteria={})
+        MergeParams(criteria=[])
+
+
+def test_rejects_duplicate_criterion_band():
+    """A band listed twice would be gated twice and would count twice toward
+    the merge distance."""
+    with pytest.raises(ValidationError, match="duplicate band name"):
+        MergeParams(criteria=[_criterion(), _criterion()])
+
+
+def test_rejects_unknown_criterion_source():
+    with pytest.raises(ValidationError):
+        MergeParams(
+            criteria=[{"source": "lidar", "band": "ch", "tolerance": 1.0}],
+            min_defined_criteria=1,
+        )
+
+
+def test_rejects_min_defined_criteria_above_criterion_count():
+    """Otherwise no pair can ever pass the pass-1 gate and every superpixel
+    falls straight through to the eliminate pass."""
+    with pytest.raises(ValidationError, match="exceeds the number of criteria"):
+        MergeParams(criteria=[_criterion()], min_defined_criteria=2)
 
 
 def test_rejects_relax_factor_at_or_below_one():
@@ -119,14 +159,18 @@ def test_rejects_unknown_field():
 
 def test_accepts_optional_radar_criterion():
     p = MergeParams(
-        criteria={
-            "canopy_height": 2.0,
-            "canopy_height_std": 0.45,
-            "ndvi_amplitude_annual": 0.03,
-            "vv_minus_vh_median": 0.65,
-        }
+        criteria=[
+            *[c.model_dump() for c in MergeParams().criteria],
+            {
+                "source": "radar_features",
+                "band": "vv_minus_vh_median",
+                "tolerance": 0.65,
+            },
+        ]
     )
-    assert "vv_minus_vh_median" in p.criteria
+    assert "vv_minus_vh_median" in p.tolerances()
+    # ...and it pulls features_radar into the run
+    assert "radar_features" in p.input_sources()
 
 
 # ---------- Config.max_component_pixels() ----------
@@ -211,10 +255,30 @@ def test_shipped_configs_no_longer_carry_the_retired_knob(path: Path):
 
 @pytest.mark.parametrize("path", SHIPPED_CONFIGS, ids=lambda p: p.stem)
 def test_shipped_configs_share_the_merge_rules(path: Path):
-    """Merge rules are part of what is held constant across arms — only the
-    feature representation is supposed to differ."""
+    """Merge rules are held constant across arms — only the feature
+    representation is supposed to differ, so that delineation is the only thing
+    the comparison can be attributing a difference to.
+
+    The band *names* may differ where another config block renames them
+    (nirv_dual's `features_optical.index: nirv`), but the tolerances, area
+    bounds and gate must not.
+    """
     base = load_config(CONFIG_DIR / "sanjay_van_baseline.yaml").merge
-    assert load_config(path).merge.model_dump() == base.model_dump()
+    got = load_config(path).merge
+    for knob in (
+        "enabled",
+        "relax_factor",
+        "min_area_ha",
+        "max_area_ha",
+        "min_defined_criteria",
+        "min_frac_valid",
+        "tie_break",
+        "max_pass2_iterations",
+        "max_superpixels",
+    ):
+        assert getattr(got, knob) == getattr(base, knob), (path.stem, knob)
+    assert sorted(got.tolerances().values()) == sorted(base.tolerances().values())
+    assert len(got.criteria) == len(base.criteria)
 
 
 def test_retired_knob_is_rejected_if_reintroduced():

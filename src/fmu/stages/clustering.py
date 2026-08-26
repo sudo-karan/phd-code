@@ -91,7 +91,11 @@ _EXCLUDE_BANDS: frozenset[str] = frozenset(
 # `_INVARIANT_INPUTS` are needed no matter the source; validate() adds the
 # source-specific keys. (required_inputs stays the invariant subset because it
 # is a static class attribute; the conditional check lives in validate().)
-_INVARIANT_INPUTS: frozenset[str] = frozenset({"roi", "snic_clusters", "habitat_mask"})
+#
+# The unit key is deliberately NOT invariant: clustering reduces over stands
+# when merge ran and over raw superpixels when it did not. See
+# `Config.unit_label_key()`, which is the single definition every stage shares.
+_INVARIANT_INPUTS: frozenset[str] = frozenset({"roi", "habitat_mask"})
 _HANDCRAFTED_INPUTS: frozenset[str] = frozenset(
     {"optical_features", "radar_features", "structure_features", "static_features"}
 )
@@ -111,11 +115,13 @@ class ClusteringStage(Stage):
         The static `required_inputs` only lists the always-needed keys; the
         feature-source-specific inputs (the four hand-crafted images, or the
         single embedding image) are checked here so an embedding run isn't
-        forced to produce the hand-crafted stack it never uses.
+        forced to produce the hand-crafted stack it never uses. The unit key
+        (`stand_clusters` or `snic_clusters`) is checked here for the same
+        reason -- which one exists depends on whether merge ran.
         """
         source = config.clustering.feature_source
         extra = _EMBEDDING_INPUTS if source == "embedding" else _HANDCRAFTED_INPUTS
-        needed = _INVARIANT_INPUTS | extra
+        needed = _INVARIANT_INPUTS | extra | {config.unit_label_key()}
         missing = needed - ctx.keys()
         if missing:
             raise KeyError(
@@ -126,7 +132,11 @@ class ClusteringStage(Stage):
     @safe_call("running k-means clustering")
     def run(self, ctx: PipelineContext, config: Config) -> StageResult:
         roi = ctx.get("roi")
-        snic_clusters: ee.Image = ctx.get("snic_clusters")
+        # Stands when merge ran, raw superpixels when it did not. Under the
+        # merge design a stand is the unit being labelled; before it, a
+        # superpixel was standing in for one.
+        unit_key = config.unit_label_key()
+        unit_labels: ee.Image = ctx.get(unit_key)
         habitat_mask: ee.Image = ctx.get("habitat_mask")
         params = config.clustering
         scale = config.export.analysis_scale_m
@@ -158,21 +168,21 @@ class ClusteringStage(Stage):
             ", ".join(decomposition_log) if decomposition_log else "none",
         )
 
-        # 3. Per-superpixel means.
+        # 3. Per-unit means (per stand, or per superpixel if merge is off).
         # maxSize is derived, not configured (see Config.max_component_pixels),
         # and checked against the labels in hand first -- the argument masks any
         # component larger than it, so getting it wrong deletes stands rather
         # than raising.
         max_component_px = config.max_component_pixels()
         component_stats = assert_components_fit(
-            snic_clusters,
+            unit_labels,
             roi,
             scale,
             max_component_px,
-            context="clustering superpixel means",
+            context=f"clustering per-{unit_key} means",
         )
         superpixel_stack = _compute_superpixel_means(
-            decomposed_stack, snic_clusters, max_component_px
+            decomposed_stack, unit_labels, max_component_px
         )
 
         # 4. Habitat filter
@@ -287,6 +297,10 @@ class ClusteringStage(Stage):
                 "n_log_transformed": len(skewed_bands),
                 "n_dropped_constant": len(dropped_bands),
                 "normalization_method": method,
+                # Which unit was labelled. Under the merge design this is a
+                # stand; without merge it is a raw superpixel, and the two are
+                # not interchangeable when reading a silhouette or a profile.
+                "unit_key": unit_key,
                 # Recorded even when the check passes: the headroom is the early
                 # warning that a merge.max_area_ha change is about to start
                 # masking components rather than merely resizing them.
@@ -366,20 +380,24 @@ def _decompose_cyclic_bands(image: ee.Image) -> tuple[ee.Image, list[str]]:
 
 
 def _compute_superpixel_means(
-    feature_image: ee.Image, snic_clusters: ee.Image, max_size: int
+    feature_image: ee.Image, unit_labels: ee.Image, max_size: int
 ) -> ee.Image:
-    """Replace each feature value with its mean over the containing superpixel.
+    """Replace each feature value with its mean over the containing unit.
 
-    Adds snic_clusters as a label band, then calls reduceConnectedComponents
+    Adds the unit labels as a label band, then calls reduceConnectedComponents
     (the standard SNIC-aggregate pattern in GEE). Output has the same bands
-    as the input but pixel values are constant within each superpixel.
+    as the input but pixel values are constant within each unit.
     Note: reduceConnectedComponents preserves input band names, no
     _mean suffix is added (unlike SNIC's mean output bands).
+
+    The unit is a merged stand when merge ran and a raw superpixel otherwise;
+    the reduction is identical either way, which is why this took no change
+    beyond the label image it is handed.
     """
     band_names = feature_image.bandNames()
     label_band = "snic_label"
 
-    with_labels = feature_image.addBands(snic_clusters.rename(label_band))
+    with_labels = feature_image.addBands(unit_labels.rename(label_band))
     reduced = with_labels.reduceConnectedComponents(
         reducer=ee.Reducer.mean(),
         labelBand=label_band,

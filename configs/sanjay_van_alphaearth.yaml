@@ -1,14 +1,20 @@
 # Sanjay Van embedding arm: cluster AlphaEarth's pretrained per-pixel
 # embedding instead of the hand-crafted multi-sensor stack.
 #
-# This is a fully independent arm, not a variant of the baseline. AlphaEarth
-# supplies the feature vector for BOTH steps that see features: SNIC segments
-# on the 64-band embedding, and k-means labels on it. What is held identical to
-# sanjay_van_baseline.yaml is everything that is not the feature representation
-# — same AOI, same 2017-2022 window, same SNIC hyperparameters (size 10,
-# compactness 0.5), same k=6 / seed=42, same merge rules, same masking. So a
-# difference the metrics stage reports is attributable to the representation,
-# while the two arms still draw their own boundaries.
+# AlphaEarth supplies the feature vector for both steps that see features: SNIC
+# segments on the 64-band embedding, and k-means labels on it. What is held
+# identical to sanjay_van_baseline.yaml is everything that is not the feature
+# representation — same AOI, same 2017-2022 window, same SNIC hyperparameters
+# (size 10, compactness 0.5), same k=6 / seed=42, same masking, and the same
+# merge rule. So a difference the metrics stage reports is attributable to the
+# representation, while the two arms still draw their own boundaries.
+#
+# The merge rule being shared is deliberate and is why features_structure and
+# features_optical still run here (see below). It is what leaves *delineation*
+# as the only thing differing between the arms — the thesis question. If each
+# arm merged on its own features, differences in stand geometry would confound
+# "different boundaries" with "different merge rules", and the thresholds would
+# lose their physical units along with their meaning.
 #
 # The two arms therefore produce two different stand maps. There is no ground
 # truth to declare one correct; they are compared on stability, held-out
@@ -77,12 +83,18 @@ masking:
   keep_worldcover_classes: [10, 20, 30]
   jrc_water_occurrence_threshold: 50.0
 
-# All four hand-crafted feature params are unused in this arm: nothing reads
-# them, so none of those stages run (see default_stage_names — it takes the
-# union of what clustering and segmentation ask for, and here both ask only for
-# the embedding). Kept at baseline values so the file stays diffable against the
-# baseline, and so flipping one input_bands entry back to a hand-crafted source
-# re-enables that stage with the right parameters rather than silent defaults.
+# Optical and structure params still matter here, but NOT for the feature
+# vector — this arm segments and labels purely on the embedding. They matter
+# because the **merge criteria** are held identical across arms: "what makes two
+# adjacent patches one stand" is a fact about forestry, not about the sensor
+# pipeline, and holding the merge rule constant is what leaves delineation as
+# the only thing differing between the arms. So features_structure and
+# features_optical run to supply canopy_height, canopy_height_std and
+# ndvi_amplitude_annual to the merge gate.
+#
+# features_radar and features_static are read by nothing in this arm and do not
+# run; their params are kept at baseline values so the file stays diffable and
+# so re-enabling one gets the right parameters rather than silent defaults.
 features_radar:
   percentiles: [10, 50, 90]
   include_iqr: true

@@ -181,12 +181,20 @@ def test_nirv_band_with_ndvi_index_is_rejected_at_load():
         Config.model_validate(raw)
 
 
+_NIRV_MERGE_CRITERIA = [
+    {"source": "structure_features", "band": "canopy_height", "tolerance": 2.00},
+    {"source": "structure_features", "band": "canopy_height_std", "tolerance": 0.45},
+    {"source": "optical_features", "band": "nirv_amplitude_annual", "tolerance": 0.030},
+]
+
+
 def test_matching_prefix_passes():
     raw = _baseline_raw()
     raw["features_optical"] = {"index": "nirv"}
     raw["segmentation"]["input_bands"] = [
         {"source": "optical_features", "band": "nirv_amplitude_annual"}
     ]
+    raw["merge"] = {"criteria": _NIRV_MERGE_CRITERIA}
     Config.model_validate(raw)  # no raise
 
 
@@ -197,7 +205,21 @@ def test_guard_ignores_index_independent_optical_bands():
     raw["segmentation"]["input_bands"] = [
         {"source": "optical_features", "band": "composite_brightness"}
     ]
+    raw["merge"] = {"criteria": _NIRV_MERGE_CRITERIA}
     Config.model_validate(raw)  # no raise
+
+
+def test_guard_also_covers_merge_criteria():
+    """The merge gate reads optical bands too, and gets the same trap: an
+    `index: nirv` arm has no `ndvi_amplitude_annual` to gate on."""
+    raw = _baseline_raw()
+    raw["features_optical"] = {"index": "nirv"}
+    raw["segmentation"]["input_bands"] = [
+        {"source": "optical_features", "band": "nirv_amplitude_annual"}
+    ]
+    # merge left at the default, which names ndvi_amplitude_annual
+    with pytest.raises(ValidationError, match="merge.criteria"):
+        Config.model_validate(raw)
 
 
 def test_shipped_nirv_dual_config_names_nirv_bands():

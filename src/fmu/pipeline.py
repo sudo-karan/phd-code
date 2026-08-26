@@ -61,21 +61,25 @@ _FEATURE_STAGE_ORDER: list[str] = [
 def default_stage_names(config: Config, through: str = "metrics") -> list[str]:
     """Canonical stage order for a config, up to and including `through`.
 
-    Which feature stages run is the union of what the run's two independent
+    Which feature stages run is the union of what the run's three independent
     consumers ask for:
 
       - clustering, via `clustering.feature_source`: "handcrafted" pulls
         optical + radar + structure + static; "embedding" pulls only
         features_embedding.
-      - segmentation, via `segmentation.input_bands`, which names its sources
-        explicitly.
+      - segmentation, via `segmentation.input_bands`, which names its sources.
+      - merge, via `merge.criteria`, which names its sources.
 
     Segmentation is NOT held identical across arms any more. Under the merge
     design, SNIC plus merge produces the stand, so each arm segments on its own
-    feature space and the resulting stand maps are compared directly; an
-    embedding-arm config that segments on the embedding therefore drops the
-    radar/structure stages the hand-crafted arm needs, and the stage list has to
-    follow the config rather than a hardcoded branch.
+    feature space and the resulting stand maps are compared directly, and the
+    stage list has to follow the config rather than a hardcoded branch.
+
+    The *merge rule* is held identical across arms, which is why an embedding
+    run still needs the hand-crafted structure/optical stages: "what makes two
+    adjacent patches one stand" is a fact about forestry, not about the sensor
+    pipeline, and holding it constant is what leaves delineation as the only
+    thing differing between the arms.
 
     `through` selects the post-clustering tail: "clustering" (stop there),
     "profiling", "export" (profiling then export), or "metrics" (default).
@@ -96,21 +100,31 @@ def default_stage_names(config: Config, through: str = "metrics") -> list[str]:
             "features_structure",
             "features_static",
         }
-    # data_load always runs, so a `s2_composite` SNIC band adds nothing here.
-    needed |= {
-        _SNIC_SOURCE_STAGE[s]
-        for s in config.segmentation.input_sources()
-        if _SNIC_SOURCE_STAGE[s] != "data_load"
-    }
+    needed |= _feature_stages_for(config.segmentation.input_sources())
+    if config.merge.enabled:
+        needed |= _feature_stages_for(config.merge.input_sources())
     feature_stages = [s for s in _FEATURE_STAGE_ORDER if s in needed]
     return [
         "masking",
         "data_load",
         *feature_stages,
         "segmentation",
+        *(["merge"] if config.merge.enabled else []),
         "clustering",
         *_STAGE_TAILS[through],
     ]
+
+
+def _feature_stages_for(sources: set[str]) -> set[str]:
+    """Feature stages that produce these context keys.
+
+    `data_load` is filtered out rather than returned: it always runs, and it is
+    not in `_FEATURE_STAGE_ORDER`, so leaving it in would silently drop out of
+    the ordered list anyway.
+    """
+    return {
+        _SNIC_SOURCE_STAGE[s] for s in sources if _SNIC_SOURCE_STAGE[s] != "data_load"
+    }
 
 
 def segmentation_stage_names(config: Config) -> list[str]:
@@ -125,11 +139,7 @@ def segmentation_stage_names(config: Config) -> list[str]:
     Only segmentation's own sources are included: a baseline inspect run has no
     reason to pay for features_static, which nothing upstream of SNIC reads.
     """
-    needed = {
-        _SNIC_SOURCE_STAGE[s]
-        for s in config.segmentation.input_sources()
-        if _SNIC_SOURCE_STAGE[s] != "data_load"
-    }
+    needed = _feature_stages_for(config.segmentation.input_sources())
     return [
         "masking",
         "data_load",

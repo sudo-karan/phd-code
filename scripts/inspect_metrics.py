@@ -22,6 +22,7 @@ from fmu.stages.features_radar import FeaturesRadarStage  # noqa: F401
 from fmu.stages.features_static import FeaturesStaticStage  # noqa: F401
 from fmu.stages.features_structure import FeaturesStructureStage  # noqa: F401
 from fmu.stages.masking import MaskingStage  # noqa: F401
+from fmu.stages.merge import MergeStage  # noqa: F401
 from fmu.stages.metrics import MetricsStage  # noqa: F401
 from fmu.stages.segmentation import SegmentationStage  # noqa: F401
 from fmu.utils.gee import init_gee, load_roi_geometry, safe_get_info
@@ -45,8 +46,9 @@ def main() -> None:
     ctx.set("roi", roi)
 
     run_dir = init_logging(config_name=config.name)
-    # Stage list depends on clustering.feature_source (handcrafted vs embedding);
-    # default_stage_names picks the right one and keeps SNIC fixed across arms.
+    # Stage list is derived from config: the union of what clustering,
+    # segmentation and merge each ask for. SNIC is NOT fixed across arms any
+    # more -- each arm segments on its own feature space.
     Pipeline(
         stage_names=default_stage_names(config),
         use_cache=True,
@@ -160,7 +162,12 @@ def main() -> None:
         print(f"  'Agreement map ({100 * metrics['agreement_rate']:.1f}%%)', true);")
         # Per-stand confidence = agreement rolled up to SNIC superpixels.
         print()
-        print("// Per-stand confidence: fraction of each SNIC stand's pixels that agree.")
+        print("// Per-unit confidence: fraction of each unit's pixels that agree.")
+        print("// NOTE: this rolls up to SNIC SUPERPIXELS, not merged stands.")
+        print("// stand_clusters is deliberately not cached as an asset (its cache")
+        print("// key would have to hash the merge config, and thresholds are the")
+        print("// main thing being iterated on), so the Code Editor has no asset to")
+        print("// point at. The confidence numbers in metrics_*.json ARE per stand.")
         print(f"var snic = ee.Image('{snic_path}');")
         print("var confidence = agreement.addBands(snic.rename('snic_label'))")
         print(f"  .reduceConnectedComponents(ee.Reducer.mean(), 'snic_label', {max_size})")

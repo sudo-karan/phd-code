@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from datetime import date
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -376,6 +376,46 @@ class ClusteringParams(BaseModel):
     # arm was losing 15 superpixels / 43.9 ha that the baseline kept.
 
 
+class MergeCriterion(BaseModel):
+    """One band the merge gates on, with its tolerance in that band's units.
+
+    `source`/`band` address it exactly as `SnicInputBand` does, because the
+    source decides which feature stages the run needs. No `"*"` here: a
+    tolerance is a physical quantity about one named band, so a wildcard would
+    have nothing sensible to mean.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    source: Literal[
+        "s2_composite",
+        "optical_features",
+        "radar_features",
+        "structure_features",
+        "static_features",
+        "embedding_features",
+    ]
+    band: str = Field(min_length=1)
+    # Two adjacent regions may merge only if their means differ by at most this,
+    # in the band's own units (metres for canopy_height, dB for radar, unitless
+    # for an index amplitude).
+    tolerance: float = Field(gt=0.0)
+
+
+# Defaults measured from this AOI's own adjacent-superpixel difference
+# distribution (1249 superpixels, 3569 adjacent pairs):
+#   canopy_height          p50 1.81  p75 3.15   -> 2.00 m
+#   canopy_height_std      p50 0.22  p75 0.43   -> 0.45
+#   ndvi_amplitude_annual  p50 0.016 p75 0.027  -> 0.030
+# These are per-band marginals and the gate is conjunctive, so they do NOT
+# describe the joint admit rate -- the calibration helper reports that.
+_DEFAULT_MERGE_CRITERIA: list[dict[str, object]] = [
+    {"source": "structure_features", "band": "canopy_height", "tolerance": 2.00},
+    {"source": "structure_features", "band": "canopy_height_std", "tolerance": 0.45},
+    {"source": "optical_features", "band": "ndvi_amplitude_annual", "tolerance": 0.030},
+]
+
+
 class MergeParams(BaseModel):
     """Aggregate SNIC superpixels into forest stands.
 
@@ -433,12 +473,20 @@ class MergeParams(BaseModel):
     # p50 0.31 dB, p75 0.65 dB) and is off by default: no paper in the 20-paper
     # survey uses radar for stand delineation, so it is a novelty claim rather
     # than a supported choice. Add it here and report the ablation.
-    criteria: dict[str, float] = Field(
-        default_factory=lambda: {
-            "canopy_height": 2.00,
-            "canopy_height_std": 0.45,
-            "ndvi_amplitude_annual": 0.030,
-        },
+    #
+    # Criteria are (source, band) addressed like segmentation.input_bands,
+    # because the source decides which feature stages a run needs. They are also
+    # deliberately the SAME in both arms: "what makes two adjacent patches one
+    # stand" is a fact about forestry, not about the sensor pipeline. Holding
+    # the merge rule constant is what leaves *delineation* as the only thing
+    # differing between arms -- which is the thesis question. If the embedding
+    # arm merged on embedding dimensions instead, differences in stand geometry
+    # would confound "different boundaries" with "different merge rules", and
+    # the thresholds would lose their physical units along with their meaning.
+    criteria: list[MergeCriterion] = Field(
+        default_factory=lambda: [
+            MergeCriterion(**c) for c in _DEFAULT_MERGE_CRITERIA
+        ],
         min_length=1,
     )
 
@@ -494,15 +542,39 @@ class MergeParams(BaseModel):
             )
         return self
 
+    def tolerances(self) -> dict[str, float]:
+        """`{band: tolerance}`, the form the merge algorithm wants."""
+        return {c.band: c.tolerance for c in self.criteria}
+
+    def input_sources(self) -> set[str]:
+        """PipelineContext keys the merge criteria read.
+
+        Same contract as `SegmentationParams.input_sources()`: the orchestrator
+        uses it to decide which feature stages a run needs.
+        """
+        return {c.source for c in self.criteria}
+
+    @model_validator(mode="after")
+    def _enough_criteria_to_satisfy_the_gate(self) -> MergeParams:
+        if self.min_defined_criteria > len(self.criteria):
+            raise ValueError(
+                f"merge.min_defined_criteria ({self.min_defined_criteria}) "
+                f"exceeds the number of criteria ({len(self.criteria)}), so no "
+                "pair can ever pass the pass-1 gate and every superpixel falls "
+                "to the eliminate pass."
+            )
+        return self
+
     @field_validator("criteria")
     @classmethod
-    def _tolerances_positive(cls, v: dict[str, float]) -> dict[str, float]:
-        bad = sorted(k for k, tol in v.items() if tol <= 0)
-        if bad:
+    def _unique_criterion_bands(cls, v: list[MergeCriterion]) -> list[MergeCriterion]:
+        names = [c.band for c in v]
+        dupes = sorted({n for n in names if names.count(n) > 1})
+        if dupes:
             raise ValueError(
-                f"merge.criteria: tolerance must be > 0 for {bad}. A tolerance "
-                "of 0 rejects every pair including identical ones; to disable a "
-                "criterion, remove it from the mapping."
+                f"merge.criteria: duplicate band name(s) {dupes}. A band listed "
+                "twice would be gated twice and would count twice toward the "
+                "merge distance."
             )
         return v
 
@@ -616,6 +688,16 @@ class Config(BaseModel):
             raise ValueError(f"name not path-safe: {v!r}")
         return v
 
+    def unit_label_key(self) -> str:
+        """Context key holding the label image every downstream stage reduces over.
+
+        `stand_clusters` when the merge stage runs, `snic_clusters` when it does
+        not. One definition so clustering, profiling, export and metrics cannot
+        drift onto different units -- a silhouette over stands and a profile over
+        superpixels are not comparable, and nothing in the numbers would say so.
+        """
+        return "stand_clusters" if self.merge.enabled else "snic_clusters"
+
     def max_component_pixels(self) -> int:
         """`maxSize` for every `reduceConnectedComponents` call in the pipeline.
 
@@ -648,12 +730,12 @@ class Config(BaseModel):
         return int(math.ceil(exact * 1.2))
 
     @model_validator(mode="after")
-    def _snic_optical_prefix_matches_index(self) -> Config:
-        """Catch the one SNIC band name that silently depends on another block.
+    def _optical_band_prefixes_match_index(self) -> Config:
+        """Catch the band names that silently depend on another config block.
 
         features_optical prefixes its harmonic bands with `features_optical.index`
-        ("ndvi" or "nirv"), so the default stack's `ndvi_amplitude_annual` does
-        not exist in an `index: nirv` arm. Left unchecked that surfaces as a GEE
+        ("ndvi" or "nirv"), so a default `ndvi_amplitude_annual` does not exist
+        in an `index: nirv` arm. Left unchecked that surfaces as a GEE
         band-not-found error partway through a run, after the expensive feature
         stages have already been billed. Cheap to catch here instead.
 
@@ -662,19 +744,24 @@ class Config(BaseModel):
         """
         index = self.features_optical.index
         wrong = {"ndvi", "nirv"} - {index}
-        offenders = [
-            b.band
-            for b in self.segmentation.input_bands
-            if b.source == "optical_features"
-            and any(b.band.startswith(f"{p}_") for p in wrong)
-        ]
-        if offenders:
-            raise ValueError(
-                f"segmentation.input_bands names optical band(s) {sorted(offenders)}, "
-                f"but features_optical.index is {index!r}, so features_optical "
-                f"produces {index}_* bands. Rename the band(s) to the {index}_ "
-                f"prefix, or change features_optical.index."
+
+        def offenders(entries: list[Any], where: str) -> None:
+            bad = sorted(
+                e.band
+                for e in entries
+                if e.source == "optical_features"
+                and any(e.band.startswith(f"{p}_") for p in wrong)
             )
+            if bad:
+                raise ValueError(
+                    f"{where} names optical band(s) {bad}, but "
+                    f"features_optical.index is {index!r}, so features_optical "
+                    f"produces {index}_* bands. Rename the band(s) to the "
+                    f"{index}_ prefix, or change features_optical.index."
+                )
+
+        offenders(self.segmentation.input_bands, "segmentation.input_bands")
+        offenders(self.merge.criteria, "merge.criteria")
         return self
 
 

@@ -151,11 +151,13 @@ def _ctx_with(keys: set[str]) -> PipelineContext:
     return ctx
 
 
+# `stand_clusters`, not `snic_clusters`: clustering labels the unit the merge
+# produced. See Config.unit_label_key().
 _HANDCRAFTED_KEYS = {
-    "roi", "snic_clusters", "habitat_mask",
+    "roi", "stand_clusters", "habitat_mask",
     "optical_features", "radar_features", "structure_features", "static_features",
 }
-_EMBEDDING_KEYS = {"roi", "snic_clusters", "habitat_mask", "embedding_features"}
+_EMBEDDING_KEYS = {"roi", "stand_clusters", "habitat_mask", "embedding_features"}
 
 
 def test_validate_handcrafted_passes_with_full_stack():
@@ -177,7 +179,7 @@ def test_validate_embedding_passes_with_embedding_features():
 
 def test_validate_embedding_missing_embedding_features_raises():
     cfg = load_config(ALPHAEARTH_YAML)
-    ctx = _ctx_with({"roi", "snic_clusters", "habitat_mask"})
+    ctx = _ctx_with({"roi", "stand_clusters", "habitat_mask"})
     with pytest.raises(KeyError, match="embedding_features"):
         ClusteringStage().validate(ctx, cfg)
 
@@ -197,24 +199,69 @@ def test_stage_names_handcrafted():
     stages = default_stage_names(cfg)
     assert stages == [
         "masking", "data_load", "features_optical", "features_radar",
-        "features_structure", "features_static", "segmentation",
+        "features_structure", "features_static", "segmentation", "merge",
         "clustering", "metrics",
     ]
 
 
+def test_merge_sits_between_segmentation_and_clustering():
+    """SNIC + merge produces the stand; clustering only labels it."""
+    for path in (BASELINE_YAML, ALPHAEARTH_YAML, NIRV_DUAL_YAML, TESSERA_YAML):
+        stages = default_stage_names(load_config(path))
+        assert stages.index("segmentation") < stages.index("merge")
+        assert stages.index("merge") < stages.index("clustering")
+
+
+def test_disabling_merge_drops_the_stage():
+    import yaml as _yaml
+
+    from fmu.config import Config
+
+    raw = _yaml.safe_load(BASELINE_YAML.read_text())
+    raw["merge"] = {"enabled": False}
+    cfg = Config.model_validate(raw)
+    assert "merge" not in default_stage_names(cfg)
+    # ...and downstream stages fall back to labelling raw superpixels
+    assert cfg.unit_label_key() == "snic_clusters"
+
+
 def test_stage_names_embedding_swaps_feature_stages():
-    """Now that SNIC segments on the embedding too, the hand-crafted feature
-    stages drop out entirely — nothing left in the run reads them."""
+    """The embedding replaces the hand-crafted stack as the *feature vector*,
+    so features_radar and features_static drop out.
+
+    features_optical and features_structure stay — not for the feature vector,
+    but because the **merge criteria** are held identical across arms and read
+    canopy_height, canopy_height_std and ndvi_amplitude_annual. That is what
+    leaves delineation as the only thing differing between the arms.
+    """
     cfg = load_config(ALPHAEARTH_YAML)
     stages = default_stage_names(cfg)
     assert "features_embedding" in stages
-    for dropped in (
-        "features_optical",
-        "features_static",
-        "features_radar",
-        "features_structure",
-    ):
+    for dropped in ("features_static", "features_radar"):
         assert dropped not in stages, dropped
+    assert stages == [
+        "masking", "data_load", "features_optical", "features_structure",
+        "features_embedding", "segmentation", "merge", "clustering", "metrics",
+    ]
+
+
+def test_embedding_arm_runs_hand_crafted_stages_only_for_the_merge_gate():
+    """Pin the reason: the criteria sources are exactly the extra stages."""
+    cfg = load_config(ALPHAEARTH_YAML)
+    assert cfg.clustering.feature_source == "embedding"
+    assert cfg.segmentation.input_sources() == {"embedding_features"}
+    assert cfg.merge.input_sources() == {"structure_features", "optical_features"}
+
+
+def test_disabling_merge_leaves_the_embedding_arm_fully_independent():
+    """With no merge gate, nothing in the arm reads a hand-crafted band."""
+    import yaml as _yaml
+
+    from fmu.config import Config
+
+    raw = _yaml.safe_load(ALPHAEARTH_YAML.read_text())
+    raw["merge"] = {"enabled": False}
+    stages = default_stage_names(Config.model_validate(raw))
     assert stages == [
         "masking", "data_load", "features_embedding", "segmentation",
         "clustering", "metrics",
@@ -245,12 +292,11 @@ def test_stage_names_follow_snic_input_bands():
         {"source": "structure_features", "band": "canopy_height"},
     ]
     stages = default_stage_names(Config.model_validate(raw))
-    # clustering still wants the embedding; SNIC now pulls radar + structure back in
+    # clustering still wants the embedding; SNIC now pulls radar back in
     assert "features_embedding" in stages
     assert "features_radar" in stages
     assert "features_structure" in stages
-    # nothing reads optical or static, so they stay out
-    assert "features_optical" not in stages
+    # nothing reads static, so it stays out
     assert "features_static" not in stages
     for needed in ("features_radar", "features_structure"):
         assert stages.index(needed) < stages.index("segmentation")
@@ -274,7 +320,7 @@ def test_stage_names_through_export_runs_profiling_then_export():
     assert "metrics" not in stages
     # embedding feature stage still swapped in
     assert "features_embedding" in stages
-    assert "features_optical" not in stages
+    assert "features_static" not in stages
 
 
 def test_stage_names_through_profiling():
