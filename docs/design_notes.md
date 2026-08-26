@@ -347,6 +347,14 @@ match notebook behavior.
 
 ## segmentation: 5-band z-scored stack, NIRv for the optical signal
 
+> **Superseded.** The stack is now config-driven (`segmentation.input_bands`),
+> the default is six bands, `composite_nirv` is out and `canopy_height_std` +
+> `ndvi_amplitude_annual` are in, and the "same inputs across configs" property
+> below is deliberately abandoned. See *segmentation: config-driven stack,
+> independent per arm* further down. The original reasoning is kept because
+> parts of it still hold (why z-scoring, why NIRv beats NDVI in dense canopy)
+> and because the part that stopped holding is worth being able to point at.
+
 The SNIC input stack is hand-picked from the resolution analysis:
 B4_median + B8_median + composite_nirv + canopy_height + vv_minus_vh_median.
 All 10 m native, four orthogonal information sources (visible color, NIR,
@@ -375,6 +383,68 @@ bands dominate SNIC's distance metric.
 Same SNIC inputs across both configs means boundaries are bit-identical
 between baseline and nirv_dual. Module 18's clustering comparison is
 attributable to optical features alone; segmentation is not a confound.
+(No longer true — see below. `nirv_dual` now segments on
+`nirv_amplitude_annual` where the baseline segments on `ndvi_amplitude_annual`,
+so the two tessellations differ by design.)
+
+## segmentation: config-driven stack, independent per arm
+
+Supersedes the section above.
+
+**Why it moved into config.** Under the merge design, SNIC is no longer a
+throwaway primitive that gets dissolved by cluster id — SNIC plus the `merge`
+stage *produces the stand*, and clustering is demoted to attaching a type label
+to a finished stand. That makes the choice of segmentation bands a first-class
+experimental variable. A first-class experimental variable does not belong in a
+code literal.
+
+**Why the arms no longer share a tessellation.** Holding SNIC byte-identical
+was called the experiment's control. It was in fact the flaw: it reduced the
+embedding arm to *"which labels does k-means give inside boundaries the
+hand-crafted stack drew"*. The delineation question — which representation finds
+better stand boundaries — is the thesis question, and that design never put it
+to the embedding at all. Each arm now segments on its own feature space
+(AlphaEarth on all 64 dimensions via `band: "*"`), and the two stand maps are
+compared as products. What is still controlled is everything that is not the
+feature representation: SNIC hyperparameters, `k`, `seed`, masking, analysis
+scale, merge rules.
+
+The cost is real and has to be stated: the arms produce different stand maps,
+so ARI/NMI against a shared tessellation is no longer the comparison, and there
+is **no ground-truth stand map** to declare either correct. They get compared on
+stability, held-out predictive power at matched stand count, and geometry.
+
+**Why the default changed.** `composite_nirv` is `(B8/10000) × NDVI` — an
+algebraic function of B4 and B8. Carrying all three spent three columns on two
+degrees of freedom and inflated optical weight in SNIC's distance metric, which
+undercuts the "four orthogonal sources" claim the original stack rested on. It
+is still declarable if wanted. Two bands were added: `canopy_height_std` (3×3
+roughness — separates a smooth plantation-like canopy from a gap-rich natural
+one at the same mean height) and `ndvi_amplitude_annual` (SNIC runs on a
+multi-year *median* composite, so without a phenology band it cannot see the
+deciduous/evergreen axis at all).
+
+**Why a second normalisation step.** Z-scoring equalises bands against each
+other but not stacks against each other. SNIC trades summed squared colour
+distance against a spatial-compactness term, and that sum grows with the number
+of *effective* axes — so `compactness: 0.5` buys a far weaker spatial term at 64
+bands than at 6, and the arms are not comparable at the same nominal value.
+Dividing by `sqrt(n_bands)` assumes the bands are independent; for an embedding
+they emphatically are not, and it over-corrects. Dividing by the empirical RMS
+feature distance between 4-adjacent pixels handles band count and correlation
+together, and is what `normalize_distance_scale` does. The value used goes into
+the manifest as `distance_scale`, because it changes the segmentation and should
+be auditable rather than re-derived by hand.
+
+This makes `compactness` *comparable* across arms. It does not make any
+particular value correct — that still needs a sweep, and the six baseline bands
+are still chosen by reasoning rather than ablated.
+
+**One trap the move introduced.** `features_optical` prefixes its harmonic bands
+with `features_optical.index`, so the default's `ndvi_amplitude_annual` does not
+exist in an `index: nirv` arm. Unchecked that is a GEE band-not-found error
+partway through a run, after the expensive feature stages are already billed. A
+config-load validator rejects the mismatch instead.
 
 ## clustering: where the actual stand assignment happens
 
@@ -446,11 +516,14 @@ already ~90% set up for it:
   after the raw stack — superpixel means, skew/log, robust scaling, k-means — is
   band-name-agnostic and runs unchanged, so the two arms are directly
   comparable.
-- **SNIC is held fixed.** Its 5 input bands come only from the S2 composite,
-  canopy height, and cross-pol contrast (never the clustering stack), so
-  boundaries are byte-identical across arms. `default_stage_names()` therefore
-  keeps data_load + features_radar + features_structure in the embedding stage
-  list and drops only features_optical + features_static.
+- **SNIC segments on the embedding too.** The shipped embedding configs set
+  `segmentation.input_bands: [{source: embedding_features, band: "*"}]`, so the
+  arm is a fully independent pipeline rather than a relabelling of baseline
+  boundaries (see *segmentation: config-driven stack, independent per arm*).
+  `default_stage_names()` therefore drops **all four** hand-crafted feature
+  stages, `features_radar` and `features_structure` included — it derives the
+  stage list from the union of what clustering and segmentation ask for, so
+  nothing runs that nothing reads.
 - **Source-agnostic stage.** features_embedding loads either an annual
   ImageCollection (AlphaEarth, collapsed by mean over the 2017-2022 window, the
   same support the hand-crafted features use) or a single uploaded Image

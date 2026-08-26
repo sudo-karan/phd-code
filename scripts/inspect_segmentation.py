@@ -7,10 +7,13 @@ import argparse
 import json
 
 from fmu.config import load_config
-from fmu.pipeline import Pipeline
+from fmu.pipeline import Pipeline, segmentation_stage_names
 from fmu.stages.base import PipelineContext
 from fmu.stages.data_load import DataLoadStage  # noqa: F401
+from fmu.stages.features_embedding import FeaturesEmbeddingStage  # noqa: F401
+from fmu.stages.features_optical import FeaturesOpticalStage  # noqa: F401
 from fmu.stages.features_radar import FeaturesRadarStage  # noqa: F401
+from fmu.stages.features_static import FeaturesStaticStage  # noqa: F401
 from fmu.stages.features_structure import FeaturesStructureStage  # noqa: F401
 from fmu.stages.masking import MaskingStage  # noqa: F401
 from fmu.stages.segmentation import SegmentationStage  # noqa: F401
@@ -36,14 +39,10 @@ def main() -> None:
     ctx.set("roi", roi)
 
     run_dir = init_logging(config_name=config.name)
+    # Derived, not hardcoded: which feature stages SNIC needs depends on
+    # `segmentation.input_bands`, so an embedding arm runs a different set.
     Pipeline(
-        stage_names=[
-            "masking",
-            "data_load",
-            "features_structure",
-            "features_radar",
-            "segmentation",
-        ],
+        stage_names=segmentation_stage_names(config),
         use_cache=True,
     ).run(config=config, run_dir=run_dir, initial_context=ctx)
 
@@ -110,19 +109,28 @@ def main() -> None:
             "Map.addLayer(boundaries.updateMask(boundaries), "
             "{palette: ['000000']}, 'Boundaries', false);"
         )
-        # The per-cluster means; useful for sanity-checking that superpixels are sensible
-        print("// Per-cluster mean; canopy height (shows structural superpixel coherence)")
-        print(
-            "Map.addLayer(means.select('canopy_height'), "
-            "{min: 0, max: 25, palette: ['8B4513','D2B48C','9ACD32','228B22','006400']}, "
-            "'Per-superpixel canopy_height', false);"
-        )
-        print("// Per-cluster mean; NIRv")
-        print(
-            "Map.addLayer(means.select('composite_nirv'), "
-            "{min: 0, max: 0.5, palette: ['8B4513','EDC9AF','F0E68C','9ACD32','228B22']}, "
-            "'Per-superpixel composite_nirv', false);"
-        )
+        # Per-cluster means; useful for sanity-checking that superpixels are
+        # sensible. Which bands exist depends on `segmentation.input_bands`, so
+        # read them from config instead of naming them here -- an embedding arm
+        # has no `canopy_height` band at all. min/max are left to stretch()
+        # since an embedding dimension has no meaningful fixed range.
+        print("// Per-cluster means of the configured SNIC input bands")
+        for band in [b.band for b in config.segmentation.input_bands][:3]:
+            if band == "*":
+                print(
+                    "// (source declared as '*': band names resolve at run time; "
+                    "use means.bandNames().getInfo() to list them)"
+                )
+                print(
+                    "Map.addLayer(means.select(0), {}, "
+                    "'Per-superpixel band 0', false);"
+                )
+                continue
+            print(
+                f"Map.addLayer(means.select('{band}'), "
+                f"{{palette: ['8B4513','D2B48C','9ACD32','228B22','006400']}}, "
+                f"'Per-superpixel {band}', false);"
+            )
         print(
             "Map.addLayer(roi, {color: 'red', fillColor: '00000000'}, 'ROI boundary');"
         )

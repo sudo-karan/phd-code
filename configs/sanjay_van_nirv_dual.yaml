@@ -83,12 +83,25 @@ features_static:
   include_climate: true
   max_water_distance_pixels: 1000
 
+# Same six-band stack as the baseline default, but spelled out because
+# features_optical.index: nirv renames the harmonic bands `nirv_*` — the
+# default's `ndvi_amplitude_annual` does not exist in this arm. The phenology
+# slot is the arm's own index, which is the point of the comparison: baseline
+# segments on the NDVI amplitude, this one on the NIRv amplitude.
 segmentation:
   size: 10
   compactness: 0.5
   connectivity: 8
   neighborhood_size: 128
   normalize_inputs: true
+  normalize_distance_scale: true
+  input_bands:
+    - {source: s2_composite,       band: B4_median}
+    - {source: s2_composite,       band: B8_median}
+    - {source: structure_features, band: canopy_height}
+    - {source: structure_features, band: canopy_height_std}
+    - {source: optical_features,   band: nirv_amplitude_annual}
+    - {source: radar_features,     band: vv_minus_vh_median}
 
 clustering:
   k: 6

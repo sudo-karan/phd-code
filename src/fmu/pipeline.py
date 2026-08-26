@@ -36,20 +36,46 @@ _STAGE_TAILS: dict[str, list[str]] = {
 }
 
 
+# Which stage produces each context key a SNIC input band can name. Keys match
+# SnicInputBand.source; `s2_composite` comes from data_load, which always runs.
+_SNIC_SOURCE_STAGE: dict[str, str] = {
+    "s2_composite": "data_load",
+    "optical_features": "features_optical",
+    "radar_features": "features_radar",
+    "structure_features": "features_structure",
+    "static_features": "features_static",
+    "embedding_features": "features_embedding",
+}
+
+# Canonical order of the feature stages. Membership is computed per config; this
+# only fixes the order, so that two runs needing the same set run it the same way.
+_FEATURE_STAGE_ORDER: list[str] = [
+    "features_optical",
+    "features_radar",
+    "features_structure",
+    "features_static",
+    "features_embedding",
+]
+
+
 def default_stage_names(config: Config, through: str = "metrics") -> list[str]:
     """Canonical stage order for a config, up to and including `through`.
 
-    The clustering feature source decides which feature stages run:
+    Which feature stages run is the union of what the run's two independent
+    consumers ask for:
 
-      - "handcrafted": optical + radar + structure + static all feed clustering
-        (and SNIC needs data_load + radar + structure).
-      - "embedding": a single features_embedding stage feeds clustering, so
-        features_optical and features_static are dropped. SNIC still needs
-        data_load + features_radar + features_structure (its 5 input bands come
-        only from the S2 composite, canopy height, and cross-pol contrast), so
-        those stages remain — segmentation is held byte-identical across arms,
-        which is what makes the metrics comparison attributable to the feature
-        vector alone.
+      - clustering, via `clustering.feature_source`: "handcrafted" pulls
+        optical + radar + structure + static; "embedding" pulls only
+        features_embedding.
+      - segmentation, via `segmentation.input_bands`, which names its sources
+        explicitly.
+
+    Segmentation is NOT held identical across arms any more. Under the merge
+    design, SNIC plus merge produces the stand, so each arm segments on its own
+    feature space and the resulting stand maps are compared directly; an
+    embedding-arm config that segments on the embedding therefore drops the
+    radar/structure stages the hand-crafted arm needs, and the stage list has to
+    follow the config rather than a hardcoded branch.
 
     `through` selects the post-clustering tail: "clustering" (stop there),
     "profiling", "export" (profiling then export), or "metrics" (default).
@@ -62,14 +88,21 @@ def default_stage_names(config: Config, through: str = "metrics") -> list[str]:
             f"through must be one of {sorted(_STAGE_TAILS)}, got {through!r}"
         )
     if config.clustering.feature_source == "embedding":
-        feature_stages = ["features_radar", "features_structure", "features_embedding"]
+        needed = {"features_embedding"}
     else:
-        feature_stages = [
+        needed = {
             "features_optical",
             "features_radar",
             "features_structure",
             "features_static",
-        ]
+        }
+    # data_load always runs, so a `s2_composite` SNIC band adds nothing here.
+    needed |= {
+        _SNIC_SOURCE_STAGE[s]
+        for s in config.segmentation.input_sources()
+        if _SNIC_SOURCE_STAGE[s] != "data_load"
+    }
+    feature_stages = [s for s in _FEATURE_STAGE_ORDER if s in needed]
     return [
         "masking",
         "data_load",
@@ -77,6 +110,31 @@ def default_stage_names(config: Config, through: str = "metrics") -> list[str]:
         "segmentation",
         "clustering",
         *_STAGE_TAILS[through],
+    ]
+
+
+def segmentation_stage_names(config: Config) -> list[str]:
+    """Stages needed to reach segmentation, and no further.
+
+    `default_stage_names(through=...)` always includes clustering, because every
+    tail it offers sits downstream of it. `inspect_segmentation.py` wants to
+    stop earlier, and must not hardcode its own list -- which stages SNIC needs
+    now depends on `segmentation.input_bands`, so a hardcoded list silently
+    breaks any arm that segments on something else.
+
+    Only segmentation's own sources are included: a baseline inspect run has no
+    reason to pay for features_static, which nothing upstream of SNIC reads.
+    """
+    needed = {
+        _SNIC_SOURCE_STAGE[s]
+        for s in config.segmentation.input_sources()
+        if _SNIC_SOURCE_STAGE[s] != "data_load"
+    }
+    return [
+        "masking",
+        "data_load",
+        *[s for s in _FEATURE_STAGE_ORDER if s in needed],
+        "segmentation",
     ]
 
 

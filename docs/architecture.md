@@ -149,18 +149,27 @@ The canonical stage order is composed by `default_stage_names(config)` in
 - **`"handcrafted"`** (default): `masking`, `data_load`, `features_optical`,
   `features_radar`, `features_structure`, `features_static`, `segmentation`,
   `clustering`, `metrics`.
-- **`"embedding"`**: drops `features_optical` and `features_static` and
-  inserts `features_embedding`, giving `masking`, `data_load`,
-  `features_radar`, `features_structure`, `features_embedding`,
-  `segmentation`, `clustering`, `metrics`.
+- **`"embedding"`**: asks for `features_embedding` alone.
 
-`data_load` + `features_radar` + `features_structure` stay in both arms
-because segmentation (SNIC) draws its 5 input bands from them (S2 composite,
-canopy height, cross-pol contrast), never from the clustering stack — so
-boundaries are byte-identical across arms and the metrics comparison is
-attributable to the feature vector alone. Callers still pass the resulting
-list explicitly to `Pipeline(...)` (and must import the stage modules so
-`@register_stage` has run).
+That is only half the input. `default_stage_names()` takes the **union of two
+independent consumers**: clustering (via `feature_source`, above) and
+segmentation (via `segmentation.input_bands`, which names its sources
+explicitly). The shipped embedding configs segment on the embedding as well as
+cluster on it, so they run just `masking`, `data_load`, `features_embedding`,
+`segmentation`, `clustering`, `metrics` — every hand-crafted feature stage drops
+out. A config that clustered on the embedding but segmented on hand-crafted
+bands would pull those stages back in automatically.
+
+Segmentation is **not** held identical across arms. Under the merge design SNIC
++ `merge` produces the stand and clustering only attaches a type label, so a
+shared tessellation would have reduced the embedding arm to "which labels does
+k-means give inside boundaries the hand-crafted stack drew" — never putting the
+delineation question to the embedding. What is controlled is everything that is
+not the feature representation: SNIC hyperparameters, `k`, `seed`, masking,
+analysis scale, merge rules.
+
+Callers still pass the resulting list explicitly to `Pipeline(...)` (and must
+import the stage modules so `@register_stage` has run).
 
 ### Execution
 

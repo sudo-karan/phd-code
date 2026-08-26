@@ -39,7 +39,7 @@ features_radar: { percentiles, include_iqr, include_cross_pol_contrast }
 features_structure: { include_neighborhood_stats, neighborhood_kernel_size }
 features_static: { include_climate, max_water_distance_pixels }
 features_embedding: { collapse_reducer, band_names }
-segmentation: { size, compactness, connectivity, neighborhood_size, normalize_inputs }
+segmentation: { size, compactness, connectivity, neighborhood_size, normalize_inputs, normalize_distance_scale, input_bands }
 clustering: { k, n_training_samples, seed, feature_source, skewness_threshold, superpixel_max_size }
 normalization: { method }
 features: { optical_harmonic, radar, canopy_height, terrain }
@@ -119,15 +119,35 @@ Both differ from baseline in the same three ways:
    with `scripts/prep_tessera.py` and paste in the printed asset id).
 3. `metrics.reference_config_name: sanjay_van_baseline` (was `null`).
 
-What makes this a **controlled swap**: SNIC segmentation (`size`, `compactness`,
-`connectivity`, `neighborhood_size`), `clustering.k`, and `clustering.seed` are
-held identical to baseline. Segmentation is in fact byte-identical across arms —
-in embedding mode it still runs `data_load + features_radar +
-features_structure`, because SNIC's 5 input bands come from the S2 composite,
-canopy height, and cross-pol contrast, never from the clustered feature vector.
-Only `features_optical` and `features_static` drop out (see
-`default_stage_names` in `pipeline.py`). Any difference the metrics stage reports
-is therefore attributable to the feature representation alone.
+4. `segmentation.input_bands: [{source: embedding_features, band: "*"}]` — SNIC
+   segments on the embedding too.
+
+**The embedding arm is a fully independent pipeline, not a variant of the
+baseline.** AlphaEarth supplies the feature vector for both steps that see
+features: SNIC draws the boundaries and k-means labels them. Consequently none
+of the hand-crafted feature stages run — not `features_optical` or
+`features_static`, and (unlike the earlier design) not `features_radar` or
+`features_structure` either. `default_stage_names()` derives the stage list from
+the union of what clustering and segmentation ask for, so this follows from
+config rather than a hardcoded branch.
+
+**What is controlled** is everything that is *not* the feature representation:
+same AOI, same 2017-2022 window, same SNIC hyperparameters (`size`,
+`compactness`, `connectivity`, `neighborhood_size`), same `clustering.k` and
+`seed`, same masking, same `export.analysis_scale_m`. `normalize_distance_scale`
+is what makes `compactness: 0.5` mean the same thing at 6 bands and at 64.
+
+Segmentation used to be held byte-identical across arms and that was called the
+control. It was in fact the flaw: under the merge design SNIC + `merge`
+*produces the stand*, so a shared tessellation reduced the embedding arm to
+"which labels does k-means give inside boundaries the hand-crafted stack drew" —
+never putting the delineation question, which is the thesis question, to the
+embedding at all.
+
+The cost is that the two arms now produce two **different stand maps**, so
+ARI/NMI against a shared tessellation is no longer the comparison. There is no
+ground-truth stand map, so neither can be declared correct; they are compared on
+stability, held-out predictive power at matched stand count, and geometry.
 
 ## Adding a new experiment
 
@@ -321,6 +341,47 @@ hand-crafted feature images (optical / radar / structure / static).
 - `connectivity`: 4 or 8 (default 8).
 - `neighborhood_size`: SNIC search window (default 128).
 - `normalize_inputs`: z-score per band before SNIC (default `true`).
+- `normalize_distance_scale`: after z-scoring, divide the stack by the
+  empirical RMS feature distance between 4-adjacent pixels over the ROI
+  (default `true`). SNIC trades a summed squared colour distance against a
+  spatial-compactness term, and that sum grows with the number of *effective*
+  axes — so without this, `compactness: 0.5` buys a much weaker spatial term in
+  a 64-band embedding arm than in a 6-band hand-crafted one, and the two are not
+  comparable. Dividing by `sqrt(n_bands)` would assume the bands are
+  independent; for an embedding they are not. The value actually used is
+  recorded in the run manifest as `distance_scale`. This makes `compactness`
+  *comparable* across arms; it does not make any particular value correct.
+- `input_bands`: the bands SNIC segments on, as a list of
+  `{source, band}` pairs, in order. `source` is a pipeline context key —
+  one of `s2_composite`, `optical_features`, `radar_features`,
+  `structure_features`, `static_features`, `embedding_features`.
+
+  Two special `band` values:
+    - `"*"` — every band of that image. Use this for embedding arms rather
+      than listing 64 dimensions by hand; it costs one extra `bandNames()`
+      call and keeps working if the dimensionality changes. A source using
+      `"*"` may not also list named bands.
+    - `composite_nirv` — exists on no upstream image; the segmentation stage
+      derives it from the composite's B4/B8 as `(B8/10000) × NDVI`.
+
+  Default (used by `sanjay_van_baseline.yaml`, which deliberately does not
+  repeat it so the two cannot drift): `B4_median`, `B8_median` from
+  `s2_composite`; `canopy_height`, `canopy_height_std` from
+  `structure_features`; `ndvi_amplitude_annual` from `optical_features`;
+  `vv_minus_vh_median` from `radar_features`. Six bands over ~four independent
+  axes — optical colour, vertical structure, canopy roughness, phenology, radar.
+
+  Band names must be unique after `"*"` expansion, since SNIC names its
+  per-cluster means `<band>_mean`. Two further checks run at config load: a
+  source cannot mix `"*"` with named bands, and an `optical_features` band
+  prefixed `ndvi_`/`nirv_` must match `features_optical.index` — otherwise an
+  `index: nirv` arm using the default stack would fail with a GEE
+  band-not-found error only after the feature stages had already been billed.
+
+  **This list also decides which feature stages run.** `default_stage_names()`
+  takes the union of what clustering asks for (via `feature_source`) and what
+  segmentation asks for (via `input_bands`), so a config that segments only on
+  the embedding does not run the hand-crafted feature stages at all.
 
 ### `clustering`
 

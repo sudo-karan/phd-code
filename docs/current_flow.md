@@ -46,7 +46,7 @@ The pipeline runs a sequence of stages, each producing context keys consumed by 
 
 The orchestrator (`fmu.pipeline.Pipeline`) walks the stages, validates the context against each stage's declared inputs, and merges outputs back in. With Module 6 in place, the orchestrator also checks the asset cache before running each stage. See ENG-013 (orchestrator) and the asset-caching ENG entry (TBD) in decisions.md.
 
-**Feature source (`clustering.feature_source`).** The stage list above is the *handcrafted* arm (the default). Setting `clustering.feature_source: embedding` selects the *embedding* arm: `features_optical` and `features_static` are dropped and a single `features_embedding` stage produces `embedding_features` in their place. `features_radar` and `features_structure` run in **both** arms — SNIC's 5-band input stack is built from the S2 composite, canopy height, and the cross-pol contrast (never the clustering feature stack), so segmentation is byte-identical across arms and any difference the metrics stage reports is attributable to the feature vector alone. The per-arm stage order is returned by `default_stage_names(config)` in `pipeline.py`.
+**Which feature stages run.** The stage list above is the *handcrafted* arm (the default). `default_stage_names(config)` in `pipeline.py` takes the **union of what the run's two independent consumers ask for**: clustering, via `clustering.feature_source`, and segmentation, via `segmentation.input_bands`. So `sanjay_van_alphaearth.yaml` — which both clusters and segments on the embedding — runs only `masking → data_load → features_embedding → segmentation → clustering → …`; all four hand-crafted feature stages drop out, `features_radar` and `features_structure` included. A config that clustered on the embedding but segmented on hand-crafted bands would pull those stages back in automatically.
 
 ---
 
@@ -234,7 +234,7 @@ When `include_climate` is false, only the first 4 bands are emitted.
 
 ### 6b. features_embedding - `src/fmu/stages/features_embedding.py`
 
-The *embedding arm's* single feature stage. Runs only when `clustering.feature_source: embedding`, in place of `features_optical` + `features_static`. Supplies one pretrained per-pixel embedding image where the handcrafted arm supplies four hand-engineered feature images. `features_radar` and `features_structure` still run alongside it (SNIC needs them; see the feature-source note above).
+The *embedding arm's* single feature stage. Runs when `clustering.feature_source: embedding` or when `segmentation.input_bands` names `embedding_features`. Supplies one pretrained per-pixel embedding image where the handcrafted arm supplies four hand-engineered feature images. In the shipped embedding configs it is the **only** feature stage that runs — SNIC segments on the embedding too, so nothing reads the hand-crafted images.
 
 **Reads from context:** `roi`
 **Writes to context:** `embedding_features` (single multi-band image)
@@ -265,22 +265,27 @@ The *embedding arm's* single feature stage. Runs only when `clustering.feature_s
 
 SNIC superpixel segmentation. Draws boundaries that downstream clustering operates on (DEC-001; clustering on superpixel means, not pixels).
 
-**Reads from context:** `roi`, `s2_composite`, `structure_features`, `radar_features`
-**Writes to context:** `snic_clusters` (single band, integer IDs), `snic_means` (5 bands, per-cluster means of input bands)
+**Reads from context:** `roi`, plus whichever context keys `segmentation.input_bands` names. `required_inputs` is therefore only `{roi}` (a static class attribute cannot see the config); the real dependency check is in `validate()`, same pattern as `ClusteringStage`.
+**Writes to context:** `snic_clusters` (single band, integer IDs), `snic_means` (one band per input band, per-cluster means)
 **Cacheable:** yes, both outputs.
 
-**SNIC input stack** (5 bands, all 10 m native; chosen after the resolution analysis):
+**SNIC input stack — config-driven** (`segmentation.input_bands`), all 10 m native. The default, used by the hand-crafted baseline arm, is 6 bands over ~four independent axes:
 - `B4_median` (S2 red, raw composite reflectance)
 - `B8_median` (S2 NIR, raw composite reflectance)
-- `composite_nirv`; NIRv derived in-stage from B4/B8: `(B8/10000) × NDVI`. Better than NDVI in dense canopy (no saturation, more within-forest spatial variation).
-- `canopy_height` (from `structure_features`; independent sensor)
-- `vv_minus_vh_median` (from `radar_features`; independent sensor)
+- `canopy_height` (from `structure_features`; independent sensor — vertical structure)
+- `canopy_height_std` (3×3 roughness — canopy completeness; separates a smooth plantation-like canopy from a gap-rich natural one at the same mean height)
+- `ndvi_amplitude_annual` (from `optical_features` — phenology, the deciduous/evergreen axis; SNIC runs on a multi-year *median* composite, so without this it sees no seasonality at all)
+- `vv_minus_vh_median` (from `radar_features`; independent sensor — radar structure)
 
-These five capture four orthogonal information sources at the same 10 m resolution. NASADEM (30 m), CHIRPS (5,500 m), and cyclic features (phase, aspect) are excluded; resolution analysis showed they'd contribute nothing useful at SNIC's scale.
+`composite_nirv` was **removed** from the default: it is `(B8/10000) × NDVI`, an algebraic function of B4 and B8, so carrying all three spent three columns on two degrees of freedom and inflated optical weight in SNIC's distance metric. It stays available — declare `{source: s2_composite, band: composite_nirv}` and the stage derives it (using the reducer suffix from `data_load.s2_composite_reducer`, not a hardcoded `median`).
 
-**Z-score normalization (per band, over the ROI)** is applied before SNIC sees the stack. Without this, the larger-magnitude bands (raw S2 reflectance 0-3000) would dominate the spectral-distance term over `canopy_height` (0-30) and `vv_minus_vh_median` (~0-15 dB). All bands z-scored = all bands contribute roughly equally.
+NASADEM (30 m), CHIRPS (5,500 m), and cyclic features (phase, aspect) remain excluded; the resolution analysis showed they'd contribute nothing useful at SNIC's scale.
 
-**Same inputs across both configs.** `composite_nirv` is derived from `s2_composite`, which is identical between baseline and variant. So segmentation boundaries are bit-identical between the two configs; Module 18's comparison isolates the optical-features change to the clustering stage alone. The same holds across the **handcrafted vs embedding arms**: SNIC's 5 input bands come only from `s2_composite`, `structure_features`, and `radar_features` (never the clustering feature stack), so `features_radar` and `features_structure` run in both arms and segmentation stays byte-identical — the experiment's control.
+**Two normalisation steps** run before SNIC sees the stack:
+1. **Z-score per band over the ROI.** Without this, the larger-magnitude bands (raw S2 reflectance 0-3000) would dominate the spectral-distance term over `canopy_height` (0-30) and `vv_minus_vh_median` (~0-15 dB).
+2. **Divide by the RMS 4-neighbour feature distance over the ROI.** SNIC trades summed squared colour distance against a spatial-compactness term, and that sum grows with the number of *effective* axes — so `compactness: 0.5` would buy a far weaker spatial term in a 64-band embedding arm than in a 6-band hand-crafted one. Dividing by `sqrt(n_bands)` would assume band independence, which is false for an embedding and over-corrects; the empirical RMS distance handles band count and correlation together. The value used is written to the manifest as `distance_scale`, since it changes the segmentation and must be auditable rather than re-derived by hand. This makes `compactness` *comparable* across arms; it does not make any particular value correct.
+
+**Boundaries are NOT held constant across arms.** Each pipeline segments on its own feature space and the resulting stand maps are compared as products. Under the merge design SNIC + `merge` produces the stand and clustering only attaches a type label, so a shared tessellation would have reduced the embedding arm to "which labels does k-means give inside boundaries the hand-crafted stack drew" — never putting the delineation question to the embedding. What *is* held constant is everything that is not the feature representation: SNIC hyperparameters, `k`, `seed`, masking, analysis scale, merge rules. Because the arms now produce different stand maps and there is no ground-truth stand map, neither can be called correct; they are compared on stability, held-out predictive power at matched stand count, and geometry.
 
 **Config knobs:**
 - `segmentation.size`; seed spacing in pixels (default 10 ≈ 100 m on 10 m grid)
@@ -288,6 +293,8 @@ These five capture four orthogonal information sources at the same 10 m resoluti
 - `segmentation.connectivity`; 4 or 8 (default 8)
 - `segmentation.neighborhood_size`; search window (default 128)
 - `segmentation.normalize_inputs`; bool (default `true`; z-score per band before SNIC)
+- `segmentation.normalize_distance_scale`; bool (default `true`; divide by the RMS 4-neighbour feature distance)
+- `segmentation.input_bands`; list of `{source, band}`, in order. `band: "*"` takes every band of that source (how the embedding arms segment on all 64/128 dimensions without listing them). Band names must be unique after expansion, since SNIC names its per-cluster means `<band>_mean`.
 
 **Related decisions:** DEC-001 (superpixels not pixels), DEC-014 (compute everywhere, mask at clustering), DEC-016 (cross-pol metric definition).
 

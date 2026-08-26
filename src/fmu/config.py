@@ -232,6 +232,59 @@ class MaskingParams(BaseModel):
     jrc_water_occurrence_threshold: float = Field(default=50.0, ge=0.0, le=100.0)
 
 
+class SnicInputBand(BaseModel):
+    """One band fed to SNIC, addressed as (context key, band name).
+
+    `source` names a PipelineContext key holding an ee.Image; `band` names a
+    band on it. Two special values:
+
+      band: "*"              every band of that image, in its own order. This
+                             exists for the embedding arm -- listing all 64
+                             AlphaEarth dimensions by hand would be
+                             unreadable and would silently rot if the
+                             dimensionality changed. Resolving it costs one
+                             extra getInfo (bandNames) at segmentation time.
+      band: composite_nirv   does not exist on any upstream image -- it is
+                             computed inside the segmentation stage from the
+                             S2 composite's B4/B8, so it must be declared as
+                             {source: s2_composite, band: composite_nirv}.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    source: Literal[
+        "s2_composite",
+        "optical_features",
+        "radar_features",
+        "structure_features",
+        "static_features",
+        "embedding_features",
+    ]
+    band: str = Field(min_length=1)
+
+
+# The default SNIC stack. Six bands spanning ~four independent axes:
+# optical colour (B4/B8), vertical structure (canopy_height), canopy
+# completeness (canopy_height_std), phenology (ndvi_amplitude_annual) and
+# radar structure (vv_minus_vh_median).
+#
+# composite_nirv is deliberately NOT here: it is (B8/10000) x NDVI, i.e. an
+# algebraic function of B4 and B8, so including it spent three columns on two
+# degrees of freedom and inflated optical weight in SNIC's distance metric.
+#
+# Note this default references `optical_features`, so an embedding-arm config
+# must override input_bands (e.g. with source: embedding_features) -- the
+# embedding arm does not run features_optical.
+_DEFAULT_SNIC_INPUT_BANDS: list[dict[str, str]] = [
+    {"source": "s2_composite", "band": "B4_median"},
+    {"source": "s2_composite", "band": "B8_median"},
+    {"source": "structure_features", "band": "canopy_height"},
+    {"source": "structure_features", "band": "canopy_height_std"},
+    {"source": "optical_features", "band": "ndvi_amplitude_annual"},
+    {"source": "radar_features", "band": "vv_minus_vh_median"},
+]
+
+
 class SegmentationParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -239,11 +292,60 @@ class SegmentationParams(BaseModel):
     compactness: float = Field(default=0.5, ge=0.0)  # low = spectral, high = spatial
     connectivity: Literal[4, 8] = 8
     neighborhood_size: int = Field(default=128, ge=8)
-    # Whether to z-score the 5 SNIC input bands per-band over the ROI before
+    # Whether to z-score the SNIC input bands per-band over the ROI before
     # running SNIC. Necessary when input bands have wildly different scales
     # (S2 reflectance 0-3000, NIRv 0-1, canopy_height 0-30, dB values).
     # Without this, the largest-magnitude band dominates SNIC's distance metric.
     normalize_inputs: bool = True
+    # Whether to divide the z-scored stack by the empirical RMS feature distance
+    # between 4-adjacent pixels, so the summed squared colour distance is
+    # invariant to band count AND to correlation between bands. Without it,
+    # `compactness` means something different in a 6-band arm than in a 64-band
+    # one (colour distance grows with the number of effective axes, weakening
+    # the spatial term). Makes compactness COMPARABLE across arms; it does not
+    # make any particular value correct -- that still needs a sweep.
+    normalize_distance_scale: bool = True
+    # The bands SNIC segments on. Config-driven so that swapping the
+    # segmentation feature space (e.g. to an embedding) is a YAML edit rather
+    # than a code change.
+    input_bands: list[SnicInputBand] = Field(
+        default_factory=lambda: [SnicInputBand(**b) for b in _DEFAULT_SNIC_INPUT_BANDS],
+        min_length=1,
+    )
+
+    def input_sources(self) -> set[str]:
+        """PipelineContext keys the configured SNIC stack reads.
+
+        One definition, used by three callers that must agree: the
+        orchestrator (to decide which feature stages a run needs), the
+        segmentation stage's validate(), and the tests.
+        """
+        return {b.source for b in self.input_bands}
+
+    @field_validator("input_bands")
+    @classmethod
+    def _unique_band_names(cls, v: list[SnicInputBand]) -> list[SnicInputBand]:
+        # A "*" entry claims every band of its source, so mixing it with named
+        # bands from the same source would duplicate them after expansion. The
+        # post-expansion uniqueness check lives in the segmentation stage
+        # (it needs the server to say what the band names are); this catches
+        # the statically-detectable half at config load.
+        wildcarded = {b.source for b in v if b.band == "*"}
+        for src in sorted(wildcarded):
+            if sum(1 for b in v if b.source == src) > 1:
+                raise ValueError(
+                    f"segmentation.input_bands: source {src!r} uses band '*' "
+                    "(all bands) together with other entries. Use either '*' "
+                    "or an explicit band list for a given source, not both."
+                )
+        names = [b.band for b in v if b.band != "*"]
+        dupes = sorted({n for n in names if names.count(n) > 1})
+        if dupes:
+            raise ValueError(
+                f"segmentation.input_bands: duplicate band name(s) {dupes}. "
+                "Band names must be unique -- they become the SNIC input band names."
+            )
+        return v
 
 
 class ClusteringParams(BaseModel):
@@ -376,6 +478,36 @@ class Config(BaseModel):
         if any(c in bad for c in v):
             raise ValueError(f"name not path-safe: {v!r}")
         return v
+
+    @model_validator(mode="after")
+    def _snic_optical_prefix_matches_index(self) -> Config:
+        """Catch the one SNIC band name that silently depends on another block.
+
+        features_optical prefixes its harmonic bands with `features_optical.index`
+        ("ndvi" or "nirv"), so the default stack's `ndvi_amplitude_annual` does
+        not exist in an `index: nirv` arm. Left unchecked that surfaces as a GEE
+        band-not-found error partway through a run, after the expensive feature
+        stages have already been billed. Cheap to catch here instead.
+
+        Only the ndvi_/nirv_ prefix is checked -- other optical bands
+        (composite_*, obs_count, ...) are index-independent.
+        """
+        index = self.features_optical.index
+        wrong = {"ndvi", "nirv"} - {index}
+        offenders = [
+            b.band
+            for b in self.segmentation.input_bands
+            if b.source == "optical_features"
+            and any(b.band.startswith(f"{p}_") for p in wrong)
+        ]
+        if offenders:
+            raise ValueError(
+                f"segmentation.input_bands names optical band(s) {sorted(offenders)}, "
+                f"but features_optical.index is {index!r}, so features_optical "
+                f"produces {index}_* bands. Rename the band(s) to the {index}_ "
+                f"prefix, or change features_optical.index."
+            )
+        return self
 
 
 def load_config(path: str | Path) -> Config:
