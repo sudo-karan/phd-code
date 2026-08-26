@@ -131,7 +131,7 @@ def main() -> None:
             metrics["reference_config"], "clustering", "cluster_labels"
         )
         snic_path = cached_asset_path(config.name, "segmentation", "snic_clusters")
-        max_size = config.clustering.superpixel_max_size
+        max_size = config.max_component_pixels()
         # Build the remap arrays
         correspondence = metrics["correspondence"]
         # JSON keys are strings; convert to int for ordering

@@ -77,10 +77,12 @@ masking:
   keep_worldcover_classes: [10, 20, 30]
   jrc_water_occurrence_threshold: 50.0
 
-# Optical/static feature params are unused in embedding mode (those stages
-# don't run — see default_stage_names). Radar + structure params still matter:
-# SNIC's 5 input bands come from the S2 composite, canopy height, and cross-pol
-# contrast, so those two stages run and are held identical to the baseline.
+# All four hand-crafted feature params are unused in this arm: nothing reads
+# them, so none of those stages run (see default_stage_names — it takes the
+# union of what clustering and segmentation ask for, and here both ask only for
+# the embedding). Kept at baseline values so the file stays diffable against the
+# baseline, and so flipping one input_bands entry back to a hand-crafted source
+# re-enables that stage with the right parameters rather than silent defaults.
 features_radar:
   percentiles: [10, 50, 90]
   include_iqr: true
@@ -119,12 +121,11 @@ segmentation:
     - {source: embedding_features, band: "*"}   # all 64 dimensions
 
 clustering:
-  feature_source: embedding   # <-- the only substantive change vs baseline
+  feature_source: embedding   # labels on the embedding; SNIC segments on it too
   k: 6
   n_training_samples: 10000
   seed: 42
   skewness_threshold: 1.0
-  superpixel_max_size: 256
 
 normalization:
   method: robust

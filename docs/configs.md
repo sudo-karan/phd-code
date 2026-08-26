@@ -40,7 +40,8 @@ features_structure: { include_neighborhood_stats, neighborhood_kernel_size }
 features_static: { include_climate, max_water_distance_pixels }
 features_embedding: { collapse_reducer, band_names }
 segmentation: { size, compactness, connectivity, neighborhood_size, normalize_inputs, normalize_distance_scale, input_bands }
-clustering: { k, n_training_samples, seed, feature_source, skewness_threshold, superpixel_max_size }
+merge: { enabled, criteria, relax_factor, min_area_ha, max_area_ha, min_defined_criteria, min_frac_valid, tie_break, max_pass2_iterations, max_superpixels }
+clustering: { k, n_training_samples, seed, feature_source, skewness_threshold }
 normalization: { method }
 features: { optical_harmonic, radar, canopy_height, terrain }
 export: { export_geotiff, export_gee_asset, analysis_scale_m, drive_folder, export_vector_snic, export_vector_dissolved, vector_formats, vector_min_stand_pixels }
@@ -61,7 +62,8 @@ directly. It's around 300 lines and self-documenting.
 | `data_load` | S1 acquisition geometry, S2 composite reducer | `data_load` |
 | `masking` | Habitat class definition (IndiaSAT primary, WorldCover fallback) + water threshold | `masking` |
 | `features_*` | Per-feature-stage toggles and parameters | The matching `features_*` stage |
-| `segmentation` | SNIC parameters | `segmentation` |
+| `segmentation` | SNIC parameters *and its input band stack* | `segmentation`, `pipeline.default_stage_names` |
+| `merge` | Stand-aggregation rules and area bounds | `merge`; also derives the `reduceConnectedComponents` cap used by `clustering` and `metrics` |
 | `clustering` | k-means hyperparameters and preprocessing | `clustering` |
 | `normalization` | `robust` vs `zscore` scaling | `clustering` |
 | `features` | High-level on/off toggles per feature family | Currently informational; future use |
@@ -397,8 +399,68 @@ hand-crafted feature images (optical / radar / structure / static).
   directly comparable through the metrics stage.
 - `skewness_threshold`: bands with `|skew|` above this get log-transformed
   (default 1.0 per DEC-004).
-- `superpixel_max_size`: max pixels per SNIC superpixel; must exceed the
-  largest superpixel in the image (default 1024).
+
+`superpixel_max_size` **no longer exists** and a config still carrying it will
+fail to load. It was the `maxSize` argument to `reduceConnectedComponents`,
+which does not clamp — it **masks any component larger than it**, deleting those
+regions with no error. Hand-set, the shipped configs drifted apart (1024
+baseline vs 256 embedding), and the embedding arm silently lost 15 superpixels
+totalling 43.9 ha — 3.8% of its segmented area — in a two-arm comparison. It is
+now derived as `ceil(merge.max_area_ha × 10000 / analysis_scale_m²) × 1.2`
+(1200 px at the defaults) and asserted against the actual labels at stage entry,
+so an undersized cap raises instead of deleting stands.
+
+### `merge`
+
+Aggregates SNIC superpixels into stands, between `segmentation` and
+`clustering`. Follows Xiong et al. 2024 §2.6: two passes, hard area bounds, and
+a two-tier threshold scheme.
+
+- `enabled`: run the merge stage (default `true`).
+- `criteria`: mapping of band name to tolerance, **in the band's own physical
+  units**. Defaults `{canopy_height: 2.00, canopy_height_std: 0.45,
+  ndvi_amplitude_annual: 0.030}` — Xiong's stand height / canopy closure /
+  species axes, using the closest analogue available without ALS or a species
+  map. Measured from this AOI's own adjacent-superpixel difference distribution
+  (1249 superpixels, 3569 adjacent pairs).
+
+  Absolute units are the contract, percentiles are the calibration tool: "merge
+  below the 60th percentile of neighbour differences" merges the same fraction
+  of pairs whether the forest is uniform or wildly heterogeneous, and a forester
+  wants "stands differ by less than 2 m in mean canopy height", not a quantile.
+  Xiong reports SH1 = 3 m for the same reason.
+
+  These are per-band marginals and the gate is conjunctive, so they do **not**
+  describe the joint admit rate. Do not loosen a threshold to hit a target pass
+  rate — pass rate is a diagnostic, not an objective.
+
+  `elevation` is deliberately absent despite being the rank-3 separator (0.52):
+  Sanjay Van has ~20 m of total relief and a within-cluster elevation IQR of
+  10–12 m, so including it means two structurally identical patches refuse to
+  merge over 10 m of altitude. `vv_minus_vh_median` is a supported optional
+  fourth criterion, off by default because no paper in the 20-paper survey uses
+  radar for stand delineation — add it and report the ablation.
+- `relax_factor`: tolerances are multiplied by this in the eliminate pass
+  (default 1.75; Xiong's SH2/SH1 is 5/3 = 1.67).
+- `min_area_ha` / `max_area_ha`: hard bounds (defaults 1.0 / 10.0). Xiong uses
+  20 ha max for plantation, 50 ha for natural forest, 0.5 ha min. Area is a
+  first-class term in the merge rule, not a post-filter. `max_area_ha` is also
+  what the component-size cap above is derived from, so the pass-2 fallback
+  respects it too.
+- `min_defined_criteria`: a pass-1 merge needs at least this many criteria
+  defined on both sides (default 2). One criterion is too weak a similarity
+  test; pairs that fall short drop to pass 2.
+- `min_frac_valid`: below this fraction of valid pixels for a band, profiling
+  emits null for that band rather than a mean over territory that has none
+  (default 0.5).
+- `tie_break`: `shared_edge_length` (the only value). Xiong's eliminate-pass
+  fallback, and what prevents orphans. Shared edge is counted with
+  4-connectivity even though SNIC runs `connectivity: 8` — a diagonal contact
+  has zero shared boundary length.
+- `max_pass2_iterations`: cap so a pathological AOI logs its stragglers instead
+  of looping (default 60).
+- `max_superpixels`: fail loudly above this many superpixels (default 50000),
+  where the client-side `remap` label list stops being reasonable.
 
 ### `normalization`
 

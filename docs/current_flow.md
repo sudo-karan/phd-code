@@ -332,7 +332,7 @@ Per-superpixel feature stack to preprocessing to k-means to per-pixel cluster la
 - `clustering.n_training_samples`; sample size for k-means training (default 10000)
 - `clustering.seed`; random seed (default 42)
 - `clustering.skewness_threshold`; log-transform threshold (default 1.0 per DEC-004)
-- `clustering.superpixel_max_size`; max pixels per superpixel (default 1024)
+- (no `superpixel_max_size` knob: the `reduceConnectedComponents` cap is derived as `ceil(merge.max_area_ha * 10000 / analysis_scale_m^2) * 1.2` and asserted against the actual labels at stage entry. That argument *masks* components larger than it rather than clamping, so a hand-set value silently deletes stands -- which is what happened when the two arms drifted to 1024 and 256.)
 - `normalization.method`; `robust` (default, per DEC-003) or `zscore` (notebook baseline)
 
 **Related decisions:** DEC-001, DEC-003, DEC-004, DEC-014.
@@ -469,7 +469,9 @@ Each one will get its own section here as it's built.
 | Static config knobs | `configs/*.yaml` to `features_static.{include_climate, max_water_distance_pixels}` |
 | Embedding config knobs | `configs/*.yaml` to `clustering.feature_source` + `features_embedding.{collapse_reducer, band_names}` |
 | Segmentation config knobs | `configs/*.yaml` to `segmentation.{size, compactness, connectivity, neighborhood_size, normalize_inputs}` |
-| Clustering config knobs | `configs/*.yaml` to `clustering.{feature_source, k, n_training_samples, seed, skewness_threshold, superpixel_max_size}` + `normalization.method` |
+| Clustering config knobs | `configs/*.yaml` to `clustering.{feature_source, k, n_training_samples, seed, skewness_threshold}` + `normalization.method` |
+| Merge config knobs | `configs/*.yaml` to `merge.{enabled, criteria, relax_factor, min_area_ha, max_area_ha, min_defined_criteria, min_frac_valid, tie_break, max_pass2_iterations, max_superpixels}` |
+| Component-size cap | derived: `Config.max_component_pixels()` in `src/fmu/config.py`; asserted by `src/fmu/utils/components.py` |
 | Climate dataset + window | `configs/*.yaml` to `datasets.climate`, `dates.climate` |
 | NIRv + dual variant config | `configs/sanjay_van_nirv_dual.yaml` |
 | AlphaEarth embedding arm config | `configs/sanjay_van_alphaearth.yaml` |

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from datetime import date
 from pathlib import Path
 from typing import Literal
@@ -366,9 +367,144 @@ class ClusteringParams(BaseModel):
     # Skewness threshold above which a feature gets log-transformed before scaling.
     # Per DEC-004: a feature with |skew| > 1.0 is log-transformed via log(x - min + 1e-3).
     skewness_threshold: float = Field(default=1.0, ge=0.0)
-    # Pixels per superpixel cap for reduceConnectedComponents. Must exceed our
-    # largest SNIC superpixel; 1024 is generous at size=10.
-    superpixel_max_size: int = Field(default=1024, ge=64, le=8192)
+    # NOTE: `superpixel_max_size` used to live here as the `maxSize` argument to
+    # reduceConnectedComponents. It is now DERIVED -- see
+    # `Config.max_component_pixels()` -- because (a) the name stopped being true
+    # the moment merged stands replaced superpixels as the unit being reduced
+    # over, and (b) the shipped configs disagreed (1024 vs 256) while the
+    # argument silently *deletes* any component larger than it, so the embedding
+    # arm was losing 15 superpixels / 43.9 ha that the baseline kept.
+
+
+class MergeParams(BaseModel):
+    """Aggregate SNIC superpixels into forest stands.
+
+    Follows Xiong et al. 2024 §2.6: two passes, hard area bounds, and a
+    two-tier threshold scheme (strict in the homogeneous pass, relaxed in the
+    eliminate pass) so undersized fragments always find a home.
+
+    The three criteria map onto Xiong's three, using the closest analogue FMU
+    has without ALS or a species map:
+
+      canopy_height          <- his stand height (same quantity, modelled source)
+      canopy_height_std      <- his canopy closure (3x3 roughness separates a
+                                smooth plantation-like canopy from a gap-rich
+                                natural one *at the same mean height*)
+      ndvi_amplitude_annual  <- his dominant-species proportion (seasonal swing
+                                is the deciduous/evergreen axis, the only
+                                composition-like signal available at 10 m)
+
+    `elevation` is deliberately excluded even though it is the rank-3 separator
+    (0.52). Sanjay Van has ~20 m of total relief and the within-cluster
+    elevation IQR in the committed profiles is 10-12 m, comparable to the
+    between-cluster spread -- so including it means two structurally identical
+    patches refuse to merge because one sits 10 m higher. Terrain is a *site*
+    variable, not a forest-condition variable. (Vatandaslar et al. 2025 do use
+    topography, but as a landform index segmented separately and intersected,
+    not stacked in as raw elevation.)
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = True
+
+    # Per-criterion tolerance, in the band's own physical units. Absolute units
+    # are the contract, percentiles are the calibration tool: "merge below the
+    # 60th percentile of neighbour differences" merges the same fraction of
+    # pairs whether the forest is uniform or wildly heterogeneous, and a
+    # forester wants "stands differ by less than 2 m in mean canopy height",
+    # not a quantile. Xiong reports SH1 = 3 m for the same reason.
+    #
+    # Defaults measured from this AOI's own adjacent-superpixel difference
+    # distribution (1249 superpixels, 3569 adjacent pairs):
+    #   canopy_height          p50 1.81  p75 3.15   -> 2.00 m
+    #   canopy_height_std      p50 0.22  p75 0.43   -> 0.45
+    #   ndvi_amplitude_annual  p50 0.016 p75 0.027  -> 0.030
+    # These are per-band marginals and the gate is conjunctive, so they do NOT
+    # describe the joint admit rate -- the calibration helper reports that.
+    # canopy_height at 2.00 m is intentionally the binding criterion: it is the
+    # rank-1 separator (0.56) and the field's most-used variable, so the
+    # most-trusted criterion doing the most work is correct behaviour. Do not
+    # loosen it to hit a target pass rate; pass rate is a diagnostic, not an
+    # objective, and tuning to it is exactly the unprincipled-parameter trap
+    # this design exists to escape.
+    #
+    # `vv_minus_vh_median` is a supported *optional* fourth criterion (neighbour
+    # p50 0.31 dB, p75 0.65 dB) and is off by default: no paper in the 20-paper
+    # survey uses radar for stand delineation, so it is a novelty claim rather
+    # than a supported choice. Add it here and report the ablation.
+    criteria: dict[str, float] = Field(
+        default_factory=lambda: {
+            "canopy_height": 2.00,
+            "canopy_height_std": 0.45,
+            "ndvi_amplitude_annual": 0.030,
+        },
+        min_length=1,
+    )
+
+    # Tolerances are multiplied by this in the eliminate pass. Xiong's SH2/SH1
+    # is 5/3 = 1.67; TP2/TP1 is 0.5/0.2 = 2.5.
+    relax_factor: float = Field(default=1.75, gt=1.0)
+
+    # Hard area bounds, in hectares. Xiong uses 20 ha max for plantation, 50 ha
+    # for natural forest, 0.5 ha min. Area is a first-class term in the merge
+    # rule, not a post-filter.
+    min_area_ha: float = Field(default=1.0, gt=0.0)
+    max_area_ha: float = Field(default=10.0, gt=0.0)
+
+    # A pass-1 merge on a single criterion is too weak a similarity test to
+    # justify, so a pair needs at least this many criteria *defined on both
+    # sides*. Pairs that fall short drop to pass 2, which is the right
+    # destination. (14 of 1249 superpixels in the committed run have no
+    # canopy_height at all -- ETH no-data.)
+    min_defined_criteria: int = Field(default=2, ge=1)
+
+    # A stand whose fraction of valid pixels for a band falls below this gets a
+    # null for that band in profiling rather than a mean over territory that has
+    # none. Attribute means are weighted by *per-criterion* valid pixel count,
+    # not total pixels, so a null-CH region merging into a defined-CH one cannot
+    # inherit a canopy height for the area it never measured.
+    min_frac_valid: float = Field(default=0.5, ge=0.0, le=1.0)
+
+    # Fallback when no neighbour passes even the relaxed tolerances: absorb into
+    # the neighbour sharing the longest boundary (Xiong's eliminate-pass rule --
+    # this is what prevents orphans). Shared edge is counted with
+    # 4-connectivity even though SNIC runs connectivity=8: a diagonal contact
+    # has zero shared boundary length, so counting it would inflate the
+    # tie-break.
+    tie_break: Literal["shared_edge_length"] = "shared_edge_length"
+
+    # Pass 2 runs to convergence but is capped so a pathological AOI logs its
+    # stragglers instead of looping forever.
+    max_pass2_iterations: int = Field(default=60, ge=1)
+
+    # The merge runs client-side over a {snic_label -> stand_id} lookup table
+    # and comes back as `snic_clusters.remap(...)`, so the label list has to
+    # stay a reasonable size. Fail loudly rather than emitting a remap call with
+    # a six-figure argument list.
+    max_superpixels: int = Field(default=50_000, ge=100)
+
+    @model_validator(mode="after")
+    def _area_bounds_ordered(self) -> MergeParams:
+        if self.min_area_ha >= self.max_area_ha:
+            raise ValueError(
+                f"merge.min_area_ha ({self.min_area_ha}) must be < "
+                f"merge.max_area_ha ({self.max_area_ha}); with min >= max no "
+                "stand can satisfy both bounds."
+            )
+        return self
+
+    @field_validator("criteria")
+    @classmethod
+    def _tolerances_positive(cls, v: dict[str, float]) -> dict[str, float]:
+        bad = sorted(k for k, tol in v.items() if tol <= 0)
+        if bad:
+            raise ValueError(
+                f"merge.criteria: tolerance must be > 0 for {bad}. A tolerance "
+                "of 0 rejects every pair including identical ones; to disable a "
+                "criterion, remove it from the mapping."
+            )
+        return v
 
 
 class NormalizationParams(BaseModel):
@@ -465,6 +601,7 @@ class Config(BaseModel):
     features_static: FeaturesStaticParams = Field(default_factory=FeaturesStaticParams)
     features_embedding: FeaturesEmbeddingParams = Field(default_factory=FeaturesEmbeddingParams)
     segmentation: SegmentationParams = Field(default_factory=SegmentationParams)
+    merge: MergeParams = Field(default_factory=MergeParams)
     clustering: ClusteringParams = Field(default_factory=ClusteringParams)
     normalization: NormalizationParams = Field(default_factory=NormalizationParams)
     features: FeatureToggles = Field(default_factory=FeatureToggles)
@@ -478,6 +615,37 @@ class Config(BaseModel):
         if any(c in bad for c in v):
             raise ValueError(f"name not path-safe: {v!r}")
         return v
+
+    def max_component_pixels(self) -> int:
+        """`maxSize` for every `reduceConnectedComponents` call in the pipeline.
+
+        Derived rather than configured. This argument does not clamp -- it
+        **masks any component larger than it**, silently deleting those regions
+        from the result. The shipped configs previously set it by hand and
+        disagreed (1024 baseline vs 256 embedding), so the embedding arm lost 15
+        superpixels totalling 43.9 ha (3.8% of segmented area) that the baseline
+        kept, in a two-arm comparison. A hand-set number that deletes data when
+        it is too small is a number that should not be hand-set.
+
+        The largest component the pipeline can produce is a merged stand, which
+        `merge.max_area_ha` bounds by construction (the pass-2 fallback respects
+        it too -- violating it would break exactly this derivation). Convert to
+        pixels at the analysis scale and add 20% headroom for the boundary
+        pixels a polygon's raster footprint picks up:
+
+            ceil(max_area_ha * 10_000 / scale^2) * 1.2
+
+        At the defaults (10 ha, 10 m) that is 1200 px, against 1000 px of stand
+        -- versus a hand-set 1024, which was razor thin, and 256, which was not
+        thin but wrong.
+
+        Callers must still assert that no *actual* component exceeds this;
+        `assert_components_fit()` does that, because a derivation is only as
+        good as its premise.
+        """
+        scale = self.export.analysis_scale_m
+        exact = math.ceil(self.merge.max_area_ha * 10_000 / (scale * scale))
+        return int(math.ceil(exact * 1.2))
 
     @model_validator(mode="after")
     def _snic_optical_prefix_matches_index(self) -> Config:

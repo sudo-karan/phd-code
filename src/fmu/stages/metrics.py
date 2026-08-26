@@ -54,6 +54,7 @@ from sklearn.metrics import (
 from fmu.config import Config
 from fmu.stages.base import PipelineContext, Stage, StageResult, register_stage
 from fmu.utils.caching import asset_exists, cached_asset_path
+from fmu.utils.components import assert_components_fit
 from fmu.utils.gee import safe_call, safe_get_info
 from fmu.utils.logging import get_logger
 
@@ -194,12 +195,24 @@ class MetricsStage(Stage):
             # superpixels. Each stand's confidence = fraction of its pixels that
             # agree with the reference (0..1). Consensus/stability, not
             # correctness (no ground-truth stand map exists to score against).
+            max_component_px = config.max_component_pixels()
+            metrics["component_stats"] = assert_components_fit(
+                snic_clusters,
+                roi,
+                scale,
+                max_component_px,
+                context="metrics per-stand confidence",
+            )
             confidence = (
                 agreement_map.addBands(snic_clusters.rename("snic_label"))
                 .reduceConnectedComponents(
                     reducer=ee.Reducer.mean(),
                     labelBand="snic_label",
-                    maxSize=config.clustering.superpixel_max_size,
+                    # Derived, not configured, and asserted above: this argument
+                    # masks components larger than it, so an undersized cap
+                    # would drop the biggest stands out of the confidence layer
+                    # entirely rather than raising.
+                    maxSize=max_component_px,
                 )
                 .select(["agrees"], ["confidence"])
                 .updateMask(habitat_mask)

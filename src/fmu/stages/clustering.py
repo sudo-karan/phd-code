@@ -61,6 +61,7 @@ import ee
 
 from fmu.config import Config
 from fmu.stages.base import PipelineContext, Stage, StageResult, register_stage
+from fmu.utils.components import assert_components_fit
 from fmu.utils.gee import safe_call, safe_get_info
 from fmu.utils.logging import get_logger
 
@@ -157,9 +158,21 @@ class ClusteringStage(Stage):
             ", ".join(decomposition_log) if decomposition_log else "none",
         )
 
-        # 3. Per-superpixel means
+        # 3. Per-superpixel means.
+        # maxSize is derived, not configured (see Config.max_component_pixels),
+        # and checked against the labels in hand first -- the argument masks any
+        # component larger than it, so getting it wrong deletes stands rather
+        # than raising.
+        max_component_px = config.max_component_pixels()
+        component_stats = assert_components_fit(
+            snic_clusters,
+            roi,
+            scale,
+            max_component_px,
+            context="clustering superpixel means",
+        )
         superpixel_stack = _compute_superpixel_means(
-            decomposed_stack, snic_clusters, params.superpixel_max_size
+            decomposed_stack, snic_clusters, max_component_px
         )
 
         # 4. Habitat filter
@@ -274,6 +287,10 @@ class ClusteringStage(Stage):
                 "n_log_transformed": len(skewed_bands),
                 "n_dropped_constant": len(dropped_bands),
                 "normalization_method": method,
+                # Recorded even when the check passes: the headroom is the early
+                # warning that a merge.max_area_ha change is about to start
+                # masking components rather than merely resizing them.
+                **component_stats,
             },
         )
 
