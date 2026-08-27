@@ -643,6 +643,51 @@ class ExportParams(BaseModel):
         return v
 
 
+class R2Attribute(BaseModel):
+    """One attribute the explained-variance metric is computed against.
+
+    `held_out` is checked, not trusted: a band marked held out must appear in
+    neither `segmentation.input_bands` nor `merge.criteria`. Mislabelling it
+    would turn a circular number into the headline result, which is exactly the
+    failure the used/held-out split exists to prevent.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    source: Literal[
+        "s2_composite",
+        "optical_features",
+        "radar_features",
+        "structure_features",
+        "static_features",
+        "embedding_features",
+    ]
+    band: str = Field(min_length=1)
+    # False = this attribute helped draw the boundaries (a segmentation input or
+    # a merge criterion), so R-squared on it is partly circular. Report it
+    # anyway: it is what the literature quotes (Xiong et al. 2024 report 81.80%
+    # on mean canopy height), so it is the only number directly comparable to
+    # published figures.
+    held_out: bool = True
+
+
+# Default R-squared attributes. Every one must exist in BOTH arms, which rules
+# out anything from features_radar or features_static -- an embedding run does
+# not compute those. What it can read: the S2 composite (data_load always runs)
+# plus structure and optical (pulled in by the merge gate).
+_DEFAULT_R2_ATTRIBUTES: list[dict[str, object]] = [
+    # Used: a merge criterion. Circular by construction, and reported anyway
+    # because it is the literature-comparable number.
+    {"source": "structure_features", "band": "canopy_height", "held_out": False},
+    # Held out: inter-annual greening/browning. Neither arm segments or merges
+    # on it, and it is a real forest property rather than a restatement of one.
+    {"source": "optical_features", "band": "ndvi_trend", "held_out": True},
+    # Held out: a different structural statistic from the one that drew the
+    # boundaries. Correlated with canopy_height, but not the same quantity.
+    {"source": "structure_features", "band": "canopy_height_max", "held_out": True},
+]
+
+
 class MetricsParams(BaseModel):
     """Parameters for the metrics stage (Module 18).
 
@@ -657,6 +702,26 @@ class MetricsParams(BaseModel):
     reference_config_name: str | None = None
     n_comparison_samples: int = Field(default=10000, ge=100)
     n_silhouette_samples_per_cluster: int = Field(default=833, ge=50)
+
+    # Explained variance of a stand attribute: R^2 = 1 - SS_within / SS_total
+    # (Xiong et al. 2024 Eq. 4-6). The field's standard partition-quality
+    # measure and it needs no ground truth. Six of the twenty surveyed papers
+    # report it: Xiong 97.35% (tree height) / 81.80% (canopy height), Jia et al.
+    # 2019 84.7-94.2%, Sun et al. 2021 >80%, Pukkala 2018 66-87%.
+    #
+    # Two things make it honest, and both are enforced elsewhere in the code:
+    # it is computed at PIXEL level (superpixel-level scoring makes an unmerged
+    # partition score 1.000 by construction), and `n_stands` is reported
+    # alongside, because R^2 rises monotonically with stand count -- one stand
+    # per superpixel is 1.0 trivially, so two arms at different stand counts
+    # cannot be compared on it at all.
+    r2_attributes: list[R2Attribute] = Field(
+        default_factory=lambda: [R2Attribute(**a) for a in _DEFAULT_R2_ATTRIBUTES]
+    )
+
+    def input_sources(self) -> set[str]:
+        """PipelineContext keys the R-squared attributes read."""
+        return {a.source for a in self.r2_attributes}
 
 
 class Config(BaseModel):
@@ -767,6 +832,34 @@ class Config(BaseModel):
 
         offenders(self.segmentation.input_bands, "segmentation.input_bands")
         offenders(self.merge.criteria, "merge.criteria")
+        offenders(self.metrics.r2_attributes, "metrics.r2_attributes")
+        return self
+
+    @model_validator(mode="after")
+    def _held_out_attributes_are_actually_held_out(self) -> Config:
+        """An attribute marked `held_out` must not have helped draw the boundaries.
+
+        Checked rather than trusted. R-squared on an attribute the segmentation
+        or the merge already used is partly circular, and the whole point of the
+        used/held-out split is that the honest number is labelled as such. A
+        mislabelled one would become the headline result while being the
+        circular one.
+        """
+        boundary_bands = {b.band for b in self.segmentation.input_bands}
+        boundary_bands |= {c.band for c in self.merge.criteria}
+        wrong = sorted(
+            a.band
+            for a in self.metrics.r2_attributes
+            if a.held_out and a.band in boundary_bands
+        )
+        if wrong:
+            raise ValueError(
+                f"metrics.r2_attributes marks {wrong} as held_out, but "
+                f"segmentation.input_bands or merge.criteria already uses "
+                f"them, so R-squared on them is partly circular. Set "
+                f"held_out: false (and read the number as literature-comparable "
+                f"rather than as evidence), or score a different attribute."
+            )
         return self
 
 

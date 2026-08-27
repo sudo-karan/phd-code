@@ -144,3 +144,11 @@ metrics:
   reference_config_name: sanjay_van_baseline  # variant compares against baseline
   n_comparison_samples: 10000
   n_silhouette_samples_per_cluster: 833
+  # Same three attributes as the baseline default, respelled for index: nirv.
+  # canopy_height is a merge criterion, so R^2 on it is partly circular — it is
+  # reported because it is the number the literature quotes (Xiong et al. 2024:
+  # 81.80% on mean canopy height), not as evidence.
+  r2_attributes:
+    - {source: structure_features, band: canopy_height,     held_out: false}
+    - {source: optical_features,   band: nirv_trend,        held_out: true}
+    - {source: structure_features, band: canopy_height_max, held_out: true}

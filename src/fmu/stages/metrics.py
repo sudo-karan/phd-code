@@ -55,7 +55,7 @@ from fmu.config import Config
 from fmu.stages.base import PipelineContext, Stage, StageResult, register_stage
 from fmu.utils.adjacency import stand_geometry, summarize_stand_geometry
 from fmu.utils.caching import asset_exists, cached_asset_path
-from fmu.utils.components import assert_components_fit
+from fmu.utils.components import assert_components_fit, explained_variance_r2
 from fmu.utils.gee import safe_call, safe_get_info
 from fmu.utils.logging import get_logger
 
@@ -118,6 +118,13 @@ class MetricsStage(Stage):
         # archaeology. Absent when merge.enabled is false.
         if ctx.has("merge_diagnostics"):
             metrics["merge"] = ctx.get("merge_diagnostics")
+
+        # --- Explained variance: the headline, replacing silhouette ---
+        log.info("  computing explained variance of stand attributes")
+        metrics["explained_variance"] = _explained_variance(
+            ctx, config, unit_labels, habitat_mask, roi, scale, geom_summary
+        )
+        _log_r2(metrics["explained_variance"])
 
         # --- Intrinsic silhouette score for current config ---
         log.info("  computing intrinsic silhouette for %s", config.name)
@@ -459,4 +466,89 @@ def _log_geometry(s: dict[str, Any], min_area_ha: float) -> None:
         s["polsby_popper_min"],
         s["polsby_popper_median"],
         s["polsby_popper_max"],
+    )
+
+
+def _explained_variance(
+    ctx: PipelineContext,
+    config: Config,
+    unit_labels: ee.Image,
+    habitat_mask: ee.Image,
+    roi: ee.Geometry,
+    scale: int,
+    geom_summary: dict[str, Any],
+) -> dict[str, Any]:
+    """R-squared of each configured attribute, with the stand count beside it.
+
+    This replaces silhouette as the headline. Silhouette is computed in each
+    arm's own feature space (21-D vs 64-D) and is strongly
+    dimensionality-dependent, so it was never a valid cross-arm number; under
+    two independent segmentations it is doubly invalid. It stays as an internal
+    diagnostic for the labelling step.
+
+    `n_stands` sits in the same dict as every R-squared value, not somewhere
+    else in the file, because the two are meaningless apart: R-squared rises
+    monotonically with stand count, and in the limit of one stand per superpixel
+    it is 1.0 by construction. Comparing two arms at different stand counts is
+    not a comparison.
+    """
+    attributes = config.metrics.r2_attributes
+    if not attributes:
+        return {"n_stands": geom_summary.get("n_stands", 0), "attributes": {}}
+
+    missing = {a.source for a in attributes} - ctx.keys()
+    if missing:
+        log.warning(
+            "    skipping explained variance: context is missing %s. The "
+            "r2_attributes name sources this run does not produce.",
+            sorted(missing),
+        )
+        return {"n_stands": geom_summary.get("n_stands", 0), "attributes": {}}
+
+    feature_image = ee.Image.cat(
+        [ctx.get(a.source).select(a.band).rename(a.band) for a in attributes]
+    )
+    per_band = explained_variance_r2(
+        feature_image,
+        unit_labels,
+        roi,
+        scale,
+        config.max_component_pixels(),
+        mask=habitat_mask,
+        context="stand explained variance",
+    )
+
+    held_out = {a.band: a.held_out for a in attributes}
+    attrs = {
+        band: {**stats, "held_out": held_out.get(band, True)}
+        for band, stats in per_band.items()
+    }
+    return {
+        # Deliberately in the same dict as the R-squared values. They do not
+        # mean anything apart.
+        "n_stands": geom_summary.get("n_stands", 0),
+        "unit_key": geom_summary.get("unit_key"),
+        "level": "pixel",
+        "attributes": attrs,
+    }
+
+
+def _log_r2(ev: dict[str, Any]) -> None:
+    attrs = ev.get("attributes") or {}
+    if not attrs:
+        log.warning("    no explained-variance attributes computed")
+        return
+    log.info("    over %d %s:", ev["n_stands"], ev.get("unit_key", "units"))
+    for band, s in sorted(attrs.items()):
+        log.info(
+            "      %-24s R2 = %.4f  (%s, %d px)",
+            band,
+            s["r2"],
+            "HELD OUT" if s["held_out"] else "used to draw the boundaries",
+            s["n_pixels"],
+        )
+    log.info(
+        "    R2 rises with stand count, so it is only comparable between arms "
+        "at matched n_stands. Compare the HELD OUT rows; the used one is "
+        "reported for comparability with the literature, not as evidence."
     )

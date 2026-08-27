@@ -186,6 +186,12 @@ _NIRV_MERGE_CRITERIA = [
     {"source": "structure_features", "band": "canopy_height_std", "tolerance": 0.45},
     {"source": "optical_features", "band": "nirv_amplitude_annual", "tolerance": 0.030},
 ]
+# The default r2_attributes name `ndvi_trend`, which an index: nirv arm does not
+# produce -- the same trap, caught by the same validator.
+_NIRV_R2_ATTRIBUTES = [
+    {"source": "structure_features", "band": "canopy_height", "held_out": False},
+    {"source": "optical_features", "band": "nirv_trend", "held_out": True},
+]
 
 
 def test_matching_prefix_passes():
@@ -195,6 +201,7 @@ def test_matching_prefix_passes():
         {"source": "optical_features", "band": "nirv_amplitude_annual"}
     ]
     raw["merge"] = {"criteria": _NIRV_MERGE_CRITERIA}
+    raw["metrics"]["r2_attributes"] = _NIRV_R2_ATTRIBUTES
     Config.model_validate(raw)  # no raise
 
 
@@ -206,6 +213,7 @@ def test_guard_ignores_index_independent_optical_bands():
         {"source": "optical_features", "band": "composite_brightness"}
     ]
     raw["merge"] = {"criteria": _NIRV_MERGE_CRITERIA}
+    raw["metrics"]["r2_attributes"] = _NIRV_R2_ATTRIBUTES
     Config.model_validate(raw)  # no raise
 
 
