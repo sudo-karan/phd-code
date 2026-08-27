@@ -131,7 +131,7 @@ class _FakeBand:
 
     def subtract(self, other):
         if isinstance(other, _FakeBand):
-            return _FakeBand([a - b for a, b in zip(self.values, other.values)])
+            return _FakeBand([a - b for a, b in zip(self.values, other.values, strict=True)])
         return _FakeBand([a - float(other) for a in self.values])
 
     def pow(self, p):
@@ -162,7 +162,7 @@ class _FakeStack:
             return _FakeStack({k: self.bands[k] for k in b})
         return _FakeBand(self.bands[b])
 
-    def addBands(self, other):
+    def addBands(self, other):  # noqa: N802 - mirrors the ee API
         return self
 
     def rename(self, name):
@@ -171,13 +171,13 @@ class _FakeStack:
     def mask(self):
         return self
 
-    def updateMask(self, m):
+    def updateMask(self, m):  # noqa: N802 - mirrors the ee API
         return self
 
-    def reduceConnectedComponents(self, **kw):
+    def reduceConnectedComponents(self, **kw):  # noqa: N802 - mirrors the ee API
         return self._region_means
 
-    def reduceRegion(self, **kw):
+    def reduceRegion(self, **kw):  # noqa: N802 - mirrors the ee API
         return self
 
 
@@ -217,7 +217,7 @@ def r2_server(monkeypatch):
         def __init__(self, bands):
             self.bands = bands
 
-        def reduceRegion(self, **kw):
+        def reduceRegion(self, **kw):  # noqa: N802 - mirrors the ee API
             return {k: sum(v) for k, v in self.bands.items()}
 
     def install(values: dict[str, list[float]], region_means: dict[str, list[float]]):

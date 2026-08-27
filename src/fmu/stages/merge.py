@@ -60,7 +60,7 @@ from fmu.utils.adjacency import (
     extract_superpixel_graph,
 )
 from fmu.utils.components import assert_components_fit
-from fmu.utils.gee import safe_call, safe_get_info
+from fmu.utils.gee import safe_call
 from fmu.utils.logging import get_logger
 from fmu.utils.region_merge import calibrate_thresholds, merge_superpixels
 

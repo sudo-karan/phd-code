@@ -291,7 +291,7 @@ def test_sampler_stratifies_one_point_per_unit():
     captured = {}
 
     class _Img:
-        def addBands(self, other):
+        def addBands(self, other):  # noqa: N802 - mirrors the ee API
             return self
 
         def rename(self, name):

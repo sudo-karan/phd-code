@@ -144,13 +144,20 @@ def merge_superpixels(
         c = valid_counts.get(i, {})
         lon, lat = (centroids or {}).get(i, (0.0, 0.0))
         px = graph.n_pixels[i]
+        # A None mean means the band has no valid pixel in this region. Carry it
+        # as (sum 0, valid 0) rather than (sum 0, valid n): the mean stays
+        # undefined instead of collapsing to 0.0, and a merge with a region that
+        # does have data inherits only that region's evidence.
+        defined = {b: m.get(b) for b in bands}
         regions[i] = _Region(
             n_pixels=px,
             sums={
-                b: (0.0 if m.get(b) is None else float(m[b]) * c.get(b, 0))
-                for b in bands
+                b: (0.0 if v is None else float(v) * c.get(b, 0))
+                for b, v in defined.items()
             },
-            valid={b: (0 if m.get(b) is None else c.get(b, 0)) for b in bands},
+            valid={
+                b: (0 if v is None else c.get(b, 0)) for b, v in defined.items()
+            },
             lon_sum=lon * px,
             lat_sum=lat * px,
         )

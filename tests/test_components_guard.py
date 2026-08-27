@@ -35,7 +35,7 @@ class _FakeLabels:
     def select(self, bands):
         return self
 
-    def reduceRegion(self, **kwargs):
+    def reduceRegion(self, **kwargs):  # noqa: N802 - mirrors the ee API
         return self
 
 

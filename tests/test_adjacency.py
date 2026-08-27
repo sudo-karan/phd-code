@@ -112,7 +112,7 @@ class _FakeImage:
     def nominalScale(self):  # noqa: N802
         return self.nominal_scale
 
-    def atScale(self, scale):
+    def atScale(self, scale):  # noqa: N802 - mirrors the ee API
         return self
 
     def reproject(self, proj):
@@ -130,13 +130,13 @@ class _FakeImage:
     def neq(self, other):
         return self
 
-    def updateMask(self, mask):
+    def updateMask(self, mask):  # noqa: N802 - mirrors the ee API
         return self
 
-    def toInt64(self):
+    def toInt64(self):  # noqa: N802 - mirrors the ee API
         return self
 
-    def reduceRegion(self, **kwargs):
+    def reduceRegion(self, **kwargs):  # noqa: N802 - mirrors the ee API
         return self
 
 
@@ -150,7 +150,7 @@ class _Pair(_FakeImage):
         super().__init__("pair")
         self.dx, self.dy = dx, dy
 
-    def updateMask(self, mask):
+    def updateMask(self, mask):  # noqa: N802 - mirrors the ee API
         return self
 
     def rename(self, name):

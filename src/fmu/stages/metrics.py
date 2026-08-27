@@ -382,7 +382,7 @@ def _sample_paired_labels(
 def _compute_silhouette(
     *,
     config_name: str,
-    fingerprint: str,
+    fingerprint: str | None,
     cluster_labels: ee.Image,
     habitat_mask: ee.Image,
     roi: ee.Geometry,
