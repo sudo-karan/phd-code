@@ -46,6 +46,14 @@ from fmu.utils.logging import get_logger
 log = get_logger(__name__)
 
 
+# The band name the grouped reducers group by. Not the obvious `_label`: EE
+# rejects a leading underscore outright ("Image.rename: Invalid band name:
+# '_label'"), and it only says so at getInfo time, so the failure lands in the
+# middle of a live run rather than in a test. Prefixed instead, to stay clear of
+# any real band name a caller might pass alongside it.
+_GROUP_BAND = "fmu_group_label"
+
+
 class TooManySuperpixelsError(RuntimeError):
     """The label count is past the point where a client-side graph is sane."""
 
@@ -249,8 +257,21 @@ def extract_superpixel_attributes(
     """
     band_names = safe_get_info(features.bandNames(), context=f"{context} bands")
     label_band = safe_get_info(labels.bandNames(), context=f"{context} label band")[0]
-    label_image = labels.select([label_band]).rename("_label")
+    if _GROUP_BAND in band_names:
+        raise ValueError(
+            f"{context}: a feature band is named {_GROUP_BAND!r}, which collides "
+            f"with the band the grouped reduction groups by. Rename it."
+        )
+    label_image = labels.select([label_band]).rename(_GROUP_BAND)
     label_to_dense = {raw: i for i, raw in enumerate(graph.raw_labels)}
+
+    # Pin the reduction to the *label* image's grid. `reduceRegion` defaults its
+    # CRS to the first band's projection, which here is a feature band -- often
+    # an uncached computed image carrying EE's WGS84 default, whose pixels are
+    # not square. The counts below would then be geographic pixels while
+    # `graph.n_pixels` holds the label grid's pixels, and `min_frac_valid`
+    # divides one by the other.
+    crs = labels.projection().crs()
 
     means: dict[int, dict[str, float | None]] = {}
     counts: dict[int, dict[str, int]] = {}
@@ -270,6 +291,7 @@ def extract_superpixel_attributes(
                 .group(groupField=1, groupName="label"),
                 geometry=roi,
                 scale=scale,
+                crs=crs,
                 maxPixels=1e9,
             ),
             context=f"{context}: {band}",
@@ -361,12 +383,17 @@ def stand_geometry(
     boundary = boundary.updateMask(pinned.mask()).rename("edges")
 
     grouped = safe_get_info(
-        boundary.addBands(pinned.rename("_label")).reduceRegion(
+        boundary.addBands(pinned.rename(_GROUP_BAND)).reduceRegion(
             reducer=ee.Reducer.sum()
             .combine(ee.Reducer.count(), sharedInputs=True)
             .group(groupField=1, groupName="label"),
             geometry=roi,
             scale=scale,
+            # Explicit, not inherited: `boundary` is built up from
+            # `ee.Image.constant(0)`, which carries EE's default projection, so
+            # the reduction would otherwise count perimeter pixels on a
+            # geographic grid while `pinned` was shifted on the label grid.
+            crs=proj.crs(),
             maxPixels=1e9,
         ),
         context=f"{context} grouped perimeter",
