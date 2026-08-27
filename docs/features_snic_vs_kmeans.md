@@ -15,8 +15,14 @@ Derived from the code, not from the decks:
 | Band names | `src/fmu/stages/features_{optical,radar,structure,static}.py` |
 
 Counts below are for the `sanjay_van_baseline` config (NDVI, single harmonic, `include_trend: true`)
-and the `sanjay_van_nirv_dual` variant (NIRv, dual harmonic). Verified against
-`runs/sanjay_van_baseline_*/manifest.json`.
+and the `sanjay_van_nirv_dual` variant (NIRv, dual harmonic).
+
+They were verified against a `runs/sanjay_van_baseline_*/manifest.json` from a
+**pre-merge-stage run**, which is no longer in the repo (run artifacts are
+gitignored as of v1.2.1). The k-means band arithmetic below is unchanged by the
+merge stage — it is the same stack, reduced over stands instead of superpixels —
+but the counts have not been re-verified against a v1.2 run. Re-check them
+against your own `manifest.json` after the first live run.
 
 ---
 
