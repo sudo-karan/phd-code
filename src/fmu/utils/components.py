@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import ee
 
-from fmu.utils.gee import safe_get_info
+from fmu.utils.gee import LABEL_BAND, safe_get_info
 from fmu.utils.logging import get_logger
 
 log = get_logger(__name__)
@@ -144,7 +144,12 @@ def explained_variance_r2(
     limit of one region per pixel it is 1.0 for any image at all.
     """
     band_names = safe_get_info(features.bandNames(), context=f"{context} bands")
-    label_band = "_r2_label"
+    label_band = LABEL_BAND
+    if label_band in band_names:
+        raise ValueError(
+            f"{context}: a feature band is named {label_band!r}, which collides "
+            f"with the label band the region reduction groups by. Rename it."
+        )
 
     region_means = (
         features.addBands(labels.rename(label_band))

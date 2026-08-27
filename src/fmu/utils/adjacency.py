@@ -40,18 +40,16 @@ from typing import Any
 
 import ee
 
-from fmu.utils.gee import safe_get_info
+from fmu.utils.gee import LABEL_BAND, safe_get_info
 from fmu.utils.logging import get_logger
 
 log = get_logger(__name__)
 
 
-# The band name the grouped reducers group by. Not the obvious `_label`: EE
-# rejects a leading underscore outright ("Image.rename: Invalid band name:
-# '_label'"), and it only says so at getInfo time, so the failure lands in the
-# middle of a live run rather than in a test. Prefixed instead, to stay clear of
-# any real band name a caller might pass alongside it.
-_GROUP_BAND = "fmu_group_label"
+# The band the grouped reducers group by. Shared with every other place that
+# synthesises a label band -- see `fmu.utils.gee.LABEL_BAND` for why there is
+# exactly one of these now.
+_GROUP_BAND = LABEL_BAND
 
 
 class TooManySuperpixelsError(RuntimeError):

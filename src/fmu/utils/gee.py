@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable
 from functools import wraps
 from pathlib import Path
@@ -14,6 +15,37 @@ from fmu.settings import get_settings
 from fmu.utils.logging import get_logger
 
 log = get_logger(__name__)
+
+# The name every synthesised label band uses.
+#
+# Several places bolt a label band onto a feature stack so a grouped reduction,
+# `reduceConnectedComponents` or `stratifiedSample` has something to group by.
+# Each had invented its own name, and two of them picked a leading underscore --
+# which EE rejects, and only says so at getInfo time:
+#
+#     Image.rename: Invalid band name: '_label'
+#     Image.rename: Invalid band name: '_unit_label'
+#
+# Both got as far as a live run. One name, checked once, is the fix.
+LABEL_BAND = "fmu_label"
+
+# Deliberately narrower than EE's real rule: this only ever guards names *we*
+# synthesise, so refusing a legal-but-odd name costs nothing and refusing an
+# illegal one client-side saves a round trip and a mid-run failure.
+_BAND_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
+
+
+def check_band_name(name: str, *, context: str = "") -> str:
+    """Reject a band name EE would reject, here rather than at getInfo time."""
+    if not _BAND_NAME_RE.fullmatch(name):
+        ctx = f"{context}: " if context else ""
+        raise ValueError(
+            f"{ctx}{name!r} is not a band name Earth Engine will accept. It must "
+            f"start with a letter and hold only letters, digits and underscores. "
+            f"EE reports this as 'Image.rename: Invalid band name', and only when "
+            f"the graph is evaluated -- so an unchecked name fails mid-run."
+        )
+    return name
 
 _initialized: bool = False
 
