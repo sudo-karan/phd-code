@@ -26,7 +26,11 @@ from pydantic import ValidationError
 
 from fmu.config import Config, SegmentationParams, SnicInputBand, load_config
 from fmu.stages.base import PipelineContext
-from fmu.stages.segmentation import SegmentationStage, _resolve_input_stack
+from fmu.stages.segmentation import (
+    SegmentationStage,
+    _analysis_grid,
+    _resolve_input_stack,
+)
 
 REPO_ROOT = Path(__file__).parent.parent
 BASELINE_YAML = REPO_ROOT / "configs" / "sanjay_van_baseline.yaml"
@@ -470,3 +474,56 @@ def test_input_bands_survive_a_yaml_round_trip():
     assert [
         (b.source, b.band) for b in reloaded.segmentation.input_bands
     ] == [(b.source, b.band) for b in cfg.segmentation.input_bands]
+
+
+# ---------- the output pixel grid ----------
+
+
+def test_grid_comes_from_the_first_input_band_at_the_analysis_scale():
+    """SNIC's own output carries EE's default WGS84 1-degree projection until it
+    is written to an asset, so the stage has to pin one. It must come from an
+    input band, not be constructed: a 10 m grid in WGS84 is a different raster
+    from S2's 10 m UTM grid, and reprojecting labels onto a foreign CRS would
+    resample them -- turning a metadata fix into real corruption.
+
+    This bug only bit on a *cold* cache. A second run loads the labels from an
+    asset, which reports its real projection, so everything downstream worked.
+    """
+    calls = {}
+
+    class _Proj:
+        def atScale(self, scale):  # noqa: N802 - mirrors the ee API
+            calls["scale"] = scale
+            return "<grid>"
+
+    class _Band:
+        def projection(self):
+            calls["projection_taken"] = True
+            return _Proj()
+
+    class _Stack:
+        def select(self, idx):
+            calls["selected"] = idx
+            return _Band()
+
+    assert _analysis_grid(_Stack(), 10) == "<grid>"
+    # select(0): projection() is per-band, and an embedding stack has 64 of them
+    assert calls["selected"] == 0
+    assert calls["projection_taken"] is True
+    assert calls["scale"] == 10
+
+
+def test_grid_follows_a_non_default_analysis_scale():
+    class _Proj:
+        def atScale(self, scale):  # noqa: N802 - mirrors the ee API
+            return f"<grid@{scale}>"
+
+    class _Band:
+        def projection(self):
+            return _Proj()
+
+    class _Stack:
+        def select(self, idx):
+            return _Band()
+
+    assert _analysis_grid(_Stack(), 30) == "<grid@30>"

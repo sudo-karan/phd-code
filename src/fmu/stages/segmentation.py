@@ -132,16 +132,42 @@ class SegmentationStage(Stage):
         #   - "<input>_mean": one band per input, holding the per-cluster mean
         # We keep the clusters band and the means; drop seeds.
 
-        snic_clusters = snic_result.select("clusters").rename("snic_clusters").clip(roi)
+        # Pin the outputs to a real pixel grid before handing them downstream.
+        # SNIC's result does not carry one: EE gives an unbaked computed image
+        # its default WGS84 1-degree projection, so `snic_clusters.projection()
+        # .nominalScale()` reports ~111 km until the image has been written to
+        # an asset. That is not cosmetic. The merge stage shifts by whole pixels
+        # to build the adjacency graph, and doing that in a 1-degree grid
+        # measures the wrong neighbours entirely -- and it would only show up on
+        # a *fresh* run, since a cached asset reports its real projection and
+        # works fine. A bug that appears only when the cache is cold is the kind
+        # worth removing at the source.
+        grid = _analysis_grid(raw_stack, scale)
+        snic_clusters = (
+            snic_result.select("clusters")
+            .rename("snic_clusters")
+            .reproject(grid)
+            .clip(roi)
+        )
 
         means_band_names = [f"{b}_mean" for b in input_band_names]
         snic_means = (
             snic_result.select(means_band_names)
             .rename(input_band_names)  # drop the _mean suffix
+            .reproject(grid)
             .clip(roi)
         )
 
         # Diagnostic
+        grid_scale = safe_get_info(
+            grid.nominalScale(), context="SNIC output grid scale"
+        )
+        log.info(
+            "  output grid: %s at %.1f m (analysis scale %d m)",
+            safe_get_info(grid.crs(), context="SNIC output grid CRS"),
+            grid_scale,
+            scale,
+        )
         means_bands = safe_get_info(snic_means.bandNames(), context="snic_means bands")
         log.info("  snic_means bands (%d): %s", len(means_bands), means_bands)
         log.info(
@@ -316,3 +342,19 @@ def _zscore_per_band(image: ee.Image, roi: ee.Geometry, scale: int) -> ee.Image:
         normalized = image.select(b).subtract(mean).divide(safe_std).rename(b)
         normalized_bands.append(normalized)
     return ee.Image.cat(normalized_bands)
+
+
+def _analysis_grid(raw_stack: ee.Image, scale: int) -> ee.Projection:
+    """The pixel grid SNIC's outputs should live on.
+
+    Taken from the first input band rather than constructed, because the CRS
+    matters as much as the scale: a 10 m grid in WGS84 is a different raster
+    from Sentinel-2's 10 m UTM grid, and only the latter lines up with the
+    pixels SNIC actually segmented. Reprojecting the labels onto a foreign CRS
+    would resample them -- turning a metadata fix into real corruption.
+
+    `select(0)` because `projection()` is a per-band property and the stack is
+    multi-band (64 bands in an embedding arm). All the bands are 10 m native and
+    co-registered, so the first is representative.
+    """
+    return raw_stack.select(0).projection().atScale(scale)
