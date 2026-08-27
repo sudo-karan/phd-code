@@ -157,7 +157,11 @@ Structure:
   "clustering": {
     "k": 6,
     "seed": 42,
-    "n_training_units": 269,
+    "n_training_units": 289,
+    "n_units_total": 327,
+    "n_units_in_habitat": 303,
+    "n_units_outside_habitat": 24,
+    "n_units_dropped_null_band": 14,
     "training_unit_key": "stand_clusters",
     "normalization_method": "robust",
     "skewness_threshold": 1.0,
@@ -201,6 +205,15 @@ Structure:
       "submitted_at": "2026-05-20T01:35:22+00:00",
       "task_submitted": true
     },
+    "vector_stands_merged_shp": {
+      "folder": "fmu_exports",
+      "filename": "sanjay_van_baseline_stands_merged.zip",
+      "format": "SHP",
+      "task_id": "ABCDEF123456",
+      "submitted_at": "2026-05-20T01:35:22+00:00",
+      "task_submitted": true
+    },
+    "vector_stands_merged_geojson":   { "...": "..." },
     "vector_stands_snic_shp": {
       "folder": "fmu_exports",
       "filename": "sanjay_van_baseline_stands_snic.zip",
@@ -221,6 +234,16 @@ Structure:
     "vector_stands_dissolved_geojson":{ "...": "..." }
   },
   "vector_layers": {
+    "stands_merged": {
+      "description": "One polygon per merged stand ...",
+      "n_features": 327,
+      "geometry_type": "Polygon",
+      "id_field": "stand_id",
+      "id_renumbering": "1..N, sorted by centroid lat desc then lon asc.",
+      "unclustered_stands_retained": true,
+      "shp_attributes": ["stand_id", "stand_lbl", "cluster_id", "area_ha", "perim_m", "n_pixels"],
+      "geojson_attributes": "all SHP attributes plus per-stand means of every features_* band"
+    },
     "stands_snic": {
       "description": "One polygon per SNIC superpixel ...",
       "n_features": 1529,
@@ -491,20 +514,59 @@ Singleband pseudocolor, discrete. Build a color ramp with k stops. Use
 
 ## Vector outputs (in Google Drive)
 
-As of v1.1.0 the export stage emits two vector layers, each in every
-format listed in `export.vector_formats` (default both SHP and GeoJSON).
-SHP files arrive zipped (GEE bundles the .shp/.shx/.dbf/.prj). GeoJSON
-files are single text files.
+The export stage emits three vector layers, each in every format listed in
+`export.vector_formats` (default both SHP and GeoJSON). SHP files arrive
+zipped (GEE bundles the .shp/.shx/.dbf/.prj). GeoJSON files are single
+text files.
 
 | Layer | Filename pattern | What it is |
 |---|---|---|
-| **stands_snic** | `<config>_stands_snic.{zip,geojson}` | One polygon per SNIC superpixel. Debugging / methodology layer. |
-| **stands_dissolved** | `<config>_stands_dissolved.{zip,geojson}` | One polygon per connected same-cluster region. Forester-facing management units. |
+| **stands_merged** | `<config>_stands_merged.{zip,geojson}` | One polygon per merged stand. **The deliverable** — the unit SNIC + merge delineate. |
+| **stands_snic** | `<config>_stands_snic.{zip,geojson}` | One polygon per SNIC superpixel. Debugging / methodology layer, and the pre-merge side of a pre/post comparison. |
+| **stands_dissolved** | `<config>_stands_dissolved.{zip,geojson}` | One polygon per connected same-cluster region. Kept for continuity with the pre-merge outputs; superseded by `stands_merged`. |
 
-For a typical Sanjay Van run: ~1,500 SNIC polygons, ~10-100 dissolved
-polygons depending on cluster fragmentation. Both layers in EPSG:4326.
+`stands_merged` is written only when `merge.enabled`. Without merge the
+stand *is* the superpixel, so the layer would duplicate `stands_snic`
+exactly, and the stage logs a skip instead.
+
+**Which layer to use.** `stands_merged` is the stand map. `stands_dissolved`
+is not: dissolving by cluster id merges every same-type region that happens
+to touch, whatever its extent, which is how a committed pre-merge run ended
+up with 6% of units holding 68% of the area. It remains in the export so
+old and new runs stay comparable, not because it is a second answer.
+
+For a typical Sanjay Van run: ~330 merged stands, ~1,200 SNIC polygons,
+~460 dissolved polygons. All three layers in EPSG:4326.
 
 ### Attribute schemas
+
+#### `stands_merged`
+
+SHP attributes (capped at 10-char field-name limit):
+
+| Field | Type | Meaning |
+|---|---|---|
+| `stand_id` | int | Sequential 1..N. Sorted by centroid lat desc / lon asc. **Deterministic** — the same merged geometry always produces the same numbering. |
+| `stand_lbl` | int | Raw merge label. Use to cross-reference with the `stand_clusters` raster. `stand_id` is a renumbering and cannot be joined back to the raster; this can. |
+| `cluster_id` | int | The k-means cluster (0 to k-1) assigned to this stand. **May be null** — see below. |
+| `area_ha` | float | Polygon area in hectares. |
+| `perim_m` | float | Polygon perimeter in metres. |
+| `n_pixels` | int | `area_m² / (analysis_scale_m)²`. Derived from area, consistent with `area_ha`. |
+
+GeoJSON attributes: every SHP attribute, **plus** per-stand means of every
+features_* band, plus centroid lat/lon.
+
+**Null `cluster_id` is meaningful, not missing data.** Unlike `stands_snic`,
+this layer keeps stands that clustering could not type. Under the merge
+design SNIC + merge produce the stand and clustering only attaches a type
+label to a finished one, so a stand without a label is still a stand —
+dropping it would delete real delineated area from the deliverable while
+leaving the file looking complete. Two reasons a stand is untyped: it lies
+outside the habitat mask, or at least one active feature band has no data
+over it. The clustering stage logs the split, and the counts are in the run
+manifest as `n_units_outside_habitat` and `n_units_dropped_null_band`. Note
+that SHP cannot represent a null integer — read the GeoJSON if you need to
+tell null from 0.
 
 #### `stands_snic`
 

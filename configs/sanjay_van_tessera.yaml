@@ -108,6 +108,10 @@ export:
   export_gee_asset: false
   analysis_scale_m: 10
   drive_folder: fmu_exports
+  # The merged-stand layer: the unit SNIC + merge delineate.
+  # Written only when merge.enabled; without merge it would duplicate
+  # stands_snic exactly.
+  export_vector_merged: true
   export_vector_snic: true
   export_vector_dissolved: true
   vector_formats: [shp, geojson]

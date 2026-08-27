@@ -615,12 +615,18 @@ class ExportParams(BaseModel):
     # to "fmu_exports" in ExportStage.DRIVE_FOLDER.
     drive_folder: str = "fmu_exports"
 
-    # ----- Vector outputs (new) -----
-    # Two vector layers, each with rich attributes (see docs/outputs.md):
+    # ----- Vector outputs -----
+    # Three vector layers, each with rich attributes (see docs/outputs.md):
+    #   stands_merged   - one polygon per merged stand. THE deliverable: the
+    #                     unit SNIC + merge delineate. Only written when
+    #                     merge.enabled, since without it the stand is the
+    #                     superpixel and stands_snic already is that layer.
     #   stands_snic     - one polygon per SNIC superpixel (debugging /
-    #                     methodology layer). ~1,529 features for Sanjay Van.
+    #                     methodology layer, and the pre-merge comparison).
     #   stands_dissolved - one polygon per connected same-cluster region
-    #                     (forester-facing management units).
+    #                     (dissolve-by-cluster-id; kept for continuity with the
+    #                     pre-merge outputs, superseded by stands_merged).
+    export_vector_merged: bool = True
     export_vector_snic: bool = True
     export_vector_dissolved: bool = True
     # Output formats per vector layer. Each format gets its own Drive task.

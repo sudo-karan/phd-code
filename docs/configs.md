@@ -44,7 +44,7 @@ merge: { enabled, criteria, relax_factor, min_area_ha, max_area_ha, min_defined_
 clustering: { k, seed, feature_source, skewness_threshold }
 normalization: { method }
 features: { optical_harmonic, radar, canopy_height, terrain }
-export: { export_geotiff, export_gee_asset, analysis_scale_m, drive_folder, export_vector_snic, export_vector_dissolved, vector_formats, vector_min_stand_pixels }
+export: { export_geotiff, export_gee_asset, analysis_scale_m, drive_folder, export_vector_merged, export_vector_snic, export_vector_dissolved, vector_formats, vector_min_stand_pixels }
 metrics: { reference_config_name, n_comparison_samples, n_silhouette_samples_per_cluster }
 ```
 
@@ -403,9 +403,20 @@ stack that is **constant within a unit**, so it drew each unit's vector once per
 pixel and area-weighted every statistic computed from it: skewness, median, IQR,
 and the k-means fit itself. A 10 ha stand outweighed a 0.1 ha stand 100 to 1,
 which is a property of stand size, not of what a stand is, and nothing in the
-output declared it. k-means now fits on one row per unit and **every** unit
-(~269 stands x ~21 dims), via `stratifiedSample(numPoints=1)`. The manifest
-records `n_training_units` and `training_unit_key` instead.
+output declared it. k-means now fits on one row per unit (~327 stands x ~21
+dims), via `stratifiedSample(numPoints=1)`.
+
+"Every unit" is the intent, not a guarantee. Two things still remove one:
+a unit outside the habitat mask (correct — it should not be typed as forest),
+and `dropNulls=True` removing a unit where some active band has no data. The
+second is a **non-random** exclusion: it follows input coverage rather than
+forest character, and because `cluster()` masks wherever an input band is
+masked, those units are absent from `cluster_labels` too — holes in the map,
+not mistyped stands. The stage logs the split and the manifest records it as
+`n_training_units`, `n_units_total`, `n_units_in_habitat`,
+`n_units_outside_habitat` and `n_units_dropped_null_band`, alongside
+`training_unit_key`. Read the shortfall before reading a silhouette: a cluster
+definition rests only on the units that reached the fit.
 
 This also retires the "10,000 superpixels" figure that appears in older docs and
 decks — that number was always 10,000 pixels.
@@ -505,6 +516,11 @@ by the stage code but with `true` defaults rarely changed:
 - `drive_folder`: folder under My Drive where all Drive exports land
   (default `"fmu_exports"`). Was a hardcoded class constant on
   ExportStage pre-v1.1.0.
+- `export_vector_merged`: bool (default `true`). Emit the `stands_merged`
+  layer: one polygon per merged stand, the pipeline's primary deliverable.
+  Written only when `merge.enabled` — without merge the stand *is* the
+  superpixel and `stands_snic` already is that layer, so the stage logs a
+  skip instead of writing a duplicate.
 - `export_vector_snic`: bool (default `true`). Emit the `stands_snic`
   vector layer (one polygon per SNIC superpixel).
 - `export_vector_dissolved`: bool (default `true`). Emit the
