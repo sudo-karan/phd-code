@@ -14,6 +14,7 @@ from fmu.utils.caching import (
     ExportTaskInfo,
     asset_exists,
     cached_asset_path,
+    config_fingerprint,
     load_cached_image,
     start_export,
 )
@@ -36,20 +37,50 @@ _STAGE_TAILS: dict[str, list[str]] = {
 }
 
 
+# Which stage produces each context key a SNIC input band can name. Keys match
+# SnicInputBand.source; `s2_composite` comes from data_load, which always runs.
+_SNIC_SOURCE_STAGE: dict[str, str] = {
+    "s2_composite": "data_load",
+    "optical_features": "features_optical",
+    "radar_features": "features_radar",
+    "structure_features": "features_structure",
+    "static_features": "features_static",
+    "embedding_features": "features_embedding",
+}
+
+# Canonical order of the feature stages. Membership is computed per config; this
+# only fixes the order, so that two runs needing the same set run it the same way.
+_FEATURE_STAGE_ORDER: list[str] = [
+    "features_optical",
+    "features_radar",
+    "features_structure",
+    "features_static",
+    "features_embedding",
+]
+
+
 def default_stage_names(config: Config, through: str = "metrics") -> list[str]:
     """Canonical stage order for a config, up to and including `through`.
 
-    The clustering feature source decides which feature stages run:
+    Which feature stages run is the union of what the run's three independent
+    consumers ask for:
 
-      - "handcrafted": optical + radar + structure + static all feed clustering
-        (and SNIC needs data_load + radar + structure).
-      - "embedding": a single features_embedding stage feeds clustering, so
-        features_optical and features_static are dropped. SNIC still needs
-        data_load + features_radar + features_structure (its 5 input bands come
-        only from the S2 composite, canopy height, and cross-pol contrast), so
-        those stages remain — segmentation is held byte-identical across arms,
-        which is what makes the metrics comparison attributable to the feature
-        vector alone.
+      - clustering, via `clustering.feature_source`: "handcrafted" pulls
+        optical + radar + structure + static; "embedding" pulls only
+        features_embedding.
+      - segmentation, via `segmentation.input_bands`, which names its sources.
+      - merge, via `merge.criteria`, which names its sources.
+
+    Segmentation is NOT held identical across arms any more. Under the merge
+    design, SNIC plus merge produces the stand, so each arm segments on its own
+    feature space and the resulting stand maps are compared directly, and the
+    stage list has to follow the config rather than a hardcoded branch.
+
+    The *merge rule* is held identical across arms, which is why an embedding
+    run still needs the hand-crafted structure/optical stages: "what makes two
+    adjacent patches one stand" is a fact about forestry, not about the sensor
+    pipeline, and holding it constant is what leaves delineation as the only
+    thing differing between the arms.
 
     `through` selects the post-clustering tail: "clustering" (stop there),
     "profiling", "export" (profiling then export), or "metrics" (default).
@@ -62,21 +93,59 @@ def default_stage_names(config: Config, through: str = "metrics") -> list[str]:
             f"through must be one of {sorted(_STAGE_TAILS)}, got {through!r}"
         )
     if config.clustering.feature_source == "embedding":
-        feature_stages = ["features_radar", "features_structure", "features_embedding"]
+        needed = {"features_embedding"}
     else:
-        feature_stages = [
+        needed = {
             "features_optical",
             "features_radar",
             "features_structure",
             "features_static",
-        ]
+        }
+    needed |= _feature_stages_for(config.segmentation.input_sources())
+    if config.merge.enabled:
+        needed |= _feature_stages_for(config.merge.input_sources())
+    feature_stages = [s for s in _FEATURE_STAGE_ORDER if s in needed]
     return [
         "masking",
         "data_load",
         *feature_stages,
         "segmentation",
+        *(["merge"] if config.merge.enabled else []),
         "clustering",
         *_STAGE_TAILS[through],
+    ]
+
+
+def _feature_stages_for(sources: set[str]) -> set[str]:
+    """Feature stages that produce these context keys.
+
+    `data_load` is filtered out rather than returned: it always runs, and it is
+    not in `_FEATURE_STAGE_ORDER`, so leaving it in would silently drop out of
+    the ordered list anyway.
+    """
+    return {
+        _SNIC_SOURCE_STAGE[s] for s in sources if _SNIC_SOURCE_STAGE[s] != "data_load"
+    }
+
+
+def segmentation_stage_names(config: Config) -> list[str]:
+    """Stages needed to reach segmentation, and no further.
+
+    `default_stage_names(through=...)` always includes clustering, because every
+    tail it offers sits downstream of it. `inspect_segmentation.py` wants to
+    stop earlier, and must not hardcode its own list -- which stages SNIC needs
+    now depends on `segmentation.input_bands`, so a hardcoded list silently
+    breaks any arm that segments on something else.
+
+    Only segmentation's own sources are included: a baseline inspect run has no
+    reason to pay for features_static, which nothing upstream of SNIC reads.
+    """
+    needed = _feature_stages_for(config.segmentation.input_sources())
+    return [
+        "masking",
+        "data_load",
+        *[s for s in _FEATURE_STAGE_ORDER if s in needed],
+        "segmentation",
     ]
 
 
@@ -313,8 +382,9 @@ class Pipeline:
         Non-cacheable keys are not checked.
         """
         outputs: dict[str, Any] = {}
+        fingerprint = config_fingerprint(config)
         for key in sorted(cacheable):
-            path = cached_asset_path(config.name, stage.name, key)
+            path = cached_asset_path(config.name, stage.name, key, fingerprint)
             if asset_exists(path):
                 cache_status[key] = "hit"
                 outputs[key] = load_cached_image(path)
@@ -361,7 +431,9 @@ class Pipeline:
                     key, type(image).__name__,
                 )
                 continue
-            path = cached_asset_path(config.name, stage.name, key)
+            path = cached_asset_path(
+                config.name, stage.name, key, config_fingerprint(config)
+            )
             task = start_export(
                 image=image,
                 asset_path=path,

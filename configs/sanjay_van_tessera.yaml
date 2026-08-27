@@ -82,20 +82,23 @@ features_embedding:
   collapse_reducer: mean
   band_names: null
 
+# As in the AlphaEarth arm: SNIC segments on the embedding itself, so this is
+# an independent pipeline rather than a relabelling of baseline boundaries.
 segmentation:
   size: 10
   compactness: 0.5
   connectivity: 8
   neighborhood_size: 128
   normalize_inputs: true
+  normalize_distance_scale: true
+  input_bands:
+    - {source: embedding_features, band: "*"}   # all embedding dimensions
 
 clustering:
   feature_source: embedding
   k: 6
-  n_training_samples: 10000
   seed: 42
   skewness_threshold: 1.0
-  superpixel_max_size: 1024
 
 normalization:
   method: robust

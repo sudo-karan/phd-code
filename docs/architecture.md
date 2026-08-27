@@ -25,6 +25,7 @@ src/fmu/
 │   ├── features_static.py
 │   ├── features_embedding.py  (optional embedding feature source; see clustering.feature_source)
 │   ├── segmentation.py
+│   ├── merge.py         SNIC superpixels -> forest stands (Xiong et al. 2024)
 │   ├── clustering.py
 │   ├── profiling.py
 │   ├── export.py
@@ -33,7 +34,10 @@ src/fmu/
     ├── __init__.py
     ├── gee.py           init_gee, safe_get_info, safe_call, load_roi_geometry, asset_path
     ├── logging.py       init_logging, per-run dir, Rich + file handler
-    └── caching.py       cached_asset_path, asset_exists, start_export, load_cached_image
+    ├── caching.py       cached_asset_path, asset_exists, start_export, load_cached_image
+    ├── components.py    guards around reduceConnectedComponents' silent maxSize masking
+    ├── adjacency.py     pulls the superpixel region-adjacency graph out of GEE
+    └── region_merge.py  Xiong's two-pass merge, pure Python (no ee import)
 ```
 
 Plus:
@@ -57,7 +61,7 @@ and declares four things:
 @register_stage("clustering")
 class ClusteringStage(Stage):
     name = "clustering"
-    required_inputs = {"roi", "snic_clusters", "habitat_mask"}  # invariant subset; validate() adds source-specific keys
+    required_inputs = {"roi", "habitat_mask"}  # invariant subset; validate() adds the feature source's keys AND the unit key
     produces = {"cluster_labels", "feature_stack"}
     cacheable_outputs = {"cluster_labels", "feature_stack"}
 
@@ -89,6 +93,16 @@ images when `clustering.feature_source == "handcrafted"`, or the single
 `embedding_features` image (from `features_embedding`) when `"embedding"`.
 Keeping `required_inputs` static and branching in `validate()` means an
 embedding run isn't forced to produce the hand-crafted stack it never uses.
+
+It also checks the **unit key** the same way. Which label image a stage reduces
+over — `stand_clusters` when the merge stage runs, `snic_clusters` when it does
+not — comes from `Config.unit_label_key()`, one definition shared by clustering
+and metrics. A static class attribute cannot see the config, and a silhouette
+over stands next to a profile over superpixels is not comparable in a way any
+number would reveal.
+
+`SegmentationStage` and `MergeStage` do the same for their config-declared band
+sources (`segmentation.input_bands`, `merge.criteria`).
 
 ### 2. `PipelineContext`
 
@@ -149,18 +163,30 @@ The canonical stage order is composed by `default_stage_names(config)` in
 - **`"handcrafted"`** (default): `masking`, `data_load`, `features_optical`,
   `features_radar`, `features_structure`, `features_static`, `segmentation`,
   `clustering`, `metrics`.
-- **`"embedding"`**: drops `features_optical` and `features_static` and
-  inserts `features_embedding`, giving `masking`, `data_load`,
-  `features_radar`, `features_structure`, `features_embedding`,
-  `segmentation`, `clustering`, `metrics`.
+- **`"embedding"`**: asks for `features_embedding` alone.
 
-`data_load` + `features_radar` + `features_structure` stay in both arms
-because segmentation (SNIC) draws its 5 input bands from them (S2 composite,
-canopy height, cross-pol contrast), never from the clustering stack — so
-boundaries are byte-identical across arms and the metrics comparison is
-attributable to the feature vector alone. Callers still pass the resulting
-list explicitly to `Pipeline(...)` (and must import the stage modules so
-`@register_stage` has run).
+That is only part of the input. `default_stage_names()` takes the **union of
+three independent consumers**: clustering (via `feature_source`, above),
+segmentation (via `segmentation.input_bands`), and merge (via
+`merge.criteria`) — the latter two name their sources explicitly.
+
+The shipped embedding configs segment on the embedding as well as cluster on it,
+so `features_radar` and `features_static` drop out. `features_optical` and
+`features_structure` remain, because the merge criteria are held identical
+across arms and read `canopy_height`, `canopy_height_std` and
+`ndvi_amplitude_annual`. A config that clustered on the embedding but segmented
+on hand-crafted bands would pull the other stages back in automatically.
+
+Segmentation is **not** held identical across arms. Under the merge design SNIC
++ `merge` produces the stand and clustering only attaches a type label, so a
+shared tessellation would have reduced the embedding arm to "which labels does
+k-means give inside boundaries the hand-crafted stack drew" — never putting the
+delineation question to the embedding. What is controlled is everything that is
+not the feature representation: SNIC hyperparameters, `k`, `seed`, masking,
+analysis scale, merge rules.
+
+Callers still pass the resulting list explicitly to `Pipeline(...)` (and must
+import the stage modules so `@register_stage` has run).
 
 ### Execution
 
@@ -215,7 +241,8 @@ Regression test: `tests/test_pipeline.py::test_subclass_inherits_cacheable_outpu
 
 | Function | What it does |
 |---|---|
-| `cached_asset_path(config_name, stage_name, key)` | Build a deterministic GEE asset path: `{asset_root}/{config_name}/{stage_name}/{key}` |
+| `cached_asset_path(config_name, stage_name, key, fingerprint)` | Build a deterministic GEE asset path: `{asset_root}/{config_name}/{stage_name}/{key}__{fingerprint}` |
+| `config_fingerprint(config)` | Short hash of the config content that can change a cached raster, so editing a threshold does not silently reuse the old asset |
 | `asset_exists(path) -> bool` | True if the asset exists. Tries the underlying HttpError status (401/403 propagates, 404 returns False), falls back to message-text matching for older GEE client versions |
 | `start_export(image, asset_path, roi, scale)` | Submit an async export-to-asset task; return `ExportTaskInfo(task_id, asset_path, description)` |
 | `load_cached_image(path) -> ee.Image` | Trivial wrapper for `ee.Image(path)` |

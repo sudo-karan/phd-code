@@ -18,7 +18,7 @@ from fmu.stages.base import PipelineContext
 from fmu.stages.data_load import DataLoadStage  # noqa: F401  # registers stage
 from fmu.stages.features_optical import FeaturesOpticalStage  # noqa: F401
 from fmu.stages.masking import MaskingStage  # noqa: F401
-from fmu.utils.caching import asset_exists, cached_asset_path
+from fmu.utils.caching import asset_exists, cached_asset_path, config_fingerprint
 from fmu.utils.gee import init_gee, load_roi_geometry, safe_get_info
 from fmu.utils.logging import init_logging
 
@@ -47,7 +47,9 @@ def main() -> None:
     prefix = config.features_optical.index  # "ndvi" or "nirv"
 
     # Numeric summary; per-band statistics over the ROI
-    features_path = cached_asset_path(config.name, "features_optical", "optical_features")
+    features_path = cached_asset_path(
+        config.name, "features_optical", "optical_features", config_fingerprint(config)
+    )
     features_cached = asset_exists(features_path)
 
     print()

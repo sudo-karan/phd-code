@@ -39,8 +39,9 @@ features_radar: { percentiles, include_iqr, include_cross_pol_contrast }
 features_structure: { include_neighborhood_stats, neighborhood_kernel_size }
 features_static: { include_climate, max_water_distance_pixels }
 features_embedding: { collapse_reducer, band_names }
-segmentation: { size, compactness, connectivity, neighborhood_size, normalize_inputs }
-clustering: { k, n_training_samples, seed, feature_source, skewness_threshold, superpixel_max_size }
+segmentation: { size, compactness, connectivity, neighborhood_size, normalize_inputs, normalize_distance_scale, input_bands }
+merge: { enabled, criteria, relax_factor, min_area_ha, max_area_ha, min_defined_criteria, min_frac_valid, tie_break, max_pass2_iterations, max_superpixels }
+clustering: { k, seed, feature_source, skewness_threshold }
 normalization: { method }
 features: { optical_harmonic, radar, canopy_height, terrain }
 export: { export_geotiff, export_gee_asset, analysis_scale_m, drive_folder, export_vector_snic, export_vector_dissolved, vector_formats, vector_min_stand_pixels }
@@ -61,7 +62,8 @@ directly. It's around 300 lines and self-documenting.
 | `data_load` | S1 acquisition geometry, S2 composite reducer | `data_load` |
 | `masking` | Habitat class definition (IndiaSAT primary, WorldCover fallback) + water threshold | `masking` |
 | `features_*` | Per-feature-stage toggles and parameters | The matching `features_*` stage |
-| `segmentation` | SNIC parameters | `segmentation` |
+| `segmentation` | SNIC parameters *and its input band stack* | `segmentation`, `pipeline.default_stage_names` |
+| `merge` | Stand-aggregation rules and area bounds | `merge`; also derives the `reduceConnectedComponents` cap used by `clustering` and `metrics` |
 | `clustering` | k-means hyperparameters and preprocessing | `clustering` |
 | `normalization` | `robust` vs `zscore` scaling | `clustering` |
 | `features` | High-level on/off toggles per feature family | Currently informational; future use |
@@ -119,15 +121,44 @@ Both differ from baseline in the same three ways:
    with `scripts/prep_tessera.py` and paste in the printed asset id).
 3. `metrics.reference_config_name: sanjay_van_baseline` (was `null`).
 
-What makes this a **controlled swap**: SNIC segmentation (`size`, `compactness`,
-`connectivity`, `neighborhood_size`), `clustering.k`, and `clustering.seed` are
-held identical to baseline. Segmentation is in fact byte-identical across arms —
-in embedding mode it still runs `data_load + features_radar +
-features_structure`, because SNIC's 5 input bands come from the S2 composite,
-canopy height, and cross-pol contrast, never from the clustered feature vector.
-Only `features_optical` and `features_static` drop out (see
-`default_stage_names` in `pipeline.py`). Any difference the metrics stage reports
-is therefore attributable to the feature representation alone.
+4. `segmentation.input_bands: [{source: embedding_features, band: "*"}]` — SNIC
+   segments on the embedding too.
+
+**AlphaEarth supplies the feature vector for both steps that see features:**
+SNIC draws the boundaries and k-means labels them. So `features_radar` and
+`features_static` drop out — nothing in the arm reads them.
+
+`features_optical` and `features_structure` **do** still run, for one reason:
+the **merge criteria are held identical across arms** and read `canopy_height`,
+`canopy_height_std` and `ndvi_amplitude_annual`. "What makes two adjacent
+patches one stand" is a fact about forestry, not about the sensor pipeline, and
+holding the merge rule constant is what leaves *delineation* as the only thing
+differing between the arms — the thesis question. If each arm merged on its own
+features, differences in stand geometry would confound "different boundaries"
+with "different merge rules", and the thresholds would lose their physical units
+along with their meaning.
+
+`default_stage_names()` derives the stage list from the union of what
+clustering, segmentation and merge each ask for, so all of this follows from
+config rather than a hardcoded branch.
+
+**What is controlled** is everything that is *not* the feature representation:
+same AOI, same 2017-2022 window, same SNIC hyperparameters (`size`,
+`compactness`, `connectivity`, `neighborhood_size`), same `clustering.k` and
+`seed`, same masking, same `export.analysis_scale_m`. `normalize_distance_scale`
+is what makes `compactness: 0.5` mean the same thing at 6 bands and at 64.
+
+Segmentation used to be held byte-identical across arms and that was called the
+control. It was in fact the flaw: under the merge design SNIC + `merge`
+*produces the stand*, so a shared tessellation reduced the embedding arm to
+"which labels does k-means give inside boundaries the hand-crafted stack drew" —
+never putting the delineation question, which is the thesis question, to the
+embedding at all.
+
+The cost is that the two arms now produce two **different stand maps**, so
+ARI/NMI against a shared tessellation is no longer the comparison. There is no
+ground-truth stand map, so neither can be declared correct; they are compared on
+stability, held-out predictive power at matched stand count, and geometry.
 
 ## Adding a new experiment
 
@@ -321,11 +352,63 @@ hand-crafted feature images (optical / radar / structure / static).
 - `connectivity`: 4 or 8 (default 8).
 - `neighborhood_size`: SNIC search window (default 128).
 - `normalize_inputs`: z-score per band before SNIC (default `true`).
+- `normalize_distance_scale`: after z-scoring, divide the stack by the
+  empirical RMS feature distance between 4-adjacent pixels over the ROI
+  (default `true`). SNIC trades a summed squared colour distance against a
+  spatial-compactness term, and that sum grows with the number of *effective*
+  axes — so without this, `compactness: 0.5` buys a much weaker spatial term in
+  a 64-band embedding arm than in a 6-band hand-crafted one, and the two are not
+  comparable. Dividing by `sqrt(n_bands)` would assume the bands are
+  independent; for an embedding they are not. The value actually used is
+  recorded in the run manifest as `distance_scale`. This makes `compactness`
+  *comparable* across arms; it does not make any particular value correct.
+- `input_bands`: the bands SNIC segments on, as a list of
+  `{source, band}` pairs, in order. `source` is a pipeline context key —
+  one of `s2_composite`, `optical_features`, `radar_features`,
+  `structure_features`, `static_features`, `embedding_features`.
+
+  Two special `band` values:
+    - `"*"` — every band of that image. Use this for embedding arms rather
+      than listing 64 dimensions by hand; it costs one extra `bandNames()`
+      call and keeps working if the dimensionality changes. A source using
+      `"*"` may not also list named bands.
+    - `composite_nirv` — exists on no upstream image; the segmentation stage
+      derives it from the composite's B4/B8 as `(B8/10000) × NDVI`.
+
+  Default (used by `sanjay_van_baseline.yaml`, which deliberately does not
+  repeat it so the two cannot drift): `B4_median`, `B8_median` from
+  `s2_composite`; `canopy_height`, `canopy_height_std` from
+  `structure_features`; `ndvi_amplitude_annual` from `optical_features`;
+  `vv_minus_vh_median` from `radar_features`. Six bands over ~four independent
+  axes — optical colour, vertical structure, canopy roughness, phenology, radar.
+
+  Band names must be unique after `"*"` expansion, since SNIC names its
+  per-cluster means `<band>_mean`. Two further checks run at config load: a
+  source cannot mix `"*"` with named bands, and an `optical_features` band
+  prefixed `ndvi_`/`nirv_` must match `features_optical.index` — otherwise an
+  `index: nirv` arm using the default stack would fail with a GEE
+  band-not-found error only after the feature stages had already been billed.
+
+  **This list also decides which feature stages run.** `default_stage_names()`
+  takes the union of what clustering asks for (via `feature_source`) and what
+  segmentation asks for (via `input_bands`), so a config that segments only on
+  the embedding does not run the hand-crafted feature stages at all.
 
 ### `clustering`
 
 - `k`: number of clusters (default 6).
-- `n_training_samples`: pixels sampled for k-means training (default 10000).
+`n_training_samples` **no longer exists** and a config still carrying it will
+fail to load. It sampled 10,000 *pixels* — roughly 37 per superpixel — from a
+stack that is **constant within a unit**, so it drew each unit's vector once per
+pixel and area-weighted every statistic computed from it: skewness, median, IQR,
+and the k-means fit itself. A 10 ha stand outweighed a 0.1 ha stand 100 to 1,
+which is a property of stand size, not of what a stand is, and nothing in the
+output declared it. k-means now fits on one row per unit and **every** unit
+(~269 stands x ~21 dims), via `stratifiedSample(numPoints=1)`. The manifest
+records `n_training_units` and `training_unit_key` instead.
+
+This also retires the "10,000 superpixels" figure that appears in older docs and
+decks — that number was always 10,000 pixels.
 - `seed`: random seed (default 42).
 - `feature_source`: `handcrafted` (default) or `embedding`. `handcrafted`
   clusters the multi-sensor hand-engineered stack (optical + radar + structure
@@ -336,8 +419,68 @@ hand-crafted feature images (optical / radar / structure / static).
   directly comparable through the metrics stage.
 - `skewness_threshold`: bands with `|skew|` above this get log-transformed
   (default 1.0 per DEC-004).
-- `superpixel_max_size`: max pixels per SNIC superpixel; must exceed the
-  largest superpixel in the image (default 1024).
+
+`superpixel_max_size` **no longer exists** and a config still carrying it will
+fail to load. It was the `maxSize` argument to `reduceConnectedComponents`,
+which does not clamp — it **masks any component larger than it**, deleting those
+regions with no error. Hand-set, the shipped configs drifted apart (1024
+baseline vs 256 embedding), and the embedding arm silently lost 15 superpixels
+totalling 43.9 ha — 3.8% of its segmented area — in a two-arm comparison. It is
+now derived as `ceil(merge.max_area_ha × 10000 / analysis_scale_m²) × 1.2`
+(1200 px at the defaults) and asserted against the actual labels at stage entry,
+so an undersized cap raises instead of deleting stands.
+
+### `merge`
+
+Aggregates SNIC superpixels into stands, between `segmentation` and
+`clustering`. Follows Xiong et al. 2024 §2.6: two passes, hard area bounds, and
+a two-tier threshold scheme.
+
+- `enabled`: run the merge stage (default `true`).
+- `criteria`: mapping of band name to tolerance, **in the band's own physical
+  units**. Defaults `{canopy_height: 2.00, canopy_height_std: 0.45,
+  ndvi_amplitude_annual: 0.030}` — Xiong's stand height / canopy closure /
+  species axes, using the closest analogue available without ALS or a species
+  map. Measured from this AOI's own adjacent-superpixel difference distribution
+  (1249 superpixels, 3569 adjacent pairs).
+
+  Absolute units are the contract, percentiles are the calibration tool: "merge
+  below the 60th percentile of neighbour differences" merges the same fraction
+  of pairs whether the forest is uniform or wildly heterogeneous, and a forester
+  wants "stands differ by less than 2 m in mean canopy height", not a quantile.
+  Xiong reports SH1 = 3 m for the same reason.
+
+  These are per-band marginals and the gate is conjunctive, so they do **not**
+  describe the joint admit rate. Do not loosen a threshold to hit a target pass
+  rate — pass rate is a diagnostic, not an objective.
+
+  `elevation` is deliberately absent despite being the rank-3 separator (0.52):
+  Sanjay Van has ~20 m of total relief and a within-cluster elevation IQR of
+  10–12 m, so including it means two structurally identical patches refuse to
+  merge over 10 m of altitude. `vv_minus_vh_median` is a supported optional
+  fourth criterion, off by default because no paper in the 20-paper survey uses
+  radar for stand delineation — add it and report the ablation.
+- `relax_factor`: tolerances are multiplied by this in the eliminate pass
+  (default 1.75; Xiong's SH2/SH1 is 5/3 = 1.67).
+- `min_area_ha` / `max_area_ha`: hard bounds (defaults 1.0 / 10.0). Xiong uses
+  20 ha max for plantation, 50 ha for natural forest, 0.5 ha min. Area is a
+  first-class term in the merge rule, not a post-filter. `max_area_ha` is also
+  what the component-size cap above is derived from, so the pass-2 fallback
+  respects it too.
+- `min_defined_criteria`: a pass-1 merge needs at least this many criteria
+  defined on both sides (default 2). One criterion is too weak a similarity
+  test; pairs that fall short drop to pass 2.
+- `min_frac_valid`: below this fraction of valid pixels for a band, profiling
+  emits null for that band rather than a mean over territory that has none
+  (default 0.5).
+- `tie_break`: `shared_edge_length` (the only value). Xiong's eliminate-pass
+  fallback, and what prevents orphans. Shared edge is counted with
+  4-connectivity even though SNIC runs `connectivity: 8` — a diagonal contact
+  has zero shared boundary length.
+- `max_pass2_iterations`: cap so a pathological AOI logs its stragglers instead
+  of looping (default 60).
+- `max_superpixels`: fail loudly above this many superpixels (default 50000),
+  where the client-side `remap` label list stops being reasonable.
 
 ### `normalization`
 

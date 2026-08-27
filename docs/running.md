@@ -228,15 +228,27 @@ clustering against a reference config. Setup:
 
 ## Running the embedding arm
 
-The embedding arm clusters a pretrained per-pixel embedding (AlphaEarth or
-Tessera) instead of the hand-crafted feature stack, then compares the result
-against the hand-crafted baseline. `clustering.feature_source: embedding` in
-the config drives this; `inspect_metrics.py` picks the right stage list
-automatically (`default_stage_names` drops features_optical / features_static
-and inserts features_embedding, holding SNIC byte-identical to the baseline so
-any difference is attributable to the feature representation alone). There is
-no `inspect_features_embedding.py`; the new stage runs inside the pipeline that
+The embedding arm is a fully independent pipeline: a pretrained per-pixel
+embedding (AlphaEarth or Tessera) supplies the feature vector for **both**
+steps that see features — SNIC draws the boundaries on it and k-means labels
+them — and the result is compared against the hand-crafted baseline. Two config
+keys drive it: `clustering.feature_source: embedding` and
+`segmentation.input_bands: [{source: embedding_features, band: "*"}]`.
+`inspect_metrics.py` picks the stage list automatically —
+`default_stage_names` takes the union of what clustering, segmentation and merge
+each ask for. In the shipped embedding configs `features_radar` and
+`features_static` drop out, while `features_optical` and `features_structure`
+remain because the merge criteria (held identical across arms) read
+`canopy_height`, `canopy_height_std` and `ndvi_amplitude_annual`. What is held identical to the
+baseline is everything that is not the feature representation (SNIC
+hyperparameters, `k`, `seed`, masking, analysis scale). There is no
+`inspect_features_embedding.py`; the stage runs inside the pipeline that
 `inspect_metrics.py` (or `inspect_clustering.py`) drives.
+
+Because the arms now produce two different stand maps and there is no
+ground-truth stand map, neither can be declared correct — they are compared on
+stability, held-out predictive power at matched stand count, and geometry, not
+on agreement with a reference.
 
 ### AlphaEarth
 

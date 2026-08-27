@@ -83,19 +83,42 @@ features_static:
   include_climate: true
   max_water_distance_pixels: 1000
 
+# Same six-band stack as the baseline default, but spelled out because
+# features_optical.index: nirv renames the harmonic bands `nirv_*` — the
+# default's `ndvi_amplitude_annual` does not exist in this arm. The phenology
+# slot is the arm's own index, which is the point of the comparison: baseline
+# segments on the NDVI amplitude, this one on the NIRv amplitude.
 segmentation:
   size: 10
   compactness: 0.5
   connectivity: 8
   neighborhood_size: 128
   normalize_inputs: true
+  normalize_distance_scale: true
+  input_bands:
+    - {source: s2_composite,       band: B4_median}
+    - {source: s2_composite,       band: B8_median}
+    - {source: structure_features, band: canopy_height}
+    - {source: structure_features, band: canopy_height_std}
+    - {source: optical_features,   band: nirv_amplitude_annual}
+    - {source: radar_features,     band: vv_minus_vh_median}
+
+# Same merge rule as the baseline, but the composition criterion has to be
+# spelled out for the same reason input_bands did: features_optical.index: nirv
+# renames the harmonic bands, so the default's `ndvi_amplitude_annual` does not
+# exist here. Tolerances are unchanged — the amplitude of NIRv and of NDVI are
+# not the same quantity, so a shared tolerance is an assumption, and this arm
+# is where that assumption gets tested rather than asserted.
+merge:
+  criteria:
+    - {source: structure_features, band: canopy_height,        tolerance: 2.00}
+    - {source: structure_features, band: canopy_height_std,    tolerance: 0.45}
+    - {source: optical_features,   band: nirv_amplitude_annual, tolerance: 0.030}
 
 clustering:
   k: 6
-  n_training_samples: 10000
   seed: 42
   skewness_threshold: 1.0
-  superpixel_max_size: 1024
 
 normalization:
   method: robust
@@ -121,3 +144,11 @@ metrics:
   reference_config_name: sanjay_van_baseline  # variant compares against baseline
   n_comparison_samples: 10000
   n_silhouette_samples_per_cluster: 833
+  # Same three attributes as the baseline default, respelled for index: nirv.
+  # canopy_height is a merge criterion, so R^2 on it is partly circular — it is
+  # reported because it is the number the literature quotes (Xiong et al. 2024:
+  # 81.80% on mean canopy height), not as evidence.
+  r2_attributes:
+    - {source: structure_features, band: canopy_height,     held_out: false}
+    - {source: optical_features,   band: nirv_trend,        held_out: true}
+    - {source: structure_features, band: canopy_height_max, held_out: true}

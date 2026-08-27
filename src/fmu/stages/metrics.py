@@ -39,6 +39,7 @@ Implementation notes:
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, ClassVar
 
 import ee
@@ -53,7 +54,9 @@ from sklearn.metrics import (
 
 from fmu.config import Config
 from fmu.stages.base import PipelineContext, Stage, StageResult, register_stage
-from fmu.utils.caching import asset_exists, cached_asset_path
+from fmu.utils.adjacency import stand_geometry, summarize_stand_geometry
+from fmu.utils.caching import asset_exists, cached_asset_path, config_fingerprint
+from fmu.utils.components import assert_components_fit, explained_variance_r2
 from fmu.utils.gee import safe_call, safe_get_info
 from fmu.utils.logging import get_logger
 
@@ -63,29 +66,77 @@ log = get_logger(__name__)
 @register_stage("metrics")
 class MetricsStage(Stage):
     name = "metrics"
-    required_inputs = {"roi", "cluster_labels", "habitat_mask", "snic_clusters"}
+    # The unit label key is `stand_clusters` or `snic_clusters` depending on
+    # whether merge ran, so it is checked in validate() rather than here.
+    required_inputs = {"roi", "cluster_labels", "habitat_mask"}
     produces = {"comparison_metrics", "agreement_map", "confidence"}
     cacheable_outputs: ClassVar[set[str]] = set()  # always run; produces Python dict + images
+
+    def validate(self, ctx: PipelineContext, config: Config) -> None:
+        needed = self.required_inputs | {config.unit_label_key()}
+        missing = needed - ctx.keys()
+        if missing:
+            raise KeyError(
+                f"{self.name}: missing required context inputs: {sorted(missing)}. "
+                f"Context has: {sorted(ctx.keys())}"
+            )
 
     @safe_call("metrics stage")
     def run(self, ctx: PipelineContext, config: Config) -> StageResult:
         roi = ctx.get("roi")
         current_labels: ee.Image = ctx.get("cluster_labels")
         habitat_mask: ee.Image = ctx.get("habitat_mask")
-        snic_clusters: ee.Image = ctx.get("snic_clusters")
+        unit_key = config.unit_label_key()
+        unit_labels: ee.Image = ctx.get(unit_key)
         scale = config.export.analysis_scale_m
         params = config.metrics
         k = config.clustering.k
+        # Cache paths carry a fingerprint of the config content, so resolving
+        # the reference arm's assets means fingerprinting ITS config -- knowing
+        # its name is no longer enough.
+        fingerprint = config_fingerprint(config)
+        reference_fingerprint = _reference_fingerprint(params)
 
         metrics: dict[str, Any] = {
             "current_config": config.name,
             "k": k,
         }
 
+        # --- Stand geometry: the deliverable, measured ---
+        # This is the thing the pipeline produces, and until now nothing
+        # measured it. Xiong et al. 2024, Pukkala 2018, Jia 2019 and Sun et al.
+        # 2021 all report stand geometry; the pathology in the layer the merge
+        # replaces (dissolve-by-cluster: 6% of units holding 68% of the area) is
+        # invisible without it.
+        log.info("  measuring %s geometry", unit_key)
+        geometry = stand_geometry(
+            unit_labels, roi, scale, context=f"{unit_key} geometry"
+        )
+        geom_summary = summarize_stand_geometry(
+            geometry, min_area_ha=config.merge.min_area_ha
+        )
+        geom_summary["unit_key"] = unit_key
+        metrics["stand_geometry"] = geom_summary
+        _log_geometry(geom_summary, config.merge.min_area_ha)
+
+        # Fold the merge's own diagnostics in, so the orphan split and the
+        # threshold calibration read as results rather than as manifest
+        # archaeology. Absent when merge.enabled is false.
+        if ctx.has("merge_diagnostics"):
+            metrics["merge"] = ctx.get("merge_diagnostics")
+
+        # --- Explained variance: the headline, replacing silhouette ---
+        log.info("  computing explained variance of stand attributes")
+        metrics["explained_variance"] = _explained_variance(
+            ctx, config, unit_labels, habitat_mask, roi, scale, geom_summary
+        )
+        _log_r2(metrics["explained_variance"])
+
         # --- Intrinsic silhouette score for current config ---
         log.info("  computing intrinsic silhouette for %s", config.name)
         silh_current = _compute_silhouette(
             config_name=config.name,
+            fingerprint=fingerprint,
             cluster_labels=current_labels,
             habitat_mask=habitat_mask,
             roi=roi,
@@ -106,7 +157,10 @@ class MetricsStage(Stage):
                 params.reference_config_name,
             )
             reference_path = cached_asset_path(
-                params.reference_config_name, "clustering", "cluster_labels"
+                params.reference_config_name,
+                "clustering",
+                "cluster_labels",
+                reference_fingerprint,
             )
             if not asset_exists(reference_path):
                 raise FileNotFoundError(
@@ -160,11 +214,15 @@ class MetricsStage(Stage):
 
             # Reference silhouette (so we can compare intrinsic quality)
             ref_feature_stack_path = cached_asset_path(
-                params.reference_config_name, "clustering", "feature_stack"
+                params.reference_config_name,
+                "clustering",
+                "feature_stack",
+                reference_fingerprint,
             )
             if asset_exists(ref_feature_stack_path):
                 silh_reference = _compute_silhouette(
                     config_name=params.reference_config_name,
+                    fingerprint=reference_fingerprint,
                     cluster_labels=reference_labels,
                     habitat_mask=habitat_mask,
                     roi=roi,
@@ -194,12 +252,25 @@ class MetricsStage(Stage):
             # superpixels. Each stand's confidence = fraction of its pixels that
             # agree with the reference (0..1). Consensus/stability, not
             # correctness (no ground-truth stand map exists to score against).
+            max_component_px = config.max_component_pixels()
+            metrics["unit_key"] = unit_key
+            metrics["component_stats"] = assert_components_fit(
+                unit_labels,
+                roi,
+                scale,
+                max_component_px,
+                context=f"metrics per-{unit_key} confidence",
+            )
             confidence = (
-                agreement_map.addBands(snic_clusters.rename("snic_label"))
+                agreement_map.addBands(unit_labels.rename("snic_label"))
                 .reduceConnectedComponents(
                     reducer=ee.Reducer.mean(),
                     labelBand="snic_label",
-                    maxSize=config.clustering.superpixel_max_size,
+                    # Derived, not configured, and asserted above: this argument
+                    # masks components larger than it, so an undersized cap
+                    # would drop the biggest stands out of the confidence layer
+                    # entirely rather than raising.
+                    maxSize=max_component_px,
                 )
                 .select(["agrees"], ["confidence"])
                 .updateMask(habitat_mask)
@@ -311,6 +382,7 @@ def _sample_paired_labels(
 def _compute_silhouette(
     *,
     config_name: str,
+    fingerprint: str | None,
     cluster_labels: ee.Image,
     habitat_mask: ee.Image,
     roi: ee.Geometry,
@@ -325,7 +397,9 @@ def _compute_silhouette(
     number of points. Important for silhouette which compares within-cluster
     distance to nearest-cluster distance.
     """
-    feature_stack_path = cached_asset_path(config_name, "clustering", "feature_stack")
+    feature_stack_path = cached_asset_path(
+        config_name, "clustering", "feature_stack", fingerprint
+    )
     if not asset_exists(feature_stack_path):
         log.warning("  feature_stack asset not found for %s; skipping silhouette", config_name)
         return float("nan")
@@ -372,3 +446,155 @@ def _compute_silhouette(
         return float("nan")
 
     return float(silhouette_score(np.array(feature_vectors), np.array(labels)))
+
+
+def _log_geometry(s: dict[str, Any], min_area_ha: float) -> None:
+    """Print the stand-geometry summary, including the numbers that show a bad
+    partition. A mean area alone hides both failure modes: thousands of slivers,
+    and a handful of blobs holding the landscape."""
+    if not s.get("n_stands"):
+        log.warning("    no %s found to measure", s.get("unit_key", "unit"))
+        return
+    log.info(
+        "    %d %s over %.1f ha; area min/p10/median/p90/max = "
+        "%.2f / %.2f / %.2f / %.2f / %.2f ha",
+        s["n_stands"],
+        s["unit_key"],
+        s["total_area_ha"],
+        s["area_ha_min"],
+        s["area_ha_p10"],
+        s["area_ha_median"],
+        s["area_ha_p90"],
+        s["area_ha_max"],
+    )
+    log.info(
+        "    %d (%.1f%%) below min_area_ha=%.2f, holding %.2f ha; "
+        "largest decile holds %.1f%% of the area",
+        s["stands_below_min_area"],
+        100 * s["frac_stands_below_min_area"],
+        min_area_ha,
+        s["area_in_undersized_stands_ha"],
+        100 * s["area_share_largest_decile"],
+    )
+    log.info(
+        "    Polsby-Popper min/median/max = %.3f / %.3f / %.3f "
+        "(raster boundary; comparable between stands at this scale, NOT to a "
+        "vector-derived figure)",
+        s["polsby_popper_min"],
+        s["polsby_popper_median"],
+        s["polsby_popper_max"],
+    )
+
+
+def _explained_variance(
+    ctx: PipelineContext,
+    config: Config,
+    unit_labels: ee.Image,
+    habitat_mask: ee.Image,
+    roi: ee.Geometry,
+    scale: int,
+    geom_summary: dict[str, Any],
+) -> dict[str, Any]:
+    """R-squared of each configured attribute, with the stand count beside it.
+
+    This replaces silhouette as the headline. Silhouette is computed in each
+    arm's own feature space (21-D vs 64-D) and is strongly
+    dimensionality-dependent, so it was never a valid cross-arm number; under
+    two independent segmentations it is doubly invalid. It stays as an internal
+    diagnostic for the labelling step.
+
+    `n_stands` sits in the same dict as every R-squared value, not somewhere
+    else in the file, because the two are meaningless apart: R-squared rises
+    monotonically with stand count, and in the limit of one stand per superpixel
+    it is 1.0 by construction. Comparing two arms at different stand counts is
+    not a comparison.
+    """
+    attributes = config.metrics.r2_attributes
+    if not attributes:
+        return {"n_stands": geom_summary.get("n_stands", 0), "attributes": {}}
+
+    missing = {a.source for a in attributes} - ctx.keys()
+    if missing:
+        log.warning(
+            "    skipping explained variance: context is missing %s. The "
+            "r2_attributes name sources this run does not produce.",
+            sorted(missing),
+        )
+        return {"n_stands": geom_summary.get("n_stands", 0), "attributes": {}}
+
+    feature_image = ee.Image.cat(
+        [ctx.get(a.source).select(a.band).rename(a.band) for a in attributes]
+    )
+    per_band = explained_variance_r2(
+        feature_image,
+        unit_labels,
+        roi,
+        scale,
+        config.max_component_pixels(),
+        mask=habitat_mask,
+        context="stand explained variance",
+    )
+
+    held_out = {a.band: a.held_out for a in attributes}
+    attrs = {
+        band: {**stats, "held_out": held_out.get(band, True)}
+        for band, stats in per_band.items()
+    }
+    return {
+        # Deliberately in the same dict as the R-squared values. They do not
+        # mean anything apart.
+        "n_stands": geom_summary.get("n_stands", 0),
+        "unit_key": geom_summary.get("unit_key"),
+        "level": "pixel",
+        "attributes": attrs,
+    }
+
+
+def _log_r2(ev: dict[str, Any]) -> None:
+    attrs = ev.get("attributes") or {}
+    if not attrs:
+        log.warning("    no explained-variance attributes computed")
+        return
+    log.info("    over %d %s:", ev["n_stands"], ev.get("unit_key", "units"))
+    for band, s in sorted(attrs.items()):
+        log.info(
+            "      %-24s R2 = %.4f  (%s, %d px)",
+            band,
+            s["r2"],
+            "HELD OUT" if s["held_out"] else "used to draw the boundaries",
+            s["n_pixels"],
+        )
+    log.info(
+        "    R2 rises with stand count, so it is only comparable between arms "
+        "at matched n_stands. Compare the HELD OUT rows; the used one is "
+        "reported for comparability with the literature, not as evidence."
+    )
+
+
+def _reference_fingerprint(params: Any) -> str | None:
+    """Fingerprint of the reference arm's config, for resolving its cache paths.
+
+    Cache assets are keyed on config *content*, not just name, so a comparison
+    run has to load and fingerprint the reference config rather than assuming
+    one asset per name. Returns None when no reference is set.
+
+    A missing file raises rather than silently falling back to the name-only
+    path: that fallback would point at a pre-fingerprint asset built by older
+    code, and comparing against it would produce a plausible number from the
+    wrong run.
+    """
+    if params.reference_config_name is None:
+        return None
+    path = params.resolved_reference_config_file()
+    if path is None or not Path(path).exists():
+        raise FileNotFoundError(
+            f"metrics: reference config {params.reference_config_name!r} is set "
+            f"but its YAML was not found at {path}. Cache assets are keyed on a "
+            f"fingerprint of the config's contents, so the reference config has "
+            f"to be readable to know which of its assets to compare against. "
+            f"Set metrics.reference_config_file if it does not live at "
+            f"configs/<name>.yaml."
+        )
+    from fmu.config import load_config
+
+    return config_fingerprint(load_config(path))

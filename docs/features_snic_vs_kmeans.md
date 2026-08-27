@@ -8,7 +8,7 @@ Derived from the code, not from the decks:
 
 | What | Source of truth |
 |---|---|
-| SNIC's input bands | `src/fmu/stages/segmentation.py` → `_SNIC_INPUT_BAND_NAMES` |
+| SNIC's input bands | `configs/*.yaml` → `segmentation.input_bands`, defaulting to `_DEFAULT_SNIC_INPUT_BANDS` in `src/fmu/config.py` |
 | Clustering's exclude-list | `src/fmu/stages/clustering.py` → `_EXCLUDE_BANDS` |
 | Clustering's stack assembly | `src/fmu/stages/clustering.py` → `_build_raw_feature_stack()` |
 | Cyclic (sin/cos) expansion | `src/fmu/stages/clustering.py` → `_decompose_cyclic_bands()` |
@@ -22,43 +22,81 @@ and the `sanjay_van_nirv_dual` variant (NIRv, dual harmonic). Verified against
 
 ## 1. TL;DR
 
+For the **hand-crafted baseline** arm:
+
 | Role | Count | Bands |
 |---|---|---|
-| **SNIC only** | 3 | `B4_median`, `B8_median`, `composite_nirv` |
-| **Both SNIC and k-means** | 2 | `canopy_height`, `vv_minus_vh_median` |
-| **k-means only** | 20 (baseline) | everything else in the clustering stack |
+| **SNIC only** | 3 | `B4_median`, `B8_median`, `canopy_height_std` |
+| **Both SNIC and k-means** | 3 | `canopy_height`, `vv_minus_vh_median`, `ndvi_amplitude_annual` |
+| **k-means only** | 19 (baseline) | everything else in the clustering stack |
 | **Neither** (diagnostic) | 3 | `*_obs_count`, `*_residual_variance`, `annual_rainfall` |
 
-- **SNIC input: 5 bands** (fixed, identical across every config — the experimental control)
+- **SNIC input: 6 bands** in the baseline arm — but this is **config-driven, not fixed**
+  (`segmentation.input_bands`), and it is **not** the same across arms any more.
 - **k-means input: 22 bands** (baseline) / **25 bands** (variant), after sin/cos expansion
-- **AlphaEarth arm: 64 bands** (`A00`–`A63`) — replaces the whole hand-crafted stack for k-means only; SNIC is unchanged
+- **AlphaEarth arm: 64 bands** (`A00`–`A63`) for **both** SNIC and k-means — the embedding
+  replaces the hand-crafted stack as the *feature vector*. `features_optical` and
+  `features_structure` still run there, but only to supply the **merge criteria**, which are
+  held identical across arms (see §6).
+
+> **This reverses the earlier design**, in which SNIC was held byte-identical across arms and
+> that was called the experiment's control. See §6 and §7 for why.
 
 ---
 
-## 2. SNIC — the 5 boundary bands
+## 2. SNIC — the boundary bands
 
-Defined in `segmentation.py::_SNIC_INPUT_BAND_NAMES`. All 10 m native, z-scored per band
-over the ROI before SNIC (so `B4_median` at 0–3000 can't dominate `canopy_height` at 0–30).
+Set by `segmentation.input_bands` in config; the default (`_DEFAULT_SNIC_INPUT_BANDS` in
+`src/fmu/config.py`) is what the baseline arm uses and is **not** repeated in
+`sanjay_van_baseline.yaml`, so the default and the shipped experiment cannot drift apart.
+
+All 10 m native. Two normalisation steps run before SNIC:
+
+1. **z-score per band** over the ROI, so `B4_median` at 0–3000 can't dominate
+   `canopy_height` at 0–30 (`segmentation.normalize_inputs`).
+2. **divide by the RMS 4-neighbour feature distance** over the ROI
+   (`segmentation.normalize_distance_scale`). SNIC trades a summed squared colour distance
+   against a spatial-compactness term, and that sum grows with the number of *effective* axes
+   — so `compactness: 0.5` in a 6-band arm and a 64-band arm would buy very different spatial
+   weights. Dividing by √n_bands would assume the bands are independent; for an embedding they
+   are not, and it over-corrects. The empirical RMS distance handles band count and correlation
+   together. The value used is recorded in the manifest as `distance_scale`.
+
+**Baseline arm (the default), 6 bands over ~four independent axes:**
 
 | # | Band | Where it comes from | Axis | Also used by k-means? |
 |---|---|---|---|---|
 | 1 | `B4_median` | `s2_composite` (data_load) | Optical colour — red | **No** |
 | 2 | `B8_median` | `s2_composite` (data_load) | Optical colour — NIR | **No** |
-| 3 | `composite_nirv` | computed *inside* `segmentation.py` from B4/B8 | Optical productivity | **No** |
-| 4 | `canopy_height` | `features_structure` | Vertical structure | **Yes** |
-| 5 | `vv_minus_vh_median` | `features_radar` | Radar structure | **Yes** |
+| 3 | `canopy_height` | `features_structure` | Vertical structure | **Yes** |
+| 4 | `canopy_height_std` | `features_structure` | Canopy completeness — separates a smooth plantation-like canopy from a gap-rich natural one at the same mean height | **No** |
+| 5 | `ndvi_amplitude_annual` | `features_optical` | Phenology — the deciduous/evergreen axis | **Yes** |
+| 6 | `vv_minus_vh_median` | `features_radar` | Radar structure (sensor-independent) | **Yes** |
 
-Two things worth knowing:
+**AlphaEarth / Tessera arm:** `- {source: embedding_features, band: "*"}` — every embedding
+dimension. `"*"` expands server-side at run time, so it keeps working if the embedding's
+dimensionality changes.
 
-- **`B4_median`, `B8_median`, `composite_nirv` never reach k-means.** They come from the
-  Sentinel-2 composite (and a derived NIRv), which is *not* one of the four feature images
-  the clustering stack is assembled from. `composite_nirv` in particular is computed locally
-  in `segmentation.py` — it is not the same thing as the optical `nirv_*` harmonic features.
-- **`canopy_height` and `vv_minus_vh_median` are the only genuine overlap** — the same bands
-  feed both boundary-drawing and cluster-assignment.
+Notes:
+
+- **`composite_nirv` was dropped from the default.** It is `(B8/10000) × NDVI`, an algebraic
+  function of `B4` and `B8`, so carrying all three spent three columns on two degrees of
+  freedom and inflated optical weight in SNIC's distance metric. It remains *available* —
+  declare `{source: s2_composite, band: composite_nirv}` and `segmentation.py` computes it.
+- **`ndvi_amplitude_annual` was added.** SNIC runs on a multi-year *median* composite, so
+  without a phenology band it sees no seasonality at all, and cannot separate deciduous from
+  evergreen stands of similar height and colour.
+- **`B4_median` and `B8_median` never reach k-means.** They come from the Sentinel-2
+  composite, which is not one of the four feature images the clustering stack is assembled
+  from.
+- **The `nirv_dual` arm must spell its stack out.** `features_optical.index: nirv` renames the
+  harmonic bands `nirv_*`, so the default's `ndvi_amplitude_annual` does not exist there. A
+  config-load validator rejects that mismatch rather than letting it surface as a GEE
+  band-not-found error partway through a paid run.
 
 SNIC parameters (`configs/*.yaml → segmentation`): `size 10 · compactness 0.5 · connectivity 8 ·
-neighbourhood 128`, held identical across configs.
+neighbourhood 128`, held identical across configs. It is the *feature space*, not the
+hyperparameters, that differs between arms.
 
 ---
 
@@ -164,7 +202,7 @@ profiles (`cluster_profiles.csv`) describe **24** bands for the baseline: the 22
 
 | Stage | Excludes | Baseline band count |
 |---|---|---|
-| SNIC (`segmentation.py`) | — (explicit 5-band whitelist) | **5** |
+| SNIC (`segmentation.input_bands`) | — (explicit config whitelist) | **6** (baseline default) |
 | k-means (`clustering.py`) | obs_count, residual_variance, annual_rainfall | **22** |
 | Profiling (`profiling.py`) | obs_count only | **24** |
 
@@ -172,31 +210,59 @@ profiles (`cluster_profiles.csv`) describe **24** bands for the baseline: the 22
 
 ## 6. The embedding arm (AlphaEarth)
 
-When `clustering.feature_source: embedding`:
+`configs/sanjay_van_alphaearth.yaml` is a **fully independent pipeline**, not a variant of the
+baseline:
 
-- **k-means input** becomes the 64 embedding bands `A00 … A63` — the entire hand-crafted
-  stack is replaced (the `features_optical` and `features_static` stages don't even run).
-- **SNIC input is unchanged** — still the same 5 bands, still byte-identical. This is exactly
-  what makes the baseline-vs-AlphaEarth comparison controlled: only the clustering feature
-  vector differs.
+- **k-means input** becomes the 64 embedding bands `A00 … A63`.
+- **SNIC input** becomes the same 64 bands (`{source: embedding_features, band: "*"}`).
+- Consequently `features_radar` and `features_static` **do not run** — nothing in the arm reads
+  them. `features_optical` and `features_structure` **do**, because the **merge criteria are held
+  identical across arms** and read `canopy_height`, `canopy_height_std` and
+  `ndvi_amplitude_annual`. `default_stage_names()` derives the stage list from the union of what
+  clustering, segmentation and merge each ask for, so this follows from config rather than from a
+  hardcoded branch.
 - No exclude-list and no cyclic decomposition apply (there are no metadata or angular bands).
+
+**Why this changed.** Under the merge design, SNIC + `merge` *produces the stand* — clustering
+is demoted to attaching a type label to a finished stand. Holding SNIC identical across arms
+therefore reduced the embedding arm to *"which labels does k-means give inside boundaries the
+hand-crafted stack drew"*. The delineation question — which representation finds better stand
+boundaries — is the thesis question, and the old design never actually put it to the embedding.
+
+**What is still controlled:** everything that is not the feature representation — same AOI,
+same 2017–2022 window, same SNIC hyperparameters, same `k = 6` / `seed = 42`, same merge rules,
+same masking, same analysis scale. And `normalize_distance_scale` makes `compactness: 0.5` mean
+the same thing at 6 bands and at 64.
+
+**What this costs:** the two arms now produce two *different stand maps*, so ARI/NMI against a
+shared tessellation is no longer the comparison. There is **no ground truth**, so neither map
+can be declared correct. They are compared on stability (shifted-window, leave-one-year-out),
+held-out predictive power (R² at matched stand count) and geometry — never on agreement with a
+reference.
 
 ---
 
 ## 7. Why the split exists
 
-SNIC and k-means do different jobs, so they get different inputs:
+SNIC and k-means do different jobs, so in the hand-crafted arm they get different inputs:
 
-- **SNIC only draws boundaries** — where the landscape changes. It uses a deliberately reduced,
-  high-SNR set for four reasons: **redundancy** (correlated bands let the sensor with the most
-  columns dominate the distance), **noise** (phase/trend/residual-variance/IQR bands would make
-  SNIC carve superpixels around fitting artifacts), **dimensionality** (SNIC trades feature
-  distance against a spatial-compactness term; more bands swamp the spatial term), and
-  **experimental control** (boundaries must be identical across configs, so the band set must
-  be fixed and must not include the variant's extra harmonics).
-- **k-means decides what each region is** — that is where the full stack belongs.
+- **SNIC + merge produce the stand** — the deliverable. In the hand-crafted arm it uses a
+  deliberately reduced, high-SNR set for three reasons: **redundancy** (correlated bands let
+  the sensor with the most columns dominate the distance — the reason `composite_nirv` was
+  dropped), **noise** (phase/trend/residual-variance/IQR bands would make SNIC carve
+  superpixels around fitting artifacts), and **dimensionality** (SNIC trades feature distance
+  against a spatial-compactness term; more bands swamp the spatial term unless the distance
+  scale is normalised, which is what `normalize_distance_scale` now does).
+- **k-means attaches a type label** to a finished stand — that is where the full stack belongs.
 
-**Caveat:** the exact five SNIC bands were chosen by reasoning, **not ablated** against some other
-four or six. Same status as the SNIC parameters and `k = 6` — it sits under the open
-"no sensitivity analysis" gap, and the planned test is full-stack vs reduced-stack scored with
-ARI/NMI at **both** AOIs (Sanjay Van and Mudumalai).
+Note the fourth reason that used to be listed here — **experimental control**, "boundaries must
+be identical across configs" — is **no longer operative**, and was in fact the flaw: it made the
+band set an unquestionable constant and kept the delineation question away from the embedding
+arm entirely. The band set is now `segmentation.input_bands`, a first-class experimental
+variable, which is why it moved out of a code literal and into config.
+
+**Caveat:** the six baseline SNIC bands were chosen by reasoning, **not ablated** against some
+other five or seven. Same status as the SNIC parameters and `k = 6` — it sits under the open
+"no sensitivity analysis" gap. Now that the band set is config-driven, the ablation is a set of
+YAML files rather than a code change; scored on held-out R² at matched stand count and on
+stability, **not** on ARI against a reference tessellation (there isn't one).

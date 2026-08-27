@@ -1,13 +1,24 @@
 # Sanjay Van embedding arm: cluster AlphaEarth's pretrained per-pixel
 # embedding instead of the hand-crafted multi-sensor stack.
 #
-# Everything downstream of the feature vector is held identical to
-# sanjay_van_baseline.yaml — same AOI, same 2017-2022 window, same SNIC
-# segmentation, same k=6 / seed=42 clustering. The ONLY change is
-# clustering.feature_source: embedding, which swaps the four hand-crafted
-# feature images for AlphaEarth's 64-band Satellite Embedding. Any difference
-# the metrics stage reports against the baseline is therefore attributable to
-# the feature representation alone.
+# AlphaEarth supplies the feature vector for both steps that see features: SNIC
+# segments on the 64-band embedding, and k-means labels on it. What is held
+# identical to sanjay_van_baseline.yaml is everything that is not the feature
+# representation — same AOI, same 2017-2022 window, same SNIC hyperparameters
+# (size 10, compactness 0.5), same k=6 / seed=42, same masking, and the same
+# merge rule. So a difference the metrics stage reports is attributable to the
+# representation, while the two arms still draw their own boundaries.
+#
+# The merge rule being shared is deliberate and is why features_structure and
+# features_optical still run here (see below). It is what leaves *delineation*
+# as the only thing differing between the arms — the thesis question. If each
+# arm merged on its own features, differences in stand geometry would confound
+# "different boundaries" with "different merge rules", and the thresholds would
+# lose their physical units along with their meaning.
+#
+# The two arms therefore produce two different stand maps. There is no ground
+# truth to declare one correct; they are compared on stability, held-out
+# predictive power and geometry, not on agreement with a reference.
 #
 # AlphaEarth (GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL) is an annual ImageCollection;
 # the features_embedding stage averages the 2017-2022 images to one embedding
@@ -72,10 +83,18 @@ masking:
   keep_worldcover_classes: [10, 20, 30]
   jrc_water_occurrence_threshold: 50.0
 
-# Optical/static feature params are unused in embedding mode (those stages
-# don't run — see default_stage_names). Radar + structure params still matter:
-# SNIC's 5 input bands come from the S2 composite, canopy height, and cross-pol
-# contrast, so those two stages run and are held identical to the baseline.
+# Optical and structure params still matter here, but NOT for the feature
+# vector — this arm segments and labels purely on the embedding. They matter
+# because the **merge criteria** are held identical across arms: "what makes two
+# adjacent patches one stand" is a fact about forestry, not about the sensor
+# pipeline, and holding the merge rule constant is what leaves delineation as
+# the only thing differing between the arms. So features_structure and
+# features_optical run to supply canopy_height, canopy_height_std and
+# ndvi_amplitude_annual to the merge gate.
+#
+# features_radar and features_static are read by nothing in this arm and do not
+# run; their params are kept at baseline values so the file stays diffable and
+# so re-enabling one gets the right parameters rather than silent defaults.
 features_radar:
   percentiles: [10, 50, 90]
   include_iqr: true
@@ -91,21 +110,33 @@ features_embedding:
   collapse_reducer: mean
   band_names: null   # keep every embedding dimension (A00..A63)
 
-# SNIC identical to baseline — boundaries are a constant of the experiment.
+# SNIC runs on the embedding, not on the hand-crafted bands. This arm is a
+# fully independent pipeline: AlphaEarth draws its own boundaries and labels
+# its own stands, and the two arms' stand maps are compared as products.
+# Holding SNIC identical across arms (the earlier design) would have made the
+# embedding answer only "which labels does k-means give inside boundaries the
+# hand-crafted stack drew" — the delineation question, which is the thesis
+# question, was never actually put to it.
+#
+# 64 bands vs 6 is exactly why normalize_distance_scale matters: without it,
+# summed squared colour distance here is far larger than in the baseline, so
+# compactness 0.5 would buy a much weaker spatial term. Dividing by the
+# empirical RMS 4-neighbour distance makes the two comparable.
 segmentation:
   size: 10
   compactness: 0.5
   connectivity: 8
   neighborhood_size: 128
   normalize_inputs: true
+  normalize_distance_scale: true
+  input_bands:
+    - {source: embedding_features, band: "*"}   # all 64 dimensions
 
 clustering:
-  feature_source: embedding   # <-- the only substantive change vs baseline
+  feature_source: embedding   # labels on the embedding; SNIC segments on it too
   k: 6
-  n_training_samples: 10000
   seed: 42
   skewness_threshold: 1.0
-  superpixel_max_size: 256
 
 normalization:
   method: robust
