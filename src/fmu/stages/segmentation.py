@@ -50,6 +50,7 @@ import ee
 from fmu.config import Config
 from fmu.stages.base import PipelineContext, Stage, StageResult, register_stage
 from fmu.utils.gee import safe_call, safe_get_info
+from fmu.utils.grid import analysis_grid
 from fmu.utils.logging import get_logger
 
 log = get_logger(__name__)
@@ -142,7 +143,12 @@ class SegmentationStage(Stage):
         # a *fresh* run, since a cached asset reports its real projection and
         # works fine. A bug that appears only when the cache is cold is the kind
         # worth removing at the source.
-        grid = _analysis_grid(raw_stack, scale)
+        #
+        # This is the one place the grid gets pinned, and everything downstream
+        # inherits it: `reduceRegion` defaults its CRS to the first band's
+        # projection, and merge, profiling, metrics and export all reduce over
+        # images derived from these two.
+        grid = _analysis_grid(roi, scale)
         snic_clusters = (
             snic_result.select("clusters")
             .rename("snic_clusters")
@@ -344,17 +350,14 @@ def _zscore_per_band(image: ee.Image, roi: ee.Geometry, scale: int) -> ee.Image:
     return ee.Image.cat(normalized_bands)
 
 
-def _analysis_grid(raw_stack: ee.Image, scale: int) -> ee.Projection:
-    """The pixel grid SNIC's outputs should live on.
+def _analysis_grid(roi: ee.Geometry, scale: int) -> ee.Projection:
+    """The pixel grid SNIC's outputs should live on: the ROI's UTM zone.
 
-    Taken from the first input band rather than constructed, because the CRS
-    matters as much as the scale: a 10 m grid in WGS84 is a different raster
-    from Sentinel-2's 10 m UTM grid, and only the latter lines up with the
-    pixels SNIC actually segmented. Reprojecting the labels onto a foreign CRS
-    would resample them -- turning a metadata fix into real corruption.
-
-    `select(0)` because `projection()` is a per-band property and the stack is
-    multi-band (64 bands in an embedding arm). All the bands are 10 m native and
-    co-registered, so the first is representative.
+    Constructed from the ROI rather than inherited from the first input band.
+    Inheriting looked safer -- take the grid the data is already on -- but the
+    first band is `B4_median` off the S2 composite, which `data_load` does not
+    cache, so it reports EE's WGS84 default and `atScale(10)` turns that into a
+    geographic grid with 8.8 x 10 m pixels at this latitude. See
+    `fmu.utils.grid` for why that matters and why UTM is the answer.
     """
-    return raw_stack.select(0).projection().atScale(scale)
+    return analysis_grid(roi, scale, context="segmentation output grid")

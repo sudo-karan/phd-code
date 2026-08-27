@@ -428,3 +428,182 @@ def test_summarize_reports_polsby_popper_range():
     assert s["polsby_popper_min"] == 0.10
     assert s["polsby_popper_max"] == 0.90
     assert s["stands_below_min_area"] == 0
+
+
+# ---------- the grouped reductions ----------
+#
+# Both of these were only ever exercised live, which is how a band name EE
+# rejects and a silently-inherited CRS got as far as a real run.
+
+
+def _grouped_reducer_ee():
+    """Enough of `ee.Reducer` for the two grouped reductions in this module."""
+
+    class _Reducer:
+        def combine(self, other, sharedInputs=False):  # noqa: N803 - mirrors ee
+            return self
+
+        def group(self, groupField=None, groupName=None):  # noqa: N803 - mirrors ee
+            return self
+
+    class _FakeEE:
+        class Reducer:
+            @staticmethod
+            def mean():
+                return _Reducer()
+
+            @staticmethod
+            def count():
+                return _Reducer()
+
+            @staticmethod
+            def sum():
+                return _Reducer()
+
+        @staticmethod
+        def Image(*a, **k):  # noqa: N802 - mirrors the ee API
+            raise AssertionError("not needed by these tests")
+
+    return _FakeEE
+
+
+class _Reduced:
+    def __init__(self, payload, kwargs):
+        self.payload = payload
+        self.kwargs = kwargs
+
+    def getInfo(self):  # noqa: N802 - mirrors the ee API
+        return self.payload
+
+
+class _FakeFeatures:
+    """A feature stack whose own projection is EE's WGS84 default -- the shape
+    an uncached computed image really has."""
+
+    def __init__(self, bands, groups, record):
+        self._bands = bands
+        self._groups = groups
+        self._record = record
+
+    def bandNames(self):  # noqa: N802 - mirrors the ee API
+        return self._bands
+
+    def select(self, bands):
+        return self
+
+    def addBands(self, other):  # noqa: N802 - mirrors the ee API
+        return self
+
+    def reduceRegion(self, **kwargs):  # noqa: N802 - mirrors the ee API
+        self._record.append(kwargs)
+        return _Reduced({"groups": self._groups}, kwargs)
+
+
+class _FakeLabels:
+    def __init__(self, record, crs="EPSG:32643"):
+        self._record = record
+        self._crs = crs
+
+    def bandNames(self):  # noqa: N802 - mirrors the ee API
+        return ["snic_clusters"]
+
+    def select(self, bands):
+        return self
+
+    def rename(self, name):
+        self._record.append(("rename", name))
+        return self
+
+    def projection(self):
+        return self
+
+    def crs(self):
+        return self._crs
+
+
+@pytest.fixture
+def attribute_server(monkeypatch):
+    monkeypatch.setattr(adj, "ee", _grouped_reducer_ee())
+
+    def fake_get_info(obj, *, context: str = ""):
+        return obj.getInfo() if hasattr(obj, "getInfo") else obj
+
+    monkeypatch.setattr(adj, "safe_get_info", fake_get_info)
+
+
+def _attributes(groups, record, bands=("canopy_height",)):
+    from fmu.utils.adjacency import extract_superpixel_attributes
+
+    graph = SuperpixelGraph(
+        raw_labels=[11, 22], n_pixels=[100, 100], edges={(0, 1): 5}, scale_m=10
+    )
+    features = _FakeFeatures(list(bands), groups, record)
+    return extract_superpixel_attributes(
+        features, _FakeLabels(record), graph, None, 10, context="merge criteria"
+    )
+
+
+def test_the_group_band_name_is_one_earth_engine_accepts(attribute_server):
+    """`Image.rename: Invalid band name: '_label'` -- EE refuses a leading
+    underscore, and only says so at getInfo time, so this failed halfway through
+    a live run rather than in CI."""
+    record = []
+    _attributes([{"label": 11, "mean": 5.0, "count": 100}], record)
+
+    renamed = [
+        entry[1] for entry in record if isinstance(entry, tuple) and entry[0] == "rename"
+    ]
+    assert renamed, "the label band is never renamed"
+    for name in renamed:
+        assert not name.startswith("_"), f"EE rejects the band name {name!r}"
+        assert name[0].isalpha()
+        assert all(c.isalnum() or c == "_" for c in name)
+
+
+def test_the_reduction_is_pinned_to_the_label_grid(attribute_server):
+    """`reduceRegion` defaults its CRS to the *first band's* projection, which
+    here is a feature band off an uncached computed image. Inheriting it would
+    count valid pixels on a geographic grid while `graph.n_pixels` holds label
+    grid pixels -- and `min_frac_valid` divides one by the other."""
+    record = []
+    _attributes([{"label": 11, "mean": 5.0, "count": 100}], record)
+
+    kwargs = [k for k in record if isinstance(k, dict)]
+    assert kwargs, "no reduction ran"
+    for k in kwargs:
+        assert k["crs"] == "EPSG:32643"
+        assert k["scale"] == 10
+
+
+def test_a_feature_band_colliding_with_the_group_band_is_refused(attribute_server):
+    with pytest.raises(ValueError, match="collides"):
+        _attributes([], [], bands=(adj._GROUP_BAND, "canopy_height"))
+
+
+def test_a_band_with_no_valid_pixel_reads_as_none_not_zero(attribute_server):
+    """14 of the committed baseline's superpixels have no ETH canopy height at
+    all. Calling that 0.0 m would invent a clear-cut and merge it into one."""
+    record = []
+    means, counts = _attributes(
+        [
+            {"label": 11, "mean": 5.0, "count": 100},
+            {"label": 22, "mean": None, "count": 0},
+        ],
+        record,
+    )
+    assert means[0]["canopy_height"] == 5.0
+    assert means[1]["canopy_height"] is None
+    assert counts[1]["canopy_height"] == 0
+
+
+def test_a_label_the_histogram_never_saw_is_skipped(attribute_server):
+    """Different reductions can disagree at the very edge of the ROI."""
+    record = []
+    means, _ = _attributes(
+        [
+            {"label": 11, "mean": 5.0, "count": 100},
+            {"label": 999, "mean": 7.0, "count": 100},
+        ],
+        record,
+    )
+    assert set(means) == {0}

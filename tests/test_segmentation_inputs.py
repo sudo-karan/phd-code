@@ -479,51 +479,54 @@ def test_input_bands_survive_a_yaml_round_trip():
 # ---------- the output pixel grid ----------
 
 
-def test_grid_comes_from_the_first_input_band_at_the_analysis_scale():
+def test_grid_is_constructed_from_the_roi_not_inherited_from_the_stack(monkeypatch):
     """SNIC's own output carries EE's default WGS84 1-degree projection until it
-    is written to an asset, so the stage has to pin one. It must come from an
-    input band, not be constructed: a 10 m grid in WGS84 is a different raster
-    from S2's 10 m UTM grid, and reprojecting labels onto a foreign CRS would
-    resample them -- turning a metadata fix into real corruption.
+    is written to an asset, so the stage has to pin one.
 
-    This bug only bit on a *cold* cache. A second run loads the labels from an
-    asset, which reports its real projection, so everything downstream worked.
+    An earlier version took it from the first input band, on the reasoning that
+    the data's own grid beats a constructed one. Live output disproved that: the
+    first band is `B4_median` off the S2 composite, which `data_load` does not
+    cache, so it reports the WGS84 default and `atScale(10)` yields a geographic
+    grid -- `EPSG:4326 at 10.0 m`, pixels 8.8 x 10 m at this latitude. The same
+    slot filled from a cached asset would have reported real UTM, so the grid
+    moved with the cache while the config stood still.
     """
-    calls = {}
+    seen = {}
 
-    class _Proj:
-        def atScale(self, scale):  # noqa: N802 - mirrors the ee API
-            calls["scale"] = scale
-            return "<grid>"
+    def fake_grid(roi, scale, *, context=""):
+        seen["roi"], seen["scale"], seen["context"] = roi, scale, context
+        return "<grid>"
 
-    class _Band:
-        def projection(self):
-            calls["projection_taken"] = True
-            return _Proj()
+    monkeypatch.setattr("fmu.stages.segmentation.analysis_grid", fake_grid)
 
-    class _Stack:
-        def select(self, idx):
-            calls["selected"] = idx
-            return _Band()
-
-    assert _analysis_grid(_Stack(), 10) == "<grid>"
-    # select(0): projection() is per-band, and an embedding stack has 64 of them
-    assert calls["selected"] == 0
-    assert calls["projection_taken"] is True
-    assert calls["scale"] == 10
+    roi = object()
+    assert _analysis_grid(roi, 10) == "<grid>"
+    assert seen["roi"] is roi
+    assert seen["scale"] == 10
+    assert seen["context"]
 
 
-def test_grid_follows_a_non_default_analysis_scale():
-    class _Proj:
-        def atScale(self, scale):  # noqa: N802 - mirrors the ee API
-            return f"<grid@{scale}>"
+def test_grid_follows_a_non_default_analysis_scale(monkeypatch):
+    monkeypatch.setattr(
+        "fmu.stages.segmentation.analysis_grid",
+        lambda roi, scale, *, context="": f"<grid@{scale}>",
+    )
+    assert _analysis_grid(object(), 30) == "<grid@30>"
 
-    class _Band:
-        def projection(self):
-            return _Proj()
 
-    class _Stack:
-        def select(self, idx):
-            return _Band()
+def test_grid_does_not_touch_the_input_stack(monkeypatch):
+    """Belt and braces on the above: nothing about the stack may reach the grid,
+    or the two arms could end up measuring their stands on different pixels."""
 
-    assert _analysis_grid(_Stack(), 30) == "<grid@30>"
+    class _Exploding:
+        def __getattr__(self, name):
+            raise AssertionError(
+                f"the analysis grid must not read {name!r} off the input stack"
+            )
+
+    monkeypatch.setattr(
+        "fmu.stages.segmentation.analysis_grid",
+        lambda roi, scale, *, context="": "<grid>",
+    )
+    # _analysis_grid takes the ROI only -- there is no stack argument to misuse.
+    assert _analysis_grid(_Exploding(), 10) == "<grid>"
