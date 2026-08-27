@@ -34,7 +34,9 @@ purpose.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
+from typing import Any
 
 import ee
 
@@ -299,3 +301,142 @@ def extract_superpixel_attributes(
             len(missing),
         )
     return means, counts
+
+
+def stand_geometry(
+    labels: ee.Image,
+    roi: ee.Geometry,
+    scale: int,
+    *,
+    context: str = "stand geometry",
+) -> dict[int, dict[str, float]]:
+    """Per-region area, perimeter and Polsby-Popper compactness.
+
+    The repo could not previously measure the thing it produces: there was no
+    stand count, no area distribution, and no shape statistic anywhere in the
+    metrics. Xiong et al. 2024, Pukkala 2018, Jia 2019 and Sun et al. 2021 all
+    report stand geometry, and the pathology in the layer this replaces
+    (dissolve-by-cluster-id: 6% of units holding 68% of the area) is invisible
+    without it.
+
+    Perimeter is counted in **pixel edges**: for each pixel of a region, the
+    number of its four neighbours that belong to a different region or to no
+    region at all (masked, or outside the ROI). Multiplied by `scale`, that is
+    the length of the region's raster boundary.
+
+    **Polsby-Popper (4*pi*A / P^2) from a raster boundary is not comparable to
+    one measured from a smoothed vector outline.** A staircase boundary is
+    longer than the shape it approximates, so these values run low -- a perfect
+    raster disc scores well under 1.0. They are comparable *between regions at
+    the same scale*, which is what ranking stands by shape needs, and they are
+    the right thing to trend across arms that share `analysis_scale_m`. Do not
+    quote them against a published vector-derived figure.
+    """
+    band = safe_get_info(labels.bandNames(), context=f"{context} band name")[0]
+    label_image = labels.select([band])
+
+    base_proj = label_image.projection()
+    base_scale = safe_get_info(
+        base_proj.nominalScale(), context=f"{context} projection scale"
+    )
+    if base_scale > 10 * scale:
+        raise ValueError(
+            f"{context}: label image reports a nominal scale of "
+            f"{base_scale:.0f} m against an analysis scale of {scale} m -- EE's "
+            f"default projection for an unbaked computed image, not a real "
+            f"pixel grid. Perimeters measured in it would be meaningless."
+        )
+    proj = base_proj.atScale(scale)
+    pinned = label_image.reproject(proj)
+
+    # Four directions, unlike the adjacency graph's two: a perimeter counts
+    # every outward edge of every pixel, so the left and up neighbours are
+    # genuinely different edges rather than the same edge seen twice.
+    boundary = ee.Image.constant(0)
+    for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+        neighbour = pinned.translate(x=dx, y=dy, units="pixels", proj=proj)
+        # unmask(1): a missing neighbour (ROI edge, masked pixel) is an outward
+        # edge too, and dropping it would understate every boundary stand.
+        boundary = boundary.add(pinned.neq(neighbour).unmask(1))
+    boundary = boundary.updateMask(pinned.mask()).rename("edges")
+
+    grouped = safe_get_info(
+        boundary.addBands(pinned.rename("_label")).reduceRegion(
+            reducer=ee.Reducer.sum()
+            .combine(ee.Reducer.count(), sharedInputs=True)
+            .group(groupField=1, groupName="label"),
+            geometry=roi,
+            scale=scale,
+            maxPixels=1e9,
+        ),
+        context=f"{context} grouped perimeter",
+    ).get("groups")
+
+    px_area = scale * scale
+    out: dict[int, dict[str, float]] = {}
+    for row in grouped or []:
+        n_pixels = int(row.get("count") or 0)
+        if not n_pixels:
+            continue
+        perimeter_m = float(row.get("sum") or 0.0) * scale
+        area_m2 = n_pixels * px_area
+        out[int(row["label"])] = {
+            "n_pixels": n_pixels,
+            "area_ha": area_m2 / 10_000.0,
+            "perimeter_m": perimeter_m,
+            "polsby_popper": (
+                4.0 * math.pi * area_m2 / (perimeter_m * perimeter_m)
+                if perimeter_m > 0
+                else 0.0
+            ),
+        }
+    return out
+
+
+def summarize_stand_geometry(
+    geometry: dict[int, dict[str, float]], *, min_area_ha: float
+) -> dict[str, Any]:
+    """Distribution summary of what `stand_geometry` measured.
+
+    Reports the concentration statistic explicitly (`area_share_largest_decile`)
+    because that is what makes the dissolve-by-cluster pathology legible: 505
+    units where 6% held 68% of the area looks unremarkable in a mean or a median
+    and is obvious in this one.
+    """
+    if not geometry:
+        return {"n_stands": 0}
+
+    areas = sorted(r["area_ha"] for r in geometry.values())
+    pp = sorted(r["polsby_popper"] for r in geometry.values())
+    total = sum(areas)
+
+    def q(vals: list[float], p: float) -> float:
+        return round(vals[min(len(vals) - 1, int(p * len(vals)))], 6)
+
+    n_decile = max(1, len(areas) // 10)
+    largest_decile_area = sum(areas[-n_decile:])
+    below = [a for a in areas if a < min_area_ha]
+
+    return {
+        "n_stands": len(areas),
+        "total_area_ha": round(total, 4),
+        "area_ha_min": round(areas[0], 6),
+        "area_ha_p10": q(areas, 0.10),
+        "area_ha_median": q(areas, 0.50),
+        "area_ha_p90": q(areas, 0.90),
+        "area_ha_max": round(areas[-1], 6),
+        "area_ha_mean": round(total / len(areas), 6),
+        "stands_below_min_area": len(below),
+        "frac_stands_below_min_area": round(len(below) / len(areas), 4),
+        "area_in_undersized_stands_ha": round(sum(below), 4),
+        # The concentration check. A healthy stand map does not put most of the
+        # landscape in a handful of units.
+        "area_share_largest_decile": round(largest_decile_area / total, 4)
+        if total
+        else 0.0,
+        # Raster-boundary Polsby-Popper: comparable between stands at the same
+        # scale, NOT comparable to a vector-derived figure. See stand_geometry.
+        "polsby_popper_min": round(pp[0], 4),
+        "polsby_popper_median": q(pp, 0.50),
+        "polsby_popper_max": round(pp[-1], 4),
+    }

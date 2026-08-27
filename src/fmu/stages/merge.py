@@ -40,6 +40,11 @@ physical units along with their meaning.
 Outputs:
   - stand_clusters:    integer stand ID per pixel, 0..n_stands-1
   - stand_attributes:  per-stand dict of area, criterion means and frac_valid
+  - merge_diagnostics: pass counts, orphan causes, threshold calibration. Passed
+                       through context (not just stage metadata) so the metrics
+                       stage can fold it into metrics_<config>.json -- the
+                       orphan split is a result, not a log line, and reading it
+                       should not require digging through the manifest.
 """
 
 from __future__ import annotations
@@ -75,7 +80,7 @@ class MergeStage(Stage):
     # Invariant subset only; the criteria bands' sources depend on
     # `merge.criteria`, so the real dependency check is in validate().
     required_inputs = {"roi", "snic_clusters"}
-    produces = {"stand_clusters", "stand_attributes"}
+    produces = {"stand_clusters", "stand_attributes", "merge_diagnostics"}
     # `stand_clusters` is a remap of a cached image, so it is cheap to rebuild
     # and caching it would need the merge config hashed into the key (the
     # thresholds are the main thing being iterated on, so a stale cache would
@@ -178,10 +183,18 @@ class MergeStage(Stage):
         for w in warnings:
             log.warning("  %s", w)
 
+        diagnostics = {
+            **d,
+            "adjacency": graph.summary(),
+            "threshold_calibration": calibration,
+            "warnings": warnings,
+        }
+
         return StageResult(
             outputs={
                 "stand_clusters": stand_clusters,
                 "stand_attributes": result.stand_attributes,
+                "merge_diagnostics": diagnostics,
             },
             metadata={
                 "criteria": [

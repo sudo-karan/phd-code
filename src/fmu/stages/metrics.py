@@ -53,6 +53,7 @@ from sklearn.metrics import (
 
 from fmu.config import Config
 from fmu.stages.base import PipelineContext, Stage, StageResult, register_stage
+from fmu.utils.adjacency import stand_geometry, summarize_stand_geometry
 from fmu.utils.caching import asset_exists, cached_asset_path
 from fmu.utils.components import assert_components_fit
 from fmu.utils.gee import safe_call, safe_get_info
@@ -94,6 +95,29 @@ class MetricsStage(Stage):
             "current_config": config.name,
             "k": k,
         }
+
+        # --- Stand geometry: the deliverable, measured ---
+        # This is the thing the pipeline produces, and until now nothing
+        # measured it. Xiong et al. 2024, Pukkala 2018, Jia 2019 and Sun et al.
+        # 2021 all report stand geometry; the pathology in the layer the merge
+        # replaces (dissolve-by-cluster: 6% of units holding 68% of the area) is
+        # invisible without it.
+        log.info("  measuring %s geometry", unit_key)
+        geometry = stand_geometry(
+            unit_labels, roi, scale, context=f"{unit_key} geometry"
+        )
+        geom_summary = summarize_stand_geometry(
+            geometry, min_area_ha=config.merge.min_area_ha
+        )
+        geom_summary["unit_key"] = unit_key
+        metrics["stand_geometry"] = geom_summary
+        _log_geometry(geom_summary, config.merge.min_area_ha)
+
+        # Fold the merge's own diagnostics in, so the orphan split and the
+        # threshold calibration read as results rather than as manifest
+        # archaeology. Absent when merge.enabled is false.
+        if ctx.has("merge_diagnostics"):
+            metrics["merge"] = ctx.get("merge_diagnostics")
 
         # --- Intrinsic silhouette score for current config ---
         log.info("  computing intrinsic silhouette for %s", config.name)
@@ -398,3 +422,41 @@ def _compute_silhouette(
         return float("nan")
 
     return float(silhouette_score(np.array(feature_vectors), np.array(labels)))
+
+
+def _log_geometry(s: dict[str, Any], min_area_ha: float) -> None:
+    """Print the stand-geometry summary, including the numbers that show a bad
+    partition. A mean area alone hides both failure modes: thousands of slivers,
+    and a handful of blobs holding the landscape."""
+    if not s.get("n_stands"):
+        log.warning("    no %s found to measure", s.get("unit_key", "unit"))
+        return
+    log.info(
+        "    %d %s over %.1f ha; area min/p10/median/p90/max = "
+        "%.2f / %.2f / %.2f / %.2f / %.2f ha",
+        s["n_stands"],
+        s["unit_key"],
+        s["total_area_ha"],
+        s["area_ha_min"],
+        s["area_ha_p10"],
+        s["area_ha_median"],
+        s["area_ha_p90"],
+        s["area_ha_max"],
+    )
+    log.info(
+        "    %d (%.1f%%) below min_area_ha=%.2f, holding %.2f ha; "
+        "largest decile holds %.1f%% of the area",
+        s["stands_below_min_area"],
+        100 * s["frac_stands_below_min_area"],
+        min_area_ha,
+        s["area_in_undersized_stands_ha"],
+        100 * s["area_share_largest_decile"],
+    )
+    log.info(
+        "    Polsby-Popper min/median/max = %.3f / %.3f / %.3f "
+        "(raster boundary; comparable between stands at this scale, NOT to a "
+        "vector-derived figure)",
+        s["polsby_popper_min"],
+        s["polsby_popper_median"],
+        s["polsby_popper_max"],
+    )

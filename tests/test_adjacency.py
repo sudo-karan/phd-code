@@ -360,3 +360,71 @@ def test_isolated_regions_are_counted():
     )
     assert g.summary()["n_isolated"] == 1
     assert g.neighbours()[2] == set()
+
+
+# ---------- stand geometry ----------
+
+
+def test_summarize_reports_the_concentration_statistic():
+    """The number that makes the dissolve-by-cluster pathology legible: 505
+    units where 6% held 68% of the area looks unremarkable in a mean or a
+    median, and is obvious in the largest-decile share."""
+    from fmu.utils.adjacency import summarize_stand_geometry
+
+    # 9 slivers of 0.1 ha and 1 blob of 91 ha -- the committed layer's shape.
+    geometry = {
+        i: {"area_ha": 0.1, "polsby_popper": 0.29, "n_pixels": 10, "perimeter_m": 40}
+        for i in range(9)
+    }
+    geometry[9] = {
+        "area_ha": 91.0,
+        "polsby_popper": 0.29,
+        "n_pixels": 9100,
+        "perimeter_m": 4000,
+    }
+    s = summarize_stand_geometry(geometry, min_area_ha=1.0)
+    assert s["n_stands"] == 10
+    assert s["area_share_largest_decile"] == pytest.approx(91.0 / 91.9, abs=1e-3)
+    assert s["stands_below_min_area"] == 9
+    assert s["frac_stands_below_min_area"] == pytest.approx(0.9)
+    assert s["area_in_undersized_stands_ha"] == pytest.approx(0.9)
+
+
+def test_summarize_reports_the_area_distribution():
+    from fmu.utils.adjacency import summarize_stand_geometry
+
+    geometry = {
+        i: {
+            "area_ha": float(i + 1),
+            "polsby_popper": 0.3,
+            "n_pixels": (i + 1) * 100,
+            "perimeter_m": 100,
+        }
+        for i in range(10)
+    }
+    s = summarize_stand_geometry(geometry, min_area_ha=1.0)
+    assert s["area_ha_min"] == 1.0
+    assert s["area_ha_max"] == 10.0
+    assert s["area_ha_mean"] == pytest.approx(5.5)
+    assert s["area_ha_min"] <= s["area_ha_p10"] <= s["area_ha_median"]
+    assert s["area_ha_median"] <= s["area_ha_p90"] <= s["area_ha_max"]
+
+
+def test_summarize_handles_an_empty_partition():
+    from fmu.utils.adjacency import summarize_stand_geometry
+
+    assert summarize_stand_geometry({}, min_area_ha=1.0) == {"n_stands": 0}
+
+
+def test_summarize_reports_polsby_popper_range():
+    from fmu.utils.adjacency import summarize_stand_geometry
+
+    geometry = {
+        0: {"area_ha": 1.0, "polsby_popper": 0.10, "n_pixels": 100, "perimeter_m": 200},
+        1: {"area_ha": 1.0, "polsby_popper": 0.50, "n_pixels": 100, "perimeter_m": 100},
+        2: {"area_ha": 1.0, "polsby_popper": 0.90, "n_pixels": 100, "perimeter_m": 80},
+    }
+    s = summarize_stand_geometry(geometry, min_area_ha=0.5)
+    assert s["polsby_popper_min"] == 0.10
+    assert s["polsby_popper_max"] == 0.90
+    assert s["stands_below_min_area"] == 0

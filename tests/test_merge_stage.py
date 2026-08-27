@@ -50,7 +50,18 @@ def test_merge_is_registered():
 
 
 def test_merge_produces_the_stand_layer():
-    assert MergeStage.produces == {"stand_clusters", "stand_attributes"}
+    assert MergeStage.produces == {
+        "stand_clusters",
+        "stand_attributes",
+        "merge_diagnostics",
+    }
+
+
+def test_diagnostics_travel_through_context_not_just_the_manifest():
+    """The orphan split and the threshold calibration are results, not log
+    lines. Metrics folds them into metrics_<config>.json so reading them does
+    not require manifest archaeology."""
+    assert "merge_diagnostics" in MergeStage.produces
 
 
 def test_merge_is_not_cached():
