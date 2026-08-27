@@ -71,7 +71,7 @@ import ee
 from fmu import __version__
 from fmu.config import Config
 from fmu.stages.base import PipelineContext, Stage, StageResult, register_stage
-from fmu.utils.caching import asset_exists, cached_asset_path
+from fmu.utils.caching import asset_exists, cached_asset_path, config_fingerprint
 from fmu.utils.gee import safe_call, safe_get_info
 from fmu.utils.logging import get_logger
 
@@ -175,7 +175,9 @@ class ExportStage(Stage):
                  len(distribution), sum(c["pixel_count"] for c in distribution))
 
         # 3. Inventory cached assets for this config
-        asset_paths = _inventory_cached_assets(config.name)
+        asset_paths = _inventory_cached_assets(
+            config.name, config_fingerprint(config)
+        )
         log.info("  cached assets for this config: %d", len(asset_paths))
 
         # 4. Submit Drive exports. Build up drive_exports dict and
@@ -576,7 +578,9 @@ def _compute_cluster_distribution(
     return distribution
 
 
-def _inventory_cached_assets(config_name: str) -> dict[str, str]:
+def _inventory_cached_assets(
+    config_name: str, fingerprint: str | None = None
+) -> dict[str, str]:
     """Discover cached assets for this config by walking the stage registry.
 
     For each registered stage, ask the orchestrator's resolution helper
@@ -600,7 +604,9 @@ def _inventory_cached_assets(config_name: str) -> dict[str, str]:
         # don't probe nonsense paths for stages like profiling/export/metrics).
         cacheable = Pipeline._resolve_cacheable_outputs(stage)
         for output_key in sorted(cacheable):
-            path = cached_asset_path(config_name, stage_name, output_key)
+            path = cached_asset_path(
+                config_name, stage_name, output_key, fingerprint
+            )
             if asset_exists(path):
                 paths[output_key] = path
     return paths

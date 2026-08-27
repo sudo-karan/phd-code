@@ -86,10 +86,10 @@ def main() -> None:
     roi_coords_js = _json.dumps(roi_coords)
 
     # Check what's cached so we emit the right JS.
-    from fmu.utils.caching import asset_exists, cached_asset_path
+    from fmu.utils.caching import asset_exists, cached_asset_path, config_fingerprint
     cached_paths = {}
     for key in ("habitat_mask", "water_mask", "landcover_summary"):
-        path = cached_asset_path(config.name, "masking", key)
+        path = cached_asset_path(config.name, "masking", key, config_fingerprint(config))
         if asset_exists(path):
             cached_paths[key] = path
 

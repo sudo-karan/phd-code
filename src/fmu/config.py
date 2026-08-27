@@ -700,6 +700,11 @@ class MetricsParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     reference_config_name: str | None = None
+    # Where the reference config's YAML lives. Needed because cache asset paths
+    # now carry a fingerprint of the config *content*, so resolving the
+    # reference arm's assets means fingerprinting its config, not just knowing
+    # its name. Defaults to `configs/<reference_config_name>.yaml`.
+    reference_config_file: Path | None = None
     n_comparison_samples: int = Field(default=10000, ge=100)
     n_silhouette_samples_per_cluster: int = Field(default=833, ge=50)
 
@@ -722,6 +727,14 @@ class MetricsParams(BaseModel):
     def input_sources(self) -> set[str]:
         """PipelineContext keys the R-squared attributes read."""
         return {a.source for a in self.r2_attributes}
+
+    def resolved_reference_config_file(self) -> Path | None:
+        """Path to the reference config's YAML, or None if no reference is set."""
+        if self.reference_config_name is None:
+            return None
+        if self.reference_config_file is not None:
+            return self.reference_config_file
+        return Path("configs") / f"{self.reference_config_name}.yaml"
 
 
 class Config(BaseModel):

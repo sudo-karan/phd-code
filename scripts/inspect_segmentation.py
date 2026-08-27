@@ -17,7 +17,7 @@ from fmu.stages.features_static import FeaturesStaticStage  # noqa: F401
 from fmu.stages.features_structure import FeaturesStructureStage  # noqa: F401
 from fmu.stages.masking import MaskingStage  # noqa: F401
 from fmu.stages.segmentation import SegmentationStage  # noqa: F401
-from fmu.utils.caching import asset_exists, cached_asset_path
+from fmu.utils.caching import asset_exists, cached_asset_path, config_fingerprint
 from fmu.utils.gee import init_gee, load_roi_geometry, safe_get_info
 from fmu.utils.logging import init_logging
 
@@ -46,8 +46,12 @@ def main() -> None:
         use_cache=True,
     ).run(config=config, run_dir=run_dir, initial_context=ctx)
 
-    clusters_path = cached_asset_path(config.name, "segmentation", "snic_clusters")
-    means_path = cached_asset_path(config.name, "segmentation", "snic_means")
+    clusters_path = cached_asset_path(
+        config.name, "segmentation", "snic_clusters", config_fingerprint(config)
+    )
+    means_path = cached_asset_path(
+        config.name, "segmentation", "snic_means", config_fingerprint(config)
+    )
     clusters_cached = asset_exists(clusters_path)
     means_cached = asset_exists(means_path)
 

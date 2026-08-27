@@ -241,7 +241,8 @@ Regression test: `tests/test_pipeline.py::test_subclass_inherits_cacheable_outpu
 
 | Function | What it does |
 |---|---|
-| `cached_asset_path(config_name, stage_name, key)` | Build a deterministic GEE asset path: `{asset_root}/{config_name}/{stage_name}/{key}` |
+| `cached_asset_path(config_name, stage_name, key, fingerprint)` | Build a deterministic GEE asset path: `{asset_root}/{config_name}/{stage_name}/{key}__{fingerprint}` |
+| `config_fingerprint(config)` | Short hash of the config content that can change a cached raster, so editing a threshold does not silently reuse the old asset |
 | `asset_exists(path) -> bool` | True if the asset exists. Tries the underlying HttpError status (401/403 propagates, 404 returns False), falls back to message-text matching for older GEE client versions |
 | `start_export(image, asset_path, roi, scale)` | Submit an async export-to-asset task; return `ExportTaskInfo(task_id, asset_path, description)` |
 | `load_cached_image(path) -> ee.Image` | Trivial wrapper for `ee.Image(path)` |

@@ -48,7 +48,10 @@ def _mocked_cache(*, exists: bool):
     """
     with patch("fmu.stages.export.asset_exists", return_value=exists), patch(
         "fmu.stages.export.cached_asset_path",
-        side_effect=lambda config, stage, key: f"fake_root/{config}/{stage}/{key}",
+        side_effect=lambda config, stage, key, fingerprint=None: (
+            f"fake_root/{config}/{stage}/{key}"
+            + (f"__{fingerprint}" if fingerprint else "")
+        ),
     ):
         yield
 
@@ -120,3 +123,12 @@ def test_inventory_covers_every_produces_of_image_only_stages():
                 f"stage {stage_name!r} declares {output!r} as cacheable, "
                 "but auto-discovery didn't pick it up"
             )
+
+
+def test_inventory_passes_the_fingerprint_through():
+    """Cache assets are keyed on config content, so the inventory must look for
+    the fingerprinted path -- otherwise it would find (and export) a
+    pre-fingerprint asset from an older config."""
+    with _mocked_cache(exists=True):
+        paths = _inventory_cached_assets("test_config", "abc1234567")
+    assert all(p.endswith("__abc1234567") for p in paths.values()), paths

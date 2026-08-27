@@ -126,13 +126,23 @@ def main() -> None:
 
         # Re-derive the agreement map server-side from the cached labels
         # since we're emitting JS for the Code Editor.
-        from fmu.utils.caching import cached_asset_path
+        from fmu.utils.caching import cached_asset_path, config_fingerprint
 
-        current_path = cached_asset_path(config.name, "clustering", "cluster_labels")
-        reference_path = cached_asset_path(
-            metrics["reference_config"], "clustering", "cluster_labels"
+        # Cache paths carry a fingerprint of the config contents, so the
+        # reference arm's assets need ITS fingerprint, not this run's.
+        fingerprint = config_fingerprint(config)
+        ref_config = load_config(config.metrics.resolved_reference_config_file())
+        ref_fingerprint = config_fingerprint(ref_config)
+
+        current_path = cached_asset_path(
+            config.name, "clustering", "cluster_labels", fingerprint
         )
-        snic_path = cached_asset_path(config.name, "segmentation", "snic_clusters")
+        reference_path = cached_asset_path(
+            metrics["reference_config"], "clustering", "cluster_labels", ref_fingerprint
+        )
+        snic_path = cached_asset_path(
+            config.name, "segmentation", "snic_clusters", fingerprint
+        )
         max_size = config.max_component_pixels()
         # Build the remap arrays
         correspondence = metrics["correspondence"]

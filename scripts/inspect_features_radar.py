@@ -16,7 +16,7 @@ from fmu.stages.base import PipelineContext
 from fmu.stages.data_load import DataLoadStage  # noqa: F401  # registers stage
 from fmu.stages.features_radar import FeaturesRadarStage  # noqa: F401
 from fmu.stages.masking import MaskingStage  # noqa: F401
-from fmu.utils.caching import asset_exists, cached_asset_path
+from fmu.utils.caching import asset_exists, cached_asset_path, config_fingerprint
 from fmu.utils.gee import init_gee, load_roi_geometry, safe_get_info
 from fmu.utils.logging import init_logging
 
@@ -42,7 +42,9 @@ def main() -> None:
         stage_names=["masking", "data_load", "features_radar"], use_cache=True
     ).run(config=config, run_dir=run_dir, initial_context=ctx)
 
-    features_path = cached_asset_path(config.name, "features_radar", "radar_features")
+    features_path = cached_asset_path(
+        config.name, "features_radar", "radar_features", config_fingerprint(config)
+    )
     features_cached = asset_exists(features_path)
 
     print()

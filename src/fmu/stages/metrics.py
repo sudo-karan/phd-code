@@ -39,6 +39,7 @@ Implementation notes:
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, ClassVar
 
 import ee
@@ -54,7 +55,7 @@ from sklearn.metrics import (
 from fmu.config import Config
 from fmu.stages.base import PipelineContext, Stage, StageResult, register_stage
 from fmu.utils.adjacency import stand_geometry, summarize_stand_geometry
-from fmu.utils.caching import asset_exists, cached_asset_path
+from fmu.utils.caching import asset_exists, cached_asset_path, config_fingerprint
 from fmu.utils.components import assert_components_fit, explained_variance_r2
 from fmu.utils.gee import safe_call, safe_get_info
 from fmu.utils.logging import get_logger
@@ -90,6 +91,11 @@ class MetricsStage(Stage):
         scale = config.export.analysis_scale_m
         params = config.metrics
         k = config.clustering.k
+        # Cache paths carry a fingerprint of the config content, so resolving
+        # the reference arm's assets means fingerprinting ITS config -- knowing
+        # its name is no longer enough.
+        fingerprint = config_fingerprint(config)
+        reference_fingerprint = _reference_fingerprint(params)
 
         metrics: dict[str, Any] = {
             "current_config": config.name,
@@ -130,6 +136,7 @@ class MetricsStage(Stage):
         log.info("  computing intrinsic silhouette for %s", config.name)
         silh_current = _compute_silhouette(
             config_name=config.name,
+            fingerprint=fingerprint,
             cluster_labels=current_labels,
             habitat_mask=habitat_mask,
             roi=roi,
@@ -150,7 +157,10 @@ class MetricsStage(Stage):
                 params.reference_config_name,
             )
             reference_path = cached_asset_path(
-                params.reference_config_name, "clustering", "cluster_labels"
+                params.reference_config_name,
+                "clustering",
+                "cluster_labels",
+                reference_fingerprint,
             )
             if not asset_exists(reference_path):
                 raise FileNotFoundError(
@@ -204,11 +214,15 @@ class MetricsStage(Stage):
 
             # Reference silhouette (so we can compare intrinsic quality)
             ref_feature_stack_path = cached_asset_path(
-                params.reference_config_name, "clustering", "feature_stack"
+                params.reference_config_name,
+                "clustering",
+                "feature_stack",
+                reference_fingerprint,
             )
             if asset_exists(ref_feature_stack_path):
                 silh_reference = _compute_silhouette(
                     config_name=params.reference_config_name,
+                    fingerprint=reference_fingerprint,
                     cluster_labels=reference_labels,
                     habitat_mask=habitat_mask,
                     roi=roi,
@@ -368,6 +382,7 @@ def _sample_paired_labels(
 def _compute_silhouette(
     *,
     config_name: str,
+    fingerprint: str,
     cluster_labels: ee.Image,
     habitat_mask: ee.Image,
     roi: ee.Geometry,
@@ -382,7 +397,9 @@ def _compute_silhouette(
     number of points. Important for silhouette which compares within-cluster
     distance to nearest-cluster distance.
     """
-    feature_stack_path = cached_asset_path(config_name, "clustering", "feature_stack")
+    feature_stack_path = cached_asset_path(
+        config_name, "clustering", "feature_stack", fingerprint
+    )
     if not asset_exists(feature_stack_path):
         log.warning("  feature_stack asset not found for %s; skipping silhouette", config_name)
         return float("nan")
@@ -552,3 +569,32 @@ def _log_r2(ev: dict[str, Any]) -> None:
         "at matched n_stands. Compare the HELD OUT rows; the used one is "
         "reported for comparability with the literature, not as evidence."
     )
+
+
+def _reference_fingerprint(params: Any) -> str | None:
+    """Fingerprint of the reference arm's config, for resolving its cache paths.
+
+    Cache assets are keyed on config *content*, not just name, so a comparison
+    run has to load and fingerprint the reference config rather than assuming
+    one asset per name. Returns None when no reference is set.
+
+    A missing file raises rather than silently falling back to the name-only
+    path: that fallback would point at a pre-fingerprint asset built by older
+    code, and comparing against it would produce a plausible number from the
+    wrong run.
+    """
+    if params.reference_config_name is None:
+        return None
+    path = params.resolved_reference_config_file()
+    if path is None or not Path(path).exists():
+        raise FileNotFoundError(
+            f"metrics: reference config {params.reference_config_name!r} is set "
+            f"but its YAML was not found at {path}. Cache assets are keyed on a "
+            f"fingerprint of the config's contents, so the reference config has "
+            f"to be readable to know which of its assets to compare against. "
+            f"Set metrics.reference_config_file if it does not live at "
+            f"configs/<name>.yaml."
+        )
+    from fmu.config import load_config
+
+    return config_fingerprint(load_config(path))

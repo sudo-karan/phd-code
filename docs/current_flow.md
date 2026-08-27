@@ -502,7 +502,7 @@ Each one will get its own section here as it's built.
 | Manifest of a run | `outputs/runs/<config>_<timestamp>/manifest.json` |
 | Asset caching utility | `src/fmu/utils/caching.py` |
 | Cache integration in orchestrator | `src/fmu/pipeline.py` (`Pipeline(use_cache=True)`, `_try_load_cache`, `_submit_exports`) |
-| Cache asset path format | `{asset_root}/{config_name}/{stage_name}/{key}` |
+| Cache asset path format | `{asset_root}/{config_name}/{stage_name}/{key}__{fingerprint}`; `config_fingerprint()` in `src/fmu/utils/caching.py` |
 
 ---
 

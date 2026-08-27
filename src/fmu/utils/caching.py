@@ -17,8 +17,11 @@ so the run doesn't block. Subsequent runs find the asset.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 from dataclasses import dataclass
+from typing import Any
 
 import ee
 
@@ -28,11 +31,90 @@ from fmu.utils.logging import get_logger
 log = get_logger(__name__)
 
 
-def cached_asset_path(config_name: str, stage_name: str, key: str) -> str:
+# Config blocks whose contents can change a stage's raster output, and so must
+# change its cache key. Everything NOT listed here is declared unable to affect
+# a cached asset -- see `_CACHE_IRRELEVANT_BLOCKS`. A completeness test asserts
+# the two sets together cover every top-level field, so adding a config block
+# without deciding which side it falls on fails the suite rather than silently
+# reintroducing stale-cache bugs.
+_CACHE_RELEVANT_BLOCKS: frozenset[str] = frozenset(
+    {
+        "roi",
+        "dates",
+        "datasets",
+        "cloud_mask",
+        "data_load",
+        "masking",
+        "features_optical",
+        "features_radar",
+        "features_structure",
+        "features_static",
+        "features_embedding",
+        "features",
+        "segmentation",
+        "merge",
+        "clustering",
+        "normalization",
+    }
+)
+
+# Blocks that provably cannot change a cached asset:
+#   name/description  identity, not content (name is already in the path)
+#   metrics           a pure consumer; the stage declares no cacheable outputs
+_CACHE_IRRELEVANT_BLOCKS: frozenset[str] = frozenset(
+    {"name", "description", "metrics"}
+)
+
+# `export` is split: analysis_scale_m governs every reduction and every export
+# resolution, so it belongs in the fingerprint. The rest is output plumbing
+# (Drive folder, formats, which layers to emit) and changing it should not throw
+# away an expensive raster.
+_CACHE_RELEVANT_EXPORT_FIELDS: tuple[str, ...] = ("analysis_scale_m",)
+
+
+def config_fingerprint(config: Any) -> str:
+    """Short stable hash of the config content that can change a cached asset.
+
+    The cache used to be keyed on the config *name* alone, which meant editing a
+    threshold and re-running the same config silently reused the old asset. That
+    is not a performance bug, it is a correctness bug: the committed run has two
+    arms whose SNIC tessellations differ (1249 vs 1312 superpixels, 0.2% of
+    centroids matching), and under the merge design the segmentation IS the
+    primary output. Threshold tuning is the main activity now, so a stale cache
+    would poison precisely the thing being iterated on.
+
+    Deliberately coarse: one fingerprint over most of the config rather than a
+    per-stage dependency map. A narrow map is cheaper -- editing `merge` would
+    not invalidate `masking` -- but a *wrong* narrow map silently reintroduces
+    the bug it exists to prevent, for one stage only, and nothing in the output
+    would say so. Over-invalidation costs compute; under-invalidation costs a
+    result. Narrowing it per stage is a worthwhile follow-up with the
+    completeness test already in place to keep it honest.
+    """
+    payload: dict[str, Any] = {
+        block: config.model_dump(mode="json").get(block)
+        for block in sorted(_CACHE_RELEVANT_BLOCKS)
+    }
+    payload["export"] = {
+        f: getattr(config.export, f) for f in _CACHE_RELEVANT_EXPORT_FIELDS
+    }
+    encoded = json.dumps(payload, sort_keys=True, default=str).encode()
+    return hashlib.sha256(encoded).hexdigest()[:10]
+
+
+def cached_asset_path(
+    config_name: str, stage_name: str, key: str, fingerprint: str | None = None
+) -> str:
     """Build a stable cache asset path.
 
     Layout:
-      {asset_root}/{config_name}/{stage_name}/{key}
+      {asset_root}/{config_name}/{stage_name}/{key}__{fingerprint}
+
+    The fingerprint makes the path depend on the config *content*, so two runs
+    of the same config name with different parameters get different assets
+    instead of the second silently reusing the first. Omitting it reproduces the
+    old name-only layout; that is for reading pre-fingerprint assets, not for
+    writing new ones.
 
     `config_name` and `stage_name` may not contain slashes or whitespace;
     they're already constrained by config validation. We re-check `key`
@@ -43,6 +125,13 @@ def cached_asset_path(config_name: str, stage_name: str, key: str) -> str:
         raise ValueError(
             f"cached_asset_path: key must be alphanumeric/underscore. Got: {key!r}"
         )
+    if fingerprint is not None:
+        if not re.match(r"^[a-zA-Z0-9]+$", fingerprint):
+            raise ValueError(
+                f"cached_asset_path: fingerprint must be alphanumeric. "
+                f"Got: {fingerprint!r}"
+            )
+        key = f"{key}__{fingerprint}"
     return asset_path(key, subdir=f"{config_name}/{stage_name}")
 
 

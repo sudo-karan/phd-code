@@ -173,11 +173,29 @@ Three design points:
    it on. This keeps the test suite clean and prevents accidental asset
    pollution.
 
-2. **Stable paths, not hash-based.** Path is
-   `{asset_root}/{config_name}/{stage_name}/{key}`. Changing config
-   thresholds overwrites the asset. We accept this tradeoff for now; a
-   future module can add config-hash-based paths if reproducibility of
-   past runs becomes important.
+2. **Paths carry a fingerprint of the config contents.** Path is
+   `{asset_root}/{config_name}/{stage_name}/{key}__{fingerprint}`.
+
+   This was originally name-only, on the reasoning that overwriting an
+   asset when thresholds change was an acceptable tradeoff. It was not.
+   Editing a threshold and re-running the same config silently reused the
+   old asset -- a correctness bug, not a performance one, and it became
+   the load-bearing kind under the merge design: the segmentation IS the
+   primary output now, threshold tuning is the main activity, and the
+   committed run already shows two arms whose tessellations differ (1249
+   vs 1312 superpixels, 0.2% of centroids matching).
+
+   The fingerprint is deliberately coarse -- one hash over most of the
+   config rather than a per-stage dependency map. A narrow map is cheaper
+   (editing `merge` would not invalidate `masking`) but a *wrong* narrow
+   map silently reintroduces the bug for one stage, and nothing in the
+   output would say so. Over-invalidation costs compute; under-invalidation
+   costs a result. What is excluded is declared explicitly
+   (`_CACHE_IRRELEVANT_BLOCKS`: name, description, metrics, plus the
+   output-plumbing half of `export`), and a test asserts every top-level
+   config block falls on one side or the other, so a new block cannot drop
+   out of the hash unnoticed. Narrowing it per stage is a follow-up that
+   test already guards.
 
 3. **Fire-and-forget on cache miss.** Stage runs live AND submits an async
    export task. The current run returns the live computation; the next

@@ -14,6 +14,7 @@ from fmu.utils.caching import (
     ExportTaskInfo,
     asset_exists,
     cached_asset_path,
+    config_fingerprint,
     load_cached_image,
     start_export,
 )
@@ -381,8 +382,9 @@ class Pipeline:
         Non-cacheable keys are not checked.
         """
         outputs: dict[str, Any] = {}
+        fingerprint = config_fingerprint(config)
         for key in sorted(cacheable):
-            path = cached_asset_path(config.name, stage.name, key)
+            path = cached_asset_path(config.name, stage.name, key, fingerprint)
             if asset_exists(path):
                 cache_status[key] = "hit"
                 outputs[key] = load_cached_image(path)
@@ -429,7 +431,9 @@ class Pipeline:
                     key, type(image).__name__,
                 )
                 continue
-            path = cached_asset_path(config.name, stage.name, key)
+            path = cached_asset_path(
+                config.name, stage.name, key, config_fingerprint(config)
+            )
             task = start_export(
                 image=image,
                 asset_path=path,
