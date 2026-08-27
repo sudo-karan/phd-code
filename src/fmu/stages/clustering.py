@@ -274,7 +274,7 @@ class ClusteringStage(Stage):
         )
 
         # 8-9. Train k-means on every unit, then apply to all habitat pixels.
-        cluster_labels, n_training_units = _train_and_apply_kmeans(
+        cluster_labels, unit_coverage = _train_and_apply_kmeans(
             scaled_stack=scaled_stack,
             active_bands=active_bands,
             unit_labels=unit_labels,
@@ -292,7 +292,11 @@ class ClusteringStage(Stage):
             "seed": params.seed,
             "feature_source": params.feature_source,
             # Every unit, not a pixel sample: see _sample_one_point_per_unit.
-            "n_training_units": n_training_units,
+            # The full breakdown, not just the row count: a unit missing from
+            # the fit had no say in the cluster definitions it is judged by, and
+            # the two reasons for missing (non-habitat, no band data) mean
+            # different things. See _train_and_apply_kmeans.
+            **unit_coverage,
             "training_unit_key": unit_key,
             "normalization_method": method,
             "skewness_threshold": params.skewness_threshold,
@@ -644,7 +648,7 @@ def _train_and_apply_kmeans(
     k: int,
     seed: int,
     unit_key: str,
-) -> tuple[ee.Image, int]:
+) -> tuple[ee.Image, dict[str, int]]:
     """Train wekaKMeans on every unit, apply to the full habitat-masked stack.
 
     Returns the label image and the number of units actually fitted on, which
@@ -666,7 +670,54 @@ def _train_and_apply_kmeans(
     n_units = int(
         safe_get_info(training_sample.size(), context="k-means training row count")
     )
-    log.info("  k-means training rows: %d (one per %s)", n_units, unit_key)
+
+    # How many units *should* have contributed, and why the rest did not.
+    #
+    # The fit defines what each cluster is, so a unit missing from it had no say
+    # in the definition it will be judged by. Reporting only the row count hid
+    # that: a run showed "289 (one per stand_clusters)" against a merge that had
+    # just produced 327 stands, and nothing connected the two numbers.
+    #
+    # Two different exclusions, with different meanings:
+    #   - outside the habitat mask: correct, and not a loss. A non-forest unit
+    #     should not be typed as forest.
+    #   - inside habitat but dropped by `dropNulls`: a band has no data over it.
+    #     That is a *non-random* exclusion -- it tracks input coverage, not
+    #     forest character -- and since `cluster()` masks wherever an input band
+    #     is masked, those units are missing from `cluster_labels` too. They
+    #     become holes in the map, not mistyped stands.
+    n_total = _count_units(unit_labels, roi, scale, context=f"{unit_key} in ROI")
+    n_in_habitat = _count_units(
+        unit_labels.updateMask(habitat_mask),
+        roi,
+        scale,
+        context=f"{unit_key} in habitat",
+    )
+    n_non_habitat = max(n_total - n_in_habitat, 0)
+    n_null_dropped = max(n_in_habitat - n_units, 0)
+
+    log.info(
+        "  k-means training rows: %d of %d %s (%d outside habitat, %d dropped "
+        "for missing band data)",
+        n_units,
+        n_total,
+        unit_key,
+        n_non_habitat,
+        n_null_dropped,
+    )
+    if n_null_dropped:
+        log.warning(
+            "  %d %s unit(s) sit inside the habitat mask but contributed no "
+            "training row: at least one of the %d active bands has no data over "
+            "them, so dropNulls removed them. This exclusion follows input "
+            "coverage rather than forest character, and the same masking leaves "
+            "them unlabelled in cluster_labels -- they are holes in the map, not "
+            "mistyped units.",
+            n_null_dropped,
+            unit_key,
+            len(active_bands),
+        )
+
     if n_units < k:
         raise ValueError(
             f"clustering: only {n_units} {unit_key} unit(s) available to fit "
@@ -682,4 +733,35 @@ def _train_and_apply_kmeans(
         seed=seed,
     ).train(features=training_sample, inputProperties=active_bands)
 
-    return training_input.cluster(clusterer).rename("cluster_id"), n_units
+    coverage = {
+        "n_training_units": n_units,
+        "n_units_total": n_total,
+        "n_units_in_habitat": n_in_habitat,
+        "n_units_outside_habitat": n_non_habitat,
+        "n_units_dropped_null_band": n_null_dropped,
+    }
+    return training_input.cluster(clusterer).rename("cluster_id"), coverage
+
+
+def _count_units(
+    labels: ee.Image, roi: ee.Geometry, scale: int, *, context: str
+) -> int:
+    """How many distinct unit labels are present in `labels` over `roi`.
+
+    A frequency histogram rather than a distinct-count reducer: EE has no
+    `countDistinct` over an image, and the histogram's keys are the label set.
+    """
+    band = safe_get_info(labels.bandNames(), context=f"{context} band name")[0]
+    hist = (
+        safe_get_info(
+            labels.select([band]).reduceRegion(
+                reducer=ee.Reducer.frequencyHistogram(),
+                geometry=roi,
+                scale=scale,
+                maxPixels=1e9,
+            ),
+            context=f"{context} label histogram",
+        ).get(band)
+        or {}
+    )
+    return len(hist)

@@ -345,7 +345,16 @@ def test_stage_names_rejects_unknown_through():
 # ---------- ProfilingStage / ExportStage validate() (feature-source-aware) ----------
 
 _PROFILING_INVARIANT = {"roi", "cluster_labels"}
-_EXPORT_INVARIANT = {"roi", "cluster_labels", "feature_stack", "snic_clusters", "cluster_profiles"}
+# `stand_clusters` because export vectorises the merged stands as stands_merged
+# whenever merge is enabled, which both shipped configs have it.
+_EXPORT_INVARIANT = {
+    "roi",
+    "cluster_labels",
+    "feature_stack",
+    "snic_clusters",
+    "stand_clusters",
+    "cluster_profiles",
+}
 _HANDCRAFTED_FEATURES = {
     "optical_features", "radar_features", "structure_features", "static_features",
 }

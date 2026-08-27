@@ -143,6 +143,10 @@ export:
   # Vector outputs (v1.1.0). One polygon-per-SNIC-superpixel layer (debugging /
   # methodology) and one dissolved-cluster layer (forester-facing management
   # units). Each layer exported in every listed format. See docs/outputs.md.
+  # The merged-stand layer: the unit SNIC + merge delineate.
+  # Written only when merge.enabled; without merge it would duplicate
+  # stands_snic exactly.
+  export_vector_merged: true
   export_vector_snic: true
   export_vector_dissolved: true
   vector_formats: [shp, geojson]    # SHP gets minimal schema, GeoJSON gets full

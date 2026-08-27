@@ -369,8 +369,9 @@ Profile data lives in the `manifest.json` `metadata.profiles` block, so it's aut
 Packages the pipeline's final research-ready outputs. As of v1.1.0 there are three deliverable classes plus a run manifest, all driven by config toggles:
 
 1. **Raster GeoTIFFs** to the user's Google Drive (for collaborators without GEE access): a single-band `cluster_labels` map, a raw-units feature raster, and a scaled feature raster (the two feature rasters each carry a `cluster_id` band). Toggle: `export.export_geotiff`.
-2. **SNIC superpixel vectors** (`stands_snic`): one polygon per SNIC superpixel with per-superpixel means of every features_* band attached. The debugging / methodology layer; lets you trace a polygon back to the SNIC label and inspect what fed clustering. Toggle: `export.export_vector_snic`.
-3. **Dissolved cluster vectors** (`stands_dissolved`): one polygon per connected same-cluster region, with cluster profile statistics attached. The forester-facing management-units layer. Toggle: `export.export_vector_dissolved`.
+2. **Merged-stand vectors** (`stands_merged`): one polygon per merged stand — the unit SNIC + merge delineate, and the pipeline's primary deliverable. Stands clustering could not type are KEPT with a null `cluster_id`, because a stand exists whether or not a type label could be attached to it. Toggle: `export.export_vector_merged` (only when `merge.enabled`).
+3. **SNIC superpixel vectors** (`stands_snic`): one polygon per SNIC superpixel with per-superpixel means of every features_* band attached. The debugging / methodology layer; lets you trace a polygon back to the SNIC label and inspect what fed clustering. Toggle: `export.export_vector_snic`.
+4. **Dissolved cluster vectors** (`stands_dissolved`): one polygon per connected same-cluster region, with cluster profile statistics attached. The forester-facing management-units layer. Toggle: `export.export_vector_dissolved`.
 
 Each vector layer is exported in every format listed in `export.vector_formats` (default: both `shp` and `geojson`). SHP exports carry a minimal ~5-6-column attribute schema (10-char field-name limit); GeoJSON exports carry the full attribute schema. See `docs/outputs.md` for per-layer schemas.
 
@@ -407,6 +408,7 @@ SHP outputs use the `selectors` argument to pick a minimal SHP-safe attribute su
 - `export_gee_asset`; reserved for future use
 - `analysis_scale_m`; pixel size in meters for exports (default 10)
 - `drive_folder`; folder under My Drive where all exports land (default `"fmu_exports"`)
+- `export_vector_merged`; emit the merged-stand vector layer (default `true`, requires `merge.enabled`)
 - `export_vector_snic`; emit the SNIC superpixel vector layer (default `true`)
 - `export_vector_dissolved`; emit the dissolved cluster vector layer (default `true`)
 - `vector_formats`; list of formats to export per vector layer (default `[shp, geojson]`; rejects duplicates and unknown formats)

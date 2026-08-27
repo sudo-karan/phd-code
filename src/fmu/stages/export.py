@@ -11,17 +11,27 @@ Three deliverable classes, all driven by toggles in `config.export`:
        - a multiband raster of the SCALED feature_stack (exactly what k-means
          saw) + the cluster label.
 
-  2. **SNIC superpixel vectors** (`stands_snic`): one polygon per SNIC
+  2. **Merged-stand vectors** (`stands_merged`): one polygon per merged
+     stand -- the unit SNIC + merge delineate, and the pipeline's primary
+     deliverable. Toggled via `export_vector_merged`; written only when
+     `merge.enabled`, since without merge the stand *is* the superpixel and
+     `stands_snic` already is that layer. Unlike `stands_snic`, stands that
+     clustering could not type are kept with a null `cluster_id`.
+
+  3. **SNIC superpixel vectors** (`stands_snic`): one polygon per SNIC
      superpixel with all per-superpixel feature means attached. The
      debugging / methodology layer; lets you trace from a polygon back
-     to the SNIC label and inspect what fed clustering. Toggled via
+     to the SNIC label and inspect what fed clustering, and gives the
+     pre-merge side of a pre/post-merge comparison. Toggled via
      `export_vector_snic`.
 
-  3. **Dissolved cluster vectors** (`stands_dissolved`): one polygon per
+  4. **Dissolved cluster vectors** (`stands_dissolved`): one polygon per
      connected same-cluster region, with cluster profile statistics
-     attached. The forester-facing management-units layer. Toggled via
-     `export_vector_dissolved`. Filtered by `vector_min_stand_pixels` to
-     drop speckle.
+     attached. Toggled via `export_vector_dissolved`. Filtered by
+     `vector_min_stand_pixels` to drop speckle. Kept for continuity with
+     the pre-merge outputs; `stands_merged` supersedes it as the unit of
+     delineation, since dissolving by cluster id merges every same-type
+     region that happens to touch, whatever its extent.
 
 Each vector layer is exported in every format listed in
 `config.export.vector_formats` (default: both SHP and GeoJSON). SHP
@@ -53,6 +63,8 @@ Schema note (v1.1.0 — breaking change from v0.18.0):
     - "raster_cluster_labels"          (present if export_geotiff)
     - "raster_features_raw"            (present if export_geotiff)
     - "raster_features_scaled"         (present if export_geotiff)
+    - "vector_stands_merged_{fmt}"     (one per format, if export_vector_merged
+                                        AND merge.enabled)
     - "vector_stands_snic_{fmt}"       (one per format, if export_vector_snic)
     - "vector_stands_dissolved_{fmt}"  (one per format, if export_vector_dissolved)
   Past on-disk manifests are unaffected (archival), but any downstream
@@ -86,6 +98,7 @@ log = get_logger(__name__)
 _DECISIONS_SOURCE = "phd-notebook/decisions.md"
 
 # Vector layer canonical names. Used as filename infixes and manifest keys.
+_MERGED_LAYER_NAME = "stands_merged"
 _SNIC_LAYER_NAME = "stands_snic"
 _DISSOLVED_LAYER_NAME = "stands_dissolved"
 
@@ -99,6 +112,14 @@ _SORT_LAT_MULT = 1_000_000
 # SHP attribute selectors. SHP has a hard 10-char field-name limit; everything
 # in these lists is <= 10 chars. The GeoJSON exports omit the selectors arg
 # entirely, so they include every property attached to the feature.
+_SHP_SELECTORS_MERGED: tuple[str, ...] = (
+    "stand_id",      # 8
+    "stand_lbl",     # 9 -- the raw merge label, "stand_label" is 11 chars
+    "cluster_id",    # 10
+    "area_ha",       # 7
+    "perim_m",       # 7
+    "n_pixels",      # 8
+)
 _SHP_SELECTORS_SNIC: tuple[str, ...] = (
     "stand_id",      # 8
     "snic_label",    # 10
@@ -147,6 +168,11 @@ class ExportStage(Stage):
         needed = {
             "roi", "cluster_labels", "feature_stack", "snic_clusters", "cluster_profiles",
         } | extra
+        # The merged-stand layer needs the merge's output. Conditional rather
+        # than a static required_input: without merge that key does not exist,
+        # and demanding it would break every merge-disabled config.
+        if config.export.export_vector_merged and config.merge.enabled:
+            needed.add(config.unit_label_key())
         missing = needed - ctx.keys()
         if missing:
             raise KeyError(
@@ -233,7 +259,72 @@ class ExportStage(Stage):
                     submitted_at=now_iso_initial,
                 )
 
-        # 4b. SNIC superpixel vectors
+        # 4b. Merged-stand vectors -- the delineation this pipeline produces.
+        #
+        # Only when merge ran. Without it `unit_label_key()` is `snic_clusters`
+        # and this layer would be a byte-for-byte duplicate of stands_snic
+        # below, which is worse than absent: two files, same content, different
+        # names, and a reader with no way to tell they are the same thing.
+        if config.export.export_vector_merged and config.merge.enabled:
+            log.info("  building merged-stand vector layer...")
+            merged_fc = _build_merged_feature_collection(
+                ctx=ctx, config=config, scale=scale
+            )
+            merged_n_features = safe_get_info(
+                merged_fc.size(), context="stands_merged feature count"
+            )
+            log.info("  stands_merged: %s features", merged_n_features)
+
+            vector_layers[_MERGED_LAYER_NAME] = {
+                "description": (
+                    "One polygon per merged stand -- the unit SNIC + merge "
+                    "delineate, and the pipeline's primary deliverable. "
+                    "Attributes include the raw merge label (stand_lbl), the "
+                    "assigned cluster_id, and per-stand means of every "
+                    "features_* band. Stands clustering could not type carry a "
+                    "null cluster_id and are KEPT: the stand exists whether or "
+                    "not a type label could be attached to it."
+                ),
+                "n_features": merged_n_features,
+                "geometry_type": "Polygon",
+                "id_field": "stand_id",
+                "id_renumbering": (
+                    "1..N, sorted by centroid latitude descending then "
+                    "longitude ascending. Deterministic pure function of the "
+                    "merged geometry."
+                ),
+                "unclustered_stands_retained": True,
+                "shp_attributes": list(_SHP_SELECTORS_MERGED),
+                "geojson_attributes": "all SHP attributes plus per-stand means "
+                                      "of every features_* band",
+            }
+            for fmt in config.export.vector_formats:
+                filename = f"{config.name}_{_MERGED_LAYER_NAME}"
+                task = self._submit_drive_vector_export(
+                    feature_collection=merged_fc,
+                    filename=filename,
+                    drive_folder=drive_folder,
+                    file_format=fmt,
+                    selectors=(
+                        list(_SHP_SELECTORS_MERGED) if fmt == "shp" else None
+                    ),
+                )
+                drive_exports[f"vector_{_MERGED_LAYER_NAME}_{fmt}"] = (
+                    _format_task_entry(
+                        folder=drive_folder,
+                        filename=f"{filename}{_filename_ext(fmt)}",
+                        file_format=fmt.upper(),
+                        task=task,
+                        submitted_at=now_iso_initial,
+                    )
+                )
+        elif config.export.export_vector_merged:
+            log.info(
+                "  skipping merged-stand vector layer: merge is disabled, so "
+                "the stand is the SNIC superpixel and stands_snic already is it"
+            )
+
+        # 4c. SNIC superpixel vectors
         if config.export.export_vector_snic:
             log.info("  building SNIC superpixel vector layer...")
             snic_fc = _build_snic_feature_collection(
@@ -285,7 +376,7 @@ class ExportStage(Stage):
                     )
                 )
 
-        # 4c. Dissolved cluster vectors
+        # 4d. Dissolved cluster vectors
         if config.export.export_vector_dissolved:
             log.info("  building dissolved cluster vector layer...")
             dissolved_fc = _build_dissolved_feature_collection(
@@ -642,6 +733,75 @@ def _format_task_entry(
         "submitted_at": submitted_at if task else None,
         "task_submitted": task is not None,
     }
+
+
+def _build_merged_feature_collection(
+    *,
+    ctx: PipelineContext,
+    config: Config,
+    scale: int,
+) -> ee.FeatureCollection:
+    """Build the merged-stand vector layer -- the pipeline's actual product.
+
+    Same shape as `_build_snic_feature_collection`, over `stand_clusters`
+    instead of `snic_clusters`, with one deliberate difference: **stands with no
+    cluster_id are kept**.
+
+    The SNIC layer drops them, and that is right for a layer whose stated job is
+    to trace *clustered* polygons back to their superpixels. It is wrong here.
+    Under the merge design SNIC plus merge produce the stand and clustering only
+    attaches a type label to a finished one, so a stand that clustering could not
+    type is still a stand, and dropping it would quietly delete real delineated
+    area from the deliverable. A run that fit k-means on 289 of 327 stands would
+    have exported 289 polygons and looked complete.
+
+    So `cluster_id` is null on exactly those stands, which makes the coverage gap
+    visible in the layer itself rather than only in the log.
+    """
+    stand_clusters: ee.Image = ctx.get(config.unit_label_key())
+    cluster_labels: ee.Image = ctx.get("cluster_labels")
+    roi: ee.Geometry = ctx.get("roi")
+
+    # Step 1: vectorize the stand labels. `stand_lbl` rather than `stand_label`
+    # so the name survives SHP's 10-character field limit unchanged, and both
+    # formats therefore carry the same column name.
+    stand_label_image = stand_clusters.toInt().rename("stand_lbl")
+    polygons = stand_label_image.reduceToVectors(
+        geometry=roi,
+        scale=scale,
+        geometryType="polygon",
+        eightConnected=True,
+        labelProperty="stand_lbl",
+        maxPixels=int(1e9),
+    )
+
+    # Step 2: per-stand feature means, same exclusions as the SNIC layer.
+    all_features = _feature_source_image(ctx)
+    kept_feature_bands = all_features.bandNames().removeAll(
+        ee.List(["ndvi_obs_count", "nirv_obs_count"])
+    )
+    polygons_with_features = all_features.select(kept_feature_bands).reduceRegions(
+        collection=polygons,
+        reducer=ee.Reducer.mean(),
+        scale=scale,
+    )
+
+    # Step 3: attach cluster_id via mode. Null where clustering never reached
+    # the stand -- non-habitat, or a band with no data over it. Not filtered.
+    cluster_id_img = cluster_labels.toInt().rename("cluster_id")
+    polygons_with_cluster = cluster_id_img.reduceRegions(
+        collection=polygons_with_features,
+        reducer=ee.Reducer.mode(),
+        scale=scale,
+    )
+    polygons_typed = polygons_with_cluster.map(_rename_mode_to_cluster_id)
+
+    # Steps 4-5: geometry attributes, drop bookkeeping, renumber by centroid.
+    polygons_with_geom = polygons_typed.map(
+        lambda f: _add_geom_attrs(f, scale)
+    ).map(_drop_internal_properties)
+
+    return _renumber_by_centroid(polygons_with_geom, id_field="stand_id")
 
 
 def _build_snic_feature_collection(
