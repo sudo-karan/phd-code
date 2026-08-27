@@ -71,7 +71,7 @@ import ee
 from fmu.config import Config
 from fmu.stages.base import PipelineContext, Stage, StageResult, register_stage
 from fmu.utils.components import assert_components_fit
-from fmu.utils.gee import safe_call, safe_get_info
+from fmu.utils.gee import LABEL_BAND, safe_call, safe_get_info
 from fmu.utils.logging import get_logger
 
 log = get_logger(__name__)
@@ -417,7 +417,9 @@ def _compute_superpixel_means(
     beyond the label image it is handed.
     """
     band_names = feature_image.bandNames()
-    label_band = "snic_label"
+    # Was "snic_label", which is now the wrong word as well as a second
+    # convention: the unit here is a merged stand whenever merge ran.
+    label_band = LABEL_BAND
 
     with_labels = feature_image.addBands(unit_labels.rename(label_band))
     reduced = with_labels.reduceConnectedComponents(
@@ -618,7 +620,7 @@ def _sample_one_point_per_unit(
     `stratifiedSample` with `numPoints=1` and no `classValues` takes one point
     from every class present, so no unit is dropped for being small.
     """
-    label_band = "_unit_label"
+    label_band = LABEL_BAND
     stacked = image.addBands(unit_labels.rename(label_band))
     return stacked.stratifiedSample(
         numPoints=1,

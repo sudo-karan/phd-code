@@ -21,6 +21,7 @@ from fmu.stages.base import PipelineContext, get_stage_class
 from fmu.stages.clustering import ClusteringStage
 from fmu.stages.merge import MergeStage, _warnings_from
 from fmu.stages.metrics import MetricsStage
+from fmu.utils.gee import LABEL_BAND, check_band_name
 
 REPO_ROOT = Path(__file__).parent.parent
 CONFIG_DIR = REPO_ROOT / "configs"
@@ -305,7 +306,12 @@ def test_sampler_stratifies_one_point_per_unit():
         _Img(), _Img(), "<roi>", 10, seed=42, context="test"
     )
     assert captured["numPoints"] == 1
-    assert captured["classBand"] == "_unit_label"
+    # Against the constant, not a literal. This line used to read
+    # `== "_unit_label"`, so it held the broken name in place and stayed green
+    # while the stage failed live -- `_Img.rename` accepts anything, which is
+    # exactly what EE does not.
+    assert captured["classBand"] == LABEL_BAND
+    assert check_band_name(captured["classBand"]) == captured["classBand"]
     assert captured["scale"] == 10
     assert captured["dropNulls"] is True
     # No classValues: every class present is sampled, small units included.
