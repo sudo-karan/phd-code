@@ -221,9 +221,25 @@ class ExportStage(Stage):
         #                             k-means saw it (log / robust-scaled,
         #                             cyclic-decomposed) + the cluster_id band.
         if config.export.export_geotiff:
-            # cluster_id band, shared by the two feature rasters. Kept as a
-            # plain band (GeoTIFF casts the whole image to a common type, so
-            # it rides along as a float next to the feature bands).
+            # cluster_id band, shared by the two feature rasters.
+            #
+            # The whole image is cast to Float32 before export. GeoTIFF does
+            # NOT cast a mixed-type image to a common type -- the previous
+            # comment here claimed it did, and EE rejects it instead:
+            #
+            #   Exported bands must have compatible data types; found
+            #   inconsistent types: Float64 and Int32. (Error code: 3)
+            #
+            # And it rejects it *asynchronously*, three seconds into a task
+            # submitted long after the stage reported success, so the run looked
+            # clean and the file simply never arrived.
+            #
+            # Float32 rather than Float64: it holds cluster ids 0..k-1 exactly,
+            # carries ~7 significant digits across every feature band (elevation
+            # in metres, radar in dB, indices in [-1, 1], the scaled stack in
+            # roughly [-5, 5]), and halves the file. The authoritative integer
+            # labels are the single-band uint8 raster below; cluster_id rides
+            # along in these two for convenience.
             label_band = cluster_labels.rename("cluster_id")
 
             raster_specs = [
@@ -235,12 +251,12 @@ class ExportStage(Stage):
                 (
                     "raster_features_raw",
                     f"{config.name}_features_raw",
-                    _build_raw_feature_export_image(ctx).addBands(label_band),
+                    _build_raw_feature_export_image(ctx).addBands(label_band).toFloat(),
                 ),
                 (
                     "raster_features_scaled",
                     f"{config.name}_features_scaled",
-                    ctx.get("feature_stack").addBands(label_band),
+                    ctx.get("feature_stack").addBands(label_band).toFloat(),
                 ),
             ]
             for manifest_key, raster_filename, raster_image in raster_specs:

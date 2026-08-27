@@ -60,3 +60,43 @@ def test_select_targets_ignores_non_stand_files():
         {"name": "random.geojson", "modifiedTime": "a"},
     ]
     assert select_targets(files) == {}
+
+
+def test_the_merged_layer_is_fetched_by_default():
+    """`stands_merged` is the pipeline's deliverable, and the fetcher used to
+    default to `("dissolved", "snic")`. It would have downloaded two layers,
+    reported no error, and left the comparison running on the pre-merge ones."""
+    files = [
+        {"name": "sanjay_van_baseline_stands_merged.geojson", "modifiedTime": "2026-08-27T05:59:00Z"},
+        {"name": "sanjay_van_baseline_stands_snic.geojson", "modifiedTime": "2026-08-27T05:59:00Z"},
+        {"name": "sanjay_van_baseline_stands_dissolved.geojson", "modifiedTime": "2026-08-27T05:59:00Z"},
+    ]
+    assert set(select_targets(files)) == {
+        "sanjay_van_baseline_stands_merged.geojson",
+        "sanjay_van_baseline_stands_snic.geojson",
+        "sanjay_van_baseline_stands_dissolved.geojson",
+    }
+
+
+def test_merged_is_not_confused_with_the_other_layers():
+    """`_stands_<layer>.geojson` is matched by suffix, so a layer name that is a
+    substring of another would collide. These three do not, and the test says so
+    rather than leaving it to luck."""
+    files = [
+        {"name": "cfg_stands_merged.geojson", "modifiedTime": "2026-08-27T05:59:00Z"},
+    ]
+    assert set(select_targets(files, layers=("merged",))) == {"cfg_stands_merged.geojson"}
+    assert select_targets(files, layers=("snic", "dissolved")) == {}
+
+
+def test_the_cli_default_matches_the_function_default():
+    """Two defaults for one decision: the signature's and argparse's. They
+    disagreed for as long as it took to notice."""
+    import inspect
+
+    import fetch_drive_vectors as mod
+
+    sig_default = inspect.signature(mod.select_targets).parameters["layers"].default
+    src = inspect.getsource(mod.main)
+    for layer in sig_default:
+        assert f'"{layer}"' in src, f"--layers default is missing {layer!r}"

@@ -235,3 +235,37 @@ def test_the_two_layers_are_not_the_same_layer():
     polygon layer and it held superpixels."""
     assert export_mod._MERGED_LAYER_NAME != export_mod._SNIC_LAYER_NAME
     assert _SHP_SELECTORS_MERGED != _SHP_SELECTORS_SNIC
+
+
+# ---------- the GeoTIFF exports ----------
+
+
+def test_the_multiband_rasters_are_cast_to_one_type():
+    """`Exported bands must have compatible data types; found inconsistent
+    types: Float64 and Int32.`
+
+    GeoTIFF does not cast a mixed-type image to a common type -- a comment in
+    this file used to claim it did. EE rejects it, and rejects it
+    *asynchronously*: the stage reported success, the task failed three seconds
+    in, and the file simply never arrived in Drive. Both multiband rasters bolt
+    an integer `cluster_id` onto float feature bands, so both need the cast.
+    """
+    import inspect
+
+    src = inspect.getsource(export_mod.ExportStage.run)
+    raster_block = src[src.index("raster_specs = ["): src.index("for manifest_key")]
+
+    for spec in ("_build_raw_feature_export_image(ctx)", 'ctx.get("feature_stack")'):
+        line = next(ln for ln in raster_block.splitlines() if spec in ln)
+        assert ".toFloat()" in line, f"{spec} reaches GeoTIFF export uncast: {line.strip()}"
+
+
+def test_the_single_band_label_raster_stays_an_integer():
+    """The multiband rasters carry cluster_id as a float for compatibility, so
+    the uint8 raster is the only place the labels survive as exact integers.
+    Casting it to float too would leave none."""
+    import inspect
+
+    src = inspect.getsource(export_mod.ExportStage.run)
+    line = next(ln for ln in src.splitlines() if "toUint8()" in ln)
+    assert ".toFloat()" not in line

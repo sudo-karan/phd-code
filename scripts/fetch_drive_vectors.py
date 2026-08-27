@@ -1,7 +1,8 @@
 """Download the exported stand vectors from a Google Drive folder into
 `fmu_exports_clean/` — so `report.py` has the GeoJSONs without a manual download.
 
-The export stage writes `stands_dissolved` / `stands_snic` (GeoJSON + SHP) to a
+The export stage writes `stands_merged` / `stands_dissolved` / `stands_snic`
+(GeoJSON + SHP) to a
 Drive folder (default `fmu_exports`). Repeated runs make Drive append `(1)`,
 `(2)` etc. to the names, so the folder fills with duplicates. This script lists
 the folder, keeps the **newest** copy of each `<config>_stands_<layer>.geojson`
@@ -47,7 +48,7 @@ def canonical_name(name: str) -> str:
 
 def select_targets(
     files: list[dict],
-    layers: tuple[str, ...] = ("dissolved", "snic"),
+    layers: tuple[str, ...] = ("merged", "dissolved", "snic"),
     configs: list[str] | None = None,
 ) -> dict[str, dict]:
     """Pick the newest GeoJSON per `<config>_stands_<layer>` from a file listing.
@@ -151,8 +152,8 @@ def main() -> None:
                     help="local destination (default fmu_exports_clean)")
     ap.add_argument("--configs", nargs="*", default=None,
                     help="only fetch these config names (default: all found)")
-    ap.add_argument("--layers", nargs="+", default=["dissolved", "snic"],
-                    help="which vector layers to fetch (default: dissolved snic)")
+    ap.add_argument("--layers", nargs="+", default=["merged", "dissolved", "snic"],
+                    help="which vector layers to fetch (default: merged dissolved snic)")
     args = ap.parse_args()
 
     service = _drive_service()
