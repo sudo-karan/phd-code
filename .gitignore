@@ -47,6 +47,19 @@ outputs/
 *.zip
 *.parquet
 
+# Run artifacts, exported vectors and report figures. All regenerable from a
+# live run; none of it is source. These were tracked until v1.2.1 and the
+# numbers in them predate the merge stage, so leaving them committed presented
+# superseded results as if current. Recover any of it from history with
+#   git checkout b24fad3 -- runs/ fmu_exports_clean/ reports/
+runs/
+fmu_exports_clean/
+reports/
+
+# Slide decks. Built by scripts/build_*.js, which stay in the repo; the .pptx
+# output does not. Binary, large, and stale the moment the design moves on.
+*.pptx
+
 # Logs
 *.log
 logs/

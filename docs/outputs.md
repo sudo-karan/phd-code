@@ -658,7 +658,9 @@ python scripts/report.py --config sanjay_van_nirv_dual --reference sanjay_van_ba
 It discovers `cluster_profiles.csv`, `export_manifest_<config>.json`, and
 `metrics_<config>.json` under `runs/<config>_*/`, plus the exported
 `stands_dissolved` / `stands_snic` vectors under `fmu_exports_clean/`, and
-writes to `reports/<config>/`:
+writes to `reports/<config>/`. **All three of those directories are local and
+gitignored** — populate them by running the pipeline and
+`scripts/fetch_drive_vectors.py` before running `report.py`:
 
 - **PNG figures** — stand map, cluster fingerprint (z-scored heatmap),
   feature separating-power, stand composition, per-stand phenology curves,
@@ -670,4 +672,9 @@ With `--reference`, a comparison section is added (row-normalised confusion
 matrix with the Hungarian best-match rings, plus ARI / NMI / agreement /
 silhouette). Colours follow the validated categorical palette; stand
 identity is always carried by a legend + direct labels, never colour alone.
-`reports/` is gitignored (regenerable from the committed run artifacts).
+
+`runs/`, `fmu_exports_clean/` and `reports/` are all gitignored, regenerable
+from a live run. They were tracked until v1.2.1; the numbers in the committed
+copies predate the merge stage, so keeping them presented superseded results as
+current. Recover them from history if needed:
+`git checkout b24fad3 -- runs/ fmu_exports_clean/ reports/`.
