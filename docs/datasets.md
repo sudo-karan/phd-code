@@ -77,7 +77,7 @@ features via a CNN (Lang et al., 2023).
   the tracks the satellite flew over have measurements). The ETH product
   fills the gaps using S2 spectral information, giving us a continuous
   10 m raster instead of points-and-gaps. See DEC-009.
-- **Used directly in segmentation** (one of the 5 SNIC input bands).
+- **Used directly in segmentation** (`canopy_height` and `canopy_height_std` are two of the six default SNIC input bands; the stack is config-driven via `segmentation.input_bands`), **and as two of the three merge criteria** that aggregate superpixels into stands.
   Structural information, independent of S2/S1 spectral data.
 - **Used with neighborhood stats in features_structure:** std-dev and max
   in a 3x3 window capture local heterogeneity. A mature even-aged stand
@@ -198,12 +198,26 @@ a 64-band annual ImageCollection (one image per year from 2017, bands
   keeps every embedding dimension; the dimensions are jointly meaningful,
   so restricting to a subset is rarely useful.
 
-**Why an embedding arm:** it swaps the four hand-crafted feature images
-for a single pretrained embedding with segmentation held fixed, so the
-metrics stage attributes any difference to the feature representation
-alone. Google's own dataset guidance recommends grouping these embeddings
-with unsupervised clustering — exactly what the clustering stage does.
-Used by `configs/sanjay_van_alphaearth.yaml`.
+**Why an embedding arm:** the embedding supplies the feature vector for both
+steps that see features — SNIC segments on all 64 dimensions and k-means labels
+on them — so the comparison against the hand-crafted baseline is about the
+representation. Google's own dataset guidance recommends grouping these
+embeddings with unsupervised clustering, which is what the clustering stage
+does. Used by `configs/sanjay_van_alphaearth.yaml`.
+
+Segmentation is **not** held fixed across arms (it was until v1.2.0, and that
+was the flaw: it reduced the embedding arm to "which labels does k-means give
+inside boundaries the hand-crafted stack drew", never putting the delineation
+question to the embedding at all). What *is* held constant is everything that
+is not the feature representation — SNIC hyperparameters, `k`, `seed`, masking,
+analysis scale, and the merge rule. The merge criteria in particular stay
+identical, which is why an embedding run still computes `features_structure`
+and `features_optical`: "what makes two adjacent patches one stand" is a fact
+about forestry, not about the sensor pipeline.
+
+The two arms therefore produce two different stand maps. **There is no
+ground-truth stand map**, so neither can be declared correct; they are compared
+on stability, held-out predictive power at matched stand count, and geometry.
 
 ## Tessera
 

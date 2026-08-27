@@ -24,10 +24,25 @@ A module is **Locked** when the code is read, has tests (fast + live where appli
 | 11 | `stages/features_structure.py` | Locked | v0.11-features_structure | ETH canopy height + neighborhood stats (std, max) |
 | 12 | `stages/features_static.py` | Locked | v0.12-features_static | NASADEM (elevation, slope, aspect) + distance-to-water + CHIRPS rainfall climatology |
 | 13 | `stages/features_custom_csv.py` | Not started | — | User CSV hook (deferred indefinitely) |
-| 14 | `stages/segmentation.py` | Locked | v0.14-segmentation | SNIC superpixels. 5-band z-scored input stack (B4, B8, composite NIRv, canopy_height, VV-VH). Same inputs across both configs |
-| 15 | `stages/clustering.py` | Locked | v0.15-clustering | wekaKMeans on per-superpixel feature stack. Cyclic decomposition, log-transform skewed bands (DEC-004), median/IQR scaling (DEC-003), preprocessing params cached as asset property |
+| 14 | `stages/segmentation.py` | Locked · reworked v1.2.0 | v0.14-segmentation | SNIC superpixels. v1.2.0: input stack is **config-driven** (`segmentation.input_bands`), default six bands (B4, B8, canopy_height, canopy_height_std, ndvi_amplitude_annual, VV-VH) — `composite_nirv` dropped as an algebraic function of B4/B8, phenology and canopy roughness added. Boundaries are **no longer held identical across arms**: each arm segments on its own feature space. New `normalize_distance_scale` makes `compactness` comparable across stacks of different width |
+| 14b | `stages/merge.py` | Locked | v1.2.0 | **NEW.** SNIC superpixels → forest stands, Xiong et al. 2024 §2.6: two passes, hard conjunctive gate on canopy_height / canopy_height_std / ndvi_amplitude_annual in physical units, hard area bounds, shared-edge fallback. Runs client-side over the adjacency graph, returns `snic_clusters.remap(...)`. Merge rule held identical across arms so delineation is the only difference. Not cached (thresholds are the iteration variable) |
+| 15 | `stages/clustering.py` | Locked · reworked v1.2.0 | v0.15-clustering | wekaKMeans on the per-**stand** feature stack (per-superpixel when `merge.enabled: false`). Cyclic decomposition, log-transform skewed bands (DEC-004), median/IQR scaling (DEC-003), preprocessing params cached as asset property. v1.2.0: fits on **every unit, one row each** — `n_training_samples` retired, since a pixel sample area-weighted every statistic computed from it |
 | 16 | `stages/profiling.py` | Locked | v0.16-profiling | Per-cluster feature stats in original units. Mean + IQR per band. Saved to CSV in run dir |
 | 17 | `stages/export.py` | Locked | v0.17-export · extended v1.1.0 | v0.17: Drive GeoTIFF + run manifest (config, asset paths, clustering metadata, distribution). Asset inventory auto-discovered from the stage registry. v1.1.0: added two vector layers (`stands_snic`, `stands_dissolved`) in SHP + GeoJSON, configurable `drive_folder`, manifest moved from singular `drive_export` to `drive_exports` dict + new `vector_layers` section |
-| 18 | `stages/metrics.py` | Locked | v1.0.0 | ARI / NMI / silhouette / Hungarian correspondence / agreement map. The actual research deliverable |
+| 18 | `stages/metrics.py` | Locked · extended v1.2.0 | v1.0.0 | ARI / NMI / Hungarian correspondence / agreement map. v1.2.0: adds **stand geometry** (area distribution, Polsby-Popper, sub-minimum count, largest-decile area share) and **held-out explained variance R²** with `n_stands` beside it, computed at pixel level. Silhouette demoted from cross-arm headline to internal diagnostic — it is dimensionality-dependent and the arms have different feature spaces |
 
-Pipeline is at v1.1.0 with all 11 runtime stages implemented and tested. v1.1.0 extends the export stage with vector outputs (per mentor request: vectorized stands with per-stand attributes), adds masking source toggles, and makes the harmonic-regression reference epoch configurable. Module 13 (custom CSV hook) is deferred; no current use case.
+Pipeline is at v1.2.0 with all 13 runtime stages implemented and tested.
+
+**v1.2.0 is a reframing, not an increment: SNIC + merge produces the stand, and
+clustering is demoted to attaching a type label to a finished one.** It adds the
+`merge` stage, makes the SNIC band stack config-driven, stops holding
+segmentation identical across arms (that was called the experiment's control and
+was in fact the flaw — it never put the delineation question to the embedding),
+fits k-means on every stand rather than a pixel sample, adds stand-geometry and
+held-out R² metrics, derives the `reduceConnectedComponents` cap instead of
+hand-setting it, and keys cache assets on config *content* rather than name.
+
+v1.1.0 extended the export stage with vector outputs (per mentor request:
+vectorized stands with per-stand attributes), added masking source toggles, and
+made the harmonic-regression reference epoch configurable. Module 13 (custom CSV
+hook) is deferred; no current use case.

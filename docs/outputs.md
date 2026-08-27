@@ -149,15 +149,16 @@ Structure:
     "radar_features":   "projects/.../sanjay_van_baseline/features_radar/radar_features",
     "structure_features": "projects/.../sanjay_van_baseline/features_structure/structure_features",
     "static_features":  "projects/.../sanjay_van_baseline/features_static/static_features",
-    "snic_clusters":    "projects/.../sanjay_van_baseline/segmentation/snic_clusters",
-    "snic_means":       "projects/.../sanjay_van_baseline/segmentation/snic_means",
-    "cluster_labels":   "projects/.../sanjay_van_baseline/clustering/cluster_labels",
-    "feature_stack":    "projects/.../sanjay_van_baseline/clustering/feature_stack"
+    "snic_clusters":    "projects/.../sanjay_van_baseline/segmentation/snic_clusters__bbc3e3d624",
+    "snic_means":       "projects/.../sanjay_van_baseline/segmentation/snic_means__bbc3e3d624",
+    "cluster_labels":   "projects/.../sanjay_van_baseline/clustering/cluster_labels__bbc3e3d624",
+    "feature_stack":    "projects/.../sanjay_van_baseline/clustering/feature_stack__bbc3e3d624"
   },
   "clustering": {
     "k": 6,
     "seed": 42,
-    "n_training_samples": 10000,
+    "n_training_units": 269,
+    "training_unit_key": "stand_clusters",
     "normalization_method": "robust",
     "skewness_threshold": 1.0,
     "log_transformed_bands": ["distance_to_water", "vh_iqr"],
@@ -293,13 +294,52 @@ df = pd.read_csv("outputs/runs/sanjay_van_baseline_*/cluster_profiles.csv")
 
 ## `metrics_<config>.json` (after metrics stage)
 
-Only present if `inspect_metrics.py` was run AND the config has
-`metrics.reference_config_name` set to another config's name.
+Written whenever `inspect_metrics.py` runs. The comparison fields (`ari`,
+`nmi`, `correspondence`, `confusion_matrix`, `confidence_summary`) additionally
+require `metrics.reference_config_name` to name another config; the
+stand-geometry and explained-variance sections are always present.
 
 ```json
 {
   "current_config": "sanjay_van_nirv_dual",
   "k": 6,
+  "unit_key": "stand_clusters",
+  "stand_geometry": {
+    "unit_key": "stand_clusters",
+    "n_stands": 269,
+    "total_area_ha": 841.9,
+    "area_ha_min": 0.12, "area_ha_p10": 1.04, "area_ha_median": 2.31,
+    "area_ha_p90": 7.88, "area_ha_max": 9.97, "area_ha_mean": 3.13,
+    "stands_below_min_area": 11,
+    "frac_stands_below_min_area": 0.0409,
+    "area_in_undersized_stands_ha": 6.4,
+    "area_share_largest_decile": 0.271,
+    "polsby_popper_min": 0.08,
+    "polsby_popper_median": 0.24,
+    "polsby_popper_max": 0.51
+  },
+  "explained_variance": {
+    "n_stands": 269,
+    "unit_key": "stand_clusters",
+    "level": "pixel",
+    "attributes": {
+      "canopy_height":     { "r2": 0.926, "held_out": false, "ss_within": 1.2e5, "ss_total": 1.6e6, "n_pixels": 84190 },
+      "ndvi_trend":        { "r2": 0.581, "held_out": true,  "ss_within": 3.4e2, "ss_total": 8.1e2, "n_pixels": 84190 },
+      "canopy_height_max": { "r2": 0.712, "held_out": true,  "ss_within": 2.9e5, "ss_total": 1.0e6, "n_pixels": 84190 }
+    }
+  },
+  "merge": {
+    "n_superpixels": 1249, "n_stands": 269, "reduction_factor": 4.643,
+    "pass1_rounds": 7, "pass1_merges": 941,
+    "pass2_iterations": 3, "pass2_merges": 39, "pass2_fallback_merges": 6,
+    "stands_below_min_area": 11,
+    "orphans_isolated": 0, "orphans_area_blocked": 11,
+    "orphans_no_attribute_match": 0,
+    "stands_with_incomplete_criteria": 4,
+    "adjacency": { "n_regions": 1249, "n_edges": 3128, "mean_degree": 5.009, "n_isolated": 0 },
+    "threshold_calibration": { "joint_admit_rate_pct": 38.7, "per_band": { "...": "..." } },
+    "warnings": ["..."]
+  },
   "silhouette_current": 0.4127,
   "silhouette_reference": 0.3892,
   "reference_config": "sanjay_van_baseline",
@@ -324,7 +364,18 @@ Only present if `inspect_metrics.py` was run AND the config has
 
 | Field | Meaning | Range / direction |
 |---|---|---|
-| `silhouette_current` | Intrinsic cohesion/separation of current clustering | -1 to 1; higher is better |
+| `unit_key` | Which label image everything was reduced over: `stand_clusters` when merge ran, `snic_clusters` when `merge.enabled: false`. **A silhouette over stands and a profile over superpixels are not comparable, and no other number in this file would reveal the difference** | string |
+| `stand_geometry` | Distribution of the thing the pipeline produces. See below | object |
+| `stand_geometry.area_share_largest_decile` | Fraction of total area held by the largest 10% of stands. The concentration check — a mean or median hides both failure modes (thousands of slivers; a handful of blobs holding the landscape). The layer this replaced scored ~0.68 | 0 to 1; lower is more even |
+| `stand_geometry.polsby_popper_*` | Shape compactness `4πA/P²` from the **raster** boundary. Comparable between stands at the same scale; **not** comparable to a published vector-derived figure, since a staircase boundary is longer than the shape it approximates | 0 to 1 |
+| `explained_variance.attributes.<band>.r2` | `1 − SS_within/SS_total` over raster cells within stands (Xiong et al. 2024 Eq. 4–6). The headline | -inf to 1; higher is better |
+| `explained_variance.attributes.<band>.held_out` | `false` = this attribute helped draw the boundaries, so R² on it is partly circular — reported because it is what the literature quotes, **not as evidence**. `true` = neither segmentation nor merge used it. Checked at config load, not trusted | bool |
+| `explained_variance.n_stands` | **Read every R² against this.** R² rises monotonically with stand count and is 1.0 in the limit of one stand per pixel, so two arms at different stand counts cannot be compared on it | int |
+| `explained_variance.level` | Always `"pixel"`. Scoring at region level makes any partition score 1.000 by construction | string |
+| `merge.orphans_area_blocked` | Undersized stands whose every neighbour is already too big to absorb them. **A signal `max_area_ha` is too tight**, not a fact about the forest | int |
+| `merge.pass2_fallback_merges` | Pass-2 merges no relaxed criterion could justify, decided by shared-edge length alone. The honest count of "surrounded by genuinely different forest"; look here first if stand geometry looks wrong | int |
+| `merge.threshold_calibration.joint_admit_rate_pct` | Share of adjacent pairs passing **all** criteria at once. The gate is conjunctive, so the per-band marginals do not describe it. **Not a tuning target** — pass rate is a diagnostic, and pass 1 iterates to convergence so a per-round rate is not the share of total merging | 0 to 100 |
+| `silhouette_current` | Intrinsic cohesion/separation of current clustering. **Demoted to an internal diagnostic for the labelling step**: it is computed in each arm's own feature space (21-D vs 64-D) and is strongly dimensionality-dependent, so it was never valid across arms, and under two independent segmentations it is doubly invalid | -1 to 1; higher is better |
 | `silhouette_reference` | Same for the reference (only if reference's `feature_stack` is cached) | -1 to 1; higher is better |
 | `ari` | Adjusted Rand Index between current and reference partitions | -1 to 1; 0 = random, 1 = identical |
 | `nmi` | Normalized Mutual Information | 0 to 1; higher = more information shared |
@@ -337,10 +388,24 @@ Only present if `inspect_metrics.py` was run AND the config has
 | `confidence_summary.frac_area_ge_high` | Fraction of habitat area sitting in high-agreement stands (per-stand confidence >= `high_threshold`) | 0 to 1; `null` if unavailable |
 | `confidence_summary.high_threshold` | Cutoff that defines a "high-agreement" stand | fixed at `0.8` |
 
+**How to read explained variance (the headline):** compare the `held_out: true`
+rows, at matched `n_stands`. The `held_out: false` row exists so the number can
+be set beside published figures (Xiong et al. 2024 report 81.80% on mean canopy
+height; Jia et al. 2019 84.7–94.2%; Sun et al. 2021 >80%; Pukkala 2018 66–87%),
+not as evidence about this partition — canopy height is a merge criterion, so
+R² on it is partly circular by construction.
+
 **How to read silhouette:** values around 0 indicate overlapping
 clusters; values approaching 1 indicate well-separated, tight clusters.
 A difference of 0.05 between variants is meaningful when the AOI is
-heterogeneous; differences below 0.01 are noise.
+heterogeneous; differences below 0.01 are noise. **Do not compare it across
+arms** — see the field table above.
+
+**On ARI/NMI across arms:** these compare label partitions over a *shared*
+support. Once two arms segment independently they no longer share one, so the
+numbers stop meaning what they mean between two runs of the same tessellation.
+They remain valid for comparing two clusterings of the same stand map (a seed
+sweep, a `k` sweep).
 
 **How to read ARI:** ARI = 0.65 means current and reference agree on
 about 65% of pairwise pixel relationships (after correcting for
@@ -522,17 +587,33 @@ output instead.
 Persistent across runs. Located at:
 
 ```
-projects/<your-gcp-project>/assets/fmu/<config_name>/<stage_name>/<output_key>
+projects/<your-gcp-project>/assets/fmu/<config_name>/<stage_name>/<output_key>__<fingerprint>
 ```
+
+`<fingerprint>` is a 10-character hash of the config *contents* — see
+`config_fingerprint()` in `src/fmu/utils/caching.py`. It exists because the
+path used to be name-only, so editing a threshold and re-running the same
+config silently reused the old asset. Two runs of the same config name with
+different parameters now get different assets.
+
+Practical consequence: **editing almost any config block invalidates that
+config's cached assets and they will be recomputed.** Changes that cannot
+affect a raster do not — `name`, `description`, the whole `metrics` block, and
+the output-plumbing half of `export` (Drive folder, formats, which layers to
+emit). `export.analysis_scale_m` does invalidate, since it governs every
+reduction.
 
 Listed in `export_manifest_<config>.json` under `asset_paths`. Load any
 of them in another GEE script via `ee.Image(path)`.
 
-In embedding-mode runs (`clustering.feature_source: embedding`) the
-`features_optical` and `features_static` assets are absent; the
-`features_embedding` stage contributes an `embedding_features` asset in
-their place (`.../<config_name>/features_embedding/embedding_features`),
-cacheable like every other feature image.
+Which assets exist depends on the config, not on a fixed list. An
+embedding-arm run has no `features_radar` or `features_static` asset and does
+have `embedding_features`; it still has `features_optical` and
+`features_structure`, because the merge criteria read them and the merge rule
+is held identical across arms. The `merge` stage caches nothing at all — its
+`stand_clusters` output is a `remap` of a cached image, cheap to rebuild, and
+caching it would need the merge thresholds hashed into the key when those
+thresholds are exactly what a run is iterating on.
 
 Special property on `cluster_labels`: the asset carries a JSON-encoded
 `clustering_metadata` property listing every preprocessing parameter
