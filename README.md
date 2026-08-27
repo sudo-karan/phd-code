@@ -5,13 +5,16 @@ from open satellite data. Runs server-side on Google Earth Engine; the
 Python package wires up config, orchestration, caching, and inspect/run
 scripts.
 
-Pipeline is at v1.1 with all 12 runtime stages implemented. Eleven run in
-the default hand-crafted arm; the twelfth, `features_embedding`, is an
-optional alternative feature source that runs in place of
-`features_optical` + `features_static` when
-`clustering.feature_source: embedding`. See `MODULES.md` for the
-build-order roadmap and `docs/current_flow.md` for the runtime flow and
-per-stage details.
+Pipeline is at v1.2 with all 13 runtime stages implemented. Which ones run
+is derived from config, not fixed: `default_stage_names()` takes the union of
+what clustering, segmentation and merge each ask for, so an embedding-arm run
+computes a different set of feature stages than the hand-crafted one. See
+`MODULES.md` for the build-order roadmap and `docs/current_flow.md` for the
+runtime flow and per-stage details.
+
+**SNIC + merge produces the stand.** Clustering does not decide what a stand
+is — it attaches a *type label* to a finished one. That framing is what the
+v1.2 changes rest on; `docs/design_notes.md` has the reasoning.
 
 ## What it does
 
@@ -27,23 +30,36 @@ Given a GeoJSON polygon (an Area of Interest), fmu:
    - radar statistics (percentiles, IQR, cross-pol contrast) over 5 years of S1
    - structural heterogeneity from ETH canopy height + neighborhood stats
    - terrain (NASADEM), distance-to-water, mean annual rainfall (CHIRPS)
-4. **Segments** the AOI into SNIC superpixels using a 5-band z-scored stack
-   that combines visible, NIR, structural, and microwave information.
-5. **Clusters** the per-superpixel feature vectors with k-means
-   (preprocessing: cyclic decomposition, log-transform of skewed bands,
-   median/IQR robust scaling).
-6. **Profiles** each cluster (mean/IQR per feature in original units).
-7. **Exports** a GeoTIFF of cluster labels plus two vector layers
+4. **Segments** the AOI into SNIC superpixels on a config-driven, z-scored
+   band stack (`segmentation.input_bands`). The default is six bands over
+   ~four independent axes: optical colour, vertical structure, canopy
+   roughness, phenology, radar. An embedding arm segments on all 64
+   AlphaEarth dimensions instead.
+5. **Merges** those superpixels into forest stands (Xiong et al. 2024 §2.6):
+   two passes, a hard conjunctive gate on canopy height / roughness /
+   phenology in physical units, and hard area bounds. Superpixels are a
+   primitive; this is the step that produces the deliverable.
+6. **Clusters** the per-stand feature vectors with k-means to attach a type
+   label (preprocessing: cyclic decomposition, log-transform of skewed
+   bands, median/IQR robust scaling). Fits on every stand, not a sample.
+7. **Profiles** each cluster (mean/IQR per feature in original units).
+8. **Exports** a GeoTIFF of cluster labels plus two vector layers
    (`stands_snic`, one polygon per SNIC superpixel; `stands_dissolved`,
    one polygon per connected same-cluster management unit) to Google
    Drive in SHP and GeoJSON, plus a run manifest covering every
    parameter, asset path, and preprocessing step.
-8. **Compares** the result against a reference clustering with ARI, NMI,
-   silhouette, and a Hungarian-aligned agreement map.
+9. **Measures** the result: stand geometry (area distribution, compactness,
+   sub-minimum count) and held-out explained variance R² with `n_stands`
+   reported beside it, plus ARI/NMI against a reference clustering where the
+   two arms share a tessellation.
 
 The whole sequence is config-driven. A new experiment is a new YAML file;
 the framework runs both baseline and variant through identical code and
 the metrics stage compares them.
+
+**There is no ground-truth stand map.** Nothing here says one representation
+is more correct than another; the comparisons are stability, held-out
+predictive power at matched stand count, and geometry.
 
 ## Quickstart
 
@@ -98,14 +114,19 @@ src/fmu/                package
     features_radar.py   stage 4
     features_structure.py stage 5
     features_static.py  stage 6
+    features_embedding.py  optional feature source (AlphaEarth / Tessera)
     segmentation.py     stage 7
-    clustering.py       stage 8
-    profiling.py        stage 9
-    export.py           stage 10
-    metrics.py          stage 11
+    merge.py            stage 8  superpixels -> stands
+    clustering.py       stage 9
+    profiling.py        stage 10
+    export.py           stage 11
+    metrics.py          stage 12
   utils/
     gee.py              init, safe_get_info, ROI loader, asset_path
-    caching.py          asset cache: path scheme + asset_exists + start_export
+    caching.py          asset cache: content-fingerprinted paths + export
+    components.py       guards around reduceConnectedComponents' silent maxSize
+    adjacency.py        superpixel region-adjacency graph + stand geometry
+    region_merge.py     Xiong's two-pass merge, pure Python (no ee import)
     logging.py          Rich logging + per-run output dir
 configs/                YAML configs, one per experiment
 aois/                   GeoJSON polygons
