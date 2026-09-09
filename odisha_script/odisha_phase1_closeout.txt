@@ -1,0 +1,45 @@
+================================================================================================
+A/B — every structural candidate vs field Lorey's height: Pearson, Spearman, slope, bias
+================================================================================================
+(meta_chm_3x3 is the WRONGLY sampled version from step 3, kept for comparison)
+  eth_chm_3x3                n=274  pearson r=+0.455 (R2=0.207)   spearman=+0.484   slope=+0.30   bias=+7.18
+  meta_chm_3x3               n=274  pearson r=+0.491 (R2=0.241)   spearman=+0.541   slope=+0.24   bias=-7.22
+  meta_mean_15m              n=274  pearson r=+0.482 (R2=0.233)   spearman=+0.550   slope=+0.23   bias=-7.38
+  meta_p95_15m               n=274  pearson r=+0.488 (R2=0.238)   spearman=+0.527   slope=+0.32   bias=-5.47
+  meta_mean_30m              n=274  pearson r=+0.487 (R2=0.237)   spearman=+0.538   slope=+0.22   bias=-7.44
+  meta_p95_30m               n=274  pearson r=+0.476 (R2=0.227)   spearman=+0.528   slope=+0.33   bias=-5.06
+  glad_chm                   n=274  pearson r=+0.202 (R2=0.041)   spearman=+0.305   slope=+0.14   bias=-0.36
+  gedi_rh98_50m              n= 10  pearson r=+0.635 (R2=0.404)   spearman=+0.498   slope=+0.63   bias=+3.19
+  vh_iqr                     n=274  pearson r=+0.458 (R2=0.210)   spearman=+0.484   slope=+0.16   bias=-8.17
+  vv_iqr                     n=274  pearson r=+0.415 (R2=0.172)   spearman=+0.461   slope=+0.15   bias=-8.06
+
+Read: Spearman well above Pearson => the product ranks plots correctly but is badly calibrated.
+      That is usable for delineation (which compares neighbours) even if useless as a height map.
+      meta_p95 is the fair Meta number. If it is still < 0.5, Meta is out.
+
+================================================================================================
+C — site-level aggregation, six Dhenkanal polygons (~10 plots each)
+================================================================================================
+plots inside polygons: 60  across 6 sites
+               n  field  eth_chm_3x3  meta_chm_3x3  meta_mean_15m  meta_p95_15m  meta_mean_30m  meta_p95_30m  glad_chm  vh_iqr  vv_iqr
+site_polygon                                                                                                                          
+Adhapalli     11   7.29        19.79          4.37           4.32          9.27           4.25          9.82      7.91    3.59    4.34
+Balikurma     11  15.19        20.64          7.55           6.95          9.45           7.35         10.45     11.64    5.33    4.99
+Kampulei       9  22.30        20.69          7.22           6.86          9.33           6.83          9.78      9.33    5.51    5.24
+Kerijoli      10  18.12        28.76          5.79           5.93         11.50           4.89         11.90     10.00    5.87    5.53
+Mahabirod      9  21.96        19.26          9.77           9.47         11.67           8.96         11.78     10.89    2.67    3.64
+Pangatira     10  12.21        12.74          0.00           0.00          0.00           0.01          0.00      5.70    2.31    3.39
+
+  site-level  eth_chm_3x3            n=6  pearson r=+0.315 (R2=0.099)   spearman=+0.429
+  site-level  meta_chm_3x3           n=6  pearson r=+0.669 (R2=0.447)   spearman=+0.657
+  site-level  meta_mean_15m          n=6  pearson r=+0.673 (R2=0.452)   spearman=+0.657
+  site-level  meta_p95_15m           n=6  pearson r=+0.437 (R2=0.191)   spearman=+0.600
+  site-level  meta_mean_30m          n=6  pearson r=+0.634 (R2=0.402)   spearman=+0.657
+  site-level  meta_p95_30m           n=6  pearson r=+0.409 (R2=0.167)   spearman=+0.257
+  site-level  glad_chm               n=6  pearson r=+0.556 (R2=0.309)   spearman=+0.429
+  site-level  vh_iqr                 n=6  pearson r=+0.314 (R2=0.098)   spearman=+0.429
+  site-level  vv_iqr                 n=6  pearson r=+0.270 (R2=0.073)   spearman=+0.429
+
+Read: compare each site-level R2 against the plot-level R2 above. A jump means aggregation
+      recovers signal that plot noise was hiding — the argument for stand-scale use.
+      Six points: treat as direction, not proof.

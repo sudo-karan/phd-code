@@ -1,0 +1,55 @@
+==============================================================================
+TEST 1 — ETH canopy height (3x3 mean) vs field height
+==============================================================================
+Against Lorey's height (basal-area weighted; ETH predicts canopy TOP so this or top-5 is the right target):
+  all plots                              n=274  r=+0.455  R2=0.207  slope=0.30  RMSE= 9.41  bias(pred-field)=+7.18
+    ANGUL                                n= 40  r=+0.224  R2=0.050  slope=0.10  RMSE= 9.97  bias(pred-field)=+7.44
+    DHENKANAL                            n= 76  r=+0.344  R2=0.118  slope=0.21  RMSE= 9.31  bias(pred-field)=+4.65
+    KENDUJHAR                            n= 12  r=-0.281  R2=0.079  slope=-0.13  RMSE= 9.79  bias(pred-field)=+6.89
+    KORAPUT                              n=146  r=+0.356  R2=0.127  slope=0.36  RMSE= 9.27  bias(pred-field)=+8.44
+
+Against top-5 mean height:
+  all plots                              n=274  r=+0.447  R2=0.199  slope=0.26  RMSE= 9.16  bias(pred-field)=+6.17
+
+Against simple mean height (for reference only — includes saplings, NOT the right target):
+  all plots                              n=274  r=+0.170  R2=0.029  slope=0.19  RMSE=12.63  bias(pred-field)=+11.44
+
+Bias by field-height bin  (this is where GEDI-trained models are known to fail):
+             n  field_mean  eth_mean   bias  eth_sd_mean
+h_bin                                                   
+(0, 5]    52.0        3.45     14.30  10.85         5.80
+(5, 8]    82.0        6.44     16.42   9.98         5.94
+(8, 12]   62.0        9.69     16.44   6.76         6.22
+(12, 16]  38.0       13.85     19.53   5.67         6.72
+(16, 20]  21.0       17.66     20.39   2.73         7.01
+(20, 30]  14.0       23.73     21.44  -2.29         6.91
+(30, 60]   5.0       37.75     22.47 -15.29         6.64
+
+Read: a large negative bias in the top bins = underestimation of tall canopy;
+      a large positive bias in the bottom bins = ETH can't see scrub as short.
+      eth_sd_mean is ETH's own claimed uncertainty — check whether it grows where bias grows.
+
+==============================================================================
+TEST 2 — NDVI amplitude vs Sal dominance  (is the deciduous proxy real?)
+==============================================================================
+plots with Sal as dominant species: 49 / 274
+  amplitude ~ Sal dominance (all)        n=274  r=-0.171  R2=0.029  slope=-0.04  RMSE= 0.22  bias(pred-field)=+0.08
+    ANGUL                                n= 40  (no variance in x or y — skipped)
+    DHENKANAL                            n= 76  r=-0.138  R2=0.019  slope=-0.01  RMSE= 0.31  bias(pred-field)=-0.14
+    KENDUJHAR                            n= 12  r=-0.029  R2=0.001  slope=-0.01  RMSE= 0.21  bias(pred-field)=+0.14
+    KORAPUT                              n=146  (no variance in x or y — skipped)
+
+Sal-dominated (>50%) median amplitude 0.1362  vs  non-Sal 0.1692   Mann-Whitney p=0.014
+Read: if Sal plots do NOT show lower amplitude than mixed/deciduous plots, the
+      semi-evergreen concern is real and ndvi_amplitude is a weak composition proxy here.
+
+==============================================================================
+TEST 3 — ETH 3x3 roughness vs field crown cover  (does canopy_height_std track closure?)
+==============================================================================
+  roughness ~ crown cover (all)          n=274  r=-0.011  R2=0.000  slope=-0.00  RMSE=44.96  bias(pred-field)=-38.42
+    ANGUL                                n= 40  r=+0.069  R2=0.005  slope=0.00  RMSE=58.54  bias(pred-field)=-54.88
+    DHENKANAL                            n= 76  r=-0.017  R2=0.000  slope=-0.00  RMSE=46.12  bias(pred-field)=-37.89
+    KENDUJHAR                            n= 12  r=+0.192  R2=0.037  slope=0.00  RMSE=46.53  bias(pred-field)=-36.07
+    KORAPUT                              n=146  r=-0.058  R2=0.003  slope=-0.00  RMSE=39.62  bias(pred-field)=-34.37
+Read: expect NEGATIVE correlation — closed canopy is smoother. If flat, the
+      roughness proxy isn't measuring closure at this resolution.
