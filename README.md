@@ -5,7 +5,7 @@ from open satellite data. Runs server-side on Google Earth Engine; the
 Python package wires up config, orchestration, caching, and inspect/run
 scripts.
 
-Pipeline is at v1.2 with all 13 runtime stages implemented. Which ones run
+Pipeline is at v1.2. Thirteen stage modules: twelve in the canonical order numbered 1-12 below, plus `features_embedding`, which supplies the feature vector for the embedding arm rather than occupying a slot of its own. Which ones run
 is derived from config, not fixed: `default_stage_names()` takes the union of
 what clustering, segmentation and merge each ask for, so an embedding-arm run
 computes a different set of feature stages than the hand-crafted one. See
@@ -20,9 +20,11 @@ v1.2 changes rest on; `docs/design_notes.md` has the reasoning.
 
 Given a GeoJSON polygon (an Area of Interest), fmu:
 
-1. **Masks** non-habitat pixels (water, buildings, bare/urban) using a
-   multi-source mask designed to avoid circularity with downstream
-   features (see [docs/design_notes.md](docs/design_notes.md)).
+1. **Masks** to habitat pixels only — the CoRE Stack LULC_v4 (IndiaSAT
+   legend) Trees and Shrubs classes, majority-voted across usable years,
+   with ESA WorldCover where IndiaSAT has no data. Single-phase: water,
+   cropland and built-up are excluded by not being in the habitat set,
+   not subtracted separately (see [docs/design_notes.md](docs/design_notes.md)).
 2. **Loads** Sentinel-2 (optical) and Sentinel-1 (radar) collections
    plus auxiliary datasets (canopy height, terrain, climate).
 3. **Computes per-pixel features**:
@@ -43,11 +45,13 @@ Given a GeoJSON polygon (an Area of Interest), fmu:
    label (preprocessing: cyclic decomposition, log-transform of skewed
    bands, median/IQR robust scaling). Fits on every stand, not a sample.
 7. **Profiles** each cluster (mean/IQR per feature in original units).
-8. **Exports** a GeoTIFF of cluster labels plus two vector layers
-   (`stands_snic`, one polygon per SNIC superpixel; `stands_dissolved`,
-   one polygon per connected same-cluster management unit) to Google
-   Drive in SHP and GeoJSON, plus a run manifest covering every
-   parameter, asset path, and preprocessing step.
+8. **Exports** a GeoTIFF of cluster labels plus three vector layers to
+   Google Drive in SHP and GeoJSON — `stands_merged`, one polygon per
+   merged stand and **the deliverable**; `stands_snic`, one polygon per
+   pre-merge SNIC superpixel (methodology layer, and the pre/post-merge
+   comparison); `stands_dissolved`, one polygon per connected same-cluster
+   region, kept for continuity with the pre-merge outputs — plus a run
+   manifest covering every parameter, asset path, and preprocessing step.
 9. **Measures** the result: stand geometry (area distribution, compactness,
    sub-minimum count) and held-out explained variance R² with `n_stands`
    reported beside it, plus ARI/NMI against a reference clustering where the
@@ -201,11 +205,12 @@ and default to `configs/sanjay_van_baseline.yaml`.
 | 5. features_structure | `python scripts/inspect_features_structure.py` | (uses ROI only) | `structure_features` |
 | 6. features_static | `python scripts/inspect_features_static.py` | masking (for `water_mask`) | `static_features` |
 | 6b. features_embedding (embedding arm) | no dedicated script — runs via `inspect_metrics.py` / `inspect_clustering.py` with an embedding config (`clustering.feature_source: embedding`) | (uses ROI only) | `embedding_features` |
-| 7. segmentation | `python scripts/inspect_segmentation.py` | masking, data_load, features_radar, features_structure | `snic_clusters`, `snic_means` |
-| 8. clustering | `python scripts/inspect_clustering.py` | all of 1-7 | `cluster_labels`, `feature_stack` |
-| 9. profiling | `python scripts/inspect_profiling.py` | all of 1-8 | not cached, writes `cluster_profiles.csv` to the run dir |
-| 10. export | `python scripts/inspect_export.py` | all of 1-9 | not cached, submits Drive GeoTIFF task and writes manifest JSON |
-| 11. metrics | `python scripts/inspect_metrics.py` | all of 1-8 | not cached; writes `metrics_<config>.json` to the run dir (incl. a scalar `confidence_summary` in comparison mode) and produces a per-pixel `agreement_map` + per-stand `confidence` image (both `None` in baseline mode) |
+| 7. segmentation | `python scripts/inspect_segmentation.py` | masking, data_load, features_optical, features_radar, features_structure — config-driven via `segmentation.input_bands`, so the real list follows the config rather than this row | `snic_clusters`, `snic_means` |
+| 8. merge | no dedicated script — runs inside `inspect_clustering.py`, `inspect_export.py` and `inspect_metrics.py` | all of 1-7 | not cached: thresholds are the iteration variable, so a cached stand map would hide the thing being tuned |
+| 9. clustering | `python scripts/inspect_clustering.py` | all of 1-8 | `cluster_labels`, `feature_stack` |
+| 10. profiling | `python scripts/inspect_profiling.py` | all of 1-9 | not cached, writes `cluster_profiles.csv` to the run dir |
+| 11. export | `python scripts/inspect_export.py` | all of 1-10 | not cached, submits Drive GeoTIFF task and writes manifest JSON |
+| 12. metrics | `python scripts/inspect_metrics.py` | all of 1-9 | not cached; writes `metrics_<config>.json` to the run dir (incl. a scalar `confidence_summary` in comparison mode) and produces a per-pixel `agreement_map` + per-stand `confidence` image (both `None` in baseline mode) |
 
 Examples:
 
