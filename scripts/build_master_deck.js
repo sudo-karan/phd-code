@@ -411,7 +411,7 @@ bullets(s,[
 note(s,'Row-normalised overlap after Hungarian matching (green ring = best match). SNIC fixed, so the difference is the optical features alone. Distinct from Experiment C-1 (AlphaEarth).'); foot(s,'Experiment C-0');
 
 /* ===== 28 baseline results: separating power ===== */
-s=S(); kicker(s,'Baseline run · results'); title(s,'What separates the stands at Sanjay Van'); rule(s);
+s=S(); kicker(s,'Baseline run · results'); title(s,'What separates the six cluster types at Sanjay Van'); rule(s);
 img(s,FIG.sep,MG,1.7,7.4,4.4);
 bullets(s,[
  {t:'Canopy structure leads — the stands are mostly a structural partition.'},
@@ -419,7 +419,7 @@ bullets(s,[
  'distance_to_water is flat — near-constant across stands here.',
  {t:'An urban-forest finding: stands differ more in build than in greenness rhythm — one reason the NIRv/dual-harmonic variant exists.',b:true},
 ],{x:8.2,y:1.9,w:W-MG-8.2,gap:12,fs:13.5});
-cap(s,'Between-stand separation per feature (real baseline run). Higher = the feature drives the partition.',MG,6.15,7.4); foot(s,'Results');
+cap(s,'Between-CLUSTER separation per feature, k=6 (real baseline run). Not between-stand: a stand is what SNIC+merge produce and there are hundreds. Higher = the feature drives the partition, but see phase-1 step 8 -- elevation does not beat a spatially-compact null.',MG,6.15,7.4); foot(s,'Results');
 
 /* ===== 29 baseline results: map + fingerprint ===== */
 s=S(); kicker(s,'Baseline run · results'); title(s,'The stand map and what defines each stand'); rule(s);

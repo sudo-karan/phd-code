@@ -128,7 +128,7 @@ note(s, 'k = 6 is currently a fixed choice, not a swept / justified value — fl
 s = slide(); kicker(s, 'PART 1 — WHAT I HAVE DONE'); title(s, 'What the hand-crafted stack lets me say');
 img(s, FIG.phenology, M, 1.7, 5.3, 5.3/1.32);
 img(s, FIG.seppow, 6.35, 1.7, 4.5, 4.5/1.06);
-caption(s, 'Baseline profiling output. Left: per-stand seasonal NDVI curve. Right: which features drive the partition (canopy height, elevation, seasonal amplitude lead).', M, 6.15, W - 2*M);
+caption(s, 'Baseline profiling output. Left: per-cluster seasonal NDVI curve. Right: which features drive the k=6 partition (canopy height and seasonal amplitude lead). Elevation ranks high but does NOT beat a spatially-compact null -- phase-1 step 8.', M, 6.15, W - 2*M);
 s.addText('Every stand is describable in real ecological units. The AlphaEarth embedding has no equivalent — its 64 dimensions are unnamed (see Part 3).',
   { x: M, y: 6.6, w: W - 2*M, h: 0.4, fontFace: F, fontSize: 13, italic: true, color: GRAY });
 
