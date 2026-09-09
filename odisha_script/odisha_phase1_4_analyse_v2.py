@@ -53,8 +53,17 @@ for col, name in [("meta_chm_3x3", "Meta/WRI 1m (3x3 @10m)"),
     for d, g in df.groupby("district"):
         fit(g.loreys_h_m, g[col], f"  {d}")
     say(""); bin_table(col, name.split()[0]); say("")
-say("GEDI coverage: plots with >=1 shot within 50 m = "
-    f"{(df.gedi_n_50m > 0).sum()} / {len(df)}   (sparse is expected)")
+# Both counts, and a check that they agree. Reporting only the n>0 side is how this file came
+# to print a fit at n=10 and a coverage of 0/274 from one run: gedi_n_50m was not a count.
+_n_cov = int((df.gedi_n_50m.fillna(0) > 0).sum())
+_n_fit = int(df.gedi_rh98_50m.notna().sum())
+say(f"GEDI coverage: plots with >=1 unmasked GEDI cell within 50 m = {_n_cov} / {len(df)}"
+    "   (sparse is expected)")
+say(f"               plots with an rh98 value (the regression's n)  = {_n_fit} / {len(df)}")
+if _n_cov != _n_fit:
+    say(f"  *** THESE MUST AGREE AND DO NOT ({_n_cov} vs {_n_fit}). gedi_n_50m is not counting")
+    say("      what it claims -- see odisha_phase1_9_gedi_recount.py. Treat the GEDI row above")
+    say("      as WITHDRAWN until it is re-sampled.")
 say("\nRead: a product 'works' if R2 > 0.5 AND slope near 1 AND bias does not flip sign across bins.")
 say("      If GEDI itself tracks height but the models don't, the models are the problem.")
 say("      If GEDI also fails, the vegetation defeats the lidar and no derived product will fix it.")
