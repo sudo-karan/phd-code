@@ -1,0 +1,128 @@
+====================================================================================
+TEST 4 — alternative canopy height products vs field Lorey's height
+====================================================================================
+(ETH from Test 1 for reference: r=+0.455  R2=0.207  slope=+0.30  bias=+7.18)
+
+Meta/WRI 1m (3x3 @10m):
+  all plots                                    n=274  r=+0.491  R2=0.241  slope=+0.24  RMSE= 9.26  bias=-7.22
+    ANGUL                                      n= 40  r=+0.332  R2=0.110  slope=+0.08  RMSE=12.53  bias=-10.84
+    DHENKANAL                                  n= 76  r=+0.476  R2=0.226  slope=+0.22  RMSE=11.93  bias=-9.48
+    KENDUJHAR                                  n= 12  r=+0.730  R2=0.533  slope=+0.23  RMSE= 7.40  bias=-5.81
+    KORAPUT                                    n=146  r=+0.331  R2=0.110  slope=+0.27  RMSE= 6.28  bias=-5.17
+
+             n  field  Meta/WRI   bias
+h_bin                                 
+(0, 5]    52.0   3.45      0.43  -3.02
+(5, 8]    82.0   6.44      2.06  -4.38
+(8, 12]   62.0   9.69      2.82  -6.87
+(12, 16]  38.0  13.85      4.02  -9.83
+(16, 20]  21.0  17.66      4.81 -12.84
+(20, 30]  14.0  23.73      7.26 -16.46
+(30, 60]   5.0  37.75      5.44 -32.31
+
+GLAD/Potapov 2019 (30m):
+  all plots                                    n=274  r=+0.202  R2=0.041  slope=+0.14  RMSE= 7.38  bias=-0.36
+    ANGUL                                      n= 40  r=+0.270  R2=0.073  slope=+0.13  RMSE= 6.82  bias=-1.94
+    DHENKANAL                                  n= 76  r=+0.412  R2=0.170  slope=+0.18  RMSE= 9.84  bias=-6.36
+    KENDUJHAR                                  n= 12  r=+0.167  R2=0.028  slope=+0.09  RMSE= 6.73  bias=-2.92
+    KORAPUT                                    n=146  r=+0.427  R2=0.182  slope=+0.66  RMSE= 5.94  bias=+3.41
+
+             n  field  GLAD/Potapov   bias
+h_bin                                     
+(0, 5]    52.0   3.45          6.48   3.03
+(5, 8]    82.0   6.44          9.34   2.90
+(8, 12]   62.0   9.69         11.55   1.86
+(12, 16]  38.0  13.85         10.13  -3.72
+(16, 20]  21.0  17.66         10.38  -7.28
+(20, 30]  14.0  23.73         11.07 -12.66
+(30, 60]   5.0  37.75         10.20 -27.55
+
+GEDI L2A rh98 (<=50m):
+  all plots                                    n= 10  r=+0.635  R2=0.404  slope=+0.63  RMSE= 4.59  bias=+3.19
+    ANGUL                                      n=  4  (too few)
+    DHENKANAL                                  n=  3  (too few)
+    KENDUJHAR                                  n=  0  (too few)
+    KORAPUT                                    n=  3  (too few)
+
+            n  field   GEDI  bias
+h_bin                            
+(0, 5]    1.0   3.93  11.07  7.14
+(5, 8]    3.0   7.03  10.58  3.54
+(8, 12]   4.0  10.11  12.53  2.42
+(12, 16]  1.0  15.29  21.30  6.01
+(16, 20]  1.0  17.60  16.02 -1.58
+
+GEDI coverage: plots with >=1 shot within 50 m = 0 / 274   (sparse is expected)
+
+Read: a product 'works' if R2 > 0.5 AND slope near 1 AND bias does not flip sign across bins.
+      If GEDI itself tracks height but the models don't, the models are the problem.
+      If GEDI also fails, the vegetation defeats the lidar and no derived product will fix it.
+
+====================================================================================
+TEST 5 — Sentinel-1 backscatter as a structural signal
+====================================================================================
+Against Lorey's height:
+  vv_p10                                       n=274  r=-0.144  R2=0.021  slope=-0.07
+  vv_p50                                       n=274  r=+0.043  R2=0.002  slope=+0.02
+  vv_p90                                       n=274  r=+0.193  R2=0.037  slope=+0.08
+  vh_p10                                       n=274  r=-0.187  R2=0.035  slope=-0.08
+  vh_p50                                       n=274  r=+0.023  R2=0.001  slope=+0.01
+  vh_p90                                       n=274  r=+0.182  R2=0.033  slope=+0.07
+  vv_iqr                                       n=274  r=+0.415  R2=0.172  slope=+0.15
+  vh_iqr                                       n=274  r=+0.458  R2=0.210  slope=+0.16
+  vv_minus_vh_median                           n=274  r=+0.026  R2=0.001  slope=+0.01
+
+Against crown cover (%):
+  vv_p10                                       n=274  r=+0.028  R2=0.001  slope=+0.00
+  vv_p50                                       n=274  r=+0.052  R2=0.003  slope=+0.01
+  vv_p90                                       n=274  r=+0.064  R2=0.004  slope=+0.01
+  vh_p10                                       n=274  r=+0.010  R2=0.000  slope=+0.00
+  vh_p50                                       n=274  r=+0.050  R2=0.002  slope=+0.01
+  vh_p90                                       n=274  r=+0.081  R2=0.006  slope=+0.01
+  vv_iqr                                       n=274  r=+0.040  R2=0.002  slope=+0.00
+  vh_iqr                                       n=274  r=+0.081  R2=0.007  slope=+0.01
+  vv_minus_vh_median                           n=274  r=+0.006  R2=0.000  slope=+0.00
+
+Against basal area (cm2 per plot — per-hectare not possible without plot radius):
+  vv_p50                                       n=274  r=+0.004  R2=0.000  slope=+0.00
+  vh_p50                                       n=274  r=+0.028  R2=0.001  slope=+0.00
+  vv_minus_vh_median                           n=274  r=-0.027  R2=0.001  slope=-0.00
+
+  all 9 radar bands, linear, leave-one-out:      n=274  r=+0.432  R2=0.186  RMSE=6.03
+Read: single-band r above ~0.4 with a consistent sign means radar carries height/closure info.
+      The LOO R2 is the honest ceiling for a locally calibrated radar height model.
+
+====================================================================================
+TEST 6 — leaf-off reflectance and seasonal difference vs composition
+====================================================================================
+(harmonic ndvi_amplitude from Test 2 for reference: r=-0.171  R2=0.029)
+
+Against Sal dominance:
+  off_ndvi                                     n=274  r=-0.055  R2=0.003  slope=-0.03
+  off_nbr                                      n=274  r=+0.077  R2=0.006  slope=+0.06
+  off_ndmi                                     n=274  r=+0.098  R2=0.010  slope=+0.07
+  off_ndre                                     n=274  r=-0.116  R2=0.014  slope=-0.05
+  off_B4                                       n=274  r=+0.162  R2=0.026  slope=+0.02
+  off_B5                                       n=274  r=+0.374  R2=0.140  slope=+0.03
+  off_B8                                       n=274  r=+0.116  R2=0.013  slope=+0.02
+  off_B11                                      n=274  r=-0.037  R2=0.001  slope=-0.01
+  off_B12                                      n=274  r=-0.026  R2=0.001  slope=-0.00
+  on_ndvi                                      n=274  r=-0.144  R2=0.021  slope=-0.05
+  ndvi_seasonal_diff                           n=274  r=-0.028  R2=0.001  slope=-0.01
+
+Against species richness (n_species):
+  off_ndvi                                     n=274  r=+0.075  R2=0.006  slope=+0.00
+  off_ndre                                     n=274  r=+0.079  R2=0.006  slope=+0.00
+  off_nbr                                      n=274  r=+0.055  R2=0.003  slope=+0.00
+  ndvi_seasonal_diff                           n=274  r=+0.032  R2=0.001  slope=+0.00
+
+Sal-dominated (>50%) vs non-Sal, Mann-Whitney:
+  off_ndvi               Sal median +0.5253   non-Sal median +0.5467   p=0.324
+  off_ndre               Sal median +0.2756   non-Sal median +0.2993   p=0.133
+  off_nbr                Sal median +0.2364   non-Sal median +0.2079   p=0.528
+  ndvi_seasonal_diff     Sal median +0.2606   non-Sal median +0.2750   p=0.33
+  ndvi_amplitude         Sal median +0.1362   non-Sal median +0.1692   p=0.014
+
+Read: ndvi_seasonal_diff (leaf-on minus leaf-off) is the direct deciduousness measure —
+      if it beats harmonic amplitude, seasonal composites replace the harmonic fit for composition.
+      off_ndre (red-edge) is the chlorophyll/species signal; a p-value well below 0.014 beats Test 2.
