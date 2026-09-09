@@ -1,0 +1,186 @@
+====================================================================================================
+PHASE 1 STEP 8 — null model for the separation-ratio chart
+====================================================================================================
+
+====================================================================================================
+Provenance
+====================================================================================================
+  archive commit : b24fad3
+  profiles       : runs/sanjay_van_baseline_20260726_204451/cluster_profiles.csv
+  distribution   : runs/sanjay_van_baseline_20260726_204751/export_manifest_sanjay_van_baseline.json
+  units          : fmu_exports_clean/sanjay_van_baseline_stands_snic.geojson  (1249 superpixels)
+
+  The profiles and the distribution come from two DIFFERENT runs, three minutes
+  apart. Per-cluster pixel counts:
+     cluster   profiles   manifest    diff
+           0      16035      16060     +25
+           1      14965      14972      +7
+           2      21584      21611     +27
+           3      11460      11448     -12
+           4      18992      18984      -8
+           5      13712      13711      -1
+       TOTAL      96748      96786     +38   (0.04%)
+
+  Same k-means fit measured by two reductions that disagree at the ROI edge, not two
+  different fits: the deltas are 0.04% and the cluster identities line up. Paired on
+  that basis. If a run holding both ever exists, prefer it.
+
+====================================================================================================
+What the chart actually scores
+====================================================================================================
+  clustered_bands (report.py: every *_mean column minus _DIAGNOSTIC): 22
+    ['aspect_cos', 'aspect_sin', 'canopy_height_max', 'canopy_height', 'canopy_height_std', 'distance_to_water', 'elevation', 'ndvi_amplitude_annual', 'ndvi_mean', 'ndvi_phase_annual_cos', 'ndvi_phase_annual_sin', 'ndvi_trend', 'slope', 'vh_iqr', 'vh_p10', 'vh_p50', 'vh_p90', 'vv_iqr', 'vv_minus_vh_median', 'vv_p10', 'vv_p50', 'vv_p90']
+
+  active_bands (manifest: what k-means was actually fit on): 21
+    ['ndvi_mean', 'ndvi_amplitude_annual', 'ndvi_trend', 'vv_p10', 'vh_p10', 'vv_p50', 'vh_p50', 'vv_p90', 'vh_p90', 'vv_iqr', 'vh_iqr', 'vv_minus_vh_median', 'canopy_height', 'canopy_height_std', 'canopy_height_max', 'elevation', 'slope', 'ndvi_phase_annual_sin', 'ndvi_phase_annual_cos', 'aspect_sin', 'aspect_cos']
+
+  scored but NOT fed to k-means : ['distance_to_water']
+  fed to k-means but not scored : []
+
+  So the chart scores 22 bands, not 20, and report.py's ConfigRun.clustered_bands is
+  documented as "feature bands that fed k-means" while actually being "bands present
+  in cluster_profiles.csv minus three diagnostics". The two lists differ by exactly
+  one band: distance_to_water, which clustering dropped as constant (zero spread).
+
+  That makes distance_to_water a control that was already sitting in the published
+  chart: a band the partition provably never saw. Its observed ratio is a null
+  sample of one, and the null below should bracket it.
+
+====================================================================================================
+Unit-level band table
+====================================================================================================
+  units: 1249   pixels: 115385   clusters present: [0, 1, 2, 3, 4, 5]
+  bands with a direct per-unit column : 18
+  cyclic bands reconstructed as proxy : ['aspect_cos', 'aspect_sin', 'ndvi_phase_annual_cos', 'ndvi_phase_annual_sin']
+  bands with no per-unit value        : []
+
+  The cyclic four are a PROXY: the pipeline decomposes sin/cos per pixel and then
+  reduces, so the archive holds mean(angle) and this computes sin(mean angle). Both
+  the observed and the null use it, so the comparison is internally valid; the
+  absolute value is not the published band's.
+
+====================================================================================================
+Null distributions (200 draws each)
+====================================================================================================
+  RANDOM-FEATURE : k-means(k=6) on N(0,1) stacks of 21 dims over the same 1249 units
+  PERMUTATION    : shuffle of the observed unit->cluster labels (sizes preserved)
+  SPATIAL        : k-means(k=6) on standardised unit centroids only -- STRICT
+
+  The SPATIAL null exists because the first run of this script failed its own control.
+  distance_to_water, never fed to k-means, cleared the random-feature p95 by +0.010.
+  That is structural: the observed partition is spatially coherent and a random-feature
+  partition is not, so within-cluster spread under the latter is near-global for every
+  band and anything spatially smooth beats it. The random-feature null was asking 'is
+  this band spatially autocorrelated', which all of them are. The spatial null gives the
+  null partition the compactness the observed one has, so a band clears it only by
+  separating clusters better than geography alone.
+
+
+====================================================================================================
+Results — observed vs null
+====================================================================================================
+  'published'  report.py's own number, pixel-level, from the 6-row tables.
+  'unit-level' the same formula recomputed from the 1249 per-unit rows. Differs from
+               'published' because within-cluster IQR is over units, not pixels.
+  'excess'     unit-level observed minus SPATIAL p95 (the strict null). Positive = survives.
+  'n'          units with a finite value for the band; blanks are ETH no-data holes.
+
+  band                         n    pub   unit |  rf p95  pm p95 |  sp p95  excess  fed?
+  ------------------------------------------------------------------------------------------------
+  canopy_height             1235  0.556  0.570 |   0.117   0.114 |   0.302  +0.268   yes
+  canopy_height_max         1235  0.549  0.571 |   0.123   0.120 |   0.307  +0.264   yes
+  aspect_sin             *  1249  0.248  0.359 |   0.075   0.070 |   0.113  +0.246   yes
+  ndvi_mean                 1249  0.438  0.380 |   0.091   0.092 |   0.225  +0.154   yes
+  ndvi_amplitude_annual     1249  0.452  0.487 |   0.091   0.099 |   0.359  +0.127   yes
+  vh_p10                    1249  0.238  0.266 |   0.121   0.123 |   0.182  +0.084   yes
+  canopy_height_std         1235  0.257  0.319 |   0.104   0.102 |   0.243  +0.076   yes
+  ndvi_phase_annual_sin  *  1249  0.331  0.356 |   0.070   0.079 |   0.281  +0.075   yes
+  vh_p50                    1249  0.227  0.252 |   0.120   0.123 |   0.184  +0.069   yes
+  ndvi_trend                1249  0.364  0.381 |   0.093   0.094 |   0.321  +0.060   yes
+  vv_iqr                    1249  0.198  0.404 |   0.174   0.176 |   0.356  +0.048   yes
+  vh_p90                    1249  0.208  0.238 |   0.120   0.124 |   0.198  +0.040   yes
+  vv_p10                    1249  0.282  0.321 |   0.152   0.156 |   0.281  +0.040   yes
+  vh_iqr                    1249  0.208  0.364 |   0.154   0.162 |   0.326  +0.039   yes
+  vv_p50                    1249  0.279  0.311 |   0.153   0.158 |   0.298  +0.014   yes
+  distance_to_water         1249  0.055  0.089 |   0.079   0.073 |   0.077  +0.012    NO
+  vv_p90                    1249  0.271  0.330 |   0.154   0.162 |   0.322  +0.008   yes
+  ndvi_phase_annual_cos  *  1249  0.406  0.210 |   0.066   0.067 |   0.217  -0.008   yes
+  aspect_cos             *  1249  0.147  0.131 |   0.076   0.080 |   0.147  -0.016   yes
+  slope                     1249  0.071  0.109 |   0.098   0.089 |   0.137  -0.028   yes
+  vv_minus_vh_median        1249  0.248  0.307 |   0.126   0.125 |   0.346  -0.039   yes
+  elevation                 1249  0.515  0.556 |   0.086   0.084 |   0.615  -0.059   yes
+  ------------------------------------------------------------------------------------------------
+  * cyclic proxy (sin/cos of the mean angle)
+
+====================================================================================================
+Verdict
+====================================================================================================
+  CONTROL FIRST. distance_to_water was never fed to k-means -- clustering dropped it
+  as a constant band -- so it is a null sample sitting inside the published chart.
+    observed 0.089   random-feature p95 0.079   spatial p95 0.077
+
+  It CLEARS the random-feature null. That null is therefore too permissive and
+  no 'survives' verdict read off it is evidence.
+
+  Under the SPATIAL null it does not clear comfortably either: excess +0.012,
+  which is the second smallest in the table. It is a pure function of position, so a
+  spatially-compact null should land almost exactly on it -- and does. That is the
+  null being calibrated rather than passed.
+
+  USE IT AS THE FLOOR. A known-null band scores +0.012 here, so any band whose
+  excess is below about 0.012 is not distinguishable from it. On that reading the
+  bottom of the SURVIVE list -- vv_p90 (+0.008) and vv_p50 (+0.014) -- should be read
+  as null too, and the honest count is the bands clearly above that floor.
+  Against the SPATIAL null: 17/22 bands separate the clusters better
+  than geography alone.
+
+  SURVIVE — carry information beyond spatial compactness:
+    + canopy_height            observed 0.570  vs sp p95 0.302  (+0.268)
+    + canopy_height_max        observed 0.571  vs sp p95 0.307  (+0.264)
+    + aspect_sin               observed 0.359  vs sp p95 0.113  (+0.246)
+    + ndvi_mean                observed 0.380  vs sp p95 0.225  (+0.154)
+    + ndvi_amplitude_annual    observed 0.487  vs sp p95 0.359  (+0.127)
+    + vh_p10                   observed 0.266  vs sp p95 0.182  (+0.084)
+    + canopy_height_std        observed 0.319  vs sp p95 0.243  (+0.076)
+    + ndvi_phase_annual_sin    observed 0.356  vs sp p95 0.281  (+0.075)
+    + vh_p50                   observed 0.252  vs sp p95 0.184  (+0.069)
+    + ndvi_trend               observed 0.381  vs sp p95 0.321  (+0.060)
+    + vv_iqr                   observed 0.404  vs sp p95 0.356  (+0.048)
+    + vh_p90                   observed 0.238  vs sp p95 0.198  (+0.040)
+    + vv_p10                   observed 0.321  vs sp p95 0.281  (+0.040)
+    + vh_iqr                   observed 0.364  vs sp p95 0.326  (+0.039)
+    + vv_p50                   observed 0.311  vs sp p95 0.298  (+0.014)
+    + distance_to_water        observed 0.089  vs sp p95 0.077  (+0.012)
+    + vv_p90                   observed 0.330  vs sp p95 0.322  (+0.008)
+
+  DO NOT SURVIVE — indistinguishable from a partition that never saw them:
+    - ndvi_phase_annual_cos    observed 0.210  vs sp p95 0.217  (-0.008)
+    - aspect_cos               observed 0.131  vs sp p95 0.147  (-0.016)
+    - slope                    observed 0.109  vs sp p95 0.137  (-0.028)
+    - vv_minus_vh_median       observed 0.307  vs sp p95 0.346  (-0.039)
+    - elevation                observed 0.556  vs sp p95 0.615  (-0.059)
+
+====================================================================================================
+What this says about the chart
+====================================================================================================
+  1. The caption is wrong. The unit is the k-means cluster, k=6, not the stand. It must
+     read 'between-cluster', and the title must not say 'What separates the stands'.
+  2. The ranking is not evidence on its own. Every band except distance_to_water was fit
+     on, so a high ratio is the expected outcome of the construction.
+  3. elevation's high rank is the clearest case. It is in the k-means feature vector, so
+     its separation is partly circular -- and it is also the band most aligned with
+     geography, which is what the spatial null is built to price in.
+  4. Report the excess over the spatial null, not the raw ratio, if this chart is to
+     support a claim about which features drive the partition.
+
+  5. The band that dominates the partition is the band the field data trusts least.
+     canopy_height and canopy_height_max lead the survivors at +0.268 and +0.264, well
+     clear of everything else -- and Phase 1 measured ETH canopy height against 274
+     Odisha plots at R2=0.207 with slope 0.30. canopy_height_std survives too (+0.076)
+     while measuring crown cover at R2=0.000 (r=-0.011). So these bands genuinely drive
+     the partition; what they do not do is measure the forest property they are named
+     for. Those are not in tension -- a band can carve consistent groups out of a
+     landscape while being a poor estimator of the quantity it claims -- but any claim
+     that the clusters are structurally meaningful rests on the second, not the first.
+
+  wrote odisha_phase1_8_separation_null.png

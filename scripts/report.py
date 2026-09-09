@@ -136,7 +136,12 @@ class ConfigRun:
     dissolved_path: Path | None
     snic_path: Path | None
     index: str                      # "ndvi" or "nirv"
-    clustered_bands: list[str]      # feature bands that fed k-means
+    # NOT "the bands that fed k-means", despite what this used to say. discover() builds it as
+    # every *_mean column in cluster_profiles.csv minus _DIAGNOSTIC, which is a superset: the
+    # baseline run profiles 24 bands, yields 22 here, and k-means was fit on 21. The extra is
+    # distance_to_water, dropped by clustering as a constant band. That makes it a control the
+    # published chart already contains -- a band the partition provably never saw.
+    clustered_bands: list[str]      # profiled bands minus diagnostics; see the note above
     feature_source: str = "handcrafted"  # "handcrafted" or "embedding"
 
     @property
@@ -308,11 +313,21 @@ def fig_separating_power(run: ConfigRun, out: Path) -> Path:
     ax.set_yticks(y)
     ax.set_yticklabels([label(bands[i]) for i in order], fontsize=8)
     ax.set_xlim(0, 1)
-    ax.set_xlabel("between-stand separation ratio  (0 = overlapping, 1 = fully separated)")
+    # "between-CLUSTER", not "between-stand". The unit here is the k-means cluster (k=6);
+    # a stand is what SNIC + merge produce, and there are hundreds of them. Conflating the two
+    # is the thing the v1.2 reframing exists to stop.
+    ax.set_xlabel("between-cluster separation ratio  (0 = overlapping, 1 = fully separated)")
     ax.grid(axis="y", visible=False)
     for yi, v in zip(y, vals, strict=False):
         ax.text(v + 0.01, yi, f"{v:.2f}", va="center", fontsize=7.5, color=INK2)
-    ax.set_title(f"What separates the stands — {run.name}\nhigher = the feature drives the partition", loc="left")
+    # Not evidence on its own: every band here except distance_to_water was fit on, so a high
+    # ratio is the construction, not a finding. odisha_script/odisha_phase1_8_separation_null.py
+    # prices each band against a spatially-compact null partition; read the excess over that,
+    # not the raw ratio. elevation ranks 3rd here and does NOT beat the null.
+    ax.set_title(
+        f"What separates the {run.k} clusters — {run.name}\n"
+        "higher = the feature drives the partition (see phase-1 step 8 for the null)",
+        loc="left")
     return _save(fig, out, "separating_power")
 
 
