@@ -1,0 +1,203 @@
+================================================================================================
+PHASE 1 STEP 7 — Meta/WRI canopy-height zeros
+================================================================================================
+  input: odisha_plots_sampled_v2.csv  (274 plots)
+
+================================================================================================
+A1 — the zero census
+================================================================================================
+  rows: 274   meta_chm nulls: 0   meta_chm_3x3 nulls: 0
+
+  district        meta_chm==0    meta_chm_3x3==0
+  ANGUL             14/40               8/40    
+  DHENKANAL         19/76              14/76    
+  KENDUJHAR         10/12               6/12    
+  KORAPUT           79/146             65/146   
+  TOTAL            122/274             93/274   
+  zero rate (meta_chm): 44.5%
+
+  Not nulls. Zero. A masked pixel sampled through .mosaic() returns null, and there
+  are none — so whatever produced these, it produced a value, and the value was 0.
+
+================================================================================================
+A2 — Meta is quantised to integer metres
+================================================================================================
+  meta_chm  all values integral: True
+  meta_chm  range 0..15   non-zero: n=152 min=1 max=15 median=4
+  distinct non-zero values: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+  meta_chm_3x3 values are exact multiples of 1/9: True  (max deviation 3.8e-06)
+
+  A 3x3 mean lands on exact ninths only if all nine inputs are integers. So the
+  product is delivered as integer metres, and the entire observed range here is 16
+  levels, 0 to 15 m, against field Lorey's heights running to 37.75 m.
+
+  Consequences, both load-bearing for merge.criteria:
+    - a Meta '0' means 'the model predicted under half a metre', which is NOT the
+      same statement as 'no data' and NOT the same as 'no canopy'.
+    - a 2.0 m tolerance on an integer-metre product gates on 2 of 16 available
+      levels. There is no sub-metre structure for a threshold to resolve.
+
+================================================================================================
+A3 — what the zero plots look like in the field
+================================================================================================
+  Lorey's at meta_chm==0 : n=122 median=5.85 mean=7.03 min=0.16 max=33.57
+  Lorey's at meta_chm >0 : n=152 median=9.99 mean=12.30
+  Mann-Whitney zero vs non-zero: p=7.59e-15
+
+  The zero plots are genuinely shorter — so at plot level they sit at the low end of
+  both axes and pull the correlation up. That is the inflation. But the maximum is
+  33.57 m: the product returns 0 at a plot carrying 33.6 m of canopy,
+  which no amount of 'they are just short plots' explains.
+
+  crown cover at meta_chm==0: n=122 median=28% min=0% max=98%   >50%: 23  >75%: 10
+
+================================================================================================
+A4 — Pangatira, all ten plots
+================================================================================================
+           plot_key  loreys_h_m  crown_cover_pct  meta_chm  meta_chm_3x3  meta_mean_15m  eth_chm_3x3
+21.154502_85.365229     12.0675             83.0         0           0.0            0.0    12.777778
+21.155752_85.365857      8.4458             68.0         0           0.0            0.0    12.777778
+21.156085_85.364999     16.1918              8.0         0           0.0            0.0    11.222222
+   21.156_85.367028      9.7741             88.0         0           0.0            0.0    13.000000
+21.157913_85.365213      9.2464             68.0         0           0.0            0.0    10.666667
+ 21.158187_85.36696     10.0648             78.0         0           0.0            0.0    10.666667
+21.158748_85.364022     14.0243             58.0         0           0.0            0.0    14.666667
+ 21.15983_85.365755     12.6559             88.0         0           0.0            0.0    12.333333
+21.160104_85.363229     15.9780             68.0         0           0.0            0.0    16.000000
+21.161816_85.365742     13.6647             68.0         0           0.0            0.0    13.333333
+
+  crown cover 8-88%  (nine of ten are 58-88%; one plot reads 8%)
+  Lorey's 8.45-16.19 m, site mean 12.21 m; Meta 0 at all 10.
+
+================================================================================================
+A5 — plot level, as-published vs zeros excluded
+================================================================================================
+  Exclusion is meta_chm==0 (122 rows). Applied to EVERY band, not just the Meta ones,
+  so the two columns are computed over the same plots and are comparable to each other.
+
+  band                n        r      R2       n        r      R2       dR2
+                   --- as published ---     --- zeros excluded ---          
+  eth_chm_3x3       274   +0.455   0.207     152   +0.324   0.105    -0.102
+  meta_chm_3x3      274   +0.491   0.241     152   +0.377   0.142    -0.099
+  meta_mean_15m     274   +0.482   0.233     152   +0.362   0.131    -0.101
+  meta_p95_15m      274   +0.488   0.238     152   +0.367   0.135    -0.103
+  meta_mean_30m     274   +0.487   0.237     152   +0.375   0.140    -0.097
+  meta_p95_30m      274   +0.476   0.227     152   +0.358   0.128    -0.098
+  glad_chm          274   +0.202   0.041     152   -0.121   0.015    -0.026
+  vh_iqr            274   +0.458   0.210     152   +0.477   0.227    +0.018
+  vv_iqr            274   +0.415   0.172     152   +0.420   0.177    +0.004
+
+  Every height PRODUCT falls, and by almost the same amount (-0.097 to -0.103 for ETH
+  and all five Meta variants). The 122 zero plots were doing the same work for all of
+  them: they sit at the short end of the field range, and removing them shrinks the
+  spread each product is being asked to track.
+
+  The two radar bands do not fall. vh_iqr and vv_iqr both rise slightly, and vh_iqr
+  overtakes every height product once the zeros are gone (0.227 vs Meta's best 0.142).
+  Radar is the only structural signal here whose relationship to field height does not
+  depend on the short-plot anchor.
+
+  glad_chm does not merely weaken, it FLIPS: r=+0.202 becomes r=-0.121. Its entire
+  positive correlation was the zero plots. GLAD is not a weak predictor of height in
+  this forest; on the plots where Meta has data it is a slightly negative one.
+
+================================================================================================
+A6 — site level, as-published vs zeros excluded
+================================================================================================
+  Six Dhenkanal polygons. n=6 is directional, not evidential — and dropping zero plots
+  removes Pangatira entirely, so the excluded column is n=5. Read accordingly.
+
+  --- as published (n=6): 6 sites, 60 plots ---
+               n   field  eth_chm_3x3  meta_chm_3x3  meta_mean_15m  meta_p95_15m  meta_mean_30m  meta_p95_30m  glad_chm  vh_iqr  vv_iqr
+site_polygon                                                                                                                           
+Adhapalli     11   7.292       19.788         4.374          4.321         9.273          4.252         9.818     7.909   3.586   4.341
+Balikurma     11  15.192       20.636         7.545          6.953         9.455          7.350        10.455    11.636   5.333   4.988
+Kampulei       9  22.295       20.691         7.222          6.864         9.333          6.829         9.778     9.333   5.508   5.239
+Kerijoli      10  18.123       28.756         5.789          5.929        11.500          4.892        11.900    10.000   5.873   5.533
+Mahabirod      9  21.961       19.259         9.765          9.471        11.667          8.956        11.778    10.889   2.667   3.645
+Pangatira     10  12.211       12.744         0.000          0.000         0.000          0.007         0.000     5.700   2.309   3.386
+
+    site-level eth_chm_3x3      n=6  r=+0.316  R2=0.100
+    site-level meta_chm_3x3     n=6  r=+0.669  R2=0.447
+    site-level meta_mean_15m    n=6  r=+0.673  R2=0.452
+    site-level meta_p95_15m     n=6  r=+0.437  R2=0.191
+    site-level meta_mean_30m    n=6  r=+0.634  R2=0.402
+    site-level meta_p95_30m     n=6  r=+0.409  R2=0.167
+    site-level glad_chm         n=6  r=+0.556  R2=0.310
+    site-level vh_iqr           n=6  r=+0.314  R2=0.098
+    site-level vv_iqr           n=6  r=+0.271  R2=0.073
+
+  --- zeros excluded: 5 sites, 48 plots ---
+               n   field  eth_chm_3x3  meta_chm_3x3  meta_mean_15m  meta_p95_15m  meta_mean_30m  meta_p95_30m  glad_chm  vh_iqr  vv_iqr
+site_polygon                                                                                                                           
+Adhapalli      9   7.257       19.728         5.000          5.024         9.889          4.705         9.889     8.111   3.122   4.465
+Balikurma     11  15.192       20.636         7.545          6.953         9.455          7.350        10.455    11.636   5.333   4.988
+Kampulei       9  22.295       20.691         7.222          6.864         9.333          6.829         9.778     9.333   5.508   5.239
+Kerijoli      10  18.123       28.756         5.789          5.929        11.500          4.892        11.900    10.000   5.873   5.533
+Mahabirod      9  21.961       19.259         9.765          9.471        11.667          8.956        11.778    10.889   2.667   3.645
+
+    site-level eth_chm_3x3      n=5  r=+0.120  R2=0.014
+    site-level meta_chm_3x3     n=5  r=+0.709  R2=0.502
+    site-level meta_mean_15m    n=5  r=+0.723  R2=0.522
+    site-level meta_p95_15m     n=5  r=+0.307  R2=0.094
+    site-level meta_mean_30m    n=5  r=+0.640  R2=0.410
+    site-level meta_p95_30m     n=5  r=+0.405  R2=0.164
+    site-level glad_chm         n=5  r=+0.484  R2=0.234
+    site-level vh_iqr           n=5  r=+0.264  R2=0.070
+    site-level vv_iqr           n=5  r=+0.018  R2=0.000
+
+================================================================================================
+A7 — does aggregation still 'recover signal', with zeros excluded?
+================================================================================================
+  The claim on the record: aggregating to sites lifts Meta (0.241 -> 0.452) and GLAD
+  (0.041 -> 0.310) while destroying ETH (0.207 -> 0.100). If the Meta lift is an
+  artefact of averaging over sites that contain zeros, the claim does not survive.
+
+  band               plot R2   site R2     lift   |    plot R2   site R2     lift
+                      ---- as published ----      |     --- zeros excluded ---   
+  eth_chm_3x3          0.207     0.100   -0.107   |       0.105     0.014   -0.090
+  meta_chm_3x3         0.241     0.447   +0.206   |       0.142     0.502   +0.361
+  meta_mean_15m        0.233     0.452   +0.220   |       0.131     0.522   +0.391
+  meta_p95_15m         0.238     0.191   -0.047   |       0.135     0.094   -0.041
+  meta_mean_30m        0.237     0.402   +0.165   |       0.140     0.409   +0.269
+  meta_p95_30m         0.227     0.167   -0.060   |       0.128     0.164   +0.035
+  glad_chm             0.041     0.310   +0.269   |       0.015     0.234   +0.220
+  vh_iqr               0.210     0.098   -0.111   |       0.227     0.070   -0.157
+  vv_iqr               0.172     0.073   -0.099   |       0.177     0.000   -0.176
+
+  Read the two 'lift' columns against each other. A lift that survives the exclusion
+  is a real aggregation effect; one that collapses was the zero plots averaging in.
+
+  RESULT: the Meta lift survives, and strengthens. meta_chm_3x3 goes +0.206 -> +0.361
+  and meta_mean_15m +0.220 -> +0.391 once the zero plots are dropped. So it is NOT an
+  artefact of averaging over sites containing zeros -- the opposite: the zeros were
+  suppressing it, via Pangatira, whose ten zeros dragged one of six site means to 0.
+  GLAD's lift survives too (+0.269 -> +0.220), and ETH's collapse persists
+  (-0.107 -> -0.090). The 'aggregation recovers what plot noise hides' claim holds for
+  Meta and GLAD and still fails for ETH.
+
+  Two cautions that have to travel with that sentence. The excluded column is n=5
+  sites: one point governs a great deal. And aggregation makes RADAR worse, not
+  better (vh_iqr -0.111 -> -0.157), so 'aggregation recovers signal' is a statement
+  about these height products, not a general property of stand-scale averaging.
+
+================================================================================================
+B — raw 1 m Meta neighbourhood at the zero plots (Earth Engine)
+================================================================================================
+  BLOCKED — Earth Engine is not available in this environment.
+  EEException: Please authorize access to your Earth Engine account by running
+
+  Part B is the half that returns the verdict; part A cannot substitute for it.
+  Run this script where `earthengine authenticate` has been done, and the section
+  below will fill in. NOTHING here is estimated in its absence.
+
+  The three outcomes it decides between, and what each one means:
+    NO DATA      30 m box entirely masked / no intersecting tile.
+                 -> exclude; Test 4 is n=152, R2=0.142. Meta is out.
+    RECOVERABLE  box has values, the sample point does not.
+                 -> geolocation or mosaic gap; re-sample with a buffered reducer
+                    that ignores masked pixels, re-run Test 4, report both.
+    DISQUALIFIED box is genuinely and validly 0 under 88% field crown cover.
+                 -> no aggregation fixes this. Meta is out, and the fact that a
+                    published 1 m product reads 0 over closed canopy is itself
+                    a reportable finding.
