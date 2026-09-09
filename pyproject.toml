@@ -7,7 +7,7 @@ name = "fmu"
 dynamic = ["version"]
 description = "Forest Management Units: multi-sensor pipeline for delineating ecologically coherent forest stands from open satellite data."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license = {text = "MIT"}
 authors = [
     {name = "Jaskaran Singh"},
@@ -67,9 +67,7 @@ report = [
 # fetched via geotessera (CC0), mosaicked with rasterio (already a core dep),
 # then uploaded to an EE asset. geotessera requires Python 3.12+.
 tessera = [
-    # geotessera itself requires 3.12+; marked so a 3.11 install of the base
-    # package stays valid instead of the whole project inheriting the floor.
-    'geotessera>=0.1; python_version >= "3.12"',
+    "geotessera>=0.1",
 ]
 # Fetch exported stand vectors from Google Drive (scripts/fetch_drive_vectors.py).
 # google-auth ships with earthengine-api; this adds the Drive API client.
@@ -105,6 +103,6 @@ markers = [
 ]
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 strict = false
 ignore_missing_imports = true
