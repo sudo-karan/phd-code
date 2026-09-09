@@ -221,7 +221,7 @@ def start_export(
     asset_path: str,
     roi: ee.Geometry,
     scale: int = 10,
-    max_pixels: float = 1e9,
+    max_pixels: int = 1_000_000_000,
     description: str | None = None,
 ) -> ExportTaskInfo:
     """Submit an async export-to-asset task. Returns immediately.
@@ -250,6 +250,14 @@ def start_export(
     )
     task.start()
 
+    if task.id is None:
+        # A started task with no id is not something to paper over: every caller
+        # records the id to poll the task later, so an empty one silently loses
+        # the export.
+        raise RuntimeError(
+            f"export task for {asset_path} started but Earth Engine returned no "
+            f"task id; the export cannot be tracked"
+        )
     info = ExportTaskInfo(
         task_id=task.id,
         asset_path=asset_path,

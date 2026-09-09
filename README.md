@@ -66,7 +66,7 @@ predictive power at matched stand count, and geometry.
 One-time per machine:
 
 ```bash
-python3.13 -m venv .venv
+python3.11 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
 earthengine authenticate            # opens browser, produces a credentials file

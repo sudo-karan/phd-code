@@ -7,7 +7,9 @@ Chromium via Playwright. Run before scripts/build_honest.js.
   pip install playwright   # browser is pre-provisioned at PLAYWRIGHT_BROWSERS_PATH
   python scripts/report_screenshot.py
 """
-import glob, os
+import glob
+import os
+
 from playwright.sync_api import sync_playwright
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

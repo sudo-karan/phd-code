@@ -307,7 +307,7 @@ def _rms_adjacent_distance(image: ee.Image, roi: ee.Geometry, scale: int) -> flo
             reducer=ee.Reducer.mean(),
             geometry=roi,
             scale=scale,
-            maxPixels=1e9,
+            maxPixels=1_000_000_000,
             bestEffort=True,
         ),
         context="RMS adjacent feature distance",
@@ -334,7 +334,7 @@ def _zscore_per_band(image: ee.Image, roi: ee.Geometry, scale: int) -> ee.Image:
         reducer=ee.Reducer.mean().combine(ee.Reducer.stdDev(), sharedInputs=True),
         geometry=roi,
         scale=scale,
-        maxPixels=1e9,
+        maxPixels=1_000_000_000,
         bestEffort=True,
     )
     # Build the z-scored image band-by-band on the Python side; the band list

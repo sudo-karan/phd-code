@@ -30,7 +30,7 @@ def _scale_of_image(img: ee.Image, sample_band: str | None = None) -> float | No
             context=f"projection scale (band={sample_band})",
         )
         return float(scale) if scale is not None else None
-    except Exception as e:  # noqa: BLE001; best-effort metadata probe
+    except Exception as e:  # noqa: BLE001 - best-effort metadata probe
         print(f"    [error] {e}")
         return None
 

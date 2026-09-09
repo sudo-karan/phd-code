@@ -47,7 +47,7 @@ class DatesConfig(BaseModel):
     # Climatology window for rainfall. Default to a 30-year standard
     # normal (1991-2020) when not specified.
     climate: DateRange = Field(
-        default_factory=lambda: DateRange(start="1991-01-01", end="2020-12-31")
+        default_factory=lambda: DateRange(start=date(1991, 1, 1), end=date(2020, 12, 31))
     )
 
 
@@ -276,13 +276,17 @@ class SnicInputBand(BaseModel):
 # Note this default references `optical_features`, so an embedding-arm config
 # must override input_bands (e.g. with source: embedding_features) -- the
 # embedding arm does not run features_optical.
-_DEFAULT_SNIC_INPUT_BANDS: list[dict[str, str]] = [
-    {"source": "s2_composite", "band": "B4_median"},
-    {"source": "s2_composite", "band": "B8_median"},
-    {"source": "structure_features", "band": "canopy_height"},
-    {"source": "structure_features", "band": "canopy_height_std"},
-    {"source": "optical_features", "band": "ndvi_amplitude_annual"},
-    {"source": "radar_features", "band": "vv_minus_vh_median"},
+# Model instances, not dicts. Unpacking a dict into a model whose `source` is a
+# Literal can never type-check -- mypy cannot narrow `str`/`object` to a Literal --
+# so the dict form was the defect rather than the call site. Instances also mean a
+# typo in a source name is caught at import, not at first config load.
+_DEFAULT_SNIC_INPUT_BANDS: list[SnicInputBand] = [
+    SnicInputBand(source="s2_composite", band="B4_median"),
+    SnicInputBand(source="s2_composite", band="B8_median"),
+    SnicInputBand(source="structure_features", band="canopy_height"),
+    SnicInputBand(source="structure_features", band="canopy_height_std"),
+    SnicInputBand(source="optical_features", band="ndvi_amplitude_annual"),
+    SnicInputBand(source="radar_features", band="vv_minus_vh_median"),
 ]
 
 
@@ -310,7 +314,7 @@ class SegmentationParams(BaseModel):
     # segmentation feature space (e.g. to an embedding) is a YAML edit rather
     # than a code change.
     input_bands: list[SnicInputBand] = Field(
-        default_factory=lambda: [SnicInputBand(**b) for b in _DEFAULT_SNIC_INPUT_BANDS],
+        default_factory=lambda: [b.model_copy() for b in _DEFAULT_SNIC_INPUT_BANDS],
         min_length=1,
     )
 
@@ -414,10 +418,12 @@ class MergeCriterion(BaseModel):
 #   ndvi_amplitude_annual  p50 0.016 p75 0.027  -> 0.030
 # These are per-band marginals and the gate is conjunctive, so they do NOT
 # describe the joint admit rate -- the calibration helper reports that.
-_DEFAULT_MERGE_CRITERIA: list[dict[str, object]] = [
-    {"source": "structure_features", "band": "canopy_height", "tolerance": 2.00},
-    {"source": "structure_features", "band": "canopy_height_std", "tolerance": 0.45},
-    {"source": "optical_features", "band": "ndvi_amplitude_annual", "tolerance": 0.030},
+_DEFAULT_MERGE_CRITERIA: list[MergeCriterion] = [
+    MergeCriterion(source="structure_features", band="canopy_height", tolerance=2.00),
+    MergeCriterion(source="structure_features", band="canopy_height_std", tolerance=0.45),
+    MergeCriterion(
+        source="optical_features", band="ndvi_amplitude_annual", tolerance=0.030
+    ),
 ]
 
 
@@ -489,9 +495,7 @@ class MergeParams(BaseModel):
     # would confound "different boundaries" with "different merge rules", and
     # the thresholds would lose their physical units along with their meaning.
     criteria: list[MergeCriterion] = Field(
-        default_factory=lambda: [
-            MergeCriterion(**c) for c in _DEFAULT_MERGE_CRITERIA
-        ],
+        default_factory=lambda: [c.model_copy() for c in _DEFAULT_MERGE_CRITERIA],
         min_length=1,
     )
 
@@ -681,16 +685,16 @@ class R2Attribute(BaseModel):
 # out anything from features_radar or features_static -- an embedding run does
 # not compute those. What it can read: the S2 composite (data_load always runs)
 # plus structure and optical (pulled in by the merge gate).
-_DEFAULT_R2_ATTRIBUTES: list[dict[str, object]] = [
+_DEFAULT_R2_ATTRIBUTES: list[R2Attribute] = [
     # Used: a merge criterion. Circular by construction, and reported anyway
     # because it is the literature-comparable number.
-    {"source": "structure_features", "band": "canopy_height", "held_out": False},
+    R2Attribute(source="structure_features", band="canopy_height", held_out=False),
     # Held out: inter-annual greening/browning. Neither arm segments or merges
     # on it, and it is a real forest property rather than a restatement of one.
-    {"source": "optical_features", "band": "ndvi_trend", "held_out": True},
+    R2Attribute(source="optical_features", band="ndvi_trend", held_out=True),
     # Held out: a different structural statistic from the one that drew the
     # boundaries. Correlated with canopy_height, but not the same quantity.
-    {"source": "structure_features", "band": "canopy_height_max", "held_out": True},
+    R2Attribute(source="structure_features", band="canopy_height_max", held_out=True),
 ]
 
 
@@ -727,7 +731,7 @@ class MetricsParams(BaseModel):
     # per superpixel is 1.0 trivially, so two arms at different stand counts
     # cannot be compared on it at all.
     r2_attributes: list[R2Attribute] = Field(
-        default_factory=lambda: [R2Attribute(**a) for a in _DEFAULT_R2_ATTRIBUTES]
+        default_factory=lambda: [a.model_copy() for a in _DEFAULT_R2_ATTRIBUTES]
     )
 
     def input_sources(self) -> set[str]:
