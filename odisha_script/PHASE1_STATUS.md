@@ -18,7 +18,7 @@ marked BLOCKED rather than estimated.
 | 3 | ETH 3×3 roughness vs crown cover | r=−0.011, **R²=0.000** | **fails outright** |
 | 4a | Meta/WRI vs Lorey's | R²=0.241 as published, **0.142** with zeros excluded | **BLOCKED** on the zeros |
 | 4b | GLAD/Potapov vs Lorey's | R²=0.041; **flips to r=−0.121** with Meta-zeros excluded | out |
-| 4c | GEDI rh98 vs Lorey's | R²=0.404 at n=10 | **WITHDRAWN** pending re-sample |
+| 4c | GEDI rh98 vs Lorey's | R²=0.404 at n=10 | **WITHDRAWN**; expect n to change materially, see below |
 | 5 | S1 backscatter vs Lorey's | `vh_iqr` **R²=0.210 → 0.227** with zeros excluded | best free signal at plot scale |
 | 6 | leaf-off / seasonal vs composition | `off_B5` R²=0.140; `ndvi_seasonal_diff` R²=0.001 | `off_B5` is the only one worth keeping |
 
@@ -121,7 +121,15 @@ that the stands are *structurally meaningful* rests on the measurement, not the 
    is NO DATA, RECOVERABLE, or DISQUALIFIED needs the raw 1 m grid, the mask state and the
    band encoding. Run `python odisha_phase1_7_meta_zero_diagnosis.py` where
    `earthengine authenticate` has been done.
-2. **GEDI re-sample — BLOCKED.** The published R²=0.404 is withdrawn, not corrected.
+2. **GEDI re-sample — BLOCKED, and n=10 is probably not the real coverage.** The published
+   R²=0.404 is withdrawn, not corrected. Three defects were found, all verifiable from
+   `ee/tests/algorithms.json` inside the installed `earthengine-api`, and the third is the
+   one that changes what to expect: `reduceNeighborhood`'s `skipMasked` defaults to **True**,
+   which masks the output wherever the *centre* pixel is masked regardless of what the kernel
+   found. **The 50 m search never ran.** Only plots whose own 25 m cell contained a shot ever
+   got a value — which is exactly why the column has 10 non-null rows. Once it runs, coverage
+   may be well above 10, and R², slope and n all move together. Nothing about the corrected
+   figure can be anticipated from the current one.
 3. **Task 4 not started.** ETH removal is written up but not applied, because removing two
    of three criteria leaves one, below `min_defined_criteria: 2`, and the replacement is
    Task 1's to decide. `min_defined_criteria` must not be lowered to accommodate this.
@@ -145,7 +153,8 @@ The reasoning, in the order it matters:
 **No available product measures stand height well enough to gate on in absolute units.**
 The best plot-level R² is Meta at 0.241, which falls to 0.142 once its 45% zeros are
 excluded — and Meta is BLOCKED. ETH is 0.207 with slope 0.30 and a compressed range. GLAD
-inverts. GEDI is withdrawn. `vh_iqr` at 0.227 is the best-validated free signal, and it is
+inverts. GEDI is withdrawn — and is the one entry in that list whose corrected value could
+plausibly change the conclusion, since its 50 m search never ran. `vh_iqr` at 0.227 is the best-validated free signal, and it is
 a radar texture proxy, not a height measurement — and it is the one thing that gets *worse*
 under aggregation, which is the opposite of what a stand-scale criterion needs.
 
