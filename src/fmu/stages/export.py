@@ -289,7 +289,13 @@ class ExportStage(Stage):
             merged_n_features = safe_get_info(
                 merged_fc.size(), context="stands_merged feature count"
             )
-            log.info("  stands_merged: %s features", merged_n_features)
+            merged_counts = _stand_polygon_counts(merged_fc)
+            log.info(
+                "  stands_merged: %s features over %d stands",
+                merged_n_features,
+                merged_counts["n_stands"],
+            )
+            _warn_on_split_stands(merged_counts, merged_n_features)
 
             vector_layers[_MERGED_LAYER_NAME] = {
                 "description": (
@@ -302,6 +308,12 @@ class ExportStage(Stage):
                     "not a type label could be attached to it."
                 ),
                 "n_features": merged_n_features,
+                # Both, deliberately. `n_features` alone read as the stand count
+                # and was not one: a live run reported 329 features for a merge
+                # that produced 327 stands.
+                "n_stands": merged_counts["n_stands"],
+                "n_stands_split_into_pieces": merged_counts["n_split"],
+                "max_pieces_per_stand": merged_counts["max_pieces"],
                 "geometry_type": "Polygon",
                 "id_field": "stand_id",
                 "id_renumbering": (
@@ -749,6 +761,52 @@ def _format_task_entry(
         "submitted_at": submitted_at if task else None,
         "task_submitted": task is not None,
     }
+
+
+def _stand_polygon_counts(fc: ee.FeatureCollection) -> dict[str, int]:
+    """How many distinct stands the merged polygon collection actually holds.
+
+    `reduceToVectors` emits one polygon per *connected component* of a label,
+    not one per label, so a stand that is spatially disconnected comes back as
+    several polygons sharing a `stand_lbl`. The feature count then overstates
+    the delineation, and `stand_id` -- assigned 1..N over polygons -- stops
+    being a stand identifier.
+
+    One `aggregate_array` and a client-side count: a few hundred integers, and
+    it gives the distinct count, the split count and the worst case together.
+    Counting distinct server-side would give only the first.
+    """
+    labels = safe_get_info(
+        fc.aggregate_array("stand_lbl"), context="stands_merged stand labels"
+    )
+    pieces: dict[int, int] = {}
+    for raw in labels or []:
+        key = int(float(raw))
+        pieces[key] = pieces.get(key, 0) + 1
+    split = [n for n in pieces.values() if n > 1]
+    return {
+        "n_stands": len(pieces),
+        "n_split": len(split),
+        "max_pieces": max(split, default=1),
+    }
+
+
+def _warn_on_split_stands(counts: dict[str, int], n_features: int) -> None:
+    """Say so when the polygon count is not the stand count."""
+    if not counts["n_split"]:
+        return
+    log.warning(
+        "  stands_merged: %d polygon(s) for %d stand(s) -- %d stand(s) are "
+        "spatially disconnected and vectorised into up to %d pieces each. "
+        "Most likely the ROI clip cutting a stand that straddles a concave "
+        "part of the boundary; a disconnected SNIC label would do it too. "
+        "Dissolve on stand_lbl to recover one feature per stand, and do not "
+        "read the feature count as a stand count.",
+        n_features,
+        counts["n_stands"],
+        counts["n_split"],
+        counts["max_pieces"],
+    )
 
 
 def _build_merged_feature_collection(

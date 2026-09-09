@@ -442,7 +442,20 @@ def summarize_stand_geometry(
     largest_decile_area = sum(areas[-n_decile:])
     below = [a for a in areas if a < min_area_ha]
 
-    return {
+    # Polsby-Popper is 4*pi*A/P^2, which is 1.0 for a circle and strictly below
+    # it for every other planar shape -- a value above 1.0 is not a rounder
+    # stand, it is arithmetic on an area and a perimeter that do not describe
+    # the same footprint. The live baseline reported a max of 1.058.
+    #
+    # Not clamped. A clamp would put a plausible 1.0 in the output and delete
+    # the only evidence that the two measurements disagree; the count is the
+    # finding. It is reported rather than raised because the affected stands are
+    # at the ROI edge, where reductions are already known to disagree slightly
+    # (3595 vs 3594 adjacency pairs between two runs of the same config), and
+    # the rest of the distribution is unaffected.
+    impossible = [v for v in pp if v > 1.0]
+
+    summary = {
         "n_stands": len(areas),
         "total_area_ha": round(total, 4),
         "area_ha_min": round(areas[0], 6),
@@ -464,4 +477,17 @@ def summarize_stand_geometry(
         "polsby_popper_min": round(pp[0], 4),
         "polsby_popper_median": q(pp, 0.50),
         "polsby_popper_max": round(pp[-1], 4),
+        "polsby_popper_above_one": len(impossible),
     }
+    if impossible:
+        log.warning(
+            "  %d stand(s) report Polsby-Popper above 1.0 (max %.3f), which no "
+            "planar shape can reach. Their area and perimeter were measured on "
+            "footprints that disagree -- expected at the ROI edge, where the "
+            "clip cuts a stand between the pixel count and the boundary count. "
+            "Do not quote the compactness of those stands; the rest of the "
+            "distribution is unaffected.",
+            len(impossible),
+            impossible[-1],
+        )
+    return summary
