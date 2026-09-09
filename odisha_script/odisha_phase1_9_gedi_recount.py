@@ -28,36 +28,44 @@ odisha_phase1_3_sample_gee_v2.py:57-62
 
 and odisha_phase1_4_analyse_v2.py:56-57 prints the coverage line as `(df.gedi_n_50m > 0).sum()`.
 
-WHAT IS WRONG, AND WHAT IS VERIFIED VS NOT
-------------------------------------------
-Two defects. The first is verifiable from the installed client; the second needs one GEE call.
+WHAT IS WRONG
+-------------
+THREE defects, all verifiable offline. The server defaults are not a live-call question after
+all: `ee/tests/algorithms.json`, shipped inside earthengine-api, records the real signatures.
 
-1. THE COUNT PATH DEPENDS ON AN EE SERVER DEFAULT IT NEVER STATES.  [VERIFIED offline]
+    Kernel.circle             normalize   optional, default True
+    Image.reduceNeighborhood  inputWeight optional, default "kernel"
+                              skipMasked  optional, default True
+    Reducer.sum               "computes the (weighted) sum of its inputs"
 
-   `ee.Kernel.circle(radius, units, normalize, magnitude)` -- the Python client passes
-   `normalize=None`, so whatever the server's default is applies. The client docstring says
-   "normalize: Normalize the kernel values to sum to 1". `Image.reduceNeighborhood(reducer,
-   kernel, inputWeight, skipMasked, optimization)` likewise passes `inputWeight=None`; its
-   docstring says "Reducers with weighted inputs can have the input weight based on the input
-   mask, the kernel value, or the smaller of those two."
+1. THE COUNT IS A WEIGHTED MEAN, NOT A COUNT.  [VERIFIED offline]
 
-   So with a NORMALIZED kernel and kernel weighting, `Reducer.sum()` computes a weighted MEAN
-   (weights summing to 1), not a count -- a fraction far below 1, which is what a column of
-   0.0 looks like. With an UN-normalized boolean kernel and no weighting it computes a true
-   count. The code is correct under one default and silently wrong under the other, and it
-   states neither. That alone disqualifies the column, whichever way the default falls.
+   `ee.Kernel.circle(50, "meters")` leaves `normalize` at its default, True, so the weights
+   sum to 1. `reduceNeighborhood` leaves `inputWeight` at its default, "kernel", so each input
+   is multiplied by its weight. `Reducer.sum` is documented as the WEIGHTED sum. Sum of
+   (weight x value) with weights summing to 1 is a weighted mean -- a fraction far below 1 for
+   sparse GEDI, which is what a column of 0.0 looks like.
 
-   Confirmed by reading `inspect.signature` on the installed ee 1.7.41: both parameters exist
-   and both are passed as None. NOT confirmed offline: which value the server actually uses.
-   That is a live-call question and this script does not guess it.
+   This is now stated as fact rather than as a dependence on an unknown default. An earlier
+   version of this file claimed the default could not be established without a live call; it
+   can, from the file above.
 
-2. THE TWO PATHS DO NOT SHARE A MASK.  [VERIFIED offline, from the code]
+2. skipMasked=True MAKES THE 50 m NEIGHBOURHOOD A NO-OP.  [VERIFIED offline]
 
-   `gedi.mean()` is masked wherever no quality-passing shot exists. `gedi.count()` is a count,
-   which is 0 rather than masked where a collection has no valid value. So `gedi_rh98_50m` and
-   `gedi_n_50m` are derived from images with different masks, and comparing "rows with an rh98"
-   against "rows with n>0" compares two different things. Whatever the kernel does, these two
-   columns were never going to agree.
+   The worst of the three, and the one most easily missed: `skipMasked` defaults to True, so
+   the output is masked wherever the CENTRE pixel is masked -- regardless of what the kernel
+   found. A plot 30 m from a GEDI shot gets null. Only plots whose own 25 m cell contains a
+   shot ever get a value, which is why the published column has exactly 10 non-null rows and
+   why step 3's comment about "picking up any nearby 25 m footprint" was never true.
+
+   It must be set on BOTH the mean and the count path or neither: on the count alone you get
+   n>0 beside a null rh98, which breaks the invariant this script asserts.
+
+3. THE TWO PATHS DID NOT SHARE A MASK.  [VERIFIED offline, from the code]
+
+   `gedi.mean()` is masked wherever no quality-passing shot exists; `gedi.count()` is a count,
+   which is 0 rather than masked. So the two columns were derived from differently-masked
+   images and were never going to agree.
 
 THE FIX
 -------
@@ -70,10 +78,14 @@ buffered reduction -- the pattern odisha_phase1_5_meta_rerun.py already uses for
 
 `Reducer.count()` over the masked mean image counts unmasked 25 m cells in the buffer, which is
 the honest reading of "how many GEDI observations back this mean". `Reducer.sum()` over the
-per-pixel count image gives total shot-observations. Both are reported; neither depends on a
-kernel default. scale=25 is stated explicitly because GEDI L2A rasterises to ~25 m footprints
-and letting the scale default would reintroduce exactly the kind of unstated dependence
-defect 1 is about.
+per-pixel count image gives total shot-observations. Both are reported.
+
+Note that a buffered `reduceRegions` has no `skipMasked` notion at all -- it reduces over the
+pixels intersecting the geometry, full stop -- so this route is immune to defect 2 by
+construction rather than by remembering a keyword. That is the main reason to prefer it here
+over a corrected kernel. `scale=25` is stated explicitly because GEDI L2A rasterises to ~25 m
+footprints, and letting the scale default would reintroduce exactly the kind of unstated
+dependence defect 1 is about.
 
 ACCEPTANCE
 ----------
