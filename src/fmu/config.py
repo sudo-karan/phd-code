@@ -264,10 +264,15 @@ class SnicInputBand(BaseModel):
     band: str = Field(min_length=1)
 
 
-# The default SNIC stack. Six bands spanning ~four independent axes:
-# optical colour (B4/B8), vertical structure (canopy_height), canopy
-# completeness (canopy_height_std), phenology (ndvi_amplitude_annual) and
-# radar structure (vv_minus_vh_median).
+# The default SNIC stack. Five bands spanning ~four independent axes:
+# optical colour (B4/B8), vertical structure (canopy_height), phenology
+# (ndvi_amplitude_annual) and radar structure (vv_minus_vh_median).
+#
+# canopy_height_std was the fifth axis ("canopy completeness") and was removed
+# after the Odisha field validation: over 274 plots it scores R2=0.000 against
+# measured crown cover (r=-0.011). It is not a weak proxy for canopy closure,
+# it is a band measuring nothing it claims, and it was shaping superpixel
+# boundaries on that quantity.
 #
 # composite_nirv is deliberately NOT here: it is (B8/10000) x NDVI, i.e. an
 # algebraic function of B4 and B8, so including it spent three columns on two
@@ -284,7 +289,6 @@ _DEFAULT_SNIC_INPUT_BANDS: list[SnicInputBand] = [
     SnicInputBand(source="s2_composite", band="B4_median"),
     SnicInputBand(source="s2_composite", band="B8_median"),
     SnicInputBand(source="structure_features", band="canopy_height"),
-    SnicInputBand(source="structure_features", band="canopy_height_std"),
     SnicInputBand(source="optical_features", band="ndvi_amplitude_annual"),
     SnicInputBand(source="radar_features", band="vv_minus_vh_median"),
 ]
@@ -414,13 +418,11 @@ class MergeCriterion(BaseModel):
 # Defaults measured from this AOI's own adjacent-superpixel difference
 # distribution (1249 superpixels, 3569 adjacent pairs):
 #   canopy_height          p50 1.81  p75 3.15   -> 2.00 m
-#   canopy_height_std      p50 0.22  p75 0.43   -> 0.45
 #   ndvi_amplitude_annual  p50 0.016 p75 0.027  -> 0.030
 # These are per-band marginals and the gate is conjunctive, so they do NOT
 # describe the joint admit rate -- the calibration helper reports that.
 _DEFAULT_MERGE_CRITERIA: list[MergeCriterion] = [
     MergeCriterion(source="structure_features", band="canopy_height", tolerance=2.00),
-    MergeCriterion(source="structure_features", band="canopy_height_std", tolerance=0.45),
     MergeCriterion(
         source="optical_features", band="ndvi_amplitude_annual", tolerance=0.030
     ),
@@ -434,16 +436,19 @@ class MergeParams(BaseModel):
     two-tier threshold scheme (strict in the homogeneous pass, relaxed in the
     eliminate pass) so undersized fragments always find a home.
 
-    The three criteria map onto Xiong's three, using the closest analogue FMU
+Two of Xiong's three axes are covered, using the closest analogue FMU
     has without ALS or a species map:
 
       canopy_height          <- his stand height (same quantity, modelled source)
-      canopy_height_std      <- his canopy closure (3x3 roughness separates a
-                                smooth plantation-like canopy from a gap-rich
-                                natural one *at the same mean height*)
       ndvi_amplitude_annual  <- his dominant-species proportion (seasonal swing
                                 is the deciduous/evergreen axis, the only
                                 composition-like signal available at 10 m)
+
+    His third axis, canopy closure, is NOT covered. It was carried by
+    canopy_height_std, which the Odisha field validation measured at R2=0.000
+    against crown cover over 274 plots (r=-0.011) -- so the axis was nominal,
+    not real, and asserting it was worse than admitting the gap. Replacing it
+    is an open question, not an oversight; see odisha_script/PHASE1_STATUS.md.
 
     `elevation` is deliberately excluded even though it is the rank-3 separator
     (0.52). Sanjay Van has ~20 m of total relief and the within-cluster
@@ -469,7 +474,6 @@ class MergeParams(BaseModel):
     # Defaults measured from this AOI's own adjacent-superpixel difference
     # distribution (1249 superpixels, 3569 adjacent pairs):
     #   canopy_height          p50 1.81  p75 3.15   -> 2.00 m
-    #   canopy_height_std      p50 0.22  p75 0.43   -> 0.45
     #   ndvi_amplitude_annual  p50 0.016 p75 0.027  -> 0.030
     # These are per-band marginals and the gate is conjunctive, so they do NOT
     # describe the joint admit rate -- the calibration helper reports that.

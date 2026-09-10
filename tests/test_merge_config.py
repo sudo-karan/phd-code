@@ -28,19 +28,24 @@ SHIPPED_CONFIGS = sorted(CONFIG_DIR.glob("sanjay_van_*.yaml"))
 # ---------- MergeParams defaults ----------
 
 
-def test_default_criteria_are_xiongs_three_axes():
-    """Vertical structure, canopy completeness, composition -- the closest
-    analogue FMU has to Xiong et al. 2024's height / closure / species."""
+def test_default_criteria_are_two_of_xiongs_three_axes():
+    """Vertical structure and composition -- two of Xiong et al. 2024's three.
+
+    Closure is deliberately absent. It was carried by canopy_height_std, which
+    the Odisha field validation measured at R2=0.000 against crown cover over
+    274 plots (r=-0.011), so the axis was nominal rather than real. Pinned
+    literally: this default is what the thesis reports.
+    """
     assert [(c.source, c.band, c.tolerance) for c in MergeParams().criteria] == [
         ("structure_features", "canopy_height", 2.00),
-        ("structure_features", "canopy_height_std", 0.45),
         ("optical_features", "ndvi_amplitude_annual", 0.030),
     ]
     assert MergeParams().tolerances() == {
         "canopy_height": 2.00,
-        "canopy_height_std": 0.45,
         "ndvi_amplitude_annual": 0.030,
     }
+
+    assert "canopy_height_std" not in MergeParams().tolerances()
 
 
 def test_criteria_sources_drive_which_stages_run():

@@ -231,8 +231,8 @@ def test_stage_names_embedding_swaps_feature_stages():
 
     features_optical and features_structure stay — not for the feature vector,
     but because the **merge criteria** are held identical across arms and read
-    canopy_height, canopy_height_std and ndvi_amplitude_annual. That is what
-    leaves delineation as the only thing differing between the arms.
+    canopy_height and ndvi_amplitude_annual. That is what leaves delineation as
+    the only thing differing between the arms.
     """
     cfg = load_config(ALPHAEARTH_YAML)
     stages = default_stage_names(cfg)
