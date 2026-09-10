@@ -94,8 +94,10 @@ ACCEPTANCE
 This script asserts both and says so. If true coverage is 0, the GEDI result is WITHDRAWN.
 
 Run:  python odisha_phase1_9_gedi_recount.py
-Out:  odisha_phase1_9_results.txt, and (with GEE) the four gedi_* columns rewritten in
-      odisha_plots_sampled_v2.csv
+Out:  odisha_phase1_9_results.txt, and (with GEE) odisha_plots_sampled_v3.csv -- the v2
+      rows with the four gedi_* columns recomputed. v2 is an INPUT and is never written:
+      steps 4, 6 and 7 read it, and overwriting it would make their published numbers
+      irreproducible from their own input.
 """
 from __future__ import annotations
 
@@ -103,7 +105,8 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-CSV = "odisha_plots_sampled_v2.csv"
+CSV = "odisha_plots_sampled_v2.csv"          # input, never written
+CSV_OUT = "odisha_plots_sampled_v3.csv"      # output, new file
 OUT = "odisha_phase1_9_results.txt"
 GEDI_L2A_IC = "LARSE/GEDI/GEDI02_A_002_MONTHLY"
 BUFFER_M = 50
@@ -176,9 +179,9 @@ def resample(df: pd.DataFrame) -> pd.DataFrame | None:
         say("  installed ee client, and stand without a live call. What needs GEE is the")
         say("  corrected column and the honest n. Nothing is estimated in its place.")
         say("")
-        say("  Run this where `earthengine authenticate` has been done. It will rewrite")
-        say("  gedi_rh98_50m, gedi_n_50m, gedi_npix_50m and gedi_nshots_50m in")
-        say(f"  {CSV} and fill in the section below.")
+        say("  Run this where `earthengine authenticate` has been done. It will write")
+        say("  gedi_rh98_50m, gedi_n_50m, gedi_npix_50m and gedi_nshots_50m into")
+        say(f"  {CSV_OUT}, leaving {CSV} untouched, and fill in the section below.")
         return None
 
     pts = ee.FeatureCollection([
@@ -278,9 +281,9 @@ def main() -> None:
     out = resample(df)
     if out is not None:
         report_fixed(out)
-        out.to_csv(CSV, index=False)
+        out.to_csv(CSV_OUT, index=False)
         say("")
-        say(f"  rewrote {CSV}")
+        say(f"  wrote {CSV_OUT}   ({CSV} untouched -- it is the input for steps 4, 6, 7)")
     with open(OUT, "w") as f:
         f.write("\n".join(_out) + "\n")
     print(f"\nwrote {OUT}")
