@@ -140,6 +140,30 @@ that the stands are *structurally meaningful* rests on the measurement, not the 
    `sampleRectangle(defaultValue=-9999)` is rejected outright against a UINT8 band, and
    `ImageCollection.mosaic()` carries GEE's default 1-degree projection, which would have
    returned a single pixel rather than the 1 m grid the diagnostic claims to inspect.
+
+   Two further confirmations, run as step 10 (`odisha_phase1_10_meta_offset_check.py`):
+   an **offset ladder** at 15/50/100/200/500 m discs — the zero plots read mean 0.01 m and
+   1.2% non-zero at 15 m and only 0.26 m and 11.5% at 500 m, while the controls read
+   11.62 m and 100% at 15 m, so no georeferencing offset short of 500 m fits and one that
+   large would scramble the controls; and a **frequency histogram** over 554,745 pixels,
+   which shows contiguous integer support 0-25 with smooth monotone decay and a thin tail
+   to 31. That is a height field in metres, not a class code — and 63.5% of the sampled
+   landscape reads zero, non-zero mean 4.82 m.
+
+   **The failures are not independent, and this belongs with the verdict whichever way it
+   goes.** Meta's 1 m model is supervised on aerial lidar from NEON sites in the United
+   States only — Tolan et al. (2024) state the limitation, and their non-US data (Sao Paulo,
+   CA-Brande) is validation, not training. Global applicability rests on a post-processing
+   network trained on 13 million GEDI measurements supplying "a scalar multiplier that match
+   percentiles of the CHM map with the GEDI model predicted value for GEDI RH95". So Meta's
+   global correction is anchored on a product that scores **R2=0.088 at n=89** in this
+   forest. Two caveats on that characterisation, both checked against the paper: the anchor
+   metric is **RH95** and our corrected figure is against **rh98** — related, not identical;
+   and Meta's headline MAE of 2.8 m is reported without a vegetation-height threshold
+   attached to it, so it should not be quoted as "2.8 m for vegetation above 1 m". Note also
+   that a multiplicative rescale applied to a prediction of zero returns zero, so the GEDI
+   correction can neither be blamed for the zeros nor credited with fixing them: they
+   originate in the RGB-to-height model itself.
 2. **GEDI re-sample — DONE. n=10 was not the coverage; 89 is.** The three defects were
    real and the third was decisive: `reduceNeighborhood`'s `skipMasked` defaults to **True**,
    masking the output wherever the *centre* pixel is masked regardless of what the kernel
