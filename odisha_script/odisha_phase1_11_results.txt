@@ -1,0 +1,57 @@
+================================================================================================
+PHASE 1 STEP 11 — survey date, and whether the Meta zeros are temporal
+================================================================================================
+
+================================================================================================
+A — the survey date was never blocked; it is in the raw records
+================================================================================================
+  source: Odisha_samples.csv
+  tree records: 5,910   parsed dates: 5,910
+  campaign window: 2022-04-25 .. 2023-04-05
+  tree records by year: {2022: 2266, 2023: 3644}
+
+  `odisha_phase1_0_clean.py` aggregates trees to plots but does not carry any of
+  `Creation Date`, `Submission Date` or the form timestamp through to the plot
+  CSV, which is why every downstream step has treated the year as unknown.
+
+  plots matched to a survey date: 274 / 274
+
+================================================================================================
+B — the growth rate the temporal hypothesis requires
+================================================================================================
+  zero plots carrying both a date and a field height: 122
+  their field Lorey's height: 0.16 .. 33.57 m   median 5.85 m
+
+  A Meta 0 means 'predicted under half a metre'. So for a zero plot measuring H m
+  at survey time, the temporal explanation requires (H - 0.5) / gap metres a year,
+  sustained from the imagery date to the survey date.
+
+  --- imagery = 2020: late end of the documented 'chiefly 2018-2020' window ---
+  gap to survey: 1.8 .. 2.8 years
+  required growth rate (m/yr):  median 2.52   p90 4.77   max 15.43
+    plots requiring more than 1 m/yr: 107 of 122 (88%)
+    plots requiring more than 2 m/yr:  85 of 122 (70%)
+    plots requiring more than 3 m/yr:  40 of 122 (33%)
+
+  --- imagery = 2009: earliest acquisition anywhere in the collection ---
+  gap to survey: 12.8 .. 13.8 years
+  required growth rate (m/yr):  median 0.40   p90 0.88   max 2.52
+    plots requiring more than 1 m/yr:   7 of 122 (6%)
+    plots requiring more than 2 m/yr:   1 of 122 (1%)
+    plots requiring more than 3 m/yr:   0 of 122 (0%)
+
+================================================================================================
+What this settles, and what it leaves open
+================================================================================================
+  The survey ran 2022-04-25 to 2023-04-05, so the field campaign postdates the
+  imagery either way and the hypothesis is not symmetric: forest can grow into a
+  zero, it cannot grow out of one.
+
+  Under the documented window the hypothesis fails. A ~2-year gap requires the
+  median zero plot to have grown at over 2 m a year, and the tallest at over 15,
+  which is not growth in any dry deciduous forest.
+
+  Under a 2009 sourcing it survives the arithmetic: a ~13-year gap brings the
+  median requirement below half a metre a year. So the verdict rests on these
+  particular tiles coming from the late window the collection documents, and the
+  residual check is the per-tile acquisition date, not a question for FES.
