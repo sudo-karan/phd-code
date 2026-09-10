@@ -1,0 +1,49 @@
+============================================================================================
+PHASE 1 STEP 9 — GEDI shot count
+============================================================================================
+  input: odisha_plots_sampled_v2.csv  (274 plots)
+
+============================================================================================
+The column as it stands
+============================================================================================
+  gedi_rh98_50m non-null : 10 / 274
+  gedi_n_50m    non-null : 10 / 274
+  gedi_n_50m distinct non-null values: [np.float64(0.0)]
+  gedi_n_50m > 0         : 0
+
+  So the coverage line and the regression n disagree by construction: the regression
+  uses the 10 rows with an rh98 value, the coverage line counts rows with n>0, and
+  there are none. Both come from the same run.
+
+  The 10 rows currently carrying a value:
+           plot_key  district  loreys_h_m  gedi_rh98_50m  gedi_n_50m
+18.589244_82.825077   KORAPUT      9.4601      16.105715         0.0
+18.615426_82.839528   KORAPUT     10.6960      12.133913         0.0
+18.679754_82.975404   KORAPUT      7.5253       6.420909         0.0
+20.761498_84.715991     ANGUL      3.9265      11.070371         0.0
+20.764457_84.718917     ANGUL     17.5956      16.018400         0.0
+20.825695_84.645693     ANGUL     10.3666      11.380000         0.0
+20.825723_84.645635     ANGUL      6.7337      11.380000         0.0
+20.934691_85.665477 DHENKANAL      9.9271      10.520000         0.0
+21.019655_85.619941 DHENKANAL     15.2943      21.300499         0.0
+21.048412_85.523557 DHENKANAL      6.8378      13.927200         0.0
+
+  PUBLISHED gedi_rh98_50m vs Lorey's       n= 10  r=+0.635  R2=0.404  slope=+0.63  RMSE=4.59  bias=+3.19
+
+  WITHDRAWN pending re-sample. Not because the correlation is implausible, but because
+  the number of observations behind each of those 10 means is unknown, and the column
+  that was supposed to record it is provably not a count (see the module docstring).
+
+============================================================================================
+Re-sample with an explicit buffered reduction (Earth Engine)
+============================================================================================
+  BLOCKED — Earth Engine is not available in this environment.
+  EEException: Please authorize access to your Earth Engine account by running
+
+  The two code defects above are established from the script source and the
+  installed ee client, and stand without a live call. What needs GEE is the
+  corrected column and the honest n. Nothing is estimated in its place.
+
+  Run this where `earthengine authenticate` has been done. It will rewrite
+  gedi_rh98_50m, gedi_n_50m, gedi_npix_50m and gedi_nshots_50m in
+  odisha_plots_sampled_v2.csv and fill in the section below.

@@ -56,10 +56,55 @@ gedi = (ee.ImageCollection(GEDI_L2A_IC).filterBounds(region).filterDate("2019-04
                           .updateMask(im.select("degrade_flag").eq(0)))
         .select("rh98"))
 gedi_mean  = gedi.mean().rename("gedi_rh98")
-gedi_count = gedi.count().rename("gedi_n")
-# 50 m neighbourhood so a plot picks up any nearby 25 m footprint
-gedi_50 = (gedi_mean.reduceNeighborhood(ee.Reducer.mean(), ee.Kernel.circle(50, "meters")).rename("gedi_rh98_50m")
-           .addBands(gedi_count.reduceNeighborhood(ee.Reducer.sum(), ee.Kernel.circle(50, "meters")).rename("gedi_n_50m")))
+# 50 m neighbourhood so a plot picks up any nearby 25 m footprint.
+#
+# NOT reduceNeighborhood + Kernel.circle. That was the original form and it produced a
+# gedi_n_50m column that was 0.0 in every row it existed in, while gedi_rh98_50m carried real
+# values -- so the file reported a fit at n=10 and a coverage of 0/274 from one run. Two causes,
+# both from the same habit of leaving a default unstated:
+#   - ee.Kernel.circle(radius, units, normalize, ...) is passed normalize=None, so the server
+#     default decides. With a normalized kernel (weights summing to 1) and kernel weighting,
+#     Reducer.sum() is a weighted MEAN, not a count -- a fraction far below 1.
+#   - gedi.mean() is masked where no shot exists; gedi.count() is 0 there. The two paths never
+#     shared a mask, so "rows with an rh98" and "rows with n>0" were never going to agree.
+# The fix does not pick the right default, it removes the dependence. See
+# odisha_phase1_9_gedi_recount.py, which re-samples with an explicit buffered reduction and
+# re-reports Test 4's GEDI row.
+GEDI_BUFFER_M = 50
+# Three defaults made explicit, because every one of them was wrong for this use.
+# They are not guesses: ee/tests/algorithms.json, shipped inside earthengine-api,
+# records the server signatures --
+#     Kernel.circle           normalize   default True
+#     Image.reduceNeighborhood inputWeight default "kernel"
+#                              skipMasked  default True
+#     Reducer.sum             "computes the (weighted) sum of its inputs"
+#
+#   normalize=False   a normalized kernel's weights sum to 1, and with kernel
+#                     weighting a "sum" is then a weighted MEAN. That is what made
+#                     gedi_n_50m a fraction below 1 rather than a count.
+#   Reducer.count()   counts unmasked inputs, so it cannot be re-broken by a
+#                     weighting change; and both bands now come off the SAME masked
+#                     image, so they share a mask by construction.
+#   skipMasked=False  THE ONE THAT MATTERS MOST, and it is not the original bug --
+#                     it is a bug in the first version of this fix. With skipMasked
+#                     at its default True, the output is masked wherever the CENTRE
+#                     pixel is masked, which makes the whole 50 m neighbourhood a
+#                     no-op: a plot 30 m from a GEDI shot still gets null, and the
+#                     comment above about picking up a nearby footprint is false.
+#                     Only plots whose own 25 m cell holds a shot ever get a value,
+#                     which is why the published column had exactly 10.
+#
+# skipMasked=False must go on BOTH paths or neither. On the count alone you would
+# get n>0 beside a null rh98, which breaks the invariant step 9 asserts.
+gedi_kernel = ee.Kernel.circle(GEDI_BUFFER_M, "meters", False)
+gedi_50 = (
+    gedi_mean.reduceNeighborhood(ee.Reducer.mean(), gedi_kernel, skipMasked=False)
+    .rename("gedi_rh98_50m")
+    .addBands(
+        gedi_mean.reduceNeighborhood(ee.Reducer.count(), gedi_kernel, skipMasked=False)
+        .rename("gedi_n_50m")
+    )
+)
 
 # ================================================================ TEST 5 — Sentinel-1 (FMU recipe)
 s1 = (ee.ImageCollection("COPERNICUS/S1_GRD")
