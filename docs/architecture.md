@@ -173,8 +173,7 @@ segmentation (via `segmentation.input_bands`), and merge (via
 The shipped embedding configs segment on the embedding as well as cluster on it,
 so `features_radar` and `features_static` drop out. `features_optical` and
 `features_structure` remain, because the merge criteria are held identical
-across arms and read `canopy_height`, `canopy_height_std` and
-`ndvi_amplitude_annual`. A config that clustered on the embedding but segmented
+across arms and read `canopy_height` and `ndvi_amplitude_annual`. A config that clustered on the embedding but segmented
 on hand-crafted bands would pull the other stages back in automatically.
 
 Segmentation is **not** held identical across arms. Under the merge design SNIC

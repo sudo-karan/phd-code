@@ -89,8 +89,8 @@ masking:
 # adjacent patches one stand" is a fact about forestry, not about the sensor
 # pipeline, and holding the merge rule constant is what leaves delineation as
 # the only thing differing between the arms. So features_structure and
-# features_optical run to supply canopy_height, canopy_height_std and
-# ndvi_amplitude_annual to the merge gate.
+# features_optical run to supply canopy_height and ndvi_amplitude_annual to the
+# merge gate.
 #
 # features_radar and features_static are read by nothing in this arm and do not
 # run; their params are kept at baseline values so the file stays diffable and

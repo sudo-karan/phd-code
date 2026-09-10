@@ -55,7 +55,7 @@ cannot silently diverge.
 
 The orchestrator (`fmu.pipeline.Pipeline`) walks the stages, validates the context against each stage's declared inputs, and merges outputs back in. With Module 6 in place, the orchestrator also checks the asset cache before running each stage. See ENG-013 (orchestrator) and the asset-caching ENG entry (TBD) in decisions.md.
 
-**Which feature stages run.** The stage list above is the *handcrafted* arm (the default). `default_stage_names(config)` in `pipeline.py` takes the **union of what the run's three independent consumers ask for**: clustering (via `clustering.feature_source`), segmentation (via `segmentation.input_bands`), and merge (via `merge.criteria`). So `sanjay_van_alphaearth.yaml` — which both clusters and segments on the embedding — drops `features_radar` and `features_static`, but still runs `features_optical` and `features_structure` because the **merge criteria are held identical across arms** and read `canopy_height`, `canopy_height_std` and `ndvi_amplitude_annual`. Holding the merge rule constant is what leaves delineation as the only thing differing between arms; if each arm merged on its own features, differences in stand geometry would confound "different boundaries" with "different merge rules".
+**Which feature stages run.** The stage list above is the *handcrafted* arm (the default). `default_stage_names(config)` in `pipeline.py` takes the **union of what the run's three independent consumers ask for**: clustering (via `clustering.feature_source`), segmentation (via `segmentation.input_bands`), and merge (via `merge.criteria`). So `sanjay_van_alphaearth.yaml` — which both clusters and segments on the embedding — drops `features_radar` and `features_static`, but still runs `features_optical` and `features_structure` because the **merge criteria are held identical across arms** and read `canopy_height` and `ndvi_amplitude_annual`. Holding the merge rule constant is what leaves delineation as the only thing differing between arms; if each arm merged on its own features, differences in stand geometry would confound "different boundaries" with "different merge rules".
 
 ---
 
@@ -278,11 +278,10 @@ SNIC superpixel segmentation. Draws boundaries that downstream clustering operat
 **Writes to context:** `snic_clusters` (single band, integer IDs), `snic_means` (one band per input band, per-cluster means)
 **Cacheable:** yes, both outputs.
 
-**SNIC input stack — config-driven** (`segmentation.input_bands`), all 10 m native. The default, used by the hand-crafted baseline arm, is 6 bands over ~four independent axes:
+**SNIC input stack — config-driven** (`segmentation.input_bands`), all 10 m native. The default, used by the hand-crafted baseline arm, is 5 bands over ~four independent axes:
 - `B4_median` (S2 red, raw composite reflectance)
 - `B8_median` (S2 NIR, raw composite reflectance)
 - `canopy_height` (from `structure_features`; independent sensor — vertical structure)
-- `canopy_height_std` (3×3 roughness — canopy completeness; separates a smooth plantation-like canopy from a gap-rich natural one at the same mean height)
 - `ndvi_amplitude_annual` (from `optical_features` — phenology, the deciduous/evergreen axis; SNIC runs on a multi-year *median* composite, so without this it sees no seasonality at all)
 - `vv_minus_vh_median` (from `radar_features`; independent sensor — radar structure)
 
