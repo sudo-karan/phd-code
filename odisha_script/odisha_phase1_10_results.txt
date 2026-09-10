@@ -1,0 +1,190 @@
+================================================================================================
+PHASE 1 STEP 10 — closing out the Task 1 verdict: offset ladder and band identity
+================================================================================================
+  input: odisha_plots_sampled_v2.csv  (274 plots)
+  collection: projects/meta-forest-monitoring-okw37/assets/CanopyHeight
+  plots: 12 zero + 5 control, selected by step 7's pick_plots()
+
+================================================================================================
+A — offset ladder: does canopy appear as the disc grows?
+================================================================================================
+  radii (m): [15, 50, 100, 200, 500]   read at scale=10 m
+  nz% is the percentage of unmasked pixels in the disc that are greater than zero.
+  discs in one reduceRegions call: 85
+
+  --- ZERO plots ---
+  18.575806_82.837232  KORAPUT  loreys=5.28m  crown=28%
+             15m       50m      100m      200m      500m
+      max         0.0      0.0      4.0      4.0     10.0
+      mean       0.00     0.00     0.02     0.03     0.08
+      nz%         0.0      0.0      0.9      2.2      3.7
+      npix         15      105      386     1462     8847
+  18.576485_82.834653  KORAPUT  loreys=4.68m  crown=28%
+             15m       50m      100m      200m      500m
+      max         0.0      0.0     10.0     10.0     13.0
+      mean       0.00     0.00     0.03     0.07     0.22
+      nz%         0.0      0.0      1.0      3.2      7.8
+      npix         14      105      389     1466     8842
+  18.576947_82.837561  KORAPUT  loreys=5.87m  crown=33%
+             15m       50m      100m      200m      500m
+      max         0.0      0.0      1.0      4.0     10.0
+      mean       0.00     0.00     0.01     0.01     0.08
+      nz%         0.0      0.0      0.9      0.5      3.6
+      npix         15      104      388     1460     8845
+  18.577371_82.836942  KORAPUT  loreys=4.99m  crown=23%
+             15m       50m      100m      200m      500m
+      max         0.0      0.0      0.0      7.0     12.0
+      mean       0.00     0.00     0.00     0.01     0.09
+      nz%         0.0      0.0      0.0      0.4      3.5
+      npix         14      107      386     1461     8851
+  20.621695_85.564537  DHENKANAL  loreys=4.07m  crown=18%
+             15m       50m      100m      200m      500m
+      max         0.0      1.0      3.0      6.0     11.0
+      mean       0.00     0.04     0.09     0.24     0.42
+      nz%         0.0      4.4      8.7     13.6     20.3
+      npix         15      107      398     1500     9078
+  20.760064_84.721146  ANGUL  loreys=12.11m  crown=38%
+             15m       50m      100m      200m      500m
+      max         1.0      7.0      9.0      9.0     14.0
+      mean       0.10     0.73     1.08     0.50     0.34
+      nz%         9.8     35.0     47.6     27.4     15.0
+      npix         15      109      395     1505     9100
+  20.760492_84.717751  ANGUL  loreys=33.57m  crown=43%
+             15m       50m      100m      200m      500m
+      max         0.0      0.0      3.0     11.0     15.0
+      mean       0.00     0.00     0.05     0.17     0.44
+      nz%         0.0      0.0      4.5     10.7     18.1
+      npix         16      108      396     1508     9092
+  20.761327_84.711584  ANGUL  loreys=7.44m  crown=48%
+             15m       50m      100m      200m      500m
+      max         0.0     12.0     12.0     19.0     19.0
+      mean       0.00     0.55     0.75     1.07     0.78
+      nz%         0.0     17.1     30.0     35.9     27.5
+      npix         16      112      393     1507     9095
+  20.76148_84.72302  ANGUL  loreys=9.62m  crown=43%
+             15m       50m      100m      200m      500m
+      max         0.0      7.0      7.0     14.0     14.0
+      mean       0.00     0.19     0.14     0.24     0.30
+      nz%         0.0      7.7      7.8     13.2     14.6
+      npix         14      108      396     1508     9094
+  21.154502_85.365229  DHENKANAL  loreys=12.07m  crown=83%
+             15m       50m      100m      200m      500m
+      max         0.0      1.0      5.0      5.0      9.0
+      mean       0.00     0.02     0.07     0.07     0.13
+      nz%         0.0      1.9      4.7      5.0      8.1
+      npix         15      110      398     1513     9142
+  21.155752_85.365857  DHENKANAL  loreys=8.45m  crown=68%
+             15m       50m      100m      200m      500m
+      max         1.0      1.0      1.0      5.0      7.0
+      mean       0.04     0.01     0.00     0.02     0.11
+      nz%         4.2      1.1      0.3      1.2      6.9
+      npix         14      108      398     1510     9139
+  21.156085_85.364999  DHENKANAL  loreys=16.19m  crown=8%
+             15m       50m      100m      200m      500m
+      max         0.0      0.0      1.0      5.0      7.0
+      mean       0.00     0.00     0.00     0.05     0.13
+      nz%         0.0      0.0      0.3      4.0      8.6
+      npix         14      107      399     1503     9137
+
+  --- CTRL plots ---
+  18.615426_82.839528  KORAPUT  loreys=10.70m  crown=58%
+             15m       50m      100m      200m      500m
+      max        14.0     15.0     15.0     15.0     17.0
+      mean      11.52     9.89     6.91     3.65     0.89
+      nz%       100.0     99.8     87.1     65.2     20.6
+      npix         15      110      387     1462     8854
+  21.045566_85.52362  DHENKANAL  loreys=6.91m  crown=8%
+             15m       50m      100m      200m      500m
+      max        12.0     16.0     16.0     16.0     21.0
+      mean       7.53     7.82     7.35     5.52     5.09
+      nz%       100.0    100.0     99.2     87.0     83.4
+      npix         15      113      394     1510     9128
+  21.077442_85.388795  DHENKANAL  loreys=22.78m  crown=48%
+             15m       50m      100m      200m      500m
+      max        14.0     14.0     16.0     17.0     19.0
+      mean      11.83     9.18     8.34     7.94     5.43
+      nz%       100.0    100.0    100.0     98.6     77.8
+      npix         16      108      399     1506     9124
+  21.079134_85.389512  DHENKANAL  loreys=23.86m  crown=78%
+             15m       50m      100m      200m      500m
+      max        16.0     17.0     17.0     17.0     18.0
+      mean      14.66    12.02     9.46     8.45     5.27
+      nz%       100.0    100.0     98.0     96.9     75.6
+      npix         15      107      396     1502     9125
+  21.108009_85.565539  DHENKANAL  loreys=30.64m  crown=33%
+             15m       50m      100m      200m      500m
+      max        15.0     15.0     15.0     15.0     15.0
+      mean      12.58     8.87     5.46     3.06     1.96
+      nz%       100.0     95.0     75.0     59.1     53.2
+      npix         15      107      398     1505     9123
+
+  Summary across the ladder:
+    radius   ZERO max  ZERO mean  ZERO nz%     CTRL max  CTRL mean  CTRL nz%
+       15m        1.0       0.01       1.2         16.0      11.62     100.0
+       50m       12.0       0.13       5.6         17.0       9.56      99.0
+      100m       12.0       0.19       8.9         17.0       7.50      91.9
+      200m       19.0       0.21       9.8         17.0       5.72      81.4
+      500m       19.0       0.26      11.5         21.0       3.73      62.1
+
+  How to read it. The controls are the positive control: they must carry canopy at
+  every radius, and if they do the ladder is measuring what it claims. For the zero
+  plots, an offset of magnitude d predicts near-zero readings while the disc is
+  smaller than d and real canopy appearing once it exceeds d. A ladder that stays
+  flat and near zero out to 500 m is not consistent with an offset of ANY magnitude,
+  and closes RECOVERABLE.
+
+================================================================================================
+B — band identity: is `cover_code` a height field or a class code?
+================================================================================================
+  region: the union of 274 discs of 500 m, read at scale=10 m
+  distinct values present: 28
+  value range: 0 .. 31
+  total pixels: 554,745
+
+   value         pixels    share  cumulative
+       0        352,311   63.51%     63.51%  ############################################################
+       1         43,335    7.81%     71.32%  #######
+       2         27,166    4.90%     76.22%  ####
+       3         21,255    3.83%     80.05%  ###
+       4         17,980    3.24%     83.29%  ###
+       5         16,312    2.94%     86.23%  ##
+       6         14,940    2.69%     88.92%  ##
+       7         13,651    2.46%     91.38%  ##
+       8         12,305    2.22%     93.60%  ##
+       9         10,927    1.97%     95.57%  #
+      10          9,209    1.66%     97.23%  #
+      11          6,597    1.19%     98.42%  #
+      12          4,161    0.75%     99.17%  
+      13          2,279    0.41%     99.58%  
+      14          1,172    0.21%     99.79%  
+      15            631    0.11%     99.91%  
+      16            273    0.05%     99.96%  
+      17            116    0.02%     99.98%  
+      18             59    0.01%     99.99%  
+      19             29    0.01%     99.99%  
+      20              9    0.00%    100.00%  
+      21             11    0.00%    100.00%  
+      22              2    0.00%    100.00%  
+      23              6    0.00%    100.00%  
+      24              2    0.00%    100.00%  
+      25              3    0.00%    100.00%  
+      28              1    0.00%    100.00%  
+      31              1    0.00%    100.00%  
+
+  zero pixels: 63.5% of the region
+  contiguous integer support (no interior gaps): False   gaps after: [25, 28]
+  non-zero mean: 4.82   non-zero max: 31
+
+  A height field in metres gives contiguous integer support with a broad, ordered,
+  roughly unimodal shape. A categorical cover code gives a few spikes on arbitrary
+  integers with empty space between them.
+
+================================================================================================
+What this settles
+================================================================================================
+  NO DATA was already closed by step 7 part B: 1 intersecting image, masked=0,
+  mask()==1 at every zero plot. Section A above is what closes RECOVERABLE, and
+  section B is what licenses reading the band as metres in the first place.
+
+  The verdict itself is NOT recorded here or in PHASE1_STATUS.md. It is a
+  supervisory call, and it is made from the evidence above.
