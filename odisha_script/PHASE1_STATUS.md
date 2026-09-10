@@ -18,7 +18,7 @@ marked BLOCKED rather than estimated.
 | 3 | ETH 3×3 roughness vs crown cover | r=−0.011, **R²=0.000** | **fails outright** |
 | 4a | Meta/WRI vs Lorey's | R²=0.241 as published, **0.142** with zeros excluded | **BLOCKED** on the zeros |
 | 4b | GLAD/Potapov vs Lorey's | R²=0.041; **flips to r=−0.121** with Meta-zeros excluded | out |
-| 4c | GEDI rh98 vs Lorey's | R²=0.404 at n=10 | **WITHDRAWN**; expect n to change materially, see below |
+| 4c | GEDI rh98 vs Lorey's | **R²=0.088 at n=89** (was R²=0.404 at n=10) | re-sampled; **out** |
 | 5 | S1 backscatter vs Lorey's | `vh_iqr` **R²=0.210 → 0.227** with zeros excluded | best free signal at plot scale |
 | 6 | leaf-off / seasonal vs composition | `off_B5` R²=0.140; `ndvi_seasonal_diff` R²=0.001 | `off_B5` is the only one worth keeping |
 
@@ -76,7 +76,7 @@ averaging in general.
 |---|---|
 | **step 7** `odisha_phase1_7_meta_zero_diagnosis.py` | zero census, quantisation, zeros-excluded tables at plot and site level, aggregation re-test. GEE half BLOCKED |
 | **step 8** `odisha_phase1_8_separation_null.py` | null model for the separation-ratio chart; three nulls, 22 bands |
-| **step 9** `odisha_phase1_9_gedi_recount.py` | GEDI root cause + fix + re-sample harness. Re-sample BLOCKED |
+| **step 9** `odisha_phase1_9_gedi_recount.py` | GEDI root cause + fix + re-sample. **Re-sample RUN**: coverage 10 → 89, R² 0.404 → 0.088. Writes `odisha_plots_sampled_v3.csv`; v2 is an input and is left untouched |
 | step 3 | GEDI construction fixed at source (explicit un-normalized kernel, `Reducer.count()`) |
 | step 4 | coverage line now prints both counts and fails loudly if they disagree |
 
@@ -117,19 +117,55 @@ that the stands are *structurally meaningful* rests on the measurement, not the 
 
 ## Unresolved
 
-1. **Task 1 verdict — BLOCKED, and it gates Task 4.** Whether `meta_chm == 0` at 122 plots
-   is NO DATA, RECOVERABLE, or DISQUALIFIED needs the raw 1 m grid, the mask state and the
-   band encoding. Run `python odisha_phase1_7_meta_zero_diagnosis.py` where
-   `earthengine authenticate` has been done.
-2. **GEDI re-sample — BLOCKED, and n=10 is probably not the real coverage.** The published
-   R²=0.404 is withdrawn, not corrected. Three defects were found, all verifiable from
-   `ee/tests/algorithms.json` inside the installed `earthengine-api`, and the third is the
-   one that changes what to expect: `reduceNeighborhood`'s `skipMasked` defaults to **True**,
-   which masks the output wherever the *centre* pixel is masked regardless of what the kernel
-   found. **The 50 m search never ran.** Only plots whose own 25 m cell contained a shot ever
-   got a value — which is exactly why the column has 10 non-null rows. Once it runs, coverage
-   may be well above 10, and R², slope and n all move together. Nothing about the corrected
-   figure can be anticipated from the current one.
+1. **Task 1 — part B has now RUN. Evidence is in; the verdict is not yet recorded here.**
+   `odisha_phase1_7_meta_zero_diagnosis.py` part B executed against Earth Engine over 12 zero
+   plots and 5 non-zero controls. The raw findings, recorded without a verdict label pending
+   sign-off, are in `odisha_phase1_7_results.txt`:
+
+   - the asset carries **one band, `cover_code`, UINT8** (`PixelType int, 0..255`), native
+     EPSG:3857 at a 1.194 m transform. The integer-metre quantisation established offline in
+     A2 is therefore the *storage type*, not an inference — and there is no second band to
+     sample instead.
+   - at **all 12** zero plots: exactly 1 collection image intersects the 30 m box,
+     `masked = 0` of ~756–784 pixels, and `mask()` at the plot point returns `1`.
+   - **9 of 12** have `distinct values in the box = [0]` — every one-metre pixel is zero. The
+     other three reach a maximum of 2 m.
+   - all **5 controls** return full unmasked grids with coherent values (e.g. 10–17, median
+     14 at a plot carrying 23.86 m of Lorey's height).
+   - the sharpest single case: `20.760492_84.717751` (ANGUL) carries **33.57 m** of field
+     Lorey's height and 43% crown cover, and its entire 784-pixel box reads 0 or 1.
+
+   Two bugs had to be fixed before part B could produce any of this, both now in the script:
+   `sampleRectangle(defaultValue=-9999)` is rejected outright against a UINT8 band, and
+   `ImageCollection.mosaic()` carries GEE's default 1-degree projection, which would have
+   returned a single pixel rather than the 1 m grid the diagnostic claims to inspect.
+2. **GEDI re-sample — DONE. n=10 was not the coverage; 89 is.** The three defects were
+   real and the third was decisive: `reduceNeighborhood`'s `skipMasked` defaults to **True**,
+   masking the output wherever the *centre* pixel is masked regardless of what the kernel
+   found, so the 50 m search never ran and only plots whose own 25 m cell held a shot got a
+   value. Re-sampled with an explicit buffered `reduceRegions` at `scale=25`:
+
+   | | as published | corrected |
+   |---|---|---|
+   | coverage | 10 / 274 | **89 / 274** |
+   | r | +0.635 | **+0.296** |
+   | R² | 0.404 | **0.088** |
+   | slope | +0.63 | **+0.27** |
+   | RMSE | 4.59 | 7.45 |
+   | bias | +3.19 | +1.67 |
+
+   Both acceptance checks pass: `gedi_n_50m > 0` holds for exactly the 89 rows carrying an
+   `rh98`, and the coverage line equals the regression's n. All 10 previously-published rows
+   are still covered and their values barely move (e.g. 21.30 → 21.84, 12.13 → 11.73), so the
+   old column was a 10-row *subset*, not a set of wrong values — the defect suppressed
+   coverage, it did not corrupt what little it returned. Coverage is uneven by district:
+   ANGUL 23/40, DHENKANAL 30/76, KENDUJHAR 4/12, KORAPUT 32/146.
+
+   **This makes the structural conclusion stronger, not weaker.** R²=0.404 at n=10 was the
+   best-looking number in the study and it was an artefact of a 10-plot subset; at honest
+   coverage GEDI explains 8.8% of the variance in Lorey's height with a slope of 0.27 — the
+   same compression failure as ETH, on a tenth of the plots. GEDI does not supply the
+   structural criterion.
 3. **Task 4 not started.** ETH removal is written up but not applied, because removing two
    of three criteria leaves one, below `min_defined_criteria: 2`, and the replacement is
    Task 1's to decide. `min_defined_criteria` must not be lowered to accommodate this.
@@ -140,6 +176,17 @@ that the stands are *structurally meaningful* rests on the measurement, not the 
 6. Meta as a criterion would need new code: `features_structure.py` does
    `ee.Image(canopy_asset).select(0)` — a single Image. Meta is a 1 m ImageCollection
    needing a mosaic and a `reduceResolution`.
+
+7. **One field record to raise with FES, either way.** Pangatira plot
+   `21.156085_85.364999` reads **8% crown cover while carrying 16.19 m of Lorey's height**.
+   The other nine Pangatira plots run 58–88%. It is either a data-entry error or a genuinely
+   open canopy of tall emergents, and it sits inside the site whose ten zeros drove the
+   site-level Meta question, so it is worth resolving before Pangatira is used to argue
+   anything. Part B does not settle it: that plot's Meta box is uniformly 0 like its
+   neighbours', and its ETH 3×3 is 11.22 m, so neither product distinguishes it from the
+   other nine. Note the same pattern appears once among the controls —
+   `21.045566_85.52362` reads 8% crown cover at 6.91 m Lorey's — so 8% is not unique to
+   Pangatira and may be a recording convention rather than an error.
 
 ---
 
@@ -153,8 +200,9 @@ The reasoning, in the order it matters:
 **No available product measures stand height well enough to gate on in absolute units.**
 The best plot-level R² is Meta at 0.241, which falls to 0.142 once its 45% zeros are
 excluded — and Meta is BLOCKED. ETH is 0.207 with slope 0.30 and a compressed range. GLAD
-inverts. GEDI is withdrawn — and is the one entry in that list whose corrected value could
-plausibly change the conclusion, since its 50 m search never ran. `vh_iqr` at 0.227 is the best-validated free signal, and it is
+inverts. **GEDI has now been re-sampled and does not change the conclusion — it reinforces
+it**: at true coverage (89/274, not 10) it falls to R²=0.088 with slope 0.27, so the one
+entry that could plausibly have supplied a structural criterion does not. `vh_iqr` at 0.227 is the best-validated free signal, and it is
 a radar texture proxy, not a height measurement — and it is the one thing that gets *worse*
 under aggregation, which is the opposite of what a stand-scale criterion needs.
 
@@ -196,9 +244,9 @@ tolerance to hit a pass rate or an R²; do not put an Odisha-derived constant in
 
 ```bash
 cd odisha_script
-python odisha_phase1_7_meta_zero_diagnosis.py   # part A offline; part B needs GEE
+python odisha_phase1_7_meta_zero_diagnosis.py   # part A offline; part B needs GEE (has now run)
 python odisha_phase1_8_separation_null.py       # fully offline, reads b24fad3 via git show
-python odisha_phase1_9_gedi_recount.py          # reports current state; re-sample needs GEE
+python odisha_phase1_9_gedi_recount.py          # re-samples GEDI; needs GEE; writes v3 CSV
 ```
 
 Steps 8 and 9 write `odisha_phase1_8_results.txt` / `odisha_phase1_9_results.txt` and step
