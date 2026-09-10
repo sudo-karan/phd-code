@@ -3,9 +3,10 @@
 Where the Odisha field validation stands, what changed in this session, what is still
 open, and what the merge's structural criterion should be given the evidence.
 
-Every number here comes from code run in this session. Two things could not be
-computed because this environment has no Earth Engine credentials, and they are
-marked BLOCKED rather than estimated.
+Every number here comes from code that has been run. The two items that were BLOCKED on
+Earth Engine credentials have since run against the live catalogue — step 7 part B, step 9
+and step 10 — and **Task 1's verdict is now recorded: DISQUALIFIED.** Nothing below is
+estimated.
 
 ---
 
@@ -16,7 +17,7 @@ marked BLOCKED rather than estimated.
 | 1 | ETH canopy height vs field Lorey's | r=+0.455, **R²=0.207**, slope 0.30, bias +7.2 m | **fails.** See below |
 | 2 | NDVI amplitude vs Sal dominance | r=−0.171, **R²=0.029**; Mann-Whitney p=0.014 | weak; direction only |
 | 3 | ETH 3×3 roughness vs crown cover | r=−0.011, **R²=0.000** | **fails outright** |
-| 4a | Meta/WRI vs Lorey's | R²=0.241 as published, **0.142** with zeros excluded | **BLOCKED** on the zeros |
+| 4a | Meta/WRI vs Lorey's | R²=0.241 as published, **0.142** with zeros excluded | **DISQUALIFIED** — see Task 1 |
 | 4b | GLAD/Potapov vs Lorey's | R²=0.041; **flips to r=−0.121** with Meta-zeros excluded | out |
 | 4c | GEDI rh98 vs Lorey's | **R²=0.088 at n=89** (was R²=0.404 at n=10) | re-sampled; **out** |
 | 5 | S1 backscatter vs Lorey's | `vh_iqr` **R²=0.210 → 0.227** with zeros excluded | best free signal at plot scale |
@@ -74,9 +75,10 @@ averaging in general.
 
 | | |
 |---|---|
-| **step 7** `odisha_phase1_7_meta_zero_diagnosis.py` | zero census, quantisation, zeros-excluded tables at plot and site level, aggregation re-test. GEE half BLOCKED |
+| **step 7** `odisha_phase1_7_meta_zero_diagnosis.py` | zero census, quantisation, zeros-excluded tables at plot and site level, aggregation re-test. **Part B RUN**: unmasked 1 m grids at 12 zero plots + 5 controls |
 | **step 8** `odisha_phase1_8_separation_null.py` | null model for the separation-ratio chart; three nulls, 22 bands |
 | **step 9** `odisha_phase1_9_gedi_recount.py` | GEDI root cause + fix + re-sample. **Re-sample RUN**: coverage 10 → 89, R² 0.404 → 0.088. Writes `odisha_plots_sampled_v3.csv`; v2 is an input and is left untouched |
+| **step 10** `odisha_phase1_10_meta_offset_check.py` | the two confirmations that close the verdict: offset ladder at 15/50/100/200/500 m, and a `cover_code` frequency histogram over 554,745 px. **RUN** |
 | step 3 | GEDI construction fixed at source (explicit un-normalized kernel, `Reducer.count()`) |
 | step 4 | coverage line now prints both counts and fails loudly if they disagree |
 
@@ -117,24 +119,69 @@ that the stands are *structurally meaningful* rests on the measurement, not the 
 
 ## Unresolved
 
-1. **Task 1 — part B has now RUN. Evidence is in; the verdict is not yet recorded here.**
-   `odisha_phase1_7_meta_zero_diagnosis.py` part B executed against Earth Engine over 12 zero
-   plots and 5 non-zero controls. The raw findings, recorded without a verdict label pending
-   sign-off, are in `odisha_phase1_7_results.txt`:
+1. **Task 1 — VERDICT: DISQUALIFIED.** Steps 7B and 10 have both run against Earth Engine,
+   over 12 zero plots and 5 non-zero controls. Taking the three outcomes in the order the
+   diagnostic defines them:
 
-   - the asset carries **one band, `cover_code`, UINT8** (`PixelType int, 0..255`), native
-     EPSG:3857 at a 1.194 m transform. The integer-metre quantisation established offline in
-     A2 is therefore the *storage type*, not an inference — and there is no second band to
-     sample instead.
-   - at **all 12** zero plots: exactly 1 collection image intersects the 30 m box,
-     `masked = 0` of ~756–784 pixels, and `mask()` at the plot point returns `1`.
-   - **10 of 12** have `distinct values in the box = [0]` — every one-metre pixel is zero.
-     The remaining two are both ANGUL and reach a maximum of 2 m (111 and 28 non-zero pixels
-     out of 784).
-   - all **5 controls** return full unmasked grids with coherent values (e.g. 10–17, median
-     14 at a plot carrying 23.86 m of Lorey's height).
-   - the sharpest single case: `20.760492_84.717751` (ANGUL) carries **33.57 m** of field
-     Lorey's height and 43% crown cover, and its entire 784-pixel box reads 0 or 1.
+   **NO DATA** — *"30 m box entirely masked / no intersecting tile."* **Closed by direct
+   measurement.** At **all 12** zero plots: exactly 1 collection image intersects the box,
+   `masked = 0` of 729–784 native pixels, and `mask()` at the plot point returns `1`. Nothing
+   is masked anywhere. The box is not empty — it is full, and it reads zero.
+
+   **RECOVERABLE** — *"box has values, the sample point does not"* → re-sample with a buffered
+   reducer that ignores masked pixels. **Closed twice over.**
+
+   - There are no masked pixels for such a reducer to skip. **10 of 12** boxes have
+     `distinct values = [0]`: every one of ~780 one-metre pixels is present and equal to 0, so
+     a buffered mean over them returns 0. The two exceptions are both ANGUL and top out at
+     2 m, over 111 and 28 non-zero pixels of 784.
+   - Step 10's offset ladder closes the one mechanism that could still put real values outside
+     the box. Over discs of 15/50/100/200/500 m the zero plots read mean
+     0.01 → 0.13 → 0.19 → 0.21 → 0.26 m and 1.2% → 5.6% → 8.9% → 9.8% → 11.5% non-zero.
+     Canopy never appears. The same ladder at the 5 controls reads 11.62 m / 100% non-zero at
+     15 m and is still 3.73 m / 62.1% at 500 m, so the ladder measures what it claims. **No
+     offset below 500 m fits the zero plots, and one above 500 m would have to displace the
+     controls too** — and four of the five controls sit in the same district as five of the
+     zero plots. One raster cannot be half a kilometre out at one plot and registered at its
+     neighbour.
+
+   **DISQUALIFIED** — *"box is genuinely and validly 0 under high field crown cover."* **This
+   is what the evidence supports.** The grid is unmasked, the values are present, the encoding
+   is metres, and the product reads 0 over field-measured forest:
+
+   - `20.760492_84.717751` (ANGUL) carries **33.57 m** of Lorey's height and 43% crown cover;
+     its entire 784-pixel box reads 0 or 1.
+   - `21.154502_85.365229` (DHENKANAL) carries **83% crown cover** and 12.07 m; all 784 pixels
+     are exactly 0.
+
+   The brief phrased the condition as "under 88% field crown cover". 88% is the top of the
+   Pangatira range but belongs to a plot outside the diagnosed twelve; the highest crown cover
+   among them is 83%. The condition is met at 83%.
+
+   **Reading `cover_code` as metres is licensed, not assumed.** The asset carries **one band,
+   `cover_code`, UINT8** (`PixelType int, 0..255`), native EPSG:3857 at a 1.194 m transform —
+   so part A's integer-metre finding is the *storage type*, not an inference, and there is no
+   second band to sample instead. Step 10 B histograms the band over the union of 274 discs of
+   500 m: **554,745 pixels, 28 distinct values**, support contiguous over **0..25** with a
+   smooth monotone decay (1 at 7.81% down to 19 at 0.01%), then 2 pixels in the whole region
+   at 28 and 31. The only interior gaps are 26, 27, 29 and 30 — above which the region holds
+   two pixels total. That is tail sparsity, not the empty space between class codes. A
+   categorical code would spike on arbitrary integers; this does not.
+
+   **How far the verdict generalises, stated precisely.** The 12 were chosen by sorted
+   `plot_key` under district quotas, not by severity, so they are not the sharpest cases
+   selected after the fact. They cover ANGUL 4, DHENKANAL 4, KORAPUT 4 and span 4.07–33.57 m
+   of Lorey's height against the full zero population's 0.16–33.57 m. **Every one of the 12
+   exhibits the mechanism and none is a counterexample.** Two limits travel with that:
+
+   - **KENDUJHAR is not represented.** It has the highest zero rate of any district — 10 of
+     its 12 plots — and was not sampled. The mechanism is established in 3 of 4 districts.
+   - **The extreme cases are rare.** Of the 122 zero plots, only 2 exceed 20 m of Lorey's
+     height and 11 reach 70% crown cover; the median zero plot carries 5.85 m and 28% crown
+     cover, and the range runs down to 0.16 m and 0%. So some of the 122 are legitimately
+     non-forest. But a Meta `0` means *"under half a metre"*, and the **median** zero plot at
+     5.85 m is already a failure on a product quantised to integer metres — the verdict does
+     not rest on the tall tail, the tall tail is only what makes it unarguable.
 
    Two bugs had to be fixed before part B could produce any of this, both now in the script:
    `sampleRectangle(defaultValue=-9999)` is rejected outright against a UINT8 band, and
@@ -191,16 +238,46 @@ that the stands are *structurally meaningful* rests on the measurement, not the 
    coverage GEDI explains 8.8% of the variance in Lorey's height with a slope of 0.27 — the
    same compression failure as ETH, on a tenth of the plots. GEDI does not supply the
    structural criterion.
-3. **Task 4 not started.** ETH removal is written up but not applied, because removing two
-   of three criteria leaves one, below `min_defined_criteria: 2`, and the replacement is
-   Task 1's to decide. `min_defined_criteria` must not be lowered to accommodate this.
+3. **Task 4 as briefed is void, and the verdict is why.** Task 4 was "remove ETH and install
+   what Task 1 names". Task 1 names nothing. Removing both ETH bands from the three current
+   criteria leaves one — below `min_defined_criteria: 2`, which must not be lowered — so with
+   no replacement the full ETH removal cannot be executed at all. That is a finding, not a
+   deferral: the criteria list cannot shrink to one, and there is nothing validated to grow it
+   back with.
+
+   **One piece of it does survive the verdict, because it never depended on it.**
+   `canopy_height_std` should go regardless of Task 1: R²=0.000 against crown cover
+   (r=−0.011) is not a weak criterion, it is a criterion measuring nothing it claims. Dropping
+   it leaves exactly two — `canopy_height` and `ndvi_amplitude_annual` — which meets the floor
+   without lowering it. **Not applied here**, because it is not a neutral edit and the
+   consequences should be signed off rather than slipped into a verdict commit:
+
+   - With three criteria and a floor of 2, one may be null and a merge is still admissible.
+     With **exactly two and a floor of 2, both must be defined** for any merge to be admitted
+     (`compare()` returns `(False, inf, n_defined)` below the floor). Wherever ETH or the NDVI
+     amplitude is masked, merging stops. That is strictly stricter behaviour, not a like-for-
+     like removal.
+   - It changes `merge.criteria`, so it changes the cache fingerprint and every downstream
+     number in every arm — which is the same reason item 4 holds the AlphaEarth arm.
+   - `sanjay_van_nirv_dual.yaml` names all three criteria explicitly (with
+     `nirv_amplitude_annual` in place of the default's `ndvi_amplitude_annual`), so the
+     default and that config have to move together or the arms stop being comparable — one
+     would gate on three criteria and the others on two.
+
+   Note the two decisions are about different roles and do not have to agree:
+   `canopy_height_std` is also a **SNIC input band**, where it contributes texture that carves
+   the tessellation and survives the spatial null at +0.076. The R²=0.000 finding is about its
+   fitness as a *measurement of crown cover*, which is what a merge criterion gates on. The
+   recommendation is to drop it as a criterion and leave it as a SNIC input.
 4. **AlphaEarth arm held.** Correct: changing `merge.criteria` changes the cache
    fingerprint and every number downstream.
 5. `off_B5` (R²=0.140 vs Sal dominance) is a leaf-off seasonal composite band **no stage
    produces**. New work if it is wanted.
-6. Meta as a criterion would need new code: `features_structure.py` does
-   `ee.Image(canopy_asset).select(0)` — a single Image. Meta is a 1 m ImageCollection
-   needing a mosaic and a `reduceResolution`.
+6. ~~Meta as a criterion would need new code~~ — **moot.** Meta is DISQUALIFIED, so the
+   `features_structure.py` work it would have required (that stage does
+   `ee.Image(canopy_asset).select(0)`, a single Image; Meta is a 1 m ImageCollection needing a
+   mosaic and a `reduceResolution`) is not work to do. Recorded so the absence of that code is
+   understood as a decision rather than an omission.
 
 7. **One field record to raise with FES, either way.** Pangatira plot
    `21.156085_85.364999` reads **8% crown cover while carrying 16.19 m of Lorey's height**.
@@ -223,19 +300,29 @@ rather than papered over.
 The reasoning, in the order it matters:
 
 **No available product measures stand height well enough to gate on in absolute units.**
-The best plot-level R² is Meta at 0.241, which falls to 0.142 once its 45% zeros are
-excluded — and Meta is BLOCKED. ETH is 0.207 with slope 0.30 and a compressed range. GLAD
-inverts. **GEDI has now been re-sampled and does not change the conclusion — it reinforces
-it**: at true coverage (89/274, not 10) it falls to R²=0.088 with slope 0.27, so the one
-entry that could plausibly have supplied a structural criterion does not. `vh_iqr` at 0.227 is the best-validated free signal, and it is
-a radar texture proxy, not a height measurement — and it is the one thing that gets *worse*
-under aggregation, which is the opposite of what a stand-scale criterion needs.
+The best plot-level R² was Meta at 0.241, which falls to 0.142 once its 44.5% zeros are
+excluded — and **Meta is now DISQUALIFIED**, so 0.241 is void and 0.142 describes a biased
+subset. ETH is 0.207 with slope 0.30 and a compressed range. GLAD inverts. **GEDI has now
+been re-sampled and does not change the conclusion — it reinforces it**: at true coverage
+(89/274, not 10) it falls to R²=0.088 with slope 0.27, so the one entry that could plausibly
+have supplied a structural criterion does not. That leaves `vh_iqr` at 0.227 as the
+best-validated free signal — and it is a radar texture proxy, not a height measurement, and
+it is the one thing that gets *worse* under aggregation, which is the opposite of what a
+stand-scale criterion needs.
+
+**Both height products that a merge could be built on have now failed a direct test, not a
+weak one.** ETH fails on dynamic range: it spans 8 m where the field spans 35. Meta fails on
+validity: it returns 0 m on an unmasked grid over measured forest. These are different
+failure modes and neither is fixed by a better tolerance.
 
 **`canopy_height_std` should go regardless of Task 1.** R²=0.000 against crown cover
 (r=−0.011) is not a weak criterion, it is a criterion measuring nothing it claims. With
 `min_defined_criteria: 2` it can be one of the two that admits a merge. It survives the
 separation null (+0.076), so it does affect the partition — which makes it worse, not
-better: it is shaping stands on a quantity with no established meaning.
+better: it is shaping stands on a quantity with no established meaning. This is the one part
+of Task 4 the verdict leaves standing; **unresolved item 3 states what dropping it actually
+changes** (a two-criterion list against a floor of 2 means both must be defined, not one of
+three), and it is a recommendation there, not an applied edit.
 
 **If ETH stays, the tolerance cannot stay in absolute metres.** This is the sharpest
 actionable conclusion here. Spearman consistently beats Pearson — ETH 0.484 vs 0.455, Meta
@@ -247,16 +334,25 @@ which `calibrate_thresholds()` already computes — would mean the same thing in
 and on every product. That is also consistent with the standing rule that no Odisha number
 becomes a default: it names a method, not a value.
 
-**Conditional on Task 1:**
+**Task 1 has now resolved this, and it resolved against Meta.** The conditional read:
 
-- **RECOVERABLE** → Meta is the candidate. Best plot-level number, and the only product
+- **RECOVERABLE** → Meta is the candidate: best plot-level number, and the only product
   whose signal *improves* with aggregation (+0.361), which is the property a stand-scale
-  criterion needs. Caveat that must ship with it: integer-metre quantisation means any
-  tolerance below ~1 m is meaningless, and the 16-level range is narrow.
+  criterion needs.
 - **NO DATA or DISQUALIFIED** → Meta is out, and there is no validated structural
-  criterion. Then the honest position is to keep ETH *as a relative ordering only*, with a
-  percentile tolerance, and to state in the methods that the structural axis is unvalidated
-  in this forest type — not to substitute `vh_iqr` and imply it measures height.
+  criterion.
+
+The verdict is **DISQUALIFIED**, so the second branch is the operative one. The +0.361
+aggregation lift does not rescue it: that lift is computed on the zeros-excluded subset,
+which is precisely the subset from which the product's failures have been removed. **No
+replacement canopy-height source is installed.**
+
+What follows is the honest position, and it is a narrowing rather than a substitution: keep
+ETH *as a relative ordering only*, with a percentile tolerance rather than absolute metres,
+and state in the methods that the structural axis is unvalidated in this forest type. Do not
+substitute `vh_iqr` and imply it measures height — at R²=0.227 it is the best-validated free
+signal here, but it is a radar texture proxy, and it is the one thing that gets *worse* under
+aggregation, which is the opposite of what a stand-scale criterion needs.
 
 **What must not happen**, restating the standing rules because this is where the pressure
 will be: do not lower `min_defined_criteria` to fit a shorter criteria list; do not tune a
@@ -269,10 +365,30 @@ tolerance to hit a pass rate or an R²; do not put an Odisha-derived constant in
 
 ```bash
 cd odisha_script
-python odisha_phase1_7_meta_zero_diagnosis.py   # part A offline; part B needs GEE (has now run)
+python odisha_phase1_7_meta_zero_diagnosis.py   # part A offline; part B needs GEE (has run)
 python odisha_phase1_8_separation_null.py       # fully offline, reads b24fad3 via git show
 python odisha_phase1_9_gedi_recount.py          # re-samples GEDI; needs GEE; writes v3 CSV
+python odisha_phase1_10_meta_offset_check.py    # needs GEE; 4 getInfo calls, no exports
 ```
 
-Steps 8 and 9 write `odisha_phase1_8_results.txt` / `odisha_phase1_9_results.txt` and step
-8 also writes `odisha_phase1_8_separation_null.png`.
+Each writes `odisha_phase1_<n>_results.txt` beside itself; step 8 also writes
+`odisha_phase1_8_separation_null.png`. Step 10 imports `pick_plots` from step 7 rather than
+reimplementing the selection, so the two cannot drift apart.
+
+The verdict figures above can be re-derived from the committed artifacts without Earth
+Engine:
+
+```bash
+cd odisha_script
+# district coverage and height range of the 12 diagnosed plots vs all 122 zeros
+python -c "
+import pandas as pd; from odisha_phase1_7_meta_zero_diagnosis import pick_plots
+df = pd.read_csv('odisha_plots_sampled_v2.csv'); z = df.meta_chm == 0
+p, _ = pick_plots(df, z)
+print('zeros', int(z.sum()), 'of', len(df))
+print(df[z].district.value_counts().to_dict())
+print('diagnosed', p.district.value_counts().to_dict())
+print('zeros >20m:', int((df[z].loreys_h_m > 20).sum()), ' median:', df[z].loreys_h_m.median())"
+# band-identity histogram: contiguity and where it breaks
+grep -E '^ +[0-9]+ +[0-9,]+ +[0-9.]+%' odisha_phase1_10_results.txt
+```
