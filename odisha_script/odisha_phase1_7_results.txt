@@ -184,20 +184,200 @@ A7 — does aggregation still 'recover signal', with zeros excluded?
 ================================================================================================
 B — raw 1 m Meta neighbourhood at the zero plots (Earth Engine)
 ================================================================================================
-  BLOCKED — Earth Engine is not available in this environment.
-  EEException: Please authorize access to your Earth Engine account by running
+  diagnosing 12 zero plots and 5 non-zero controls
+  collection: projects/meta-forest-monitoring-okw37/assets/CanopyHeight
 
-  Part B is the half that returns the verdict; part A cannot substitute for it.
-  Run this script where `earthengine authenticate` has been done, and the section
-  below will fill in. NOTHING here is estimated in its absence.
+  --- collection metadata (one image, fetched once) ---
+  bands   : ['cover_code']
+  band[0] : {'id': 'cover_code', 'data_type': {'type': 'PixelType', 'precision': 'int', 'min': 0, 'max': 255}, 'dimensions': [1376256, 2752512], 'crs': 'EPSG:3857', 'crs_transform': [1.1943285669559032, 0, -20037508.34278926, 0, -1.1943285669558747, 11662456.027639043]}
+  props   : {'system:footprint': {'type': 'LinearRing', 'coordinates': [[-168.6373929967094, 59.88835561374001], [-167.78663988767636, 59.888123290629544], [-166.87820846043832, 59.88817291310996], [-165.883259847664, 59.88779252178289], [-165.23435891196635, 59.88889098157841], [-165.23434615622625, 71.7464407433873], [-168.11828949497064, 71.74644082160322], [-170.36773849037093, 71.7464407756608], [-174.1744983401277, 71.74644082929888], [-176.7123384123914, 71.74644076445892], [179.99997098599974, 71.74644081342419], [179.99998399230387, 59.88539436996045], [-178.2840687980153, 59.88680025149872], [-176.88537287205375, 59.88733497962023], [-175.68855062870614, 59.8877924957857], [-174.30427430458312, 59.88628049669843], [-172.89115891575008, 59.887669671158164], [-171.83853210245107, 59.888072124361585], [-170.75706614947458, 59.88754051043748], [-169.58908306728188, 59.887731865014224], [-168.6373929967094, 59.88835561374001]]}, 'system:asset_size': 322228422, 'system:index': '10'}
 
-  The three outcomes it decides between, and what each one means:
-    NO DATA      30 m box entirely masked / no intersecting tile.
-                 -> exclude; Test 4 is n=152, R2=0.142. Meta is out.
-    RECOVERABLE  box has values, the sample point does not.
-                 -> geolocation or mosaic gap; re-sample with a buffered reducer
-                    that ignores masked pixels, re-run Test 4, report both.
-    DISQUALIFIED box is genuinely and validly 0 under 88% field crown cover.
-                 -> no aggregation fixes this. Meta is out, and the fact that a
-                    published 1 m product reads 0 over closed canopy is itself
-                    a reportable finding.
+  [ZERO ] 21.154502_85.365229  DHENKANAL  loreys=12.07m  crown=83.0%  gps_acc=8.65m
+          sampled meta_chm=0  meta_chm_3x3=0.0000
+          collection images intersecting the 30 m box: 1
+          band names: ['cover_code']   dtype: {'type': 'PixelType', 'precision': 'int', 'min': 0, 'max': 255}
+          native grid: crs=EPSG:3857 transform=[1.1943285669558747, 0, 8375052.315150194, 0, -1.194328566955896, 3522218.2633809224]
+          30 m pixel grid: shape=(28, 28) total=784 masked=0 valid=784
+          valid pixels: zeros=784 non-zero=0
+          distinct values in the box: [0]
+          non-zero pixels: NONE — every valid pixel in the box is 0
+          mask() at the plot point: {'cover_code': 1}
+
+  [ZERO ] 21.155752_85.365857  DHENKANAL  loreys=8.45m  crown=68.0%  gps_acc=4.706m
+          sampled meta_chm=0  meta_chm_3x3=0.0000
+          collection images intersecting the 30 m box: 1
+          band names: ['cover_code']   dtype: {'type': 'PixelType', 'precision': 'int', 'min': 0, 'max': 255}
+          native grid: crs=EPSG:3857 transform=[1.1943285669558747, 0, 8375052.315150194, 0, -1.194328566955896, 3522218.2633809224]
+          30 m pixel grid: shape=(28, 27) total=756 masked=0 valid=756
+          valid pixels: zeros=756 non-zero=0
+          distinct values in the box: [0]
+          non-zero pixels: NONE — every valid pixel in the box is 0
+          mask() at the plot point: {'cover_code': 1}
+
+  [ZERO ] 21.156085_85.364999  DHENKANAL  loreys=16.19m  crown=8.0%  gps_acc=3.55m
+          sampled meta_chm=0  meta_chm_3x3=0.0000
+          collection images intersecting the 30 m box: 1
+          band names: ['cover_code']   dtype: {'type': 'PixelType', 'precision': 'int', 'min': 0, 'max': 255}
+          native grid: crs=EPSG:3857 transform=[1.1943285669558747, 0, 8375052.315150194, 0, -1.194328566955896, 3522218.2633809224]
+          30 m pixel grid: shape=(28, 28) total=784 masked=0 valid=784
+          valid pixels: zeros=784 non-zero=0
+          distinct values in the box: [0]
+          non-zero pixels: NONE — every valid pixel in the box is 0
+          mask() at the plot point: {'cover_code': 1}
+
+  [ZERO ] 18.575806_82.837232  KORAPUT  loreys=5.28m  crown=28.0%  gps_acc=7.7m
+          sampled meta_chm=0  meta_chm_3x3=0.0000
+          collection images intersecting the 30 m box: 1
+          band names: ['cover_code']   dtype: {'type': 'PixelType', 'precision': 'int', 'min': 0, 'max': 255}
+          native grid: crs=EPSG:3857 transform=[1.1943285669558747, 0, 8375052.315150194, 0, -1.194328566955896, 3522218.2633809224]
+          30 m pixel grid: shape=(28, 27) total=756 masked=0 valid=756
+          valid pixels: zeros=756 non-zero=0
+          distinct values in the box: [0]
+          non-zero pixels: NONE — every valid pixel in the box is 0
+          mask() at the plot point: {'cover_code': 1}
+
+  [ZERO ] 18.576485_82.834653  KORAPUT  loreys=4.68m  crown=28.0%  gps_acc=7.133m
+          sampled meta_chm=0  meta_chm_3x3=0.0000
+          collection images intersecting the 30 m box: 1
+          band names: ['cover_code']   dtype: {'type': 'PixelType', 'precision': 'int', 'min': 0, 'max': 255}
+          native grid: crs=EPSG:3857 transform=[1.1943285669558747, 0, 8375052.315150194, 0, -1.194328566955896, 3522218.2633809224]
+          30 m pixel grid: shape=(27, 27) total=729 masked=0 valid=729
+          valid pixels: zeros=729 non-zero=0
+          distinct values in the box: [0]
+          non-zero pixels: NONE — every valid pixel in the box is 0
+          mask() at the plot point: {'cover_code': 1}
+
+  [ZERO ] 18.576947_82.837561  KORAPUT  loreys=5.87m  crown=33.0%  gps_acc=4.99m
+          sampled meta_chm=0  meta_chm_3x3=0.0000
+          collection images intersecting the 30 m box: 1
+          band names: ['cover_code']   dtype: {'type': 'PixelType', 'precision': 'int', 'min': 0, 'max': 255}
+          native grid: crs=EPSG:3857 transform=[1.1943285669558747, 0, 8375052.315150194, 0, -1.194328566955896, 3522218.2633809224]
+          30 m pixel grid: shape=(28, 28) total=784 masked=0 valid=784
+          valid pixels: zeros=784 non-zero=0
+          distinct values in the box: [0]
+          non-zero pixels: NONE — every valid pixel in the box is 0
+          mask() at the plot point: {'cover_code': 1}
+
+  [ZERO ] 18.577371_82.836942  KORAPUT  loreys=4.99m  crown=23.0%  gps_acc=5.124m
+          sampled meta_chm=0  meta_chm_3x3=0.0000
+          collection images intersecting the 30 m box: 1
+          band names: ['cover_code']   dtype: {'type': 'PixelType', 'precision': 'int', 'min': 0, 'max': 255}
+          native grid: crs=EPSG:3857 transform=[1.1943285669558747, 0, 8375052.315150194, 0, -1.194328566955896, 3522218.2633809224]
+          30 m pixel grid: shape=(28, 27) total=756 masked=0 valid=756
+          valid pixels: zeros=756 non-zero=0
+          distinct values in the box: [0]
+          non-zero pixels: NONE — every valid pixel in the box is 0
+          mask() at the plot point: {'cover_code': 1}
+
+  [ZERO ] 20.621695_85.564537  DHENKANAL  loreys=4.07m  crown=18.0%  gps_acc=4.912m
+          sampled meta_chm=0  meta_chm_3x3=0.0000
+          collection images intersecting the 30 m box: 1
+          band names: ['cover_code']   dtype: {'type': 'PixelType', 'precision': 'int', 'min': 0, 'max': 255}
+          native grid: crs=EPSG:3857 transform=[1.1943285669558747, 0, 8375052.315150194, 0, -1.194328566955896, 3522218.2633809224]
+          30 m pixel grid: shape=(28, 27) total=756 masked=0 valid=756
+          valid pixels: zeros=756 non-zero=0
+          distinct values in the box: [0]
+          non-zero pixels: NONE — every valid pixel in the box is 0
+          mask() at the plot point: {'cover_code': 1}
+
+  [ZERO ] 20.760064_84.721146  ANGUL  loreys=12.11m  crown=38.0%  gps_acc=4.82m
+          sampled meta_chm=0  meta_chm_3x3=0.2222
+          collection images intersecting the 30 m box: 1
+          band names: ['cover_code']   dtype: {'type': 'PixelType', 'precision': 'int', 'min': 0, 'max': 255}
+          native grid: crs=EPSG:3857 transform=[1.1943285669558747, 0, 8375052.315150194, 0, -1.194328566955896, 3522218.2633809224]
+          30 m pixel grid: shape=(28, 28) total=784 masked=0 valid=784
+          valid pixels: zeros=673 non-zero=111
+          distinct values in the box: [0, 1, 2]
+          non-zero pixels: min=1.00 max=2.00 median=1.00
+          mask() at the plot point: {'cover_code': 1}
+
+  [ZERO ] 20.760492_84.717751  ANGUL  loreys=33.57m  crown=43.0%  gps_acc=4.94m
+          sampled meta_chm=0  meta_chm_3x3=0.0000
+          collection images intersecting the 30 m box: 1
+          band names: ['cover_code']   dtype: {'type': 'PixelType', 'precision': 'int', 'min': 0, 'max': 255}
+          native grid: crs=EPSG:3857 transform=[1.1943285669558747, 0, 8375052.315150194, 0, -1.194328566955896, 3522218.2633809224]
+          30 m pixel grid: shape=(28, 28) total=784 masked=0 valid=784
+          valid pixels: zeros=756 non-zero=28
+          distinct values in the box: [0, 1]
+          non-zero pixels: min=1.00 max=1.00 median=1.00
+          mask() at the plot point: {'cover_code': 1}
+
+  [ZERO ] 20.761327_84.711584  ANGUL  loreys=7.44m  crown=48.0%  gps_acc=4.92m
+          sampled meta_chm=0  meta_chm_3x3=0.0000
+          collection images intersecting the 30 m box: 1
+          band names: ['cover_code']   dtype: {'type': 'PixelType', 'precision': 'int', 'min': 0, 'max': 255}
+          native grid: crs=EPSG:3857 transform=[1.1943285669558747, 0, 8375052.315150194, 0, -1.194328566955896, 3522218.2633809224]
+          30 m pixel grid: shape=(28, 27) total=756 masked=0 valid=756
+          valid pixels: zeros=756 non-zero=0
+          distinct values in the box: [0]
+          non-zero pixels: NONE — every valid pixel in the box is 0
+          mask() at the plot point: {'cover_code': 1}
+
+  [ZERO ] 20.76148_84.72302  ANGUL  loreys=9.62m  crown=43.0%  gps_acc=4.966m
+          sampled meta_chm=0  meta_chm_3x3=0.0000
+          collection images intersecting the 30 m box: 1
+          band names: ['cover_code']   dtype: {'type': 'PixelType', 'precision': 'int', 'min': 0, 'max': 255}
+          native grid: crs=EPSG:3857 transform=[1.1943285669558747, 0, 8375052.315150194, 0, -1.194328566955896, 3522218.2633809224]
+          30 m pixel grid: shape=(28, 28) total=784 masked=0 valid=784
+          valid pixels: zeros=784 non-zero=0
+          distinct values in the box: [0]
+          non-zero pixels: NONE — every valid pixel in the box is 0
+          mask() at the plot point: {'cover_code': 1}
+
+  [CTRL ] 21.079134_85.389512  DHENKANAL  loreys=23.86m  crown=78.0%  gps_acc=0.841m
+          sampled meta_chm=15  meta_chm_3x3=14.7778
+          collection images intersecting the 30 m box: 1
+          band names: ['cover_code']   dtype: {'type': 'PixelType', 'precision': 'int', 'min': 0, 'max': 255}
+          native grid: crs=EPSG:3857 transform=[1.1943285669558747, 0, 8375052.315150194, 0, -1.194328566955896, 3522218.2633809224]
+          30 m pixel grid: shape=(28, 28) total=784 masked=0 valid=784
+          valid pixels: zeros=0 non-zero=784
+          distinct values in the box: [10, 11, 12, 13, 14, 15, 16, 17]
+          non-zero pixels: min=10.00 max=17.00 median=14.00
+          mask() at the plot point: {'cover_code': 1}
+
+  [CTRL ] 21.108009_85.565539  DHENKANAL  loreys=30.64m  crown=33.0%  gps_acc=4.972m
+          sampled meta_chm=14  meta_chm_3x3=11.3333
+          collection images intersecting the 30 m box: 1
+          band names: ['cover_code']   dtype: {'type': 'PixelType', 'precision': 'int', 'min': 0, 'max': 255}
+          native grid: crs=EPSG:3857 transform=[1.1943285669558747, 0, 8375052.315150194, 0, -1.194328566955896, 3522218.2633809224]
+          30 m pixel grid: shape=(28, 28) total=784 masked=0 valid=784
+          valid pixels: zeros=5 non-zero=779
+          distinct values in the box: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+          non-zero pixels: min=1.00 max=16.00 median=13.00
+          mask() at the plot point: {'cover_code': 1}
+
+  [CTRL ] 21.077442_85.388795  DHENKANAL  loreys=22.78m  crown=48.0%  gps_acc=2.216m
+          sampled meta_chm=13  meta_chm_3x3=11.8889
+          collection images intersecting the 30 m box: 1
+          band names: ['cover_code']   dtype: {'type': 'PixelType', 'precision': 'int', 'min': 0, 'max': 255}
+          native grid: crs=EPSG:3857 transform=[1.1943285669558747, 0, 8375052.315150194, 0, -1.194328566955896, 3522218.2633809224]
+          30 m pixel grid: shape=(28, 28) total=784 masked=0 valid=784
+          valid pixels: zeros=0 non-zero=784
+          distinct values in the box: [6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+          non-zero pixels: min=6.00 max=15.00 median=11.00
+          mask() at the plot point: {'cover_code': 1}
+
+  [CTRL ] 18.615426_82.839528  KORAPUT  loreys=10.70m  crown=58.0%  gps_acc=4.85m
+          sampled meta_chm=12  meta_chm_3x3=12.0000
+          collection images intersecting the 30 m box: 1
+          band names: ['cover_code']   dtype: {'type': 'PixelType', 'precision': 'int', 'min': 0, 'max': 255}
+          native grid: crs=EPSG:3857 transform=[1.1943285669558747, 0, 8375052.315150194, 0, -1.194328566955896, 3522218.2633809224]
+          30 m pixel grid: shape=(28, 28) total=784 masked=0 valid=784
+          valid pixels: zeros=0 non-zero=784
+          distinct values in the box: [8, 9, 10, 11, 12, 13, 14]
+          non-zero pixels: min=8.00 max=14.00 median=11.00
+          mask() at the plot point: {'cover_code': 1}
+
+  [CTRL ] 21.045566_85.52362  DHENKANAL  loreys=6.91m  crown=8.0%  gps_acc=4.945m
+          sampled meta_chm=12  meta_chm_3x3=7.3333
+          collection images intersecting the 30 m box: 1
+          band names: ['cover_code']   dtype: {'type': 'PixelType', 'precision': 'int', 'min': 0, 'max': 255}
+          native grid: crs=EPSG:3857 transform=[1.1943285669558747, 0, 8375052.315150194, 0, -1.194328566955896, 3522218.2633809224]
+          30 m pixel grid: shape=(28, 28) total=784 masked=0 valid=784
+          valid pixels: zeros=19 non-zero=765
+          distinct values in the box: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+          non-zero pixels: min=1.00 max=17.00 median=8.00
+          mask() at the plot point: {'cover_code': 1}
+
+  VERDICT — fill in exactly one, from the grids above:
+    [ ] NO DATA       [ ] RECOVERABLE       [ ] DISQUALIFIED

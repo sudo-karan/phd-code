@@ -314,6 +314,16 @@ def part_b(df: pd.DataFrame, zero: pd.Series) -> None:
 
     ic = ee.ImageCollection(META_CHM_IC)
 
+    # Band identity and encoding, fetched once. This is load-bearing: the single band is
+    # named `cover_code` and is UINT8 (PixelType int, 0..255), which is where part A's
+    # "integer metres" comes from -- it is the storage type, not a modelling choice.
+    say("")
+    say("  --- collection metadata (one image, fetched once) ---")
+    meta0 = ee.Image(ic.first()).getInfo()
+    say(f"  bands   : {[b['id'] for b in meta0['bands']]}")
+    say(f"  band[0] : {meta0['bands'][0]}")
+    say(f"  props   : {meta0.get('properties', {})}")
+
     def diagnose(row, kind: str) -> None:
         pt = ee.Geometry.Point([float(row.lon), float(row.lat)])
         box = pt.buffer(15).bounds()          # 30 m box
@@ -335,11 +345,19 @@ def part_b(df: pd.DataFrame, zero: pd.Series) -> None:
         first = ee.Image(hits.first())
         info = first.getInfo()
         bands = [b["id"] for b in info["bands"]]
-        dtype = info["bands"][0].get("data_type", {})
-        say(f"          band names: {bands}   dtype: {dtype}")
+        b0 = info["bands"][0]
+        say(f"          band names: {bands}   dtype: {b0.get('data_type', {})}")
+        say(f"          native grid: crs={b0.get('crs')} transform={b0.get('crs_transform')}")
 
-        # Un-mosaicked, un-reprojected: the raw pixels as delivered.
-        raw = hits.mosaic().select([0])
+        # Two corrections, both needed before this returns the raw grid it claims to:
+        #  - the band is UINT8, so defaultValue=-9999 is not representable and the server
+        #    rejects the call outright ("Default value -9999.000000 is incompatible with
+        #    band 'cover_code'"). Cast to float so the sentinel is outside the real 0..255
+        #    range and a masked pixel is distinguishable from a valid one.
+        #  - ImageCollection.mosaic() carries GEE's DEFAULT projection (EPSG:4326 at 1
+        #    degree), not the tile's. sampleRectangle honours that, so the "1 m grid" would
+        #    have come back as a single pixel. Pin the mosaic to the tile's native grid.
+        raw = hits.mosaic().setDefaultProjection(first.projection()).toFloat()
         rect = raw.sampleRectangle(region=box, defaultValue=-9999, properties=[])
         arr = np.array(rect.get(bands[0]).getInfo(), dtype=float)
         nodata = arr == -9999
@@ -350,13 +368,15 @@ def part_b(df: pd.DataFrame, zero: pd.Series) -> None:
             nzv = valid[valid > 0]
             say(f"          valid pixels: zeros={int((valid == 0).sum())} "
                 f"non-zero={len(nzv)}")
+            say(f"          distinct values in the box: "
+                f"{sorted({int(v) for v in valid})}")
             if len(nzv):
                 say(f"          non-zero pixels: min={nzv.min():.2f} max={nzv.max():.2f} "
                     f"median={float(np.median(nzv)):.2f}")
             else:
                 say("          non-zero pixels: NONE — every valid pixel in the box is 0")
 
-        # Mask state exactly at the plot point.
+        # Mask state exactly at the plot point, on the same native 1 m grid.
         mv = raw.mask().reduceRegion(
             reducer=ee.Reducer.first(), geometry=pt, scale=1).getInfo()
         say(f"          mask() at the plot point: {mv}")
