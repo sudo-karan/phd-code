@@ -32,12 +32,12 @@ For the **hand-crafted baseline** arm:
 
 | Role | Count | Bands |
 |---|---|---|
-| **SNIC only** | 3 | `B4_median`, `B8_median`, `canopy_height_std` |
+| **SNIC only** | 2 | `B4_median`, `B8_median` |
 | **Both SNIC and k-means** | 3 | `canopy_height`, `vv_minus_vh_median`, `ndvi_amplitude_annual` |
 | **k-means only** | 19 (baseline) | everything else in the clustering stack |
 | **Neither** (diagnostic) | 3 | `*_obs_count`, `*_residual_variance`, `annual_rainfall` |
 
-- **SNIC input: 6 bands** in the baseline arm — but this is **config-driven, not fixed**
+- **SNIC input: 5 bands** in the baseline arm — but this is **config-driven, not fixed**
   (`segmentation.input_bands`), and it is **not** the same across arms any more.
 - **k-means input: 22 bands** (baseline) / **25 bands** (variant), after sin/cos expansion
 - **AlphaEarth arm: 64 bands** (`A00`–`A63`) for **both** SNIC and k-means — the embedding
@@ -75,9 +75,13 @@ All 10 m native. Two normalisation steps run before SNIC:
 | 1 | `B4_median` | `s2_composite` (data_load) | Optical colour — red | **No** |
 | 2 | `B8_median` | `s2_composite` (data_load) | Optical colour — NIR | **No** |
 | 3 | `canopy_height` | `features_structure` | Vertical structure | **Yes** |
-| 4 | `canopy_height_std` | `features_structure` | Canopy completeness — separates a smooth plantation-like canopy from a gap-rich natural one at the same mean height | **No** |
-| 5 | `ndvi_amplitude_annual` | `features_optical` | Phenology — the deciduous/evergreen axis | **Yes** |
-| 6 | `vv_minus_vh_median` | `features_radar` | Radar structure (sensor-independent) | **Yes** |
+| 4 | `ndvi_amplitude_annual` | `features_optical` | Phenology — the deciduous/evergreen axis | **Yes** |
+| 5 | `vv_minus_vh_median` | `features_radar` | Radar structure (sensor-independent) | **Yes** |
+
+`canopy_height_std` was band 4 until the Odisha field validation measured it at R²=0.000
+against field crown cover (r=−0.011) over 274 plots. It is still computed by
+`features_structure` and still reaches k-means, but it is no longer a SNIC input or a merge
+criterion. See `docs/datasets.md`.
 
 **AlphaEarth / Tessera arm:** `- {source: embedding_features, band: "*"}` — every embedding
 dimension. `"*"` expands server-side at run time, so it keeps working if the embedding's
@@ -223,8 +227,7 @@ baseline:
 - **SNIC input** becomes the same 64 bands (`{source: embedding_features, band: "*"}`).
 - Consequently `features_radar` and `features_static` **do not run** — nothing in the arm reads
   them. `features_optical` and `features_structure` **do**, because the **merge criteria are held
-  identical across arms** and read `canopy_height`, `canopy_height_std` and
-  `ndvi_amplitude_annual`. `default_stage_names()` derives the stage list from the union of what
+  identical across arms** and read `canopy_height` and `ndvi_amplitude_annual`. `default_stage_names()` derives the stage list from the union of what
   clustering, segmentation and merge each ask for, so this follows from config rather than from a
   hardcoded branch.
 - No exclude-list and no cyclic decomposition apply (there are no metadata or angular bands).

@@ -129,8 +129,8 @@ SNIC draws the boundaries and k-means labels them. So `features_radar` and
 `features_static` drop out — nothing in the arm reads them.
 
 `features_optical` and `features_structure` **do** still run, for one reason:
-the **merge criteria are held identical across arms** and read `canopy_height`,
-`canopy_height_std` and `ndvi_amplitude_annual`. "What makes two adjacent
+the **merge criteria are held identical across arms** and read `canopy_height` and
+`ndvi_amplitude_annual`. "What makes two adjacent
 patches one stand" is a fact about forestry, not about the sensor pipeline, and
 holding the merge rule constant is what leaves *delineation* as the only thing
 differing between the arms — the thesis question. If each arm merged on its own
@@ -377,10 +377,12 @@ hand-crafted feature images (optical / radar / structure / static).
 
   Default (used by `sanjay_van_baseline.yaml`, which deliberately does not
   repeat it so the two cannot drift): `B4_median`, `B8_median` from
-  `s2_composite`; `canopy_height`, `canopy_height_std` from
-  `structure_features`; `ndvi_amplitude_annual` from `optical_features`;
-  `vv_minus_vh_median` from `radar_features`. Six bands over ~four independent
-  axes — optical colour, vertical structure, canopy roughness, phenology, radar.
+  `s2_composite`; `canopy_height` from `structure_features`;
+  `ndvi_amplitude_annual` from `optical_features`; `vv_minus_vh_median` from
+  `radar_features`. Five bands over ~four independent axes — optical colour,
+  vertical structure, phenology, radar. `canopy_height_std` was a sixth
+  ("canopy roughness") until the Odisha field validation measured it at R²=0.000
+  against crown cover; see `docs/datasets.md`.
 
   Band names must be unique after `"*"` expansion, since SNIC names its
   per-cluster means `<band>_mean`. Two further checks run at config load: a
@@ -449,11 +451,18 @@ a two-tier threshold scheme.
 
 - `enabled`: run the merge stage (default `true`).
 - `criteria`: mapping of band name to tolerance, **in the band's own physical
-  units**. Defaults `{canopy_height: 2.00, canopy_height_std: 0.45,
-  ndvi_amplitude_annual: 0.030}` — Xiong's stand height / canopy closure /
-  species axes, using the closest analogue available without ALS or a species
-  map. Measured from this AOI's own adjacent-superpixel difference distribution
-  (1249 superpixels, 3569 adjacent pairs).
+  units**. Defaults `{canopy_height: 2.00, ndvi_amplitude_annual: 0.030}` — two
+  of Xiong's three axes (stand height and species), using the closest analogue
+  available without ALS or a species map. His third, canopy closure, is **not
+  covered**: it was carried by `canopy_height_std` until the Odisha field
+  validation measured that band at R²=0.000 against crown cover, so the axis was
+  nominal rather than real. See `docs/datasets.md`. Measured from this AOI's own
+  adjacent-superpixel difference distribution (1249 superpixels, 3569 adjacent
+  pairs).
+
+  Note that with two criteria and `min_defined_criteria: 2` the gate is **fully
+  conjunctive**: both must be defined for a pair, where with three one could be
+  missing and the pair still qualified.
 
   Absolute units are the contract, percentiles are the calibration tool: "merge
   below the 60th percentile of neighbour differences" merges the same fraction
