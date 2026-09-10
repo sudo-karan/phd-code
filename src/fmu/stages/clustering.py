@@ -309,7 +309,9 @@ class ClusteringStage(Stage):
             "cyclic_decomposition_log": decomposition_log,
         }
         metadata_json = json.dumps(clustering_metadata, sort_keys=True)
-        cluster_labels = cluster_labels.set("clustering_metadata", metadata_json)
+        # ee.Image(...) is a cast: Element.set() returns Element in the stubs, and
+        # every consumer of this variable needs an Image.
+        cluster_labels = ee.Image(cluster_labels.set("clustering_metadata", metadata_json))
 
         return StageResult(
             outputs={

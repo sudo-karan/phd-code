@@ -53,7 +53,7 @@ def largest_component_pixels(
             # No bestEffort: a silently downsampled histogram would under-report
             # component sizes, which is the one direction this check must not
             # fail in.
-            maxPixels=1e9,
+            maxPixels=1_000_000_000,
         ),
         context=f"{context} component size histogram",
     ).get(band)
@@ -171,7 +171,7 @@ def explained_variance_r2(
             reducer=ee.Reducer.mean(),
             geometry=roi,
             scale=scale,
-            maxPixels=1e9,
+            maxPixels=1_000_000_000,
         ),
         context=f"{context} global means",
     )
@@ -195,7 +195,7 @@ def explained_variance_r2(
             reducer=ee.Reducer.sum(),
             geometry=roi,
             scale=scale,
-            maxPixels=1e9,
+            maxPixels=1_000_000_000,
         ),
         context=f"{context} sums of squares",
     )

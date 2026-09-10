@@ -466,7 +466,7 @@ class ExportStage(Stage):
         try:
             roi_area_m2 = safe_get_info(roi.area(maxError=1), context="roi area")
             roi_area_km2 = round((roi_area_m2 or 0) / 1e6, 3)
-        except Exception:  # noqa: BLE001; area is informational, not critical
+        except Exception:  # noqa: BLE001 - area is informational, not critical
             roi_area_km2 = None
 
         # 6. Build the manifest
@@ -533,7 +533,7 @@ class ExportStage(Stage):
             fileNamePrefix=filename,
             region=roi,
             scale=scale,
-            maxPixels=1e9,
+            maxPixels=1_000_000_000,
             fileFormat="GeoTIFF",
         )
         task.start()
@@ -668,7 +668,7 @@ def _compute_cluster_distribution(
             reducer=ee.Reducer.frequencyHistogram(),
             geometry=roi,
             scale=scale,
-            maxPixels=1e9,
+            maxPixels=1_000_000_000,
             bestEffort=True,
         ),
         context="cluster frequency histogram",
@@ -1048,7 +1048,7 @@ def _build_dissolved_feature_collection(
                     f"profile_{col}": d.get(cid_str)
                     for col, d in lookup.items()
                 }
-                return feature.set(attrs)
+                return ee.Feature(feature.set(attrs))
 
             filtered = filtered.map(attach_profile)
 
@@ -1068,13 +1068,16 @@ def _add_geom_attrs(feature: ee.Feature, scale: int) -> ee.Feature:
     perimeter_m = geom.perimeter(maxError=1)
     centroid_coords = geom.centroid(maxError=1).coordinates()
     pixel_area_m2 = scale * scale
-    return feature.set({
+    # ee.Feature(...) is a cast: Element.set() is typed as returning Element, and
+    # every one of these helpers is annotated -> ee.Feature because it is handed to
+    # FeatureCollection.map(). Same wrap at the three sites below.
+    return ee.Feature(feature.set({
         "area_ha": area_m2.divide(10000),
         "perim_m": perimeter_m,
         "n_pixels": area_m2.divide(pixel_area_m2).round(),
         "centroid_lat": centroid_coords.get(1),
         "centroid_lon": centroid_coords.get(0),
-    })
+    }))
 
 
 def _rename_mode_to_cluster_id(feature: ee.Feature) -> ee.Feature:
@@ -1087,7 +1090,7 @@ def _rename_mode_to_cluster_id(feature: ee.Feature) -> ee.Feature:
     server-side select() pattern would also strip every other property
     on the feature).
     """
-    return feature.set("cluster_id", feature.get("mode"))
+    return ee.Feature(feature.set("cluster_id", feature.get("mode")))
 
 
 # Properties to strip from the SNIC feature collection before export.
@@ -1137,7 +1140,7 @@ def _renumber_by_centroid(
         lon = ee.Number(feature.get("centroid_lon"))
         # -lat dominates; lon breaks ties.
         sort_key = lat.multiply(-_SORT_LAT_MULT).add(lon)
-        return feature.set("_sort_key", sort_key)
+        return ee.Feature(feature.set("_sort_key", sort_key))
 
     sorted_fc = fc.map(add_sort_key).sort("_sort_key")
     size = sorted_fc.size()

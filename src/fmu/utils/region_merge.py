@@ -178,9 +178,29 @@ def merge_superpixels(
         return (round(lon, 7), round(lat, 7), root)
 
     def compare(a: int, b: int, tolerances: dict[str, float]) -> tuple[bool, float, int]:
-        """(passes gate, distance, number of criteria defined on both sides)."""
+        """(passes gate, distance, number of criteria defined on both sides).
+
+        The third element is the count of criteria defined on BOTH regions, and it
+        has to be the full count even when the gate fails, because the caller uses
+        it to attribute the rejection:
+
+            if n_defined < min_defined_criteria: blocked_undefined += 1
+
+        This used to return the moment a band exceeded its tolerance, so the count
+        was "criteria checked so far". With min_defined_criteria=2 and the first
+        band failing, a genuine tolerance rejection was filed under
+        pass1_pairs_blocked_by_undefined_criteria_round1 -- and the ordering makes
+        that the common case rather than a corner one, since `criteria` declares
+        canopy_height first and canopy_height is documented as the binding band.
+
+        So: no early return. Every defined criterion is counted, and the tolerance
+        failure is carried in a flag. `d` is not accumulated for a band that
+        exceeded, which costs nothing -- the distance is only read when the gate
+        passes, and math.inf is returned otherwise either way.
+        """
         d = 0.0
         n_defined = 0
+        exceeded = False
         for band, tol in tolerances.items():
             ma, mb = regions[a].mean(band), regions[b].mean(band)
             if ma is None or mb is None:
@@ -188,9 +208,10 @@ def merge_superpixels(
             n_defined += 1
             delta = abs(ma - mb)
             if delta > tol:
-                return (False, math.inf, n_defined)
+                exceeded = True
+                continue
             d += (delta / tol) ** 2
-        if n_defined < min_defined_criteria:
+        if exceeded or n_defined < min_defined_criteria:
             return (False, math.inf, n_defined)
         return (True, d, n_defined)
 
@@ -261,23 +282,50 @@ def merge_superpixels(
     pass2_fallback_merges = 0
     pass2_iterations = 0
 
+    # Both of these used to scan the whole edge dict on every call, and shared_edge
+    # is called once per fitting neighbour inside a max(), so pass 2 cost roughly
+    # iterations x undersized x degree x |E|. At the ~1300 superpixels a live run
+    # produces that is a couple of seconds and invisible. At merge.max_superpixels
+    # = 50000 -- a limit the code advertises as reachable -- it is hours of pure
+    # Python, which would look like a hang rather than a cost.
+    #
+    # Built once here from the post-pass-1 union-find state, then maintained
+    # incrementally by _fuse() at the single place pass 2 merges. They deliberately
+    # outlive the pass-2 loop: the orphan-classification pass below calls
+    # root_neighbours() again, once per surviving undersized root.
+    def _pair(a: int, b: int) -> tuple[int, int]:
+        return (a, b) if a < b else (b, a)
+
+    adjacency: dict[int, set[int]] = {r: set() for r in regions}
+    shared_px: dict[tuple[int, int], int] = {}
+    for (_i, _j), _count in graph.edges.items():
+        _a, _b = uf.find(_i), uf.find(_j)
+        if _a == _b:
+            continue
+        adjacency.setdefault(_a, set()).add(_b)
+        adjacency.setdefault(_b, set()).add(_a)
+        _k = _pair(_a, _b)
+        shared_px[_k] = shared_px.get(_k, 0) + _count
+
     def root_neighbours(root: int) -> set[int]:
-        out: set[int] = set()
-        for i, j in graph.edges:
-            a, b = uf.find(i), uf.find(j)
-            if a == root and b != root:
-                out.add(b)
-            elif b == root and a != root:
-                out.add(a)
-        return out
+        return {n for n in adjacency.get(root, ()) if n in regions}
 
     def shared_edge(root_a: int, root_b: int) -> float:
-        total = 0
-        for (i, j), count in graph.edges.items():
-            a, b = uf.find(i), uf.find(j)
-            if {a, b} == {root_a, root_b}:
-                total += count
-        return total * float(graph.scale_m)
+        return shared_px.get(_pair(root_a, root_b), 0) * float(graph.scale_m)
+
+    def _fuse(keep: int, gone: int) -> None:
+        """Fold `gone`'s adjacency into `keep`. Called once per pass-2 merge."""
+        for nb in adjacency.pop(gone, set()):
+            adjacency.get(nb, set()).discard(gone)
+            count = shared_px.pop(_pair(gone, nb), 0)
+            if nb == keep:
+                continue
+            if count:
+                key = _pair(keep, nb)
+                shared_px[key] = shared_px.get(key, 0) + count
+            adjacency[nb].add(keep)
+            adjacency.setdefault(keep, set()).add(nb)
+        adjacency.setdefault(keep, set()).discard(gone)
 
     for _ in range(max_pass2_iterations):
         undersized = sorted(
@@ -326,6 +374,7 @@ def merge_superpixels(
             regions[keep].absorb(regions[gone])
             del regions[gone]
             uf.union(keep, gone)
+            _fuse(keep, gone)
             pass2_merges += 1
             pass2_fallback_merges += int(used_fallback)
             progress = True

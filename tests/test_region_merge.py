@@ -434,3 +434,115 @@ def test_calibration_skips_pairs_with_undefined_bands():
     report = calibrate_thresholds(_graph(px, {(0, 1): 5}), means, {"ch": 2.0})
     assert report["per_band"]["ch"]["n_pairs_defined"] == 0
     assert report["n_pairs_with_any_defined_criterion"] == 0
+
+
+# ---------- diagnostic attribution ----------
+
+
+def test_a_tolerance_rejection_is_not_filed_as_undefined_criteria():
+    """The counter has to name the real cause.
+
+    `compare()` used to return the moment a band exceeded its tolerance, so the
+    third element of its tuple was "criteria checked so far" rather than
+    "criteria defined". The caller attributes with
+    `if n_defined < min_defined_criteria: blocked_undefined += 1`, so with
+    min_defined_criteria=2 and the FIRST band failing, a genuine gate rejection
+    was filed under pass1_pairs_blocked_by_undefined_criteria_round1.
+
+    Ordering makes that the common case, not a corner one: config declares
+    canopy_height first and documents it as the binding criterion, so the band
+    most likely to blow the gate is also the one that produced the wrong label.
+
+    Here both criteria are fully defined on both regions and `ch` is far over
+    tolerance. The pair must be rejected, and the undefined counter must read 0.
+    """
+    px = [200, 200]
+    means, counts = _attrs([{"ch": 10.0, "std": 0.5}, {"ch": 30.0, "std": 0.52}], px)
+    r = _run(
+        _graph(px, {(0, 1): 10}),
+        means,
+        counts,
+        {"ch": 2.0, "std": 0.45},
+        min_area_ha=0.5,  # 2 ha each, so pass 2 has no reason to act
+    )
+    assert r.n_stands == 2
+    assert r.diagnostics["pass1_pairs_blocked_by_undefined_criteria_round1"] == 0
+
+
+def test_undefined_criteria_are_still_counted_when_that_is_the_cause():
+    """The other half of the same contract: when the pair really does fall short
+    of min_defined_criteria, the counter must still fire. Guards against 'fixing'
+    the attribution by never counting anything."""
+    px = [200, 200]
+    means = {0: {"ch": None, "std": 0.5}, 1: {"ch": 10.0, "std": 0.52}}
+    counts = {0: {"ch": 0, "std": 200}, 1: {"ch": 200, "std": 200}}
+    r = _run(
+        _graph(px, {(0, 1): 10}),
+        means,
+        counts,
+        {"ch": 2.0, "std": 0.45},
+        min_area_ha=0.5,
+    )
+    assert r.diagnostics["pass1_pairs_blocked_by_undefined_criteria_round1"] == 1
+
+
+def test_criteria_order_does_not_change_the_diagnostic():
+    """Same pair, criteria declared in the opposite order. The counter is a fact
+    about the pair, not about which band happened to be checked first."""
+    px = [200, 200]
+    means, counts = _attrs([{"ch": 10.0, "std": 0.5}, {"ch": 30.0, "std": 0.52}], px)
+    key = "pass1_pairs_blocked_by_undefined_criteria_round1"
+    forward = _run(_graph(px, {(0, 1): 10}), means, counts,
+                   {"ch": 2.0, "std": 0.45}, min_area_ha=0.5)
+    reverse = _run(_graph(px, {(0, 1): 10}), means, counts,
+                   {"std": 0.45, "ch": 2.0}, min_area_ha=0.5)
+    assert forward.diagnostics[key] == reverse.diagnostics[key] == 0
+
+
+# ---------- pass 2 over many merges ----------
+
+
+def _chain(n: int, px_each: int) -> tuple[SuperpixelGraph, dict, dict]:
+    """A path graph of n undersized regions, all mutually incompatible on `ch`.
+
+    Pass 1 cannot touch them (every neighbour is far over tolerance), so every
+    merge is pass 2's shared-edge fallback, and they cascade: each merge changes
+    the adjacency of the survivor. That is the path the incremental adjacency and
+    shared-edge maps have to keep correct, and no pre-existing test reaches it --
+    across the whole suite the maximum pass2_merges was 1.
+    """
+    n_pixels = [px_each] * n
+    edges = {(i, i + 1): 10 + i for i in range(n - 1)}
+    means, counts = _attrs(
+        [{"ch": 5.0 + 20.0 * i, "std": 0.5} for i in range(n)], n_pixels
+    )
+    return _graph(n_pixels, edges), means, counts
+
+
+def test_pass2_cascades_over_many_merges():
+    graph, means, counts = _chain(8, 20)  # 0.2 ha each, all undersized
+    r = _run(graph, means, counts, {"ch": 2.0, "std": 0.45},
+             min_area_ha=1.0, max_area_ha=10.0)
+    assert r.diagnostics["pass2_merges"] > 1, "this case must exercise the cascade"
+    # 8 x 0.2 ha = 1.6 ha total, so everything can legally end up in one stand.
+    assert r.n_stands < 8
+    assert len(r.assignment) == 8
+    # Every surviving stand is a contiguous run of the chain: the maps must not
+    # have invented an adjacency across a break.
+    for stand in set(r.assignment):
+        idx = [i for i, s in enumerate(r.assignment) if s == stand]
+        assert idx == list(range(idx[0], idx[-1] + 1)), (stand, idx)
+
+
+def test_pass2_respects_max_area_across_a_cascade():
+    """The area bound has to hold at every step of the cascade, not just the
+    first: each merge grows the survivor and the next one is judged against the
+    grown size."""
+    graph, means, counts = _chain(10, 20)  # 0.2 ha each
+    r = _run(graph, means, counts, {"ch": 2.0, "std": 0.45},
+             min_area_ha=1.0, max_area_ha=0.6)  # at most 3 regions per stand
+    px_per_stand: dict[int, int] = {}
+    for i, stand in enumerate(r.assignment):
+        px_per_stand[stand] = px_per_stand.get(stand, 0) + graph.n_pixels[i]
+    for stand, px in px_per_stand.items():
+        assert px * 100 / PX_PER_HA / 100 <= 0.6 + 1e-9, (stand, px)

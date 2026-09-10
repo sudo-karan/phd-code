@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fmu"
-version = "0.18.0"
+dynamic = ["version"]
 description = "Forest Management Units: multi-sensor pipeline for delineating ecologically coherent forest stands from open satellite data."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license = {text = "MIT"}
 authors = [
     {name = "Jaskaran Singh"},
@@ -75,6 +75,12 @@ drive = [
     "google-api-python-client>=2.0",
 ]
 
+[tool.setuptools.dynamic]
+# One version string, read from the package. Three had drifted (pyproject 0.18.0,
+# __init__ 1.1.0, docs v1.2) and the wrong one shipped: export.py writes
+# __version__ into every run manifest as "pipeline_version".
+version = {attr = "fmu.__version__"}
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
@@ -97,6 +103,6 @@ markers = [
 ]
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 strict = false
 ignore_missing_imports = true
