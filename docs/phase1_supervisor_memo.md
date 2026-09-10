@@ -92,8 +92,8 @@ threshold attached to that figure.
 This is a sharper result than the one originally planned, and should be presented as the
 finding rather than as an obstacle.
 
-Twelve of the twenty delineation papers surveyed for this thesis use **measured** ALS canopy
-height as a delineation input. That assumption is available in Scandinavia, central Europe
+Fourteen of the twenty delineation papers surveyed for this thesis take **airborne laser
+scanning as a primary input**. That assumption is available in Scandinavia, central Europe
 and the United States, and it is not available here. What Phase 1 now has is field evidence
 — 274 plots, 5,910 trees, Lorey's height and crown cover — that **every free global
 substitute for measured canopy height fails in Indian dry deciduous forest, with a distinct
