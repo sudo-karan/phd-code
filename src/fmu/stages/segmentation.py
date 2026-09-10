@@ -11,13 +11,19 @@ hardcoded literal here.
 The default stack spans roughly four independent axes:
   - B4_median, B8_median        S2 red + NIR (optical colour)
   - canopy_height               ETH 2020 (vertical structure)
-  - canopy_height_std           3x3 roughness (canopy completeness: separates a
-                                smooth plantation-like canopy from a gap-rich
-                                natural one at the same mean height)
   - ndvi_amplitude_annual       seasonal swing (the deciduous/evergreen axis;
                                 without it SNIC sees no phenology at all, since
                                 it runs on a multi-year median composite)
   - vv_minus_vh_median          S1 cross-pol contrast (sensor-independent)
+
+`canopy_height_std` (3x3 roughness) was in the default until the Odisha field
+validation. It was documented here as canopy completeness -- "separates a smooth
+plantation-like canopy from a gap-rich natural one at the same mean height" --
+and that claim did not survive measurement: against field crown cover over 274
+plots it scores R2=0.000 (r=-0.011). It is still computed by features_structure
+and still declarable, but it is no longer a default segmentation band, because
+drawing boundaries with it means drawing them on a quantity with no established
+meaning.
 
 `composite_nirv` is deliberately absent from the default: it is
 (B8/10000) x NDVI, an algebraic function of B4 and B8, so carrying it spent

@@ -99,7 +99,6 @@ segmentation:
     - {source: s2_composite,       band: B4_median}
     - {source: s2_composite,       band: B8_median}
     - {source: structure_features, band: canopy_height}
-    - {source: structure_features, band: canopy_height_std}
     - {source: optical_features,   band: nirv_amplitude_annual}
     - {source: radar_features,     band: vv_minus_vh_median}
 
@@ -112,7 +111,6 @@ segmentation:
 merge:
   criteria:
     - {source: structure_features, band: canopy_height,        tolerance: 2.00}
-    - {source: structure_features, band: canopy_height_std,    tolerance: 0.45}
     - {source: optical_features,   band: nirv_amplitude_annual, tolerance: 0.030}
 
 clustering:

@@ -42,7 +42,7 @@ NIRV_DUAL_YAML = REPO_ROOT / "configs" / "sanjay_van_nirv_dual.yaml"
 
 
 def test_default_input_bands():
-    """Six bands over ~four independent axes, in a fixed order.
+    """Five bands over ~four independent axes, in a fixed order.
 
     Pinned literally: the default IS the shipped baseline experiment (the
     config deliberately does not repeat it), so a change here silently changes
@@ -52,7 +52,6 @@ def test_default_input_bands():
         ("s2_composite", "B4_median"),
         ("s2_composite", "B8_median"),
         ("structure_features", "canopy_height"),
-        ("structure_features", "canopy_height_std"),
         ("optical_features", "ndvi_amplitude_annual"),
         ("radar_features", "vv_minus_vh_median"),
     ]
@@ -187,7 +186,6 @@ def test_nirv_band_with_ndvi_index_is_rejected_at_load():
 
 _NIRV_MERGE_CRITERIA = [
     {"source": "structure_features", "band": "canopy_height", "tolerance": 2.00},
-    {"source": "structure_features", "band": "canopy_height_std", "tolerance": 0.45},
     {"source": "optical_features", "band": "nirv_amplitude_annual", "tolerance": 0.030},
 ]
 # The default r2_attributes name `ndvi_trend`, which an index: nirv arm does not
