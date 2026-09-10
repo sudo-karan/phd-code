@@ -49,8 +49,13 @@ georeferencing offset — an offset would have to exceed 500 m, and would have s
 five non-zero control plots, which instead read 11.62 m mean at 100% non-zero coverage. A
 frequency histogram over 554,745 pixels confirms the band is a height field in metres
 (contiguous integer support 0–25, smooth monotone decay, thin tail to 31) and *not* a class
-code — and shows that **63.5% of the whole sampled landscape reads zero**, with a non-zero
-mean of 4.82 m. The 122 zero plots are not unlucky draws.
+code. Of those pixels **63.5% read 0**, at a non-zero mean of 4.82 m. That is a statement
+about the sampled pixels and not about forest cover: the sample is the union of 274 discs of
+500 m radius around plot centres, which in rural Dhenkanal, Angul and Koraput takes in
+farmland, fallow, settlement and roads. The control discs show the confound directly — they
+run 100% non-zero at 15 m and fall to 62.1% at 500 m, so widening the disc brings in
+non-forest exactly as expected. The disqualification rests on the plot-level evidence above
+and does not depend on this share.
 
 **GEDI's published number was an artefact and has been corrected.** The 50 m neighbourhood
 search never executed: Earth Engine's `reduceNeighborhood` masks its output wherever the
