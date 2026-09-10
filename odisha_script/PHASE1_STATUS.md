@@ -79,6 +79,7 @@ averaging in general.
 | **step 8** `odisha_phase1_8_separation_null.py` | null model for the separation-ratio chart; three nulls, 22 bands |
 | **step 9** `odisha_phase1_9_gedi_recount.py` | GEDI root cause + fix + re-sample. **Re-sample RUN**: coverage 10 → 89, R² 0.404 → 0.088. Writes `odisha_plots_sampled_v3.csv`; v2 is an input and is left untouched |
 | **step 10** `odisha_phase1_10_meta_offset_check.py` | the two confirmations that close the verdict: offset ladder at 15/50/100/200/500 m, and a `cover_code` frequency histogram over 554,745 px. **RUN** |
+| **step 11** `odisha_phase1_11_survey_date_check.py` | recovers the survey date (2022-04-25 → 2023-04-05) from the raw records and tests the temporal alternative to the verdict. **RUN** |
 | step 3 | GEDI construction fixed at source (explicit un-normalized kernel, `Reducer.count()`) |
 | step 4 | coverage line now prints both counts and fails loudly if they disagree |
 
@@ -166,7 +167,9 @@ that the stands are *structurally meaningful* rests on the measurement, not the 
    smooth monotone decay (1 at 7.81% down to 19 at 0.01%), then 2 pixels in the whole region
    at 28 and 31. The only interior gaps are 26, 27, 29 and 30 — above which the region holds
    two pixels total. That is tail sparsity, not the empty space between class codes. A
-   categorical code would spike on arbitrary integers; this does not.
+   categorical code would spike on arbitrary integers; this does not. Across that whole
+   sampled landscape **63.5% of pixels read zero**, with a non-zero mean of **4.82 m** — so
+   the zeros are not a handful of bad plots, they are most of the map.
 
    **How far the verdict generalises, stated precisely.** The 12 were chosen by sorted
    `plot_key` under district quotas, not by severity, so they are not the sharpest cases
@@ -180,37 +183,63 @@ that the stands are *structurally meaningful* rests on the measurement, not the 
      height and 11 reach 70% crown cover; the median zero plot carries 5.85 m and 28% crown
      cover, and the range runs down to 0.16 m and 0%. So some of the 122 are legitimately
      non-forest. But a Meta `0` means *"under half a metre"*, and the **median** zero plot at
-     5.85 m is already a failure on a product quantised to integer metres — the verdict does
-     not rest on the tall tail, the tall tail is only what makes it unarguable.
+     5.85 m is already a failure on a product quantised to integer metres.
+
+   **The one live alternative was that the zeros are temporal, and it has now been tested
+   (step 11).** The supervisor memo listed survey year among the enquiries blocked on FES,
+   because if the imagery predates the survey by enough, a plot carrying canopy today could
+   genuinely have been bare when Meta saw it and `0` would be *correct*. **It was not
+   blocked**: `Odisha_samples.csv` carries `Creation Date` on all 5,910 tree records, and
+   `odisha_phase1_0_clean.py` simply never carried it through to the plot CSV. The campaign
+   ran **2022-04-25 to 2023-04-05**, so the field work postdates the imagery either way — and
+   the hypothesis is one-directional: forest can grow into a zero, it cannot grow out of one.
+
+   What the gap requires, given a Meta `0` means "under half a metre":
+
+   | imagery | gap | median rate needed | max | plots needing >2 m/yr |
+   |---|---|---|---|---|
+   | **2020** — late end of the documented "chiefly 2018–2020" window | 1.8–2.8 yr | **2.52 m/yr** | 15.43 | **85 of 122 (70%)** |
+   | 2009 — earliest acquisition anywhere in the collection | 12.8–13.8 yr | 0.40 m/yr | 2.52 | 1 of 122 (1%) |
+
+   **Under the documented window the temporal explanation fails outright** — it needs the
+   median zero plot to have grown over 2 m a year and the tallest over 15. Under a 2009
+   sourcing it survives the arithmetic. So the verdict is robust *given the imagery dates the
+   collection documents*, and **the one residual check is the per-tile acquisition date** —
+   which is a property of the asset, not a question for FES. Recorded as a named dependency
+   rather than folded into the verdict silently.
 
    Two bugs had to be fixed before part B could produce any of this, both now in the script:
    `sampleRectangle(defaultValue=-9999)` is rejected outright against a UINT8 band, and
    `ImageCollection.mosaic()` carries GEE's default 1-degree projection, which would have
    returned a single pixel rather than the 1 m grid the diagnostic claims to inspect.
 
-   Two further confirmations, run as step 10 (`odisha_phase1_10_meta_offset_check.py`):
-   an **offset ladder** at 15/50/100/200/500 m discs — the zero plots read mean 0.01 m and
-   1.2% non-zero at 15 m and only 0.26 m and 11.5% at 500 m, while the controls read
-   11.62 m and 100% at 15 m, so no georeferencing offset short of 500 m fits and one that
-   large would scramble the controls; and a **frequency histogram** over 554,745 pixels,
-   which shows contiguous integer support 0-25 with smooth monotone decay and a thin tail
-   to 31. That is a height field in metres, not a class code — and 63.5% of the sampled
-   landscape reads zero, non-zero mean 4.82 m.
+   **The failures are not independent, and this is the mechanism behind the verdict.** Meta's
+   1 m model is supervised on aerial lidar from NEON sites in the United States only — Tolan
+   et al. (2024) state the limitation, and their non-US data (Sao Paulo, CA-Brande) is
+   validation, not training. Global applicability rests on a post-processing network trained
+   on 13 million GEDI measurements supplying "a scalar multiplier that match percentiles of
+   the CHM map with the GEDI model predicted value for GEDI RH95". So Meta's global correction
+   is anchored on a product that scores **R²=0.088 at n=89** in this forest. Two caveats on
+   that characterisation, both checked against the paper: the anchor metric is **RH95** and
+   our corrected figure is against **rh98** — related, not identical; and Meta's headline MAE
+   of 2.8 m is reported without a vegetation-height threshold attached to it, so it should not
+   be quoted as "2.8 m for vegetation above 1 m". Note also that **a multiplicative rescale
+   applied to a prediction of zero returns zero**, so the GEDI correction can neither be
+   blamed for the zeros nor credited with fixing them: they originate in the RGB-to-height
+   model itself.
 
-   **The failures are not independent, and this belongs with the verdict whichever way it
-   goes.** Meta's 1 m model is supervised on aerial lidar from NEON sites in the United
-   States only — Tolan et al. (2024) state the limitation, and their non-US data (Sao Paulo,
-   CA-Brande) is validation, not training. Global applicability rests on a post-processing
-   network trained on 13 million GEDI measurements supplying "a scalar multiplier that match
-   percentiles of the CHM map with the GEDI model predicted value for GEDI RH95". So Meta's
-   global correction is anchored on a product that scores **R2=0.088 at n=89** in this
-   forest. Two caveats on that characterisation, both checked against the paper: the anchor
-   metric is **RH95** and our corrected figure is against **rh98** — related, not identical;
-   and Meta's headline MAE of 2.8 m is reported without a vegetation-height threshold
-   attached to it, so it should not be quoted as "2.8 m for vegetation above 1 m". Note also
-   that a multiplicative rescale applied to a prediction of zero returns zero, so the GEDI
-   correction can neither be blamed for the zeros nor credited with fixing them: they
-   originate in the RGB-to-height model itself.
+   That last point is what turns the reading from an anomaly into a disqualification. The
+   zeros are not a downstream artefact that a different sampling or a different correction
+   could lift — they are the model's own output over this canopy, and the correction that
+   makes the product global is multiplicative and therefore cannot touch them.
+
+   **Consequence, as the diagnostic itself defines it: no aggregation fixes this.** Meta is
+   out as a merge criterion. Test 4a's headline **R²=0.241 is void** — it is computed across a
+   column in which 44.5% of the rows are a product failure rather than a short-canopy reading.
+   The zeros-excluded **R²=0.142 (n=152) still stands as a statistic**, but only describes
+   agreement *where the product returned a reading at all*, which is a biased subset and not a
+   fix. And the finding travels beyond this pipeline: **a published 1 m canopy-height product
+   returns 0 m over 33.57 m of measured Lorey's height on a fully unmasked grid.**
 2. **GEDI re-sample — DONE. n=10 was not the coverage; 89 is.** The three defects were
    real and the third was decisive: `reduceNeighborhood`'s `skipMasked` defaults to **True**,
    masking the output wherever the *centre* pixel is masked regardless of what the kernel
@@ -245,30 +274,29 @@ that the stands are *structurally meaningful* rests on the measurement, not the 
    deferral: the criteria list cannot shrink to one, and there is nothing validated to grow it
    back with.
 
-   **One piece of it does survive the verdict, because it never depended on it.**
-   `canopy_height_std` should go regardless of Task 1: R²=0.000 against crown cover
-   (r=−0.011) is not a weak criterion, it is a criterion measuring nothing it claims. Dropping
-   it leaves exactly two — `canopy_height` and `ndvi_amplitude_annual` — which meets the floor
-   without lowering it. **Not applied here**, because it is not a neutral edit and the
-   consequences should be signed off rather than slipped into a verdict commit:
+   **The one piece that never depended on the verdict has now been applied** (PR #33).
+   `canopy_height_std` is gone from `_DEFAULT_MERGE_CRITERIA`, from
+   `_DEFAULT_SNIC_INPUT_BANDS`, and from `sanjay_van_nirv_dual.yaml`, which named both
+   explicitly. R²=0.000 against crown cover (r=−0.011) is not a weak criterion, it is a
+   criterion measuring nothing it claims. Note the change went further than the
+   recommendation recorded here, which was to drop it as a *criterion* and keep it as a SNIC
+   input on the grounds that it survives the spatial null at +0.076 and so does real work
+   carving the tessellation. Dropping it from both is defensible — a band with no established
+   meaning shaping superpixel boundaries is the same objection one level down — but it is a
+   larger change than "remove a criterion", and the merge stage's docstring now records the
+   closure axis as an admitted gap rather than a covered one.
 
-   - With three criteria and a floor of 2, one may be null and a merge is still admissible.
-     With **exactly two and a floor of 2, both must be defined** for any merge to be admitted
-     (`compare()` returns `(False, inf, n_defined)` below the floor). Wherever ETH or the NDVI
-     amplitude is masked, merging stops. That is strictly stricter behaviour, not a like-for-
-     like removal.
-   - It changes `merge.criteria`, so it changes the cache fingerprint and every downstream
-     number in every arm — which is the same reason item 4 holds the AlphaEarth arm.
-   - `sanjay_van_nirv_dual.yaml` names all three criteria explicitly (with
-     `nirv_amplitude_annual` in place of the default's `ndvi_amplitude_annual`), so the
-     default and that config have to move together or the arms stop being comparable — one
-     would gate on three criteria and the others on two.
-
-   Note the two decisions are about different roles and do not have to agree:
-   `canopy_height_std` is also a **SNIC input band**, where it contributes texture that carves
-   the tessellation and survives the spatial null at +0.076. The R²=0.000 finding is about its
-   fitness as a *measurement of crown cover*, which is what a merge criterion gates on. The
-   recommendation is to drop it as a criterion and leave it as a SNIC input.
+   **One consequence of it is still open.** The criteria list is now exactly two long against
+   `min_defined_criteria: 2`, so **every criterion is mandatory**: a pair needs both
+   `canopy_height` and `ndvi_amplitude_annual` defined on both sides, where before any two of
+   three sufficed. The config validator added alongside the change catches
+   `min_defined_criteria > len(criteria)` — the impossible case — but the *equality* case is
+   legal and silent, and it is the one that changes behaviour. `config.py`'s own comment
+   records that **14 of 1249 superpixels in the committed run have no `canopy_height` at all**
+   (ETH no-data). Those 14 could previously clear pass 1 on the other two criteria; they now
+   provably cannot, and drop to the eliminate pass. That may well be the right destination —
+   the comment argues it is — but it is a measurable change in where they are resolved, and
+   nothing currently reports it.
 4. **AlphaEarth arm held.** Correct: changing `merge.criteria` changes the cache
    fingerprint and every number downstream.
 5. `off_B5` (R²=0.140 vs Sal dominance) is a leaf-off seasonal composite band **no stage
@@ -369,6 +397,7 @@ python odisha_phase1_7_meta_zero_diagnosis.py   # part A offline; part B needs G
 python odisha_phase1_8_separation_null.py       # fully offline, reads b24fad3 via git show
 python odisha_phase1_9_gedi_recount.py          # re-samples GEDI; needs GEE; writes v3 CSV
 python odisha_phase1_10_meta_offset_check.py    # needs GEE; 4 getInfo calls, no exports
+python odisha_phase1_11_survey_date_check.py    # fully offline; reads the raw Odisha_samples.csv
 ```
 
 Each writes `odisha_phase1_<n>_results.txt` beside itself; step 8 also writes
