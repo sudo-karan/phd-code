@@ -128,8 +128,9 @@ that the stands are *structurally meaningful* rests on the measurement, not the 
      sample instead.
    - at **all 12** zero plots: exactly 1 collection image intersects the 30 m box,
      `masked = 0` of ~756–784 pixels, and `mask()` at the plot point returns `1`.
-   - **9 of 12** have `distinct values in the box = [0]` — every one-metre pixel is zero. The
-     other three reach a maximum of 2 m.
+   - **10 of 12** have `distinct values in the box = [0]` — every one-metre pixel is zero.
+     The remaining two are both ANGUL and reach a maximum of 2 m (111 and 28 non-zero pixels
+     out of 784).
    - all **5 controls** return full unmasked grids with coherent values (e.g. 10–17, median
      14 at a plot carrying 23.86 m of Lorey's height).
    - the sharpest single case: `20.760492_84.717751` (ANGUL) carries **33.57 m** of field
