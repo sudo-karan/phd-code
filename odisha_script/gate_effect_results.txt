@@ -1,0 +1,141 @@
+  ee deadline 600s per request, max 3 retries
+====================================================================================================
+GATE EFFECT — what removing canopy_height_std did, split into gate and segmentation
+====================================================================================================
+  Sanjay Van. Three arms differing only in segmentation.input_bands and
+  merge.criteria. min_defined_criteria = 2 in every arm. No tuned tolerances.
+
+  arm A  configs/experiments/gate_effect_arm_a.yaml
+        snic  (6) ['B4_median', 'B8_median', 'canopy_height', 'canopy_height_std', 'ndvi_amplitude_annual', 'vv_minus_vh_median']
+        merge (3) [('canopy_height', 2.0), ('canopy_height_std', 0.45), ('ndvi_amplitude_annual', 0.03)]   min_defined=2
+  arm B  configs/experiments/gate_effect_arm_b.yaml
+        snic  (6) ['B4_median', 'B8_median', 'canopy_height', 'canopy_height_std', 'ndvi_amplitude_annual', 'vv_minus_vh_median']
+        merge (2) [('canopy_height', 2.0), ('ndvi_amplitude_annual', 0.03)]   min_defined=2
+  arm C  configs/experiments/gate_effect_arm_c.yaml
+        snic  (5) ['B4_median', 'B8_median', 'canopy_height', 'ndvi_amplitude_annual', 'vv_minus_vh_median']
+        merge (2) [('canopy_height', 2.0), ('ndvi_amplitude_annual', 0.03)]   min_defined=2
+
+====================================================================================================
+RUN — arm A (6-band segmentation, 3 criteria)
+====================================================================================================
+  segmentation for gate_effect_arm_a took 94.8s
+  merge+geometry took 259.3s
+  arm A: 1298 superpixels -> 320 stands
+
+====================================================================================================
+RUN — arm B (arm A's tessellation, 2 criteria)
+====================================================================================================
+  merge+geometry took 17.0s
+  arm B: 1298 superpixels -> 296 stands
+
+====================================================================================================
+RUN — arm C (5-band segmentation, 2 criteria)
+====================================================================================================
+  segmentation for gate_effect_arm_c took 86.1s
+  merge+geometry took 331.5s
+  arm C: 1298 superpixels -> 295 stands
+
+====================================================================================================
+COMPARISON
+====================================================================================================
+                                                           arm A             arm B             arm C
+                                                6 bands / 3 crit  6 bands / 2 crit  5 bands / 2 crit
+
+  -- primary --
+  n_superpixels                                             1298              1298              1298
+  n_stands                                                   320               296               295
+  reduction factor (superpixels/stands)                    4.056             4.385             4.400
+
+  -- merge passes --
+  pass1_rounds                                                 6                 7                 6
+  pass1_merges                                               617               791               774
+  pass2_iterations                                             2                 2                 2
+  pass2_merges                                               361               211               229
+  pass2_fallback_merges                                      201               115               124
+
+  -- rejection attribution (pass 1, round 1) --
+  pairs blocked by area                                        0                 0                 0
+  pairs blocked_by_undefined_criteria                        323               323               370
+
+  -- orphans --
+  orphans_isolated                                             0                 0                 0
+  orphans_area_blocked                                        11                 9                 8
+  orphans_no_attribute_match                                   0                 0                 0
+  stands_with_incomplete_criteria                            106                93                87
+
+  -- stand area distribution (ha) --
+  area min                                                0.1700            0.4600            0.2800
+  area p10                                                1.1800            1.2700            1.2500
+  area median                                             2.6900            3.2100            3.4000
+  area p90                                                9.5000            9.4700            9.6000
+  area max                                               10.1600           10.1800           10.2500
+  area mean                                               4.0871            4.4185            4.4335
+  area total                                           1307.8800         1307.8800         1307.8800
+  stands below min_area_ha                                    12                 9                 8
+  area in undersized stands (ha)                          5.3200            5.6700            4.8500
+  area share of largest decile                            0.2399            0.2162            0.2184
+
+  -- shape --
+  polsby_popper_median                                    0.1727            0.1657            0.1560
+  polsby_popper_above_one                                      1                 1                 1
+
+  -- adjacency graph --
+  n_edges                                                   3601              3601              3632
+  mean_degree                                              5.549             5.549             5.596
+
+====================================================================================================
+CALIBRATED TOLERANCES — where each arm's thresholds land in its OWN distribution
+====================================================================================================
+  Each arm calibrates against its own band set via calibrate_thresholds(). No
+  threshold was changed to make the arms agree; these are reported, not fed back.
+
+  --- arm A ---   n_pairs=3601   joint_admit_rate=34.3%   (pairs with any defined criterion: 3601)
+      band                           tol  pct<=tol       p25       p50       p75       p90  n_defined
+      canopy_height                  2.0     53.45    0.8767    1.8432    3.1748    4.5859       3278
+      canopy_height_std             0.45     59.37    0.1510    0.3472    0.6815    1.1501       3278
+      ndvi_amplitude_annual         0.03     73.84    0.0073    0.0171    0.0309    0.0463       3601
+
+  --- arm B ---   n_pairs=3601   joint_admit_rate=44.77%   (pairs with any defined criterion: 3601)
+      band                           tol  pct<=tol       p25       p50       p75       p90  n_defined
+      canopy_height                  2.0     53.45    0.8767    1.8432    3.1748    4.5859       3278
+      ndvi_amplitude_annual         0.03     73.84    0.0073    0.0171    0.0309    0.0463       3601
+
+  --- arm C ---   n_pairs=3632   joint_admit_rate=44.27%   (pairs with any defined criterion: 3632)
+      band                           tol  pct<=tol       p25       p50       p75       p90  n_defined
+      canopy_height                  2.0      52.3    0.8785    1.8746    3.2667    4.6824       3262
+      ndvi_amplitude_annual         0.03     73.71    0.0078    0.0176    0.0310    0.0461       3632
+
+====================================================================================================
+HOW FAR THE ISOLATION HOLDS
+====================================================================================================
+  Arms A and B were merged from the SAME superpixel graph (1298 regions), so
+  B minus A is the gate change with the tessellation held identical by
+  construction. That comparison carries no tessellation noise at all.
+
+  NOT MEASURED: the SNIC run-to-run noise floor. C vs B compares two separate
+  segmentation runs, and merge.py records that tessellations can diverge run to
+  run (adjacency.py: 3595 vs 3594 pairs across two runs of one config). So the
+  C-vs-B figure below carries an unquantified noise term, while B vs A does not.
+  Re-run with --independent-b to measure it; it costs a third cold pipeline.
+
+====================================================================================================
+WHAT THIS SHOWS
+====================================================================================================
+  B vs A — the gate change alone.
+    Superpixels are held fixed (1298). Dropping the third criterion moves the
+    stand count by -24 (320 -> 296, -7.5%).
+    Pairs blocked by undefined criteria: 323 -> 323 (+0). This is the
+    number the fully-conjunctive gate acts on: with 2 criteria and a floor of 2,
+    both must be defined, where with 3 one could be missing and the pair still
+    qualified.
+
+  C vs B — the segmentation change alone.
+    The gate is held fixed at 2 criteria. Dropping canopy_height_std from the SNIC
+    stack moves superpixels 1298 -> 1298 (+0) and stands
+    296 -> 295 (-1, -0.3%).
+
+  C vs A — the combined effect, which is what shipped.
+    320 -> 295 stands (-25, -7.8%).
+
+  No threshold was tuned to bring the arms together. Where the stand count moves,
+  that is the measurement.
