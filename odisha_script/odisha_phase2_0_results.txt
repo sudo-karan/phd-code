@@ -1,0 +1,72 @@
+plots: 274 (from odisha_plots_clean.csv; coordinates parsed from plot_key)
+
+==========================================================================================
+PILOT — six Dhenkanal site polygons, buffered 200 m, dissolved
+==========================================================================================
+  site       valid   area_ha  buffered_ha  plots_in_polygon
+  Adhapalli   True      62.1        140.9                11
+  Kampulei    True     184.6        306.0                 9
+  Balikurma   True     110.9        207.0                11
+  Pangatira   True      37.0        103.0                10
+  Mahabirod   True      43.9        106.5                 9
+  Kerijoli    True       8.3         48.7                10
+  total                446.8
+
+  dissolved AOI: 6 part(s), 912.0 ha, valid=True
+    part ['Balikurma']: 207.0 ha
+    part ['Adhapalli']: 140.9 ha
+    part ['Kampulei']: 305.98 ha
+    part ['Mahabirod']: 106.51 ha
+    part ['Kerijoli']: 48.66 ha
+    part ['Pangatira']: 102.97 ha
+
+  plots inside the unbuffered polygons : 60 (expected 60)
+  plots inside the buffered AOI        : 60
+  wrote aois/odisha_dhenkanal_sites.geojson
+
+==========================================================================================
+FULL — habitations with >= 5 plots: convex hull + 300 m, dissolved
+==========================================================================================
+  habitations: 30 total, 21 with >= 5 plots, holding 261 of 274 plots
+  habitation             district     n  hull+buffer_ha
+  ADHAPALLI              DHENKANAL   11           105.6
+  ANANDA PUR             ANGUL        9            69.9
+  BALI SAHI              DHENKANAL   10            63.9
+  BALIKUMA               DHENKANAL   11           144.8
+  BARAKANTI              KORAPUT     31          1316.8
+  BARIGUDA               KORAPUT     10            70.6
+  BHANRADI SAHI          KENDUJHAR    7           404.7
+  BILAPUT                KORAPUT     10            86.9
+  BURUGI BHUIN           DHENKANAL    7            73.7
+  GHANAJODI              ANGUL       10           206.2
+  HANDAPUR               KORAPUT     20            98.9
+  HATIMUNDA              KORAPUT     49           387.8
+  JOGI BANDHA            ANGUL       10            65.3
+  KANKANA                DHENKANAL    8            67.9
+  KANSAB                 ANGUL       10            97.9
+  KHASUGUDA              KORAPUT     11           466.9
+  KONDASRIMUNDA          KORAPUT      5            37.9
+  NUA SAHI               DHENKANAL    8           189.0
+  RAIJHARANA             DHENKANAL   10           103.5
+  SAKIAGUDA              KORAPUT      7            45.3
+  TULASIPASI             DHENKANAL    7           247.0
+
+  dissolved AOI: 20 part(s) from 21 hulls, 4298.7 ha, valid=True
+    merged part ['BILAPUT', 'HATIMUNDA']: 422.85 ha
+
+  plots inside the AOI                    : 267 (expected 261)
+  of which from a >=5-plot habitation     : 261
+  6 plot(s) from a <5-plot habitation fall inside a dissolved hull:
+    18.653207_82.811814  KORAPUT/KHARAGUDA
+    18.653365_82.811206  KORAPUT/KHARAGUDA
+    21.043929_85.684979  DHENKANAL/HADI SAHI
+    21.074972_85.389524  DHENKANAL/MAHABIR ROAD
+    21.075714_85.392354  DHENKANAL/KANKADAHAD
+    21.574844_85.390232  KENDUJHAR/JAKARBANDHA SAHI
+  wrote aois/odisha_habitations.geojson
+
+==========================================================================================
+EXIT CONDITION
+==========================================================================================
+  pilot: PASS
+  full : FAIL
