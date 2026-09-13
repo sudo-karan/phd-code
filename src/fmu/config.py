@@ -436,7 +436,7 @@ class MergeParams(BaseModel):
     two-tier threshold scheme (strict in the homogeneous pass, relaxed in the
     eliminate pass) so undersized fragments always find a home.
 
-Two of Xiong's three axes are covered, using the closest analogue FMU
+    Two of Xiong's three axes are covered, using the closest analogue FMU
     has without ALS or a species map:
 
       canopy_height          <- his stand height (same quantity, modelled source)
@@ -518,6 +518,16 @@ Two of Xiong's three axes are covered, using the closest analogue FMU
     # sides*. Pairs that fall short drop to pass 2, which is the right
     # destination. (14 of 1249 superpixels in the committed run have no
     # canopy_height at all -- ETH no-data.)
+    #
+    # Read this against `len(criteria)`, because the default list is now two
+    # long and 2 == 2: **every criterion is currently mandatory**, where three
+    # criteria against this floor let any one of them be null. The validator
+    # below rejects only floor > len(criteria), the impossible case; equality
+    # is legal and is the case that changes behaviour. Concretely, those 14
+    # no-canopy_height superpixels could previously clear pass 1 on the other
+    # two criteria and now cannot. Pass 2 is still the right destination for
+    # them -- but if a criterion is ever added back, note that doing so
+    # *loosens* the pass-1 gate rather than tightening it.
     min_defined_criteria: int = Field(default=2, ge=1)
 
     # A stand whose fraction of valid pixels for a band falls below this gets a

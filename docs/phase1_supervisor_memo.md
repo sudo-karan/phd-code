@@ -50,7 +50,9 @@ five non-zero control plots, which instead read 11.62 m mean at 100% non-zero co
 frequency histogram over 554,745 pixels confirms the band is a height field in metres
 (contiguous integer support 0–25, smooth monotone decay, thin tail to 31) and *not* a class
 code — and shows that **63.5% of the whole sampled landscape reads zero**, with a non-zero
-mean of 4.82 m. The 122 zero plots are not unlucky draws.
+mean of 4.82 m. The 122 zero plots are not unlucky draws. Nor are they stand age: the field
+campaign ran April 2022 to April 2023, and closing that gap against the documented imagery
+window would require the median zero plot to have grown 2.52 m a year (§7).
 
 **GEDI's published number was an artefact and has been corrected.** The 50 m neighbourhood
 search never executed: Earth Engine's `reduceNeighborhood` masks its output wherever the
@@ -156,12 +158,22 @@ is the only route to a reference stand map, and without it the delineation outpu
 characterised but not scored against an independent ground truth. Nothing in the current
 data substitutes for it.
 
-**FES — three outstanding enquiries.** (i) *Plot radius*, which sets the ground area each
+**Survey year — no longer blocked, and it was never an FES question.** `Odisha_samples.csv`
+carries `Creation Date` on all 5,910 tree records; the plot-level cleaning step simply never
+carried it through. The campaign ran **25 April 2022 to 5 April 2023**, so it postdates
+Meta's imagery, and the temporal hypothesis is one-directional: forest can grow into a zero,
+it cannot grow out of one. Against the late end of the documented imagery window the
+hypothesis fails — a ~2-year gap requires the median zero plot to have grown at **2.52 m a
+year** and the tallest at **15.43**, and 70% of the 122 zero plots would need more than 2 m
+a year. Against a 2009 sourcing it survives, the median requirement falling to 0.40 m a year.
+The Meta zeros are therefore model failure and not stand age **given the imagery dates the
+collection documents**, and the single remaining check is the per-tile acquisition date over
+these districts — a property of the asset, obtainable without FES.
+
+**FES — two outstanding enquiries.** (i) *Plot radius*, which sets the ground area each
 plot represents and therefore the correct sampling support for every product comparison
 above; all figures currently assume the plot coordinate is representative of a 30 m
-neighbourhood. (ii) *Survey year*, which determines whether the field campaign and Meta's
-source imagery — 2009–2020, chiefly 2018–2020 — are contemporaneous, and therefore whether
-any part of the Meta zero pattern is temporal rather than model failure. (iii) *One plot
+neighbourhood. (ii) *One plot
 record*: Pangatira plot `21.156085_85.364999` reads **8% crown cover while carrying 16.19 m
 of Lorey's height**, where the other nine Pangatira plots run 58–88%. Either a data-entry
 error or a genuinely open canopy of tall emergents. It sits inside the site whose ten zeros
