@@ -366,8 +366,9 @@ match notebook behavior.
 ## segmentation: 5-band z-scored stack, NIRv for the optical signal
 
 > **Superseded.** The stack is now config-driven (`segmentation.input_bands`),
-> the default is six bands, `composite_nirv` is out and `canopy_height_std` +
-> `ndvi_amplitude_annual` are in, and the "same inputs across configs" property
+> the default is five bands, `composite_nirv` is out and `ndvi_amplitude_annual`
+> is in (`canopy_height_std` was added and later removed — see below), and the
+> "same inputs across configs" property
 > below is deliberately abandoned. See *segmentation: config-driven stack,
 > independent per arm* further down. The original reasoning is kept because
 > parts of it still hold (why z-scoring, why NIRv beats NDVI in dense canopy)
@@ -437,10 +438,18 @@ algebraic function of B4 and B8. Carrying all three spent three columns on two
 degrees of freedom and inflated optical weight in SNIC's distance metric, which
 undercuts the "four orthogonal sources" claim the original stack rested on. It
 is still declarable if wanted. Two bands were added: `canopy_height_std` (3×3
-roughness — separates a smooth plantation-like canopy from a gap-rich natural
-one at the same mean height) and `ndvi_amplitude_annual` (SNIC runs on a
-multi-year *median* composite, so without a phenology band it cannot see the
-deciduous/evergreen axis at all).
+roughness — described at the time as separating a smooth plantation-like canopy
+from a gap-rich natural one at the same mean height) and `ndvi_amplitude_annual`
+(SNIC runs on a multi-year *median* composite, so without a phenology band it
+cannot see the deciduous/evergreen axis at all).
+
+**`canopy_height_std` has since been removed from both defaults.** The claim in
+the parenthesis above was never measured, and when it was — Odisha, 274 field
+plots — it scored **R²=0.000 against field crown cover (r=−0.011)**. It was not a
+weak proxy for canopy closure; it was a band measuring nothing it claimed, while
+surviving the spatial separation null at +0.076 and therefore actively shaping
+boundaries. The reasoning above is kept because the `composite_nirv` and
+`ndvi_amplitude_annual` halves still hold. See `docs/datasets.md`.
 
 **Why a second normalisation step.** Z-scoring equalises bands against each
 other but not stacks against each other. SNIC trades summed squared colour
@@ -541,8 +550,7 @@ already ~90% set up for it:
   `default_stage_names()` therefore drops `features_radar` and
   `features_static`, and keeps `features_optical` and `features_structure` —
   not for the feature vector, but because the **merge criteria are held
-  identical across arms** and read `canopy_height`, `canopy_height_std` and
-  `ndvi_amplitude_annual`. It derives the stage list from the union of what
+  identical across arms** and read `canopy_height` and `ndvi_amplitude_annual`. It derives the stage list from the union of what
   clustering, segmentation and merge each ask for, so nothing runs that nothing
   reads.
 - **Source-agnostic stage.** features_embedding loads either an annual

@@ -108,9 +108,11 @@ features_static:
   max_water_distance_pixels: 1000  # 10 km cap at 10m scale
 
 # input_bands is left at the code default (see _DEFAULT_SNIC_INPUT_BANDS in
-# src/fmu/config.py): B4_median, B8_median, canopy_height, canopy_height_std,
-# ndvi_amplitude_annual, vv_minus_vh_median. Six bands over ~four independent
-# axes — optical colour, vertical structure, canopy roughness, phenology, radar.
+# src/fmu/config.py): B4_median, B8_median, canopy_height,
+# ndvi_amplitude_annual, vv_minus_vh_median. Five bands over ~four independent
+# axes — optical colour, vertical structure, phenology, radar.
+# canopy_height_std was a sixth until the Odisha field validation measured it at
+# R2=0.000 against field crown cover; see docs/datasets.md.
 # It is not repeated here so the default cannot drift from the shipped arm; set
 # input_bands explicitly only when running a segmentation-feature experiment.
 segmentation:

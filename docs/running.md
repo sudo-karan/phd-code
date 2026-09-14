@@ -239,7 +239,7 @@ keys drive it: `clustering.feature_source: embedding` and
 each ask for. In the shipped embedding configs `features_radar` and
 `features_static` drop out, while `features_optical` and `features_structure`
 remain because the merge criteria (held identical across arms) read
-`canopy_height`, `canopy_height_std` and `ndvi_amplitude_annual`. What is held identical to the
+`canopy_height` and `ndvi_amplitude_annual`. What is held identical to the
 baseline is everything that is not the feature representation (SNIC
 hyperparameters, `k`, `seed`, masking, analysis scale). There is no
 `inspect_features_embedding.py`; the stage runs inside the pipeline that

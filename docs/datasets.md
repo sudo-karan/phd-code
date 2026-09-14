@@ -77,7 +77,19 @@ features via a CNN (Lang et al., 2023).
   the tracks the satellite flew over have measurements). The ETH product
   fills the gaps using S2 spectral information, giving us a continuous
   10 m raster instead of points-and-gaps. See DEC-009.
-- **Used directly in segmentation** (`canopy_height` and `canopy_height_std` are two of the six default SNIC input bands; the stack is config-driven via `segmentation.input_bands`), **and as two of the three merge criteria** that aggregate superpixels into stands.
+- **Used directly in segmentation** (`canopy_height` is one of the five default SNIC
+  input bands; the stack is config-driven via `segmentation.input_bands`), **and as one
+  of the two merge criteria** that aggregate superpixels into stands.
+- **Field validation (Odisha, 274 plots) — read this before treating ETH canopy height
+  as a measurement.** Against field Lorey's height it scores **R² = 0.207, slope 0.30**,
+  with its range compressed to **14.30–22.47 m against a real field span of
+  3.45–37.75 m** — a +10.85 m bias on the shortest plots and −15.29 m on the tallest.
+  It remains a default merge criterion and a default SNIC band, but a 2 m tolerance is
+  roughly a quarter of the product's whole usable range, not a fine structural
+  distinction. `canopy_height_std` was a default until the same validation measured it
+  at **R² = 0.000 against field crown cover (r = −0.011)** and it was removed from both
+  defaults. Full result: `odisha_script/PHASE1_STATUS.md` and
+  `docs/phase1_supervisor_memo.md`; raw runs in `odisha_script/odisha_phase1_*_results.txt`.
   Structural information, independent of S2/S1 spectral data.
 - **Used with neighborhood stats in features_structure:** std-dev and max
   in a 3x3 window capture local heterogeneity. A mature even-aged stand

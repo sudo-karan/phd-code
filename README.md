@@ -33,13 +33,12 @@ Given a GeoJSON polygon (an Area of Interest), fmu:
    - structural heterogeneity from ETH canopy height + neighborhood stats
    - terrain (NASADEM), distance-to-water, mean annual rainfall (CHIRPS)
 4. **Segments** the AOI into SNIC superpixels on a config-driven, z-scored
-   band stack (`segmentation.input_bands`). The default is six bands over
-   ~four independent axes: optical colour, vertical structure, canopy
-   roughness, phenology, radar. An embedding arm segments on all 64
-   AlphaEarth dimensions instead.
+   band stack (`segmentation.input_bands`). The default is five bands over
+   ~four independent axes: optical colour, vertical structure, phenology,
+   radar. An embedding arm segments on all 64 AlphaEarth dimensions instead.
 5. **Merges** those superpixels into forest stands (Xiong et al. 2024 §2.6):
-   two passes, a hard conjunctive gate on canopy height / roughness /
-   phenology in physical units, and hard area bounds. Superpixels are a
+   two passes, a hard conjunctive gate on canopy height and phenology in
+   physical units, and hard area bounds. Superpixels are a
    primitive; this is the step that produces the deliverable.
 6. **Clusters** the per-stand feature vectors with k-means to attach a type
    label (preprocessing: cyclic decomposition, log-transform of skewed
