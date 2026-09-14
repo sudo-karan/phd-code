@@ -321,7 +321,7 @@ Per-superpixel feature stack to preprocessing to k-means to per-pixel cluster la
 
 2. **Cyclic decomposition**; every `*_phase_*` band and `aspect` is replaced with a sin/cos pair. Aspect is converted from degrees to radians first.
 
-3. **Per-superpixel averaging**; `reduceConnectedComponents(reducer=mean, labelBand=snic_clusters, maxSize=1024)`. Every pixel now holds its superpixel's mean for each feature.
+3. **Per-unit averaging**; `reduceConnectedComponents(reducer=mean, labelBand=<unit labels>, maxSize=<measured neighbourhood>)` over stands (or superpixels when merge is off). Every pixel now holds its unit's mean for each feature. `maxSize` is an *extent*, and EE pads every tile by it, so memory grows with bands x `maxSize`: at the derived cap (1200 px at 10 ha / 10 m) a wide band stack runs out of memory. The stage first checks the pixel count against the cap (`assert_components_fit`). It then measures each label's pixel-coordinate extent in the feature band-0 grid and the label grid, and passes `ceil(widest x 1.2) + 2`, never above the cap. Every unit is still aggregated whole, so means agree with the cap version up to floating-point summation order. The manifest records `rcc_neighbourhood_px` and `widest_unit_extent_px`. See `_component_neighbourhood_px` for the argument and its precondition (evaluation at `analysis_scale_m` in the measured grids).
 
 4. **Habitat filter**; `updateMask(habitat_mask)`. Non-habitat pixels excluded from training and labelling.
 
@@ -341,7 +341,7 @@ Per-superpixel feature stack to preprocessing to k-means to per-pixel cluster la
 - (no `n_training_samples` knob: k-means fits on every unit, one row each. The old default sampled 10,000 *pixels*, ~37 per superpixel, which area-weighted the fit and every preprocessing statistic. The manifest records `n_training_units` and `training_unit_key`.)
 - `clustering.seed`; random seed (default 42)
 - `clustering.skewness_threshold`; log-transform threshold (default 1.0 per DEC-004)
-- (no `superpixel_max_size` knob: the `reduceConnectedComponents` cap is derived as `ceil(merge.max_area_ha * 10000 / analysis_scale_m^2) * 1.2` and asserted against the actual labels at stage entry. That argument *masks* components larger than it rather than clamping, so a hand-set value silently deletes stands -- which is what happened when the two arms drifted to 1024 and 256.)
+- (no `superpixel_max_size` knob: the `reduceConnectedComponents` cap is derived as `ceil(merge.max_area_ha * 10000 / analysis_scale_m^2) * 1.2` and asserted against the actual labels at stage entry. That argument *masks* components larger than it rather than clamping, so a hand-set value silently deletes stands -- which is what happened when the two arms drifted to 1024 and 256. The cap is the upper bound: clustering passes the smaller measured unit extent plus margin (step 3), while metrics still passes the cap itself.)
 - `normalization.method`; `robust` (default, per DEC-003) or `zscore` (notebook baseline)
 
 **Related decisions:** DEC-001, DEC-003, DEC-004, DEC-014.

@@ -147,6 +147,44 @@ def test_clustering_metadata_is_attached(ctx_ready_for_clustering):
     assert parsed["normalization_method"] == config.normalization.method
 
 
+def test_rcc_neighbourhood_is_measured_and_below_cap(ctx_ready_for_clustering):
+    """On a real cached label image, the measured reduceConnectedComponents
+    neighbourhood must strictly exceed the widest label (or a stand would be
+    masked) and never exceed the derived cap (or it would widen the pad that
+    the measurement exists to shrink).
+
+    Uses the cached `snic_clusters` and `optical_features`, which the fixture
+    always provides, so it does not depend on whether merge ran for this
+    config. The mechanism is the same one ClusteringStage.run applies to stands.
+    """
+    from fmu.stages.clustering import _component_neighbourhood_px
+    from fmu.utils.components import assert_components_fit
+
+    ctx, config = ctx_ready_for_clustering
+    roi = ctx.get("roi")
+    scale = config.export.analysis_scale_m
+    cap = config.max_component_pixels()
+    labels = ctx.get("snic_clusters")
+
+    stats = assert_components_fit(labels, roi, scale, cap, context="live neighbourhood")
+    widest, neighbourhood = _component_neighbourhood_px(
+        labels,
+        ctx.get("optical_features"),
+        roi,
+        scale,
+        cap=cap,
+        n_labels=stats["n_components"],
+        largest_component_px=stats["largest_component_px"],
+        context="live neighbourhood",
+    )
+    assert widest > 0
+    assert neighbourhood <= cap
+    assert neighbourhood > widest, (
+        f"cap bound on this fixture (widest {widest} px, cap {cap} px): the test "
+        "no longer exercises the measured path"
+    )
+
+
 def test_diagnose_cluster_histogram(ctx_ready_for_clustering, capsys):
     """Diagnostic: print the full frequency histogram of cluster_labels.
 

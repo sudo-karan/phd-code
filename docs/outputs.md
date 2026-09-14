@@ -120,6 +120,24 @@ because all its cacheable outputs were cached. The stage's `run()`
 method didn't execute; the cached assets were loaded into the context
 and the stage was marked done.
 
+### Clustering stage metadata: unit sizes and the reduction neighbourhood
+
+Recorded on every live clustering run, including when every check passes:
+
+| Key | Meaning |
+|---|---|
+| `n_components` | Distinct unit labels in the ROI (stands, or superpixels without merge) |
+| `largest_component_px` | Pixel count of the largest label |
+| `max_component_px_cap` | `Config.max_component_pixels()`: the count cap the labels were checked against |
+| `widest_unit_extent_px` | Widest per-label pixel-coordinate extent. The larger of the feature band-0 grid and label grid measurements |
+| `rcc_neighbourhood_px` | `maxSize` actually passed to `reduceConnectedComponents`: `ceil(widest x 1.2) + 2`, never above the cap |
+
+`rcc_neighbourhood_px == max_component_px_cap` means the measurement did not
+narrow the neighbourhood. That happens with an elongated stand, or a label
+reused across disjoint places, which logs a WARNING. A wide band stack may then
+run out of memory, as it did before the measurement existed. These keys are in
+the stage metadata only, not in `clustering_metadata`.
+
 ## `export_manifest_<config>.json` (after export stage)
 
 A standalone copy of the export-stage's manifest. The same data is also

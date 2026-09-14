@@ -796,7 +796,11 @@ class Config(BaseModel):
         return "stand_clusters" if self.merge.enabled else "snic_clusters"
 
     def max_component_pixels(self) -> int:
-        """`maxSize` for every `reduceConnectedComponents` call in the pipeline.
+        """Upper bound on `maxSize` for every `reduceConnectedComponents` call.
+
+        metrics passes it as is; clustering passes a measured unit extent at or
+        below it, because EE pads every tile by `maxSize` (see
+        `clustering._component_neighbourhood_px`).
 
         Derived rather than configured. This argument does not clamp -- it
         **masks any component larger than it**, silently deleting those regions
