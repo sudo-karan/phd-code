@@ -146,7 +146,7 @@ config rather than a hardcoded branch.
 same AOI, same 2017-2022 window, same SNIC hyperparameters (`size`,
 `compactness`, `connectivity`, `neighborhood_size`), same `clustering.k` and
 `seed`, same masking, same `export.analysis_scale_m`. `normalize_distance_scale`
-is what makes `compactness: 0.5` mean the same thing at 6 bands and at 64.
+is what makes `compactness: 0.5` mean the same thing at 5 bands and at 64.
 
 Segmentation used to be held byte-identical across arms and that was called the
 control. It was in fact the flaw: under the merge design SNIC + `merge`
@@ -357,7 +357,7 @@ hand-crafted feature images (optical / radar / structure / static).
   (default `true`). SNIC trades a summed squared colour distance against a
   spatial-compactness term, and that sum grows with the number of *effective*
   axes — so without this, `compactness: 0.5` buys a much weaker spatial term in
-  a 64-band embedding arm than in a 6-band hand-crafted one, and the two are not
+  a 64-band embedding arm than in a 5-band hand-crafted one, and the two are not
   comparable. Dividing by `sqrt(n_bands)` would assume the bands are
   independent; for an embedding they are not. The value actually used is
   recorded in the run manifest as `distance_scale`. This makes `compactness`

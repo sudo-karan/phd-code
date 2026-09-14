@@ -63,12 +63,12 @@ All 10 m native. Two normalisation steps run before SNIC:
 2. **divide by the RMS 4-neighbour feature distance** over the ROI
    (`segmentation.normalize_distance_scale`). SNIC trades a summed squared colour distance
    against a spatial-compactness term, and that sum grows with the number of *effective* axes
-   — so `compactness: 0.5` in a 6-band arm and a 64-band arm would buy very different spatial
+   — so `compactness: 0.5` in a 5-band arm and a 64-band arm would buy very different spatial
    weights. Dividing by √n_bands would assume the bands are independent; for an embedding they
    are not, and it over-corrects. The empirical RMS distance handles band count and correlation
    together. The value used is recorded in the manifest as `distance_scale`.
 
-**Baseline arm (the default), 6 bands over ~four independent axes:**
+**Baseline arm (the default), 5 bands over ~four independent axes:**
 
 | # | Band | Where it comes from | Axis | Also used by k-means? |
 |---|---|---|---|---|
@@ -241,7 +241,7 @@ boundaries — is the thesis question, and the old design never actually put it 
 **What is still controlled:** everything that is not the feature representation — same AOI,
 same 2017–2022 window, same SNIC hyperparameters, same `k = 6` / `seed = 42`, same merge rules,
 same masking, same analysis scale. And `normalize_distance_scale` makes `compactness: 0.5` mean
-the same thing at 6 bands and at 64.
+the same thing at 5 bands and at 64.
 
 **What this costs:** the two arms now produce two *different stand maps*, so ARI/NMI against a
 shared tessellation is no longer the comparison. There is **no ground truth**, so neither map
