@@ -110,8 +110,17 @@ def wait_for(task_ids: list[str]) -> bool:
         print("  no export tasks submitted by this pass")
         return True
     print(f"  waiting on {len(task_ids)} task(s)")
+    # The pipeline run is finished by now, so a deadline here bounds only these polls. Without
+    # one, a poll issued during a network drop never returns and the pass hangs indefinitely.
+    ee.data.setDeadline(120_000)
     while True:
-        states = {s["id"]: s for s in ee.data.getTaskStatus(task_ids)}
+        try:
+            states = {s["id"]: s for s in ee.data.getTaskStatus(task_ids)}
+        except Exception as e:  # noqa: BLE001 - a failed poll is retried, not fatal
+            print(f"  {time.strftime('%H:%M:%S')} task-status poll failed ({str(e)[:100]}); retrying",
+                  flush=True)
+            time.sleep(POLL_S)
+            continue
         counts: dict[str, int] = {}
         for s in states.values():
             counts[s["state"]] = counts.get(s["state"], 0) + 1
