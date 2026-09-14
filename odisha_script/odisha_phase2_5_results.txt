@@ -1,314 +1,695 @@
 
 ====================================================================================================
-DATA
+CORRECTIONS TO THE FIRST RUN (git 8d4c2ed)
 ====================================================================================================
-  plots in the pilot AOI: 60 over 6 parts; all plots in the field table: 274
-  pairs: 1770 total, 272 within an AOI part; within-part pairs by band: [14, 37, 106, 92]; pairs > 2 km: 1498
-  field types (UPGMA on Bray-Curtis, all 274 plots, k=6): sizes {1: 10, 2: 260, 3: 1, 4: 1, 5: 1, 6: 1}; in pilot {2: 60}
-  noise null: NOT AVAILABLE (odisha_phase2_4 has not produced output)
+  R1  cluster_id rounded (np.rint) in the join and for rotation-null labels: GEE's mode reducer gave 4.9999999999999885 for current's class 5 (6 pilot plots). The first run truncated these ids to int for ARI/NMI/Cramér's V and the contingency table (the 6 plots counted as class 4), and compared the unrounded floats for distant pairs (splitting class 5; current distant same-label pairs 160 -> 198).
+  R2  6.3 ARI/NMI/V printed NOT ESTIMABLE when typed plots hold < 2 field types (pilot UPGMA k=6 is constant); distant pairs printed once per partition; expected-count < 5 cells printed for every contingency table.
+  R3  every percentile printed with n_null; NOT ESTIMABLE below 100 defined null values.
+  R4  6.2 cells with n_same <= 3 or n_diff <= 3 marked uninformative (n<=3), no percentile.
+  R5  dissolved layer: units per AOI part, ARI(unit, part), site-only restricted R2 (SENSITIVITY).
+  R6  within-band label permutation p relabelled INVALID; within-site shuffle p added (SENSITIVITY).
+  R7  6.1 null structure (k, n, E, largest group, same-stand pairs) and E-slope bias estimate (SENSITIVITY).
+  R8  6.1 adjusted R2, within-part R2 and leave-one-site-out percentiles vs the rotation null (SENSITIVITY, merged).
+  R9  6.2 same-stand pairs by part and stand, leave-one-site-out, site fixed effects, stand-weighted beta (SENSITIVITY, merged).
+  R10 pre-registered ARMS prediction computed: excess difference vs index-wise differenced centred nulls.
+  R11 pre-registered 'd_field rises with d_geo' computed: slope, Spearman rho, within-part vs > 2 km means.
+  R12 6.3 uses only rotation realisations that keep every typed plot on a typed polygon; untyped polygons counted.
+  R13 per-partition RNGs seeded from crc32('<arm>/<layer>') (separate permutation stream); --rotations default 1999.
+  R14 rotation null matches the join: minimum stand id on multi-cover; boundary search 1000 m, inf beyond (was capped at 600 m).
+  R15 species keys: trailing '.' stripped, aliases cassia fistul/lagerstroemia parviflor/zizyphus oenoplia; the join was rerun, changing sp_ba_json of 8 pilot plots and so Bray-Curtis numbers (sal_ba_frac and n_species of pilot plots unchanged; all-274 UPGMA sizes 10/260/1/1/1/1 -> 11/259/1/1/1/1, still one type in the pilot).
+  R16 figures redrawn from the rotation null (the first run's figure code read the noise null, which was never used).
+  R17 DATA line states the noise null's exclusion by decision; this corrections section added.
+  R18 --set pilot|districts; d_geo geodesic (WGS84) instead of planar UTM, which moves pilot betas in the 4th decimal and changes no band count; rotations and boundary distances in each AOI part's own UTM zone.
+
+  Pre-registered OBSERVED values that changed, first run -> corrected (Monte Carlo cannot move these):
+    (beta per 100 m is compared against the first run's results text; its summary CSV did not record it)
+    6.2 v120 / stands_merged / Bray-Curtis / all pairs / 200-400 diff: 0.0859 -> 0.0857   [R15 (species keys)]
+    6.2 v120 / stands_merged / Bray-Curtis / all pairs / 400-800 diff: 0.2325 -> 0.2379   [R15 (species keys)]
+    6.2 v120 / stands_merged / Bray-Curtis / all pairs / regression beta_same: -0.1425 -> -0.1426   [R15 (species keys) + R18 (geodesic d_geo)]
+    6.2 v120 / stands_merged / Bray-Curtis / all pairs / regression beta_dgeo_per100m: 0.0285 -> 0.0285   [R15 (species keys) + R18 (geodesic d_geo)]
+    6.2 v120 / stands_merged / Bray-Curtis / both > 30 m from boundary / 400-800 diff: -0.1871 -> -0.1761   [R15 (species keys)]
+    6.2 v120 / stands_merged / Bray-Curtis / both > 30 m from boundary / regression beta_same: 0.0667 -> 0.0610   [R15 (species keys) + R18 (geodesic d_geo)]
+    6.2 v120 / stands_merged / Bray-Curtis / both > 30 m from boundary / regression beta_dgeo_per100m: 0.0556 -> 0.0544   [R15 (species keys) + R18 (geodesic d_geo)]
+    6.2 v120 / stands_snic / Bray-Curtis / all pairs / 200-400 diff: -0.2353 -> -0.2356   [R15 (species keys)]
+    6.2 v120 / stands_snic / Bray-Curtis / all pairs / regression beta_same: -0.1608 -> -0.1606   [R15 (species keys) + R18 (geodesic d_geo)]
+    6.2 v120 / stands_snic / Bray-Curtis / all pairs / regression beta_dgeo_per100m: 0.0373 -> 0.0373   [R15 (species keys) + R18 (geodesic d_geo)]
+    6.2 v120 / stands_dissolved / Bray-Curtis / all pairs / 200-400 diff: -0.0727 -> -0.0724   [R15 (species keys)]
+    6.2 v120 / stands_dissolved / Bray-Curtis / all pairs / 400-800 diff: -0.0829 -> -0.0827   [R15 (species keys)]
+    6.2 v120 / stands_dissolved / Bray-Curtis / all pairs / regression beta_same: 0.0715 -> 0.0713   [R15 (species keys) + R18 (geodesic d_geo)]
+    6.2 v120 / stands_dissolved / Bray-Curtis / all pairs / regression beta_dgeo_per100m: 0.0399 -> 0.0399   [R15 (species keys) + R18 (geodesic d_geo)]
+    6.2 v120 / stands_dissolved / Bray-Curtis / both > 30 m from boundary / 200-400 diff: -0.0497 -> -0.0494   [R15 (species keys)]
+    6.2 v120 / stands_dissolved / Bray-Curtis / both > 30 m from boundary / 400-800 diff: 0.0931 -> 0.0934   [R15 (species keys)]
+    6.2 v120 / stands_dissolved / Bray-Curtis / both > 30 m from boundary / regression beta_same: -0.0205 -> -0.0208   [R15 (species keys) + R18 (geodesic d_geo)]
+    6.2 v120 / stands_dissolved / Bray-Curtis / both > 30 m from boundary / regression beta_dgeo_per100m: 0.0217 -> 0.0217   [R15 (species keys) + R18 (geodesic d_geo)]
+    6.2 current / stands_merged / Bray-Curtis / all pairs / 200-400 diff: 0.3152 -> 0.3149   [R15 (species keys)]
+    6.2 current / stands_merged / Bray-Curtis / all pairs / 400-800 diff: 0.2624 -> 0.2622   [R15 (species keys)]
+    6.2 current / stands_merged / Bray-Curtis / all pairs / regression beta_same: -0.2823 -> -0.2820   [R15 (species keys) + R18 (geodesic d_geo)]
+    6.2 current / stands_merged / Bray-Curtis / all pairs / regression beta_dgeo_per100m: 0.0125 -> 0.0125   [R15 (species keys) + R18 (geodesic d_geo)]
+    6.2 current / stands_merged / Bray-Curtis / both > 30 m from boundary / regression beta_same: -0.2292 -> -0.2291   [R18 (geodesic d_geo)]
+    6.2 current / stands_merged / Bray-Curtis / both > 30 m from boundary / regression beta_dgeo_per100m: 0.0213 -> 0.0213   [R18 (geodesic d_geo)]
+    6.2 current / stands_snic / Bray-Curtis / all pairs / 200-400 diff: 0.3350 -> 0.3348   [R15 (species keys)]
+    6.2 current / stands_snic / Bray-Curtis / all pairs / 400-800 diff: 0.5131 -> 0.5129   [R15 (species keys)]
+    6.2 current / stands_snic / Bray-Curtis / all pairs / regression beta_same: -0.2254 -> -0.2252   [R15 (species keys) + R18 (geodesic d_geo)]
+    6.2 current / stands_snic / Bray-Curtis / all pairs / regression beta_dgeo_per100m: 0.0287 -> 0.0287   [R15 (species keys) + R18 (geodesic d_geo)]
+    6.2 current / stands_dissolved / Bray-Curtis / all pairs / 200-400 diff: -0.0329 -> -0.0326   [R15 (species keys)]
+    6.2 current / stands_dissolved / Bray-Curtis / all pairs / 400-800 diff: -0.0175 -> -0.0172   [R15 (species keys)]
+    6.2 current / stands_dissolved / Bray-Curtis / all pairs / regression beta_same: -0.0094 -> -0.0096   [R15 (species keys) + R18 (geodesic d_geo)]
+    6.2 current / stands_dissolved / Bray-Curtis / all pairs / regression beta_dgeo_per100m: 0.0408 -> 0.0408   [R15 (species keys) + R18 (geodesic d_geo)]
+    6.2 current / stands_dissolved / Bray-Curtis / both > 30 m from boundary / 400-800 diff: -0.0794 -> -0.0791   [R15 (species keys)]
+    6.2 current / stands_dissolved / Bray-Curtis / both > 30 m from boundary / regression beta_same: 0.1041 -> 0.1038   [R15 (species keys) + R18 (geodesic d_geo)]
+    6.2 current / stands_dissolved / Bray-Curtis / both > 30 m from boundary / regression beta_dgeo_per100m: 0.0451 -> 0.0451   [R15 (species keys) + R18 (geodesic d_geo)]
+    6.3 v120 / stands_merged UPGMA k=6 ari observed: 0.0000 ->   n/a   [R2 (typed plots hold one field type)]
+    6.3 v120 / stands_merged UPGMA k=6 nmi observed: 0.0000 ->   n/a   [R2 (typed plots hold one field type)]
+    6.3 v120 / stands_merged  distant_diff_bc observed: -0.0535 -> -0.0528   [R15 (species keys)]
+    6.3 current / stands_merged UPGMA k=6 ari observed: 0.0000 ->   n/a   [R2 (typed plots hold one field type)]
+    6.3 current / stands_merged UPGMA k=6 nmi observed: 0.0000 ->   n/a   [R2 (typed plots hold one field type)]
+    6.3 current / stands_merged  distant_diff_bc observed: -0.0322 -> -0.0677   [R15 (species keys) + R1 (labels)]
+    6.3 current / stands_merged  distant_diff_lorey observed: -0.1705 -> 0.6272   [R1 (first run compared unrounded labels)]
+    6.3 current / stands_merged Sal-dominant rule ari observed: 0.0922 -> 0.1237   [R1 (first run truncated 4.99999 to class 4)]
+    6.3 current / stands_merged Sal-dominant rule nmi observed: 0.1109 -> 0.1931   [R1 (first run truncated 4.99999 to class 4)]
+    6.3 current / stands_merged Sal-dominant rule cramers_v observed: 0.4689 -> 0.5778   [R1 (first run truncated 4.99999 to class 4)]
+  |dLorey| values moved only by the geodesic d_geo (R18, relative change < 1e-3):
+    6.2 v120 / stands_merged / |dLorey| m / all pairs / regression beta_same: 1.3416 -> 1.3415   [R18 (geodesic d_geo)] (rel 6.3e-05)
+    6.2 v120 / stands_merged / |dLorey| m / all pairs / regression beta_dgeo_per100m: -0.1836 -> -0.1836   [R18 (geodesic d_geo)] (rel 6.8e-06)
+    6.2 v120 / stands_merged / |dLorey| m / both > 30 m from boundary / regression beta_same: 3.4570 -> 3.4568   [R18 (geodesic d_geo)] (rel 4.3e-05)
+    6.2 v120 / stands_merged / |dLorey| m / both > 30 m from boundary / regression beta_dgeo_per100m: -0.4030 -> -0.4030   [R18 (geodesic d_geo)] (rel 6.2e-05)
+    6.2 v120 / stands_snic / |dLorey| m / all pairs / regression beta_same: -0.4847 -> -0.4848   [R18 (geodesic d_geo)] (rel 1.7e-04)
+    6.2 v120 / stands_snic / |dLorey| m / all pairs / regression beta_dgeo_per100m: -0.3144 -> -0.3144   [R18 (geodesic d_geo)] (rel 1.4e-04)
+    6.2 v120 / stands_dissolved / |dLorey| m / all pairs / regression beta_same: 1.0815 -> 1.0815   [R18 (geodesic d_geo)] (rel 6.7e-05)
+    6.2 v120 / stands_dissolved / |dLorey| m / all pairs / regression beta_dgeo_per100m: -0.3209 -> -0.3209   [R18 (geodesic d_geo)] (rel 5.6e-05)
+    6.2 v120 / stands_dissolved / |dLorey| m / both > 30 m from boundary / regression beta_same: 1.2958 -> 1.2959   [R18 (geodesic d_geo)] (rel 4.7e-05)
+    6.2 v120 / stands_dissolved / |dLorey| m / both > 30 m from boundary / regression beta_dgeo_per100m: -0.2766 -> -0.2766   [R18 (geodesic d_geo)] (rel 1.3e-05)
+    6.2 current / stands_merged / |dLorey| m / all pairs / regression beta_same: 0.3744 -> 0.3743   [R18 (geodesic d_geo)] (rel 2.2e-04)
+    6.2 current / stands_merged / |dLorey| m / all pairs / regression beta_dgeo_per100m: -0.2647 -> -0.2647   [R18 (geodesic d_geo)] (rel 1.5e-04)
+    6.2 current / stands_merged / |dLorey| m / both > 30 m from boundary / regression beta_same: 1.1403 -> 1.1403   [R18 (geodesic d_geo)] (rel 3.3e-05)
+    6.2 current / stands_merged / |dLorey| m / both > 30 m from boundary / regression beta_dgeo_per100m: -1.1667 -> -1.1666   [R18 (geodesic d_geo)] (rel 1.1e-04)
+    6.2 current / stands_snic / |dLorey| m / all pairs / regression beta_same: 1.4330 -> 1.4329   [R18 (geodesic d_geo)] (rel 4.8e-05)
+    6.2 current / stands_snic / |dLorey| m / all pairs / regression beta_dgeo_per100m: -0.2238 -> -0.2238   [R18 (geodesic d_geo)] (rel 2.2e-04)
+    6.2 current / stands_dissolved / |dLorey| m / all pairs / regression beta_same: 3.0312 -> 3.0312   [R18 (geodesic d_geo)] (rel 9.0e-06)
+    6.2 current / stands_dissolved / |dLorey| m / all pairs / regression beta_dgeo_per100m: -0.2009 -> -0.2009   [R18 (geodesic d_geo)] (rel 1.6e-04)
+    6.2 current / stands_dissolved / |dLorey| m / both > 30 m from boundary / regression beta_same: 2.9079 -> 2.9079   [R18 (geodesic d_geo)] (rel 1.0e-05)
+    6.2 current / stands_dissolved / |dLorey| m / both > 30 m from boundary / regression beta_dgeo_per100m: -0.3535 -> -0.3535   [R18 (geodesic d_geo)] (rel 1.1e-04)
+
+  Pre-registered PERCENTILES: every one is redrawn (new seeds, 1999 realisations, R3/R4/R12/R14 rules). Moves > 5 pp or a change of estimability, first run -> corrected:
+    6.2 v120 / stands_merged / Bray-Curtis / all pairs / 400-800: 84.1 ->   n/a uninformative (n<=3), R4
+    6.2 v120 / stands_merged / Bray-Curtis / both > 30 m from boundary / 200-400: 61.7 ->   n/a uninformative (n<=3), R4
+    6.2 v120 / stands_merged / Bray-Curtis / both > 30 m from boundary / 400-800: 18.2 ->   n/a uninformative (n<=3), R4
+    6.2 v120 / stands_merged / |dLorey| m / all pairs / 400-800: 37.4 ->   n/a uninformative (n<=3), R4
+    6.2 v120 / stands_merged / |dLorey| m / both > 30 m from boundary / 200-400: 5.8 ->   n/a uninformative (n<=3), R4
+    6.2 v120 / stands_merged / |dLorey| m / both > 30 m from boundary / 400-800: 31.8 ->   n/a uninformative (n<=3), R4
+    6.2 v120 / stands_snic / Bray-Curtis / all pairs / 100-200: 90.1 ->   n/a uninformative (n<=3), R4
+    6.2 v120 / stands_snic / Bray-Curtis / all pairs / 200-400: 22.4 ->   n/a uninformative (n<=3), R4
+    6.2 v120 / stands_snic / |dLorey| m / all pairs / 100-200: 58.8 ->   n/a uninformative (n<=3), R4
+    6.2 v120 / stands_snic / |dLorey| m / all pairs / 200-400: 29.5 ->   n/a uninformative (n<=3), R4
+    6.2 v120 / stands_dissolved / Bray-Curtis / all pairs / 0-100: 1.1 ->   n/a uninformative (n<=3), R4
+    6.2 v120 / stands_dissolved / Bray-Curtis / all pairs / 100-200: 46.9 ->   n/a uninformative (n<=3), R4
+    6.2 v120 / stands_dissolved / |dLorey| m / all pairs / 0-100: 31.8 ->   n/a uninformative (n<=3), R4
+    6.2 v120 / stands_dissolved / |dLorey| m / all pairs / 100-200: 98.5 ->   n/a uninformative (n<=3), R4
+    6.2 current / stands_merged / Bray-Curtis / all pairs / 0-100: 71.4 ->   n/a uninformative (n<=3), R4
+    6.2 current / stands_merged / Bray-Curtis / all pairs / 400-800: 81.9 ->   n/a uninformative (n<=3), R4
+    6.2 current / stands_merged / Bray-Curtis / both > 30 m from boundary / 200-400: 49.9 ->   n/a uninformative (n<=3), R4
+    6.2 current / stands_merged / |dLorey| m / all pairs / 0-100: 68.1 ->   n/a uninformative (n<=3), R4
+    6.2 current / stands_merged / |dLorey| m / all pairs / 400-800: 57.9 ->   n/a uninformative (n<=3), R4
+    6.2 current / stands_merged / |dLorey| m / both > 30 m from boundary / 200-400: 57.1 ->   n/a uninformative (n<=3), R4
+    6.2 current / stands_snic / Bray-Curtis / all pairs / 400-800: 100.0 ->   n/a uninformative (n<=3), R4
+    6.2 current / stands_snic / |dLorey| m / all pairs / 400-800: 100.0 ->   n/a uninformative (n<=3), R4
+    6.2 current / stands_dissolved / Bray-Curtis / all pairs / 100-200: 96.2 ->   n/a uninformative (n<=3), R4
+    6.2 current / stands_dissolved / |dLorey| m / all pairs / 100-200: 2.7 ->   n/a uninformative (n<=3), R4
+    6.3 v120 / stands_merged UPGMA k=6 ari: 50.0 ->   n/a NOT ESTIMABLE (< 2 field types), R2
+    6.3 v120 / stands_merged UPGMA k=6 nmi: 50.0 ->   n/a NOT ESTIMABLE (< 2 field types), R2
+    6.3 current / stands_merged UPGMA k=6 ari: 50.0 ->   n/a NOT ESTIMABLE (< 2 field types), R2
+    6.3 current / stands_merged UPGMA k=6 nmi: 50.0 ->   n/a NOT ESTIMABLE (< 2 field types), R2
+    6.3 current / stands_merged  distant_diff_bc: 62.2 -> 15.4
+    6.3 current / stands_merged  distant_diff_lorey: 50.8 -> 68.4
+    6.3 current / stands_merged Sal-dominant rule ari: 83.0 -> 96.4
+    6.3 current / stands_merged Sal-dominant rule nmi: 46.4 -> 95.9
+    6.3 current / stands_merged Sal-dominant rule cramers_v: 42.2 -> 88.7
+  All other percentile moves: median 1.0 pp, max 4.1 pp (Monte Carlo).
+
+====================================================================================================
+DATA (set: pilot)
+====================================================================================================
+  plots in the set's AOIs: 60 over 6 parts (6 holding plots); all plots in the field table: 274
+  parts: Balikurma 11 plots (EPSG 32645); Adhapalli 11 plots (EPSG 32645); Kampulei 9 plots (EPSG 32645); Mahabirod 9 plots (EPSG 32645); Kerijoli 10 plots (EPSG 32645); Pangatira 10 plots (EPSG 32645)
+  pairs: 1770 total, 272 within an AOI part; within-part pairs by band: [14, 37, 106, 92]; pairs > 2 km (same district): 1498; d_geo geodesic (WGS84)
+  field types (UPGMA on Bray-Curtis, all 274 plots, k=6): sizes {1: 11, 2: 259, 3: 1, 4: 1, 5: 1, 6: 1}; in this set {2: 60}
+  noise-SNIC null: EXCLUDED by recorded decision (PHASE2_PREDICTIONS.md, Null models): it failed its size check before any statistic existed (odisha_phase2_4_results.txt). The rotation null is the only null.
+
+====================================================================================================
+6.2 PRE-REGISTERED: d_field rises with d_geo
+====================================================================================================
+  Bray-Curtis  within AOI parts, pairs < 800 m (n=249): OLS slope +0.0411 per 100 m, Spearman rho +0.263
+  |dLorey| m   within AOI parts, pairs < 800 m (n=249): OLS slope -0.3028 per 100 m, Spearman rho -0.110
+  mean |dLorey|: within-part pairs 4.61 m (n=272) vs pairs > 2 km 8.43 m (n=1498); mean Bray-Curtis 0.538 vs 0.699
 
 ====================================================================================================
 PRIMARY RESULT — v120 / stands_merged
 ====================================================================================================
   partition: 197 stands, area ha p10 1.20 / median 3.93 / p90 9.39; plots assigned 60 of 60; multi-plot stands 13
-  rotation null: 999 realisations; mean draws per accepted realisation by part {0: 6.9, 1: 7.7, 2: 10.1, 3: 5.4, 4: 7.0, 5: 11.5}
+  polygons with no cluster_id: 12 of 201, 22.40 ha of 915.02 ha
+  rotation null: 1999 realisations (seed crc32('v120/stands_merged')); 151 s; mean draws per accepted realisation by part {'Balikurma': 7.0, 'Adhapalli': 7.9, 'Kampulei': 10.3, 'Mahabirod': 5.2, 'Kerijoli': 7.2, 'Pangatira': 11.4}
+    sampler: plain rejection in every part
   6.1 v120 / stands_merged vs ROTATION null (observed = vector join, restricted R2)
-    variable          R2 all     (k, n)  R2 restr    (k, n)  null med     p5    p95  excess  pctile
-    loreys_h_m         0.764    (38,60)     0.633   (13,35)     0.740   0.56   0.86  -0.107    16.6
-    loreys_h_tree_m    0.762    (38,60)     0.629   (13,35)     0.743   0.57   0.86  -0.114    15.1
-    crown_cover_pct    0.855    (38,60)     0.780   (13,35)     0.789   0.63   0.93  -0.009    46.0
-    sal_ba_frac        0.739    (38,60)     0.613   (13,35)     0.753   0.62   0.87  -0.140     3.5
-    n_species          0.930    (38,60)     0.890   (13,35)     0.761   0.59   0.91   0.129    91.5
-    dbh_mean_cm        0.736    (38,60)     0.601   (13,35)     0.772   0.62   0.90  -0.172     3.0
-    h_top5_m           0.780    (38,60)     0.705   (13,35)     0.758   0.63   0.88  -0.054    24.7
+    variable          R2 all     (k, n)  R2 restr    (k, n)  null med     p5    p95  excess  pctile n_null
+    loreys_h_m         0.764    (38,60)     0.633   (13,35)     0.735   0.56   0.85  -0.102    17.1   1999
+    loreys_h_tree_m    0.762    (38,60)     0.629   (13,35)     0.741   0.57   0.85  -0.112    15.2   1999
+    crown_cover_pct    0.855    (38,60)     0.780   (13,35)     0.796   0.62   0.93  -0.016    43.8   1999
+    sal_ba_frac        0.739    (38,60)     0.613   (13,35)     0.753   0.62   0.87  -0.140     4.1   1999
+    n_species          0.930    (38,60)     0.890   (13,35)     0.761   0.58   0.90   0.129    92.0   1999
+    dbh_mean_cm        0.736    (38,60)     0.601   (13,35)     0.772   0.63   0.91  -0.172     3.2   1999
+    h_top5_m           0.780    (38,60)     0.705   (13,35)     0.754   0.63   0.88  -0.050    27.6   1999
+
+  SENSITIVITY (not pre-registered): 6.1 null structure — does the rotation null have the observed partition's shape?
+    (restricted set: multi-plot stands over plots with loreys_h_m)
+    quantity                        observed  null med      p5     p95  pctile
+    k (multi-plot stands)             13.000    12.000   9.000  15.000  64.2 (n_null 1999)
+    n (plots in them)                 35.000    30.000  23.900  36.000  90.3 (n_null 1999)
+    E = (k-1)/(n-1)                    0.353     0.393   0.333   0.444  13.9 (n_null 1999)
+    largest multi-plot group           8.000     4.000   3.000   7.000  98.6 (n_null 1999)
+    same-stand within-part pairs      46.000    25.000  17.000  39.000  99.1 (n_null 1999)
+    E-slope bias estimate, slope(null R2 on null E) x (E_obs - E_null median), in R2 units; negative means the null's different E alone
+    pushes the observed value below the null median by about that much, i.e. the percentile is biased low: loreys_h_m -0.029 (n 1999); loreys_h_tree_m -0.028 (n 1999); crown_cover_pct -0.019 (n 1999); sal_ba_frac -0.007 (n 1999); n_species -0.014 (n 1999); dbh_mean_cm -0.009 (n 1999); h_top5_m -0.034 (n 1999)
+
+  SENSITIVITY (not pre-registered): 6.1 alternatives to raw restricted R2 vs the same rotation null (each realisation with its own k, n)
+    variable          adj R2          pctile (n_null)  within-part R2          pctile (n_null)   leave-one-site-out restricted R2 percentile (n_null)
+    loreys_h_m         0.432       21.7 (n_null 1999)           0.106        7.1 (n_null 1999)   -Balikurma 17.1 (n_null 1999), -Adhapalli 29.0 (n_null 1999), -Kampulei 19.3 (n_null 1999), -Mahabirod 14.1 (n_null 1999), -Kerijoli 24.3 (n_null 1999), -Pangatira 14.2 (n_null 1999)
+    loreys_h_tree_m    0.427       19.2 (n_null 1999)           0.106        7.3 (n_null 1999)   -Balikurma 15.4 (n_null 1999), -Adhapalli 26.7 (n_null 1999), -Kampulei 17.5 (n_null 1999), -Mahabirod 13.5 (n_null 1999), -Kerijoli 21.9 (n_null 1999), -Pangatira 12.7 (n_null 1999)
+    crown_cover_pct    0.660       49.0 (n_null 1999)           0.344       46.0 (n_null 1999)   -Balikurma 50.8 (n_null 1999), -Adhapalli 44.4 (n_null 1999), -Kampulei 43.3 (n_null 1999), -Mahabirod 61.4 (n_null 1999), -Kerijoli 41.3 (n_null 1999), -Pangatira 35.2 (n_null 1999)
+    sal_ba_frac        0.402        7.3 (n_null 1999)           0.047        4.1 (n_null 1999)   -Balikurma 3.2 (n_null 1999), -Adhapalli 8.8 (n_null 1999), -Kampulei 3.6 (n_null 1999), -Mahabirod 13.7 (n_null 1999), -Kerijoli 6.5 (n_null 1999), -Pangatira 10.2 (n_null 1999)
+    n_species          0.830       93.6 (n_null 1999)           0.729       94.9 (n_null 1999)   -Balikurma 58.3 (n_null 1999), -Adhapalli 79.9 (n_null 1999), -Kampulei 91.6 (n_null 1999), -Mahabirod 96.9 (n_null 1999), -Kerijoli 93.1 (n_null 1999), -Pangatira 91.0 (n_null 1999)
+    dbh_mean_cm        0.383        4.8 (n_null 1999)           0.239       25.5 (n_null 1999)   -Balikurma 3.8 (n_null 1999), -Adhapalli 3.5 (n_null 1999), -Kampulei 4.4 (n_null 1999), -Mahabirod 4.5 (n_null 1999), -Kerijoli 7.7 (n_null 1999), -Pangatira 3.5 (n_null 1999)
+    h_top5_m           0.544       33.5 (n_null 1999)           0.151        8.5 (n_null 1999)   -Balikurma 27.4 (n_null 1999), -Adhapalli 40.6 (n_null 1999), -Kampulei 28.2 (n_null 1999), -Mahabirod 13.0 (n_null 1999), -Kerijoli 43.0 (n_null 1999), -Pangatira 21.5 (n_null 1999)
 
   6.2 pairwise boundary test (pairs within an AOI part)
     Bray-Curtis, all pairs:
-      band m    n same n diff mean same mean diff    diff  perm p rot pctile
-      0-100          9      5     0.275     0.342   0.067   0.316       60.7
-      100-200       17     20     0.314     0.515   0.201   0.027       89.6
-      200-400       18     88     0.463     0.549   0.086   0.109       75.9
-      400-800        2     90     0.373     0.606   0.233   0.104       84.1
-      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=249, same=46): beta_same -0.1425, beta per 100 m 0.0285; rotation null median -0.0391; stand-effect percentile 87.4 (high = more similar than null)
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100          9      5     0.275     0.342   0.067               59.4 (n_null 1996)   0.319
+      100-200       17     20     0.314     0.515   0.201               88.6 (n_null 1999)   0.025
+      200-400       18     88     0.463     0.548   0.086               76.0 (n_null 1998)   0.111
+      400-800        2     90     0.368     0.606   0.238             uninformative (n<=3)   0.104
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=249, same=46): beta_same -0.1426, beta per 100 m 0.0285; rotation null median -0.0362; stand-effect percentile 86.7 (n_null 1999) (high = more similar than null); naive perm p 0.009 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.943; 100-200 0.755; 200-400 0.939; 400-800 0.312 (uninformative n<=3); beta_same 0.973
     Bray-Curtis, both > 30 m from boundary:
-      band m    n same n diff mean same mean diff    diff  perm p rot pctile
-      0-100          2      0     0.249       n/a     n/a     n/a        n/a
-      100-200        4      0     0.234       n/a     n/a     n/a        n/a
-      200-400        2      1     0.466     0.573   0.107   0.667       61.7
-      400-800        1      3     0.630     0.443  -0.187   0.742       18.2
-      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=13, same=9): beta_same 0.0667, beta per 100 m 0.0556; rotation null median -0.1168; stand-effect percentile 22.1 (high = more similar than null)
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100          2      0     0.249       n/a     n/a             uninformative (n<=3)     n/a
+      100-200        4      0     0.234       n/a     n/a             uninformative (n<=3)     n/a
+      200-400        2      1     0.466     0.573   0.107             uninformative (n<=3)   0.666
+      400-800        1      3     0.619     0.443  -0.176             uninformative (n<=3)   0.748
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=13, same=9): beta_same 0.0610, beta per 100 m 0.0544; rotation null median -0.1011; stand-effect percentile 24.2 (n_null 1671) (high = more similar than null); naive perm p 0.748 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100   n/a (uninformative n<=3); 100-200   n/a (uninformative n<=3); 200-400 degenerate (no group holds both same and different pairs) (uninformative n<=3); 400-800 degenerate (no group holds both same and different pairs) (uninformative n<=3); beta_same degenerate (no group holds both same and different pairs)
+  SENSITIVITY (not pre-registered): 6.2 robustness of beta_same, Bray-Curtis, all pairs (same rotation realisations throughout)
+    same-stand pairs by AOI part: observed / null median / null p95 / pctile
+      Balikurma                   6 /     2 /     5 / 97.7 (n_null 1999)
+      Adhapalli                   3 /     5 /    10 / 17.3 (n_null 1999)
+      Kampulei                    1 /     0 /     2 / 69.7 (n_null 1999)
+      Mahabirod                   4 /     3 /     7 / 66.6 (n_null 1999)
+      Kerijoli                   28 /     9 /    22 / 98.1 (n_null 1999)
+      Pangatira                   4 /     3 /     6 / 67.0 (n_null 1999)
+    same-stand pairs by stand (AOI part, stand id as in the layer, plots, pairs): Kerijoli 81 8p 28; Balikurma 111 3p 3; Balikurma 100 3p 3; Mahabirod 39 3p 3; Adhapalli 61 2p 1; Adhapalli 70 2p 1; Adhapalli 65 2p 1; Mahabirod 33 2p 1; Kampulei 167 2p 1; Pangatira 11 2p 1; Pangatira 13 2p 1; Pangatira 17 2p 1; Pangatira 22 2p 1
+      site fixed effects                                       n_same   46  beta_same 0.0626  null median -0.0021  stand-effect pctile 7.0 (n_null 1999)
+      stand-weighted (same pair weight 1/pairs in its stand)   n_same   46  beta_same 0.0856  null median 0.0263  stand-effect pctile 14.4 (n_null 1999)
+      drop Balikurma                                           n_same   40  beta_same -0.1704  null median -0.0354  stand-effect pctile 90.8 (n_null 1999)
+      drop Adhapalli                                           n_same   43  beta_same -0.1103  null median -0.0363  stand-effect pctile 77.0 (n_null 1999)
+      drop Kampulei                                            n_same   45  beta_same -0.1443  null median -0.0284  stand-effect pctile 88.3 (n_null 1999)
+      drop Mahabirod                                           n_same   42  beta_same -0.1882  null median -0.0429  stand-effect pctile 92.9 (n_null 1999)
+      drop Kerijoli                                            n_same   18  beta_same 0.0693  null median -0.0035  stand-effect pctile 11.5 (n_null 1999)
+      drop Pangatira                                           n_same   42  beta_same -0.1479  null median -0.0435  stand-effect pctile 86.6 (n_null 1999)
     |dLorey| m, all pairs:
-      band m    n same n diff mean same mean diff    diff  perm p rot pctile
-      0-100          9      5     5.078     7.520   2.442   0.247       70.5
-      100-200       17     20     5.851     4.102  -1.749   0.789       16.2
-      200-400       18     88     6.612     4.082  -2.529   0.948       11.2
-      400-800        2     90     4.182     4.203   0.020   0.648       37.4
-      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=249, same=46): beta_same 1.3416, beta per 100 m -0.1836; rotation null median -0.2620; stand-effect percentile 11.2 (high = more similar than null)
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100          9      5     5.078     7.520   2.442               69.5 (n_null 1996)   0.252
+      100-200       17     20     5.851     4.102  -1.749               16.4 (n_null 1999)   0.775
+      200-400       18     88     6.612     4.082  -2.529               10.6 (n_null 1998)   0.946
+      400-800        2     90     4.182     4.203   0.020             uninformative (n<=3)   0.649
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=249, same=46): beta_same 1.3415, beta per 100 m -0.1836; rotation null median -0.2655; stand-effect percentile 12.5 (n_null 1999) (high = more similar than null); naive perm p 0.911 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.657; 100-200 0.636; 200-400 0.792; 400-800 0.882 (uninformative n<=3); beta_same 0.837
     |dLorey| m, both > 30 m from boundary:
-      band m    n same n diff mean same mean diff    diff  perm p rot pctile
-      0-100          2      0     8.514       n/a     n/a     n/a        n/a
-      100-200        4      0     5.241       n/a     n/a     n/a        n/a
-      200-400        2      1    10.041     1.942  -8.098   1.000        5.8
-      400-800        1      3     1.208     1.502   0.294   0.501       31.8
-      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=13, same=9): beta_same 3.4570, beta per 100 m -0.4030; rotation null median -0.6485; stand-effect percentile 15.9 (high = more similar than null)
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100          2      0     8.514       n/a     n/a             uninformative (n<=3)     n/a
+      100-200        4      0     5.241       n/a     n/a             uninformative (n<=3)     n/a
+      200-400        2      1    10.041     1.942  -8.098             uninformative (n<=3)   1.000
+      400-800        1      3     1.208     1.502   0.294             uninformative (n<=3)   0.510
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=13, same=9): beta_same 3.4568, beta per 100 m -0.4030; rotation null median -0.3807; stand-effect percentile 18.0 (n_null 1671) (high = more similar than null); naive perm p 0.670 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100   n/a (uninformative n<=3); 100-200   n/a (uninformative n<=3); 200-400 degenerate (no group holds both same and different pairs) (uninformative n<=3); 400-800 degenerate (no group holds both same and different pairs) (uninformative n<=3); beta_same degenerate (no group holds both same and different pairs)
+  SENSITIVITY (not pre-registered): 6.2 robustness of beta_same, |dLorey| m, all pairs (same rotation realisations throughout)
+      site fixed effects                                       n_same   46  beta_same 1.0555  null median -0.0383  stand-effect pctile 15.7 (n_null 1999)
+      stand-weighted (same pair weight 1/pairs in its stand)   n_same   46  beta_same -0.6573  null median -0.6020  stand-effect pctile 51.7 (n_null 1999)
+      drop Balikurma                                           n_same   40  beta_same 1.8052  null median -0.2753  stand-effect pctile 8.9 (n_null 1999)
+      drop Adhapalli                                           n_same   43  beta_same 0.4470  null median -0.3799  stand-effect pctile 29.7 (n_null 1999)
+      drop Kampulei                                            n_same   45  beta_same 1.3073  null median -0.4740  stand-effect pctile 11.1 (n_null 1999)
+      drop Mahabirod                                           n_same   42  beta_same 2.0196  null median 0.0884  stand-effect pctile 8.0 (n_null 1999)
+      drop Kerijoli                                            n_same   18  beta_same 0.7764  null median -0.4017  stand-effect pctile 27.6 (n_null 1999)
+      drop Pangatira                                           n_same   42  beta_same 1.2555  null median -0.5466  stand-effect pctile 13.4 (n_null 1999)
 
   6.3 label agreement (typology, not delineation) — merged stand cluster_id
-    field type = UPGMA k=6; typed plots n=60
-      ari                  0.000; rotation null median 0.000, p95 0.000, percentile 50.0
-      nmi                  0.000; rotation null median 0.000, p95 0.000, percentile 50.0
-      cramers_v              n/a; rotation null median   n/a, p95   n/a, percentile   n/a
-      distant_diff_bc      -0.053 (n same 196, n diff 1302); rotation null median -0.022, p95 0.018, percentile 8.6
-      distant_diff_lorey   2.560 (n same 196, n diff 1302); rotation null median 2.587, p95 3.407, percentile 48.2
-      contingency (rows field type, columns cluster_id):
+    district pilot: typed plots 60 of 60; rotation realisations used 1129 of 1999 (the rest put a typed plot on a polygon with no cluster_id)
+    field type = UPGMA k=6
+      pilot: typed plots n=60 hold 1 field type(s) ({2: 60}): ARI, NMI, Cramér's V NOT ESTIMABLE
+      pilot: contingency (rows field type, columns cluster_id); cells with expected count < 5: n/a (one row; no chi-square) of 5
         cluster_id   0   1  2  4  5
         field_type                 
         2           21  18  9  9  3
-    field type = Sal-dominant rule; typed plots n=60
-      ari                  0.132; rotation null median 0.092, p95 0.158, percentile 83.8
-      nmi                  0.182; rotation null median 0.128, p95 0.211, percentile 86.5
-      cramers_v            0.572; rotation null median 0.515, p95 0.632, percentile 77.2
-      distant_diff_bc      -0.053 (n same 196, n diff 1302); rotation null median -0.022, p95 0.018, percentile 8.6
-      distant_diff_lorey   2.560 (n same 196, n diff 1302); rotation null median 2.587, p95 3.407, percentile 48.2
+    field type = Sal-dominant rule
+      pilot: ari        0.132 (n plots 60); rotation null median 0.093, p95 0.156, percentile 83.2 (n_null 1129)
+      pilot: nmi        0.182 (n plots 60); rotation null median 0.128, p95 0.207, percentile 87.6 (n_null 1129)
+      pilot: cramers_v  0.572 (n plots 60); rotation null median 0.514, p95 0.630, percentile 78.7 (n_null 1129)
+      pilot: contingency (rows field type, columns cluster_id); cells with expected count < 5: 4 of 10
+        cluster_id   0   1  2  4  5
+        field_type                 
+        0           16  14  4  0  1
+        1            5   4  5  9  2
+    distant pairs (> 2 km, same district; depend only on the stand cluster label):
+      distant_diff_bc      -0.053 (n same-label 196, n different-label 1302); rotation null median -0.020, p5 -0.054, p95 0.021, percentile 6.5 (n_null 1129)
+      distant_diff_lorey   2.560 (n same-label 196, n different-label 1302); rotation null median 2.540, p5 1.344, p95 3.301, percentile 51.5 (n_null 1129)
 
 ====================================================================================================
 SECONDARY — v120 / stands_snic
 ====================================================================================================
   partition: 868 stands, area ha p10 0.16 / median 0.85 / p90 2.07; plots assigned 60 of 60; multi-plot stands 4
-  rotation null: 999 realisations; mean draws per accepted realisation by part {0: 7.8, 1: 9.1, 2: 11.7, 3: 6.6, 4: 10.3, 5: 12.2}
+  polygons with no cluster_id: 0 of 878, 0.00 ha of 874.67 ha
+  rotation null: 1999 realisations (seed crc32('v120/stands_snic')); 185 s; mean draws per accepted realisation by part {'Balikurma': 8.1, 'Adhapalli': 8.9, 'Kampulei': 11.8, 'Mahabirod': 6.6, 'Kerijoli': 10.0, 'Pangatira': 11.9}
+    sampler: plain rejection in every part
   6.1 v120 / stands_snic vs ROTATION null (observed = vector join, restricted R2)
-    variable          R2 all     (k, n)  R2 restr    (k, n)  null med     p5    p95  excess  pctile
-    loreys_h_m         0.970    (54,60)     0.798    (4,10)     0.761   0.38   0.93   0.037    64.9
-    loreys_h_tree_m    0.969    (54,60)     0.793    (4,10)     0.763   0.37   0.93   0.030    62.9
-    crown_cover_pct    0.999    (54,60)     0.995    (4,10)     0.889   0.11   0.99   0.106    96.5
-    sal_ba_frac        0.955    (54,60)     0.774    (4,10)     0.840   0.21   0.98  -0.066    35.1
-    n_species          0.988    (54,60)     0.743    (4,10)     0.806   0.28   0.97  -0.063    35.0
-    dbh_mean_cm        0.955    (54,60)     0.692    (4,10)     0.854   0.14   0.98  -0.163    20.4
-    h_top5_m           0.962    (54,60)     0.830    (4,10)     0.777   0.42   0.96   0.053    68.0
+    variable          R2 all     (k, n)  R2 restr    (k, n)  null med     p5    p95  excess  pctile n_null
+    loreys_h_m         0.970    (54,60)     0.798    (4,10)     0.762   0.38   0.93   0.037    64.3   1999
+    loreys_h_tree_m    0.969    (54,60)     0.793    (4,10)     0.763   0.38   0.93   0.029    61.6   1999
+    crown_cover_pct    0.999    (54,60)     0.995    (4,10)     0.879   0.13   0.99   0.115    95.4   1992
+    sal_ba_frac        0.955    (54,60)     0.774    (4,10)     0.845   0.16   0.99  -0.071    34.7   1998
+    n_species          0.988    (54,60)     0.743    (4,10)     0.804   0.17   0.97  -0.061    35.2   1995
+    dbh_mean_cm        0.955    (54,60)     0.692    (4,10)     0.856   0.11   0.98  -0.164    21.1   1999
+    h_top5_m           0.962    (54,60)     0.830    (4,10)     0.778   0.43   0.96   0.052    68.4   1999
+
+  SENSITIVITY (not pre-registered): 6.1 null structure — does the rotation null have the observed partition's shape?
+    (restricted set: multi-plot stands over plots with loreys_h_m)
+    quantity                        observed  null med      p5     p95  pctile
+    k (multi-plot stands)              4.000     5.000   2.000   7.000  35.9 (n_null 1999)
+    n (plots in them)                 10.000    10.000   5.000  15.100  48.0 (n_null 1999)
+    E = (k-1)/(n-1)                    0.333     0.400   0.250   0.455  18.9 (n_null 1999)
+    largest multi-plot group           3.000     3.000   2.000   4.000  60.4 (n_null 1999)
+    same-stand within-part pairs       8.000     6.000   3.000  11.000  70.3 (n_null 1999)
+    E-slope bias estimate, slope(null R2 on null E) x (E_obs - E_null median), in R2 units; negative means the null's different E alone
+    pushes the observed value below the null median by about that much, i.e. the percentile is biased low: loreys_h_m -0.078 (n 1999); loreys_h_tree_m -0.079 (n 1999); crown_cover_pct -0.045 (n 1992); sal_ba_frac -0.085 (n 1998); n_species -0.089 (n 1995); dbh_mean_cm -0.085 (n 1999); h_top5_m -0.095 (n 1999)
 
   6.2 pairwise boundary test (pairs within an AOI part)
     Bray-Curtis, all pairs:
-      band m    n same n diff mean same mean diff    diff  perm p rot pctile
-      0-100          6      8     0.231     0.350   0.120   0.186       64.2
-      100-200        1     36     0.094     0.432   0.338   0.219       90.1
-      200-400        1    105     0.767     0.532  -0.235   0.810       22.4
-      400-800        0     92       n/a     0.601     n/a     n/a        n/a
-      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=249, same=8): beta_same -0.1608, beta per 100 m 0.0373; rotation null median -0.1131; stand-effect percentile 66.5 (high = more similar than null)
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100          6      8     0.231     0.350   0.120               63.9 (n_null 1976)   0.187
+      100-200        1     36     0.094     0.432   0.338             uninformative (n<=3)   0.214
+      200-400        1    105     0.767     0.532  -0.236             uninformative (n<=3)   0.808
+      400-800        0     92       n/a     0.601     n/a             uninformative (n<=3)     n/a
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=249, same=8): beta_same -0.1606, beta per 100 m 0.0373; rotation null median -0.1198; stand-effect percentile 65.3 (n_null 1999) (high = more similar than null); naive perm p 0.217 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.865; 100-200 0.446 (uninformative n<=3); 200-400 0.666 (uninformative n<=3); 400-800   n/a (uninformative n<=3); beta_same 0.826
     Bray-Curtis, both > 30 m from boundary:
-      band m    n same n diff mean same mean diff    diff  perm p rot pctile
-      0-100          0      0       n/a       n/a     n/a     n/a        n/a
-      100-200        0      0       n/a       n/a     n/a     n/a        n/a
-      200-400        0      1       n/a     0.356     n/a     n/a        n/a
-      400-800        0      0       n/a       n/a     n/a     n/a        n/a
-      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=1, same=0): beta_same   n/a, beta per 100 m   n/a; rotation null median 0.0239; stand-effect percentile   n/a (high = more similar than null)
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100          0      0       n/a       n/a     n/a             uninformative (n<=3)     n/a
+      100-200        0      0       n/a       n/a     n/a             uninformative (n<=3)     n/a
+      200-400        0      1       n/a     0.356     n/a             uninformative (n<=3)     n/a
+      400-800        0      0       n/a       n/a     n/a             uninformative (n<=3)     n/a
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=1, same=0): beta_same   n/a, beta per 100 m   n/a; rotation null median -0.0761; stand-effect percentile n/a (n_null 19) (high = more similar than null); naive perm p   n/a (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100   n/a (uninformative n<=3); 100-200   n/a (uninformative n<=3); 200-400   n/a (uninformative n<=3); 400-800   n/a (uninformative n<=3); beta_same   n/a
     |dLorey| m, all pairs:
-      band m    n same n diff mean same mean diff    diff  perm p rot pctile
-      0-100          6      8     5.383     6.375   0.991   0.408       46.3
-      100-200        1     36     2.834     4.963   2.129   0.502       58.8
-      200-400        1    105     3.650     4.520   0.870   0.658       29.5
-      400-800        0     92       n/a     4.202     n/a     n/a        n/a
-      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=249, same=8): beta_same -0.4847, beta per 100 m -0.3144; rotation null median -0.6257; stand-effect percentile 47.3 (high = more similar than null)
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100          6      8     5.383     6.375   0.991               45.6 (n_null 1976)   0.410
+      100-200        1     36     2.834     4.963   2.129             uninformative (n<=3)   0.512
+      200-400        1    105     3.650     4.520   0.870             uninformative (n<=3)   0.651
+      400-800        0     92       n/a     4.202     n/a             uninformative (n<=3)     n/a
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=249, same=8): beta_same -0.4848, beta per 100 m -0.3144; rotation null median -0.7003; stand-effect percentile 46.0 (n_null 1999) (high = more similar than null); naive perm p 0.342 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.870; 100-200 0.250 (uninformative n<=3); 200-400 0.288 (uninformative n<=3); 400-800   n/a (uninformative n<=3); beta_same 0.392
     |dLorey| m, both > 30 m from boundary:
-      band m    n same n diff mean same mean diff    diff  perm p rot pctile
-      0-100          0      0       n/a       n/a     n/a     n/a        n/a
-      100-200        0      0       n/a       n/a     n/a     n/a        n/a
-      200-400        0      1       n/a    18.072     n/a     n/a        n/a
-      400-800        0      0       n/a       n/a     n/a     n/a        n/a
-      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=1, same=0): beta_same   n/a, beta per 100 m   n/a; rotation null median -2.9956; stand-effect percentile   n/a (high = more similar than null)
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100          0      0       n/a       n/a     n/a             uninformative (n<=3)     n/a
+      100-200        0      0       n/a       n/a     n/a             uninformative (n<=3)     n/a
+      200-400        0      1       n/a    18.072     n/a             uninformative (n<=3)     n/a
+      400-800        0      0       n/a       n/a     n/a             uninformative (n<=3)     n/a
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=1, same=0): beta_same   n/a, beta per 100 m   n/a; rotation null median -1.6437; stand-effect percentile n/a (n_null 19) (high = more similar than null); naive perm p   n/a (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100   n/a (uninformative n<=3); 100-200   n/a (uninformative n<=3); 200-400   n/a (uninformative n<=3); 400-800   n/a (uninformative n<=3); beta_same   n/a
 
 ====================================================================================================
 SECONDARY — v120 / stands_dissolved
 ====================================================================================================
   partition: 97 stands, area ha p10 0.05 / median 0.20 / p90 6.90; plots assigned 60 of 60; multi-plot stands 7
-  rotation null: 999 realisations; mean draws per accepted realisation by part {0: 14.8, 1: 25.6, 2: 24.9, 3: 12.3, 4: 27.0, 5: 86.8}
+  polygons with no cluster_id: 0 of 97, 0.00 ha of 720.78 ha
+  rotation null: 1999 realisations (seed crc32('v120/stands_dissolved')); 150 s; mean draws per accepted realisation by part {'Balikurma': 15.9, 'Adhapalli': 24.7, 'Kampulei': 23.7, 'Mahabirod': 12.5, 'Kerijoli': 26.0, 'Pangatira': 87.7}
+    sampler: plain rejection in every part
   6.1 v120 / stands_dissolved vs ROTATION null (observed = vector join, restricted R2)
-    variable          R2 all     (k, n)  R2 restr    (k, n)  null med     p5    p95  excess  pctile
-    loreys_h_m         0.519     (8,60)     0.518    (7,59)     0.517   0.50   0.56   0.001    54.9
-    loreys_h_tree_m    0.551     (8,60)     0.551    (7,59)     0.548   0.53   0.59   0.003    61.1
-    crown_cover_pct    0.626     (8,60)     0.622    (7,59)     0.627   0.60   0.66  -0.005    38.9
-    sal_ba_frac        0.507     (8,60)     0.491    (7,59)     0.522   0.49   0.58  -0.032     6.3
-    n_species          0.494     (8,60)     0.483    (7,59)     0.494   0.46   0.55  -0.011    26.6
-    dbh_mean_cm        0.562     (8,60)     0.561    (7,59)     0.574   0.53   0.69  -0.013    30.9
-    h_top5_m           0.590     (8,60)     0.590    (7,59)     0.589   0.57   0.65   0.001    52.9
+    variable          R2 all     (k, n)  R2 restr    (k, n)  null med     p5    p95  excess  pctile n_null
+    loreys_h_m         0.519     (8,60)     0.518    (7,59)     0.517   0.50   0.56   0.001    55.3   1999
+    loreys_h_tree_m    0.551     (8,60)     0.551    (7,59)     0.548   0.53   0.59   0.003    61.3   1999
+    crown_cover_pct    0.626     (8,60)     0.622    (7,59)     0.627   0.60   0.67  -0.005    36.5   1999
+    sal_ba_frac        0.507     (8,60)     0.491    (7,59)     0.522   0.49   0.58  -0.031     5.3   1999
+    n_species          0.494     (8,60)     0.483    (7,59)     0.494   0.46   0.55  -0.011    28.8   1999
+    dbh_mean_cm        0.562     (8,60)     0.561    (7,59)     0.577   0.54   0.68  -0.016    29.7   1999
+    h_top5_m           0.590     (8,60)     0.590    (7,59)     0.590   0.57   0.65   0.000    50.6   1999
+
+  SENSITIVITY (not pre-registered): 6.1 null structure — does the rotation null have the observed partition's shape?
+    (restricted set: multi-plot stands over plots with loreys_h_m)
+    quantity                        observed  null med      p5     p95  pctile
+    k (multi-plot stands)              7.000     8.000   6.000   9.000  28.4 (n_null 1999)
+    n (plots in them)                 59.000    57.000  55.000  60.000  85.0 (n_null 1999)
+    E = (k-1)/(n-1)                    0.103     0.119   0.091   0.143  13.0 (n_null 1999)
+    largest multi-plot group          11.000    11.000  10.000  11.000  62.9 (n_null 1999)
+    same-stand within-part pairs     242.000   220.000 190.000 246.000  92.2 (n_null 1999)
+    E-slope bias estimate, slope(null R2 on null E) x (E_obs - E_null median), in R2 units; negative means the null's different E alone
+    pushes the observed value below the null median by about that much, i.e. the percentile is biased low: loreys_h_m -0.006 (n 1999); loreys_h_tree_m -0.005 (n 1999); crown_cover_pct -0.005 (n 1999); sal_ba_frac -0.007 (n 1999); n_species -0.009 (n 1999); dbh_mean_cm -0.008 (n 1999); h_top5_m -0.009 (n 1999)
+
+  SENSITIVITY (not pre-registered): dissolved layer vs AOI parts — is it the site partition?
+    units holding plots, per AOI part: {'Balikurma': 1, 'Adhapalli': 1, 'Kampulei': 1, 'Mahabirod': 1, 'Kerijoli': 2, 'Pangatira': 2}
+    ARI(unit id, AOI part) over 60 assigned plots: 0.932
+    restricted R2 of the site-only partition (AOI part as the group): loreys_h_m 0.512; loreys_h_tree_m 0.544; crown_cover_pct 0.624; sal_ba_frac 0.494; n_species 0.481; dbh_mean_cm 0.534; h_top5_m 0.584
+    !! ARI >= 0.7: this layer is effectively the site partition; its statistics measure between-site differences and are not a delineation test.
 
   6.2 pairwise boundary test (pairs within an AOI part)
     Bray-Curtis, all pairs:
-      band m    n same n diff mean same mean diff    diff  perm p rot pctile
-      0-100         12      2     0.343     0.036  -0.307   0.989        1.1
-      100-200       34      3     0.424     0.403  -0.021   0.517       46.9
-      200-400       88     18     0.546     0.474  -0.073   0.847       40.0
-      400-800       86      6     0.606     0.523  -0.083   0.782        4.5
-      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=249, same=220): beta_same 0.0715, beta per 100 m 0.0399; rotation null median 0.0092; stand-effect percentile 24.1 (high = more similar than null)
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         12      2     0.343     0.036  -0.307             uninformative (n<=3)   0.989
+      100-200       34      3     0.424     0.403  -0.021             uninformative (n<=3)   0.519
+      200-400       88     18     0.546     0.474  -0.072               41.3 (n_null 1997)   0.849
+      400-800       86      6     0.606     0.523  -0.083                8.6 (n_null 1996)   0.779
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=249, same=220): beta_same 0.0713, beta per 100 m 0.0399; rotation null median 0.0133; stand-effect percentile 25.8 (n_null 1997) (high = more similar than null); naive perm p 0.931 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.972 (uninformative n<=3); 100-200 0.389 (uninformative n<=3); 200-400 0.505; 400-800 0.601; beta_same 0.686
     Bray-Curtis, both > 30 m from boundary:
-      band m    n same n diff mean same mean diff    diff  perm p rot pctile
-      0-100          8      0     0.427       n/a     n/a     n/a        n/a
-      100-200       22      0     0.513       n/a     n/a     n/a        n/a
-      200-400       76      5     0.581     0.531  -0.050   0.682       28.4
-      400-800       73      4     0.610     0.703   0.093   0.240       65.4
-      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=188, same=179): beta_same -0.0205, beta per 100 m 0.0217; rotation null median -0.0498; stand-effect percentile 39.0 (high = more similar than null)
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100          8      0     0.427       n/a     n/a             uninformative (n<=3)     n/a
+      100-200       22      0     0.513       n/a     n/a             uninformative (n<=3)     n/a
+      200-400       76      5     0.581     0.531  -0.049               28.7 (n_null 1849)   0.691
+      400-800       73      4     0.610     0.703   0.093               66.0 (n_null 1860)   0.243
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=188, same=179): beta_same -0.0208, beta per 100 m 0.0217; rotation null median -0.0455; stand-effect percentile 38.6 (n_null 1869) (high = more similar than null); naive perm p 0.455 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100   n/a (uninformative n<=3); 100-200   n/a (uninformative n<=3); 200-400 0.521; 400-800 0.334; beta_same 0.474
     |dLorey| m, all pairs:
-      band m    n same n diff mean same mean diff    diff  perm p rot pctile
-      0-100         12      2     6.259     4.096  -2.162   0.675       31.8
-      100-200       34      3     4.475     9.788   5.313   0.098       98.5
-      200-400       88     18     4.853     2.843  -2.011   0.928       28.8
-      400-800       86      6     4.267     3.267  -1.000   0.561       58.0
-      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=249, same=220): beta_same 1.0815, beta per 100 m -0.3209; rotation null median 1.0490; stand-effect percentile 49.1 (high = more similar than null)
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         12      2     6.259     4.096  -2.162             uninformative (n<=3)   0.671
+      100-200       34      3     4.475     9.788   5.313             uninformative (n<=3)   0.093
+      200-400       88     18     4.853     2.843  -2.011               28.5 (n_null 1997)   0.931
+      400-800       86      6     4.267     3.267  -1.000               56.6 (n_null 1996)   0.569
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=249, same=220): beta_same 1.0815, beta per 100 m -0.3209; rotation null median 1.0816; stand-effect percentile 50.0 (n_null 1997) (high = more similar than null); naive perm p 0.807 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.641 (uninformative n<=3); 100-200 0.030 (uninformative n<=3); 200-400 0.985; 400-800 0.570; beta_same 0.721
     |dLorey| m, both > 30 m from boundary:
-      band m    n same n diff mean same mean diff    diff  perm p rot pctile
-      0-100          8      0     7.118       n/a     n/a     n/a        n/a
-      100-200       22      0     4.162       n/a     n/a     n/a        n/a
-      200-400       76      5     4.901     2.876  -2.025   0.708       48.8
-      400-800       73      4     4.524     3.915  -0.609   0.445       72.9
-      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=188, same=179): beta_same 1.2958, beta per 100 m -0.2766; rotation null median 1.7521; stand-effect percentile 64.4 (high = more similar than null)
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100          8      0     7.118       n/a     n/a             uninformative (n<=3)     n/a
+      100-200       22      0     4.162       n/a     n/a             uninformative (n<=3)     n/a
+      200-400       76      5     4.901     2.876  -2.025               51.8 (n_null 1849)   0.705
+      400-800       73      4     4.524     3.915  -0.609               72.2 (n_null 1860)   0.447
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=188, same=179): beta_same 1.2959, beta per 100 m -0.2766; rotation null median 1.6897; stand-effect percentile 63.8 (n_null 1869) (high = more similar than null); naive perm p 0.701 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100   n/a (uninformative n<=3); 100-200   n/a (uninformative n<=3); 200-400 0.715; 400-800 0.368; beta_same 0.520
 
 ====================================================================================================
 SECONDARY — current / stands_merged
 ====================================================================================================
   partition: 188 stands, area ha p10 1.23 / median 4.27 / p90 9.46; plots assigned 60 of 60; multi-plot stands 11
-  rotation null: 999 realisations; mean draws per accepted realisation by part {0: 7.6, 1: 7.5, 2: 10.3, 3: 5.1, 4: 6.9, 5: 11.1}
+  polygons with no cluster_id: 14 of 196, 18.43 ha of 915.38 ha
+  rotation null: 1999 realisations (seed crc32('current/stands_merged')); 87 s; mean draws per accepted realisation by part {'Balikurma': 7.3, 'Adhapalli': 7.7, 'Kampulei': 10.1, 'Mahabirod': 5.2, 'Kerijoli': 7.2, 'Pangatira': 11.3}
+    sampler: plain rejection in every part
   6.1 current / stands_merged vs ROTATION null (observed = vector join, restricted R2)
-    variable          R2 all     (k, n)  R2 restr    (k, n)  null med     p5    p95  excess  pctile
-    loreys_h_m         0.898    (39,60)     0.641   (11,32)     0.732   0.56   0.85  -0.091    21.8
-    loreys_h_tree_m    0.899    (39,60)     0.653   (11,32)     0.739   0.57   0.85  -0.086    23.8
-    crown_cover_pct    0.869    (39,60)     0.730   (11,32)     0.779   0.63   0.93  -0.048    27.9
-    sal_ba_frac        0.866    (39,60)     0.763   (11,32)     0.740   0.61   0.87   0.023    61.3
-    n_species          0.895    (39,60)     0.859   (11,32)     0.757   0.58   0.89   0.102    85.9
-    dbh_mean_cm        0.954    (39,60)     0.907   (11,32)     0.772   0.62   0.91   0.135    94.3
-    h_top5_m           0.863    (39,60)     0.644   (11,32)     0.758   0.63   0.88  -0.114     6.5
+    variable          R2 all     (k, n)  R2 restr    (k, n)  null med     p5    p95  excess  pctile n_null
+    loreys_h_m         0.898    (39,60)     0.641   (11,32)     0.729   0.56   0.85  -0.088    22.1   1999
+    loreys_h_tree_m    0.899    (39,60)     0.653   (11,32)     0.737   0.57   0.85  -0.083    23.5   1999
+    crown_cover_pct    0.869    (39,60)     0.730   (11,32)     0.780   0.62   0.93  -0.050    30.0   1999
+    sal_ba_frac        0.866    (39,60)     0.763   (11,32)     0.738   0.61   0.86   0.025    62.5   1999
+    n_species          0.895    (39,60)     0.859   (11,32)     0.766   0.57   0.90   0.093    84.9   1999
+    dbh_mean_cm        0.954    (39,60)     0.907   (11,32)     0.772   0.62   0.90   0.135    95.4   1999
+    h_top5_m           0.863    (39,60)     0.644   (11,32)     0.754   0.63   0.89  -0.110     6.9   1999
+
+  SENSITIVITY (not pre-registered): 6.1 null structure — does the rotation null have the observed partition's shape?
+    (restricted set: multi-plot stands over plots with loreys_h_m)
+    quantity                        observed  null med      p5     p95  pctile
+    k (multi-plot stands)             11.000    12.000   9.000  15.000  23.2 (n_null 1999)
+    n (plots in them)                 32.000    31.000  25.000  37.000  63.0 (n_null 1999)
+    E = (k-1)/(n-1)                    0.323     0.385   0.333   0.438  4.1 (n_null 1999)
+    largest multi-plot group           9.000     4.000   3.000   6.000  100.0 (n_null 1999)
+    same-stand within-part pairs      53.000    26.000  18.000  38.000  99.9 (n_null 1999)
+    E-slope bias estimate, slope(null R2 on null E) x (E_obs - E_null median), in R2 units; negative means the null's different E alone
+    pushes the observed value below the null median by about that much, i.e. the percentile is biased low: loreys_h_m -0.051 (n 1999); loreys_h_tree_m -0.050 (n 1999); crown_cover_pct -0.039 (n 1999); sal_ba_frac -0.021 (n 1999); n_species -0.027 (n 1999); dbh_mean_cm -0.025 (n 1999); h_top5_m -0.054 (n 1999)
+
+  SENSITIVITY (not pre-registered): 6.1 alternatives to raw restricted R2 vs the same rotation null (each realisation with its own k, n)
+    variable          adj R2          pctile (n_null)  within-part R2          pctile (n_null)   leave-one-site-out restricted R2 percentile (n_null)
+    loreys_h_m         0.470       30.1 (n_null 1999)           0.059        3.4 (n_null 1999)   -Balikurma 21.2 (n_null 1999), -Adhapalli 1.8 (n_null 1999), -Kampulei 20.8 (n_null 1999), -Mahabirod 5.7 (n_null 1999), -Kerijoli 70.0 (n_null 1999), -Pangatira 28.6 (n_null 1999)
+    loreys_h_tree_m    0.488       30.9 (n_null 1999)           0.019        0.8 (n_null 1999)   -Balikurma 22.4 (n_null 1999), -Adhapalli 1.0 (n_null 1999), -Kampulei 20.7 (n_null 1999), -Mahabirod 7.5 (n_null 1999), -Kerijoli 77.4 (n_null 1999), -Pangatira 28.9 (n_null 1999)
+    crown_cover_pct    0.602       38.8 (n_null 1999)           0.205       25.0 (n_null 1999)   -Balikurma 34.9 (n_null 1999), -Adhapalli 39.0 (n_null 1999), -Kampulei 19.2 (n_null 1999), -Mahabirod 22.9 (n_null 1999), -Kerijoli 32.4 (n_null 1999), -Pangatira 47.7 (n_null 1999)
+    sal_ba_frac        0.651       73.9 (n_null 1999)           0.206       35.7 (n_null 1999)   -Balikurma 54.2 (n_null 1999), -Adhapalli 55.2 (n_null 1999), -Kampulei 70.5 (n_null 1999), -Mahabirod 45.7 (n_null 1999), -Kerijoli 78.8 (n_null 1999), -Pangatira 63.4 (n_null 1999)
+    n_species          0.791       89.3 (n_null 1999)           0.624       83.0 (n_null 1999)   -Balikurma 71.3 (n_null 1999), -Adhapalli 84.6 (n_null 1999), -Kampulei 87.8 (n_null 1999), -Mahabirod 80.3 (n_null 1999), -Kerijoli 88.3 (n_null 1999), -Pangatira 82.6 (n_null 1999)
+    dbh_mean_cm        0.863       96.9 (n_null 1999)           0.694       93.9 (n_null 1999)   -Balikurma 93.7 (n_null 1999), -Adhapalli 98.1 (n_null 1999), -Kampulei 96.0 (n_null 1999), -Mahabirod 79.8 (n_null 1999), -Kerijoli 96.4 (n_null 1999), -Pangatira 90.0 (n_null 1999)
+    h_top5_m           0.474       12.7 (n_null 1999)           0.051        2.0 (n_null 1999)   -Balikurma 4.1 (n_null 1999), -Adhapalli 1.5 (n_null 1999), -Kampulei 6.2 (n_null 1999), -Mahabirod 8.3 (n_null 1999), -Kerijoli 91.0 (n_null 1999), -Pangatira 7.7 (n_null 1999)
 
   6.2 pairwise boundary test (pairs within an AOI part)
     Bray-Curtis, all pairs:
-      band m    n same n diff mean same mean diff    diff  perm p rot pctile
-      0-100         11      3     0.279     0.373   0.094   0.270       71.4
-      100-200       20     17     0.293     0.575   0.282   0.004       98.5
-      200-400       19     87     0.275     0.591   0.315   0.000       99.6
-      400-800        3     89     0.347     0.609   0.262   0.047       81.9
-      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=249, same=53): beta_same -0.2823, beta per 100 m 0.0125; rotation null median -0.0199; stand-effect percentile 99.9 (high = more similar than null)
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         11      3     0.279     0.373   0.094             uninformative (n<=3)   0.274
+      100-200       20     17     0.293     0.575   0.282               98.8 (n_null 1998)   0.004
+      200-400       19     87     0.275     0.590   0.315               99.6 (n_null 1999)   0.000
+      400-800        3     89     0.347     0.609   0.262             uninformative (n<=3)   0.045
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=249, same=53): beta_same -0.2820, beta per 100 m 0.0125; rotation null median -0.0185; stand-effect percentile 99.8 (n_null 1999) (high = more similar than null); naive perm p 0.000 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.529 (uninformative n<=3); 100-200 0.477; 200-400 0.141; 400-800 0.517 (uninformative n<=3); beta_same 0.291
     Bray-Curtis, both > 30 m from boundary:
-      band m    n same n diff mean same mean diff    diff  perm p rot pctile
-      0-100          1      0     0.358       n/a     n/a     n/a        n/a
-      100-200        2      0     0.246       n/a     n/a     n/a        n/a
-      200-400        1      2     0.663     0.664   0.001   0.671       49.9
-      400-800        0      4       n/a     0.677     n/a     n/a        n/a
-      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=10, same=4): beta_same -0.2292, beta per 100 m 0.0213; rotation null median -0.0514; stand-effect percentile 75.8 (high = more similar than null)
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100          1      0     0.358       n/a     n/a             uninformative (n<=3)     n/a
+      100-200        2      0     0.246       n/a     n/a             uninformative (n<=3)     n/a
+      200-400        1      2     0.663     0.664   0.001             uninformative (n<=3)   0.663
+      400-800        0      4       n/a     0.677     n/a             uninformative (n<=3)     n/a
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=10, same=4): beta_same -0.2291, beta per 100 m 0.0213; rotation null median -0.0472; stand-effect percentile 76.0 (n_null 1625) (high = more similar than null); naive perm p 0.663 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100   n/a (uninformative n<=3); 100-200   n/a (uninformative n<=3); 200-400 degenerate (no group holds both same and different pairs) (uninformative n<=3); 400-800   n/a (uninformative n<=3); beta_same degenerate (no group holds both same and different pairs)
+  SENSITIVITY (not pre-registered): 6.2 robustness of beta_same, Bray-Curtis, all pairs (same rotation realisations throughout)
+    same-stand pairs by AOI part: observed / null median / null p95 / pctile
+      Balikurma                   2 /     2 /     5 / 43.8 (n_null 1999)
+      Adhapalli                   3 /     6 /    11 / 11.0 (n_null 1999)
+      Kampulei                    1 /     1 /     2 / 67.9 (n_null 1999)
+      Mahabirod                   4 /     4 /     7 / 53.5 (n_null 1999)
+      Kerijoli                   36 /     9 /    18 / 100.0 (n_null 1999)
+      Pangatira                   7 /     4 /     7 / 90.9 (n_null 1999)
+    same-stand pairs by stand (AOI part, stand id as in the layer, plots, pairs): Kerijoli 85 9p 36; Pangatira 13 4p 6; Mahabirod 40 3p 3; Adhapalli 57 2p 1; Balikurma 110 2p 1; Balikurma 108 2p 1; Adhapalli 65 2p 1; Mahabirod 38 2p 1; Kampulei 161 2p 1; Adhapalli 68 2p 1; Pangatira 12 2p 1
+      site fixed effects                                       n_same   53  beta_same -0.0271  null median -0.0030  stand-effect pctile 69.1 (n_null 1999)
+      stand-weighted (same pair weight 1/pairs in its stand)   n_same   53  beta_same -0.1081  null median 0.0251  stand-effect pctile 99.1 (n_null 1999)
+      drop Balikurma                                           n_same   51  beta_same -0.2767  null median -0.0122  stand-effect pctile 99.7 (n_null 1999)
+      drop Adhapalli                                           n_same   50  beta_same -0.2899  null median -0.0195  stand-effect pctile 99.7 (n_null 1999)
+      drop Kampulei                                            n_same   52  beta_same -0.2826  null median -0.0118  stand-effect pctile 99.8 (n_null 1999)
+      drop Mahabirod                                           n_same   49  beta_same -0.2767  null median -0.0235  stand-effect pctile 99.5 (n_null 1999)
+      drop Kerijoli                                            n_same   17  beta_same -0.0636  null median -0.0052  stand-effect pctile 80.7 (n_null 1999)
+      drop Pangatira                                           n_same   46  beta_same -0.3333  null median -0.0234  stand-effect pctile 99.9 (n_null 1999)
     |dLorey| m, all pairs:
-      band m    n same n diff mean same mean diff    diff  perm p rot pctile
-      0-100         11      3     5.479     7.674   2.195   0.267       68.1
-      100-200       20     17     5.470     4.242  -1.227   0.701       19.2
-      200-400       19     87     5.240     4.353  -0.887   0.730       32.1
-      400-800        3     89     3.055     4.241   1.186   0.481       57.9
-      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=249, same=53): beta_same 0.3744, beta per 100 m -0.2647; rotation null median -0.4187; stand-effect percentile 31.4 (high = more similar than null)
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         11      3     5.479     7.674   2.195             uninformative (n<=3)   0.274
+      100-200       20     17     5.470     4.242  -1.227               18.4 (n_null 1998)   0.699
+      200-400       19     87     5.240     4.353  -0.887               30.7 (n_null 1999)   0.746
+      400-800        3     89     3.055     4.241   1.186             uninformative (n<=3)   0.481
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=249, same=53): beta_same 0.3743, beta per 100 m -0.2647; rotation null median -0.3925; stand-effect percentile 29.3 (n_null 1999) (high = more similar than null); naive perm p 0.694 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.471 (uninformative n<=3); 100-200 0.201; 200-400 0.177; 400-800 0.552 (uninformative n<=3); beta_same 0.088
     |dLorey| m, both > 30 m from boundary:
-      band m    n same n diff mean same mean diff    diff  perm p rot pctile
-      0-100          1      0    12.508       n/a     n/a     n/a        n/a
-      100-200        2      0     6.254       n/a     n/a     n/a        n/a
-      200-400        1      2     0.533     1.466   0.934   0.328       57.1
-      400-800        0      4       n/a     1.790     n/a     n/a        n/a
-      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=10, same=4): beta_same 1.1403, beta per 100 m -1.1667; rotation null median -0.5072; stand-effect percentile 30.1 (high = more similar than null)
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100          1      0    12.508       n/a     n/a             uninformative (n<=3)     n/a
+      100-200        2      0     6.254       n/a     n/a             uninformative (n<=3)     n/a
+      200-400        1      2     0.533     1.466   0.934             uninformative (n<=3)   0.325
+      400-800        0      4       n/a     1.790     n/a             uninformative (n<=3)     n/a
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=10, same=4): beta_same 1.1403, beta per 100 m -1.1666; rotation null median -0.6467; stand-effect percentile 28.4 (n_null 1625) (high = more similar than null); naive perm p 0.325 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100   n/a (uninformative n<=3); 100-200   n/a (uninformative n<=3); 200-400 degenerate (no group holds both same and different pairs) (uninformative n<=3); 400-800   n/a (uninformative n<=3); beta_same degenerate (no group holds both same and different pairs)
+  SENSITIVITY (not pre-registered): 6.2 robustness of beta_same, |dLorey| m, all pairs (same rotation realisations throughout)
+      site fixed effects                                       n_same   53  beta_same -1.0500  null median -0.1886  stand-effect pctile 79.9 (n_null 1999)
+      stand-weighted (same pair weight 1/pairs in its stand)   n_same   53  beta_same -2.4355  null median -0.6251  stand-effect pctile 94.3 (n_null 1999)
+      drop Balikurma                                           n_same   51  beta_same -0.0501  null median -0.4863  stand-effect pctile 39.1 (n_null 1999)
+      drop Adhapalli                                           n_same   50  beta_same -0.8802  null median -0.3394  stand-effect pctile 63.1 (n_null 1999)
+      drop Kampulei                                            n_same   52  beta_same 0.4142  null median -0.5797  stand-effect pctile 25.1 (n_null 1999)
+      drop Mahabirod                                           n_same   49  beta_same 2.7570  null median -0.1574  stand-effect pctile 0.5 (n_null 1999)
+      drop Kerijoli                                            n_same   17  beta_same -1.5546  null median -0.2938  stand-effect pctile 78.5 (n_null 1999)
+      drop Pangatira                                           n_same   46  beta_same 0.1006  null median -0.5900  stand-effect pctile 32.9 (n_null 1999)
 
   6.3 label agreement (typology, not delineation) — merged stand cluster_id
-    field type = UPGMA k=6; typed plots n=60
-      ari                  0.000; rotation null median 0.000, p95 0.000, percentile 50.0
-      nmi                  0.000; rotation null median 0.000, p95 0.000, percentile 50.0
-      cramers_v              n/a; rotation null median   n/a, p95   n/a, percentile   n/a
-      distant_diff_bc      -0.032 (n same 160, n diff 1338); rotation null median -0.039, p95 0.001, percentile 62.2
-      distant_diff_lorey   -0.170 (n same 160, n diff 1338); rotation null median -0.218, p95 1.618, percentile 50.8
-      contingency (rows field type, columns cluster_id):
+    district pilot: typed plots 60 of 60; rotation realisations used 1247 of 1999 (the rest put a typed plot on a polygon with no cluster_id)
+    field type = UPGMA k=6
+      pilot: typed plots n=60 hold 1 field type(s) ({2: 60}): ARI, NMI, Cramér's V NOT ESTIMABLE
+      pilot: contingency (rows field type, columns cluster_id); cells with expected count < 5: n/a (one row; no chi-square) of 5
         cluster_id   0   1  2   4   5
         field_type                   
-        2           20  13  1  16  10
-    field type = Sal-dominant rule; typed plots n=60
-      ari                  0.092; rotation null median 0.066, p95 0.117, percentile 83.0
-      nmi                  0.111; rotation null median 0.114, p95 0.179, percentile 46.4
-      cramers_v            0.469; rotation null median 0.482, p95 0.593, percentile 42.2
-      distant_diff_bc      -0.032 (n same 160, n diff 1338); rotation null median -0.039, p95 0.001, percentile 62.2
-      distant_diff_lorey   -0.170 (n same 160, n diff 1338); rotation null median -0.218, p95 1.618, percentile 50.8
+        2           20  13  1  10  16
+    field type = Sal-dominant rule
+      pilot: ari        0.124 (n plots 60); rotation null median 0.073, p95 0.120, percentile 96.4 (n_null 1247)
+      pilot: nmi        0.193 (n plots 60); rotation null median 0.126, p95 0.189, percentile 95.9 (n_null 1247)
+      pilot: cramers_v  0.578 (n plots 60); rotation null median 0.506, p95 0.605, percentile 88.7 (n_null 1247)
+      pilot: contingency (rows field type, columns cluster_id); cells with expected count < 5: 3 of 10
+        cluster_id   0  1  2   4   5
+        field_type                  
+        0           16  8  0   0  11
+        1            4  5  1  10   5
+    distant pairs (> 2 km, same district; depend only on the stand cluster label):
+      distant_diff_bc      -0.068 (n same-label 198, n different-label 1300); rotation null median -0.049, p5 -0.077, p95 -0.010, percentile 15.4 (n_null 1247)
+      distant_diff_lorey   0.627 (n same-label 198, n different-label 1300); rotation null median 0.161, p5 -1.403, p95 1.878, percentile 68.4 (n_null 1247)
 
 ====================================================================================================
 SECONDARY — current / stands_snic
 ====================================================================================================
   partition: 872 stands, area ha p10 0.15 / median 0.85 / p90 1.99; plots assigned 60 of 60; multi-plot stands 5
-  rotation null: 999 realisations; mean draws per accepted realisation by part {0: 8.0, 1: 8.4, 2: 11.4, 3: 5.9, 4: 10.7, 5: 13.9}
+  polygons with no cluster_id: 0 of 884, 0.00 ha of 878.51 ha
+  rotation null: 1999 realisations (seed crc32('current/stands_snic')); 208 s; mean draws per accepted realisation by part {'Balikurma': 8.1, 'Adhapalli': 8.6, 'Kampulei': 11.3, 'Mahabirod': 6.5, 'Kerijoli': 10.5, 'Pangatira': 12.9}
+    sampler: plain rejection in every part
   6.1 current / stands_snic vs ROTATION null (observed = vector join, restricted R2)
-    variable          R2 all     (k, n)  R2 restr    (k, n)  null med     p5    p95  excess  pctile
-    loreys_h_m         0.920    (49,60)     0.465    (5,16)     0.737   0.33   0.92  -0.272    10.3
-    loreys_h_tree_m    0.922    (49,60)     0.468    (5,16)     0.738   0.32   0.92  -0.270    10.2
-    crown_cover_pct    0.915    (49,60)     0.586    (5,16)     0.856   0.12   0.99  -0.270    26.4
-    sal_ba_frac        0.923    (49,60)     0.767    (5,16)     0.839   0.25   0.98  -0.072    33.4
-    n_species          0.966    (49,60)     0.931    (5,16)     0.806   0.21   0.97   0.125    88.1
-    dbh_mean_cm        0.976    (49,60)     0.846    (5,16)     0.859   0.12   0.97  -0.013    47.4
-    h_top5_m           0.873    (49,60)     0.437    (5,16)     0.752   0.34   0.96  -0.315     7.7
+    variable          R2 all     (k, n)  R2 restr    (k, n)  null med     p5    p95  excess  pctile n_null
+    loreys_h_m         0.920    (49,60)     0.465    (5,16)     0.741   0.34   0.92  -0.276     9.0   1998
+    loreys_h_tree_m    0.922    (49,60)     0.468    (5,16)     0.741   0.33   0.92  -0.272     9.7   1998
+    crown_cover_pct    0.915    (49,60)     0.586    (5,16)     0.863   0.14   0.99  -0.277    23.5   1989
+    sal_ba_frac        0.923    (49,60)     0.767    (5,16)     0.841   0.23   0.98  -0.074    32.3   1998
+    n_species          0.966    (49,60)     0.931    (5,16)     0.799   0.30   0.97   0.132    86.6   1994
+    dbh_mean_cm        0.976    (49,60)     0.846    (5,16)     0.852   0.13   0.97  -0.006    48.4   1998
+    h_top5_m           0.873    (49,60)     0.437    (5,16)     0.757   0.35   0.96  -0.320     7.3   1998
+
+  SENSITIVITY (not pre-registered): 6.1 null structure — does the rotation null have the observed partition's shape?
+    (restricted set: multi-plot stands over plots with loreys_h_m)
+    quantity                        observed  null med      p5     p95  pctile
+    k (multi-plot stands)              5.000     5.000   2.000   7.000  58.1 (n_null 1999)
+    n (plots in them)                 16.000    11.000   6.000  16.000  95.1 (n_null 1999)
+    E = (k-1)/(n-1)                    0.267     0.385   0.250   0.455  9.3 (n_null 1998)
+    largest multi-plot group           7.000     3.000   2.000   5.000  99.4 (n_null 1999)
+    same-stand within-part pairs      27.000     7.000   3.000  16.000  99.8 (n_null 1999)
+    E-slope bias estimate, slope(null R2 on null E) x (E_obs - E_null median), in R2 units; negative means the null's different E alone
+    pushes the observed value below the null median by about that much, i.e. the percentile is biased low: loreys_h_m -0.146 (n 1998); loreys_h_tree_m -0.148 (n 1998); crown_cover_pct -0.067 (n 1989); sal_ba_frac -0.107 (n 1998); n_species -0.107 (n 1994); dbh_mean_cm -0.116 (n 1998); h_top5_m -0.179 (n 1998)
 
   6.2 pairwise boundary test (pairs within an AOI part)
     Bray-Curtis, all pairs:
-      band m    n same n diff mean same mean diff    diff  perm p rot pctile
-      0-100          7      7     0.308     0.290  -0.018   0.552       29.5
-      100-200       10     27     0.325     0.459   0.134   0.124       54.3
-      200-400        9     97     0.228     0.563   0.335   0.000       80.9
-      400-800        1     91     0.093     0.606   0.513   0.034      100.0
-      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=249, same=27): beta_same -0.2254, beta per 100 m 0.0287; rotation null median -0.1343; stand-effect percentile 79.7 (high = more similar than null)
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100          7      7     0.308     0.290  -0.018               29.3 (n_null 1979)   0.549
+      100-200       10     27     0.325     0.459   0.134               55.2 (n_null 1870)   0.129
+      200-400        9     97     0.228     0.562   0.335               79.8 (n_null 1095)   0.000
+      400-800        1     91     0.093     0.606   0.513             uninformative (n<=3)   0.034
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=249, same=27): beta_same -0.2252, beta per 100 m 0.0287; rotation null median -0.1327; stand-effect percentile 81.3 (n_null 1998) (high = more similar than null); naive perm p 0.000 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.863; 100-200 0.439; 200-400 0.822; 400-800 0.257 (uninformative n<=3); beta_same 0.730
     Bray-Curtis, both > 30 m from boundary:
-      band m    n same n diff mean same mean diff    diff  perm p rot pctile
-      0-100          0      0       n/a       n/a     n/a     n/a        n/a
-      100-200        0      0       n/a       n/a     n/a     n/a        n/a
-      200-400        0      0       n/a       n/a     n/a     n/a        n/a
-      400-800        0      0       n/a       n/a     n/a     n/a        n/a
-      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=0, same=0): beta_same   n/a, beta per 100 m   n/a; rotation null median 0.2065; stand-effect percentile   n/a (high = more similar than null)
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100          0      0       n/a       n/a     n/a             uninformative (n<=3)     n/a
+      100-200        0      0       n/a       n/a     n/a             uninformative (n<=3)     n/a
+      200-400        0      0       n/a       n/a     n/a             uninformative (n<=3)     n/a
+      400-800        0      0       n/a       n/a     n/a             uninformative (n<=3)     n/a
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=0, same=0): beta_same   n/a, beta per 100 m   n/a; rotation null median -0.0801; stand-effect percentile n/a (n_null 15) (high = more similar than null); naive perm p   n/a (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100   n/a (uninformative n<=3); 100-200   n/a (uninformative n<=3); 200-400   n/a (uninformative n<=3); 400-800   n/a (uninformative n<=3); beta_same   n/a
     |dLorey| m, all pairs:
-      band m    n same n diff mean same mean diff    diff  perm p rot pctile
-      0-100          7      7     5.721     6.179   0.458   0.447       38.9
-      100-200       10     27     6.139     4.449  -1.690   0.762       22.2
-      200-400        9     97     7.304     4.253  -3.051   0.919       25.0
-      400-800        1     91     0.052     4.248   4.196   0.024      100.0
-      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=249, same=27): beta_same 1.4330, beta per 100 m -0.2238; rotation null median -0.3348; stand-effect percentile 19.9 (high = more similar than null)
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100          7      7     5.721     6.179   0.458               41.3 (n_null 1979)   0.456
+      100-200       10     27     6.139     4.449  -1.690               21.6 (n_null 1870)   0.760
+      200-400        9     97     7.304     4.253  -3.051               20.9 (n_null 1095)   0.914
+      400-800        1     91     0.052     4.248   4.196             uninformative (n<=3)   0.023
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=249, same=27): beta_same 1.4329, beta per 100 m -0.2238; rotation null median -0.3675; stand-effect percentile 21.2 (n_null 1998) (high = more similar than null); naive perm p 0.874 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.871; 100-200 0.799; 200-400 0.724; 400-800 0.247 (uninformative n<=3); beta_same 0.889
     |dLorey| m, both > 30 m from boundary:
-      band m    n same n diff mean same mean diff    diff  perm p rot pctile
-      0-100          0      0       n/a       n/a     n/a     n/a        n/a
-      100-200        0      0       n/a       n/a     n/a     n/a        n/a
-      200-400        0      0       n/a       n/a     n/a     n/a        n/a
-      400-800        0      0       n/a       n/a     n/a     n/a        n/a
-      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=0, same=0): beta_same   n/a, beta per 100 m   n/a; rotation null median -6.4242; stand-effect percentile   n/a (high = more similar than null)
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100          0      0       n/a       n/a     n/a             uninformative (n<=3)     n/a
+      100-200        0      0       n/a       n/a     n/a             uninformative (n<=3)     n/a
+      200-400        0      0       n/a       n/a     n/a             uninformative (n<=3)     n/a
+      400-800        0      0       n/a       n/a     n/a             uninformative (n<=3)     n/a
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=0, same=0): beta_same   n/a, beta per 100 m   n/a; rotation null median -3.3319; stand-effect percentile n/a (n_null 15) (high = more similar than null); naive perm p   n/a (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100   n/a (uninformative n<=3); 100-200   n/a (uninformative n<=3); 200-400   n/a (uninformative n<=3); 400-800   n/a (uninformative n<=3); beta_same   n/a
 
 ====================================================================================================
 SECONDARY — current / stands_dissolved
 ====================================================================================================
   partition: 126 stands, area ha p10 0.04 / median 0.20 / p90 9.87; plots assigned 60 of 60; multi-plot stands 7
-  rotation null: 999 realisations; mean draws per accepted realisation by part {0: 16.2, 1: 26.1, 2: 24.6, 3: 12.2, 4: 26.2, 5: 87.8}
+  polygons with no cluster_id: 0 of 126, 0.00 ha of 720.62 ha
+  rotation null: 1999 realisations (seed crc32('current/stands_dissolved')); 194 s; mean draws per accepted realisation by part {'Balikurma': 15.8, 'Adhapalli': 25.9, 'Kampulei': 22.9, 'Mahabirod': 12.5, 'Kerijoli': 27.0, 'Pangatira': 92.4}
+    sampler: plain rejection in every part
   6.1 current / stands_dissolved vs ROTATION null (observed = vector join, restricted R2)
-    variable          R2 all     (k, n)  R2 restr    (k, n)  null med     p5    p95  excess  pctile
-    loreys_h_m         0.513     (8,60)     0.508    (7,59)     0.528   0.50   0.59  -0.020    12.3
-    loreys_h_tree_m    0.546     (8,60)     0.541    (7,59)     0.557   0.53   0.61  -0.016    15.1
-    crown_cover_pct    0.627     (8,60)     0.616    (7,59)     0.634   0.60   0.69  -0.018    21.1
-    sal_ba_frac        0.524     (8,60)     0.507    (7,59)     0.529   0.49   0.60  -0.022    21.0
-    n_species          0.487     (8,60)     0.486    (7,59)     0.511   0.47   0.57  -0.025    21.9
-    dbh_mean_cm        0.579     (8,60)     0.553    (7,59)     0.575   0.53   0.71  -0.022    28.0
-    h_top5_m           0.585     (8,60)     0.580    (7,59)     0.610   0.57   0.67  -0.030     9.4
+    variable          R2 all     (k, n)  R2 restr    (k, n)  null med     p5    p95  excess  pctile n_null
+    loreys_h_m         0.513     (8,60)     0.508    (7,59)     0.529   0.50   0.58  -0.021    11.6   1999
+    loreys_h_tree_m    0.546     (8,60)     0.541    (7,59)     0.559   0.53   0.61  -0.018    14.6   1999
+    crown_cover_pct    0.627     (8,60)     0.616    (7,59)     0.635   0.60   0.69  -0.019    17.8   1999
+    sal_ba_frac        0.524     (8,60)     0.507    (7,59)     0.529   0.49   0.61  -0.022    20.7   1999
+    n_species          0.487     (8,60)     0.486    (7,59)     0.510   0.47   0.58  -0.024    20.5   1999
+    dbh_mean_cm        0.579     (8,60)     0.553    (7,59)     0.578   0.53   0.71  -0.025    27.1   1999
+    h_top5_m           0.585     (8,60)     0.580    (7,59)     0.611   0.57   0.67  -0.031     8.4   1999
+
+  SENSITIVITY (not pre-registered): 6.1 null structure — does the rotation null have the observed partition's shape?
+    (restricted set: multi-plot stands over plots with loreys_h_m)
+    quantity                        observed  null med      p5     p95  pctile
+    k (multi-plot stands)              7.000     9.000   8.000  11.000  2.4 (n_null 1999)
+    n (plots in them)                 59.000    56.000  53.000  59.000  95.4 (n_null 1999)
+    E = (k-1)/(n-1)                    0.103     0.148   0.121   0.179  0.3 (n_null 1999)
+    largest multi-plot group          11.000    10.000   9.000  11.000  88.2 (n_null 1999)
+    same-stand within-part pairs     235.000   176.000 147.000 208.000  99.9 (n_null 1999)
+    E-slope bias estimate, slope(null R2 on null E) x (E_obs - E_null median), in R2 units; negative means the null's different E alone
+    pushes the observed value below the null median by about that much, i.e. the percentile is biased low: loreys_h_m -0.026 (n 1999); loreys_h_tree_m -0.024 (n 1999); crown_cover_pct -0.027 (n 1999); sal_ba_frac -0.035 (n 1999); n_species -0.034 (n 1999); dbh_mean_cm -0.060 (n 1999); h_top5_m -0.028 (n 1999)
+
+  SENSITIVITY (not pre-registered): dissolved layer vs AOI parts — is it the site partition?
+    units holding plots, per AOI part: {'Balikurma': 1, 'Adhapalli': 2, 'Kampulei': 1, 'Mahabirod': 1, 'Kerijoli': 1, 'Pangatira': 2}
+    ARI(unit id, AOI part) over 60 assigned plots: 0.915
+    restricted R2 of the site-only partition (AOI part as the group): loreys_h_m 0.512; loreys_h_tree_m 0.544; crown_cover_pct 0.624; sal_ba_frac 0.494; n_species 0.481; dbh_mean_cm 0.534; h_top5_m 0.584
+    !! ARI >= 0.7: this layer is effectively the site partition; its statistics measure between-site differences and are not a delineation test.
 
   6.2 pairwise boundary test (pairs within an AOI part)
     Bray-Curtis, all pairs:
-      band m    n same n diff mean same mean diff    diff  perm p rot pctile
-      0-100         14      0     0.299       n/a     n/a     n/a        n/a
-      100-200       34      3     0.400     0.684   0.284   0.076       96.2
-      200-400       95     11     0.538     0.505  -0.033   0.655       79.8
-      400-800       71     21     0.605     0.587  -0.017   0.612       71.4
-      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=249, same=214): beta_same -0.0094, beta per 100 m 0.0408; rotation null median 0.0708; stand-effect percentile 89.0 (high = more similar than null)
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         14      0     0.299       n/a     n/a             uninformative (n<=3)     n/a
+      100-200       34      3     0.400     0.684   0.284             uninformative (n<=3)   0.077
+      200-400       95     11     0.537     0.505  -0.033               78.8 (n_null 1999)   0.650
+      400-800       71     21     0.604     0.587  -0.017               71.5 (n_null 1999)   0.609
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=249, same=214): beta_same -0.0096, beta per 100 m 0.0408; rotation null median 0.0701; stand-effect percentile 87.5 (n_null 1999) (high = more similar than null); naive perm p 0.448 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100   n/a (uninformative n<=3); 100-200 0.466 (uninformative n<=3); 200-400 0.936; 400-800 0.544; beta_same 0.868
     Bray-Curtis, both > 30 m from boundary:
-      band m    n same n diff mean same mean diff    diff  perm p rot pctile
-      0-100         12      0     0.307       n/a     n/a     n/a        n/a
-      100-200       28      0     0.400       n/a     n/a     n/a        n/a
-      200-400       70      0     0.537       n/a     n/a     n/a        n/a
-      400-800       52      7     0.611     0.532  -0.079   0.797       43.5
-      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=169, same=162): beta_same 0.1041, beta per 100 m 0.0451; rotation null median 0.0880; stand-effect percentile 41.6 (high = more similar than null)
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         12      0     0.307       n/a     n/a             uninformative (n<=3)     n/a
+      100-200       28      0     0.400       n/a     n/a             uninformative (n<=3)     n/a
+      200-400       70      0     0.537       n/a     n/a             uninformative (n<=3)     n/a
+      400-800       52      7     0.611     0.532  -0.079               41.2 (n_null 1995)   0.784
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=169, same=162): beta_same 0.1038, beta per 100 m 0.0451; rotation null median 0.0845; stand-effect percentile 41.6 (n_null 1996) (high = more similar than null); naive perm p 0.819 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100   n/a (uninformative n<=3); 100-200   n/a (uninformative n<=3); 200-400   n/a (uninformative n<=3); 400-800 degenerate (no group holds both same and different pairs); beta_same degenerate (no group holds both same and different pairs)
     |dLorey| m, all pairs:
-      band m    n same n diff mean same mean diff    diff  perm p rot pctile
-      0-100         14      0     5.950       n/a     n/a     n/a        n/a
-      100-200       34      3     5.252     0.977  -4.275   0.967        2.7
-      200-400       95     11     4.814     1.903  -2.911   0.976        4.8
-      400-800       71     21     4.908     1.816  -3.092   0.996       41.2
-      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=249, same=214): beta_same 3.0312, beta per 100 m -0.2009; rotation null median 1.7338; stand-effect percentile 5.9 (high = more similar than null)
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         14      0     5.950       n/a     n/a             uninformative (n<=3)     n/a
+      100-200       34      3     5.252     0.977  -4.275             uninformative (n<=3)   0.965
+      200-400       95     11     4.814     1.903  -2.911                5.5 (n_null 1999)   0.978
+      400-800       71     21     4.908     1.816  -3.092               38.6 (n_null 1999)   0.996
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=249, same=214): beta_same 3.0312, beta per 100 m -0.2009; rotation null median 1.6762; stand-effect percentile 4.5 (n_null 1999) (high = more similar than null); naive perm p 1.000 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100   n/a (uninformative n<=3); 100-200 0.869 (uninformative n<=3); 200-400 0.618; 400-800 0.196; beta_same 0.541
     |dLorey| m, both > 30 m from boundary:
-      band m    n same n diff mean same mean diff    diff  perm p rot pctile
-      0-100         12      0     6.711       n/a     n/a     n/a        n/a
-      100-200       28      0     5.964       n/a     n/a     n/a        n/a
-      200-400       70      0     5.364       n/a     n/a     n/a        n/a
-      400-800       52      7     4.655     1.524  -3.131   0.973       59.7
-      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=169, same=162): beta_same 2.9079, beta per 100 m -0.3535; rotation null median 2.2633; stand-effect percentile 30.4 (high = more similar than null)
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         12      0     6.711       n/a     n/a             uninformative (n<=3)     n/a
+      100-200       28      0     5.964       n/a     n/a             uninformative (n<=3)     n/a
+      200-400       70      0     5.364       n/a     n/a             uninformative (n<=3)     n/a
+      400-800       52      7     4.655     1.524  -3.131               58.4 (n_null 1995)   0.972
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=169, same=162): beta_same 2.9079, beta per 100 m -0.3535; rotation null median 2.2957; stand-effect percentile 31.5 (n_null 1996) (high = more similar than null); naive perm p 0.963 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100   n/a (uninformative n<=3); 100-200   n/a (uninformative n<=3); 200-400   n/a (uninformative n<=3); 400-800 degenerate (no group holds both same and different pairs); beta_same degenerate (no group holds both same and different pairs)
+
+  NOTE: arm alphaearth skipped — no vector files for it in this set (no alphaearth_* columns in phase2_plots_joined.csv)
+
+====================================================================================================
+ARMS (pre-registered): difference in excess over own rotation null, stands_merged
+====================================================================================================
+  excess = observed restricted R2 - own null median. Null of the difference: each arm's null centred on its own
+  median, differenced index-wise between the arms' independent draws. Prediction: the observed difference
+  falls inside that null's p5-p95.
+  v120 - current:
+    variable            excess v120   excess current  difference  null p5  null p95  pctile
+    loreys_h_m               -0.102           -0.088      -0.014   -0.209     0.205  45.1 (n_null 1999)  inside
+    loreys_h_tree_m          -0.112           -0.083      -0.029   -0.204     0.200  40.3 (n_null 1999)  inside
+    crown_cover_pct          -0.016           -0.050       0.034   -0.228     0.205  63.3 (n_null 1999)  inside
+    sal_ba_frac              -0.140            0.025      -0.165   -0.183     0.168  6.6 (n_null 1999)  inside
+    n_species                 0.129            0.093       0.036   -0.231     0.253  57.6 (n_null 1999)  inside
+    dbh_mean_cm              -0.172            0.135      -0.306   -0.192     0.206  0.9 (n_null 1999)  OUTSIDE
+    h_top5_m                 -0.050           -0.110       0.060   -0.185     0.168  69.9 (n_null 1999)  inside
+
+  SENSITIVITY (not pre-registered): literal reading of the prediction's wording, 'falls inside either arm's null spread': the difference against each arm's OWN null, centred on its median, p5-p95
+    variable          difference       v120 centred p5..p95               current centred p5..p95           verdict
+    loreys_h_m            -0.014            [-0.171, 0.114]   inside              [-0.166, 0.123]   inside  inside both
+    loreys_h_tree_m       -0.029            [-0.170, 0.109]   inside              [-0.167, 0.117]   inside  inside both
+    crown_cover_pct        0.034            [-0.171, 0.134]   inside              [-0.160, 0.152]   inside  inside both
+    sal_ba_frac           -0.165            [-0.134, 0.115]  OUTSIDE              [-0.123, 0.121]  OUTSIDE  inside neither
+    n_species              0.036            [-0.180, 0.142]   inside              [-0.196, 0.132]   inside  inside both
+    dbh_mean_cm           -0.306            [-0.145, 0.134]  OUTSIDE              [-0.151, 0.133]  OUTSIDE  inside neither
+    h_top5_m               0.060            [-0.126, 0.128]   inside              [-0.119, 0.132]   inside  inside both
+
+  total runtime 1547 s

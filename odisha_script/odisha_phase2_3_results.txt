@@ -4,8 +4,13 @@ FIELD TABLE
 ==========================================================================================
   records: 5910 raw -> 5679 after GPS filter; plots: 274
   Habit: {'Tree': 2729, 'SaplingSeedling': 1538, 'Shrub': 953, 'Climber': 285, 'Stump': 168, 'climber': 5, 'Seedling': 1}
-  species strings: 233 raw -> 183 normalised
-  41 normalised name(s) collapse more than one raw string:
+  species strings: 233 raw -> 182 by the token rule -> 179 after aliases
+  trailing '.' stripped from: ['Bhuinkurma Ixora sp.', 'Eucalyptus Eucalyptus spp.', 'Khajuri Phoneix spp.', 'urla Ficus spp.']
+  alias applications (key by the token rule -> alias; records; plots; raw strings):
+    cassia fistul              -> cassia fistula               61 records,  43 plots; ['Sunari Cassia fistul']
+    lagerstroemia parviflor    -> lagerstroemia parviflora    108 records,  28 plots; ['Sidha Lagerstroemia parviflor']
+    zizyphus oenoplia          -> ziziphus oenoplia            64 records,  37 plots; ['Kanteikoli Zizyphus oenoplia']
+  44 normalised name(s) collapse more than one raw string:
     aegle marmelos               <- ['Bel Aegle marmelos ', 'Bela Aegle marmelos', 'Bila Aegle marmelos']
     anacardium occidentale       <- ['Bhalia Anacardium occidentale', 'Kaju Anacardium occidentale']
     anogeissus latifolia         <- ['Dhauda Anogeissus latifolia', 'Dheura_Anogeissus_latifolia', 'Dokarowa Anogeissus latifolia']
@@ -17,7 +22,7 @@ FIELD TABLE
     butea monosperma             <- ['Palasa Butea monosperma', 'Palsa Butea monosperma']
     butea superba                <- ['Buduli Butea superba', 'Buduli Butea superba ', 'Palsa Butea superba']
     careya arborea               <- ['Kumbhi Careya arborea', 'kumbhi Careya arborea']
-    cassia fistula               <- ['Sunari Cassia fistula', 'sunari cassia fistula']
+    cassia fistula               <- ['Sunari Cassia fistul', 'Sunari Cassia fistula', 'sunari cassia fistula']
     chloroxylon swietenia        <- ['Bheru Chloroxylon swietenia', 'Veru Chloroxylon swietenia']
     cipadessa baccifera          <- ['Lalbhali Cipadessa baccifera', 'Nahalbeli Cipadessa baccifera', 'Pitmari Cipadessa baccifera']
     cleistanthus collinus        <- ['Karada Cleistanthus collinus', 'karada Cleistanthus collinus']
@@ -25,6 +30,7 @@ FIELD TABLE
     dalbergia paniculata         <- ['Barbakiliaa Dalbergia paniculata', 'Dhubuni Dalbergia paniculata']
     dendrocalamus strictus       <- ['Bamboo_Dendrocalamus_strictus', 'Bausa Dendrocalamus strictus']
     diospyros montana            <- ['Halada Diospyros montana', 'Halada_Diospyros_montana', 'Halda Diospyros montana']
+    eucalyptus spp               <- ['Eucalyptus Eucalyptus spp.', 'Nilgiri_Eucalyptus_spp']
     euphorbia royleana           <- ['Sijhu Euphorbia royleana', 'Siju gaccha Euphorbia royleana']
     ficus benghalensis           <- ['Bara Ficus benghalensis', 'Dimiri Ficus benghalensis']
     gardenia gummifera           <- ['Ghurudu Gardenia gummifera', 'Gurhi Gardenia gummifera', 'Gurudu Gardenia gummifera']
@@ -32,6 +38,7 @@ FIELD TABLE
     holoptelea integrifolia      <- ['Kuday Holoptelea integrifolia', 'Kudedi Holoptelea integrifolia']
     indigofera cassioides        <- ['Gilira Indigofera cassioides', 'Girli Indigofera cassioides']
     jasminum scandens            <- ['Bana mali Jasminum scandens', 'Banamali Jasminum scandens']
+    lagerstroemia parviflora     <- ['Sidha Lagerstroemia parviflor', 'Sidha Lagerstroemia parviflora']
     lantana camara               <- ['Bhalupadi Lantana camara', 'Bhalupati Lantana camara']
     manilkara hexandra           <- ['Khira Koli Manilkara hexandra', 'Khirkachin Manilkara hexandra']
     naringi crenulata            <- ['Beitha Naringi crenulata', 'beitha Naringi crenulata']
@@ -47,6 +54,7 @@ FIELD TABLE
     tectona grandis              <- ['Saguana Tectona grandis', 'Teak_Tectona_grandis', 'saugan Tectona grandis']
     terminalia arjuna            <- ['Arjun_Terminalia arjuna', 'Arjuna Terminalia arjuna']
     wrightia tinctoria           <- ['Rajkuehi Wrightia tinctoria', 'Rajkurehi Wrightia tinctoria']
+    ziziphus oenoplia            <- ['Kantakali_Ziziphus_oenoplia', 'Kanteikoli Zizyphus oenoplia']
   loreys_h_m       max |phase2 - phase1| = 0.00e+00
   h_top5_m         max |phase2 - phase1| = 0.00e+00
   crown_cover_pct  max |phase2 - phase1| = 0.00e+00
@@ -56,9 +64,10 @@ FIELD TABLE
   plots with any Sal basal area: 80; with sal_ba_frac > 0.5: 32
 
 ==========================================================================================
-JOIN — plots to stands by geometry
+JOIN — plots to stands by geometry (set: pilot)
 ==========================================================================================
-  NOTE: no vectors yet for ['alphaearth']; their columns are omitted
+  plots inside the set's AOIs: 60 of 274; by district {'pilot': 60}
+  plots in this set holding a record whose key an alias or '.'-strip changed: 8 ['21.018825_85.612578', '21.021416_85.610006', '21.021861_85.613366', '21.022286_85.61525', '21.046252_85.683699', '21.047558_85.52488', '21.048834_85.524919', '21.049949_85.690852']
 
   --- v120 (odisha_v120_handcrafted), fingerprint 0b6c3a50c5
   merge: 933 superpixels -> 197 stands; pass-2 fallback merges 54 of 111; stands below min area 6
@@ -73,7 +82,7 @@ JOIN — plots to stands by geometry
   stands_dissolved     97 stands (97 polygons), area ha p10 0.05 / median 0.20 / p90 6.90
       plots assigned 60, in 8 stands; multi-plot stands 7 holding 59 plots; plots-per-stand histogram {1: 1, 3: 1, 7: 1, 9: 3, 11: 2}; boundary-ambiguous plots 0
       distance to another stand: median 139 m; plots > 30 m from a boundary 52
-  plots whose merged stand carries a cluster_id: 60 of 60
+  plots whose merged stand carries a cluster_id: 60 of 60; cluster values after rounding [0.0, 1.0, 2.0, 4.0, 5.0] (non-integer: 0)
 
   --- current (odisha_current_handcrafted), fingerprint 135f0c93c4
   merge: 932 superpixels -> 188 stands; pass-2 fallback merges 25 of 77; stands below min area 10
@@ -88,6 +97,8 @@ JOIN — plots to stands by geometry
   stands_dissolved    126 stands (126 polygons), area ha p10 0.04 / median 0.20 / p90 9.87
       plots assigned 60, in 8 stands; multi-plot stands 7 holding 59 plots; plots-per-stand histogram {1: 1, 4: 1, 7: 1, 9: 3, 10: 1, 11: 1}; boundary-ambiguous plots 0
       distance to another stand: median 106 m; plots > 30 m from a boundary 50
-  plots whose merged stand carries a cluster_id: 60 of 60
+  plots whose merged stand carries a cluster_id: 60 of 60; cluster values after rounding [0.0, 1.0, 2.0, 4.0, 5.0] (non-integer: 0)
+
+  NOTE: no vectors for alphaearth (odisha_alphaearth) in any district of this set; its columns are omitted
 
   wrote phase2_plots_joined.csv: 274 rows, 42 columns
