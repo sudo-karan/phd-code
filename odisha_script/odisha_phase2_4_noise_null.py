@@ -165,7 +165,7 @@ def observed_context(cfg: Config, roi: ee.Geometry) -> PipelineContext:
 # ---------------------------------------------------------------------- one realisation
 def noise_image(seed_base: int, n: int, prefix: str, grid: ee.Projection) -> ee.Image:
     return ee.Image.cat([
-        ee.Image.randomNormal(seed_base + b).rename(f"{prefix}{b}") for b in range(n)
+        ee.Image.random(seed_base + b, "normal").rename(f"{prefix}{b}") for b in range(n)
     ]).reproject(grid)
 
 
@@ -227,6 +227,68 @@ def realisation(r: int, ref_cfg: Config, arm_cfgs: dict[str, Config], calib: dic
     return s, summaries
 
 
+def size_check(ref: Config, arm_cfgs: dict[str, Config], roi: ee.Geometry, grid: ee.Projection,
+               n_seeds: int) -> int:
+    """Is the noise SNIC size-matched to the observed SNIC? Geometry only; no field data.
+
+    The brief's premise for this null is that SNIC on noise at the same size and compactness gives
+    a spatially coherent partition with a matched size distribution. This measures whether it
+    does, before any statistic is computed against it.
+    """
+    from fmu.utils.caching import asset_exists, cached_asset_path, config_fingerprint
+
+    lines: list[str] = []
+
+    def out(s: str = "") -> None:
+        print(s, flush=True)
+        lines.append(s)
+
+    def row(label: str, px: np.ndarray, extra: str = "") -> None:
+        q = np.percentile(px, [10, 25, 50, 75, 90])
+        out(f"  {label:<26} n {len(px):>5} | px p10 {q[0]:>5.0f} p25 {q[1]:>5.0f} median {q[2]:>5.0f} "
+            f"p75 {q[3]:>5.0f} p90 {q[4]:>5.0f} | <= 4 px {np.mean(px <= 4):>5.1%} | >= 50 px "
+            f"{np.mean(px >= 50):>5.1%}{extra}")
+
+    out("=" * 100)
+    out("SIZE CHECK — noise SNIC vs observed SNIC superpixel sizes (pixels at 10 m; 100 px = 1 ha)")
+    out("=" * 100)
+    out(f"  SNIC params: size {ref.segmentation.size}, compactness {ref.segmentation.compactness}, "
+        f"connectivity {ref.segmentation.connectivity}, neighbourhood {ref.segmentation.neighborhood_size}")
+    for arm, cfg in arm_cfgs.items():
+        path = cached_asset_path(cfg.name, "segmentation", "snic_clusters", config_fingerprint(cfg))
+        if not asset_exists(path):
+            out(f"  observed {arm:<17} (SNIC not cached yet)")
+            continue
+        g = extract_superpixel_graph(ee.Image(path), roi, cfg.export.analysis_scale_m, context=f"observed {arm}")
+        row(f"observed {arm}", np.array(g.n_pixels))
+
+    seg_cfg = ref.model_copy(update={"segmentation": ref.segmentation.model_copy(update={
+        "input_bands": [SnicInputBand(source="static_features", band=f"n{b}")
+                        for b in range(N_SNIC_NOISE_BANDS)]})})
+    for r in range(n_seeds):
+        ctx = PipelineContext()
+        ctx.set("roi", roi)
+        ctx.set("static_features", noise_image(1_000_003 * (r + 1), N_SNIC_NOISE_BANDS, "n", grid))
+        snic = SegmentationStage().run(ctx, seg_cfg).outputs["snic_clusters"]
+        g = extract_superpixel_graph(snic, roi, ref.export.analysis_scale_m, context=f"noise {r}")
+        # labels with a pixel whose 4-neighbour is outside the ROI: separates clip slivers from fragmentation
+        edge = ee.Image.constant(0)
+        for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+            edge = edge.Or(snic.reproject(grid).translate(dx, dy, "pixels", grid).mask().Not())
+        hist = safe_get_info(snic.updateMask(edge.reproject(grid)).rename("l").reduceRegion(
+            ee.Reducer.frequencyHistogram(), roi, ref.export.analysis_scale_m, maxPixels=1e9),
+            context=f"noise {r} edge labels").get("l") or {}
+        edge_labels = {int(float(k)) for k in hist}
+        small = [lab for lab, n in zip(g.raw_labels, g.n_pixels) if n <= 4]
+        row(f"noise seed {r}", np.array(g.n_pixels),
+            f" | small touching ROI edge {sum(lab in edge_labels for lab in small)}/{len(small)}")
+    out("")
+    out("  Read: a size-matched null needs the noise rows to resemble the observed rows. If they do not,")
+    out("  the null is not size-matched and excess over it is not interpretable (PHASE2_PREDICTIONS.md).")
+    (HERE / "odisha_phase2_4_results.txt").write_text("\n".join(lines) + "\n")
+    return 0
+
+
 def append(df: pd.DataFrame, path: Path) -> None:
     with _write_lock:
         df.to_csv(path, mode="a", header=not path.exists(), index=False)
@@ -237,6 +299,9 @@ def main() -> int:
     ap.add_argument("--n", type=int, default=199)
     ap.add_argument("--workers", type=int, default=6)
     ap.add_argument("--skip-observed", action="store_true")
+    ap.add_argument("--size-check", type=int, default=0, metavar="N_SEEDS",
+                    help="only compare noise vs observed SNIC sizes over N seeds, write "
+                         "odisha_phase2_4_results.txt, and exit")
     args = ap.parse_args()
 
     logging.getLogger("fmu").setLevel(logging.WARNING)
@@ -250,6 +315,8 @@ def main() -> int:
             and cfg.segmentation.compactness == ref.segmentation.compactness
     roi = load_roi_geometry(ref.roi.roi_file)
     grid = analysis_grid(roi, ref.export.analysis_scale_m)
+    if args.size_check:
+        return size_check(ref, arm_cfgs, roi, grid, args.size_check)
     plots = pilot_plots(REPO / ref.roi.roi_file)
     fc = plots_fc(plots)
     print(f"plots inside {ref.roi.roi_file}: {len(plots)}")
