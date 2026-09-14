@@ -99,6 +99,19 @@ JOIN — plots to stands by geometry (set: pilot)
       distance to another stand: median 106 m; plots > 30 m from a boundary 50
   plots whose merged stand carries a cluster_id: 60 of 60; cluster values after rounding [0.0, 1.0, 2.0, 4.0, 5.0] (non-integer: 0)
 
-  NOTE: no vectors for alphaearth (odisha_alphaearth) in any district of this set; its columns are omitted
+  --- alphaearth (odisha_alphaearth), fingerprint 1116d1285e
+  merge: 929 superpixels -> 184 stands; pass-2 fallback merges 19 of 60; stands below min area 4
+  stands_merged       184 stands (188 polygons), area ha p10 1.29 / median 4.79 / p90 9.11
+      plots assigned 60, in 37 stands; multi-plot stands 13 holding 36 plots; plots-per-stand histogram {1: 24, 2: 7, 3: 5, 7: 1}; boundary-ambiguous plots 0
+      distance to another stand: median 21 m; plots > 30 m from a boundary 20
+      raster cross-check: vector id == stand_clusters at plot pixel for 60 of 60
+  stands_snic         872 stands (876 polygons), area ha p10 0.50 / median 0.96 / p90 1.52
+      plots assigned 60, in 53 stands; multi-plot stands 5 holding 12 plots; plots-per-stand histogram {1: 48, 2: 4, 4: 1}; boundary-ambiguous plots 0
+      distance to another stand: median 11 m; plots > 30 m from a boundary 6
+      raster cross-check: vector id == snic_clusters at plot pixel for 60 of 60
+  stands_dissolved    110 stands (110 polygons), area ha p10 0.05 / median 0.39 / p90 9.30
+      plots assigned 60, in 9 stands; multi-plot stands 7 holding 58 plots; plots-per-stand histogram {1: 2, 4: 2, 9: 1, 10: 3, 11: 1}; boundary-ambiguous plots 0
+      distance to another stand: median 116 m; plots > 30 m from a boundary 53
+  plots whose merged stand carries a cluster_id: 60 of 60; cluster values after rounding [0.0, 1.0, 2.0, 5.0] (non-integer: 0)
 
-  wrote phase2_plots_joined.csv: 274 rows, 42 columns
+  wrote phase2_plots_joined.csv: 274 rows, 54 columns
