@@ -54,7 +54,7 @@ FULL — habitations with >= 5 plots: convex hull + 300 m, dissolved
   dissolved AOI: 20 part(s) from 21 hulls, 4298.7 ha, valid=True
     merged part ['BILAPUT', 'HATIMUNDA']: 422.85 ha
 
-  plots inside the AOI                    : 267 (expected 261)
+  plots inside the AOI                    : 267 (expected 267)
   of which from a >=5-plot habitation     : 261
   6 plot(s) from a <5-plot habitation fall inside a dissolved hull:
     18.653207_82.811814  KORAPUT/KHARAGUDA
@@ -66,7 +66,23 @@ FULL — habitations with >= 5 plots: convex hull + 300 m, dissolved
   wrote aois/odisha_habitations.geojson
 
 ==========================================================================================
+PER DISTRICT — the full set split into one AOI per district
+==========================================================================================
+  Why: an Earth Engine export is sized by its region's bounding box. The full AOI's 20 parts
+  span four districts, a 298 x 342 km box = 1.02 bn pixels at 10 m, over the 1.00 bn cap, so
+  every cache export failed. Decision (Jaskaran, 2026-09-14): run the pipeline once per
+  district. Same hulls, same buffer; only the grouping into files changes.
+  district   parts  area_ha plots       bbox km  bbox px (M)
+  ANGUL          4    439.3    39    8.9 x 10.2          0.9   valid=True
+  DHENKANAL      8    995.4    75   35.2 x 26.9          9.5   valid=True
+  KENDUJHAR      1    404.7     8     2.7 x 5.1          0.1   valid=True
+  KORAPUT        7   2459.2   145   17.9 x 13.4          2.4   valid=True
+
+  plots over the four district AOIs: 267; in the full AOI: 267; plots in more than one district AOI: 0
+
+==========================================================================================
 EXIT CONDITION
 ==========================================================================================
-  pilot: PASS
-  full : FAIL
+  pilot     : PASS
+  full      : PASS
+  districts : PASS

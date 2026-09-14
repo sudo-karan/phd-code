@@ -18,6 +18,9 @@ WHAT
   FULL    per habitation with >= 5 plots: convex hull of its plot cloud + 300 m buffer,
           overlapping hulls dissolved.
             -> aois/odisha_habitations.geojson
+  DISTRICT  the full set split by district, one AOI each, because the whole set's bounding box
+          (298 x 342 km) exceeds Earth Engine's 1 bn-pixel export cap. The pipeline runs per district.
+            -> aois/odisha_habitations_{angul,dhenkanal,kendujhar,koraput}.geojson
 
 Buffers are computed in the local UTM zone (fmu.utils.grid.utm_epsg_code, the same zone rule
 the pipeline's analysis grid uses), per part, then brought back to EPSG:4326. The polygon
@@ -67,7 +70,10 @@ PILOT_BUFFER_M = 200
 FULL_BUFFER_M = 300
 MIN_PLOTS_PER_HABITATION = 5
 EXPECTED_PILOT_PLOTS = 60
-EXPECTED_FULL_PLOTS = 261
+# The brief expected 261 (the plots of the 21 habitations). The dissolved hulls also contain 6 plots
+# from habitations with < 5 plots; decision (Jaskaran, 2026-09-14): include them, so 267.
+EXPECTED_FULL_PLOTS = 267
+DISTRICT_OUT = REPO / "aois" / "odisha_habitations_{district}.geojson"
 
 _lines: list[str] = []
 
@@ -192,7 +198,7 @@ def build_pilot(df: pd.DataFrame) -> tuple[MultiPolygon, bool]:
 
 
 # ---------------------------------------------------------------------- full set
-def build_full(df: pd.DataFrame) -> tuple[MultiPolygon, bool]:
+def build_full(df: pd.DataFrame) -> tuple[MultiPolygon, bool, list]:
     rule(f"FULL — habitations with >= {MIN_PLOTS_PER_HABITATION} plots: convex hull + {FULL_BUFFER_M} m, dissolved")
     counts = df.habitation.value_counts()
     keep = counts[counts >= MIN_PLOTS_PER_HABITATION].index
@@ -242,20 +248,66 @@ def build_full(df: pd.DataFrame) -> tuple[MultiPolygon, bool]:
               "buffer in local UTM, overlapping hulls dissolved. Full Phase 2 AOI set.",
               parts)
     say(f"  wrote {FULL_OUT.relative_to(REPO)}")
-    return aoi, ok
+    return aoi, ok, hulls
+
+
+# ---------------------------------------------------------------------- per district
+def build_districts(df: pd.DataFrame, full_aoi: MultiPolygon, hulls: list) -> bool:
+    rule("PER DISTRICT — the full set split into one AOI per district")
+    say("  Why: an Earth Engine export is sized by its region's bounding box. The full AOI's 20 parts")
+    say("  span four districts, a 298 x 342 km box = 1.02 bn pixels at 10 m, over the 1.00 bn cap, so")
+    say("  every cache export failed. Decision (Jaskaran, 2026-09-14): run the pipeline once per")
+    say("  district. Same hulls, same buffer; only the grouping into files changes.")
+    by_district: dict[str, list] = {}
+    for hab, h in hulls:
+        district = df.loc[df.habitation == hab, "district"].iloc[0]
+        by_district.setdefault(district, []).append((hab, h))
+
+    times_covered = pd.Series(0, index=df.index)
+    total = 0
+    say(f"  {'district':<10} {'parts':>5} {'area_ha':>8} {'plots':>5} {'bbox km':>13} {'bbox px (M)':>12}")
+    for district in sorted(by_district):
+        members = by_district[district]
+        aoi = as_multipolygon(unary_union([h for _, h in members]))
+        inside = count_inside(aoi, df)
+        times_covered += inside.astype(int)
+        n = int(inside.sum())
+        total += n
+        c = aoi.centroid
+        _, fwd, _ = utm_transformers(c.x, c.y)
+        minx, miny, maxx, maxy = transform(fwd, aoi).bounds
+        w_km, h_km = (maxx - minx) / 1000, (maxy - miny) / 1000
+        px_m = (maxx - minx) / 10 * (maxy - miny) / 10 / 1e6
+        parts = [{"habitations": [hab for hab, h in members if part.intersects(h)],
+                  "area_ha": round(area_ha(part), 2)} for part in aoi.geoms]
+        name = f"odisha_habitations_{district.lower()}"
+        write_aoi(Path(str(DISTRICT_OUT).format(district=district.lower())), aoi, name,
+                  f"The {district} part of the Phase 2 full habitation set (per-habitation convex hull + "
+                  f"300 m, dissolved). One of four per-district AOIs; see odisha_phase2_0_aois.py.", parts)
+        say(f"  {district:<10} {len(aoi.geoms):>5} {sum(p['area_ha'] for p in parts):>8.1f} {n:>5} "
+            f"{f'{w_km:.1f} x {h_km:.1f}':>13} {px_m:>12.1f}   valid={aoi.is_valid}")
+
+    full_n = int(count_inside(full_aoi, df).sum())
+    overlap = int((times_covered > 1).sum())
+    say("")
+    say(f"  plots over the four district AOIs: {total}; in the full AOI: {full_n}; plots in more than one "
+        f"district AOI: {overlap}")
+    return total == full_n and overlap == 0
 
 
 def main() -> int:
     df = load_plot_points()
     say(f"plots: {len(df)} (from {PLOTS_CSV.name}; coordinates parsed from plot_key)")
     _, pilot_ok = build_pilot(df)
-    _, full_ok = build_full(df)
+    full_aoi, full_ok, hulls = build_full(df)
+    district_ok = build_districts(df, full_aoi, hulls)
 
     rule("EXIT CONDITION")
-    say(f"  pilot: {'PASS' if pilot_ok else 'FAIL'}")
-    say(f"  full : {'PASS' if full_ok else 'FAIL'}")
+    say(f"  pilot     : {'PASS' if pilot_ok else 'FAIL'}")
+    say(f"  full      : {'PASS' if full_ok else 'FAIL'}")
+    say(f"  districts : {'PASS' if district_ok else 'FAIL'}")
     RESULTS.write_text("\n".join(_lines) + "\n")
-    return 0 if (pilot_ok and full_ok) else 1
+    return 0 if (pilot_ok and full_ok and district_ok) else 1
 
 
 if __name__ == "__main__":

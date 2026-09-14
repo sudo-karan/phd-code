@@ -1,0 +1,146 @@
+# FULL SET, KENDUJHAR district. Copy of configs/odisha_v120_handcrafted.yaml, identical except name, roi and,
+# for AlphaEarth, reference_config_name. The 267-plot full set runs once per district because
+# one AOI across four districts exceeds Earth Engine's 1 bn-pixel export cap (decision
+# 2026-09-14). Every method parameter is unchanged from the pilot arm.
+
+# Odisha Phase 2, primary arm: the method as it stood BEFORE the Odisha field
+# validation (v1.2.0 with canopy_height_std still in the SNIC stack and the merge
+# criteria). This is the method the supervisor asked to have tested, unmodified.
+#
+# Copied from sanjay_van_baseline.yaml. The only differences from that file are
+# name / description / roi / export.drive_folder, plus segmentation.input_bands
+# and merge.criteria written out explicitly. They are written out because the
+# code defaults moved after Phase 1 (commit 128b1c4 dropped canopy_height_std
+# from _DEFAULT_SNIC_INPUT_BANDS and _DEFAULT_MERGE_CRITERIA). Stating them here
+# expresses the old method version as a config instead of reverting the code.
+#
+# Nothing below is an Odisha-derived value. Every number is the Sanjay Van
+# default of the pre-Odisha method. Do not tune any of it to a Phase 2 result;
+# see odisha_script/PHASE2_PREDICTIONS.md.
+
+name: odisha_v120_handcrafted_kendujhar
+description: Odisha Phase 2 primary arm - pre-Odisha v1.2.0 method (six-band SNIC, three-criterion merge).
+
+roi:
+  name: odisha_habitations_kendujhar
+  roi_file: aois/odisha_habitations_kendujhar.geojson
+
+dates:
+  phenology:
+    start: 2017-01-01
+    end: 2022-12-31
+  radar:
+    start: 2017-01-01
+    end: 2022-12-31
+  optical_composite:
+    start: 2017-01-01
+    end: 2022-12-31
+  climate:
+    start: 1991-01-01
+    end: 2020-12-31
+
+datasets:
+  phenology_collection: COPERNICUS/S2_SR_HARMONIZED
+  optical_composite_collection: COPERNICUS/S2_SR_HARMONIZED
+  radar_collection: COPERNICUS/S1_GRD
+  canopy_height: users/nlang/ETH_GlobalCanopyHeight_2020_10m_v1
+  dem: NASA/NASADEM_HGT/001
+  indiasat: "projects/corestack-trees/assets/LULC_v4"
+  worldcover: ESA/WorldCover/v200
+  water: JRC/GSW1_4/GlobalSurfaceWater
+  climate: UCSB-CHG/CHIRPS/PENTAD
+
+cloud_mask:
+  max_cloud_pct: 20.0
+  drop_scl_classes: [3, 8, 9, 10]
+
+data_load:
+  s1_orbit: ASCENDING
+  s1_polarizations: [VV, VH]
+  s1_instrument_mode: IW
+  s2_composite_reducer: median
+
+masking:
+  indiasat_habitat_classes: [6, 12]
+  indiasat_class_band: predicted_label
+  indiasat_year_min: 2017
+  indiasat_year_max: 2021
+  keep_worldcover_classes: [10, 20, 30]
+  jrc_water_occurrence_threshold: 50.0
+
+features_optical:
+  index: ndvi
+  harmonic_mode: single
+  include_trend: true
+  time_reference: 2017-01-01
+
+features_radar:
+  percentiles: [10, 50, 90]
+  include_iqr: true
+  include_cross_pol_contrast: true
+
+features_structure:
+  include_neighborhood_stats: true
+  neighborhood_kernel_size: 3
+
+features_static:
+  include_climate: true
+  max_water_distance_pixels: 1000
+
+# The pre-Odisha six-band stack.
+segmentation:
+  size: 10
+  compactness: 0.5
+  connectivity: 8
+  neighborhood_size: 128
+  normalize_inputs: true
+  normalize_distance_scale: true
+  input_bands:
+    - {source: s2_composite,       band: B4_median}
+    - {source: s2_composite,       band: B8_median}
+    - {source: structure_features, band: canopy_height}
+    - {source: structure_features, band: canopy_height_std}
+    - {source: optical_features,   band: ndvi_amplitude_annual}
+    - {source: radar_features,     band: vv_minus_vh_median}
+
+# The pre-Odisha three-criterion merge. Tolerances are the Sanjay Van values.
+merge:
+  enabled: true
+  criteria:
+    - {source: structure_features, band: canopy_height,         tolerance: 2.00}
+    - {source: structure_features, band: canopy_height_std,     tolerance: 0.45}
+    - {source: optical_features,   band: ndvi_amplitude_annual, tolerance: 0.030}
+  min_defined_criteria: 2
+  min_area_ha: 1.0
+  max_area_ha: 10.0
+  relax_factor: 1.75
+
+clustering:
+  k: 6
+  seed: 42
+  skewness_threshold: 1.0
+
+normalization:
+  method: robust
+
+features:
+  optical_harmonic: true
+  radar: true
+  canopy_height: true
+  terrain: true
+
+export:
+  export_geotiff: true
+  export_gee_asset: false
+  analysis_scale_m: 10
+  drive_folder: fmu_exports_odisha_phase2
+  export_vector_merged: true
+  export_vector_snic: true
+  export_vector_dissolved: true
+  vector_formats: [shp, geojson]
+  vector_min_stand_pixels: 4
+
+metrics:
+  reference_config_name: null
+  n_comparison_samples: 10000
+  n_silhouette_samples_per_cluster: 833
