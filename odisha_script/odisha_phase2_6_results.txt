@@ -1,0 +1,34 @@
+==========================================================================================
+v120 (odisha_v120_handcrafted)
+==========================================================================================
+  plots with both labels: 60 of 60
+  cached pixel label == exported stand cluster_id at the plot: 1.000
+  fresh vs cached at plots: raw agreement 0.500; after Hungarian matching 0.950 (3 plot(s) change cluster after matching)
+  cluster-id mapping cached -> fresh: {0: 4, 1: 1, 2: 2, 4: 3, 5: 5}
+  crosstab (rows cached, cols fresh):
+    fresh    1  2  3   4  5
+    cached                 
+    0        0  0  3  18  0
+    1       18  0  0   0  0
+    2        0  9  0   0  0
+    4        0  0  9   0  0
+    5        0  0  0   0  3
+  plots that change cluster after matching:
+    21.02179_85.618937  Balikurma  cached 0 -> fresh 3
+    21.052047_85.690007  Kampulei  cached 0 -> fresh 3
+    21.106491_85.565027  Kerijoli  cached 0 -> fresh 3
+==========================================================================================
+current (odisha_current_handcrafted)
+==========================================================================================
+  plots with both labels: 60 of 60
+  cached pixel label == exported stand cluster_id at the plot: 1.000
+  fresh vs cached at plots: raw agreement 1.000; after Hungarian matching 1.000 (0 plot(s) change cluster after matching)
+  cluster-id mapping cached -> fresh: {0: 0, 1: 1, 2: 2, 4: 4, 5: 5}
+  crosstab (rows cached, cols fresh):
+    fresh    0   1  2   4   5
+    cached                   
+    0       20   0  0   0   0
+    1        0  13  0   0   0
+    2        0   0  1   0   0
+    4        0   0  0  10   0
+    5        0   0  0   0  16
