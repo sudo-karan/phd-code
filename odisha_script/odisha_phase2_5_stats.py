@@ -1291,10 +1291,12 @@ def figures(results: dict, suffix: str, out_dir: Path = HERE) -> None:
         ax.set_xlabel("restricted R² minus own rotation-null median", color=INK2)
         ax.grid(axis="x", color=GRID, linewidth=0.5)
         ax.spines[["top", "right"]].set_visible(False)
-        ax.legend(frameon=False, fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.13), ncol=len(arms))
+        # One entry per row: three arm labels side by side overflowed the figure width and were clipped.
+        ax.legend(frameon=False, fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.13), ncol=1)
         ax.set_title("stands_merged: excess over each arm's rotation null", color=INK, fontsize=10)
         fig.tight_layout()
-        fig.savefig(out_dir / f"odisha_phase2_5_arms_excess{suffix}.png", dpi=150)
+        # bbox_inches="tight": the legend sits below the axes, outside what tight_layout accounts for.
+        fig.savefig(out_dir / f"odisha_phase2_5_arms_excess{suffix}.png", dpi=150, bbox_inches="tight")
         plt.close(fig)
     # (c) 6.2 primary: per band observed diff vs null p5-p95
     if ("v120", "merged") in results:
