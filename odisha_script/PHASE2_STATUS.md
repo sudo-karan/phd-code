@@ -6,14 +6,18 @@ still pending.
 
 Every number here comes from code that has been run. Nothing is estimated. The statistics are
 in `odisha_phase2_5_results.txt` and `odisha_phase2_5_summary.csv` (corrected run, commit
-`9f5271e`). The predictions were committed before any statistic existed
-(`PHASE2_PREDICTIONS.md`, commit `78ba075`). The first, unverified run is kept at `8d4c2ed`.
+`9f5271e`). The AlphaEarth figures come from commit `09369f8`, which added that arm to the same
+run; there, all 266 v120 and current summary rows equal `9f5271e` with zero numeric differences
+(commit message). The three-arm figure is from commit `874c5eb`. The predictions were committed
+before any statistic existed (`PHASE2_PREDICTIONS.md`, commit `78ba075`). The first, unverified
+run is kept at `8d4c2ed`.
 **Corrections lists every primary-layer figure that changed since that run, and every change that
 alters a reading. The complete list, secondary layers included, is the CORRECTIONS section of
 `odisha_phase2_5_results.txt`.**
 
-**Scope: pilot only.** 60 plots in six Dhenkanal village forests. The AlphaEarth arm and the full
-267-plot set have **no statistics yet** (see Pending).
+**Scope: pilot only.** 60 plots in six Dhenkanal village forests. All three arms (v120, current
+and AlphaEarth) have pilot statistics. The full 267-plot set has **no statistics yet** (see
+Pending).
 
 ---
 
@@ -58,8 +62,11 @@ The answer is honest only with its scope attached.
 - **Most of what the raw R² captures is between-village difference** (SENSITIVITY).
 - **The secondary `current` arm differs on composition.** Its pooled Bray–Curtis stand effect sits
   above p95 (99.8). That signal rests on Kerijoli: it falls to 80.7 without Kerijoli.
+- **The secondary AlphaEarth arm reads the same as v120.** No 6.1 percentile reaches p95 (18.0 to
+  88.3). Its Bray–Curtis stand effect sits at 94.4, inside the central 90%, and that value also
+  rests on Kerijoli: 70.3 without Kerijoli, 57.8 with site fixed effects.
 
-The last four are set out below the primary tables. None of them turns the answer into a positive
+The last five are set out below the primary tables. None of them turns the answer into a positive
 result.
 
 ---
@@ -71,11 +78,13 @@ result.
 | configs | three method versions written as configs, not as reverts. `odisha_v120_handcrafted`: the pre-Odisha method (six-band SNIC, three-criterion merge). `odisha_current_handcrafted`: the same with `canopy_height_std` removed. `odisha_alphaearth`: embedding delineation with the same merge rule as v120 | — | commit `aa4d647` |
 | AOIs | **pilot:** six Dhenkanal site polygons, +200 m, 6 parts, 912.0 ha, **60 plots**. **Full:** 21 habitations with ≥ 5 plots, hull +300 m, 4298.7 ha, **267 plots** (261 intended plus 6 from smaller habitations inside the hulls; included by decision) | exit conditions PASS | `odisha_phase2_0_results.txt` |
 | habitat mask | MaskingStage run over discs around every plot | **257 of 274 plots kept = 93.8%** (floor 80%). Pilot 60 of 60. KENDUJHAR lowest at 8 of 12 (66.7%). `meta_chm == 0` plots 106 of 122. 15 of the 17 dropped plots are IndiaSAT cropland, 2 are built-up | `odisha_phase2_1_results.txt` |
-| pipeline passes | three cache passes per config (segmentation → clustering → export), so each cached asset is computed from the asset upstream of it | v120: 933 superpixels → **197 merged stands**. current: 932 → 188 | `odisha_phase2_2_run_pipeline.py`, `odisha_phase2_3_results.txt` |
+| pipeline passes | three cache passes per config (segmentation → clustering → export), so each cached asset is computed from the asset upstream of it | v120: 933 superpixels → **197 merged stands**. current: 932 → 188. AlphaEarth: 929 → 184 | `odisha_phase2_2_run_pipeline.py`, `odisha_phase2_3_results.txt` |
 | field table and join | plots joined to stand polygons by geometry. Field table reproduces Phase 1 Lorey's height, top-5 height and crown cover exactly (max \|Δ\| = 0) | vector stand id equals the raster at the plot pixel for **60 of 60** plots in every merged and SNIC layer. 0 boundary-ambiguous plots | `odisha_phase2_3_results.txt` |
 | null | **rotation null, 1999 realisations**, offline: rigid rotation plus translation of the stand map within each AOI part. Plots and their field values stay in place; draws that leave a plot off every polygon are redrawn. **Size-matched by construction** (the same stand polygons, moved), but **not matched on how often plots share a stand**: 46 same-stand pairs observed vs null median 25 (primary). The noise-SNIC null **failed its size check** before any statistic existed and is excluded by recorded decision | — | `PHASE2_PREDICTIONS.md` (Null models), `odisha_phase2_4_results.txt`, `odisha_phase2_5_results.txt` |
 
-What the join gave, before any field statistic (from `PHASE2_PREDICTIONS.md`):
+What the join gave (v120 and current rows from `PHASE2_PREDICTIONS.md`, before any field
+statistic; AlphaEarth rows from `odisha_phase2_3_results.txt`, commit `09369f8`, joined after the
+hand-crafted statistics existed):
 
 | arm / layer | stands | multi-plot stands | plots in them | plots > 30 m from a boundary |
 |---|---|---|---|---|
@@ -84,6 +93,8 @@ What the join gave, before any field statistic (from `PHASE2_PREDICTIONS.md`):
 | v120 / `stands_dissolved` | 97 | 7 | 59 | 52 |
 | current / `stands_merged` | 188 | 11 | 32 | 15 |
 | current / `stands_snic` | 872 | 5 | 16 | 3 |
+| AlphaEarth / `stands_merged` | 184 | 13 | 36 | 20 |
+| AlphaEarth / `stands_snic` | 872 | 5 | 12 | 6 |
 
 ---
 
@@ -270,7 +281,9 @@ stand effect sits at **99.8**. It falls to **80.7 without Kerijoli** and to **69
 effects**, but it **survives stand weighting at 99.1**, and dropping any one of the other five
 sites leaves it at 99.5–99.9. Kerijoli stand 85 (9 plots) supplies 36 of that arm's 53 same-stand
 pairs. The one composition signal in Phase 2 so far is a Kerijoli-site signal, not only one
-stand's pair count.
+stand's pair count. The secondary AlphaEarth arm's Bray–Curtis stand effect (94.4) also rests on
+Kerijoli (70.3 without Kerijoli, 57.8 with site fixed effects), and unlike current it does not
+survive stand weighting (74.4); see its section.
 
 **3. The restricted R² is mostly between-village variance.** Each village forest is its own AOI
 part. R² computed *within* parts against the same null, restricted set (13 stands, 35 plots):
@@ -287,7 +300,8 @@ part. R² computed *within* parts against the same null, restricted set (13 stan
 
 `n_species` is the one variable consistently near the top of the null, at 92.0 restricted,
 93.6 adjusted and 94.9 within-part. It does not survive leave-one-site-out: without Balikurma its
-percentile is **58.3**.
+percentile is **58.3**. Across arms, `n_species` sits near the top of the null in all three:
+restricted percentiles 92.0 (v120), 84.9 (current) and 88.3 (AlphaEarth), none above p95.
 
 This sensitivity reading is consistent with the standing prediction in `PHASE2_PREDICTIONS.md`
 that within-site explained variance is low. That file quotes ETH explaining R² 0.029 of Lorey's
@@ -311,6 +325,8 @@ within-site shuffle (9999 shuffles of `same_stand` within part × band) gives:
 
 The predictions are from `PHASE2_PREDICTIONS.md`. None of them was restricted to one arm, so both
 hand-crafted arms' `stands_merged` layers are scored. v120 is the primary; `current` is secondary.
+The secondary AlphaEarth arm is scored in its own table below; its arm-specific prediction and
+surprise are in the main table.
 
 | prediction | observed, v120 (primary) | observed, current (secondary) | verdict |
 |---|---|---|---|
@@ -326,7 +342,7 @@ hand-crafted arms' `stands_merged` layers are scored. v120 is the primary; `curr
 | 6.2 within-band label-permutation p > 0.05 | Bray–Curtis 100–200 m p **0.025**, regression p **0.009** | Bray–Curtis 100–200 m **0.004**, 200–400 m **0.000**, regression **0.000** | **FAILED as pre-registered for Bray–Curtis, both arms.** The script now labels this p INVALID (it pools sites), a post-hoc judgment (R6). Separately, SENSITIVITY: the within-site shuffle p is ≥ 0.636 in every v120 informative cell and regression, both measures; in current Bray–Curtis 0.477 / 0.141 / 0.291 |
 | 6.3 UPGMA k = 6: ARI −0.05 to +0.10, NMI 0.05–0.25, V 0.25–0.45, none above p95 | all 60 pilot plots are one type | same | **not estimable** |
 | 6.3 distant pairs inside the null's central 90% | Bray–Curtis 6.5, \|ΔLorey's\| 51.5 | Bray–Curtis 15.4, \|ΔLorey's\| 68.4 | **held, both arms** (v120 Bray–Curtis narrowly) |
-| Arms: "the difference in excess-over-own-null falls inside either arm's null spread" | — | — | **failed for `dbh_mean_cm` under both readings, and also for `sal_ba_frac` under the committed wording.** See Arms comparison: the differenced-null operationalisation was chosen after the first run (R10) |
+| Arms: "the difference in excess-over-own-null falls inside either arm's null spread" (committed for current vs v120 only) | — | — | **v120 − current: failed for `dbh_mean_cm` under both readings, and also for `sal_ba_frac` under the committed wording.** No difference prediction was pre-registered for v120 − AlphaEarth; the script applies the same test to that pair, and the difference falls outside for `dbh_mean_cm` (both readings; differenced-null percentile 2.3) and `sal_ba_frac` (own-null reading only, marginal). Both fall on v120's own low excesses (−0.172, −0.140). See Arms comparison: the differenced-null operationalisation was chosen after the first run (R10) |
 | Consequence 1: `stands_snic` holds 0–3 multi-plot superpixels | 4 | 5 | **missed**; recorded in the predictions file before any statistic |
 | Consequence 2: `stands_merged` holds ~6–15 multi-plot stands with 12–35 plots | 13 stands / 35 plots | 11 / 32 | **held** |
 | Consequence 3: the 0–100 m band is tiny and read as uninformative | 14 pairs; 9 same / 5 different | 14 pairs; 11 same / 3 different | **held**; read as uninformative throughout |
@@ -336,14 +352,39 @@ hand-crafted arms' `stands_merged` layers are scored. v120 is the primary; `curr
 | Surprise: ARI ≥ 0.2 | UPGMA not estimable; Sal-rule secondary 0.132 | Sal-rule secondary 0.124 | not estimable as pre-registered; the Sal-rule secondary is below 0.2 in both arms |
 | Surprise: fewer than 5 multi-plot merged stands | 13 | 11 | did not occur |
 | Surprise: noise null not size-matched | median superpixel 4 px vs 82 px observed | — | **occurred, before any statistic**; rotation null read instead |
-| AlphaEarth: excess within ±0.10, no directional prediction | — | — | **pending** |
+| Surprise: composition (`sal_ba_frac`, Bray–Curtis) beyond p97.5 in the AlphaEarth arm only | — | — | **did not occur** on AlphaEarth `stands_merged`: `sal_ba_frac` 48.0; Bray–Curtis bands 83.6 / 91.6, regression 94.4 (70.3 without Kerijoli). One AlphaEarth-only composition value beyond p97.5 exists: the dissolved-layer > 30 m Bray–Curtis 200–400 m cell (98.5, 7 different-unit pairs; v120's same cell 28.7, current's uninformative). **It is set aside by judgment, not by a rule**, because that layer is the site partition (ARI(unit, AOI part) 0.922) and is built from labels whose drift was not measured for this arm |
+| AlphaEarth: excess within ±0.10, no directional prediction | — | — | **held for 6 of 7** (−0.087 to +0.064). **FAILED for `n_species`**: +0.106, which is +0.11 at the pre-registered precision (percentile 88.3). No 6.1 percentile ≥ 95 |
+
+**AlphaEarth `stands_merged` (secondary)**
+
+| prediction | observed, AlphaEarth | verdict |
+|---|---|---|
+| **Standing:** stands do not group field-similar plots better than a size-matched, spatially coherent random partition | no 6.1 percentile ≥ 95 (max 88.3); 6.2 informative bands Bray–Curtis 83.6 / 91.6, \|ΔLorey's\| 61.4 / 17.1; regressions 94.4 / 40.1 | **held.** The Bray–Curtis regression at 94.4 is a Kerijoli signal, not near-evidence of an embedding composition signal: 70.3 without Kerijoli, 57.8 with site fixed effects, 74.4 stand-weighted (SENSITIVITY) |
+| 6.1 raw restricted R² 0.4–0.8 | 0.697–0.747 for five variables; `n_species` 0.877, `dbh_mean_cm` 0.839 | **held for 5 of 7** |
+| 6.1 excess −0.10 to +0.10 | six inside (−0.087 to +0.064); `n_species` +0.106 | **failed for 1 of 7** (`n_species`, +0.11 at the pre-registered precision) |
+| 6.1 percentile < 95; one exceedance of 7 within prediction | max 88.3 (`n_species`) | **held** |
+| 6.1 chance level E[R²] ≈ 0.45–0.55 for restricted stands | E = **0.343** | **wrong**, as for v120 and current |
+| 6.2 raw within-band difference slightly in the "stands work" direction | informative bands: Bray–Curtis 0.155, 0.164; \|ΔLorey's\| 1.470, −1.975 | **held for Bray–Curtis; mixed for height** |
+| 6.2 band differences and the `same_stand` coefficient inside the null's central 90% | Bray–Curtis 83.6 / 91.6, regression 94.4. \|ΔLorey's\| 61.4 / 17.1, regression 40.1 | **held** (Bray–Curtis regression near the edge; a Kerijoli signal, as above) |
+| 6.2 > 30 m boundary subset: same, with fewer pairs | 20 plots; 26 pairs under 800 m (8 same-stand); every band has ≤ 3 same-stand or ≤ 3 different-stand pairs; regressions 91.2 / 5.2 (n_null 1817) | **could not be tested**: bands uninformative by R4; regressions set aside by judgment. The \|ΔLorey's\| regression at 5.2 and the 200–400 m cell (1 same-stand pair) are not read as a splitting signal |
+| 6.2 within-band label-permutation p > 0.05 | Bray–Curtis 100–200 m p 0.073, 200–400 m p **0.032**, regression p **0.006**. \|ΔLorey's\| 0.253 / 0.855, regression 0.526 | **FAILED as pre-registered for Bray–Curtis.** The script labels this p INVALID (it pools sites), a post-hoc judgment (R6). Separately, SENSITIVITY: the within-site shuffle p for Bray–Curtis is 0.231 / 0.219 / 0.166 |
+| 6.3 UPGMA k = 6: ARI, NMI, V ranges, none above p95 | all 60 pilot plots are one type | **not estimable** |
+| 6.3 distant pairs inside the null's central 90% | Bray–Curtis 72.8, \|ΔLorey's\| 92.7 | **held** (label drift not measured for this arm) |
+| Arms, v120 − AlphaEarth (no difference prediction pre-registered for this pair; the script applies the current-vs-v120 test) | `dbh_mean_cm` −0.235, differenced-null percentile 2.3, outside both own nulls. `sal_ba_frac` −0.136, differenced null 9.8, outside both own nulls (edges −0.134 and −0.128) | **outside for `dbh_mean_cm` (both readings) and `sal_ba_frac` (own-null reading only, marginal)**; see Arms comparison |
+| Consequence 1: `stands_snic` holds 0–3 multi-plot superpixels | 5 | **missed**, as in the other arms |
+| Consequence 2: `stands_merged` holds ~6–15 multi-plot stands with 12–35 plots | 13 stands / 36 plots | **held for stands; 36 plots is one above the range** |
+| Consequence 3: the 0–100 m band is tiny and read as uninformative | 14 pairs; 11 same / 3 different | **held** |
+| Consequence 4: the pilot is underpowered for 6.1 and 6.2 | null p5–p95 for `loreys_h_m` 0.56–0.85 at (13, 36) | **held** |
+| Surprise: composition beyond p97.5 in the AlphaEarth arm only | `sal_ba_frac` 48.0; Bray–Curtis 83.6 / 91.6 / 94.4 | **did not occur** (see the main table) |
+| Surprise: ARI ≥ 0.2 | UPGMA not estimable; Sal-rule secondary 0.032 | not estimable as pre-registered; the Sal-rule secondary is below 0.2 |
+| Surprise: fewer than 5 multi-plot merged stands | 13 | did not occur |
 
 ---
 
 ## SECONDARY results
 
 Raw R² is **never** compared across arms or layers. Each partition is read only as excess over its
-own rotation null. Figure: `odisha_phase2_5_arms_excess.png`.
+own rotation null. Figure: `odisha_phase2_5_arms_excess.png` (three arms, commit `874c5eb`).
 
 ### current / `stands_merged`
 
@@ -396,18 +437,132 @@ This arm's null shape is further off than v120's (SENSITIVITY):
   the 0.2 surprise threshold.
 - Distant pairs: Bray–Curtis −0.068 (15.4), |ΔLorey's| 0.627 (68.4).
 
+### AlphaEarth / `stands_merged`
+
+Embedding delineation: SNIC on the 64 AlphaEarth bands, with the same merge rule as v120. The
+statistics are the "SECONDARY — alphaearth" sections of `odisha_phase2_5_results.txt` (commit
+`09369f8`). Adding the arm left every v120 and current row unchanged.
+
+Partition: 929 superpixels → 184 stands, area p10 1.29 / median 4.79 / p90 9.11 ha. All 60 plots
+assigned. **13 multi-plot stands hold 36 plots** (plots-per-stand histogram {1: 24, 2: 7, 3: 5,
+7: 1}). 20 plots are > 30 m from a boundary. 12 of 188 polygons (16.18 of 914.76 ha) carry no
+`cluster_id`.
+
+| variable | R² all (k, n) | R² restricted (k, n) | null median | excess | percentile |
+|---|---|---|---|---|---|
+| `loreys_h_m` | 0.812 (37, 60) | 0.709 (13, 36) | 0.733 | −0.024 | 40.5 |
+| `loreys_h_tree_m` | 0.814 (37, 60) | 0.710 (13, 36) | 0.739 | −0.029 | 38.3 |
+| `crown_cover_pct` | 0.812 (37, 60) | 0.697 (13, 36) | 0.785 | −0.087 | 18.0 |
+| `sal_ba_frac` | 0.824 (37, 60) | 0.747 (13, 36) | 0.751 | −0.004 | 48.0 |
+| `n_species` | 0.905 (37, 60) | 0.877 (13, 36) | 0.771 | **+0.106** | 88.3 |
+| `dbh_mean_cm` | 0.914 (37, 60) | 0.839 (13, 36) | 0.775 | +0.064 | 77.7 |
+| `h_top5_m` | 0.796 (37, 60) | 0.732 (13, 36) | 0.752 | −0.020 | 39.6 |
+
+**No variable reaches p95, and none falls to p2.5.** Six of seven excesses are inside ±0.10.
+**`n_species` at +0.106 is outside**: +0.11 at the pre-registered precision, so the AlphaEarth
+excess prediction fails for 1 of 7. `n_species` sits near the top of the null in all three arms
+(92.0 / 84.9 / 88.3), none above p95.
+
+This arm's null shape is off in the same direction as the hand-crafted arms' (SENSITIVITY):
+
+| quantity | observed | null median | p5 | p95 | percentile |
+|---|---|---|---|---|---|
+| k (multi-plot stands) | 13 | 12 | 9 | 16 | 61.6 |
+| n (plots in them) | 36 | 30 | 24 | 37 | 92.1 |
+| E | 0.343 | 0.387 | 0.333 | 0.440 | 7.6 |
+| largest multi-plot group | 7 | 4 | 3 | 6 | 97.8 |
+| **same-stand within-part pairs** | **43** | **26** | 17 | 37 | **99.2** |
+
+The E-slope bias estimates are negative for every variable, −0.011 (`sal_ba_frac`) to −0.041
+(`h_top5_m`), so the 6.1 percentiles are biased low.
+
+**6.2, Bray–Curtis, all pairs.**
+
+| band | n same | n diff | mean same | mean diff | diff | rotation percentile |
+|---|---|---|---|---|---|---|
+| 0–100 m | 11 | 3 | 0.329 | 0.188 | −0.141 | uninformative (n ≤ 3; and by Consequence 3) |
+| 100–200 m | 18 | 19 | 0.343 | 0.498 | 0.155 | **83.6** (n_null 1999) |
+| 200–400 m | 11 | 95 | 0.387 | 0.551 | 0.164 | **91.6** (n_null 1999) |
+| 400–800 m | 3 | 89 | 0.269 | 0.612 | 0.343 | uninformative (n ≤ 3) |
+
+Regression (pairs < 800 m, n = 249, 43 same-stand): **beta_same −0.1663**, beta per 100 m 0.0260.
+Null median −0.0365. **Stand-effect percentile 94.4** (n_null 1999).
+
+- The naive permutation p is 0.073 (100–200 m), **0.032** (200–400 m) and **0.006** (regression).
+  It is labelled INVALID; as pre-registered (p > 0.05) it fails for Bray–Curtis.
+- SENSITIVITY: the within-site shuffle p is 0.231, 0.219 and 0.166.
+
+**6.2, |ΔLorey's height|, all pairs.** The informative bands are 100–200 m (18 / 19 pairs, diff
+1.470 m, **61.4**) and 200–400 m (11 / 95, diff −1.975 m, **17.1**). Regression: beta_same
++0.0503 m, beta per 100 m −0.2982, null median −0.2622, **stand-effect percentile 40.1**.
+SENSITIVITY: the within-site shuffle p is 0.133, 0.595 and 0.288.
+
+Every informative cell and both regressions are inside the null's central 90%. Composition leans
+towards "same stand, more alike"; height is mixed.
+
+**The Bray–Curtis 94.4 is a Kerijoli signal, not near-evidence that the embedding delineates
+composition** (SENSITIVITY). Kerijoli supplies **24 of the 43** same-stand pairs (null median 10,
+percentile 99.3), and **21 of them come from one 7-plot stand** (stand 83).
+
+| variant | n same | beta_same | stand-effect percentile |
+|---|---|---|---|
+| as pre-registered | 43 | −0.1663 | 94.4 |
+| **drop Kerijoli** | **19** | **−0.0419** | **70.3** |
+| site fixed effects | 43 | −0.0126 | 57.8 |
+| stand-weighted (1/pairs per stand) | 43 | −0.0134 | 74.4 |
+| drop any one of the other five sites | 38–43 | −0.1837 to −0.1541 | 91.8–94.9 |
+
+The robustness variants are computed for the regression only; the 200–400 m band at 91.6 has
+none, and is read with the same caution.
+
+**Pairs with both plots > 30 m from a boundary: could not be tested.** 20 plots qualify. They
+form **26 pairs under 800 m, 8 of them same-stand**. Every band has ≤ 3 same-stand or ≤ 3
+different-stand pairs, so every band is uninformative by R4.
+The printed regression percentiles, Bray–Curtis **91.2** and |ΔLorey's| **5.2** (n_null 1817), are
+set aside by judgment, as for v120. The |ΔLorey's| 5.2 is not read as a splitting signal, and
+neither is its 200–400 m cell, which holds a single same-stand pair.
+
+**6.3.**
+
+- UPGMA k = 6 is **not estimable**: all 60 pilot plots are one type.
+- Sal-dominant rule, from 1316 of 1999 realisations. 3 of the 8 contingency cells have expected
+  count < 5.
+
+  | statistic | observed (n = 60) | null median | p95 | percentile |
+  |---|---|---|---|---|
+  | ARI | 0.032 | 0.052 | 0.112 | 25.5 |
+  | NMI | 0.043 | 0.081 | 0.141 | 8.3 |
+  | Cramér's V | 0.281 | 0.397 | 0.520 | 6.4 |
+
+  None is above p95.
+- Distant pairs (> 2 km; 323 same-label, 1175 different-label): Bray–Curtis difference −0.014
+  (percentile 72.8); |ΔLorey's| difference 0.479 m (percentile 92.7). Both are inside the central
+  90%.
+- **Label drift was not measured for this arm.** `odisha_phase2_6_results.txt` covers v120 and
+  current only, so these 6.3 values carry an unquantified label-stability caveat.
+
+**Between-village variance (SENSITIVITY).** Within-part R² runs from 0.273 to 0.668, with
+percentiles 49.7 / 49.8 / 33.4 / 65.8 / 86.8 / 88.4 / 38.5 (variables in the table order above);
+none is above p95. Adjusted-R² percentiles run from 23.7 to 90.9. `n_species` is again nearest the
+top: 88.3 restricted, 90.9 adjusted, 86.8 within-part.
+
 ### Arms comparison, `stands_merged`
 
-Difference = excess(v120) − excess(current).
+The stats script computes two differences: excess(v120) − excess(current) and excess(v120) −
+excess(AlphaEarth).
 
 The committed prediction reads "the difference in excess-over-own-null falls inside either arm's
-null spread". It was operationalised two ways, both first computed in the corrected run, after the
+null spread". It was committed for current vs v120 only; for AlphaEarth, `PHASE2_PREDICTIONS.md`
+makes no directional prediction, so no difference prediction exists for v120 − AlphaEarth, and
+the script applies the same test to that pair. It was operationalised two ways, both first computed in the corrected run, after the
 first run's statistics had been seen (R10). They are given equal standing here.
 
 - **Differenced null.** Each arm's null is centred on its own median, and the two are differenced
   index-wise.
 - **Own-null reading.** The difference is checked against each arm's own centred p5–p95. The
   script labels this one SENSITIVITY, but it is the closer match to the committed wording.
+
+**v120 − current.**
 
 | variable | excess v120 | excess current | difference | differenced null p5 | p95 | percentile | differenced null | own-null reading |
 |---|---|---|---|---|---|---|---|---|
@@ -419,12 +574,25 @@ first run's statistics had been seen (R10). They are given equal standing here.
 | **`dbh_mean_cm`** | −0.172 | 0.135 | **−0.306** | −0.192 | 0.206 | **0.9** | **OUTSIDE** | **inside neither** |
 | `h_top5_m` | −0.050 | −0.110 | 0.060 | −0.185 | 0.168 | 69.9 | inside | inside both |
 
+**v120 − AlphaEarth.**
+
+| variable | excess v120 | excess AlphaEarth | difference | differenced null p5 | p95 | percentile | differenced null | own-null reading |
+|---|---|---|---|---|---|---|---|---|
+| `loreys_h_m` | −0.102 | −0.024 | −0.078 | −0.213 | 0.216 | 26.5 | inside | inside both |
+| `loreys_h_tree_m` | −0.112 | −0.029 | −0.083 | −0.213 | 0.213 | 24.7 | inside | inside both |
+| `crown_cover_pct` | −0.016 | −0.087 | 0.071 | −0.214 | 0.202 | 72.2 | inside | inside both |
+| **`sal_ba_frac`** | −0.140 | −0.004 | **−0.136** | −0.175 | 0.176 | 9.8 | inside | **inside neither** (centred lower edges: v120 −0.134, AlphaEarth −0.128) |
+| `n_species` | 0.129 | 0.106 | 0.022 | −0.231 | 0.249 | 55.1 | inside | inside both |
+| **`dbh_mean_cm`** | −0.172 | 0.064 | **−0.235** | −0.190 | 0.213 | **2.3** | **OUTSIDE** | **inside neither** |
+| `h_top5_m` | −0.050 | −0.020 | −0.029 | −0.179 | 0.185 | 39.9 | inside | inside both |
+
 Beside it, the two partitions:
 
 | arm | stands | area p10 / median / p90 (ha) | multi-plot stands | plots in them |
 |---|---|---|---|---|
 | v120 | 197 | 1.20 / 3.93 / 9.39 | 13 | 35 |
 | current | 188 | 1.23 / 4.27 / 9.46 | 11 | 32 |
+| AlphaEarth | 184 | 1.29 / 4.79 / 9.11 | 13 | 36 |
 
 **The arms prediction fails for `dbh_mean_cm` under both readings, and for `sal_ba_frac` under the
 own-null reading.** Removing `canopy_height_std` was predicted to change the partition without
@@ -432,6 +600,13 @@ changing its field relevance. On mean DBH, the current arm sits at 95.4 and v120
 
 These are two variables of seven on 32–35 plots, in arms whose null shape is off. They are
 reported as a failed prediction, not as evidence that the removal helps.
+
+**v120 − AlphaEarth, which had no pre-registered difference prediction, falls outside for
+`dbh_mean_cm` under both readings (differenced-null percentile 2.3), and for `sal_ba_frac` under
+the own-null reading only.** The `sal_ba_frac` case is marginal: −0.1356 against centred lower
+edges of −0.134 (v120) and −0.128 (AlphaEarth), and 9.8 in the differenced null. Both fall on the
+two variables where v120's own excess is lowest (−0.172, −0.140), the same two on which v120 −
+current failed.
 
 ### `stands_snic`: thin but estimable
 
@@ -446,17 +621,24 @@ holding 10 plots**. Current has 872, p10 0.15 / median 0.85 / p90 1.99 ha: 5 hol
 - **6.2.** v120 has 8 same-stand pairs (regression percentiles 65.3 Bray–Curtis, 46.0
   |ΔLorey's|). Current has 27 (81.3 and 21.2).
 - **> 30 m subset.** Only 1 pair (v120) and 0 pairs (current).
+- **AlphaEarth.** 872 superpixels, p10 0.50 / median 0.96 / p90 1.52 ha: **5 multi-plot
+  superpixels holding 12 plots** (Consequence 1 missed, as in the other arms). 6.1 excess runs
+  from +0.038 to +0.158, percentiles 57.9–88.9, with null p5 at 0.00 for every variable.
+  `sal_ba_frac` (+0.158) and `n_species` (+0.141) are outside ±0.10 on (5 stands, 12 plots). 6.2
+  has 10 same-stand pairs (regression percentiles 30.6 Bray–Curtis, 20.3 |ΔLorey's|). The > 30 m
+  subset has 1 pair.
 
 ### `stands_dissolved`: effectively the site partition, not a delineation test
 
-The dissolved layer (connected same-cluster regions) puts the 60 plots into 8 units in each arm.
-v120 has 97 polygons, area p10 0.05 / median 0.20 / p90 6.90 ha; current has 126, 0.04 / 0.20 /
-9.87 ha.
+The dissolved layer (connected same-cluster regions) puts the 60 plots into 8 units in each
+hand-crafted arm and 9 in AlphaEarth. v120 has 97 polygons, area p10 0.05 / median 0.20 / p90
+6.90 ha; current has 126, 0.04 / 0.20 / 9.87 ha; AlphaEarth has 110, 0.05 / 0.39 / 9.30 ha.
 
 | arm | units holding plots, by part | ARI(unit, AOI part) |
 |---|---|---|
 | v120 | 1 / 1 / 1 / 1 / 2 / 2 | **0.932** |
 | current | 1 / 2 / 1 / 1 / 1 / 2 | 0.915 |
+| AlphaEarth | 1 / 2 / 1 / 3 / 1 / 1 | 0.922 |
 
 The site-only partition reproduces its restricted R² almost exactly. For `loreys_h_m`, v120's
 dissolved restricted R² is 0.518 (7 stands, 59 plots) and the site-only value is 0.512 (6 AOI
@@ -469,10 +651,21 @@ Its statistics measure differences *between* village forests. Its 6.1 excesses a
 |---|---|---|---|
 | v120 | (7, 59) | −0.031 to +0.003 | 5.3–61.3 |
 | current | (7, 59) | −0.031 to −0.018 | 8.4–27.1 |
+| AlphaEarth | (7, 58) | −0.028 to +0.029 | 23.4–71.3 |
 
-One pre-registered 6.2 value falls outside the central 90%: current dissolved |ΔLorey's|
-regression stand effect at **4.5** (n_null 1999). Given the identity with the site partition, it
-too measures between-site difference.
+In the hand-crafted arms, one pre-registered 6.2 value falls outside the central 90%: current
+dissolved |ΔLorey's| regression stand effect at **4.5** (n_null 1999). Given the identity with the
+site partition, it too measures between-site difference.
+
+AlphaEarth's dissolved layer has several |ΔLorey's| values beyond p97.5: the all-pairs regression
+stand effect at **99.8**, the 200–400 m and 400–800 m bands at **99.4** and **99.7**, and the
+> 30 m regression at **98.5** and 200–400 m band at **99.4** (n_null 1992). Its > 30 m
+Bray–Curtis 200–400 m cell sits at 98.5, on 7 different-unit pairs. The layer is the site
+partition (ARI(unit, AOI part) 0.922), and its null shape is off (k percentile 5.3, E 1.6,
+same-stand pairs 99.7). These values are between-site differences, not a delineation result. The
+Bray–Curtis cell is AlphaEarth-only and beyond p97.5, so it is **set aside by judgment, not by a
+rule**, as the pre-registered AlphaEarth composition surprise. The layer is built from k-means
+labels whose drift was not measured for this arm.
 
 These values are recorded, and they answer nothing about stand boundaries.
 
@@ -499,6 +692,8 @@ terrain inputs.
     v120 6.3 null percentiles could also move.
   - The dissolved layer is built from the labels, and it could change as well.
   - **Neither effect was measured.** 6.1 and 6.2 on the merged and SNIC layers do not read labels.
+- **AlphaEarth: not measured at all.** `odisha_phase2_6_results.txt` covers v120 and current only.
+  AlphaEarth's 6.3 values and its dissolved layer carry an unquantified label-stability caveat.
 - **Open.** Whether to rebuild the cache or pin and document the cached version is still to be
   decided.
 
@@ -597,7 +792,7 @@ an observed value.
 
 - **1999 rotation realisations instead of the specified 999** (R13).
 - **6.3 uses only the realisations that keep every typed plot on a polygon with a `cluster_id`**
-  (R12): 1129 of 1999 for v120, 1247 for current. The file specified the rotation null without
+  (R12): 1129 of 1999 for v120, 1247 for current, 1316 for AlphaEarth. The file specified the rotation null without
   that restriction.
 - **Cells with n ≤ 3 are marked uninformative and given no percentile** (R4).
 - **The naive within-band label-permutation p is labelled INVALID** (R6). It was pre-registered
@@ -692,47 +887,26 @@ uncommitted", predates the commit).
 **Cached terrain and label drift.** See the Label drift section above. The cached v120
 `cluster_labels` no longer match a fresh run. At the plots this moves 3 v120 labels. The 6.3 null
 percentiles and the dissolved layer could also move; neither was measured. 6.1 and 6.2 on the
-merged and SNIC layers do not read labels. The choice between rebuilding and pinning is open.
+merged and SNIC layers do not read labels. Drift was not measured for the AlphaEarth arm. The
+choice between rebuilding and pinning is open.
 
 ---
 
 ## Pending
 
-The state lines in this section are as of 2026-09-15. They come from the running work session,
-not from a committed results file.
-
-### AlphaEarth arm — pending
-
-**No statistics exist yet.** The clustering stage now runs (fixed and verified above). As of
-2026-09-15 the arm's stand-layer export is queued, and its stand layers have not been produced.
-The committed stats run records "arm alphaearth skipped — no vector files".
-
-When its vectors are in `phase2_vectors/`, the plan is:
-
-1. Rerun `odisha_phase2_3_join.py`.
-2. Rerun `odisha_phase2_5_stats.py`.
-3. Report 6.1, 6.2 and 6.3 against its own rotation null, and its difference in excess from v120,
-   with stand count and area distribution beside it.
-
-The pre-registered prediction stands:
-
-- no directional prediction;
-- excess within ±0.10;
-- composition beyond p97.5 in this arm alone would be the first positive field evidence for the
-  embedding, and would need the full set.
+The state lines in this section are as of 2026-09-15. They come from commit messages, not from a
+committed results file.
 
 ### Full set (267 plots, per district) — pending
 
-**No statistics exist yet.** As of 2026-09-15, the twelve configs from commit `f8abf03` (four
-district AOIs × three arms) are in progress, each through three pipeline passes. Stand vectors
-for the v120 and current KENDUJHAR configs are on disk in `phase2_vectors/`, uncommitted and not
-yet joined.
+**No statistics exist yet.** The stand layers for all twelve configs (four district AOIs × three
+arms) are committed (`1b920d7`), and the plot–stand join over the four districts is committed
+(`2cd076e`, 267 plots). No statistic relating field data to stands is committed.
 
-When all are in, the plan is:
+The remaining plan:
 
-1. `odisha_phase2_3_join.py --set districts`.
-2. `odisha_phase2_5_stats.py --set districts`.
-3. The same 6.1 / 6.2 / 6.3 tables, arms comparison and sensitivity checks, pooled over AOI
+1. `odisha_phase2_5_stats.py --set districts`.
+2. The same 6.1 / 6.2 / 6.3 tables, arms comparison and sensitivity checks, pooled over AOI
    parts.
 
 What is already known about the full set:
@@ -740,7 +914,9 @@ What is already known about the full set:
 - **The UPGMA typology is fixed by the field data.** 259 of the 274 plots are one type, so at most
   15 plots of any set carry another type, and 6.3 under the pre-registered typology will remain
   close to degenerate.
-- Whether the full set makes the > 30 m boundary subset estimable is not known until it runs.
+- The join gives 65 v120 merged-layer plots > 30 m from a boundary (14 in the pilot), from the
+  `2cd076e` commit message. Whether that makes the > 30 m subset estimable is not known until the
+  statistics run.
 
 ### Deliberately not done
 
