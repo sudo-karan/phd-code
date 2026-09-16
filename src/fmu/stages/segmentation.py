@@ -38,7 +38,7 @@ in YAML, and it keeps working if the embedding's dimensionality changes.
 Bands are z-scored per-band over the ROI, then (by default) divided by the
 empirical RMS 4-neighbour feature distance so that summed squared colour
 distance is invariant to band count and to correlation between bands. Without
-that second step `compactness` silently means something different in a 6-band
+that second step `compactness` silently means something different in a 5-band
 arm than in a 64-band embedding arm.
 
 Boundaries are NOT held constant across arms: each pipeline segments on its own
@@ -111,7 +111,7 @@ class SegmentationStage(Stage):
         # correlated) the input bands are. SNIC trades a colour distance against
         # a spatial-compactness term; summed squared colour distance grows with
         # the number of *effective* axes, so a 64-band embedding stack would
-        # otherwise have a far weaker spatial term than a 6-band one at the same
+        # otherwise have a far weaker spatial term than a 5-band one at the same
         # `compactness`. Dividing by sqrt(n_bands) would assume the bands are
         # independent -- for an embedding they are not, and it over-corrects.
         # The empirical RMS distance between 4-adjacent pixels handles band count

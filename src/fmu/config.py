@@ -309,7 +309,7 @@ class SegmentationParams(BaseModel):
     # Whether to divide the z-scored stack by the empirical RMS feature distance
     # between 4-adjacent pixels, so the summed squared colour distance is
     # invariant to band count AND to correlation between bands. Without it,
-    # `compactness` means something different in a 6-band arm than in a 64-band
+    # `compactness` means something different in a 5-band arm than in a 64-band
     # one (colour distance grows with the number of effective axes, weakening
     # the spatial term). Makes compactness COMPARABLE across arms; it does not
     # make any particular value correct -- that still needs a sweep.
