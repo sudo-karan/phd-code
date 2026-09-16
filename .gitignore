@@ -57,6 +57,13 @@ runs/
 fmu_exports_clean/
 reports/
 
+# Phase 2 statistics checkpoints. odisha_phase2_5_stats.py writes one file per
+# arm x layer beside its outputs so an interrupted run resumes. Keyed by a digest
+# of the inputs, but committing them would let a checkpoint from an older run
+# supply a partition's numbers on a rerun instead of recomputing it. The results
+# files are the record; these are only a resume cache.
+odisha_script/phase2_5_checkpoints/
+
 # Slide decks. Built by scripts/build_*.js, which stay in the repo; the .pptx
 # output does not. Binary, large, and stale the moment the design moves on.
 *.pptx
