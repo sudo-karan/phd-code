@@ -69,6 +69,14 @@ village forest 5–25 km away, so the delineation question is a within-site ques
 **Predicted outcome: the stands do not group field-similar plots better than a size-matched,
 spatially coherent random partition does.**
 
+> **Addendum, 2026-09-16 — source of the two R² figures above.** The values 0.029 (ETH) and 0.003
+> (`vh_iqr`) have **no committed results file behind them**. They come from Phase 1 follow-up work
+> whose output was never committed, so they cannot be reproduced from this repository as it stands.
+> They are recorded here as unsourced. **No prediction is changed by this note** — the predictions
+> in this document stand exactly as pre-registered at commit `78ba075`, and the standing prediction
+> above does not depend on the two figures being exact, only on within-site explained variance
+> being low. Re-deriving them was considered and set aside (decision of 2026-09-16).
+
 ---
 
 ## 6.1 Within- vs between-stand variance, R²_P(Y) = 1 − SS_within / SS_total

@@ -1294,8 +1294,16 @@ uncommitted", predates the commit).
 **Cached terrain and label drift.** See the Label drift section above. The cached v120
 `cluster_labels` no longer match a fresh run. At the plots this moves 3 v120 labels. The 6.3 null
 percentiles and the dissolved layer could also move; neither was measured. 6.1 and 6.2 on the
-merged and SNIC layers do not read labels. Drift was not measured for the AlphaEarth arm. The
-choice between rebuilding and pinning is open.
+merged and SNIC layers do not read labels. Drift was not measured for the AlphaEarth arm, nor for
+any of the twelve per-district configs used by the full set.
+
+**Decision (Jaskaran, 2026-09-16): pin the cached labels and document the caveat; do not rebuild.**
+The reasoning is recorded rather than implied. 6.1 and 6.2 carry the whole result and never read
+labels — only 6.3 and the dissolved layer do. 6.3 is already answerable in just two of four
+districts, and the dissolved layer is set aside for an unbuildable null. Rebuilding would
+invalidate the committed 267-plot numbers and mean re-running most of Phase 2 to firm up the
+weakest of the three statistics. The unmeasured drift is therefore a stated limitation of 6.3,
+not a pending task.
 
 ---
 
@@ -1311,9 +1319,9 @@ results file, not from a commit message.
   restricted R² against a site-only R² computed over all 267 plots in 20 groups, so the group
   counts differ and more groups mechanically raise R². Either restrict the site-only R² to the
   layer's assigned plots or drop the comparison. Not applied retroactively to the committed runs.
-- **Label drift is unmeasured for the twelve per-district configs**, and for AlphaEarth in either
-  set. `odisha_phase2_6_label_drift.py` covers the pilot's v120 and current only. 6.3 and the
-  dissolved layer read labels; 6.1 and 6.2 on the merged and SNIC layers do not.
+
+Label drift is **not** an open item. It was decided on 2026-09-16 to pin the cached labels and
+document the caveat; see Label drift above.
 
 ### Deliberately not done
 
@@ -1323,8 +1331,8 @@ results file, not from a commit message.
   supervisor's test would have run against a method he did not ask for.
 - **No replacement canopy-height source is installed.** Meta/WRI was DISQUALIFIED in Phase 1
   (`PHASE1_STATUS.md`). **Its absence is a decision, not an omission.**
-- **The cached-label decision** (rebuild with `rebuild_cache.py --delete`, or pin and document)
-  is open, as above.
+- **The cached labels are pinned, not rebuilt** (decision of 2026-09-16, recorded above). Drift
+  stands as a documented limitation of 6.3 and the dissolved layer; it is not a pending task.
 
 ---
 
