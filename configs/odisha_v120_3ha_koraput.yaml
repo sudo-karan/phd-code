@@ -13,6 +13,15 @@
 # within-stand test loses power. 3 ha respects the ceiling while keeping as much of that
 # power as the constraint allows.
 #
+#
+# SEGMENTATION IS ALSO CHANGED, and that is the point. merge can only join
+# superpixels, never split one, so a stand is never smaller than the superpixel it
+# contains. At size: 10 the superpixels themselves reach 6.74 ha (dhenkanal), so a
+# 3 ha ceiling is unreachable -- the first attempt failed with ComponentSizeError
+# "largest component is 519 px but maxSize is 360 px". Seed spacing drops 10 -> 6
+# (~100 m -> ~60 m), which scales cell area by ~0.36: projected median ~0.31 ha and
+# largest ~2.4 ha, clearing the 3 ha cap. Decision taken 2026-09-24.
+#
 # merge is part of the cache fingerprint, so this name gets its own asset namespace and
 # recomputes features, segmentation and clustering rather than reusing the 10 ha assets.
 
@@ -87,7 +96,7 @@ features_static:
 
 # The pre-Odisha six-band stack.
 segmentation:
-  size: 10
+  size: 6
   compactness: 0.5
   connectivity: 8
   neighborhood_size: 128
