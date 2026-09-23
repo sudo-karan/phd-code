@@ -123,10 +123,10 @@ def test_alphaearth_holds_non_feature_hyperparameters_fixed():
 
 
 def test_both_arms_normalize_the_snic_distance_scale():
-    """6 bands vs 64: without this, `compactness` is not comparable across arms.
+    """5 bands vs 64: without this, `compactness` is not comparable across arms.
 
     SNIC trades summed squared colour distance against a spatial term, and that
-    sum grows with the number of effective axes. Equal `compactness` in a 6-band
+    sum grows with the number of effective axes. Equal `compactness` in a 5-band
     and a 64-band arm would buy very different spatial weights, which would
     confound the comparison the whole experiment rests on.
     """
