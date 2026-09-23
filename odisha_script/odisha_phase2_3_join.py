@@ -110,9 +110,19 @@ from odisha_phase2_0_aois import load_plot_points, utm_transformers  # noqa: E40
 VECTOR_DIR = HERE / "phase2_vectors"
 
 # short name -> config name. Order is the reporting order: primary arm first.
-ARMS = {"v120": "odisha_v120_handcrafted",
-        "current": "odisha_current_handcrafted",
-        "alphaearth": "odisha_alphaearth"}
+# ALL_ARMS is the registry; ARMS is the set this run actually joins, and it is
+# mutated IN PLACE by --arms so that modules which did `from ... import ARMS`
+# (the statistics script) see the same object. DEFAULT_ARMS is the three arms the
+# committed results were produced from, so the default output is unchanged.
+ALL_ARMS = {"v120": "odisha_v120_handcrafted",
+            "current": "odisha_current_handcrafted",
+            "alphaearth": "odisha_alphaearth",
+            # 2026-09-24: stands capped at 3 ha, which also needed finer
+            # segmentation (seed spacing 6, not 10) because merge joins
+            # superpixels and cannot split one.
+            "v120_3ha": "odisha_v120_3ha"}
+DEFAULT_ARMS = ("v120", "current", "alphaearth")
+ARMS = {k: ALL_ARMS[k] for k in DEFAULT_ARMS}
 LAYERS = {"merged": ("stands_merged", "stand_lbl"),
           "snic": ("stands_snic", "snic_label"),
           "dissolved": ("stands_dissolved", "unit_id")}
@@ -168,10 +178,20 @@ def add_path_args(ap: argparse.ArgumentParser) -> None:
     ap.add_argument("--aoi-dir", type=Path, default=None, help="default: <repo>/aois")
     ap.add_argument("--out-dir", type=Path, default=None,
                     help="where the joined CSV and results are written (and read by the stats); default: odisha_script/")
+    ap.add_argument("--arms", default=None,
+                    help=f"comma-separated subset of {','.join(ALL_ARMS)}; "
+                         f"default {','.join(DEFAULT_ARMS)}, the arms the committed results came from")
 
 
 def apply_path_args(args) -> dict:
     global VECTOR_DIR
+    if getattr(args, "arms", None):
+        want = [a.strip() for a in str(args.arms).split(",") if a.strip()]
+        unknown = [a for a in want if a not in ALL_ARMS]
+        if unknown:
+            raise SystemExit(f"--arms: unknown {unknown}; known: {sorted(ALL_ARMS)}")
+        ARMS.clear()                      # in place: the stats script holds this object
+        ARMS.update({k: ALL_ARMS[k] for k in want})
     if args.vectors_dir is not None:
         VECTOR_DIR = Path(args.vectors_dir).resolve()
     out_dir = Path(args.out_dir).resolve() if args.out_dir is not None else None
