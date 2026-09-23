@@ -125,12 +125,12 @@ features_static:
   include_climate: true
   max_water_distance_pixels: 1000  # 10 km cap at 10m scale
 
-# input_bands is left at the code default (see _DEFAULT_SNIC_INPUT_BANDS in
-# src/fmu/config.py): B4_median, B8_median, canopy_height, canopy_height_std,
-# ndvi_amplitude_annual, vv_minus_vh_median. Six bands over ~four independent
-# axes — optical colour, vertical structure, canopy roughness, phenology, radar.
-# It is not repeated here so the default cannot drift from the shipped arm; set
-# input_bands explicitly only when running a segmentation-feature experiment.
+# input_bands is declared explicitly below: the pre-PR-#33 SIX-band stack, with
+# `canopy_height_std` among them. It is no longer the code default — PR #33 removed
+# that band from _DEFAULT_SNIC_INPUT_BANDS (src/fmu/config.py), which now holds five
+# — so this arm has to spell the stack out to keep meaning what it meant when the
+# experiment was designed. `features_structure` still produces the band, so the arm
+# remains runnable.
 segmentation:
   size: 10
   compactness: 0.5

@@ -1,8 +1,9 @@
 # DRAFT decisions.md entry: clustering passes a measured reduceConnectedComponents neighbourhood
 
-Status: draft for phd-notebook/decisions.md. Code change is uncommitted on
-phd-code branch `phase2-stand-validation` (src/fmu/stages/clustering.py,
-tests/test_clustering_neighbourhood.py, tests/test_clustering_live.py, docs).
+Status: draft for phd-notebook/decisions.md. The code change is committed and
+reaches `main` through the combined integration PR (src/fmu/stages/clustering.py,
+tests/test_clustering_neighbourhood.py, tests/test_clustering_live.py, docs);
+it originated on branch `phase2-stand-validation`.
 
 ## Symptom
 

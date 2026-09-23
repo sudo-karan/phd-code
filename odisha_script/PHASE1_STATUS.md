@@ -167,13 +167,13 @@ that the stands are *structurally meaningful* rests on the measurement, not the 
    smooth monotone decay (1 at 7.81% down to 19 at 0.01%), then 2 pixels in the whole region
    at 28 and 31. The only interior gaps are 26, 27, 29 and 30 — above which the region holds
    two pixels total. That is tail sparsity, not the empty space between class codes. A
-   categorical code would spike on arbitrary integers; this does not. Of those 554,745 pixels
+   categorical code would spike on arbitrary integers; this does not. Of those pixels
    **63.5% read zero**, at a non-zero mean of **4.82 m** — which is a fact about the sampled
-   pixels, not about forest cover. The sample is the union of 274 discs of 500 m radius around
-   plot centres, and in rural Dhenkanal, Angul and Koraput that takes in farmland, fallow,
-   settlement and roads. The control discs show the confound directly: 100% non-zero at 15 m,
-   falling to 62.1% at 500 m as the disc widens into non-forest. The verdict rests on the
-   plot-level grids above and does not depend on this share.
+   pixels, not about forest cover. In rural Dhenkanal, Angul and Koraput those discs take in
+   farmland, fallow, settlement and roads as well as forest, and the controls show the confound
+   directly: 100% non-zero at 15 m, falling to 62.1% at 500 m as the disc widens into
+   non-forest. The verdict rests on the plot-level grids above and does not depend on this
+   share.
 
    **How far the verdict generalises, stated precisely.** The 12 were chosen by sorted
    `plot_key` under district quotas, not by severity, so they are not the sharpest cases

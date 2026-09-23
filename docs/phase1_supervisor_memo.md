@@ -55,7 +55,7 @@ about the sampled pixels and not about forest cover: the sample is the union of 
 farmland, fallow, settlement and roads. The control discs show the confound directly — they
 run 100% non-zero at 15 m and fall to 62.1% at 500 m, so widening the disc brings in
 non-forest exactly as expected. The disqualification rests on the plot-level evidence above
-and does not depend on this share. Nor are the 122 zero plots stand age: the field campaign
+and does not depend on this share. The 122 zero plots are not stand age either: the field campaign
 ran April 2022 to April 2023, and closing that gap against the documented imagery window
 would require the median zero plot to have grown 2.52 m a year (§7).
 
