@@ -1,0 +1,1175 @@
+
+====================================================================================================
+CORRECTIONS TO THE FIRST RUN (git 8d4c2ed)
+====================================================================================================
+  NOTE: set 'districts'. The first run covered the pilot only. The list below describes the code corrections; every number and plot count in it refers to the PILOT run, not to this set.
+  R1  cluster_id rounded (np.rint) in the join and for rotation-null labels: GEE's mode reducer gave 4.9999999999999885 for current's class 5 (6 pilot plots). The first run truncated these ids to int for ARI/NMI/Cramér's V and the contingency table (the 6 plots counted as class 4), and compared the unrounded floats for distant pairs (splitting class 5; current distant same-label pairs 160 -> 198).
+  R2  6.3 ARI/NMI/V printed NOT ESTIMABLE when typed plots hold < 2 field types (pilot UPGMA k=6 is constant); distant pairs printed once per partition; expected-count < 5 cells printed for every contingency table.
+  R3  every percentile printed with n_null; NOT ESTIMABLE below 100 defined null values.
+  R4  6.2 cells with n_same <= 3 or n_diff <= 3 marked uninformative (n<=3), no percentile.
+  R5  dissolved layer: units per AOI part, ARI(unit, part), site-only restricted R2 (SENSITIVITY).
+  R6  within-band label permutation p relabelled INVALID; within-site shuffle p added (SENSITIVITY).
+  R7  6.1 null structure (k, n, E, largest group, same-stand pairs) and E-slope bias estimate (SENSITIVITY).
+  R8  6.1 adjusted R2, within-part R2 and leave-one-site-out percentiles vs the rotation null (SENSITIVITY, merged).
+  R9  6.2 same-stand pairs by part and stand, leave-one-site-out, site fixed effects, stand-weighted beta (SENSITIVITY, merged).
+  R10 pre-registered ARMS prediction computed: excess difference vs index-wise differenced centred nulls.
+  R11 pre-registered 'd_field rises with d_geo' computed: slope, Spearman rho, within-part vs > 2 km means.
+  R12 6.3 uses only rotation realisations that keep every typed plot on a typed polygon; untyped polygons counted.
+  R13 per-partition RNGs seeded from crc32('<arm>/<layer>') (separate permutation stream); --rotations default 1999.
+  R14 rotation null matches the join: minimum stand id on multi-cover; boundary search 1000 m, inf beyond (was capped at 600 m).
+  R15 species keys: trailing '.' stripped, aliases cassia fistul/lagerstroemia parviflor/zizyphus oenoplia; the join was rerun, changing sp_ba_json of 8 pilot plots and so Bray-Curtis numbers (sal_ba_frac and n_species of pilot plots unchanged; all-274 UPGMA sizes 10/260/1/1/1/1 -> 11/259/1/1/1/1, still one type in the pilot).
+  R16 figures redrawn from the rotation null (the first run's figure code read the noise null, which was never used).
+  R17 DATA line states the noise null's exclusion by decision; this corrections section added.
+  R18 --set pilot|districts; d_geo geodesic (WGS84) instead of planar UTM, which moves pilot betas in the 4th decimal and changes no band count; rotations and boundary distances in each AOI part's own UTM zone.
+  (no value comparison for this set)
+
+====================================================================================================
+DATA (set: districts)
+====================================================================================================
+  plots in the set's AOIs: 267 over 20 parts (20 holding plots); all plots in the field table: 274
+  parts: angul:KANSAB 10 plots (EPSG 32645); angul:GHANAJODI 10 plots (EPSG 32645); angul:JOGI BANDHA 10 plots (EPSG 32645); angul:ANANDA PUR 9 plots (EPSG 32645); dhenkanal:TULASIPASI 7 plots (EPSG 32645); dhenkanal:KANKANA 8 plots (EPSG 32645); dhenkanal:Balikurma 11 plots (EPSG 32645); dhenkanal:Kampulei 9 plots (EPSG 32645); dhenkanal:Adhapalli 11 plots (EPSG 32645); dhenkanal:Mahabirod 9 plots (EPSG 32645); dhenkanal:Kerijoli 10 plots (EPSG 32645); dhenkanal:Pangatira 10 plots (EPSG 32645); kendujhar:BHANRADI SAHI 8 plots (EPSG 32645); koraput:HANDAPUR 20 plots (EPSG 32644); koraput:HATIMUNDA 59 plots (EPSG 32644); koraput:BARIGUDA 10 plots (EPSG 32644); koraput:KONDASRIMUNDA 5 plots (EPSG 32644); koraput:KHASUGUDA 11 plots (EPSG 32644); koraput:SAKIAGUDA 9 plots (EPSG 32644); koraput:BARAKANTI 31 plots (EPSG 32644)
+  pairs: 35511 total, 3032 within an AOI part; within-part pairs by band: [130, 298, 557, 901]; pairs > 2 km (same district): 10651; d_geo geodesic (WGS84)
+  field types (UPGMA on Bray-Curtis, all 274 plots, k=6): sizes {1: 11, 2: 259, 3: 1, 4: 1, 5: 1, 6: 1}; in this set {1: 11, 2: 254, 5: 1, 6: 1}
+  noise-SNIC null: EXCLUDED by recorded decision (PHASE2_PREDICTIONS.md, Null models): it failed its size check before any statistic existed (odisha_phase2_4_results.txt). The rotation null is the only null.
+
+====================================================================================================
+6.2 PRE-REGISTERED: d_field rises with d_geo
+====================================================================================================
+  Bray-Curtis  within AOI parts, pairs < 800 m (n=1886): OLS slope +0.0199 per 100 m, Spearman rho +0.174
+  |dLorey| m   within AOI parts, pairs < 800 m (n=1886): OLS slope +0.2043 per 100 m, Spearman rho +0.119
+  mean |dLorey|: within-part pairs 4.06 m (n=3032) vs pairs > 2 km 4.81 m (n=10651); mean Bray-Curtis 0.769 vs 0.831
+
+====================================================================================================
+PRIMARY RESULT — v120 / stands_merged
+====================================================================================================
+  partition: 1039 stands, area ha p10 1.22 / median 3.09 / p90 9.18; plots assigned 267 of 267; multi-plot stands 61
+  polygons with no cluster_id: 187 of 1068, 486.81 ha of 4313.70 ha
+  rotation null: 1999 realisations (seed crc32('v120/stands_merged')); 184 s; mean draws per accepted realisation by part {'angul:KANSAB': 18.0, 'angul:GHANAJODI': 1.0, 'angul:JOGI BANDHA': 3.3, 'angul:ANANDA PUR': 4.1, 'dhenkanal:TULASIPASI': 1.0, 'dhenkanal:KANKANA': 4.7, 'dhenkanal:Balikurma': 14.5, 'dhenkanal:Kampulei': 31.0, 'dhenkanal:Adhapalli': 13.5, 'dhenkanal:Mahabirod': 8.3, 'dhenkanal:Kerijoli': 4.7, 'dhenkanal:Pangatira': 9.5, 'kendujhar:BHANRADI SAHI': 1.0, 'koraput:HANDAPUR': 7.0, 'koraput:HATIMUNDA': 1.0, 'koraput:BARIGUDA': 4.6, 'koraput:KONDASRIMUNDA': 1.8, 'koraput:KHASUGUDA': 1.0, 'koraput:SAKIAGUDA': 2.2, 'koraput:BARAKANTI': 1.0}
+    sampler: feasible-region (exact; plain geometric acceptance < 0.02) in {'angul:GHANAJODI': '0.015', 'dhenkanal:TULASIPASI': '0.007', 'kendujhar:BHANRADI SAHI': '0.000', 'koraput:HATIMUNDA': '0.002', 'koraput:KHASUGUDA': '0.001', 'koraput:BARAKANTI': '0.000'}; plain elsewhere
+  6.1 v120 / stands_merged vs ROTATION null (observed = vector join, restricted R2)
+    variable          R2 all     (k, n)  R2 restr    (k, n)  null med     p5    p95  excess  pctile n_null
+    loreys_h_m         0.880  (144,267)     0.738  (61,184)     0.719   0.64   0.79   0.018    64.2   1999
+    loreys_h_tree_m    0.898  (142,254)     0.760  (59,171)     0.730   0.66   0.81   0.029    73.4   1999
+    crown_cover_pct    0.812  (144,267)     0.740  (61,184)     0.743   0.69   0.80  -0.003    46.9   1999
+    sal_ba_frac        0.872  (144,267)     0.830  (61,184)     0.817   0.76   0.87   0.013    65.5   1999
+    n_species          0.781  (144,267)     0.683  (61,184)     0.685   0.62   0.74  -0.002    47.6   1999
+    dbh_mean_cm        0.722  (142,254)     0.641  (59,171)     0.625   0.56   0.69   0.017    67.5   1999
+    h_top5_m           0.788  (144,267)     0.622  (61,184)     0.694   0.63   0.76  -0.072     3.2   1999
+
+  SENSITIVITY (not pre-registered): 6.1 null structure — does the rotation null have the observed partition's shape?
+    (restricted set: multi-plot stands over plots with loreys_h_m)
+    quantity                        observed  null med      p5     p95  pctile
+    k (multi-plot stands)             61.000    60.000  54.000  67.000  58.9 (n_null 1999)
+    n (plots in them)                184.000   170.000 159.000 182.000  97.3 (n_null 1999)
+    E = (k-1)/(n-1)                    0.328     0.351   0.327   0.374  6.6 (n_null 1999)
+    largest multi-plot group           9.000     7.000   6.000  10.000  83.6 (n_null 1999)
+    same-stand within-part pairs     247.000   201.000 171.000 234.000  98.3 (n_null 1999)
+    E-slope bias estimate, slope(null R2 on null E) x (E_obs - E_null median), in R2 units; negative means the null's different E alone
+    pushes the observed value below the null median by about that much, i.e. the percentile is biased low: loreys_h_m -0.008 (n 1999); loreys_h_tree_m -0.007 (n 1999); crown_cover_pct -0.012 (n 1999); sal_ba_frac -0.005 (n 1999); n_species -0.014 (n 1999); dbh_mean_cm -0.010 (n 1999); h_top5_m -0.015 (n 1999)
+
+  SENSITIVITY (not pre-registered): 6.1 alternatives to raw restricted R2 vs the same rotation null (each realisation with its own k, n)
+    variable          adj R2          pctile (n_null)  within-part R2          pctile (n_null)   leave-one-site-out restricted R2 percentile (n_null)
+    loreys_h_m         0.610       71.0 (n_null 1999)           0.352       44.4 (n_null 1999)   -angul:KANSAB 33.3 (n_null 1999), -angul:GHANAJODI 53.7 (n_null 1999), -angul:JOGI BANDHA 72.6 (n_null 1999), -angul:ANANDA PUR 72.4 (n_null 1999), -dhenkanal:TULASIPASI 56.1 (n_null 1999), -dhenkanal:KANKANA 64.6 (n_null 1999), -dhenkanal:Balikurma 61.3 (n_null 1999), -dhenkanal:Kampulei 65.9 (n_null 1999), -dhenkanal:Adhapalli 63.7 (n_null 1999), -dhenkanal:Mahabirod 79.3 (n_null 1999), -dhenkanal:Kerijoli 72.4 (n_null 1999), -dhenkanal:Pangatira 61.3 (n_null 1999), -kendujhar:BHANRADI SAHI 54.7 (n_null 1999), -koraput:HANDAPUR 63.9 (n_null 1999), -koraput:HATIMUNDA 70.6 (n_null 1999), -koraput:BARIGUDA 64.0 (n_null 1999), -koraput:KONDASRIMUNDA 64.1 (n_null 1999), -koraput:KHASUGUDA 65.0 (n_null 1999), -koraput:SAKIAGUDA 66.5 (n_null 1999), -koraput:BARAKANTI 66.2 (n_null 1999)
+    loreys_h_tree_m    0.636       77.6 (n_null 1999)           0.369       52.4 (n_null 1999)   -angul:KANSAB 38.6 (n_null 1999), -angul:GHANAJODI 64.6 (n_null 1999), -angul:JOGI BANDHA 73.0 (n_null 1999), -angul:ANANDA PUR 75.2 (n_null 1999), -dhenkanal:TULASIPASI 66.8 (n_null 1999), -dhenkanal:KANKANA 72.8 (n_null 1999), -dhenkanal:Balikurma 71.6 (n_null 1999), -dhenkanal:Kampulei 75.3 (n_null 1999), -dhenkanal:Adhapalli 72.5 (n_null 1999), -dhenkanal:Mahabirod 83.0 (n_null 1999), -dhenkanal:Kerijoli 82.9 (n_null 1999), -dhenkanal:Pangatira 70.8 (n_null 1999), -kendujhar:BHANRADI SAHI 69.3 (n_null 1999), -koraput:HANDAPUR 71.4 (n_null 1999), -koraput:HATIMUNDA 83.2 (n_null 1999), -koraput:BARIGUDA 72.9 (n_null 1999), -koraput:KONDASRIMUNDA 73.4 (n_null 1999), -koraput:KHASUGUDA 74.0 (n_null 1999), -koraput:SAKIAGUDA 75.5 (n_null 1999), -koraput:BARAKANTI 74.0 (n_null 1999)
+    crown_cover_pct    0.614       57.0 (n_null 1999)           0.356       43.5 (n_null 1999)   -angul:KANSAB 49.0 (n_null 1999), -angul:GHANAJODI 46.1 (n_null 1999), -angul:JOGI BANDHA 67.5 (n_null 1999), -angul:ANANDA PUR 56.8 (n_null 1999), -dhenkanal:TULASIPASI 47.2 (n_null 1999), -dhenkanal:KANKANA 50.9 (n_null 1999), -dhenkanal:Balikurma 42.8 (n_null 1999), -dhenkanal:Kampulei 48.1 (n_null 1999), -dhenkanal:Adhapalli 52.7 (n_null 1999), -dhenkanal:Mahabirod 39.1 (n_null 1999), -dhenkanal:Kerijoli 47.1 (n_null 1999), -dhenkanal:Pangatira 25.9 (n_null 1999), -kendujhar:BHANRADI SAHI 46.3 (n_null 1999), -koraput:HANDAPUR 46.4 (n_null 1999), -koraput:HATIMUNDA 33.2 (n_null 1999), -koraput:BARIGUDA 50.4 (n_null 1999), -koraput:KONDASRIMUNDA 50.7 (n_null 1999), -koraput:KHASUGUDA 48.0 (n_null 1999), -koraput:SAKIAGUDA 47.7 (n_null 1999), -koraput:BARAKANTI 47.2 (n_null 1999)
+    sal_ba_frac        0.748       72.2 (n_null 1999)           0.301       63.0 (n_null 1999)   -angul:KANSAB 65.4 (n_null 1999), -angul:GHANAJODI 65.6 (n_null 1999), -angul:JOGI BANDHA 66.4 (n_null 1999), -angul:ANANDA PUR 66.9 (n_null 1999), -dhenkanal:TULASIPASI 65.8 (n_null 1999), -dhenkanal:KANKANA 79.1 (n_null 1999), -dhenkanal:Balikurma 54.9 (n_null 1999), -dhenkanal:Kampulei 67.6 (n_null 1999), -dhenkanal:Adhapalli 63.3 (n_null 1999), -dhenkanal:Mahabirod 42.9 (n_null 1999), -dhenkanal:Kerijoli 82.5 (n_null 1999), -dhenkanal:Pangatira 68.5 (n_null 1999), -kendujhar:BHANRADI SAHI 59.0 (n_null 1999), -koraput:HANDAPUR 65.2 (n_null 1999), -koraput:HATIMUNDA 65.1 (n_null 1999), -koraput:BARIGUDA 65.5 (n_null 1999), -koraput:KONDASRIMUNDA 65.5 (n_null 1999), -koraput:KHASUGUDA 65.4 (n_null 1999), -koraput:SAKIAGUDA 65.1 (n_null 1999), -koraput:BARAKANTI 65.0 (n_null 1999)
+    n_species          0.528       58.6 (n_null 1999)           0.437       56.8 (n_null 1999)   -angul:KANSAB 48.4 (n_null 1999), -angul:GHANAJODI 49.7 (n_null 1999), -angul:JOGI BANDHA 53.8 (n_null 1999), -angul:ANANDA PUR 50.4 (n_null 1999), -dhenkanal:TULASIPASI 48.7 (n_null 1999), -dhenkanal:KANKANA 47.3 (n_null 1999), -dhenkanal:Balikurma 24.6 (n_null 1999), -dhenkanal:Kampulei 47.6 (n_null 1999), -dhenkanal:Adhapalli 40.5 (n_null 1999), -dhenkanal:Mahabirod 44.1 (n_null 1999), -dhenkanal:Kerijoli 49.7 (n_null 1999), -dhenkanal:Pangatira 47.2 (n_null 1999), -kendujhar:BHANRADI SAHI 50.2 (n_null 1999), -koraput:HANDAPUR 43.1 (n_null 1999), -koraput:HATIMUNDA 68.6 (n_null 1999), -koraput:BARIGUDA 48.2 (n_null 1999), -koraput:KONDASRIMUNDA 52.8 (n_null 1999), -koraput:KHASUGUDA 43.3 (n_null 1999), -koraput:SAKIAGUDA 41.1 (n_null 1999), -koraput:BARAKANTI 51.6 (n_null 1999)
+    dbh_mean_cm        0.456       74.7 (n_null 1999)           0.297       33.3 (n_null 1999)   -angul:KANSAB 68.0 (n_null 1999), -angul:GHANAJODI 66.2 (n_null 1999), -angul:JOGI BANDHA 70.8 (n_null 1999), -angul:ANANDA PUR 72.6 (n_null 1999), -dhenkanal:TULASIPASI 65.7 (n_null 1999), -dhenkanal:KANKANA 67.9 (n_null 1999), -dhenkanal:Balikurma 58.8 (n_null 1999), -dhenkanal:Kampulei 69.6 (n_null 1999), -dhenkanal:Adhapalli 71.1 (n_null 1999), -dhenkanal:Mahabirod 60.0 (n_null 1999), -dhenkanal:Kerijoli 70.7 (n_null 1999), -dhenkanal:Pangatira 64.3 (n_null 1999), -kendujhar:BHANRADI SAHI 61.3 (n_null 1999), -koraput:HANDAPUR 65.6 (n_null 1999), -koraput:HATIMUNDA 64.2 (n_null 1999), -koraput:BARIGUDA 68.0 (n_null 1999), -koraput:KONDASRIMUNDA 67.5 (n_null 1999), -koraput:KHASUGUDA 70.3 (n_null 1999), -koraput:SAKIAGUDA 66.9 (n_null 1999), -koraput:BARAKANTI 64.9 (n_null 1999)
+    h_top5_m           0.438        6.0 (n_null 1999)           0.302        4.8 (n_null 1999)   -angul:KANSAB 1.8 (n_null 1999), -angul:GHANAJODI 3.0 (n_null 1999), -angul:JOGI BANDHA 4.3 (n_null 1999), -angul:ANANDA PUR 4.2 (n_null 1999), -dhenkanal:TULASIPASI 2.5 (n_null 1999), -dhenkanal:KANKANA 3.1 (n_null 1999), -dhenkanal:Balikurma 2.4 (n_null 1999), -dhenkanal:Kampulei 3.7 (n_null 1999), -dhenkanal:Adhapalli 3.1 (n_null 1999), -dhenkanal:Mahabirod 16.2 (n_null 1999), -dhenkanal:Kerijoli 6.2 (n_null 1999), -dhenkanal:Pangatira 3.0 (n_null 1999), -kendujhar:BHANRADI SAHI 1.8 (n_null 1999), -koraput:HANDAPUR 2.8 (n_null 1999), -koraput:HATIMUNDA 13.7 (n_null 1999), -koraput:BARIGUDA 3.1 (n_null 1999), -koraput:KONDASRIMUNDA 3.5 (n_null 1999), -koraput:KHASUGUDA 2.8 (n_null 1999), -koraput:SAKIAGUDA 3.6 (n_null 1999), -koraput:BARAKANTI 4.0 (n_null 1999)
+
+  6.2 pairwise boundary test (pairs within an AOI part)
+    Bray-Curtis, all pairs:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         81     49     0.669     0.738   0.069               92.9 (n_null 1999)   0.057
+      100-200       96    202     0.655     0.710   0.055               83.9 (n_null 1999)   0.048
+      200-400       64    493     0.578     0.740   0.162               99.6 (n_null 1999)   0.000
+      400-800        6    895     0.395     0.785   0.390               97.7 (n_null 1889)   0.000
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=1886, same=247): beta_same -0.0883, beta per 100 m 0.0139; rotation null median 0.0014; stand-effect percentile 99.7 (n_null 1999) (high = more similar than null); naive perm p 0.000 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.230; 100-200 0.745; 200-400 0.008; 400-800 0.008; beta_same 0.038
+    Bray-Curtis, both > 30 m from boundary:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100          9      0     0.526       n/a     n/a             uninformative (n<=3)     n/a
+      100-200       11     14     0.507     0.737   0.230               91.4 (n_null 1972)   0.019
+      200-400        4     27     0.626     0.736   0.110               70.2 (n_null 1690)   0.195
+      400-800        0     39       n/a     0.676     n/a             uninformative (n<=3)     n/a
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=104, same=24): beta_same -0.1873, beta per 100 m -0.0050; rotation null median -0.0081; stand-effect percentile 97.8 (n_null 1999) (high = more similar than null); naive perm p 0.013 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100   n/a (uninformative n<=3); 100-200 0.089; 200-400 0.420; 400-800   n/a (uninformative n<=3); beta_same 0.135
+  SENSITIVITY (not pre-registered): 6.2 robustness of beta_same, Bray-Curtis, all pairs (same rotation realisations throughout)
+    same-stand pairs by AOI part: observed / null median / null p95 / pctile
+      angul:KANSAB                5 /     4 /     8 / 64.4 (n_null 1999)
+      angul:GHANAJODI             0 /     1 /     3 / 16.1 (n_null 1999)
+      angul:JOGI BANDHA          20 /    10 /    17 / 98.6 (n_null 1999)
+      angul:ANANDA PUR           16 /     7 /    13 / 98.5 (n_null 1999)
+      dhenkanal:TULASIPASI        1 /     1 /     2 / 43.6 (n_null 1999)
+      dhenkanal:KANKANA           7 /     5 /    11 / 76.9 (n_null 1999)
+      dhenkanal:Balikurma         5 /     3 /     5 / 93.2 (n_null 1999)
+      dhenkanal:Kampulei          1 /     1 /     2 / 63.5 (n_null 1999)
+      dhenkanal:Adhapalli         3 /     5 /    10 / 10.3 (n_null 1999)
+      dhenkanal:Mahabirod         6 /     4 /     8 / 79.3 (n_null 1999)
+      dhenkanal:Kerijoli         36 /     9 /    18 / 100.0 (n_null 1999)
+      dhenkanal:Pangatira         6 /     4 /     7 / 83.3 (n_null 1999)
+      kendujhar:BHANRADI SAHI     4 /     4 /    10 / 41.9 (n_null 1999)
+      koraput:HANDAPUR           28 /    29 /    46 / 45.6 (n_null 1999)
+      koraput:HATIMUNDA          57 /    60 /    84 / 40.4 (n_null 1999)
+      koraput:BARIGUDA            7 /     8 /    16 / 38.3 (n_null 1999)
+      koraput:KONDASRIMUNDA       6 /     6 /    10 / 60.2 (n_null 1999)
+      koraput:KHASUGUDA           2 /     2 /     6 / 38.2 (n_null 1999)
+      koraput:SAKIAGUDA          10 /    12 /    22 / 36.5 (n_null 1999)
+      koraput:BARAKANTI          27 /    18 /    28 / 92.7 (n_null 1999)
+    same-stand pairs by stand (AOI part, stand id as in the layer, plots, pairs): dhenkanal:Kerijoli 62 9p 36; koraput:HATIMUNDA 88 6p 15; koraput:BARAKANTI 531 6p 15; koraput:HATIMUNDA 66 6p 15; angul:JOGI BANDHA 24 5p 10; koraput:HANDAPUR 125 5p 10; angul:ANANDA PUR 11 5p 10; koraput:HANDAPUR 123 5p 10; angul:JOGI BANDHA 28 5p 10; koraput:HATIMUNDA 49 4p 6; dhenkanal:Mahabirod 31 4p 6; angul:ANANDA PUR 7 4p 6; koraput:HATIMUNDA 89 4p 6; koraput:HANDAPUR 135 4p 6; koraput:SAKIAGUDA 11 4p 6; koraput:BARAKANTI 606 4p 6; koraput:KONDASRIMUNDA 160 4p 6; koraput:BARAKANTI 524 3p 3; koraput:SAKIAGUDA 12 3p 3; koraput:BARIGUDA 149 3p 3; koraput:BARIGUDA 142 3p 3; kendujhar:BHANRADI SAHI 12 3p 3; koraput:HATIMUNDA 64 3p 3; koraput:HATIMUNDA 34 3p 3; dhenkanal:Pangatira 14 3p 3; dhenkanal:Balikurma 86 3p 3; dhenkanal:KANKANA 215 3p 3; dhenkanal:KANKANA 211 3p 3; angul:KANSAB 40 3p 3; kendujhar:BHANRADI SAHI 21 2p 1; koraput:HANDAPUR 120 2p 1; dhenkanal:Pangatira 13 2p 1; dhenkanal:Pangatira 12 2p 1; dhenkanal:Adhapalli 52 2p 1; dhenkanal:Adhapalli 40 2p 1; dhenkanal:Adhapalli 53 2p 1; dhenkanal:Pangatira 11 2p 1; dhenkanal:Kampulei 190 2p 1; dhenkanal:Balikurma 91 2p 1; dhenkanal:KANKANA 218 2p 1; angul:KANSAB 35 2p 1; angul:KANSAB 49 2p 1; dhenkanal:TULASIPASI 147 2p 1; dhenkanal:Balikurma 79 2p 1; koraput:HANDAPUR 134 2p 1; koraput:HATIMUNDA 102 2p 1; koraput:HATIMUNDA 97 2p 1; koraput:HATIMUNDA 93 2p 1; koraput:HATIMUNDA 90 2p 1; koraput:HATIMUNDA 75 2p 1; koraput:HATIMUNDA 84 2p 1; koraput:HATIMUNDA 37 2p 1; koraput:HATIMUNDA 56 2p 1; koraput:KHASUGUDA 595 2p 1; koraput:KHASUGUDA 583 2p 1; koraput:BARIGUDA 133 2p 1; koraput:HATIMUNDA 106 2p 1; koraput:BARAKANTI 513 2p 1; koraput:BARAKANTI 511 2p 1; koraput:SAKIAGUDA 17 2p 1; koraput:BARAKANTI 533 2p 1
+      site fixed effects                                       n_same  247  beta_same -0.0181  null median 0.0005  stand-effect pctile 83.7 (n_null 1999)
+      stand-weighted (same pair weight 1/pairs in its stand)   n_same  247  beta_same -0.0548  null median -0.0201  stand-effect pctile 95.3 (n_null 1999)
+      drop angul:KANSAB                                        n_same  242  beta_same -0.0898  null median 0.0029  stand-effect pctile 99.7 (n_null 1999)
+      drop angul:GHANAJODI                                     n_same  247  beta_same -0.0882  null median 0.0016  stand-effect pctile 99.7 (n_null 1999)
+      drop angul:JOGI BANDHA                                   n_same  227  beta_same -0.0974  null median 0.0007  stand-effect pctile 99.8 (n_null 1999)
+      drop angul:ANANDA PUR                                    n_same  231  beta_same -0.1007  null median 0.0002  stand-effect pctile 99.8 (n_null 1999)
+      drop dhenkanal:TULASIPASI                                n_same  246  beta_same -0.0905  null median 0.0001  stand-effect pctile 99.7 (n_null 1999)
+      drop dhenkanal:KANKANA                                   n_same  240  beta_same -0.0914  null median 0.0007  stand-effect pctile 99.7 (n_null 1999)
+      drop dhenkanal:Balikurma                                 n_same  242  beta_same -0.0861  null median 0.0009  stand-effect pctile 99.5 (n_null 1999)
+      drop dhenkanal:Kampulei                                  n_same  246  beta_same -0.0893  null median 0.0016  stand-effect pctile 99.7 (n_null 1999)
+      drop dhenkanal:Adhapalli                                 n_same  244  beta_same -0.0898  null median 0.0015  stand-effect pctile 99.5 (n_null 1999)
+      drop dhenkanal:Mahabirod                                 n_same  241  beta_same -0.0821  null median -0.0007  stand-effect pctile 99.3 (n_null 1999)
+      drop dhenkanal:Kerijoli                                  n_same  211  beta_same -0.0113  null median -0.0009  stand-effect pctile 67.8 (n_null 1999)
+      drop dhenkanal:Pangatira                                 n_same  241  beta_same -0.0940  null median -0.0004  stand-effect pctile 99.7 (n_null 1999)
+      drop kendujhar:BHANRADI SAHI                             n_same  243  beta_same -0.0870  null median 0.0008  stand-effect pctile 99.5 (n_null 1999)
+      drop koraput:HANDAPUR                                    n_same  219  beta_same -0.0987  null median -0.0013  stand-effect pctile 99.6 (n_null 1999)
+      drop koraput:HATIMUNDA                                   n_same  190  beta_same -0.1167  null median 0.0069  stand-effect pctile 99.8 (n_null 1999)
+      drop koraput:BARIGUDA                                    n_same  240  beta_same -0.0948  null median -0.0000  stand-effect pctile 99.7 (n_null 1999)
+      drop koraput:KONDASRIMUNDA                               n_same  241  beta_same -0.0883  null median 0.0065  stand-effect pctile 99.7 (n_null 1999)
+      drop koraput:KHASUGUDA                                   n_same  245  beta_same -0.0891  null median 0.0019  stand-effect pctile 99.7 (n_null 1999)
+      drop koraput:SAKIAGUDA                                   n_same  237  beta_same -0.0914  null median 0.0016  stand-effect pctile 99.6 (n_null 1999)
+      drop koraput:BARAKANTI                                   n_same  220  beta_same -0.0864  null median 0.0006  stand-effect pctile 99.3 (n_null 1999)
+    |dLorey| m, all pairs:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         81     49     3.714     3.036  -0.678                6.5 (n_null 1999)   0.837
+      100-200       96    202     3.634     3.365  -0.269               25.9 (n_null 1999)   0.686
+      200-400       64    493     3.848     3.642  -0.206               46.2 (n_null 1999)   0.649
+      400-800        6    895     2.038     4.396   2.359               76.0 (n_null 1889)   0.088
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=1886, same=247): beta_same 0.3115, beta per 100 m 0.2252; rotation null median 0.0135; stand-effect percentile 22.6 (n_null 1999) (high = more similar than null); naive perm p 0.794 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.916; 100-200 0.073; 200-400 0.083; 400-800 0.328; beta_same 0.131
+    |dLorey| m, both > 30 m from boundary:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100          9      0     3.745       n/a     n/a             uninformative (n<=3)     n/a
+      100-200       11     14     3.105     2.537  -0.569               36.7 (n_null 1972)   0.663
+      200-400        4     27     5.777     4.304  -1.473               28.9 (n_null 1690)   0.687
+      400-800        0     39       n/a     4.760     n/a             uninformative (n<=3)     n/a
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=104, same=24): beta_same 1.3243, beta per 100 m 0.6255; rotation null median -0.0334; stand-effect percentile 17.7 (n_null 1999) (high = more similar than null); naive perm p 0.743 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100   n/a (uninformative n<=3); 100-200 0.060; 200-400 0.301; 400-800   n/a (uninformative n<=3); beta_same 0.047
+  SENSITIVITY (not pre-registered): 6.2 robustness of beta_same, |dLorey| m, all pairs (same rotation realisations throughout)
+      site fixed effects                                       n_same  247  beta_same -0.2531  null median 0.0745  stand-effect pctile 83.8 (n_null 1999)
+      stand-weighted (same pair weight 1/pairs in its stand)   n_same  247  beta_same -0.1534  null median 0.2756  stand-effect pctile 83.6 (n_null 1999)
+      drop angul:KANSAB                                        n_same  242  beta_same 0.4972  null median 0.0745  stand-effect pctile 15.8 (n_null 1999)
+      drop angul:GHANAJODI                                     n_same  247  beta_same 0.3873  null median 0.0216  stand-effect pctile 17.3 (n_null 1999)
+      drop angul:JOGI BANDHA                                   n_same  227  beta_same 0.2259  null median 0.0013  stand-effect pctile 29.3 (n_null 1999)
+      drop angul:ANANDA PUR                                    n_same  231  beta_same 0.2010  null median 0.0159  stand-effect pctile 33.8 (n_null 1999)
+      drop dhenkanal:TULASIPASI                                n_same  246  beta_same 0.3724  null median 0.0255  stand-effect pctile 18.5 (n_null 1999)
+      drop dhenkanal:KANKANA                                   n_same  240  beta_same 0.3082  null median 0.0009  stand-effect pctile 22.4 (n_null 1999)
+      drop dhenkanal:Balikurma                                 n_same  242  beta_same 0.3245  null median -0.0011  stand-effect pctile 21.4 (n_null 1999)
+      drop dhenkanal:Kampulei                                  n_same  246  beta_same 0.3220  null median 0.0172  stand-effect pctile 22.4 (n_null 1999)
+      drop dhenkanal:Adhapalli                                 n_same  244  beta_same 0.2430  null median -0.0050  stand-effect pctile 26.6 (n_null 1999)
+      drop dhenkanal:Mahabirod                                 n_same  241  beta_same 0.5528  null median 0.0767  stand-effect pctile 9.9 (n_null 1999)
+      drop dhenkanal:Kerijoli                                  n_same  211  beta_same -0.0902  null median 0.0409  stand-effect pctile 64.5 (n_null 1999)
+      drop dhenkanal:Pangatira                                 n_same  241  beta_same 0.3616  null median 0.0023  stand-effect pctile 19.0 (n_null 1999)
+      drop kendujhar:BHANRADI SAHI                             n_same  243  beta_same 0.4412  null median 0.0408  stand-effect pctile 16.0 (n_null 1999)
+      drop koraput:HANDAPUR                                    n_same  219  beta_same 0.1551  null median -0.0579  stand-effect pctile 31.8 (n_null 1999)
+      drop koraput:HATIMUNDA                                   n_same  190  beta_same 0.2591  null median -0.2482  stand-effect pctile 16.6 (n_null 1999)
+      drop koraput:BARIGUDA                                    n_same  240  beta_same 0.2759  null median -0.0013  stand-effect pctile 24.9 (n_null 1999)
+      drop koraput:KONDASRIMUNDA                               n_same  241  beta_same 0.3597  null median 0.0755  stand-effect pctile 24.0 (n_null 1999)
+      drop koraput:KHASUGUDA                                   n_same  245  beta_same 0.2526  null median -0.0140  stand-effect pctile 24.6 (n_null 1999)
+      drop koraput:SAKIAGUDA                                   n_same  237  beta_same 0.2710  null median 0.0359  stand-effect pctile 28.7 (n_null 1999)
+      drop koraput:BARAKANTI                                   n_same  220  beta_same 0.3062  null median -0.0343  stand-effect pctile 21.2 (n_null 1999)
+
+  6.3 label agreement (typology, not delineation) — merged stand cluster_id
+    district angul: typed plots 39 of 39; rotation realisations used 798 of 1999 (the rest put a typed plot on a polygon with no cluster_id)
+    district dhenkanal: typed plots 75 of 75; rotation realisations used 601 of 1999 (the rest put a typed plot on a polygon with no cluster_id)
+    district kendujhar: typed plots 8 of 8; rotation realisations used 1582 of 1999 (the rest put a typed plot on a polygon with no cluster_id)
+    district koraput: typed plots 144 of 145; rotation realisations used 52 of 1999 (the rest put a typed plot on a polygon with no cluster_id)
+    set-level nulls: the c-th valid realisation of each district combined index-wise; 52 combined realisations (implementation choice, not pre-registered)
+    field type = UPGMA k=6
+      angul: ari        0.075 (n plots 39); rotation null median -0.002, p95 0.038, percentile 99.9 (n_null 798)
+      angul: nmi        0.147 (n plots 39); rotation null median 0.086, p95 0.127, percentile 98.7 (n_null 798)
+      angul: cramers_v  0.386 (n plots 39); rotation null median 0.285, p95 0.433, percentile 89.0 (n_null 798)
+      angul: contingency (rows field type, columns cluster_id); cells with expected count < 5: 9 of 12
+        cluster_id  1   3  4  5
+        field_type             
+        2           4  21  8  4
+        5           1   0  0  0
+        6           1   0  0  0
+      dhenkanal: ari        0.018 (n plots 75); rotation null median -0.009, p95 0.015, percentile 99.2 (n_null 601)
+      dhenkanal: nmi        0.062 (n plots 75); rotation null median 0.017, p95 0.056, percentile 99.0 (n_null 601)
+      dhenkanal: cramers_v  0.569 (n plots 75); rotation null median 0.155, p95 0.569, percentile 94.9 (n_null 601)
+      dhenkanal: contingency (rows field type, columns cluster_id); cells with expected count < 5: 6 of 10
+        cluster_id   0   1   2  3   4
+        field_type                   
+        1            0   0   0  1   0
+        2           10  10  22  2  30
+      kendujhar: typed plots n=8 hold 1 field type(s) ({2: 8}): ARI, NMI, Cramér's V NOT ESTIMABLE
+      kendujhar: contingency (rows field type, columns cluster_id); cells with expected count < 5: n/a (one row; no chi-square) of 3
+        cluster_id  0  1  5
+        field_type         
+        2           1  5  2
+      koraput: ari        0.038 (n plots 144); rotation null median 0.016, p95 0.042, percentile NOT ESTIMABLE (n_null 52 < 100)
+      koraput: nmi        0.080 (n plots 144); rotation null median 0.058, p95 0.092, percentile NOT ESTIMABLE (n_null 52 < 100)
+      koraput: cramers_v  0.473 (n plots 144); rotation null median 0.352, p95 0.528, percentile NOT ESTIMABLE (n_null 52 < 100)
+      koraput: contingency (rows field type, columns cluster_id); cells with expected count < 5: 6 of 12
+        cluster_id  0   1  2   3   4   5
+        field_type                      
+        1           5   0  2   1   0   2
+        2           6  11  8  39  20  50
+      plot-weighted mean over 3 districts: ari        0.038; percentile NOT ESTIMABLE (n_null 52 < 100) (c-th valid realisation of each district combined)
+      plot-weighted mean over 3 districts: nmi        0.085; percentile NOT ESTIMABLE (n_null 52 < 100) (c-th valid realisation of each district combined)
+      plot-weighted mean over 3 districts: cramers_v  0.488; percentile NOT ESTIMABLE (n_null 52 < 100) (c-th valid realisation of each district combined)
+    field type = Sal-dominant rule
+      angul: typed plots n=39 hold 1 field type(s) ({0: 39}): ARI, NMI, Cramér's V NOT ESTIMABLE
+      angul: contingency (rows field type, columns cluster_id); cells with expected count < 5: n/a (one row; no chi-square) of 4
+        cluster_id  1   3  4  5
+        field_type             
+        0           6  21  8  4
+      dhenkanal: ari        0.057 (n plots 75); rotation null median 0.051, p95 0.090, percentile 57.7 (n_null 601)
+      dhenkanal: nmi        0.048 (n plots 75); rotation null median 0.059, p95 0.114, percentile 32.9 (n_null 601)
+      dhenkanal: cramers_v  0.310 (n plots 75); rotation null median 0.348, p95 0.478, percentile 28.6 (n_null 601)
+      dhenkanal: contingency (rows field type, columns cluster_id); cells with expected count < 5: 4 of 10
+        cluster_id  0  1   2  3   4
+        field_type                 
+        0           5  4  11  1  23
+        1           5  6  11  2   7
+      kendujhar: ari        -0.161 (n plots 8); rotation null median -0.143, p95 0.556, percentile 18.7 (n_null 1582)
+      kendujhar: nmi        0.100 (n plots 8); rotation null median 0.100, p95 0.677, percentile 50.2 (n_null 1582)
+      kendujhar: cramers_v  0.293 (n plots 8); rotation null median 0.293, p95 1.000, percentile 49.5 (n_null 1582)
+      kendujhar: contingency (rows field type, columns cluster_id); cells with expected count < 5: 6 of 6
+        cluster_id  0  1  5
+        field_type         
+        0           1  4  2
+        1           0  1  0
+      koraput: typed plots n=144 hold 1 field type(s) ({0: 144}): ARI, NMI, Cramér's V NOT ESTIMABLE
+      koraput: contingency (rows field type, columns cluster_id); cells with expected count < 5: n/a (one row; no chi-square) of 6
+        cluster_id   0   1   2   3   4   5
+        field_type                        
+        0           11  11  10  40  20  52
+      plot-weighted mean over 2 districts: ari        0.036; percentile 43.6 (n_null 601) (c-th valid realisation of each district combined)
+      plot-weighted mean over 2 districts: nmi        0.053; percentile 26.8 (n_null 601) (c-th valid realisation of each district combined)
+      plot-weighted mean over 2 districts: cramers_v  0.309; percentile 25.1 (n_null 601) (c-th valid realisation of each district combined)
+    distant pairs (> 2 km, same district; depend only on the stand cluster label):
+      distant_diff_bc      0.018 (n same-label 2066, n different-label 8468); rotation null median 0.002, p5 -0.011, p95 0.022, percentile NOT ESTIMABLE (n_null 52 < 100)
+      distant_diff_lorey   -0.285 (n same-label 2066, n different-label 8468); rotation null median -0.309, p5 -0.904, p95 0.092, percentile NOT ESTIMABLE (n_null 52 < 100)
+
+====================================================================================================
+SECONDARY — v120 / stands_snic
+====================================================================================================
+  NOTE: observed assigned plots 265 < 267 plots in loaded districts; the rotation null may assign the other 2 (it forces only the observed-assigned plots to land on a stand)
+  partition: 3596 stands, area ha p10 0.20 / median 0.85 / p90 2.00; plots assigned 265 of 267; multi-plot stands 38
+  polygons with no cluster_id: 0 of 3636, 0.00 ha of 3628.84 ha
+  rotation null: 1999 realisations (seed crc32('v120/stands_snic')); 634 s; mean draws per accepted realisation by part {'angul:KANSAB': 19.3, 'angul:GHANAJODI': 1.6, 'angul:JOGI BANDHA': 4.7, 'angul:ANANDA PUR': 11.3, 'dhenkanal:TULASIPASI': 1.2, 'dhenkanal:KANKANA': 12.3, 'dhenkanal:Balikurma': 14.6, 'dhenkanal:Kampulei': 33.1, 'dhenkanal:Adhapalli': 13.3, 'dhenkanal:Mahabirod': 8.3, 'dhenkanal:Kerijoli': 7.1, 'dhenkanal:Pangatira': 11.7, 'kendujhar:BHANRADI SAHI': 1.8, 'koraput:HANDAPUR': 14.4, 'koraput:HATIMUNDA': 18.0, 'koraput:BARIGUDA': 5.7, 'koraput:KONDASRIMUNDA': 2.7, 'koraput:KHASUGUDA': 1.4, 'koraput:SAKIAGUDA': 2.8, 'koraput:BARAKANTI': 1.0}
+    sampler: feasible-region (exact; plain geometric acceptance < 0.02) in {'angul:GHANAJODI': '0.015', 'dhenkanal:TULASIPASI': '0.007', 'kendujhar:BHANRADI SAHI': '0.000', 'koraput:HATIMUNDA': '0.002', 'koraput:KHASUGUDA': '0.001', 'koraput:BARAKANTI': '0.000'}; plain elsewhere
+  6.1 v120 / stands_snic vs ROTATION null (observed = vector join, restricted R2)
+    variable          R2 all     (k, n)  R2 restr    (k, n)  null med     p5    p95  excess  pctile n_null
+    loreys_h_m         0.926  (210,265)     0.752   (38,93)     0.785   0.67   0.86  -0.033    30.3   1999
+    loreys_h_tree_m    0.933  (204,252)     0.758   (34,82)     0.785   0.66   0.87  -0.027    36.3   1999
+    crown_cover_pct    0.918  (210,265)     0.767   (38,93)     0.806   0.72   0.88  -0.039    20.6   1999
+    sal_ba_frac        0.956  (210,265)     0.881   (38,93)     0.856   0.76   0.93   0.025    69.2   1999
+    n_species          0.872  (210,265)     0.601   (38,93)     0.707   0.62   0.79  -0.106     2.8   1999
+    dbh_mean_cm        0.885  (204,252)     0.600   (34,82)     0.668   0.54   0.77  -0.068    23.6   1999
+    h_top5_m           0.866  (210,265)     0.639   (38,93)     0.709   0.60   0.82  -0.070    14.6   1999
+
+  SENSITIVITY (not pre-registered): 6.1 null structure — does the rotation null have the observed partition's shape?
+    (restricted set: multi-plot stands over plots with loreys_h_m)
+    quantity                        observed  null med      p5     p95  pctile
+    k (multi-plot stands)             38.000    35.000  30.000  41.000  77.7 (n_null 1999)
+    n (plots in them)                 93.000    83.000  72.000  95.000  91.2 (n_null 1999)
+    E = (k-1)/(n-1)                    0.402     0.419   0.388   0.446  15.6 (n_null 1999)
+    largest multi-plot group           4.000     5.000   4.000   6.000  24.9 (n_null 1999)
+    same-stand within-part pairs      76.000    64.000  51.000  80.000  89.6 (n_null 1999)
+    E-slope bias estimate, slope(null R2 on null E) x (E_obs - E_null median), in R2 units; negative means the null's different E alone
+    pushes the observed value below the null median by about that much, i.e. the percentile is biased low: loreys_h_m -0.002 (n 1999); loreys_h_tree_m -0.001 (n 1999); crown_cover_pct -0.001 (n 1999); sal_ba_frac +0.003 (n 1999); n_species -0.012 (n 1999); dbh_mean_cm -0.003 (n 1999); h_top5_m -0.009 (n 1999)
+
+  6.2 pairwise boundary test (pairs within an AOI part)
+    Bray-Curtis, all pairs:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         56     74     0.671     0.713   0.042               87.7 (n_null 1999)   0.161
+      100-200       16    279     0.793     0.685  -0.108                6.1 (n_null 1999)   0.952
+      200-400        4    543     0.838     0.719  -0.120               17.0 (n_null 1603)   0.851
+      400-800        0    895       n/a     0.783     n/a             uninformative (n<=3)     n/a
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=1867, same=76): beta_same 0.0304, beta per 100 m 0.0209; rotation null median 0.0225; stand-effect percentile 38.7 (n_null 1999) (high = more similar than null); naive perm p 0.712 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.280; 100-200 0.877; 200-400 0.664; 400-800   n/a (uninformative n<=3); beta_same 0.719
+    Bray-Curtis, both > 30 m from boundary:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100          1      0     0.925       n/a     n/a             uninformative (n<=3)     n/a
+      100-200        0      1       n/a     0.624     n/a             uninformative (n<=3)     n/a
+      200-400        0      3       n/a     0.857     n/a             uninformative (n<=3)     n/a
+      400-800        0      2       n/a     0.816     n/a             uninformative (n<=3)     n/a
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=7, same=1): beta_same 0.2618, beta per 100 m 0.0489; rotation null median 0.0524; stand-effect percentile 25.1 (n_null 909) (high = more similar than null); naive perm p degenerate (no group holds both same and different pairs) (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100   n/a (uninformative n<=3); 100-200   n/a (uninformative n<=3); 200-400   n/a (uninformative n<=3); 400-800   n/a (uninformative n<=3); beta_same degenerate (no group holds both same and different pairs)
+    |dLorey| m, all pairs:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         56     74     3.759     3.231  -0.528                6.0 (n_null 1999)   0.790
+      100-200       16    279     4.397     3.423  -0.974               19.0 (n_null 1999)   0.819
+      200-400        4    543     3.441     3.716   0.275               41.4 (n_null 1603)   0.558
+      400-800        0    895       n/a     4.405     n/a             uninformative (n<=3)     n/a
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=1867, same=76): beta_same 0.6110, beta per 100 m 0.2175; rotation null median -0.1433; stand-effect percentile 6.4 (n_null 1999) (high = more similar than null); naive perm p 0.875 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.986; 100-200 0.623; 200-400 0.175; 400-800   n/a (uninformative n<=3); beta_same 0.896
+    |dLorey| m, both > 30 m from boundary:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100          1      0     0.823       n/a     n/a             uninformative (n<=3)     n/a
+      100-200        0      1       n/a     1.799     n/a             uninformative (n<=3)     n/a
+      200-400        0      3       n/a     2.364     n/a             uninformative (n<=3)     n/a
+      400-800        0      2       n/a     0.629     n/a             uninformative (n<=3)     n/a
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=7, same=1): beta_same -2.5793, beta per 100 m -0.5917; rotation null median -0.5724; stand-effect percentile 66.9 (n_null 909) (high = more similar than null); naive perm p degenerate (no group holds both same and different pairs) (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100   n/a (uninformative n<=3); 100-200   n/a (uninformative n<=3); 200-400   n/a (uninformative n<=3); 400-800   n/a (uninformative n<=3); beta_same degenerate (no group holds both same and different pairs)
+
+====================================================================================================
+SECONDARY — v120 / stands_dissolved
+====================================================================================================
+  NOTE: observed assigned plots 252 < 267 plots in loaded districts; the rotation null may assign the other 15 (it forces only the observed-assigned plots to land on a stand)
+  partition: 493 stands, area ha p10 0.05 / median 0.38 / p90 12.03; plots assigned 252 of 267; multi-plot stands 33
+  polygons with no cluster_id: 0 of 493, 0.00 ha of 2852.40 ha
+  rotation null: NOT BUILT (seed crc32('v120/stands_dissolved'); 1999 realisations requested; 3968 s): 2 AOI part(s) could not place 1999 realisations — the draws reached the cap, or no angle fits the plot cloud inside the part at all
+    failed parts (accepted realisations; draws made; draws with every plot inside the part; plots, of which forced onto a stand; sampler; plain geometric acceptance):
+      angul:ANANDA PUR: accepted 992 of 1999; draws 450200 (the cap); inside part 110922; plots 9, forced 8; plain; 0.249
+      koraput:HATIMUNDA: accepted 418 of 1999; draws 450200 (the cap); inside part 449663; plots 59, forced 54; feasible-region; 0.002
+    parts that did place their realisations (their draws are reported for the record; the realisations are discarded with the rest): mean draws per accepted realisation by part {'angul:KANSAB': 28.5, 'angul:GHANAJODI': 5.6, 'angul:JOGI BANDHA': 173.7, 'dhenkanal:TULASIPASI': 6.9, 'dhenkanal:KANKANA': 95.2, 'dhenkanal:Balikurma': 25.0, 'dhenkanal:Kampulei': 61.7, 'dhenkanal:Adhapalli': 29.5, 'dhenkanal:Mahabirod': 11.9, 'dhenkanal:Kerijoli': 21.6, 'dhenkanal:Pangatira': 67.4, 'kendujhar:BHANRADI SAHI': 2.8, 'koraput:HANDAPUR': 140.1, 'koraput:BARIGUDA': 8.2, 'koraput:KONDASRIMUNDA': 3.6, 'koraput:KHASUGUDA': 1.5, 'koraput:SAKIAGUDA': 3.7, 'koraput:BARAKANTI': 3.3}
+      sampler: feasible-region (exact; plain geometric acceptance < 0.02) in {'angul:GHANAJODI': '0.015', 'dhenkanal:TULASIPASI': '0.007', 'kendujhar:BHANRADI SAHI': '0.000', 'koraput:KHASUGUDA': '0.001', 'koraput:BARAKANTI': '0.000'}; plain elsewhere
+  NOTE: the rotation null of this partition (v120 / stands_dissolved) is NOT ESTIMABLE because of the AOI part(s) named above, so every statistic built on it (null median, p5, p95, excess, percentile, null structure, 6.3 null) is NOT ESTIMABLE below (n_null 0). Observed values are printed and recorded as usual. No part was dropped from the null and the acceptance rule is unchanged.
+    In the summary CSV, not_estimable=True is set on the rows of this partition that CARRY a value taken from the null (n_null, null median/p5/p95, excess, percentile). Rows of this partition holding only observed quantities (the dissolved-layer ARI and site-only R2, the within-site shuffle p-values, the null-failure records) are estimable and are NOT flagged.
+  6.1 v120 / stands_dissolved vs ROTATION null (observed = vector join, restricted R2)
+    variable          R2 all     (k, n)  R2 restr    (k, n)  null med     p5    p95  excess  pctile n_null
+    loreys_h_m         0.627   (44,252)     0.579  (33,241)       n/a    n/a    n/a     n/a NOT EST      0
+    loreys_h_tree_m    0.646   (42,241)     0.600  (32,231)       n/a    n/a    n/a     n/a NOT EST      0
+    crown_cover_pct    0.625   (44,252)     0.611  (33,241)       n/a    n/a    n/a     n/a NOT EST      0
+    sal_ba_frac        0.710   (44,252)     0.700  (33,241)       n/a    n/a    n/a     n/a NOT EST      0
+    n_species          0.546   (44,252)     0.527  (33,241)       n/a    n/a    n/a     n/a NOT EST      0
+    dbh_mean_cm        0.518   (42,241)     0.501  (32,231)       n/a    n/a    n/a     n/a NOT EST      0
+    h_top5_m           0.596   (44,252)     0.569  (33,241)       n/a    n/a    n/a     n/a NOT EST      0
+
+  SENSITIVITY (not pre-registered): 6.1 null structure — does the rotation null have the observed partition's shape?
+    (restricted set: multi-plot stands over plots with loreys_h_m)
+    quantity                        observed  null med      p5     p95  pctile
+    k (multi-plot stands)             33.000       n/a     n/a     n/a  NOT ESTIMABLE (n_null 0 < 100)
+    n (plots in them)                241.000       n/a     n/a     n/a  NOT ESTIMABLE (n_null 0 < 100)
+    E = (k-1)/(n-1)                    0.133       n/a     n/a     n/a  NOT ESTIMABLE (n_null 0 < 100)
+    largest multi-plot group          28.000       n/a     n/a     n/a  NOT ESTIMABLE (n_null 0 < 100)
+    same-stand within-part pairs    1187.000       n/a     n/a     n/a  NOT ESTIMABLE (n_null 0 < 100)
+    E-slope bias estimate, slope(null R2 on null E) x (E_obs - E_null median), in R2 units; negative means the null's different E alone
+    pushes the observed value below the null median by about that much, i.e. the percentile is biased low: loreys_h_m n/a (n 0); loreys_h_tree_m n/a (n 0); crown_cover_pct n/a (n 0); sal_ba_frac n/a (n 0); n_species n/a (n 0); dbh_mean_cm n/a (n 0); h_top5_m n/a (n 0)
+
+  SENSITIVITY (not pre-registered): dissolved layer vs AOI parts — is it the site partition?
+    units holding plots, per AOI part: {'angul:KANSAB': 2, 'angul:GHANAJODI': 1, 'angul:JOGI BANDHA': 1, 'angul:ANANDA PUR': 2, 'dhenkanal:TULASIPASI': 3, 'dhenkanal:KANKANA': 1, 'dhenkanal:Balikurma': 1, 'dhenkanal:Kampulei': 3, 'dhenkanal:Adhapalli': 1, 'dhenkanal:Mahabirod': 1, 'dhenkanal:Kerijoli': 1, 'dhenkanal:Pangatira': 1, 'kendujhar:BHANRADI SAHI': 2, 'koraput:HANDAPUR': 3, 'koraput:HATIMUNDA': 11, 'koraput:BARIGUDA': 1, 'koraput:KONDASRIMUNDA': 2, 'koraput:KHASUGUDA': 3, 'koraput:SAKIAGUDA': 2, 'koraput:BARAKANTI': 2}
+    ARI(unit id, AOI part) over 252 assigned plots: 0.603
+    restricted R2 of the site-only partition (AOI part as the group): loreys_h_m 0.507; loreys_h_tree_m 0.527; crown_cover_pct 0.566; sal_ba_frac 0.690; n_species 0.417; dbh_mean_cm 0.386; h_top5_m 0.490
+
+  6.2 pairwise boundary test (pairs within an AOI part)
+    Bray-Curtis, all pairs:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         93     24     0.654     0.761   0.107   NOT ESTIMABLE (n_null 0 < 100)   0.021
+      100-200      203     58     0.643     0.793   0.150   NOT ESTIMABLE (n_null 0 < 100)   0.000
+      200-400      341    157     0.667     0.785   0.118   NOT ESTIMABLE (n_null 0 < 100)   0.000
+      400-800      343    428     0.727     0.796   0.069   NOT ESTIMABLE (n_null 0 < 100)   0.000
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=1647, same=980): beta_same -0.0911, beta per 100 m 0.0126; rotation null median   n/a; stand-effect percentile NOT ESTIMABLE (n_null 0 < 100) (high = more similar than null); naive perm p 0.000 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.024; 100-200 0.000; 200-400 0.001; 400-800 0.004; beta_same 0.000
+    Bray-Curtis, both > 30 m from boundary:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         57      0     0.619       n/a     n/a             uninformative (n<=3)     n/a
+      100-200      145      5     0.639     0.842   0.203   NOT ESTIMABLE (n_null 0 < 100)   0.040
+      200-400      229     47     0.629     0.778   0.150   NOT ESTIMABLE (n_null 0 < 100)   0.000
+      400-800      202    172     0.708     0.767   0.059   NOT ESTIMABLE (n_null 0 < 100)   0.005
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=857, same=633): beta_same -0.0809, beta per 100 m 0.0154; rotation null median   n/a; stand-effect percentile NOT ESTIMABLE (n_null 0 < 100) (high = more similar than null); naive perm p 0.000 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100   n/a (uninformative n<=3); 100-200 0.028; 200-400 0.003; 400-800 0.047; beta_same 0.000
+    |dLorey| m, all pairs:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         93     24     3.593     2.192  -1.401   NOT ESTIMABLE (n_null 0 < 100)   0.965
+      100-200      203     58     3.521     3.172  -0.349   NOT ESTIMABLE (n_null 0 < 100)   0.682
+      200-400      341    157     3.753     3.323  -0.430   NOT ESTIMABLE (n_null 0 < 100)   0.836
+      400-800      343    428     4.265     4.153  -0.112   NOT ESTIMABLE (n_null 0 < 100)   0.632
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=1647, same=980): beta_same 0.3547, beta per 100 m 0.1890; rotation null median   n/a; stand-effect percentile NOT ESTIMABLE (n_null 0 < 100) (high = more similar than null); naive perm p 0.945 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.778; 100-200 0.925; 200-400 0.871; 400-800 1.000; beta_same 1.000
+    |dLorey| m, both > 30 m from boundary:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         57      0     3.642       n/a     n/a             uninformative (n<=3)     n/a
+      100-200      145      5     3.762     1.040  -2.721   NOT ESTIMABLE (n_null 0 < 100)   0.971
+      200-400      229     47     4.361     2.523  -1.838   NOT ESTIMABLE (n_null 0 < 100)   0.992
+      400-800      202    172     4.684     4.509  -0.175   NOT ESTIMABLE (n_null 0 < 100)   0.620
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=857, same=633): beta_same 0.9456, beta per 100 m 0.3066; rotation null median   n/a; stand-effect percentile NOT ESTIMABLE (n_null 0 < 100) (high = more similar than null); naive perm p 0.980 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100   n/a (uninformative n<=3); 100-200 0.921; 200-400 0.981; 400-800 0.977; beta_same 0.999
+
+====================================================================================================
+SECONDARY — current / stands_merged
+====================================================================================================
+  partition: 975 stands, area ha p10 1.25 / median 3.49 / p90 9.17; plots assigned 267 of 267; multi-plot stands 59
+  polygons with no cluster_id: 153 of 1011, 440.78 ha of 4314.02 ha
+  rotation null: 1999 realisations (seed crc32('current/stands_merged')); 193 s; mean draws per accepted realisation by part {'angul:KANSAB': 18.0, 'angul:GHANAJODI': 1.0, 'angul:JOGI BANDHA': 3.4, 'angul:ANANDA PUR': 3.9, 'dhenkanal:TULASIPASI': 1.0, 'dhenkanal:KANKANA': 4.7, 'dhenkanal:Balikurma': 14.0, 'dhenkanal:Kampulei': 32.3, 'dhenkanal:Adhapalli': 12.8, 'dhenkanal:Mahabirod': 8.3, 'dhenkanal:Kerijoli': 4.6, 'dhenkanal:Pangatira': 9.8, 'kendujhar:BHANRADI SAHI': 1.0, 'koraput:HANDAPUR': 7.1, 'koraput:HATIMUNDA': 1.0, 'koraput:BARIGUDA': 4.5, 'koraput:KONDASRIMUNDA': 1.8, 'koraput:KHASUGUDA': 1.0, 'koraput:SAKIAGUDA': 2.2, 'koraput:BARAKANTI': 1.0}
+    sampler: feasible-region (exact; plain geometric acceptance < 0.02) in {'angul:GHANAJODI': '0.015', 'dhenkanal:TULASIPASI': '0.007', 'kendujhar:BHANRADI SAHI': '0.000', 'koraput:HATIMUNDA': '0.002', 'koraput:KHASUGUDA': '0.001', 'koraput:BARAKANTI': '0.000'}; plain elsewhere
+  6.1 current / stands_merged vs ROTATION null (observed = vector join, restricted R2)
+    variable          R2 all     (k, n)  R2 restr    (k, n)  null med     p5    p95  excess  pctile n_null
+    loreys_h_m         0.879  (143,267)     0.739  (59,183)     0.724   0.65   0.79   0.015    63.0   1999
+    loreys_h_tree_m    0.890  (140,254)     0.749  (54,168)     0.736   0.66   0.81   0.013    61.8   1999
+    crown_cover_pct    0.827  (143,267)     0.757  (59,183)     0.742   0.69   0.80   0.015    66.0   1999
+    sal_ba_frac        0.890  (143,267)     0.844  (59,183)     0.816   0.76   0.87   0.028    79.9   1999
+    n_species          0.829  (143,267)     0.745  (59,183)     0.673   0.61   0.73   0.072    98.2   1999
+    dbh_mean_cm        0.777  (140,254)     0.641  (54,168)     0.623   0.56   0.69   0.019    67.4   1999
+    h_top5_m           0.819  (143,267)     0.707  (59,183)     0.688   0.63   0.75   0.019    68.5   1999
+
+  SENSITIVITY (not pre-registered): 6.1 null structure — does the rotation null have the observed partition's shape?
+    (restricted set: multi-plot stands over plots with loreys_h_m)
+    quantity                        observed  null med      p5     p95  pctile
+    k (multi-plot stands)             59.000    60.000  53.000  66.000  43.3 (n_null 1999)
+    n (plots in them)                183.000   171.000 159.000 183.000  95.5 (n_null 1999)
+    E = (k-1)/(n-1)                    0.319     0.346   0.321   0.370  3.7 (n_null 1999)
+    largest multi-plot group           9.000     8.000   6.000  11.000  72.2 (n_null 1999)
+    same-stand within-part pairs     281.000   210.000 176.900 247.100  99.9 (n_null 1999)
+    E-slope bias estimate, slope(null R2 on null E) x (E_obs - E_null median), in R2 units; negative means the null's different E alone
+    pushes the observed value below the null median by about that much, i.e. the percentile is biased low: loreys_h_m -0.009 (n 1999); loreys_h_tree_m -0.011 (n 1999); crown_cover_pct -0.011 (n 1999); sal_ba_frac -0.007 (n 1999); n_species -0.014 (n 1999); dbh_mean_cm -0.016 (n 1999); h_top5_m -0.015 (n 1999)
+
+  SENSITIVITY (not pre-registered): 6.1 alternatives to raw restricted R2 vs the same rotation null (each realisation with its own k, n)
+    variable          adj R2          pctile (n_null)  within-part R2          pctile (n_null)   leave-one-site-out restricted R2 percentile (n_null)
+    loreys_h_m         0.617       71.4 (n_null 1999)           0.332       33.5 (n_null 1999)   -angul:KANSAB 69.7 (n_null 1999), -angul:GHANAJODI 56.5 (n_null 1999), -angul:JOGI BANDHA 68.5 (n_null 1999), -angul:ANANDA PUR 72.8 (n_null 1999), -dhenkanal:TULASIPASI 56.0 (n_null 1999), -dhenkanal:KANKANA 61.5 (n_null 1999), -dhenkanal:Balikurma 58.3 (n_null 1999), -dhenkanal:Kampulei 62.0 (n_null 1999), -dhenkanal:Adhapalli 62.8 (n_null 1999), -dhenkanal:Mahabirod 65.8 (n_null 1999), -dhenkanal:Kerijoli 71.8 (n_null 1999), -dhenkanal:Pangatira 63.6 (n_null 1999), -kendujhar:BHANRADI SAHI 52.4 (n_null 1999), -koraput:HANDAPUR 61.5 (n_null 1999), -koraput:HATIMUNDA 46.5 (n_null 1999), -koraput:BARIGUDA 63.6 (n_null 1999), -koraput:KONDASRIMUNDA 62.9 (n_null 1999), -koraput:KHASUGUDA 63.7 (n_null 1999), -koraput:SAKIAGUDA 66.2 (n_null 1999), -koraput:BARAKANTI 63.5 (n_null 1999)
+    loreys_h_tree_m    0.633       72.4 (n_null 1999)           0.301       21.0 (n_null 1999)   -angul:KANSAB 72.4 (n_null 1999), -angul:GHANAJODI 55.5 (n_null 1999), -angul:JOGI BANDHA 61.8 (n_null 1999), -angul:ANANDA PUR 65.5 (n_null 1999), -dhenkanal:TULASIPASI 55.7 (n_null 1999), -dhenkanal:KANKANA 59.3 (n_null 1999), -dhenkanal:Balikurma 58.1 (n_null 1999), -dhenkanal:Kampulei 59.1 (n_null 1999), -dhenkanal:Adhapalli 60.8 (n_null 1999), -dhenkanal:Mahabirod 62.6 (n_null 1999), -dhenkanal:Kerijoli 73.6 (n_null 1999), -dhenkanal:Pangatira 63.2 (n_null 1999), -kendujhar:BHANRADI SAHI 57.9 (n_null 1999), -koraput:HANDAPUR 57.4 (n_null 1999), -koraput:HATIMUNDA 51.8 (n_null 1999), -koraput:BARIGUDA 62.4 (n_null 1999), -koraput:KONDASRIMUNDA 61.8 (n_null 1999), -koraput:KHASUGUDA 62.7 (n_null 1999), -koraput:SAKIAGUDA 65.1 (n_null 1999), -koraput:BARAKANTI 59.3 (n_null 1999)
+    crown_cover_pct    0.644       76.3 (n_null 1999)           0.427       82.3 (n_null 1999)   -angul:KANSAB 67.4 (n_null 1999), -angul:GHANAJODI 66.1 (n_null 1999), -angul:JOGI BANDHA 84.0 (n_null 1999), -angul:ANANDA PUR 60.3 (n_null 1999), -dhenkanal:TULASIPASI 66.4 (n_null 1999), -dhenkanal:KANKANA 69.7 (n_null 1999), -dhenkanal:Balikurma 67.4 (n_null 1999), -dhenkanal:Kampulei 62.9 (n_null 1999), -dhenkanal:Adhapalli 65.3 (n_null 1999), -dhenkanal:Mahabirod 64.3 (n_null 1999), -dhenkanal:Kerijoli 66.3 (n_null 1999), -dhenkanal:Pangatira 64.7 (n_null 1999), -kendujhar:BHANRADI SAHI 68.2 (n_null 1999), -koraput:HANDAPUR 66.0 (n_null 1999), -koraput:HATIMUNDA 38.2 (n_null 1999), -koraput:BARIGUDA 68.9 (n_null 1999), -koraput:KONDASRIMUNDA 69.0 (n_null 1999), -koraput:KHASUGUDA 66.4 (n_null 1999), -koraput:SAKIAGUDA 67.0 (n_null 1999), -koraput:BARAKANTI 65.5 (n_null 1999)
+    sal_ba_frac        0.771       85.1 (n_null 1999)           0.294       58.9 (n_null 1999)   -angul:KANSAB 79.8 (n_null 1999), -angul:GHANAJODI 79.8 (n_null 1999), -angul:JOGI BANDHA 80.8 (n_null 1999), -angul:ANANDA PUR 82.0 (n_null 1999), -dhenkanal:TULASIPASI 79.5 (n_null 1999), -dhenkanal:KANKANA 68.8 (n_null 1999), -dhenkanal:Balikurma 85.7 (n_null 1999), -dhenkanal:Kampulei 82.4 (n_null 1999), -dhenkanal:Adhapalli 77.5 (n_null 1999), -dhenkanal:Mahabirod 69.4 (n_null 1999), -dhenkanal:Kerijoli 87.3 (n_null 1999), -dhenkanal:Pangatira 69.5 (n_null 1999), -kendujhar:BHANRADI SAHI 76.1 (n_null 1999), -koraput:HANDAPUR 79.5 (n_null 1999), -koraput:HATIMUNDA 80.3 (n_null 1999), -koraput:BARIGUDA 80.2 (n_null 1999), -koraput:KONDASRIMUNDA 79.9 (n_null 1999), -koraput:KHASUGUDA 80.0 (n_null 1999), -koraput:SAKIAGUDA 79.7 (n_null 1999), -koraput:BARAKANTI 79.1 (n_null 1999)
+    n_species          0.626       99.5 (n_null 1999)           0.547       99.3 (n_null 1999)   -angul:KANSAB 97.9 (n_null 1999), -angul:GHANAJODI 98.7 (n_null 1999), -angul:JOGI BANDHA 98.5 (n_null 1999), -angul:ANANDA PUR 98.6 (n_null 1999), -dhenkanal:TULASIPASI 98.4 (n_null 1999), -dhenkanal:KANKANA 98.2 (n_null 1999), -dhenkanal:Balikurma 95.5 (n_null 1999), -dhenkanal:Kampulei 98.7 (n_null 1999), -dhenkanal:Adhapalli 97.8 (n_null 1999), -dhenkanal:Mahabirod 97.7 (n_null 1999), -dhenkanal:Kerijoli 98.5 (n_null 1999), -dhenkanal:Pangatira 97.5 (n_null 1999), -kendujhar:BHANRADI SAHI 98.7 (n_null 1999), -koraput:HANDAPUR 98.0 (n_null 1999), -koraput:HATIMUNDA 51.5 (n_null 1999), -koraput:BARIGUDA 97.8 (n_null 1999), -koraput:KONDASRIMUNDA 98.8 (n_null 1999), -koraput:KHASUGUDA 99.2 (n_null 1999), -koraput:SAKIAGUDA 97.9 (n_null 1999), -koraput:BARAKANTI 99.5 (n_null 1999)
+    dbh_mean_cm        0.475       81.8 (n_null 1999)           0.354       75.4 (n_null 1999)   -angul:KANSAB 74.0 (n_null 1999), -angul:GHANAJODI 65.7 (n_null 1999), -angul:JOGI BANDHA 67.8 (n_null 1999), -angul:ANANDA PUR 79.4 (n_null 1999), -dhenkanal:TULASIPASI 67.1 (n_null 1999), -dhenkanal:KANKANA 67.9 (n_null 1999), -dhenkanal:Balikurma 71.4 (n_null 1999), -dhenkanal:Kampulei 67.7 (n_null 1999), -dhenkanal:Adhapalli 65.8 (n_null 1999), -dhenkanal:Mahabirod 65.0 (n_null 1999), -dhenkanal:Kerijoli 66.5 (n_null 1999), -dhenkanal:Pangatira 55.8 (n_null 1999), -kendujhar:BHANRADI SAHI 76.9 (n_null 1999), -koraput:HANDAPUR 67.9 (n_null 1999), -koraput:HATIMUNDA 38.2 (n_null 1999), -koraput:BARIGUDA 70.0 (n_null 1999), -koraput:KONDASRIMUNDA 67.4 (n_null 1999), -koraput:KHASUGUDA 75.8 (n_null 1999), -koraput:SAKIAGUDA 65.8 (n_null 1999), -koraput:BARAKANTI 65.8 (n_null 1999)
+    h_top5_m           0.569       79.1 (n_null 1999)           0.414       58.4 (n_null 1999)   -angul:KANSAB 66.3 (n_null 1999), -angul:GHANAJODI 67.0 (n_null 1999), -angul:JOGI BANDHA 72.9 (n_null 1999), -angul:ANANDA PUR 71.1 (n_null 1999), -dhenkanal:TULASIPASI 66.7 (n_null 1999), -dhenkanal:KANKANA 68.0 (n_null 1999), -dhenkanal:Balikurma 61.8 (n_null 1999), -dhenkanal:Kampulei 66.9 (n_null 1999), -dhenkanal:Adhapalli 68.1 (n_null 1999), -dhenkanal:Mahabirod 79.1 (n_null 1999), -dhenkanal:Kerijoli 83.5 (n_null 1999), -dhenkanal:Pangatira 69.1 (n_null 1999), -kendujhar:BHANRADI SAHI 61.8 (n_null 1999), -koraput:HANDAPUR 67.0 (n_null 1999), -koraput:HATIMUNDA 38.3 (n_null 1999), -koraput:BARIGUDA 68.5 (n_null 1999), -koraput:KONDASRIMUNDA 69.1 (n_null 1999), -koraput:KHASUGUDA 68.1 (n_null 1999), -koraput:SAKIAGUDA 69.6 (n_null 1999), -koraput:BARAKANTI 67.2 (n_null 1999)
+
+  6.2 pairwise boundary test (pairs within an AOI part)
+    Bray-Curtis, all pairs:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         89     41     0.667     0.757   0.091               97.8 (n_null 1999)   0.022
+      100-200      115    183     0.659     0.713   0.054               89.1 (n_null 1999)   0.041
+      200-400       66    491     0.623     0.735   0.111               98.4 (n_null 1999)   0.000
+      400-800       11    890     0.714     0.783   0.070               67.8 (n_null 1973)   0.132
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=1886, same=281): beta_same -0.0615, beta per 100 m 0.0153; rotation null median 0.0119; stand-effect percentile 98.5 (n_null 1999) (high = more similar than null); naive perm p 0.000 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.113; 100-200 0.367; 200-400 0.212; 400-800 0.664; beta_same 0.190
+    Bray-Curtis, both > 30 m from boundary:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         21      0     0.623       n/a     n/a             uninformative (n<=3)     n/a
+      100-200        7      6     0.687     0.779   0.092               74.0 (n_null 1980)   0.267
+      200-400        7     42     0.782     0.769  -0.012               41.7 (n_null 1586)   0.550
+      400-800        0     34       n/a     0.780     n/a             uninformative (n<=3)     n/a
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=117, same=35): beta_same -0.0908, beta per 100 m 0.0060; rotation null median -0.0001; stand-effect percentile 83.0 (n_null 1999) (high = more similar than null); naive perm p 0.362 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100   n/a (uninformative n<=3); 100-200 0.120; 200-400 0.844; 400-800   n/a (uninformative n<=3); beta_same 0.557
+  SENSITIVITY (not pre-registered): 6.2 robustness of beta_same, Bray-Curtis, all pairs (same rotation realisations throughout)
+    same-stand pairs by AOI part: observed / null median / null p95 / pctile
+      angul:KANSAB                7 /     5 /     9 / 79.4 (n_null 1999)
+      angul:GHANAJODI             1 /     1 /     2 / 51.4 (n_null 1999)
+      angul:JOGI BANDHA          21 /     9 /    16 / 99.2 (n_null 1999)
+      angul:ANANDA PUR           22 /     7 /    13 / 99.8 (n_null 1999)
+      dhenkanal:TULASIPASI        1 /     1 /     2 / 43.3 (n_null 1999)
+      dhenkanal:KANKANA           5 /     4 /    11 / 59.4 (n_null 1999)
+      dhenkanal:Balikurma         3 /     2 /     5 / 67.5 (n_null 1999)
+      dhenkanal:Kampulei          1 /     1 /     2 / 67.2 (n_null 1999)
+      dhenkanal:Adhapalli         4 /     6 /    11 / 20.0 (n_null 1999)
+      dhenkanal:Mahabirod         5 /     4 /     8 / 67.6 (n_null 1999)
+      dhenkanal:Kerijoli         36 /     9 /    21 / 99.8 (n_null 1999)
+      dhenkanal:Pangatira         3 /     4 /     7 / 38.0 (n_null 1999)
+      kendujhar:BHANRADI SAHI     4 /     4 /    10 / 46.7 (n_null 1999)
+      koraput:HANDAPUR           43 /    34 /    51 / 83.6 (n_null 1999)
+      koraput:HATIMUNDA          61 /    66 /    93 / 35.6 (n_null 1999)
+      koraput:BARIGUDA            7 /     9 /    16 / 27.6 (n_null 1999)
+      koraput:KONDASRIMUNDA       6 /     6 /    10 / 55.3 (n_null 1999)
+      koraput:KHASUGUDA           1 /     2 /     5 / 15.4 (n_null 1999)
+      koraput:SAKIAGUDA          22 /    11 /    28 / 91.2 (n_null 1999)
+      koraput:BARAKANTI          28 /    17 /    25 / 97.8 (n_null 1999)
+    same-stand pairs by stand (AOI part, stand id as in the layer, plots, pairs): dhenkanal:Kerijoli 59 9p 36; koraput:HATIMUNDA 73 8p 28; angul:ANANDA PUR 7 7p 21; koraput:HANDAPUR 111 7p 21; koraput:SAKIAGUDA 9 7p 21; koraput:HANDAPUR 116 6p 15; angul:JOGI BANDHA 21 6p 15; koraput:BARAKANTI 492 5p 10; koraput:HATIMUNDA 88 5p 10; angul:JOGI BANDHA 23 4p 6; koraput:HATIMUNDA 62 4p 6; koraput:HANDAPUR 125 4p 6; koraput:BARAKANTI 560 4p 6; koraput:KONDASRIMUNDA 146 4p 6; koraput:HATIMUNDA 81 4p 6; koraput:BARAKANTI 471 4p 6; koraput:BARIGUDA 136 4p 6; koraput:BARAKANTI 494 3p 3; koraput:HATIMUNDA 41 3p 3; kendujhar:BHANRADI SAHI 11 3p 3; angul:KANSAB 39 3p 3; dhenkanal:KANKANA 201 3p 3; angul:KANSAB 43 3p 3; dhenkanal:Mahabirod 30 3p 3; angul:ANANDA PUR 12 2p 1; angul:GHANAJODI 86 2p 1; angul:KANSAB 33 2p 1; dhenkanal:Pangatira 12 2p 1; dhenkanal:Pangatira 11 2p 1; dhenkanal:Pangatira 10 2p 1; dhenkanal:Mahabirod 31 2p 1; dhenkanal:Adhapalli 48 2p 1; dhenkanal:Mahabirod 26 2p 1; dhenkanal:Adhapalli 40 2p 1; dhenkanal:Adhapalli 43 2p 1; dhenkanal:Balikurma 82 2p 1; dhenkanal:Balikurma 81 2p 1; dhenkanal:Adhapalli 38 2p 1; dhenkanal:Kampulei 180 2p 1; dhenkanal:Balikurma 72 2p 1; dhenkanal:KANKANA 208 2p 1; dhenkanal:TULASIPASI 137 2p 1; dhenkanal:KANKANA 204 2p 1; koraput:HATIMUNDA 79 2p 1; koraput:HATIMUNDA 64 2p 1; koraput:HATIMUNDA 55 2p 1; koraput:HATIMUNDA 59 2p 1; koraput:HATIMUNDA 50 2p 1; kendujhar:BHANRADI SAHI 19 2p 1; koraput:HANDAPUR 113 2p 1; koraput:HATIMUNDA 31 2p 1; koraput:KHASUGUDA 551 2p 1; koraput:HATIMUNDA 90 2p 1; koraput:HATIMUNDA 93 2p 1; koraput:BARIGUDA 127 2p 1; koraput:BARAKANTI 475 2p 1; koraput:BARAKANTI 459 2p 1; koraput:SAKIAGUDA 20 2p 1; koraput:BARAKANTI 476 2p 1
+      site fixed effects                                       n_same  281  beta_same -0.0055  null median 0.0114  stand-effect pctile 80.1 (n_null 1999)
+      stand-weighted (same pair weight 1/pairs in its stand)   n_same  281  beta_same -0.0600  null median -0.0169  stand-effect pctile 98.3 (n_null 1999)
+      drop angul:KANSAB                                        n_same  274  beta_same -0.0614  null median 0.0135  stand-effect pctile 98.5 (n_null 1999)
+      drop angul:GHANAJODI                                     n_same  280  beta_same -0.0615  null median 0.0119  stand-effect pctile 98.5 (n_null 1999)
+      drop angul:JOGI BANDHA                                   n_same  260  beta_same -0.0704  null median 0.0129  stand-effect pctile 99.1 (n_null 1999)
+      drop angul:ANANDA PUR                                    n_same  259  beta_same -0.0774  null median 0.0105  stand-effect pctile 99.3 (n_null 1999)
+      drop dhenkanal:TULASIPASI                                n_same  280  beta_same -0.0636  null median 0.0108  stand-effect pctile 98.6 (n_null 1999)
+      drop dhenkanal:KANKANA                                   n_same  276  beta_same -0.0628  null median 0.0110  stand-effect pctile 98.4 (n_null 1999)
+      drop dhenkanal:Balikurma                                 n_same  278  beta_same -0.0640  null median 0.0116  stand-effect pctile 98.7 (n_null 1999)
+      drop dhenkanal:Kampulei                                  n_same  280  beta_same -0.0616  null median 0.0121  stand-effect pctile 98.6 (n_null 1999)
+      drop dhenkanal:Adhapalli                                 n_same  277  beta_same -0.0650  null median 0.0128  stand-effect pctile 98.7 (n_null 1999)
+      drop dhenkanal:Mahabirod                                 n_same  276  beta_same -0.0607  null median 0.0110  stand-effect pctile 98.0 (n_null 1999)
+      drop dhenkanal:Kerijoli                                  n_same  245  beta_same 0.0069  null median 0.0105  stand-effect pctile 55.7 (n_null 1999)
+      drop dhenkanal:Pangatira                                 n_same  278  beta_same -0.0661  null median 0.0093  stand-effect pctile 98.6 (n_null 1999)
+      drop kendujhar:BHANRADI SAHI                             n_same  277  beta_same -0.0591  null median 0.0126  stand-effect pctile 98.1 (n_null 1999)
+      drop koraput:HANDAPUR                                    n_same  238  beta_same -0.0728  null median 0.0109  stand-effect pctile 98.7 (n_null 1999)
+      drop koraput:HATIMUNDA                                   n_same  220  beta_same -0.0639  null median 0.0097  stand-effect pctile 96.8 (n_null 1999)
+      drop koraput:BARIGUDA                                    n_same  274  beta_same -0.0682  null median 0.0109  stand-effect pctile 98.9 (n_null 1999)
+      drop koraput:KONDASRIMUNDA                               n_same  275  beta_same -0.0616  null median 0.0177  stand-effect pctile 99.0 (n_null 1999)
+      drop koraput:KHASUGUDA                                   n_same  280  beta_same -0.0608  null median 0.0122  stand-effect pctile 98.5 (n_null 1999)
+      drop koraput:SAKIAGUDA                                   n_same  259  beta_same -0.0648  null median 0.0122  stand-effect pctile 98.6 (n_null 1999)
+      drop koraput:BARAKANTI                                   n_same  253  beta_same -0.0653  null median 0.0114  stand-effect pctile 98.5 (n_null 1999)
+    |dLorey| m, all pairs:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         89     41     2.951     4.561   1.610               95.5 (n_null 1999)   0.014
+      100-200      115    183     3.333     3.526   0.193               54.5 (n_null 1999)   0.359
+      200-400       66    491     3.975     3.624  -0.350               39.5 (n_null 1999)   0.726
+      400-800       11    890     2.390     4.405   2.016               80.3 (n_null 1973)   0.056
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=1886, same=281): beta_same -0.2115, beta per 100 m 0.1884; rotation null median 0.0528; stand-effect percentile 71.9 (n_null 1999) (high = more similar than null); naive perm p 0.168 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.174; 100-200 0.033; 200-400 0.024; 400-800 0.176; beta_same 0.002
+    |dLorey| m, both > 30 m from boundary:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         21      0     3.249       n/a     n/a             uninformative (n<=3)     n/a
+      100-200        7      6     3.181     3.424   0.244               56.2 (n_null 1980)   0.439
+      200-400        7     42     8.208     3.101  -5.107               11.3 (n_null 1586)   0.987
+      400-800        0     34       n/a     3.916     n/a             uninformative (n<=3)     n/a
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=117, same=35): beta_same 1.6921, beta per 100 m 0.3381; rotation null median -0.0135; stand-effect percentile 11.3 (n_null 1999) (high = more similar than null); naive perm p 0.984 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100   n/a (uninformative n<=3); 100-200 0.078; 200-400 0.981; 400-800   n/a (uninformative n<=3); beta_same 0.893
+  SENSITIVITY (not pre-registered): 6.2 robustness of beta_same, |dLorey| m, all pairs (same rotation realisations throughout)
+      site fixed effects                                       n_same  281  beta_same -0.7433  null median 0.1408  stand-effect pctile 99.4 (n_null 1999)
+      stand-weighted (same pair weight 1/pairs in its stand)   n_same  281  beta_same -0.4817  null median 0.2410  stand-effect pctile 95.4 (n_null 1999)
+      drop angul:KANSAB                                        n_same  274  beta_same -0.1553  null median 0.0935  stand-effect pctile 72.8 (n_null 1999)
+      drop angul:GHANAJODI                                     n_same  280  beta_same -0.1286  null median 0.0750  stand-effect pctile 67.5 (n_null 1999)
+      drop angul:JOGI BANDHA                                   n_same  260  beta_same -0.2702  null median 0.0650  stand-effect pctile 77.4 (n_null 1999)
+      drop angul:ANANDA PUR                                    n_same  259  beta_same -0.2595  null median 0.0423  stand-effect pctile 76.0 (n_null 1999)
+      drop dhenkanal:TULASIPASI                                n_same  280  beta_same -0.1500  null median 0.0641  stand-effect pctile 68.7 (n_null 1999)
+      drop dhenkanal:KANKANA                                   n_same  276  beta_same -0.2258  null median 0.0339  stand-effect pctile 71.9 (n_null 1999)
+      drop dhenkanal:Balikurma                                 n_same  278  beta_same -0.2411  null median 0.0273  stand-effect pctile 73.0 (n_null 1999)
+      drop dhenkanal:Kampulei                                  n_same  280  beta_same -0.1842  null median 0.0587  stand-effect pctile 70.3 (n_null 1999)
+      drop dhenkanal:Adhapalli                                 n_same  277  beta_same -0.2997  null median 0.0382  stand-effect pctile 77.3 (n_null 1999)
+      drop dhenkanal:Mahabirod                                 n_same  276  beta_same 0.1076  null median 0.1148  stand-effect pctile 51.1 (n_null 1999)
+      drop dhenkanal:Kerijoli                                  n_same  245  beta_same -0.6107  null median 0.0670  stand-effect pctile 95.7 (n_null 1999)
+      drop dhenkanal:Pangatira                                 n_same  278  beta_same -0.2396  null median 0.0350  stand-effect pctile 72.5 (n_null 1999)
+      drop kendujhar:BHANRADI SAHI                             n_same  277  beta_same -0.0893  null median 0.0853  stand-effect pctile 64.6 (n_null 1999)
+      drop koraput:HANDAPUR                                    n_same  238  beta_same -0.3104  null median 0.0177  stand-effect pctile 76.4 (n_null 1999)
+      drop koraput:HATIMUNDA                                   n_same  220  beta_same -0.0239  null median -0.3104  stand-effect pctile 29.3 (n_null 1999)
+      drop koraput:BARIGUDA                                    n_same  274  beta_same -0.2941  null median 0.0383  stand-effect pctile 77.9 (n_null 1999)
+      drop koraput:KONDASRIMUNDA                               n_same  275  beta_same -0.1821  null median 0.1107  stand-effect pctile 74.5 (n_null 1999)
+      drop koraput:KHASUGUDA                                   n_same  280  beta_same -0.2815  null median 0.0021  stand-effect pctile 74.1 (n_null 1999)
+      drop koraput:SAKIAGUDA                                   n_same  259  beta_same -0.2278  null median 0.0719  stand-effect pctile 74.7 (n_null 1999)
+      drop koraput:BARAKANTI                                   n_same  253  beta_same -0.2781  null median -0.0386  stand-effect pctile 68.2 (n_null 1999)
+
+  6.3 label agreement (typology, not delineation) — merged stand cluster_id
+    district angul: typed plots 39 of 39; rotation realisations used 1744 of 1999 (the rest put a typed plot on a polygon with no cluster_id)
+    district dhenkanal: typed plots 75 of 75; rotation realisations used 800 of 1999 (the rest put a typed plot on a polygon with no cluster_id)
+    district kendujhar: typed plots 8 of 8; rotation realisations used 1472 of 1999 (the rest put a typed plot on a polygon with no cluster_id)
+    district koraput: typed plots 145 of 145; rotation realisations used 71 of 1999 (the rest put a typed plot on a polygon with no cluster_id)
+    set-level nulls: the c-th valid realisation of each district combined index-wise; 71 combined realisations (implementation choice, not pre-registered)
+    field type = UPGMA k=6
+      angul: ari        0.015 (n plots 39); rotation null median -0.003, p95 0.019, percentile 89.6 (n_null 1744)
+      angul: nmi        0.103 (n plots 39); rotation null median 0.090, p95 0.119, percentile 78.4 (n_null 1744)
+      angul: cramers_v  0.324 (n plots 39); rotation null median 0.340, p95 0.452, percentile 38.4 (n_null 1744)
+      angul: contingency (rows field type, columns cluster_id); cells with expected count < 5: 11 of 15
+        cluster_id   0  1  3  4   5
+        field_type                 
+        2           10  6  1  8  12
+        5            0  1  0  0   0
+        6            0  1  0  0   0
+      dhenkanal: ari        0.006 (n plots 75); rotation null median 0.005, p95 0.013, percentile 64.1 (n_null 800)
+      dhenkanal: nmi        0.032 (n plots 75); rotation null median 0.031, p95 0.054, percentile 67.8 (n_null 800)
+      dhenkanal: cramers_v  0.280 (n plots 75); rotation null median 0.266, p95 0.569, percentile 66.9 (n_null 800)
+      dhenkanal: contingency (rows field type, columns cluster_id); cells with expected count < 5: 5 of 10
+        cluster_id   0  2   3   4   5
+        field_type                   
+        1            0  0   1   0   0
+        2           26  9  10  15  14
+      kendujhar: typed plots n=8 hold 1 field type(s) ({2: 8}): ARI, NMI, Cramér's V NOT ESTIMABLE
+      kendujhar: contingency (rows field type, columns cluster_id); cells with expected count < 5: n/a (one row; no chi-square) of 3
+        cluster_id  3  4  5
+        field_type         
+        2           2  1  5
+      koraput: ari        0.053 (n plots 145); rotation null median 0.014, p95 0.028, percentile NOT ESTIMABLE (n_null 71 < 100)
+      koraput: nmi        0.111 (n plots 145); rotation null median 0.061, p95 0.098, percentile NOT ESTIMABLE (n_null 71 < 100)
+      koraput: cramers_v  0.524 (n plots 145); rotation null median 0.346, p95 0.501, percentile NOT ESTIMABLE (n_null 71 < 100)
+      koraput: contingency (rows field type, columns cluster_id); cells with expected count < 5: 7 of 12
+        cluster_id   0  1   2  3   4   5
+        field_type                      
+        1            0  0   4  5   1   0
+        2           16  3  18  5  44  49
+      plot-weighted mean over 3 districts: ari        0.034; percentile NOT ESTIMABLE (n_null 71 < 100) (c-th valid realisation of each district combined)
+      plot-weighted mean over 3 districts: nmi        0.087; percentile NOT ESTIMABLE (n_null 71 < 100) (c-th valid realisation of each district combined)
+      plot-weighted mean over 3 districts: cramers_v  0.423; percentile NOT ESTIMABLE (n_null 71 < 100) (c-th valid realisation of each district combined)
+    field type = Sal-dominant rule
+      angul: typed plots n=39 hold 1 field type(s) ({0: 39}): ARI, NMI, Cramér's V NOT ESTIMABLE
+      angul: contingency (rows field type, columns cluster_id); cells with expected count < 5: n/a (one row; no chi-square) of 5
+        cluster_id   0  1  3  4   5
+        field_type                 
+        0           10  8  1  8  12
+      dhenkanal: ari        -0.007 (n plots 75); rotation null median -0.005, p95 0.006, percentile 28.6 (n_null 800)
+      dhenkanal: nmi        0.016 (n plots 75); rotation null median 0.028, p95 0.052, percentile 8.8 (n_null 800)
+      dhenkanal: cramers_v  0.188 (n plots 75); rotation null median 0.243, p95 0.324, percentile 8.5 (n_null 800)
+      dhenkanal: contingency (rows field type, columns cluster_id); cells with expected count < 5: 2 of 10
+        cluster_id   0  2  3   4  5
+        field_type                 
+        0           15  4  7  11  7
+        1           11  5  4   4  7
+      kendujhar: ari        0.355 (n plots 8); rotation null median -0.118, p95 0.312, percentile 97.6 (n_null 1472)
+      kendujhar: nmi        0.590 (n plots 8); rotation null median 0.120, p95 0.520, percentile 97.6 (n_null 1472)
+      kendujhar: cramers_v  1.000 (n plots 8); rotation null median 0.378, p95 1.000, percentile 94.2 (n_null 1434)
+      kendujhar: contingency (rows field type, columns cluster_id); cells with expected count < 5: 6 of 6
+        cluster_id  3  4  5
+        field_type         
+        0           2  0  5
+        1           0  1  0
+      koraput: typed plots n=145 hold 1 field type(s) ({0: 145}): ARI, NMI, Cramér's V NOT ESTIMABLE
+      koraput: contingency (rows field type, columns cluster_id); cells with expected count < 5: n/a (one row; no chi-square) of 6
+        cluster_id   0  1   2   3   4   5
+        field_type                       
+        0           16  3  22  10  45  49
+      plot-weighted mean over 2 districts: ari        0.028; percentile 95.2 (n_null 800) (c-th valid realisation of each district combined)
+      plot-weighted mean over 2 districts: nmi        0.071; percentile 91.1 (n_null 800) (c-th valid realisation of each district combined)
+      plot-weighted mean over 2 districts: cramers_v  0.266; percentile 54.5 (n_null 783) (c-th valid realisation of each district combined)
+    distant pairs (> 2 km, same district; depend only on the stand cluster label):
+      distant_diff_bc      0.006 (n same-label 1920, n different-label 8731); rotation null median -0.002, p5 -0.013, p95 0.015, percentile NOT ESTIMABLE (n_null 71 < 100)
+      distant_diff_lorey   0.347 (n same-label 1920, n different-label 8731); rotation null median -0.213, p5 -0.543, p95 0.253, percentile NOT ESTIMABLE (n_null 71 < 100)
+
+====================================================================================================
+SECONDARY — current / stands_snic
+====================================================================================================
+  partition: 3604 stands, area ha p10 0.20 / median 0.86 / p90 1.96; plots assigned 267 of 267; multi-plot stands 40
+  polygons with no cluster_id: 0 of 3649, 0.00 ha of 3634.87 ha
+  rotation null: 1999 realisations (seed crc32('current/stands_snic')); 531 s; mean draws per accepted realisation by part {'angul:KANSAB': 20.4, 'angul:GHANAJODI': 1.6, 'angul:JOGI BANDHA': 4.8, 'angul:ANANDA PUR': 6.1, 'dhenkanal:TULASIPASI': 1.2, 'dhenkanal:KANKANA': 12.6, 'dhenkanal:Balikurma': 15.0, 'dhenkanal:Kampulei': 32.8, 'dhenkanal:Adhapalli': 13.1, 'dhenkanal:Mahabirod': 9.1, 'dhenkanal:Kerijoli': 7.0, 'dhenkanal:Pangatira': 10.7, 'kendujhar:BHANRADI SAHI': 1.8, 'koraput:HANDAPUR': 16.4, 'koraput:HATIMUNDA': 14.6, 'koraput:BARIGUDA': 5.4, 'koraput:KONDASRIMUNDA': 2.7, 'koraput:KHASUGUDA': 1.6, 'koraput:SAKIAGUDA': 3.0, 'koraput:BARAKANTI': 1.8}
+    sampler: feasible-region (exact; plain geometric acceptance < 0.02) in {'angul:GHANAJODI': '0.015', 'dhenkanal:TULASIPASI': '0.007', 'kendujhar:BHANRADI SAHI': '0.000', 'koraput:HATIMUNDA': '0.002', 'koraput:KHASUGUDA': '0.001', 'koraput:BARAKANTI': '0.000'}; plain elsewhere
+  6.1 current / stands_snic vs ROTATION null (observed = vector join, restricted R2)
+    variable          R2 all     (k, n)  R2 restr    (k, n)  null med     p5    p95  excess  pctile n_null
+    loreys_h_m         0.937  (211,267)     0.768   (40,96)     0.779   0.67   0.86  -0.011    43.2   1999
+    loreys_h_tree_m    0.944  (204,254)     0.773   (36,86)     0.776   0.65   0.87  -0.003    48.7   1999
+    crown_cover_pct    0.935  (211,267)     0.819   (40,96)     0.806   0.72   0.88   0.013    60.0   1999
+    sal_ba_frac        0.966  (211,267)     0.891   (40,96)     0.859   0.77   0.93   0.032    76.5   1999
+    n_species          0.908  (211,267)     0.743   (40,96)     0.713   0.62   0.80   0.030    70.1   1999
+    dbh_mean_cm        0.893  (204,254)     0.656   (36,86)     0.663   0.54   0.77  -0.007    47.2   1999
+    h_top5_m           0.876  (211,267)     0.681   (40,96)     0.700   0.58   0.82  -0.019    38.2   1999
+
+  SENSITIVITY (not pre-registered): 6.1 null structure — does the rotation null have the observed partition's shape?
+    (restricted set: multi-plot stands over plots with loreys_h_m)
+    quantity                        observed  null med      p5     p95  pctile
+    k (multi-plot stands)             40.000    36.000  30.000  41.000  89.0 (n_null 1999)
+    n (plots in them)                 96.000    83.000  72.000  95.000  96.1 (n_null 1999)
+    E = (k-1)/(n-1)                    0.411     0.421   0.390   0.446  30.4 (n_null 1999)
+    largest multi-plot group           5.000     4.000   3.000   6.000  73.5 (n_null 1999)
+    same-stand within-part pairs      78.000    63.000  51.000  79.000  94.1 (n_null 1999)
+    E-slope bias estimate, slope(null R2 on null E) x (E_obs - E_null median), in R2 units; negative means the null's different E alone
+    pushes the observed value below the null median by about that much, i.e. the percentile is biased low: loreys_h_m -0.001 (n 1999); loreys_h_tree_m -0.001 (n 1999); crown_cover_pct -0.002 (n 1999); sal_ba_frac +0.002 (n 1999); n_species -0.007 (n 1999); dbh_mean_cm -0.004 (n 1999); h_top5_m -0.009 (n 1999)
+
+  6.2 pairwise boundary test (pairs within an AOI part)
+    Bray-Curtis, all pairs:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         47     83     0.649     0.721   0.072               95.4 (n_null 1999)   0.054
+      100-200       27    271     0.617     0.699   0.082               77.5 (n_null 1999)   0.066
+      200-400        4    553     0.404     0.724   0.320               90.7 (n_null 1672)   0.007
+      400-800        0    901       n/a     0.783     n/a             uninformative (n<=3)     n/a
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=1886, same=78): beta_same -0.0650, beta per 100 m 0.0181; rotation null median 0.0118; stand-effect percentile 97.5 (n_null 1999) (high = more similar than null); naive perm p 0.004 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.059; 100-200 0.299; 200-400 0.363; 400-800   n/a (uninformative n<=3); beta_same 0.091
+    Bray-Curtis, both > 30 m from boundary:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100          1      0     0.686       n/a     n/a             uninformative (n<=3)     n/a
+      100-200        0      0       n/a       n/a     n/a             uninformative (n<=3)     n/a
+      200-400        0      1       n/a     0.356     n/a             uninformative (n<=3)     n/a
+      400-800        0      0       n/a       n/a     n/a             uninformative (n<=3)     n/a
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=2, same=1): beta_same   n/a, beta per 100 m   n/a; rotation null median 0.0230; stand-effect percentile n/a (n_null 766) (high = more similar than null); naive perm p   n/a (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100   n/a (uninformative n<=3); 100-200   n/a (uninformative n<=3); 200-400   n/a (uninformative n<=3); 400-800   n/a (uninformative n<=3); beta_same   n/a
+    |dLorey| m, all pairs:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         47     83     3.284     3.558   0.274               36.6 (n_null 1999)   0.352
+      100-200       27    271     4.489     3.349  -1.140               16.6 (n_null 1999)   0.895
+      200-400        4    553     2.312     3.676   1.363               53.9 (n_null 1672)   0.319
+      400-800        0    901       n/a     4.381     n/a             uninformative (n<=3)     n/a
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=1886, same=78): beta_same 0.3712, beta per 100 m 0.2142; rotation null median -0.0648; stand-effect percentile 19.6 (n_null 1999) (high = more similar than null); naive perm p 0.719 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.753; 100-200 0.842; 200-400 0.119; 400-800   n/a (uninformative n<=3); beta_same 0.820
+    |dLorey| m, both > 30 m from boundary:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100          1      0     0.892       n/a     n/a             uninformative (n<=3)     n/a
+      100-200        0      0       n/a       n/a     n/a             uninformative (n<=3)     n/a
+      200-400        0      1       n/a    18.072     n/a             uninformative (n<=3)     n/a
+      400-800        0      0       n/a       n/a     n/a             uninformative (n<=3)     n/a
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=2, same=1): beta_same   n/a, beta per 100 m   n/a; rotation null median -0.0770; stand-effect percentile n/a (n_null 766) (high = more similar than null); naive perm p   n/a (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100   n/a (uninformative n<=3); 100-200   n/a (uninformative n<=3); 200-400   n/a (uninformative n<=3); 400-800   n/a (uninformative n<=3); beta_same   n/a
+
+====================================================================================================
+SECONDARY — current / stands_dissolved
+====================================================================================================
+  NOTE: observed assigned plots 253 < 267 plots in loaded districts; the rotation null may assign the other 14 (it forces only the observed-assigned plots to land on a stand)
+  partition: 539 stands, area ha p10 0.05 / median 0.39 / p90 11.29; plots assigned 253 of 267; multi-plot stands 35
+  polygons with no cluster_id: 0 of 539, 0.00 ha of 2850.93 ha
+  rotation null: NOT BUILT (seed crc32('current/stands_dissolved'); 1999 realisations requested; 3982 s): 2 AOI part(s) could not place 1999 realisations — the draws reached the cap, or no angle fits the plot cloud inside the part at all
+    failed parts (accepted realisations; draws made; draws with every plot inside the part; plots, of which forced onto a stand; sampler; plain geometric acceptance):
+      angul:ANANDA PUR: accepted 932 of 1999; draws 450200 (the cap); inside part 110148; plots 9, forced 8; plain; 0.249
+      koraput:HATIMUNDA: accepted 375 of 1999; draws 450200 (the cap); inside part 449679; plots 59, forced 55; feasible-region; 0.002
+    parts that did place their realisations (their draws are reported for the record; the realisations are discarded with the rest): mean draws per accepted realisation by part {'angul:KANSAB': 28.3, 'angul:GHANAJODI': 5.9, 'angul:JOGI BANDHA': 169.6, 'dhenkanal:TULASIPASI': 6.7, 'dhenkanal:KANKANA': 95.5, 'dhenkanal:Balikurma': 25.0, 'dhenkanal:Kampulei': 60.9, 'dhenkanal:Adhapalli': 29.7, 'dhenkanal:Mahabirod': 12.1, 'dhenkanal:Kerijoli': 21.4, 'dhenkanal:Pangatira': 69.3, 'kendujhar:BHANRADI SAHI': 2.8, 'koraput:HANDAPUR': 144.5, 'koraput:BARIGUDA': 8.1, 'koraput:KONDASRIMUNDA': 3.5, 'koraput:KHASUGUDA': 1.5, 'koraput:SAKIAGUDA': 3.6, 'koraput:BARAKANTI': 3.4}
+      sampler: feasible-region (exact; plain geometric acceptance < 0.02) in {'angul:GHANAJODI': '0.015', 'dhenkanal:TULASIPASI': '0.007', 'kendujhar:BHANRADI SAHI': '0.000', 'koraput:KHASUGUDA': '0.001', 'koraput:BARAKANTI': '0.000'}; plain elsewhere
+  NOTE: the rotation null of this partition (current / stands_dissolved) is NOT ESTIMABLE because of the AOI part(s) named above, so every statistic built on it (null median, p5, p95, excess, percentile, null structure, 6.3 null) is NOT ESTIMABLE below (n_null 0). Observed values are printed and recorded as usual. No part was dropped from the null and the acceptance rule is unchanged.
+    In the summary CSV, not_estimable=True is set on the rows of this partition that CARRY a value taken from the null (n_null, null median/p5/p95, excess, percentile). Rows of this partition holding only observed quantities (the dissolved-layer ARI and site-only R2, the within-site shuffle p-values, the null-failure records) are estimable and are NOT flagged.
+  6.1 current / stands_dissolved vs ROTATION null (observed = vector join, restricted R2)
+    variable          R2 all     (k, n)  R2 restr    (k, n)  null med     p5    p95  excess  pctile n_null
+    loreys_h_m         0.585   (51,253)     0.572  (35,237)       n/a    n/a    n/a     n/a NOT EST      0
+    loreys_h_tree_m    0.610   (50,241)     0.594  (33,224)       n/a    n/a    n/a     n/a NOT EST      0
+    crown_cover_pct    0.645   (51,253)     0.630  (35,237)       n/a    n/a    n/a     n/a NOT EST      0
+    sal_ba_frac        0.722   (51,253)     0.712  (35,237)       n/a    n/a    n/a     n/a NOT EST      0
+    n_species          0.573   (51,253)     0.556  (35,237)       n/a    n/a    n/a     n/a NOT EST      0
+    dbh_mean_cm        0.569   (50,241)     0.544  (33,224)       n/a    n/a    n/a     n/a NOT EST      0
+    h_top5_m           0.614   (51,253)     0.592  (35,237)       n/a    n/a    n/a     n/a NOT EST      0
+
+  SENSITIVITY (not pre-registered): 6.1 null structure — does the rotation null have the observed partition's shape?
+    (restricted set: multi-plot stands over plots with loreys_h_m)
+    quantity                        observed  null med      p5     p95  pctile
+    k (multi-plot stands)             35.000       n/a     n/a     n/a  NOT ESTIMABLE (n_null 0 < 100)
+    n (plots in them)                237.000       n/a     n/a     n/a  NOT ESTIMABLE (n_null 0 < 100)
+    E = (k-1)/(n-1)                    0.144       n/a     n/a     n/a  NOT ESTIMABLE (n_null 0 < 100)
+    largest multi-plot group          28.000       n/a     n/a     n/a  NOT ESTIMABLE (n_null 0 < 100)
+    same-stand within-part pairs    1122.000       n/a     n/a     n/a  NOT ESTIMABLE (n_null 0 < 100)
+    E-slope bias estimate, slope(null R2 on null E) x (E_obs - E_null median), in R2 units; negative means the null's different E alone
+    pushes the observed value below the null median by about that much, i.e. the percentile is biased low: loreys_h_m n/a (n 0); loreys_h_tree_m n/a (n 0); crown_cover_pct n/a (n 0); sal_ba_frac n/a (n 0); n_species n/a (n 0); dbh_mean_cm n/a (n 0); h_top5_m n/a (n 0)
+
+  SENSITIVITY (not pre-registered): dissolved layer vs AOI parts — is it the site partition?
+    units holding plots, per AOI part: {'angul:KANSAB': 1, 'angul:GHANAJODI': 2, 'angul:JOGI BANDHA': 1, 'angul:ANANDA PUR': 2, 'dhenkanal:TULASIPASI': 2, 'dhenkanal:KANKANA': 1, 'dhenkanal:Balikurma': 1, 'dhenkanal:Kampulei': 2, 'dhenkanal:Adhapalli': 1, 'dhenkanal:Mahabirod': 1, 'dhenkanal:Kerijoli': 1, 'dhenkanal:Pangatira': 2, 'kendujhar:BHANRADI SAHI': 3, 'koraput:HANDAPUR': 4, 'koraput:HATIMUNDA': 18, 'koraput:BARIGUDA': 3, 'koraput:KONDASRIMUNDA': 1, 'koraput:KHASUGUDA': 2, 'koraput:SAKIAGUDA': 1, 'koraput:BARAKANTI': 2}
+    ARI(unit id, AOI part) over 253 assigned plots: 0.570
+    restricted R2 of the site-only partition (AOI part as the group): loreys_h_m 0.507; loreys_h_tree_m 0.527; crown_cover_pct 0.566; sal_ba_frac 0.690; n_species 0.417; dbh_mean_cm 0.386; h_top5_m 0.490
+
+  6.2 pairwise boundary test (pairs within an AOI part)
+    Bray-Curtis, all pairs:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100        101     20     0.663     0.786   0.123   NOT ESTIMABLE (n_null 0 < 100)   0.018
+      100-200      192     75     0.656     0.752   0.095   NOT ESTIMABLE (n_null 0 < 100)   0.004
+      200-400      316    188     0.688     0.742   0.054   NOT ESTIMABLE (n_null 0 < 100)   0.005
+      400-800      313    475     0.740     0.790   0.049   NOT ESTIMABLE (n_null 0 < 100)   0.000
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=1680, same=922): beta_same -0.0538, beta per 100 m 0.0152; rotation null median   n/a; stand-effect percentile NOT ESTIMABLE (n_null 0 < 100) (high = more similar than null); naive perm p 0.000 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.487; 100-200 0.847; 200-400 0.830; 400-800 0.552; beta_same 0.912
+    Bray-Curtis, both > 30 m from boundary:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         61      0     0.610       n/a     n/a             uninformative (n<=3)     n/a
+      100-200      110      5     0.570     0.786   0.216   NOT ESTIMABLE (n_null 0 < 100)   0.049
+      200-400      222     37     0.651     0.726   0.075   NOT ESTIMABLE (n_null 0 < 100)   0.040
+      400-800      221    105     0.726     0.754   0.028   NOT ESTIMABLE (n_null 0 < 100)   0.152
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=761, same=614): beta_same -0.0411, beta per 100 m 0.0262; rotation null median   n/a; stand-effect percentile NOT ESTIMABLE (n_null 0 < 100) (high = more similar than null); naive perm p 0.037 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100   n/a (uninformative n<=3); 100-200 0.358; 200-400 0.488; 400-800 0.343; beta_same 0.429
+    |dLorey| m, all pairs:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100        101     20     3.227     4.200   0.972   NOT ESTIMABLE (n_null 0 < 100)   0.146
+      100-200      192     75     3.615     3.121  -0.495   NOT ESTIMABLE (n_null 0 < 100)   0.791
+      200-400      316    188     3.942     3.161  -0.781   NOT ESTIMABLE (n_null 0 < 100)   0.971
+      400-800      313    475     3.861     4.613   0.752   NOT ESTIMABLE (n_null 0 < 100)   0.015
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=1680, same=922): beta_same -0.0494, beta per 100 m 0.1760; rotation null median   n/a; stand-effect percentile NOT ESTIMABLE (n_null 0 < 100) (high = more similar than null); naive perm p 0.436 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.302; 100-200 0.588; 200-400 0.850; 400-800 0.885; beta_same 0.938
+    |dLorey| m, both > 30 m from boundary:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         61      0     3.470       n/a     n/a             uninformative (n<=3)     n/a
+      100-200      110      5     4.373     3.770  -0.603   NOT ESTIMABLE (n_null 0 < 100)   0.496
+      200-400      222     37     4.366     2.820  -1.547   NOT ESTIMABLE (n_null 0 < 100)   0.961
+      400-800      221    105     4.007     5.936   1.929   NOT ESTIMABLE (n_null 0 < 100)   0.002
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=761, same=614): beta_same -0.7697, beta per 100 m 0.0882; rotation null median   n/a; stand-effect percentile NOT ESTIMABLE (n_null 0 < 100) (high = more similar than null); naive perm p 0.078 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100   n/a (uninformative n<=3); 100-200 0.736; 200-400 0.893; 400-800 0.595; beta_same 0.818
+
+====================================================================================================
+SECONDARY — alphaearth / stands_merged
+====================================================================================================
+  partition: 1061 stands, area ha p10 1.28 / median 3.11 / p90 8.63; plots assigned 267 of 267; multi-plot stands 57
+  polygons with no cluster_id: 209 of 1074, 575.43 ha of 4312.25 ha
+  rotation null: 1999 realisations (seed crc32('alphaearth/stands_merged')); 140 s; mean draws per accepted realisation by part {'angul:KANSAB': 17.7, 'angul:GHANAJODI': 1.0, 'angul:JOGI BANDHA': 3.4, 'angul:ANANDA PUR': 4.2, 'dhenkanal:TULASIPASI': 1.0, 'dhenkanal:KANKANA': 4.8, 'dhenkanal:Balikurma': 14.2, 'dhenkanal:Kampulei': 32.7, 'dhenkanal:Adhapalli': 13.5, 'dhenkanal:Mahabirod': 8.0, 'dhenkanal:Kerijoli': 4.6, 'dhenkanal:Pangatira': 9.6, 'kendujhar:BHANRADI SAHI': 1.0, 'koraput:HANDAPUR': 7.1, 'koraput:HATIMUNDA': 1.0, 'koraput:BARIGUDA': 4.7, 'koraput:KONDASRIMUNDA': 1.8, 'koraput:KHASUGUDA': 1.0, 'koraput:SAKIAGUDA': 2.2, 'koraput:BARAKANTI': 1.0}
+    sampler: feasible-region (exact; plain geometric acceptance < 0.02) in {'angul:GHANAJODI': '0.015', 'dhenkanal:TULASIPASI': '0.007', 'kendujhar:BHANRADI SAHI': '0.000', 'koraput:HATIMUNDA': '0.002', 'koraput:KHASUGUDA': '0.001', 'koraput:BARAKANTI': '0.000'}; plain elsewhere
+  6.1 alphaearth / stands_merged vs ROTATION null (observed = vector join, restricted R2)
+    variable          R2 all     (k, n)  R2 restr    (k, n)  null med     p5    p95  excess  pctile n_null
+    loreys_h_m         0.848  (138,267)     0.735  (57,186)     0.722   0.63   0.79   0.012    60.4   1999
+    loreys_h_tree_m    0.860  (136,254)     0.745  (55,173)     0.732   0.65   0.80   0.014    61.9   1999
+    crown_cover_pct    0.804  (138,267)     0.725  (57,186)     0.751   0.70   0.81  -0.026    21.7   1999
+    sal_ba_frac        0.897  (138,267)     0.855  (57,186)     0.819   0.76   0.88   0.036    84.3   1999
+    n_species          0.793  (138,267)     0.691  (57,186)     0.686   0.62   0.75   0.005    54.8   1999
+    dbh_mean_cm        0.786  (136,254)     0.636  (55,173)     0.633   0.57   0.71   0.003    53.2   1999
+    h_top5_m           0.806  (138,267)     0.723  (57,186)     0.697   0.63   0.76   0.027    74.8   1999
+
+  SENSITIVITY (not pre-registered): 6.1 null structure — does the rotation null have the observed partition's shape?
+    (restricted set: multi-plot stands over plots with loreys_h_m)
+    quantity                        observed  null med      p5     p95  pctile
+    k (multi-plot stands)             57.000    59.000  53.000  65.000  29.1 (n_null 1999)
+    n (plots in them)                186.000   166.000 155.000 178.000  99.5 (n_null 1999)
+    E = (k-1)/(n-1)                    0.303     0.352   0.325   0.376  0.2 (n_null 1999)
+    largest multi-plot group          10.000     8.000   6.000  13.000  78.0 (n_null 1999)
+    same-stand within-part pairs     302.000   201.000 166.000 248.000  100.0 (n_null 1999)
+    E-slope bias estimate, slope(null R2 on null E) x (E_obs - E_null median), in R2 units; negative means the null's different E alone
+    pushes the observed value below the null median by about that much, i.e. the percentile is biased low: loreys_h_m -0.024 (n 1999); loreys_h_tree_m -0.018 (n 1999); crown_cover_pct -0.023 (n 1999); sal_ba_frac -0.010 (n 1999); n_species -0.029 (n 1999); dbh_mean_cm -0.017 (n 1999); h_top5_m -0.028 (n 1999)
+
+  SENSITIVITY (not pre-registered): 6.1 alternatives to raw restricted R2 vs the same rotation null (each realisation with its own k, n)
+    variable          adj R2          pctile (n_null)  within-part R2          pctile (n_null)   leave-one-site-out restricted R2 percentile (n_null)
+    loreys_h_m         0.619       75.1 (n_null 1999)           0.422       76.2 (n_null 1999)   -angul:KANSAB 65.1 (n_null 1999), -angul:GHANAJODI 50.7 (n_null 1999), -angul:JOGI BANDHA 61.2 (n_null 1999), -angul:ANANDA PUR 62.2 (n_null 1999), -dhenkanal:TULASIPASI 54.1 (n_null 1999), -dhenkanal:KANKANA 60.5 (n_null 1999), -dhenkanal:Balikurma 60.6 (n_null 1999), -dhenkanal:Kampulei 66.1 (n_null 1999), -dhenkanal:Adhapalli 60.2 (n_null 1999), -dhenkanal:Mahabirod 50.4 (n_null 1999), -dhenkanal:Kerijoli 64.5 (n_null 1999), -dhenkanal:Pangatira 60.0 (n_null 1999), -kendujhar:BHANRADI SAHI 52.3 (n_null 1999), -koraput:HANDAPUR 60.8 (n_null 1999), -koraput:HATIMUNDA 65.3 (n_null 1999), -koraput:BARIGUDA 60.6 (n_null 1999), -koraput:KONDASRIMUNDA 59.7 (n_null 1999), -koraput:KHASUGUDA 60.0 (n_null 1999), -koraput:SAKIAGUDA 61.8 (n_null 1999), -koraput:BARAKANTI 61.6 (n_null 1999)
+    loreys_h_tree_m    0.629       73.8 (n_null 1999)           0.422       76.3 (n_null 1999)   -angul:KANSAB 69.4 (n_null 1999), -angul:GHANAJODI 51.8 (n_null 1999), -angul:JOGI BANDHA 61.2 (n_null 1999), -angul:ANANDA PUR 60.2 (n_null 1999), -dhenkanal:TULASIPASI 55.8 (n_null 1999), -dhenkanal:KANKANA 62.0 (n_null 1999), -dhenkanal:Balikurma 61.8 (n_null 1999), -dhenkanal:Kampulei 67.6 (n_null 1999), -dhenkanal:Adhapalli 61.3 (n_null 1999), -dhenkanal:Mahabirod 52.3 (n_null 1999), -dhenkanal:Kerijoli 66.6 (n_null 1999), -dhenkanal:Pangatira 61.9 (n_null 1999), -kendujhar:BHANRADI SAHI 57.8 (n_null 1999), -koraput:HANDAPUR 61.9 (n_null 1999), -koraput:HATIMUNDA 62.9 (n_null 1999), -koraput:BARIGUDA 62.2 (n_null 1999), -koraput:KONDASRIMUNDA 61.9 (n_null 1999), -koraput:KHASUGUDA 61.4 (n_null 1999), -koraput:SAKIAGUDA 63.8 (n_null 1999), -koraput:BARAKANTI 61.4 (n_null 1999)
+    crown_cover_pct    0.605       42.1 (n_null 1999)           0.345       39.5 (n_null 1999)   -angul:KANSAB 22.6 (n_null 1999), -angul:GHANAJODI 21.1 (n_null 1999), -angul:JOGI BANDHA 34.8 (n_null 1999), -angul:ANANDA PUR 28.1 (n_null 1999), -dhenkanal:TULASIPASI 22.2 (n_null 1999), -dhenkanal:KANKANA 24.2 (n_null 1999), -dhenkanal:Balikurma 26.0 (n_null 1999), -dhenkanal:Kampulei 21.7 (n_null 1999), -dhenkanal:Adhapalli 25.5 (n_null 1999), -dhenkanal:Mahabirod 14.4 (n_null 1999), -dhenkanal:Kerijoli 21.3 (n_null 1999), -dhenkanal:Pangatira 27.7 (n_null 1999), -kendujhar:BHANRADI SAHI 20.7 (n_null 1999), -koraput:HANDAPUR 21.4 (n_null 1999), -koraput:HATIMUNDA 12.3 (n_null 1999), -koraput:BARIGUDA 20.0 (n_null 1999), -koraput:KONDASRIMUNDA 21.5 (n_null 1999), -koraput:KHASUGUDA 24.3 (n_null 1999), -koraput:SAKIAGUDA 22.0 (n_null 1999), -koraput:BARAKANTI 21.5 (n_null 1999)
+    sal_ba_frac        0.792       89.9 (n_null 1999)           0.400       87.1 (n_null 1999)   -angul:KANSAB 84.4 (n_null 1999), -angul:GHANAJODI 84.7 (n_null 1999), -angul:JOGI BANDHA 85.0 (n_null 1999), -angul:ANANDA PUR 84.4 (n_null 1999), -dhenkanal:TULASIPASI 84.7 (n_null 1999), -dhenkanal:KANKANA 88.1 (n_null 1999), -dhenkanal:Balikurma 77.5 (n_null 1999), -dhenkanal:Kampulei 83.2 (n_null 1999), -dhenkanal:Adhapalli 84.7 (n_null 1999), -dhenkanal:Mahabirod 71.3 (n_null 1999), -dhenkanal:Kerijoli 82.7 (n_null 1999), -dhenkanal:Pangatira 92.7 (n_null 1999), -kendujhar:BHANRADI SAHI 80.0 (n_null 1999), -koraput:HANDAPUR 84.4 (n_null 1999), -koraput:HATIMUNDA 83.5 (n_null 1999), -koraput:BARIGUDA 84.3 (n_null 1999), -koraput:KONDASRIMUNDA 84.3 (n_null 1999), -koraput:KHASUGUDA 84.8 (n_null 1999), -koraput:SAKIAGUDA 84.3 (n_null 1999), -koraput:BARAKANTI 84.2 (n_null 1999)
+    n_species          0.557       75.7 (n_null 1999)           0.481       80.4 (n_null 1999)   -angul:KANSAB 54.9 (n_null 1999), -angul:GHANAJODI 58.1 (n_null 1999), -angul:JOGI BANDHA 56.6 (n_null 1999), -angul:ANANDA PUR 57.2 (n_null 1999), -dhenkanal:TULASIPASI 55.5 (n_null 1999), -dhenkanal:KANKANA 56.8 (n_null 1999), -dhenkanal:Balikurma 31.7 (n_null 1999), -dhenkanal:Kampulei 54.7 (n_null 1999), -dhenkanal:Adhapalli 49.2 (n_null 1999), -dhenkanal:Mahabirod 52.3 (n_null 1999), -dhenkanal:Kerijoli 54.6 (n_null 1999), -dhenkanal:Pangatira 53.1 (n_null 1999), -kendujhar:BHANRADI SAHI 63.0 (n_null 1999), -koraput:HANDAPUR 55.4 (n_null 1999), -koraput:HATIMUNDA 43.2 (n_null 1999), -koraput:BARIGUDA 54.7 (n_null 1999), -koraput:KONDASRIMUNDA 54.3 (n_null 1999), -koraput:KHASUGUDA 67.4 (n_null 1999), -koraput:SAKIAGUDA 64.1 (n_null 1999), -koraput:BARAKANTI 56.2 (n_null 1999)
+    dbh_mean_cm        0.470       71.9 (n_null 1999)           0.386       80.0 (n_null 1999)   -angul:KANSAB 59.0 (n_null 1999), -angul:GHANAJODI 51.8 (n_null 1999), -angul:JOGI BANDHA 51.4 (n_null 1999), -angul:ANANDA PUR 51.1 (n_null 1999), -dhenkanal:TULASIPASI 52.2 (n_null 1999), -dhenkanal:KANKANA 70.9 (n_null 1999), -dhenkanal:Balikurma 55.8 (n_null 1999), -dhenkanal:Kampulei 52.7 (n_null 1999), -dhenkanal:Adhapalli 53.0 (n_null 1999), -dhenkanal:Mahabirod 46.8 (n_null 1999), -dhenkanal:Kerijoli 50.2 (n_null 1999), -dhenkanal:Pangatira 42.0 (n_null 1999), -kendujhar:BHANRADI SAHI 71.3 (n_null 1999), -koraput:HANDAPUR 57.0 (n_null 1999), -koraput:HATIMUNDA 24.1 (n_null 1999), -koraput:BARIGUDA 51.0 (n_null 1999), -koraput:KONDASRIMUNDA 53.2 (n_null 1999), -koraput:KHASUGUDA 62.7 (n_null 1999), -koraput:SAKIAGUDA 51.2 (n_null 1999), -koraput:BARAKANTI 53.1 (n_null 1999)
+    h_top5_m           0.603       89.6 (n_null 1999)           0.483       82.5 (n_null 1999)   -angul:KANSAB 74.7 (n_null 1999), -angul:GHANAJODI 73.7 (n_null 1999), -angul:JOGI BANDHA 75.7 (n_null 1999), -angul:ANANDA PUR 76.0 (n_null 1999), -dhenkanal:TULASIPASI 72.9 (n_null 1999), -dhenkanal:KANKANA 72.0 (n_null 1999), -dhenkanal:Balikurma 72.2 (n_null 1999), -dhenkanal:Kampulei 78.1 (n_null 1999), -dhenkanal:Adhapalli 74.8 (n_null 1999), -dhenkanal:Mahabirod 73.7 (n_null 1999), -dhenkanal:Kerijoli 84.2 (n_null 1999), -dhenkanal:Pangatira 75.4 (n_null 1999), -kendujhar:BHANRADI SAHI 70.0 (n_null 1999), -koraput:HANDAPUR 74.4 (n_null 1999), -koraput:HATIMUNDA 56.1 (n_null 1999), -koraput:BARIGUDA 74.9 (n_null 1999), -koraput:KONDASRIMUNDA 74.2 (n_null 1999), -koraput:KHASUGUDA 74.2 (n_null 1999), -koraput:SAKIAGUDA 76.2 (n_null 1999), -koraput:BARAKANTI 75.1 (n_null 1999)
+
+  6.2 pairwise boundary test (pairs within an AOI part)
+    Bray-Curtis, all pairs:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         99     31     0.681     0.742   0.061               93.5 (n_null 1999)   0.111
+      100-200      131    167     0.663     0.715   0.052               85.8 (n_null 1999)   0.046
+      200-400       69    488     0.674     0.728   0.054               83.9 (n_null 1999)   0.036
+      400-800        3    898     0.152     0.785   0.633             uninformative (n<=3)   0.000
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=1886, same=302): beta_same -0.0447, beta per 100 m 0.0161; rotation null median 0.0060; stand-effect percentile 94.8 (n_null 1999) (high = more similar than null); naive perm p 0.001 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.241; 100-200 0.370; 200-400 0.054; 400-800 0.004 (uninformative n<=3); beta_same 0.048
+    Bray-Curtis, both > 30 m from boundary:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         26      2     0.658     0.825   0.167             uninformative (n<=3)   0.107
+      100-200       24     16     0.615     0.703   0.089               76.9 (n_null 1995)   0.137
+      200-400        4     42     0.478     0.710   0.233               90.6 (n_null 1837)   0.034
+      400-800        0     78       n/a     0.792     n/a             uninformative (n<=3)     n/a
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=192, same=54): beta_same -0.1049, beta per 100 m 0.0086; rotation null median 0.0125; stand-effect percentile 93.1 (n_null 1999) (high = more similar than null); naive perm p 0.013 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.164 (uninformative n<=3); 100-200 0.092; 200-400 0.313; 400-800   n/a (uninformative n<=3); beta_same 0.051
+  SENSITIVITY (not pre-registered): 6.2 robustness of beta_same, Bray-Curtis, all pairs (same rotation realisations throughout)
+    same-stand pairs by AOI part: observed / null median / null p95 / pctile
+      angul:KANSAB                5 /     5 /     9 / 48.8 (n_null 1999)
+      angul:GHANAJODI             0 /     1 /     2 / 14.3 (n_null 1999)
+      angul:JOGI BANDHA          24 /     9 /    18 / 99.5 (n_null 1999)
+      angul:ANANDA PUR           11 /     6 /    12 / 91.2 (n_null 1999)
+      dhenkanal:TULASIPASI        1 /     1 /     2 / 42.3 (n_null 1999)
+      dhenkanal:KANKANA           9 /     4 /    11 / 90.7 (n_null 1999)
+      dhenkanal:Balikurma         2 /     2 /     5 / 36.8 (n_null 1999)
+      dhenkanal:Kampulei          0 /     1 /     2 / 24.4 (n_null 1999)
+      dhenkanal:Adhapalli         5 /     5 /    10 / 47.0 (n_null 1999)
+      dhenkanal:Mahabirod         5 /     4 /     7 / 76.5 (n_null 1999)
+      dhenkanal:Kerijoli         24 /     9 /    18 / 99.0 (n_null 1999)
+      dhenkanal:Pangatira         8 /     4 /     7 / 97.1 (n_null 1999)
+      kendujhar:BHANRADI SAHI     2 /     4 /    10 / 19.1 (n_null 1999)
+      koraput:HANDAPUR           41 /    30 /    53 / 79.4 (n_null 1999)
+      koraput:HATIMUNDA          88 /    60 /   100 / 89.3 (n_null 1999)
+      koraput:BARIGUDA            8 /     8 /    16 / 46.2 (n_null 1999)
+      koraput:KONDASRIMUNDA      10 /     4 /    10 / 89.3 (n_null 1999)
+      koraput:KHASUGUDA           1 /     2 /     5 / 18.4 (n_null 1999)
+      koraput:SAKIAGUDA          36 /    13 /    28 / 98.2 (n_null 1999)
+      koraput:BARAKANTI          22 /    15 /    25 / 88.0 (n_null 1999)
+    same-stand pairs by stand (AOI part, stand id as in the layer, plots, pairs): koraput:HATIMUNDA 91 10p 45; koraput:SAKIAGUDA 11 9p 36; angul:JOGI BANDHA 30 7p 21; dhenkanal:Kerijoli 72 7p 21; koraput:HANDAPUR 138 6p 15; koraput:HANDAPUR 127 6p 15; angul:ANANDA PUR 17 5p 10; koraput:HATIMUNDA 55 5p 10; koraput:HATIMUNDA 99 5p 10; koraput:HANDAPUR 131 5p 10; koraput:KONDASRIMUNDA 167 5p 10; dhenkanal:KANKANA 207 4p 6; dhenkanal:Pangatira 14 4p 6; koraput:BARAKANTI 530 4p 6; koraput:BARAKANTI 547 4p 6; koraput:HATIMUNDA 101 4p 6; koraput:BARAKANTI 519 3p 3; dhenkanal:Mahabirod 35 3p 3; dhenkanal:Kerijoli 71 3p 3; koraput:BARIGUDA 157 3p 3; koraput:HATIMUNDA 95 3p 3; dhenkanal:Adhapalli 56 3p 3; dhenkanal:KANKANA 204 3p 3; angul:JOGI BANDHA 29 3p 3; angul:KANSAB 47 3p 3; koraput:BARAKANTI 614 3p 3; koraput:BARAKANTI 531 3p 3; koraput:BARIGUDA 145 3p 3; koraput:HATIMUNDA 56 3p 3; koraput:HATIMUNDA 74 3p 3; dhenkanal:Balikurma 95 2p 1; dhenkanal:Mahabirod 41 2p 1; dhenkanal:Pangatira 10 2p 1; dhenkanal:Balikurma 92 2p 1; dhenkanal:Adhapalli 49 2p 1; angul:ANANDA PUR 4 2p 1; dhenkanal:TULASIPASI 149 2p 1; angul:KANSAB 41 2p 1; angul:KANSAB 48 2p 1; dhenkanal:Adhapalli 57 2p 1; dhenkanal:Mahabirod 39 2p 1; kendujhar:BHANRADI SAHI 19 2p 1; kendujhar:BHANRADI SAHI 12 2p 1; dhenkanal:Pangatira 11 2p 1; koraput:HATIMUNDA 68 2p 1; koraput:HANDAPUR 126 2p 1; koraput:HATIMUNDA 30 2p 1; koraput:HATIMUNDA 33 2p 1; koraput:HATIMUNDA 48 2p 1; koraput:HATIMUNDA 82 2p 1; koraput:HATIMUNDA 75 2p 1; koraput:HATIMUNDA 108 2p 1; koraput:HATIMUNDA 112 2p 1; koraput:BARIGUDA 150 2p 1; koraput:BARIGUDA 153 2p 1; koraput:KHASUGUDA 587 2p 1; koraput:BARAKANTI 541 2p 1
+      site fixed effects                                       n_same  302  beta_same -0.0121  null median 0.0079  stand-effect pctile 82.0 (n_null 1999)
+      stand-weighted (same pair weight 1/pairs in its stand)   n_same  302  beta_same -0.0777  null median -0.0194  stand-effect pctile 99.8 (n_null 1999)
+      drop angul:KANSAB                                        n_same  297  beta_same -0.0419  null median 0.0074  stand-effect pctile 93.8 (n_null 1999)
+      drop angul:GHANAJODI                                     n_same  302  beta_same -0.0446  null median 0.0065  stand-effect pctile 94.8 (n_null 1999)
+      drop angul:JOGI BANDHA                                   n_same  278  beta_same -0.0461  null median 0.0062  stand-effect pctile 94.8 (n_null 1999)
+      drop angul:ANANDA PUR                                    n_same  291  beta_same -0.0472  null median 0.0047  stand-effect pctile 95.1 (n_null 1999)
+      drop dhenkanal:TULASIPASI                                n_same  301  beta_same -0.0468  null median 0.0046  stand-effect pctile 95.0 (n_null 1999)
+      drop dhenkanal:KANKANA                                   n_same  293  beta_same -0.0457  null median 0.0051  stand-effect pctile 94.7 (n_null 1999)
+      drop dhenkanal:Balikurma                                 n_same  300  beta_same -0.0439  null median 0.0057  stand-effect pctile 94.4 (n_null 1999)
+      drop dhenkanal:Kampulei                                  n_same  302  beta_same -0.0448  null median 0.0061  stand-effect pctile 94.9 (n_null 1999)
+      drop dhenkanal:Adhapalli                                 n_same  297  beta_same -0.0477  null median 0.0062  stand-effect pctile 95.2 (n_null 1999)
+      drop dhenkanal:Mahabirod                                 n_same  297  beta_same -0.0452  null median 0.0039  stand-effect pctile 94.4 (n_null 1999)
+      drop dhenkanal:Kerijoli                                  n_same  278  beta_same -0.0195  null median 0.0052  stand-effect pctile 82.7 (n_null 1999)
+      drop dhenkanal:Pangatira                                 n_same  294  beta_same -0.0513  null median 0.0041  stand-effect pctile 95.8 (n_null 1999)
+      drop kendujhar:BHANRADI SAHI                             n_same  300  beta_same -0.0382  null median 0.0073  stand-effect pctile 93.2 (n_null 1999)
+      drop koraput:HANDAPUR                                    n_same  261  beta_same -0.0521  null median 0.0032  stand-effect pctile 93.8 (n_null 1999)
+      drop koraput:HATIMUNDA                                   n_same  214  beta_same -0.0630  null median 0.0083  stand-effect pctile 97.1 (n_null 1999)
+      drop koraput:BARIGUDA                                    n_same  294  beta_same -0.0473  null median 0.0046  stand-effect pctile 94.9 (n_null 1999)
+      drop koraput:KONDASRIMUNDA                               n_same  292  beta_same -0.0382  null median 0.0107  stand-effect pctile 94.4 (n_null 1999)
+      drop koraput:KHASUGUDA                                   n_same  301  beta_same -0.0443  null median 0.0065  stand-effect pctile 94.7 (n_null 1999)
+      drop koraput:SAKIAGUDA                                   n_same  266  beta_same -0.0417  null median 0.0071  stand-effect pctile 93.6 (n_null 1999)
+      drop koraput:BARAKANTI                                   n_same  280  beta_same -0.0512  null median 0.0050  stand-effect pctile 95.1 (n_null 1999)
+    |dLorey| m, all pairs:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         99     31     3.538     3.206  -0.332                9.7 (n_null 1999)   0.651
+      100-200      131    167     3.333     3.546   0.213               56.7 (n_null 1999)   0.344
+      200-400       69    488     3.497     3.690   0.193               67.4 (n_null 1999)   0.393
+      400-800        3    898     0.481     4.394   3.913             uninformative (n<=3)   0.006
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=1886, same=302): beta_same -0.0605, beta per 100 m 0.1992; rotation null median 0.0223; stand-effect percentile 57.9 (n_null 1999) (high = more similar than null); naive perm p 0.322 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.663; 100-200 0.188; 200-400 0.329; 400-800 0.029 (uninformative n<=3); beta_same 0.206
+    |dLorey| m, both > 30 m from boundary:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         26      2     3.856     1.651  -2.205             uninformative (n<=3)   0.787
+      100-200       24     16     4.242     2.860  -1.382               27.8 (n_null 1995)   0.830
+      200-400        4     42     3.976     4.052   0.075               45.4 (n_null 1837)   0.611
+      400-800        0     78       n/a     5.758     n/a             uninformative (n<=3)     n/a
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=192, same=54): beta_same 0.8232, beta per 100 m 0.5168; rotation null median 0.2252; stand-effect percentile 32.2 (n_null 1999) (high = more similar than null); naive perm p 0.869 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.915 (uninformative n<=3); 100-200 0.564; 200-400 0.604; 400-800   n/a (uninformative n<=3); beta_same 0.693
+  SENSITIVITY (not pre-registered): 6.2 robustness of beta_same, |dLorey| m, all pairs (same rotation realisations throughout)
+      site fixed effects                                       n_same  302  beta_same -0.1430  null median 0.1379  stand-effect pctile 79.0 (n_null 1999)
+      stand-weighted (same pair weight 1/pairs in its stand)   n_same  302  beta_same 0.0320  null median 0.3243  stand-effect pctile 73.7 (n_null 1999)
+      drop angul:KANSAB                                        n_same  297  beta_same -0.0058  null median 0.0656  stand-effect pctile 56.3 (n_null 1999)
+      drop angul:GHANAJODI                                     n_same  302  beta_same 0.0213  null median 0.0325  stand-effect pctile 51.0 (n_null 1999)
+      drop angul:JOGI BANDHA                                   n_same  278  beta_same -0.0788  null median 0.0310  stand-effect pctile 60.0 (n_null 1999)
+      drop angul:ANANDA PUR                                    n_same  291  beta_same -0.1200  null median 0.0449  stand-effect pctile 63.7 (n_null 1999)
+      drop dhenkanal:TULASIPASI                                n_same  301  beta_same 0.0066  null median 0.0440  stand-effect pctile 53.6 (n_null 1999)
+      drop dhenkanal:KANKANA                                   n_same  293  beta_same -0.0809  null median 0.0074  stand-effect pctile 57.9 (n_null 1999)
+      drop dhenkanal:Balikurma                                 n_same  300  beta_same -0.1085  null median 0.0051  stand-effect pctile 61.1 (n_null 1999)
+      drop dhenkanal:Kampulei                                  n_same  302  beta_same -0.0497  null median 0.0236  stand-effect pctile 56.6 (n_null 1999)
+      drop dhenkanal:Adhapalli                                 n_same  297  beta_same -0.1261  null median 0.0039  stand-effect pctile 61.6 (n_null 1999)
+      drop dhenkanal:Mahabirod                                 n_same  297  beta_same 0.1614  null median 0.1256  stand-effect pctile 45.9 (n_null 1999)
+      drop dhenkanal:Kerijoli                                  n_same  278  beta_same -0.1623  null median 0.0516  stand-effect pctile 70.1 (n_null 1999)
+      drop dhenkanal:Pangatira                                 n_same  294  beta_same -0.0855  null median 0.0117  stand-effect pctile 58.4 (n_null 1999)
+      drop kendujhar:BHANRADI SAHI                             n_same  300  beta_same 0.0526  null median 0.0439  stand-effect pctile 48.7 (n_null 1999)
+      drop koraput:HANDAPUR                                    n_same  261  beta_same -0.2028  null median 0.0058  stand-effect pctile 66.3 (n_null 1999)
+      drop koraput:HATIMUNDA                                   n_same  214  beta_same -0.2248  null median -0.2530  stand-effect pctile 47.9 (n_null 1999)
+      drop koraput:BARIGUDA                                    n_same  294  beta_same -0.1403  null median 0.0202  stand-effect pctile 63.9 (n_null 1999)
+      drop koraput:KONDASRIMUNDA                               n_same  292  beta_same 0.0328  null median 0.0837  stand-effect pctile 54.4 (n_null 1999)
+      drop koraput:KHASUGUDA                                   n_same  301  beta_same -0.1264  null median -0.0146  stand-effect pctile 60.3 (n_null 1999)
+      drop koraput:SAKIAGUDA                                   n_same  266  beta_same 0.0064  null median 0.0551  stand-effect pctile 54.4 (n_null 1999)
+      drop koraput:BARAKANTI                                   n_same  280  beta_same -0.2055  null median -0.0675  stand-effect pctile 60.9 (n_null 1999)
+
+  6.3 label agreement (typology, not delineation) — merged stand cluster_id
+    district angul: typed plots 39 of 39; rotation realisations used 1237 of 1999 (the rest put a typed plot on a polygon with no cluster_id)
+    district dhenkanal: typed plots 75 of 75; rotation realisations used 438 of 1999 (the rest put a typed plot on a polygon with no cluster_id)
+    district kendujhar: typed plots 8 of 8; rotation realisations used 1315 of 1999 (the rest put a typed plot on a polygon with no cluster_id)
+    district koraput: typed plots 145 of 145; rotation realisations used 22 of 1999 (the rest put a typed plot on a polygon with no cluster_id)
+    set-level nulls: the c-th valid realisation of each district combined index-wise; 22 combined realisations (implementation choice, not pre-registered)
+    field type = UPGMA k=6
+      angul: ari        0.013 (n plots 39); rotation null median 0.002, p95 0.036, percentile 70.7 (n_null 1237)
+      angul: nmi        0.105 (n plots 39); rotation null median 0.093, p95 0.139, percentile 66.5 (n_null 1237)
+      angul: cramers_v  0.363 (n plots 39); rotation null median 0.328, p95 0.526, percentile 60.7 (n_null 1237)
+      angul: contingency (rows field type, columns cluster_id); cells with expected count < 5: 10 of 15
+        cluster_id  0  1  2   3  4
+        field_type                
+        2           8  5  6  12  6
+        5           0  0  1   0  0
+        6           0  1  0   0  0
+      dhenkanal: ari        0.007 (n plots 75); rotation null median 0.007, p95 0.016, percentile 47.3 (n_null 438)
+      dhenkanal: nmi        0.031 (n plots 75); rotation null median 0.033, p95 0.049, percentile 41.1 (n_null 438)
+      dhenkanal: cramers_v  0.223 (n plots 75); rotation null median 0.266, p95 0.435, percentile 18.5 (n_null 438)
+      dhenkanal: contingency (rows field type, columns cluster_id); cells with expected count < 5: 4 of 8
+        cluster_id   0   1  2   5
+        field_type               
+        1            0   1  0   0
+        2           28  15  6  25
+      kendujhar: typed plots n=8 hold 1 field type(s) ({2: 8}): ARI, NMI, Cramér's V NOT ESTIMABLE
+      kendujhar: contingency (rows field type, columns cluster_id); cells with expected count < 5: n/a (one row; no chi-square) of 3
+        cluster_id  1  2  3
+        field_type         
+        2           1  6  1
+      koraput: ari        -0.018 (n plots 145); rotation null median -0.019, p95 0.014, percentile NOT ESTIMABLE (n_null 22 < 100)
+      koraput: nmi        0.051 (n plots 145); rotation null median 0.052, p95 0.076, percentile NOT ESTIMABLE (n_null 22 < 100)
+      koraput: cramers_v  0.307 (n plots 145); rotation null median 0.286, p95 0.360, percentile NOT ESTIMABLE (n_null 22 < 100)
+      koraput: contingency (rows field type, columns cluster_id); cells with expected count < 5: 7 of 12
+        cluster_id  0  1   2   3   4   5
+        field_type                      
+        1           0  2   0   7   0   1
+        2           6  3  13  60  27  26
+      plot-weighted mean over 3 districts: ari        -0.006; percentile NOT ESTIMABLE (n_null 22 < 100) (c-th valid realisation of each district combined)
+      plot-weighted mean over 3 districts: nmi        0.054; percentile NOT ESTIMABLE (n_null 22 < 100) (c-th valid realisation of each district combined)
+      plot-weighted mean over 3 districts: cramers_v  0.291; percentile NOT ESTIMABLE (n_null 22 < 100) (c-th valid realisation of each district combined)
+    field type = Sal-dominant rule
+      angul: typed plots n=39 hold 1 field type(s) ({0: 39}): ARI, NMI, Cramér's V NOT ESTIMABLE
+      angul: contingency (rows field type, columns cluster_id); cells with expected count < 5: n/a (one row; no chi-square) of 5
+        cluster_id  0  1  2   3  4
+        field_type                
+        0           8  6  7  12  6
+      dhenkanal: ari        0.032 (n plots 75); rotation null median 0.041, p95 0.088, percentile 34.9 (n_null 438)
+      dhenkanal: nmi        0.044 (n plots 75); rotation null median 0.064, p95 0.113, percentile 16.9 (n_null 438)
+      dhenkanal: cramers_v  0.287 (n plots 75); rotation null median 0.357, p95 0.474, percentile 12.6 (n_null 438)
+      dhenkanal: contingency (rows field type, columns cluster_id); cells with expected count < 5: 2 of 8
+        cluster_id   0  1  2   5
+        field_type              
+        0           12  9  4  19
+        1           16  7  2   6
+      kendujhar: ari        0.556 (n plots 8); rotation null median -0.143, p95 0.226, percentile 99.0 (n_null 1315)
+      kendujhar: nmi        0.677 (n plots 8); rotation null median 0.100, p95 0.319, percentile 99.0 (n_null 1315)
+      kendujhar: cramers_v  1.000 (n plots 8); rotation null median 0.293, p95 0.655, percentile 98.3 (n_null 1315)
+      kendujhar: contingency (rows field type, columns cluster_id); cells with expected count < 5: 5 of 6
+        cluster_id  1  2  3
+        field_type         
+        0           0  6  1
+        1           1  0  0
+      koraput: typed plots n=145 hold 1 field type(s) ({0: 145}): ARI, NMI, Cramér's V NOT ESTIMABLE
+      koraput: contingency (rows field type, columns cluster_id); cells with expected count < 5: n/a (one row; no chi-square) of 6
+        cluster_id  0  1   2   3   4   5
+        field_type                      
+        0           6  5  13  67  27  27
+      plot-weighted mean over 2 districts: ari        0.083; percentile 95.2 (n_null 438) (c-th valid realisation of each district combined)
+      plot-weighted mean over 2 districts: nmi        0.105; percentile 87.9 (n_null 438) (c-th valid realisation of each district combined)
+      plot-weighted mean over 2 districts: cramers_v  0.356; percentile 53.2 (n_null 438) (c-th valid realisation of each district combined)
+    distant pairs (> 2 km, same district; depend only on the stand cluster label):
+      distant_diff_bc      0.013 (n same-label 2468, n different-label 8183); rotation null median 0.000, p5 -0.020, p95 0.017, percentile NOT ESTIMABLE (n_null 22 < 100)
+      distant_diff_lorey   -0.106 (n same-label 2468, n different-label 8183); rotation null median -0.264, p5 -0.815, p95 0.222, percentile NOT ESTIMABLE (n_null 22 < 100)
+
+====================================================================================================
+SECONDARY — alphaearth / stands_snic
+====================================================================================================
+  NOTE: observed assigned plots 266 < 267 plots in loaded districts; the rotation null may assign the other 1 (it forces only the observed-assigned plots to land on a stand)
+  partition: 3589 stands, area ha p10 0.52 / median 0.96 / p90 1.49; plots assigned 266 of 267; multi-plot stands 33
+  polygons with no cluster_id: 0 of 3608, 0.00 ha of 3548.82 ha
+  rotation null: 1999 realisations (seed crc32('alphaearth/stands_snic')); 625 s; mean draws per accepted realisation by part {'angul:KANSAB': 21.8, 'angul:GHANAJODI': 1.9, 'angul:JOGI BANDHA': 5.5, 'angul:ANANDA PUR': 8.7, 'dhenkanal:TULASIPASI': 1.5, 'dhenkanal:KANKANA': 13.2, 'dhenkanal:Balikurma': 14.8, 'dhenkanal:Kampulei': 38.6, 'dhenkanal:Adhapalli': 13.9, 'dhenkanal:Mahabirod': 8.6, 'dhenkanal:Kerijoli': 8.0, 'dhenkanal:Pangatira': 13.0, 'kendujhar:BHANRADI SAHI': 2.1, 'koraput:HANDAPUR': 19.0, 'koraput:HATIMUNDA': 26.0, 'koraput:BARIGUDA': 5.3, 'koraput:KONDASRIMUNDA': 2.6, 'koraput:KHASUGUDA': 1.3, 'koraput:SAKIAGUDA': 2.9, 'koraput:BARAKANTI': 2.0}
+    sampler: feasible-region (exact; plain geometric acceptance < 0.02) in {'angul:GHANAJODI': '0.015', 'dhenkanal:TULASIPASI': '0.007', 'kendujhar:BHANRADI SAHI': '0.000', 'koraput:HATIMUNDA': '0.002', 'koraput:KHASUGUDA': '0.001', 'koraput:BARAKANTI': '0.000'}; plain elsewhere
+  6.1 alphaearth / stands_snic vs ROTATION null (observed = vector join, restricted R2)
+    variable          R2 all     (k, n)  R2 restr    (k, n)  null med     p5    p95  excess  pctile n_null
+    loreys_h_m         0.936  (219,266)     0.825   (33,80)     0.793   0.65   0.88   0.031    68.7   1999
+    loreys_h_tree_m    0.938  (211,253)     0.827   (30,72)     0.793   0.63   0.88   0.033    67.5   1999
+    crown_cover_pct    0.946  (219,266)     0.841   (33,80)     0.821   0.74   0.89   0.020    66.2   1999
+    sal_ba_frac        0.975  (219,266)     0.902   (33,80)     0.855   0.74   0.93   0.048    83.0   1999
+    n_species          0.921  (219,266)     0.683   (33,80)     0.748   0.66   0.82  -0.065    11.3   1999
+    dbh_mean_cm        0.887  (211,253)     0.644   (30,72)     0.674   0.53   0.78  -0.030    41.6   1999
+    h_top5_m           0.899  (219,266)     0.776   (33,80)     0.705   0.57   0.81   0.071    88.8   1999
+
+  SENSITIVITY (not pre-registered): 6.1 null structure — does the rotation null have the observed partition's shape?
+    (restricted set: multi-plot stands over plots with loreys_h_m)
+    quantity                        observed  null med      p5     p95  pctile
+    k (multi-plot stands)             33.000    31.000  26.000  37.000  69.9 (n_null 1999)
+    n (plots in them)                 80.000    71.000  61.000  82.000  90.4 (n_null 1999)
+    E = (k-1)/(n-1)                    0.405     0.433   0.403   0.458  6.4 (n_null 1999)
+    largest multi-plot group           4.000     4.000   3.000   6.000  44.7 (n_null 1999)
+    same-stand within-part pairs      64.000    50.000  40.000  63.000  96.0 (n_null 1999)
+    E-slope bias estimate, slope(null R2 on null E) x (E_obs - E_null median), in R2 units; negative means the null's different E alone
+    pushes the observed value below the null median by about that much, i.e. the percentile is biased low: loreys_h_m -0.010 (n 1999); loreys_h_tree_m -0.010 (n 1999); crown_cover_pct -0.006 (n 1999); sal_ba_frac +0.001 (n 1999); n_species -0.016 (n 1999); dbh_mean_cm -0.010 (n 1999); h_top5_m -0.015 (n 1999)
+
+  6.2 pairwise boundary test (pairs within an AOI part)
+    Bray-Curtis, all pairs:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         45     85     0.666     0.711   0.045               91.4 (n_null 1999)   0.154
+      100-200       19    279     0.691     0.692   0.001               46.9 (n_null 1998)   0.489
+      200-400        0    557       n/a     0.721     n/a             uninformative (n<=3)     n/a
+      400-800        0    901       n/a     0.783     n/a             uninformative (n<=3)     n/a
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=1886, same=64): beta_same -0.0071, beta per 100 m 0.0197; rotation null median 0.0281; stand-effect percentile 83.2 (n_null 1999) (high = more similar than null); naive perm p 0.245 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.410; 100-200 0.522; 200-400   n/a (uninformative n<=3); 400-800   n/a (uninformative n<=3); beta_same 0.501
+    Bray-Curtis, both > 30 m from boundary:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100          0      0       n/a       n/a     n/a             uninformative (n<=3)     n/a
+      100-200        0      0       n/a       n/a     n/a             uninformative (n<=3)     n/a
+      200-400        0      0       n/a       n/a     n/a             uninformative (n<=3)     n/a
+      400-800        0      0       n/a       n/a     n/a             uninformative (n<=3)     n/a
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=0, same=0): beta_same   n/a, beta per 100 m   n/a; rotation null median 0.0334; stand-effect percentile n/a (n_null 937) (high = more similar than null); naive perm p   n/a (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100   n/a (uninformative n<=3); 100-200   n/a (uninformative n<=3); 200-400   n/a (uninformative n<=3); 400-800   n/a (uninformative n<=3); beta_same   n/a
+    |dLorey| m, all pairs:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         45     85     3.490     3.442  -0.048               13.5 (n_null 1999)   0.534
+      100-200       19    279     3.030     3.481   0.451               65.9 (n_null 1998)   0.363
+      200-400        0    557       n/a     3.666     n/a             uninformative (n<=3)     n/a
+      400-800        0    901       n/a     4.381     n/a             uninformative (n<=3)     n/a
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=1886, same=64): beta_same 0.0617, beta per 100 m 0.2057; rotation null median -0.2073; stand-effect percentile 31.4 (n_null 1999) (high = more similar than null); naive perm p 0.440 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.681; 100-200 0.090; 200-400   n/a (uninformative n<=3); 400-800   n/a (uninformative n<=3); beta_same 0.335
+    |dLorey| m, both > 30 m from boundary:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100          0      0       n/a       n/a     n/a             uninformative (n<=3)     n/a
+      100-200        0      0       n/a       n/a     n/a             uninformative (n<=3)     n/a
+      200-400        0      0       n/a       n/a     n/a             uninformative (n<=3)     n/a
+      400-800        0      0       n/a       n/a     n/a             uninformative (n<=3)     n/a
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=0, same=0): beta_same   n/a, beta per 100 m   n/a; rotation null median -0.0810; stand-effect percentile n/a (n_null 937) (high = more similar than null); naive perm p   n/a (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100   n/a (uninformative n<=3); 100-200   n/a (uninformative n<=3); 200-400   n/a (uninformative n<=3); 400-800   n/a (uninformative n<=3); beta_same   n/a
+
+====================================================================================================
+SECONDARY — alphaearth / stands_dissolved
+====================================================================================================
+  NOTE: observed assigned plots 253 < 267 plots in loaded districts; the rotation null may assign the other 14 (it forces only the observed-assigned plots to land on a stand)
+  partition: 497 stands, area ha p10 0.05 / median 0.62 / p90 12.75; plots assigned 253 of 267; multi-plot stands 40
+  polygons with no cluster_id: 0 of 497, 0.00 ha of 2853.60 ha
+  rotation null: NOT BUILT (seed crc32('alphaearth/stands_dissolved'); 1999 realisations requested; 3960 s): 2 AOI part(s) could not place 1999 realisations — the draws reached the cap, or no angle fits the plot cloud inside the part at all
+    failed parts (accepted realisations; draws made; draws with every plot inside the part; plots, of which forced onto a stand; sampler; plain geometric acceptance):
+      angul:ANANDA PUR: accepted 1039 of 1999; draws 450200 (the cap); inside part 110397; plots 9, forced 8; plain; 0.249
+      koraput:HATIMUNDA: accepted 422 of 1999; draws 450200 (the cap); inside part 449617; plots 59, forced 55; feasible-region; 0.002
+    parts that did place their realisations (their draws are reported for the record; the realisations are discarded with the rest): mean draws per accepted realisation by part {'angul:KANSAB': 27.9, 'angul:GHANAJODI': 5.9, 'angul:JOGI BANDHA': 176.3, 'dhenkanal:TULASIPASI': 6.8, 'dhenkanal:KANKANA': 94.0, 'dhenkanal:Balikurma': 24.3, 'dhenkanal:Kampulei': 58.3, 'dhenkanal:Adhapalli': 30.0, 'dhenkanal:Mahabirod': 12.0, 'dhenkanal:Kerijoli': 21.0, 'dhenkanal:Pangatira': 66.5, 'kendujhar:BHANRADI SAHI': 2.9, 'koraput:HANDAPUR': 132.2, 'koraput:BARIGUDA': 8.3, 'koraput:KONDASRIMUNDA': 3.5, 'koraput:KHASUGUDA': 1.5, 'koraput:SAKIAGUDA': 3.5, 'koraput:BARAKANTI': 3.3}
+      sampler: feasible-region (exact; plain geometric acceptance < 0.02) in {'angul:GHANAJODI': '0.015', 'dhenkanal:TULASIPASI': '0.007', 'kendujhar:BHANRADI SAHI': '0.000', 'koraput:KHASUGUDA': '0.001', 'koraput:BARAKANTI': '0.000'}; plain elsewhere
+  NOTE: the rotation null of this partition (alphaearth / stands_dissolved) is NOT ESTIMABLE because of the AOI part(s) named above, so every statistic built on it (null median, p5, p95, excess, percentile, null structure, 6.3 null) is NOT ESTIMABLE below (n_null 0). Observed values are printed and recorded as usual. No part was dropped from the null and the acceptance rule is unchanged.
+    In the summary CSV, not_estimable=True is set on the rows of this partition that CARRY a value taken from the null (n_null, null median/p5/p95, excess, percentile). Rows of this partition holding only observed quantities (the dissolved-layer ARI and site-only R2, the within-site shuffle p-values, the null-failure records) are estimable and are NOT flagged.
+  6.1 alphaearth / stands_dissolved vs ROTATION null (observed = vector join, restricted R2)
+    variable          R2 all     (k, n)  R2 restr    (k, n)  null med     p5    p95  excess  pctile n_null
+    loreys_h_m         0.731   (51,253)     0.698  (40,242)       n/a    n/a    n/a     n/a NOT EST      0
+    loreys_h_tree_m    0.743   (49,241)     0.709  (39,231)       n/a    n/a    n/a     n/a NOT EST      0
+    crown_cover_pct    0.677   (51,253)     0.669  (40,242)       n/a    n/a    n/a     n/a NOT EST      0
+    sal_ba_frac        0.788   (51,253)     0.778  (40,242)       n/a    n/a    n/a     n/a NOT EST      0
+    n_species          0.567   (51,253)     0.539  (40,242)       n/a    n/a    n/a     n/a NOT EST      0
+    dbh_mean_cm        0.544   (49,241)     0.531  (39,231)       n/a    n/a    n/a     n/a NOT EST      0
+    h_top5_m           0.697   (51,253)     0.680  (40,242)       n/a    n/a    n/a     n/a NOT EST      0
+
+  SENSITIVITY (not pre-registered): 6.1 null structure — does the rotation null have the observed partition's shape?
+    (restricted set: multi-plot stands over plots with loreys_h_m)
+    quantity                        observed  null med      p5     p95  pctile
+    k (multi-plot stands)             40.000       n/a     n/a     n/a  NOT ESTIMABLE (n_null 0 < 100)
+    n (plots in them)                242.000       n/a     n/a     n/a  NOT ESTIMABLE (n_null 0 < 100)
+    E = (k-1)/(n-1)                    0.162       n/a     n/a     n/a  NOT ESTIMABLE (n_null 0 < 100)
+    largest multi-plot group          25.000       n/a     n/a     n/a  NOT ESTIMABLE (n_null 0 < 100)
+    same-stand within-part pairs    1014.000       n/a     n/a     n/a  NOT ESTIMABLE (n_null 0 < 100)
+    E-slope bias estimate, slope(null R2 on null E) x (E_obs - E_null median), in R2 units; negative means the null's different E alone
+    pushes the observed value below the null median by about that much, i.e. the percentile is biased low: loreys_h_m n/a (n 0); loreys_h_tree_m n/a (n 0); crown_cover_pct n/a (n 0); sal_ba_frac n/a (n 0); n_species n/a (n 0); dbh_mean_cm n/a (n 0); h_top5_m n/a (n 0)
+
+  SENSITIVITY (not pre-registered): dissolved layer vs AOI parts — is it the site partition?
+    units holding plots, per AOI part: {'angul:KANSAB': 2, 'angul:GHANAJODI': 5, 'angul:JOGI BANDHA': 2, 'angul:ANANDA PUR': 2, 'dhenkanal:TULASIPASI': 4, 'dhenkanal:KANKANA': 2, 'dhenkanal:Balikurma': 1, 'dhenkanal:Kampulei': 1, 'dhenkanal:Adhapalli': 2, 'dhenkanal:Mahabirod': 3, 'dhenkanal:Kerijoli': 1, 'dhenkanal:Pangatira': 1, 'kendujhar:BHANRADI SAHI': 2, 'koraput:HANDAPUR': 3, 'koraput:HATIMUNDA': 9, 'koraput:BARIGUDA': 3, 'koraput:KONDASRIMUNDA': 1, 'koraput:KHASUGUDA': 2, 'koraput:SAKIAGUDA': 1, 'koraput:BARAKANTI': 4}
+    ARI(unit id, AOI part) over 253 assigned plots: 0.528
+    restricted R2 of the site-only partition (AOI part as the group): loreys_h_m 0.507; loreys_h_tree_m 0.527; crown_cover_pct 0.566; sal_ba_frac 0.690; n_species 0.417; dbh_mean_cm 0.386; h_top5_m 0.490
+
+  6.2 pairwise boundary test (pairs within an AOI part)
+    Bray-Curtis, all pairs:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100        111     10     0.676     0.770   0.094   NOT ESTIMABLE (n_null 0 < 100)   0.117
+      100-200      210     57     0.682     0.689   0.007   NOT ESTIMABLE (n_null 0 < 100)   0.434
+      200-400      292    212     0.686     0.738   0.052   NOT ESTIMABLE (n_null 0 < 100)   0.005
+      400-800      296    492     0.745     0.785   0.041   NOT ESTIMABLE (n_null 0 < 100)   0.003
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=1680, same=909): beta_same -0.0335, beta per 100 m 0.0166; rotation null median   n/a; stand-effect percentile NOT ESTIMABLE (n_null 0 < 100) (high = more similar than null); naive perm p 0.001 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.387; 100-200 0.583; 200-400 0.146; 400-800 0.446; beta_same 0.418
+    Bray-Curtis, both > 30 m from boundary:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         69      1     0.640     0.999   0.358             uninformative (n<=3)   0.054
+      100-200      108     10     0.643     0.625  -0.017   NOT ESTIMABLE (n_null 0 < 100)   0.588
+      200-400      167     61     0.639     0.707   0.068   NOT ESTIMABLE (n_null 0 < 100)   0.032
+      400-800      186    163     0.725     0.780   0.054   NOT ESTIMABLE (n_null 0 < 100)   0.006
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=765, same=530): beta_same -0.0451, beta per 100 m 0.0204; rotation null median   n/a; stand-effect percentile NOT ESTIMABLE (n_null 0 < 100) (high = more similar than null); naive perm p 0.005 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.251 (uninformative n<=3); 100-200 0.437; 200-400 0.356; 400-800 0.574; beta_same 0.609
+    |dLorey| m, all pairs:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100        111     10     3.556     1.523  -2.033   NOT ESTIMABLE (n_null 0 < 100)   0.977
+      100-200      210     57     3.416     3.701   0.286   NOT ESTIMABLE (n_null 0 < 100)   0.316
+      200-400      292    212     3.389     4.011   0.621   NOT ESTIMABLE (n_null 0 < 100)   0.068
+      400-800      296    492     3.974     4.519   0.545   NOT ESTIMABLE (n_null 0 < 100)   0.061
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=1680, same=909): beta_same -0.4300, beta per 100 m 0.1413; rotation null median   n/a; stand-effect percentile NOT ESTIMABLE (n_null 0 < 100) (high = more similar than null); naive perm p 0.037 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.890; 100-200 0.394; 200-400 0.460; 400-800 0.697; beta_same 0.698
+    |dLorey| m, both > 30 m from boundary:
+      band m    n same n diff mean same mean diff    diff                       rot pctile   naive perm p (INVALID: pools sites, pairs dependent)
+      0-100         69      1     4.025     0.855  -3.171             uninformative (n<=3)   0.733
+      100-200      108     10     3.743     2.184  -1.560   NOT ESTIMABLE (n_null 0 < 100)   0.884
+      200-400      167     61     3.653     5.583   1.929   NOT ESTIMABLE (n_null 0 < 100)   0.012
+      400-800      186    163     4.191     6.277   2.087   NOT ESTIMABLE (n_null 0 < 100)   0.000
+      regression d_field ~ d_geo + same_stand (pairs < 800 m, n=765, same=530): beta_same -1.7067, beta per 100 m 0.1448; rotation null median   n/a; stand-effect percentile NOT ESTIMABLE (n_null 0 < 100) (high = more similar than null); naive perm p 0.000 (INVALID)
+  SENSITIVITY (not pre-registered): within-site shuffle p (9999 shuffles of same_stand among pairs in the same AOI part and band; upper tail for diff, lower for beta; 'degenerate' = no AOI part x band group holds both pair types, so no shuffle can change a label and there is no test):
+      0-100 0.758 (uninformative n<=3); 100-200 0.594; 200-400 0.696; 400-800 0.172; beta_same 0.321
+
+====================================================================================================
+ARMS (pre-registered): difference in excess over own rotation null, stands_merged
+====================================================================================================
+  excess = observed restricted R2 - own null median. Null of the difference: each arm's null centred on its own
+  median, differenced index-wise between the arms' independent draws. Prediction: the observed difference
+  falls inside that null's p5-p95.
+  v120 - current:
+    variable            excess v120   excess current  difference  null p5  null p95  pctile
+    loreys_h_m                0.018            0.015       0.004   -0.108     0.107  52.4 (n_null 1999)  inside
+    loreys_h_tree_m           0.029            0.013       0.016   -0.101     0.106  59.8 (n_null 1999)  inside
+    crown_cover_pct          -0.003            0.015      -0.017   -0.078     0.076  36.2 (n_null 1999)  inside
+    sal_ba_frac               0.013            0.028      -0.014   -0.077     0.077  38.0 (n_null 1999)  inside
+    n_species                -0.002            0.072      -0.074   -0.085     0.086  7.6 (n_null 1999)  inside
+    dbh_mean_cm               0.017            0.019      -0.002   -0.092     0.092  48.1 (n_null 1999)  inside
+    h_top5_m                 -0.072            0.019      -0.091   -0.092     0.092  5.5 (n_null 1999)  inside
+
+  SENSITIVITY (not pre-registered): literal reading of the prediction's wording, 'falls inside either arm's null spread': the difference against each arm's OWN null, centred on its median, p5-p95
+    variable          difference       v120 centred p5..p95               current centred p5..p95           verdict
+    loreys_h_m             0.004            [-0.079, 0.076]   inside              [-0.077, 0.069]   inside  inside both
+    loreys_h_tree_m        0.016            [-0.075, 0.078]   inside              [-0.075, 0.070]   inside  inside both
+    crown_cover_pct       -0.017            [-0.057, 0.053]   inside              [-0.050, 0.054]   inside  inside both
+    sal_ba_frac           -0.014            [-0.053, 0.054]   inside              [-0.055, 0.055]   inside  inside both
+    n_species             -0.074            [-0.061, 0.058]  OUTSIDE              [-0.063, 0.059]  OUTSIDE  inside neither
+    dbh_mean_cm           -0.002            [-0.060, 0.070]   inside              [-0.061, 0.069]   inside  inside both
+    h_top5_m              -0.091            [-0.063, 0.068]  OUTSIDE              [-0.062, 0.064]  OUTSIDE  inside neither
+  v120 - alphaearth:
+    variable            excess v120 excess alphaearth  difference  null p5  null p95  pctile
+    loreys_h_m                0.018            0.012       0.006   -0.104     0.117  54.2 (n_null 1999)  inside
+    loreys_h_tree_m           0.029            0.014       0.016   -0.106     0.114  58.6 (n_null 1999)  inside
+    crown_cover_pct          -0.003           -0.026       0.023   -0.082     0.074  69.5 (n_null 1999)  inside
+    sal_ba_frac               0.013            0.036      -0.022   -0.074     0.083  31.4 (n_null 1999)  inside
+    n_species                -0.002            0.005      -0.007   -0.083     0.088  44.6 (n_null 1999)  inside
+    dbh_mean_cm               0.017            0.003       0.014   -0.092     0.095  60.1 (n_null 1999)  inside
+    h_top5_m                 -0.072            0.027      -0.098   -0.090     0.093  4.0 (n_null 1999)  OUTSIDE
+
+  SENSITIVITY (not pre-registered): literal reading of the prediction's wording, 'falls inside either arm's null spread': the difference against each arm's OWN null, centred on its median, p5-p95
+    variable          difference       v120 centred p5..p95            alphaearth centred p5..p95           verdict
+    loreys_h_m             0.006            [-0.079, 0.076]   inside              [-0.088, 0.071]   inside  inside both
+    loreys_h_tree_m        0.016            [-0.075, 0.078]   inside              [-0.084, 0.071]   inside  inside both
+    crown_cover_pct        0.023            [-0.057, 0.053]   inside              [-0.054, 0.056]   inside  inside both
+    sal_ba_frac           -0.022            [-0.053, 0.054]   inside              [-0.062, 0.056]   inside  inside both
+    n_species             -0.007            [-0.061, 0.058]   inside              [-0.066, 0.062]   inside  inside both
+    dbh_mean_cm            0.014            [-0.060, 0.070]   inside              [-0.066, 0.074]   inside  inside both
+    h_top5_m              -0.098            [-0.063, 0.068]  OUTSIDE              [-0.066, 0.061]  OUTSIDE  inside neither
+
+  total runtime 4624 s

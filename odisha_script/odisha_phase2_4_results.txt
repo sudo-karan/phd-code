@@ -1,0 +1,13 @@
+====================================================================================================
+SIZE CHECK — noise SNIC vs observed SNIC superpixel sizes (pixels at 10 m; 100 px = 1 ha)
+====================================================================================================
+  SNIC params: size 10, compactness 0.5, connectivity 8, neighbourhood 128
+  observed v120              n   933 | px p10    15 p25    37 median    82 p75   136 p90   204 | <= 4 px  2.7% | >= 50 px 67.0%
+  observed current           n   932 | px p10    14 p25    39 median    82 p75   136 p90   196 | <= 4 px  2.9% | >= 50 px 68.6%
+  observed alphaearth        n   929 | px p10    48 p25    68 median    94 p75   122 p90   151 | <= 4 px  0.0% | >= 50 px 89.3%
+  noise seed 0               n  1026 | px p10     1 p25     1 median     4 p75    54 p90   311 | <= 4 px 52.1% | >= 50 px 25.3% | small touching ROI edge 51/535
+  noise seed 1               n  1033 | px p10     1 p25     1 median     4 p75    44 p90   333 | <= 4 px 51.5% | >= 50 px 23.8% | small touching ROI edge 45/532
+  noise seed 2               n  1034 | px p10     1 p25     1 median     4 p75    42 p90   317 | <= 4 px 53.1% | >= 50 px 23.9% | small touching ROI edge 60/549
+
+  Read: a size-matched null needs the noise rows to resemble the observed rows. If they do not,
+  the null is not size-matched and excess over it is not interpretable (PHASE2_PREDICTIONS.md).

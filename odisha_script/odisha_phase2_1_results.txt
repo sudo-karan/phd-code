@@ -1,0 +1,60 @@
+
+==========================================================================================
+SETUP
+==========================================================================================
+  config          : configs/odisha_v120_handcrafted.yaml (masking block identical in all 3 Phase 2 configs)
+  masking         : IndiaSAT [6, 12] years 2017-2021, WorldCover fallback [10, 20, 30]
+  plots           : 274; meta_chm == 0 at 122
+  ROI             : union of 100 m discs around every plot; sampled at 10 m
+
+==========================================================================================
+RETENTION
+==========================================================================================
+  OVERALL: 257 of 274 plots on a habitat pixel = 93.8%   (floor 80%)
+  ROI check: pilot plots agree between plot-disc ROI and pilot AOI ROI at 60 of 60
+
+  district                    n  kept  retention
+  ANGUL                      40    38     95.0%
+  DHENKANAL                  76    73     96.1%
+  KENDUJHAR                  12     8     66.7%
+  KORAPUT                   146   138     94.5%
+
+  crown_cover_pct quartiles (band midpoints; ties make bins uneven):
+  crown_cover_pct             n  kept  retention
+  (-0.001, 23.0]             86    77     89.5%
+  (23.0, 38.0]               66    65     98.5%
+  (38.0, 58.0]               70    67     95.7%
+  (58.0, 98.0]               52    48     92.3%
+
+  Meta zero census            n  kept  retention
+  meta_chm == 0             122   106     86.9%
+  meta_chm > 0              152   151     99.3%
+
+  pilot AOI                   n  kept  retention
+  outside pilot             214   197     92.1%
+  pilot (6 sites)            60    60    100.0%
+
+  mask source                 n  kept  retention
+  IndiaSAT decides          274   257     93.8%
+
+==========================================================================================
+WHY DROPPED PLOTS ARE DROPPED
+==========================================================================================
+  17 dropped plot(s)
+  majority IndiaSAT legend group across years at the dropped plots:
+    crop               15
+    built-up           2
+
+  dropped plots with ANY habitat pixel within 20 m: 12 of 17
+  dropped plots with >= 50% habitat within 20 m : 3 of 17
+
+  field description of dropped vs kept plots (medians):
+    crown_cover_pct  dropped   23.00   kept   38.00
+    loreys_h_m       dropped    5.28   kept    8.18
+    h_top5_m         dropped    3.78   kept    8.80
+    n_trees          dropped   12.00   kept   17.00
+
+==========================================================================================
+EXIT CONDITION
+==========================================================================================
+  PASS: overall retention 93.8% >= 80%. Proceed to step 2.
