@@ -1,0 +1,47 @@
+====================================================================================================
+PHASE 3 STEP 1 -- pairwise score, arm=v120 layer=merged set=districts
+====================================================================================================
+  plots with a stand: 267
+  stands holding them: 123   multi-plot stands: 58
+  field types: {0: 77, 1: 46, 2: 18, 3: 15, 4: 111}
+
+----------------------------------------------------------------------------------------------------
+A. DELINEATION -- do alike plots end up in the same stand?
+----------------------------------------------------------------------------------------------------
+  all pairs
+      pairs 35,511   field-alike 29.1%   grouped-together 1.0%
+                      same group   different
+      field alike            154      10,170
+      field differs          208      24,979
+      accuracy 0.708   precision 0.425   recall 0.015   F1 0.029
+      >>> ARI +0.0093   (0 = no better than chance, 1 = perfect)
+
+  restricted to plots in multi-plot stands  (202 plots in 58 stands)
+      pairs 20,301   field-alike 28.1%   grouped-together 1.8%
+                      same group   different
+      field alike            154       5,547
+      field differs          208      14,392
+      accuracy 0.717   precision 0.425   recall 0.027   F1 0.051
+      >>> ARI +0.0179   (0 = no better than chance, 1 = perfect)
+
+----------------------------------------------------------------------------------------------------
+B. LABELLING -- do alike plots get the same stand TYPE, even far apart?
+----------------------------------------------------------------------------------------------------
+  stand types present: [0, 1, 2, 3, 4, 5]
+
+  all pairs
+      pairs 35,245   field-alike 29.0%   grouped-together 18.6%
+                      same group   different
+      field alike          2,087       8,127
+      field differs        4,458      20,573
+      accuracy 0.643   precision 0.319   recall 0.204   F1 0.249
+      >>> ARI +0.0293   (0 = no better than chance, 1 = perfect)
+
+  pairs more than 2 km apart  (ARI is a whole-partition score, so it is not defined on a pair subset)
+      pairs 31,939   field-alike 27.6%   grouped-together 16.1%
+                      same group   different
+      field alike          1,414       7,410
+      field differs        3,717      19,398
+      accuracy 0.652   precision 0.276   recall 0.160   F1 0.203
+      >>> ARI n/a (see note)
+
