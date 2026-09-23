@@ -1,0 +1,1245 @@
+{
+ "config": "odisha_v120_handcrafted_kendujhar",
+ "fingerprint": "5bf920bc83",
+ "run_dir": "runs/odisha_v120_handcrafted_kendujhar_20260915_000527",
+ "cache_status": {
+  "masking": {
+   "habitat_mask": "hit",
+   "landcover_summary": "hit",
+   "water_mask": "hit"
+  },
+  "data_load": {
+   "s2_composite": "hit"
+  },
+  "features_optical": {
+   "optical_features": "hit"
+  },
+  "features_radar": {
+   "radar_features": "hit"
+  },
+  "features_structure": {
+   "structure_features": "hit"
+  },
+  "features_static": {
+   "static_features": "hit"
+  },
+  "segmentation": {
+   "snic_clusters": "hit",
+   "snic_means": "hit"
+  },
+  "clustering": {
+   "cluster_labels": "hit",
+   "feature_stack": "hit"
+  }
+ },
+ "pulled_polygon_counts": {
+  "stands_merged": 108,
+  "stands_snic": 362,
+  "stands_dissolved": 75
+ },
+ "export_vector_layers": {
+  "stands_merged": {
+   "n_features": 108,
+   "n_stands": 105,
+   "n_stands_split_into_pieces": 3
+  },
+  "stands_snic": {
+   "n_features": 362,
+   "n_stands": null,
+   "n_stands_split_into_pieces": null
+  },
+  "stands_dissolved": {
+   "n_features": 75,
+   "n_stands": null,
+   "n_stands_split_into_pieces": null
+  }
+ },
+ "drive_exports": {
+  "raster_cluster_labels": {
+   "folder": "fmu_exports_odisha_phase2",
+   "filename": "odisha_v120_handcrafted_kendujhar_cluster_labels.tif",
+   "format": "GeoTIFF",
+   "task_id": "7UYFMHOLKEJZ4ACHV7DZ5YSX",
+   "submitted_at": "2026-09-14T18:36:27.578391+00:00",
+   "task_submitted": true
+  },
+  "raster_features_raw": {
+   "folder": "fmu_exports_odisha_phase2",
+   "filename": "odisha_v120_handcrafted_kendujhar_features_raw.tif",
+   "format": "GeoTIFF",
+   "task_id": "QYCRSMK2QXDPZQ6XNJLHDB2L",
+   "submitted_at": "2026-09-14T18:36:27.578391+00:00",
+   "task_submitted": true
+  },
+  "raster_features_scaled": {
+   "folder": "fmu_exports_odisha_phase2",
+   "filename": "odisha_v120_handcrafted_kendujhar_features_scaled.tif",
+   "format": "GeoTIFF",
+   "task_id": "WDVEVAAEU4ROXH44ZAXBWRA4",
+   "submitted_at": "2026-09-14T18:36:27.578391+00:00",
+   "task_submitted": true
+  },
+  "vector_stands_merged_shp": {
+   "folder": "fmu_exports_odisha_phase2",
+   "filename": "odisha_v120_handcrafted_kendujhar_stands_merged.zip",
+   "format": "SHP",
+   "task_id": "3BLVXDS3NTN4YH7VLBT3QKQT",
+   "submitted_at": "2026-09-14T18:36:27.578391+00:00",
+   "task_submitted": true
+  },
+  "vector_stands_merged_geojson": {
+   "folder": "fmu_exports_odisha_phase2",
+   "filename": "odisha_v120_handcrafted_kendujhar_stands_merged.geojson",
+   "format": "GEOJSON",
+   "task_id": "VBMWHSNDRO67SQVYXX3QKQRD",
+   "submitted_at": "2026-09-14T18:36:27.578391+00:00",
+   "task_submitted": true
+  },
+  "vector_stands_snic_shp": {
+   "folder": "fmu_exports_odisha_phase2",
+   "filename": "odisha_v120_handcrafted_kendujhar_stands_snic.zip",
+   "format": "SHP",
+   "task_id": "ZBN7M3MPYXCWTSXOFJNQGPBF",
+   "submitted_at": "2026-09-14T18:36:27.578391+00:00",
+   "task_submitted": true
+  },
+  "vector_stands_snic_geojson": {
+   "folder": "fmu_exports_odisha_phase2",
+   "filename": "odisha_v120_handcrafted_kendujhar_stands_snic.geojson",
+   "format": "GEOJSON",
+   "task_id": "Q46M37CKPHXUQU77MZNPJGV3",
+   "submitted_at": "2026-09-14T18:36:27.578391+00:00",
+   "task_submitted": true
+  },
+  "vector_stands_dissolved_shp": {
+   "folder": "fmu_exports_odisha_phase2",
+   "filename": "odisha_v120_handcrafted_kendujhar_stands_dissolved.zip",
+   "format": "SHP",
+   "task_id": "EJNF2GGR22FKLRUHN2X445H4",
+   "submitted_at": "2026-09-14T18:36:27.578391+00:00",
+   "task_submitted": true
+  },
+  "vector_stands_dissolved_geojson": {
+   "folder": "fmu_exports_odisha_phase2",
+   "filename": "odisha_v120_handcrafted_kendujhar_stands_dissolved.geojson",
+   "format": "GEOJSON",
+   "task_id": "EMPC4S3S5W7HRMEIGYORVRCP",
+   "submitted_at": "2026-09-14T18:36:27.578391+00:00",
+   "task_submitted": true
+  }
+ },
+ "snic_distance_scale": null,
+ "merge_diagnostics": {
+  "n_superpixels": 412,
+  "n_stands": 105,
+  "reduction_factor": 3.924,
+  "pass1_rounds": 6,
+  "pass1_merges": 202,
+  "pass1_pairs_blocked_by_area_round1": 0,
+  "pass1_pairs_blocked_by_undefined_criteria_round1": 0,
+  "pass2_iterations": 1,
+  "pass2_merges": 105,
+  "pass2_fallback_merges": 54,
+  "stands_below_min_area": 0,
+  "area_in_undersized_stands_ha": 0.0,
+  "orphans_isolated": 0,
+  "orphans_area_blocked": 0,
+  "orphans_no_attribute_match": 0,
+  "stands_with_incomplete_criteria": 0,
+  "adjacency": {
+   "n_regions": 412,
+   "n_edges": 1099,
+   "mean_degree": 5.335,
+   "n_isolated": 0
+  },
+  "threshold_calibration": {
+   "n_pairs": 1099,
+   "per_band": {
+    "canopy_height": {
+     "threshold": 2.0,
+     "n_pairs_defined": 1099,
+     "percentile_of_threshold": 47.95,
+     "p25": 0.898601,
+     "p50": 2.102389,
+     "p75": 3.91066,
+     "p90": 5.892857
+    },
+    "canopy_height_std": {
+     "threshold": 0.45,
+     "n_pairs_defined": 1099,
+     "percentile_of_threshold": 62.69,
+     "p25": 0.102132,
+     "p50": 0.256446,
+     "p75": 0.866213,
+     "p90": 1.734966
+    },
+    "ndvi_amplitude_annual": {
+     "threshold": 0.03,
+     "n_pairs_defined": 1099,
+     "percentile_of_threshold": 56.78,
+     "p25": 0.010993,
+     "p50": 0.025691,
+     "p75": 0.045236,
+     "p90": 0.072358
+    }
+   },
+   "joint_admit_rate_pct": 25.48,
+   "n_pairs_with_any_defined_criterion": 1099
+  },
+  "warnings": [
+   "54 of 105 pass-2 merges used the shared-edge fallback, i.e. no relaxed criterion could justify them. These are the merges to look at first if stand geometry looks wrong."
+  ]
+ },
+ "stand_attributes": {
+  "0": {
+   "n_pixels": 120,
+   "area_ha": 1.2,
+   "frac_valid_canopy_height": 1.108333,
+   "canopy_height": 4.540445330674642,
+   "frac_valid_canopy_height_std": 1.108333,
+   "canopy_height_std": 1.8408691153673389,
+   "frac_valid_ndvi_amplitude_annual": 1.083333,
+   "ndvi_amplitude_annual": 0.19926461427585038
+  },
+  "1": {
+   "n_pixels": 239,
+   "area_ha": 2.39,
+   "frac_valid_canopy_height": 1.012552,
+   "canopy_height": 8.070359156561366,
+   "frac_valid_canopy_height_std": 1.012552,
+   "canopy_height_std": 3.0561083260617403,
+   "frac_valid_ndvi_amplitude_annual": 1.004184,
+   "ndvi_amplitude_annual": 0.1833941160324035
+  },
+  "2": {
+   "n_pixels": 100,
+   "area_ha": 1.0,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 11.85,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 1.6651060120142378,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.216351047673664
+  },
+  "3": {
+   "n_pixels": 422,
+   "area_ha": 4.22,
+   "frac_valid_canopy_height": 1.014218,
+   "canopy_height": 15.96734301385613,
+   "frac_valid_canopy_height_std": 1.014218,
+   "canopy_height_std": 0.5886755200615585,
+   "frac_valid_ndvi_amplitude_annual": 1.009479,
+   "ndvi_amplitude_annual": 0.14521661089014395
+  },
+  "4": {
+   "n_pixels": 986,
+   "area_ha": 9.86,
+   "frac_valid_canopy_height": 1.025355,
+   "canopy_height": 15.451983497371273,
+   "frac_valid_canopy_height_std": 1.025355,
+   "canopy_height_std": 0.7371044779765329,
+   "frac_valid_ndvi_amplitude_annual": 1.020284,
+   "ndvi_amplitude_annual": 0.2154265969771242
+  },
+  "5": {
+   "n_pixels": 165,
+   "area_ha": 1.65,
+   "frac_valid_canopy_height": 1.054545,
+   "canopy_height": 19.49865169075414,
+   "frac_valid_canopy_height_std": 1.054545,
+   "canopy_height_std": 0.4126968038835662,
+   "frac_valid_ndvi_amplitude_annual": 1.054545,
+   "ndvi_amplitude_annual": 0.12038496198196803
+  },
+  "6": {
+   "n_pixels": 520,
+   "area_ha": 5.2,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 7.621153846153846,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 1.6138962057639328,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.2018193196056849
+  },
+  "7": {
+   "n_pixels": 106,
+   "area_ha": 1.06,
+   "frac_valid_canopy_height": 1.018868,
+   "canopy_height": 15.182813193314598,
+   "frac_valid_canopy_height_std": 1.018868,
+   "canopy_height_std": 1.3755206307547623,
+   "frac_valid_ndvi_amplitude_annual": 1.018868,
+   "ndvi_amplitude_annual": 0.10417201586003472
+  },
+  "8": {
+   "n_pixels": 657,
+   "area_ha": 6.57,
+   "frac_valid_canopy_height": 1.006088,
+   "canopy_height": 16.31485586945213,
+   "frac_valid_canopy_height_std": 1.006088,
+   "canopy_height_std": 0.9482535752621427,
+   "frac_valid_ndvi_amplitude_annual": 1.006088,
+   "ndvi_amplitude_annual": 0.17691761513261708
+  },
+  "9": {
+   "n_pixels": 258,
+   "area_ha": 2.58,
+   "frac_valid_canopy_height": 1.01938,
+   "canopy_height": 16.756070556473993,
+   "frac_valid_canopy_height_std": 1.01938,
+   "canopy_height_std": 0.47067651741070154,
+   "frac_valid_ndvi_amplitude_annual": 1.023256,
+   "ndvi_amplitude_annual": 0.19096242436429334
+  },
+  "10": {
+   "n_pixels": 759,
+   "area_ha": 7.59,
+   "frac_valid_canopy_height": 1.022398,
+   "canopy_height": 21.525530654055654,
+   "frac_valid_canopy_height_std": 1.022398,
+   "canopy_height_std": 0.5054057299515378,
+   "frac_valid_ndvi_amplitude_annual": 1.027668,
+   "ndvi_amplitude_annual": 0.13051073093424398
+  },
+  "11": {
+   "n_pixels": 119,
+   "area_ha": 1.19,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 18.084033613445378,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 0.40571188092952354,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.1491522007960013
+  },
+  "12": {
+   "n_pixels": 456,
+   "area_ha": 4.56,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 13.723684210526315,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 0.4080878809550941,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.2552630585931557
+  },
+  "13": {
+   "n_pixels": 180,
+   "area_ha": 1.8,
+   "frac_valid_canopy_height": 1.022222,
+   "canopy_height": 18.34296782048473,
+   "frac_valid_canopy_height_std": 1.022222,
+   "canopy_height_std": 0.9403969941596363,
+   "frac_valid_ndvi_amplitude_annual": 1.022222,
+   "ndvi_amplitude_annual": 0.22969024527602305
+  },
+  "14": {
+   "n_pixels": 149,
+   "area_ha": 1.49,
+   "frac_valid_canopy_height": 1.013423,
+   "canopy_height": 22.632112091885567,
+   "frac_valid_canopy_height_std": 1.013423,
+   "canopy_height_std": 0.6114084590137597,
+   "frac_valid_ndvi_amplitude_annual": 1.013423,
+   "ndvi_amplitude_annual": 0.13338865607562136
+  },
+  "15": {
+   "n_pixels": 415,
+   "area_ha": 4.15,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 13.756626506024096,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 0.9181962189579568,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.19715570819575223
+  },
+  "16": {
+   "n_pixels": 137,
+   "area_ha": 1.37,
+   "frac_valid_canopy_height": 1.058394,
+   "canopy_height": 23.771471269083126,
+   "frac_valid_canopy_height_std": 1.058394,
+   "canopy_height_std": 0.6703492752022774,
+   "frac_valid_ndvi_amplitude_annual": 1.080292,
+   "ndvi_amplitude_annual": 0.17734733001184788
+  },
+  "17": {
+   "n_pixels": 106,
+   "area_ha": 1.06,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 15.622641509433961,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 1.2719250693740372,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.1830474581033276
+  },
+  "18": {
+   "n_pixels": 174,
+   "area_ha": 1.74,
+   "frac_valid_canopy_height": 1.051724,
+   "canopy_height": 18.902610820962487,
+   "frac_valid_canopy_height_std": 1.051724,
+   "canopy_height_std": 0.9398076096497139,
+   "frac_valid_ndvi_amplitude_annual": 1.028736,
+   "ndvi_amplitude_annual": 0.21021124103061795
+  },
+  "19": {
+   "n_pixels": 255,
+   "area_ha": 2.55,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 16.984313725490196,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 1.6954699388646537,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.15597032506055122
+  },
+  "20": {
+   "n_pixels": 134,
+   "area_ha": 1.34,
+   "frac_valid_canopy_height": 1.044776,
+   "canopy_height": 13.37362800539185,
+   "frac_valid_canopy_height_std": 1.044776,
+   "canopy_height_std": 1.5555297436557034,
+   "frac_valid_ndvi_amplitude_annual": 1.014925,
+   "ndvi_amplitude_annual": 0.23109531640606243
+  },
+  "21": {
+   "n_pixels": 221,
+   "area_ha": 2.21,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 16.32126696832579,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 0.4353931624481756,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.24182099824746411
+  },
+  "22": {
+   "n_pixels": 139,
+   "area_ha": 1.39,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 11.381294964028777,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 2.8024026109384974,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.19823074998236684
+  },
+  "23": {
+   "n_pixels": 164,
+   "area_ha": 1.64,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 18.628048780487806,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 0.6109021074864479,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.11316428094202813
+  },
+  "24": {
+   "n_pixels": 525,
+   "area_ha": 5.25,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 15.417142857142856,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 0.4659651205608552,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.2269427563367549
+  },
+  "25": {
+   "n_pixels": 660,
+   "area_ha": 6.6,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 18.418181818181818,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 0.7751222306753837,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.14556980297757813
+  },
+  "26": {
+   "n_pixels": 991,
+   "area_ha": 9.91,
+   "frac_valid_canopy_height": 1.013118,
+   "canopy_height": 10.687562357052604,
+   "frac_valid_canopy_height_std": 1.013118,
+   "canopy_height_std": 0.6423764857463964,
+   "frac_valid_ndvi_amplitude_annual": 1.013118,
+   "ndvi_amplitude_annual": 0.24696026319181735
+  },
+  "27": {
+   "n_pixels": 684,
+   "area_ha": 6.84,
+   "frac_valid_canopy_height": 1.074561,
+   "canopy_height": 15.23943341785208,
+   "frac_valid_canopy_height_std": 1.074561,
+   "canopy_height_std": 0.4934411496289914,
+   "frac_valid_ndvi_amplitude_annual": 1.083333,
+   "ndvi_amplitude_annual": 0.22926651612011056
+  },
+  "28": {
+   "n_pixels": 155,
+   "area_ha": 1.55,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 6.690322580645161,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 2.6306877238561097,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.08174708656621375
+  },
+  "29": {
+   "n_pixels": 891,
+   "area_ha": 8.91,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 13.386083052749719,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 0.46208685212130074,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.2584188288339799
+  },
+  "30": {
+   "n_pixels": 193,
+   "area_ha": 1.93,
+   "frac_valid_canopy_height": 1.056995,
+   "canopy_height": 13.166476151782348,
+   "frac_valid_canopy_height_std": 1.056995,
+   "canopy_height_std": 0.4806552543219354,
+   "frac_valid_ndvi_amplitude_annual": 1.056995,
+   "ndvi_amplitude_annual": 0.22573058510007726
+  },
+  "31": {
+   "n_pixels": 686,
+   "area_ha": 6.86,
+   "frac_valid_canopy_height": 1.014577,
+   "canopy_height": 18.72240102898437,
+   "frac_valid_canopy_height_std": 1.014577,
+   "canopy_height_std": 0.9965617518133851,
+   "frac_valid_ndvi_amplitude_annual": 1.014577,
+   "ndvi_amplitude_annual": 0.1402935216588125
+  },
+  "32": {
+   "n_pixels": 111,
+   "area_ha": 1.11,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 24.495495495495497,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 0.35600410827831075,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.10217971000116213
+  },
+  "33": {
+   "n_pixels": 835,
+   "area_ha": 8.35,
+   "frac_valid_canopy_height": 1.010778,
+   "canopy_height": 22.22529971869679,
+   "frac_valid_canopy_height_std": 1.010778,
+   "canopy_height_std": 0.6120378797672681,
+   "frac_valid_ndvi_amplitude_annual": 1.014371,
+   "ndvi_amplitude_annual": 0.12393201435457438
+  },
+  "34": {
+   "n_pixels": 255,
+   "area_ha": 2.55,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 14.494117647058824,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 1.5434768977698827,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.13575651051088342
+  },
+  "35": {
+   "n_pixels": 343,
+   "area_ha": 3.43,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 15.61807580174927,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 1.1275718299018833,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.12159820982224216
+  },
+  "36": {
+   "n_pixels": 449,
+   "area_ha": 4.49,
+   "frac_valid_canopy_height": 1.002227,
+   "canopy_height": 16.391565598393534,
+   "frac_valid_canopy_height_std": 1.002227,
+   "canopy_height_std": 0.7258695295179581,
+   "frac_valid_ndvi_amplitude_annual": 1.026726,
+   "ndvi_amplitude_annual": 0.1737994948245784
+  },
+  "37": {
+   "n_pixels": 123,
+   "area_ha": 1.23,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 9.926829268292684,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 2.7815216853635203,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.2315897316711352
+  },
+  "38": {
+   "n_pixels": 731,
+   "area_ha": 7.31,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 16.028727770177838,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 0.8298713867559333,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.17662370431225796
+  },
+  "39": {
+   "n_pixels": 363,
+   "area_ha": 3.63,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 10.28099173553719,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 2.1232664825081202,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.1905492784973752
+  },
+  "40": {
+   "n_pixels": 134,
+   "area_ha": 1.34,
+   "frac_valid_canopy_height": 1.029851,
+   "canopy_height": 12.245287981064259,
+   "frac_valid_canopy_height_std": 1.029851,
+   "canopy_height_std": 1.8504756162178742,
+   "frac_valid_ndvi_amplitude_annual": 1.029851,
+   "ndvi_amplitude_annual": 0.1999815078169955
+  },
+  "41": {
+   "n_pixels": 204,
+   "area_ha": 2.04,
+   "frac_valid_canopy_height": 1.004902,
+   "canopy_height": 9.247731498011598,
+   "frac_valid_canopy_height_std": 1.004902,
+   "canopy_height_std": 1.9933186438806887,
+   "frac_valid_ndvi_amplitude_annual": 1.004902,
+   "ndvi_amplitude_annual": 0.22677112680269318
+  },
+  "42": {
+   "n_pixels": 534,
+   "area_ha": 5.34,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 13.395131086142323,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 0.4325049387371173,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.26540807149053697
+  },
+  "43": {
+   "n_pixels": 215,
+   "area_ha": 2.15,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 13.669767441860465,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 2.3162297400141343,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.1820131413401519
+  },
+  "44": {
+   "n_pixels": 185,
+   "area_ha": 1.85,
+   "frac_valid_canopy_height": 1.054054,
+   "canopy_height": 11.9555331335134,
+   "frac_valid_canopy_height_std": 1.054054,
+   "canopy_height_std": 2.0707473678607715,
+   "frac_valid_ndvi_amplitude_annual": 1.059459,
+   "ndvi_amplitude_annual": 0.175373387906448
+  },
+  "45": {
+   "n_pixels": 225,
+   "area_ha": 2.25,
+   "frac_valid_canopy_height": 1.048889,
+   "canopy_height": 3.2337733062970315,
+   "frac_valid_canopy_height_std": 1.048889,
+   "canopy_height_std": 1.767367019832085,
+   "frac_valid_ndvi_amplitude_annual": 1.035556,
+   "ndvi_amplitude_annual": 0.2611893766339391
+  },
+  "46": {
+   "n_pixels": 990,
+   "area_ha": 9.9,
+   "frac_valid_canopy_height": 1.022222,
+   "canopy_height": 14.111120304601593,
+   "frac_valid_canopy_height_std": 1.022222,
+   "canopy_height_std": 0.5749355632806796,
+   "frac_valid_ndvi_amplitude_annual": 1.019192,
+   "ndvi_amplitude_annual": 0.23342001012739336
+  },
+  "47": {
+   "n_pixels": 950,
+   "area_ha": 9.5,
+   "frac_valid_canopy_height": 1.025263,
+   "canopy_height": 15.738750574818594,
+   "frac_valid_canopy_height_std": 1.025263,
+   "canopy_height_std": 0.669984122172043,
+   "frac_valid_ndvi_amplitude_annual": 1.016842,
+   "ndvi_amplitude_annual": 0.22508383580167787
+  },
+  "48": {
+   "n_pixels": 196,
+   "area_ha": 1.96,
+   "frac_valid_canopy_height": 1.010204,
+   "canopy_height": 15.804626603225017,
+   "frac_valid_canopy_height_std": 1.010204,
+   "canopy_height_std": 0.3870415663396912,
+   "frac_valid_ndvi_amplitude_annual": 1.020408,
+   "ndvi_amplitude_annual": 0.2481902698749706
+  },
+  "49": {
+   "n_pixels": 690,
+   "area_ha": 6.9,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 12.513043478260869,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 0.8609573360157049,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.22099770707540725
+  },
+  "50": {
+   "n_pixels": 176,
+   "area_ha": 1.76,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 8.227272727272727,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 2.2581997980881257,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.20297353043195104
+  },
+  "51": {
+   "n_pixels": 377,
+   "area_ha": 3.77,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 12.73474801061008,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 0.7643284883106326,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.19055216238118503
+  },
+  "52": {
+   "n_pixels": 480,
+   "area_ha": 4.8,
+   "frac_valid_canopy_height": 1.025,
+   "canopy_height": 16.164518571547504,
+   "frac_valid_canopy_height_std": 1.025,
+   "canopy_height_std": 0.705132418188287,
+   "frac_valid_ndvi_amplitude_annual": 1.027083,
+   "ndvi_amplitude_annual": 0.1389538257180554
+  },
+  "53": {
+   "n_pixels": 115,
+   "area_ha": 1.15,
+   "frac_valid_canopy_height": 1.017391,
+   "canopy_height": 18.43323320589842,
+   "frac_valid_canopy_height_std": 1.017391,
+   "canopy_height_std": 0.5272835486109008,
+   "frac_valid_ndvi_amplitude_annual": 1.017391,
+   "ndvi_amplitude_annual": 0.2335398522518459
+  },
+  "54": {
+   "n_pixels": 237,
+   "area_ha": 2.37,
+   "frac_valid_canopy_height": 1.021097,
+   "canopy_height": 18.41301769106382,
+   "frac_valid_canopy_height_std": 1.021097,
+   "canopy_height_std": 1.1178276119124033,
+   "frac_valid_ndvi_amplitude_annual": 1.025316,
+   "ndvi_amplitude_annual": 0.21947311600173805
+  },
+  "55": {
+   "n_pixels": 310,
+   "area_ha": 3.1,
+   "frac_valid_canopy_height": 1.032258,
+   "canopy_height": 23.083197036206737,
+   "frac_valid_canopy_height_std": 1.032258,
+   "canopy_height_std": 0.5357372899726993,
+   "frac_valid_ndvi_amplitude_annual": 1.045161,
+   "ndvi_amplitude_annual": 0.10828082165400746
+  },
+  "56": {
+   "n_pixels": 449,
+   "area_ha": 4.49,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 5.692650334075724,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 2.477159306443808,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.21835317049626154
+  },
+  "57": {
+   "n_pixels": 908,
+   "area_ha": 9.08,
+   "frac_valid_canopy_height": 1.019824,
+   "canopy_height": 18.739948960507736,
+   "frac_valid_canopy_height_std": 1.019824,
+   "canopy_height_std": 0.48096851708089267,
+   "frac_valid_ndvi_amplitude_annual": 1.011013,
+   "ndvi_amplitude_annual": 0.1092484577242422
+  },
+  "58": {
+   "n_pixels": 669,
+   "area_ha": 6.69,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 14.035874439461884,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 0.5056441037242237,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.24109736788513542
+  },
+  "59": {
+   "n_pixels": 109,
+   "area_ha": 1.09,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 20.422018348623855,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 0.6472282660516676,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.10095061959982411
+  },
+  "60": {
+   "n_pixels": 975,
+   "area_ha": 9.75,
+   "frac_valid_canopy_height": 1.02359,
+   "canopy_height": 13.450499345899674,
+   "frac_valid_canopy_height_std": 1.02359,
+   "canopy_height_std": 0.7347345873526837,
+   "frac_valid_ndvi_amplitude_annual": 1.024615,
+   "ndvi_amplitude_annual": 0.25567931361150315
+  },
+  "61": {
+   "n_pixels": 443,
+   "area_ha": 4.43,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 11.060948081264108,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 1.0430719921281724,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.24948241094139872
+  },
+  "62": {
+   "n_pixels": 243,
+   "area_ha": 2.43,
+   "frac_valid_canopy_height": 1.028807,
+   "canopy_height": 10.340877185186521,
+   "frac_valid_canopy_height_std": 1.028807,
+   "canopy_height_std": 1.8505330181366002,
+   "frac_valid_ndvi_amplitude_annual": 1.045267,
+   "ndvi_amplitude_annual": 0.1529652950300865
+  },
+  "63": {
+   "n_pixels": 397,
+   "area_ha": 3.97,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 14.042821158690176,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 1.0160188939595753,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.16389884594970608
+  },
+  "64": {
+   "n_pixels": 120,
+   "area_ha": 1.2,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 8.441666666666666,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 2.5889987534301984,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.23830338786745314
+  },
+  "65": {
+   "n_pixels": 960,
+   "area_ha": 9.6,
+   "frac_valid_canopy_height": 1.00625,
+   "canopy_height": 16.22159523178117,
+   "frac_valid_canopy_height_std": 1.00625,
+   "canopy_height_std": 0.5962799391014098,
+   "frac_valid_ndvi_amplitude_annual": 1.010417,
+   "ndvi_amplitude_annual": 0.18218649103751777
+  },
+  "66": {
+   "n_pixels": 113,
+   "area_ha": 1.13,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 10.451327433628318,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 1.5889000066640018,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.20136028330973105
+  },
+  "67": {
+   "n_pixels": 507,
+   "area_ha": 5.07,
+   "frac_valid_canopy_height": 1.025641,
+   "canopy_height": 10.75851887798517,
+   "frac_valid_canopy_height_std": 1.025641,
+   "canopy_height_std": 0.6873756402182534,
+   "frac_valid_ndvi_amplitude_annual": 1.023669,
+   "ndvi_amplitude_annual": 0.17928735162777776
+  },
+  "68": {
+   "n_pixels": 129,
+   "area_ha": 1.29,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 11.488372093023257,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 1.6973656567500306,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.19031586307686674
+  },
+  "69": {
+   "n_pixels": 291,
+   "area_ha": 2.91,
+   "frac_valid_canopy_height": 1.068729,
+   "canopy_height": 9.302525417391298,
+   "frac_valid_canopy_height_std": 1.068729,
+   "canopy_height_std": 1.318537274123308,
+   "frac_valid_ndvi_amplitude_annual": 1.054983,
+   "ndvi_amplitude_annual": 0.15287454819178165
+  },
+  "70": {
+   "n_pixels": 113,
+   "area_ha": 1.13,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 9.646017699115044,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 0.7925001282582685,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.13188361390353992
+  },
+  "71": {
+   "n_pixels": 319,
+   "area_ha": 3.19,
+   "frac_valid_canopy_height": 1.009404,
+   "canopy_height": 5.498509794352367,
+   "frac_valid_canopy_height_std": 1.009404,
+   "canopy_height_std": 2.181921605877211,
+   "frac_valid_ndvi_amplitude_annual": 1.00627,
+   "ndvi_amplitude_annual": 0.1329922866971331
+  },
+  "72": {
+   "n_pixels": 427,
+   "area_ha": 4.27,
+   "frac_valid_canopy_height": 1.039813,
+   "canopy_height": 18.755034798919542,
+   "frac_valid_canopy_height_std": 1.039813,
+   "canopy_height_std": 0.46663273850860154,
+   "frac_valid_ndvi_amplitude_annual": 1.035129,
+   "ndvi_amplitude_annual": 0.146381309542797
+  },
+  "73": {
+   "n_pixels": 224,
+   "area_ha": 2.24,
+   "frac_valid_canopy_height": 1.044643,
+   "canopy_height": 10.591887854206162,
+   "frac_valid_canopy_height_std": 1.044643,
+   "canopy_height_std": 2.3134489629250714,
+   "frac_valid_ndvi_amplitude_annual": 1.044643,
+   "ndvi_amplitude_annual": 0.11830811677288515
+  },
+  "74": {
+   "n_pixels": 991,
+   "area_ha": 9.91,
+   "frac_valid_canopy_height": 1.008073,
+   "canopy_height": 17.320551434835306,
+   "frac_valid_canopy_height_std": 1.008073,
+   "canopy_height_std": 0.6211259977119151,
+   "frac_valid_ndvi_amplitude_annual": 1.007064,
+   "ndvi_amplitude_annual": 0.14975645255887812
+  },
+  "75": {
+   "n_pixels": 112,
+   "area_ha": 1.12,
+   "frac_valid_canopy_height": 1.071429,
+   "canopy_height": 20.96552213897667,
+   "frac_valid_canopy_height_std": 1.071429,
+   "canopy_height_std": 0.29328190352105843,
+   "frac_valid_ndvi_amplitude_annual": 1.089286,
+   "ndvi_amplitude_annual": 0.1429285556547872
+  },
+  "76": {
+   "n_pixels": 152,
+   "area_ha": 1.52,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 13.006578947368421,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 1.0844292569146032,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.1609913099636046
+  },
+  "77": {
+   "n_pixels": 581,
+   "area_ha": 5.81,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 13.820998278829604,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 0.6302871794742282,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.23008856314479856
+  },
+  "78": {
+   "n_pixels": 121,
+   "area_ha": 1.21,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 9.851239669421487,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 1.685035941658561,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.10880764192961771
+  },
+  "79": {
+   "n_pixels": 153,
+   "area_ha": 1.53,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 6.483660130718954,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 2.661313791092576,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.15873421016512418
+  },
+  "80": {
+   "n_pixels": 194,
+   "area_ha": 1.94,
+   "frac_valid_canopy_height": 1.082474,
+   "canopy_height": 8.310112636015978,
+   "frac_valid_canopy_height_std": 1.082474,
+   "canopy_height_std": 1.5411637339000994,
+   "frac_valid_ndvi_amplitude_annual": 1.061856,
+   "ndvi_amplitude_annual": 0.12571719515749788
+  },
+  "81": {
+   "n_pixels": 270,
+   "area_ha": 2.7,
+   "frac_valid_canopy_height": 1.07037,
+   "canopy_height": 18.831888426077906,
+   "frac_valid_canopy_height_std": 1.07037,
+   "canopy_height_std": 0.43892344898824576,
+   "frac_valid_ndvi_amplitude_annual": 1.088889,
+   "ndvi_amplitude_annual": 0.10234031693099832
+  },
+  "82": {
+   "n_pixels": 950,
+   "area_ha": 9.5,
+   "frac_valid_canopy_height": 1.022105,
+   "canopy_height": 14.774536559162609,
+   "frac_valid_canopy_height_std": 1.022105,
+   "canopy_height_std": 0.46317255803112817,
+   "frac_valid_ndvi_amplitude_annual": 1.02,
+   "ndvi_amplitude_annual": 0.20459723237135768
+  },
+  "83": {
+   "n_pixels": 814,
+   "area_ha": 8.14,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 17.085995085995087,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 0.42538270889541563,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.1956296712488617
+  },
+  "84": {
+   "n_pixels": 359,
+   "area_ha": 3.59,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 14.289693593314762,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 0.6571970771239303,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.16103278170490967
+  },
+  "85": {
+   "n_pixels": 441,
+   "area_ha": 4.41,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 20.0,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 1.0611692546538432,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.12372301637544665
+  },
+  "86": {
+   "n_pixels": 299,
+   "area_ha": 2.99,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 5.063545150501672,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 2.1868086189712423,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.148382158996893
+  },
+  "87": {
+   "n_pixels": 290,
+   "area_ha": 2.9,
+   "frac_valid_canopy_height": 1.034483,
+   "canopy_height": 3.8386983189798047,
+   "frac_valid_canopy_height_std": 1.034483,
+   "canopy_height_std": 1.9404573689120468,
+   "frac_valid_ndvi_amplitude_annual": 1.041379,
+   "ndvi_amplitude_annual": 0.10416722759358868
+  },
+  "88": {
+   "n_pixels": 673,
+   "area_ha": 6.73,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 17.907875185735513,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 0.5276841594355334,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.1954421379770865
+  },
+  "89": {
+   "n_pixels": 153,
+   "area_ha": 1.53,
+   "frac_valid_canopy_height": 1.078431,
+   "canopy_height": 11.025404442995981,
+   "frac_valid_canopy_height_std": 1.078431,
+   "canopy_height_std": 1.148767966404131,
+   "frac_valid_ndvi_amplitude_annual": 1.084967,
+   "ndvi_amplitude_annual": 0.1201987541675704
+  },
+  "90": {
+   "n_pixels": 117,
+   "area_ha": 1.17,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 10.846153846153847,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 2.613670469620794,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.11849220421826054
+  },
+  "91": {
+   "n_pixels": 211,
+   "area_ha": 2.11,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 8.488151658767773,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 1.2722943557344628,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.1426480799092579
+  },
+  "92": {
+   "n_pixels": 264,
+   "area_ha": 2.64,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 17.484848484848484,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 0.6237797137847646,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.19722826553635686
+  },
+  "93": {
+   "n_pixels": 170,
+   "area_ha": 1.7,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 18.529411764705884,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 0.4578363616095447,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.1648795316554165
+  },
+  "94": {
+   "n_pixels": 968,
+   "area_ha": 9.68,
+   "frac_valid_canopy_height": 1.010331,
+   "canopy_height": 17.537982990979927,
+   "frac_valid_canopy_height_std": 1.010331,
+   "canopy_height_std": 0.45626047858282254,
+   "frac_valid_ndvi_amplitude_annual": 1.012397,
+   "ndvi_amplitude_annual": 0.17359213902158638
+  },
+  "95": {
+   "n_pixels": 204,
+   "area_ha": 2.04,
+   "frac_valid_canopy_height": 1.053922,
+   "canopy_height": 7.078428753810618,
+   "frac_valid_canopy_height_std": 1.053922,
+   "canopy_height_std": 2.5786096878513733,
+   "frac_valid_ndvi_amplitude_annual": 1.04902,
+   "ndvi_amplitude_annual": 0.0907807834916767
+  },
+  "96": {
+   "n_pixels": 145,
+   "area_ha": 1.45,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 16.30344827586207,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 0.5086863780517872,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.16694443847750448
+  },
+  "97": {
+   "n_pixels": 350,
+   "area_ha": 3.5,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 15.445714285714285,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 0.391040575364025,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.18719009758786792
+  },
+  "98": {
+   "n_pixels": 384,
+   "area_ha": 3.84,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 14.2578125,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 1.1055180327739829,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.12623148292109407
+  },
+  "99": {
+   "n_pixels": 902,
+   "area_ha": 9.02,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 12.63968957871397,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 0.9704814976428567,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.1818382256927615
+  },
+  "100": {
+   "n_pixels": 706,
+   "area_ha": 7.06,
+   "frac_valid_canopy_height": 1.045326,
+   "canopy_height": 16.942282659354564,
+   "frac_valid_canopy_height_std": 1.045326,
+   "canopy_height_std": 0.33136030093172225,
+   "frac_valid_ndvi_amplitude_annual": 1.048159,
+   "ndvi_amplitude_annual": 0.15897976289404459
+  },
+  "101": {
+   "n_pixels": 329,
+   "area_ha": 3.29,
+   "frac_valid_canopy_height": 1.054711,
+   "canopy_height": 3.7142988109586734,
+   "frac_valid_canopy_height_std": 1.054711,
+   "canopy_height_std": 1.5416119534154273,
+   "frac_valid_ndvi_amplitude_annual": 1.057751,
+   "ndvi_amplitude_annual": 0.07569291845251608
+  },
+  "102": {
+   "n_pixels": 189,
+   "area_ha": 1.89,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 7.037037037037037,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 2.393833892372019,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.1122625494790329
+  },
+  "103": {
+   "n_pixels": 355,
+   "area_ha": 3.55,
+   "frac_valid_canopy_height": 1.073239,
+   "canopy_height": 11.910286387799502,
+   "frac_valid_canopy_height_std": 1.073239,
+   "canopy_height_std": 1.5846518535068366,
+   "frac_valid_ndvi_amplitude_annual": 1.064789,
+   "ndvi_amplitude_annual": 0.15334084473731333
+  },
+  "104": {
+   "n_pixels": 178,
+   "area_ha": 1.78,
+   "frac_valid_canopy_height": 1.0,
+   "canopy_height": 16.51685393258427,
+   "frac_valid_canopy_height_std": 1.0,
+   "canopy_height_std": 0.9127738565106621,
+   "frac_valid_ndvi_amplitude_annual": 1.0,
+   "ndvi_amplitude_annual": 0.1358844317228204
+  }
+ }
+}

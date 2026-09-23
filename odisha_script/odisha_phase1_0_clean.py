@@ -17,6 +17,10 @@ What it does, and why:
   - Joins each plot to a site polygon BY GEOMETRY. Site names differ between the two files
     (e.g. the "Pangatira" polygon contains plots labelled "RAIJHARANA").
 
+The steps are functions so Phase 2 can import them (load_trees, site_polygons) instead of
+re-deriving the crown-cover repair or the LinearRing handling. Running the script does exactly
+what it always did.
+
 Run:  python odisha_phase1_0_clean.py
 Needs: pandas, numpy, shapely
 """
@@ -30,12 +34,8 @@ SITES   = "Odisha_sites.csv"
 OUT     = "odisha_plots_clean.csv"
 GPS_MAX_M = 20
 
-s = pd.read_csv(SAMPLES)
-n_trees_raw = len(s)
-
 # ------------------------------------------------------------------ crown cover repair
 CC_FIX = {"2023-11-15 00:00:00": "11-15", "2023-06-10 00:00:00": "6-10"}
-s["crown_cover_band"] = s["Crown Cover"].astype(str).replace(CC_FIX)
 
 def band_midpoint(v):
     if v == "0":   return 0.0
@@ -46,15 +46,23 @@ def band_midpoint(v):
     except Exception:
         return np.nan
 
-s["crown_cover_pct"] = s["crown_cover_band"].map(band_midpoint)
 
-# ------------------------------------------------------------------ numeric + GPS filter
-for c in ["Height", "DBH", "Gbh Girth", "Plot Lat", "Plot Long", "Plot Acc", "Plot Alt"]:
-    s[c] = pd.to_numeric(s[c], errors="coerce")
-s = s[s["Plot Acc"] <= GPS_MAX_M].copy()
+def load_trees(path=SAMPLES):
+    """Tree records after the crown-cover repair and GPS filter. Returns (records, n_raw)."""
+    s = pd.read_csv(path)
+    n_trees_raw = len(s)
 
-s["ba_cm2"]   = np.pi * (s["DBH"] / 2) ** 2
-s["plot_key"] = s["Plot Lat"].round(6).astype(str) + "_" + s["Plot Long"].round(6).astype(str)
+    s["crown_cover_band"] = s["Crown Cover"].astype(str).replace(CC_FIX)
+    s["crown_cover_pct"] = s["crown_cover_band"].map(band_midpoint)
+
+    # -------------------------------------------------------------- numeric + GPS filter
+    for c in ["Height", "DBH", "Gbh Girth", "Plot Lat", "Plot Long", "Plot Acc", "Plot Alt"]:
+        s[c] = pd.to_numeric(s[c], errors="coerce")
+    s = s[s["Plot Acc"] <= GPS_MAX_M].copy()
+
+    s["ba_cm2"]   = np.pi * (s["DBH"] / 2) ** 2
+    s["plot_key"] = s["Plot Lat"].round(6).astype(str) + "_" + s["Plot Long"].round(6).astype(str)
+    return s, n_trees_raw
 
 # ------------------------------------------------------------------ trees -> plots
 def loreys_height(g):
@@ -71,43 +79,56 @@ def dominance(g):
     vc = g["Scientific Name"].value_counts()
     return vc.iloc[0] / len(g)
 
-grp = s.groupby("plot_key")
-plots = grp.agg(
-    lat=("Plot Lat", "first"), lon=("Plot Long", "first"),
-    gps_acc_m=("Plot Acc", "first"), alt_m=("Plot Alt", "first"),
-    district=("Habdistrict", "first"), block=("Habblock", "first"),
-    habitation=("Habitation", "first"),
-    n_trees=("Height", "size"),
-    h_mean_m=("Height", "mean"), h_max_m=("Height", "max"),
-    dbh_mean_cm=("DBH", "mean"), basal_area_cm2=("ba_cm2", "sum"),
-    n_species=("Scientific Name", "nunique"),
-    crown_cover_pct=("crown_cover_pct", "median"),
-).reset_index()
 
-plots["loreys_h_m"]   = grp.apply(loreys_height, include_groups=False).values
-plots["h_top5_m"]     = grp.apply(top5_height,   include_groups=False).values
-plots["dominant_sp"]  = grp.apply(dominant,      include_groups=False).values
-plots["sp_dominance"] = grp.apply(dominance,     include_groups=False).values
+def site_polygons(path=SITES):
+    """{site name: shapely Polygon}. The `.geo` column holds a LinearRing, not a Polygon."""
+    sites = pd.read_csv(path)
+    return {r["Name"]: Polygon(json.loads(r[".geo"])["coordinates"]) for _, r in sites.iterrows()}
 
-# ------------------------------------------------------------------ site polygon join (geometry)
-sites = pd.read_csv(SITES)
-polys = {r["Name"]: Polygon(json.loads(r[".geo"])["coordinates"]) for _, r in sites.iterrows()}
-plots["site_polygon"] = None
-for name, poly in polys.items():
-    inside = [poly.contains(Point(r.lon, r.lat)) for r in plots.itertuples()]
-    plots.loc[inside, "site_polygon"] = name
 
-# ------------------------------------------------------------------ write
-cols = ["plot_key", "lat", "lon", "gps_acc_m", "alt_m", "district", "block", "habitation",
-        "site_polygon", "n_trees", "loreys_h_m", "h_top5_m", "h_mean_m", "h_max_m",
-        "dbh_mean_cm", "basal_area_cm2", "crown_cover_pct", "n_species",
-        "dominant_sp", "sp_dominance"]
-plots = plots[cols].round(4)
-plots.to_csv(OUT, index=False)
+def main():
+    s, n_trees_raw = load_trees()
 
-print(f"trees : {n_trees_raw} -> {len(s)} after GPS filter (<= {GPS_MAX_M} m)")
-print(f"plots : {len(plots)}   inside a site polygon: {plots.site_polygon.notna().sum()}")
-print(f"crown cover recovered on {s['crown_cover_pct'].notna().sum()}/{len(s)} tree rows")
-print("\nplots per district:")
-print(plots.district.value_counts().to_string())
-print(f"\nwrote {OUT}")
+    grp = s.groupby("plot_key")
+    plots = grp.agg(
+        lat=("Plot Lat", "first"), lon=("Plot Long", "first"),
+        gps_acc_m=("Plot Acc", "first"), alt_m=("Plot Alt", "first"),
+        district=("Habdistrict", "first"), block=("Habblock", "first"),
+        habitation=("Habitation", "first"),
+        n_trees=("Height", "size"),
+        h_mean_m=("Height", "mean"), h_max_m=("Height", "max"),
+        dbh_mean_cm=("DBH", "mean"), basal_area_cm2=("ba_cm2", "sum"),
+        n_species=("Scientific Name", "nunique"),
+        crown_cover_pct=("crown_cover_pct", "median"),
+    ).reset_index()
+
+    plots["loreys_h_m"]   = grp.apply(loreys_height, include_groups=False).values
+    plots["h_top5_m"]     = grp.apply(top5_height,   include_groups=False).values
+    plots["dominant_sp"]  = grp.apply(dominant,      include_groups=False).values
+    plots["sp_dominance"] = grp.apply(dominance,     include_groups=False).values
+
+    # -------------------------------------------------------------- site polygon join (geometry)
+    polys = site_polygons()
+    plots["site_polygon"] = None
+    for name, poly in polys.items():
+        inside = [poly.contains(Point(r.lon, r.lat)) for r in plots.itertuples()]
+        plots.loc[inside, "site_polygon"] = name
+
+    # -------------------------------------------------------------- write
+    cols = ["plot_key", "lat", "lon", "gps_acc_m", "alt_m", "district", "block", "habitation",
+            "site_polygon", "n_trees", "loreys_h_m", "h_top5_m", "h_mean_m", "h_max_m",
+            "dbh_mean_cm", "basal_area_cm2", "crown_cover_pct", "n_species",
+            "dominant_sp", "sp_dominance"]
+    plots = plots[cols].round(4)
+    plots.to_csv(OUT, index=False)
+
+    print(f"trees : {n_trees_raw} -> {len(s)} after GPS filter (<= {GPS_MAX_M} m)")
+    print(f"plots : {len(plots)}   inside a site polygon: {plots.site_polygon.notna().sum()}")
+    print(f"crown cover recovered on {s['crown_cover_pct'].notna().sum()}/{len(s)} tree rows")
+    print("\nplots per district:")
+    print(plots.district.value_counts().to_string())
+    print(f"\nwrote {OUT}")
+
+
+if __name__ == "__main__":
+    main()
