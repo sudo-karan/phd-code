@@ -88,10 +88,15 @@ def main() -> int:
     ap.add_argument("--arm", default="v120")
     ap.add_argument("--set", dest="set_name", default="districts", choices=["pilot", "districts"])
     ap.add_argument("--layer", default="merged", choices=["merged", "snic", "dissolved"])
+    ap.add_argument("--joined", type=Path, default=None,
+                    help="joined CSV to score; default odisha_script/phase2_plots_joined<suffix>.csv. "
+                         "Point this at a separate join so a new arm never overwrites the committed one.")
+    ap.add_argument("--tag", default="", help="suffix for the output filename, to keep runs apart")
     args = ap.parse_args()
     suffix = "_districts" if args.set_name == "districts" else ""
 
-    joined = pd.read_csv(HERE / f"phase2_plots_joined{suffix}.csv")
+    joined_path = args.joined if args.joined else HERE / f"phase2_plots_joined{suffix}.csv"
+    joined = pd.read_csv(joined_path)
     ftypes = pd.read_csv(HERE / "odisha_phase3_0_field_types.csv")[["plot_key", "field_type"]]
     d = joined.merge(ftypes, on="plot_key", validate="1:1")
 
@@ -106,6 +111,7 @@ def main() -> int:
     say("=" * 100)
     say(f"PHASE 3 STEP 1 -- pairwise score, arm={args.arm} layer={args.layer} set={args.set_name}")
     say("=" * 100)
+    say(f"  joined table: {joined_path.name}")
     say(f"  plots with a stand: {len(d)}")
     say(f"  stands holding them: {d[id_col].nunique()}   "
         f"multi-plot stands: {int((d.groupby(id_col).size() > 1).sum())}")
@@ -157,7 +163,7 @@ def main() -> int:
     else:
         say("  no cluster labels on this layer; labelling not scored\n")
 
-    out = HERE / f"odisha_phase3_1_score_{args.arm}_{args.layer}{suffix}.txt"
+    out = HERE / f"odisha_phase3_1_score_{args.arm}_{args.layer}{suffix}{args.tag}.txt"
     out.write_text("\n".join(_lines) + "\n")
     say(f"  wrote {out.name}")
     return 0
