@@ -108,19 +108,37 @@ def main() -> int:
         return 2
 
     d = d[d[id_col].notna()].reset_index(drop=True)
+
+    # Each district is its own pipeline run, so stand ids and k-means type numbers
+    # both RESTART per district: stand 62 in angul is not stand 62 in koraput, and
+    # type 3 in angul is unrelated to type 3 in koraput (k-means is fitted per
+    # district). The first version of this script pooled raw ids across districts,
+    # which merged 18 (10 ha) and 24 (3 ha) unrelated stands and compared unrelated
+    # types. Stands are therefore keyed by (district, id), as odisha_phase2_5_stats
+    # does, and labelling is scored within each district.
+    d["skey"] = d.district.astype(str) + ":" + d[id_col].round().astype(int).astype(str)
+
     say("=" * 100)
     say(f"PHASE 3 STEP 1 -- pairwise score, arm={args.arm} layer={args.layer} set={args.set_name}")
     say("=" * 100)
     say(f"  joined table: {joined_path.name}")
     say(f"  plots with a stand: {len(d)}")
-    say(f"  stands holding them: {d[id_col].nunique()}   "
-        f"multi-plot stands: {int((d.groupby(id_col).size() > 1).sum())}")
+    sizes = d.groupby("skey").size()
+    say(f"  stands holding them: {len(sizes)}   multi-plot stands: {int((sizes > 1).sum())} "
+        f"holding {int(sizes[sizes > 1].sum())} plots   (stand key = district:id)")
     say(f"  field types: {d.field_type.value_counts().sort_index().to_dict()}")
+    say("")
+    say("  READ ARI AGAINST ITS CHANCE LEVEL, NOT AGAINST ZERO. In this design chance-level")
+    say("  ARI is positive: villages cluster both the field types and the stands, so a")
+    say("  rotated stand map scores ~0.005-0.022 on delineation and ~0.04-0.06 on labelling.")
+    say("  Whether a value beats chance is tested with the spatial rotation null in")
+    say("  odisha_phase3_3_significance.py, not read off this file.")
     say("")
 
     i, j = map(np.array, zip(*combinations(range(len(d)), 2)))
     same_type = d.field_type.to_numpy()[i] == d.field_type.to_numpy()[j]
-    same_stand = d[id_col].to_numpy()[i] == d[id_col].to_numpy()[j]
+    same_stand = d.skey.to_numpy()[i] == d.skey.to_numpy()[j]
+    same_dist = d.district.to_numpy()[i] == d.district.to_numpy()[j]
     _, _, dist = GEOD.inv(d.lon6.to_numpy()[i], d.lat6.to_numpy()[i],
                           d.lon6.to_numpy()[j], d.lat6.to_numpy()[j])
 
@@ -128,16 +146,16 @@ def main() -> int:
     say("A. DELINEATION -- do alike plots end up in the same stand?")
     say("-" * 100)
     show("all pairs", pair_table(same_stand, same_type),
-         adjusted_rand_score(d[id_col], d.field_type))
+         adjusted_rand_score(d.skey, d.field_type))
 
-    multi = d.groupby(id_col)[id_col].transform("size").to_numpy() > 1
+    multi = d.groupby("skey").skey.transform("size").to_numpy() > 1
     keep = multi[i] & multi[j]
     if keep.sum():
         sub = d[multi]
         show("restricted to plots in multi-plot stands",
              pair_table(same_stand[keep], same_type[keep]),
-             adjusted_rand_score(sub[id_col], sub.field_type),
-             f"  ({len(sub)} plots in {sub[id_col].nunique()} stands)")
+             adjusted_rand_score(sub.skey, sub.field_type),
+             f"  ({len(sub)} plots in {sub.skey.nunique()} stands)")
     else:
         say("  no multi-plot stands: the delineation question is not answerable here\n")
 
@@ -145,21 +163,35 @@ def main() -> int:
         say("-" * 100)
         say("B. LABELLING -- do alike plots get the same stand TYPE, even far apart?")
         say("-" * 100)
+        say("  k-means is fitted per district, so types are comparable only WITHIN a")
+        say("  district. Pairs are restricted to same-district pairs, and the ARI is the")
+        say("  plot-weighted mean of per-district ARIs.")
         lab = np.rint(pd.to_numeric(d[cl_col], errors="coerce").to_numpy())
         ok = ~np.isnan(lab)
-        same_lab = np.where(ok[i] & ok[j], lab[i] == lab[j], False)
-        valid = ok[i] & ok[j]
-        say(f"  stand types present: {sorted(pd.unique(lab[ok]).astype(int).tolist())}")
+        if (~ok).any():
+            say(f"  {int((~ok).sum())} assigned plot(s) carry no type label and are left out")
+        valid = ok[i] & ok[j] & same_dist
+        same_lab = np.where(valid, lab[i] == lab[j], False)
         say("")
-        show("all pairs", pair_table(same_lab[valid], same_type[valid]),
-             adjusted_rand_score(d.field_type[ok], lab[ok]))
+        per, wts = [], []
+        for dist_name, g in d[ok].groupby("district"):
+            if len(g) >= 2 and g.field_type.nunique() >= 2:
+                a = adjusted_rand_score(g.field_type, np.rint(g[cl_col].astype(float)))
+                per.append(a); wts.append(len(g))
+                say(f"    {dist_name:<11} n={len(g):>4}   ARI {a:+.4f}")
+            else:
+                say(f"    {dist_name:<11} n={len(g):>4}   not scored (<2 plots or <2 field types)")
+        wmean = float(np.average(per, weights=wts)) if per else float("nan")
+        say("")
+        show("same-district pairs", pair_table(same_lab[valid], same_type[valid]), wmean,
+             "  (ARI = plot-weighted mean of the per-district values above)")
         far = valid & (dist > DISTANT_M)
         if far.sum() > 30:
-            show(f"pairs more than {DISTANT_M/1000:.0f} km apart",
+            show(f"same-district pairs more than {DISTANT_M/1000:.0f} km apart",
                  pair_table(same_lab[far], same_type[far]), float("nan"),
                  "  (ARI is a whole-partition score, so it is not defined on a pair subset)")
         else:
-            say(f"  only {int(far.sum())} pairs beyond {DISTANT_M/1000:.0f} km: not reported\n")
+            say(f"  only {int(far.sum())} same-district pairs beyond {DISTANT_M/1000:.0f} km: not reported\n")
     else:
         say("  no cluster labels on this layer; labelling not scored\n")
 
