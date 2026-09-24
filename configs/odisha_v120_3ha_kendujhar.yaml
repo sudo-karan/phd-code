@@ -1,0 +1,153 @@
+# FULL SET, KENDUJHAR district, 3 ha STAND CEILING.
+#
+# Copy of configs/odisha_v120_handcrafted_kendujhar.yaml. The ONLY parameter that differs is
+# merge.max_area_ha: 10.0 -> 3.0. Everything else -- SNIC bands, merge criteria and
+# tolerances, min_defined_criteria, relax_factor, k, seed, masking, dates, ROI -- is
+# byte-identical to the arm already reported in PHASE2_STATUS.md, so the two runs differ
+# in stand size and nothing else.
+#
+# Why: the supervisor asked for stands merged to at most 2-3 ha. The reported run used a
+# 10 ha ceiling and produced a median stand of 3.09 ha with the top decile above 9.18 ha,
+# so more than half its stands exceeded what he asked for. 3 ha rather than 2 because the
+# field data is sparse: the smaller the ceiling, the fewer plots share a stand, and the
+# within-stand test loses power. 3 ha respects the ceiling while keeping as much of that
+# power as the constraint allows.
+#
+#
+# SEGMENTATION IS ALSO CHANGED, and that is the point. merge can only join
+# superpixels, never split one, so a stand is never smaller than the superpixel it
+# contains. At size: 10 the superpixels themselves reach 6.74 ha (dhenkanal), so a
+# 3 ha ceiling is unreachable -- the first attempt failed with ComponentSizeError
+# "largest component is 519 px but maxSize is 360 px". Seed spacing drops 10 -> 6
+# (~100 m -> ~60 m), which scales cell area by ~0.36: projected median ~0.31 ha and
+# largest ~2.4 ha, clearing the 3 ha cap. Decision taken 2026-09-24.
+#
+# merge is part of the cache fingerprint, so this name gets its own asset namespace and
+# recomputes features, segmentation and clustering rather than reusing the 10 ha assets.
+
+name: odisha_v120_3ha_kendujhar
+description: Odisha KENDUJHAR, v120 hand-crafted method, stands capped at 3 ha.
+
+roi:
+  name: odisha_habitations_kendujhar
+  roi_file: aois/odisha_habitations_kendujhar.geojson
+
+dates:
+  phenology:
+    start: 2017-01-01
+    end: 2022-12-31
+  radar:
+    start: 2017-01-01
+    end: 2022-12-31
+  optical_composite:
+    start: 2017-01-01
+    end: 2022-12-31
+  climate:
+    start: 1991-01-01
+    end: 2020-12-31
+
+datasets:
+  phenology_collection: COPERNICUS/S2_SR_HARMONIZED
+  optical_composite_collection: COPERNICUS/S2_SR_HARMONIZED
+  radar_collection: COPERNICUS/S1_GRD
+  canopy_height: users/nlang/ETH_GlobalCanopyHeight_2020_10m_v1
+  dem: NASA/NASADEM_HGT/001
+  indiasat: "projects/corestack-trees/assets/LULC_v4"
+  worldcover: ESA/WorldCover/v200
+  water: JRC/GSW1_4/GlobalSurfaceWater
+  climate: UCSB-CHG/CHIRPS/PENTAD
+
+cloud_mask:
+  max_cloud_pct: 20.0
+  drop_scl_classes: [3, 8, 9, 10]
+
+data_load:
+  s1_orbit: ASCENDING
+  s1_polarizations: [VV, VH]
+  s1_instrument_mode: IW
+  s2_composite_reducer: median
+
+masking:
+  indiasat_habitat_classes: [6, 12]
+  indiasat_class_band: predicted_label
+  indiasat_year_min: 2017
+  indiasat_year_max: 2021
+  keep_worldcover_classes: [10, 20, 30]
+  jrc_water_occurrence_threshold: 50.0
+
+features_optical:
+  index: ndvi
+  harmonic_mode: single
+  include_trend: true
+  time_reference: 2017-01-01
+
+features_radar:
+  percentiles: [10, 50, 90]
+  include_iqr: true
+  include_cross_pol_contrast: true
+
+features_structure:
+  include_neighborhood_stats: true
+  neighborhood_kernel_size: 3
+
+features_static:
+  include_climate: true
+  max_water_distance_pixels: 1000
+
+# The pre-Odisha six-band stack.
+segmentation:
+  size: 6
+  compactness: 0.5
+  connectivity: 8
+  neighborhood_size: 128
+  normalize_inputs: true
+  normalize_distance_scale: true
+  input_bands:
+    - {source: s2_composite,       band: B4_median}
+    - {source: s2_composite,       band: B8_median}
+    - {source: structure_features, band: canopy_height}
+    - {source: structure_features, band: canopy_height_std}
+    - {source: optical_features,   band: ndvi_amplitude_annual}
+    - {source: radar_features,     band: vv_minus_vh_median}
+
+# The pre-Odisha three-criterion merge. Tolerances are the Sanjay Van values.
+merge:
+  enabled: true
+  criteria:
+    - {source: structure_features, band: canopy_height,         tolerance: 2.00}
+    - {source: structure_features, band: canopy_height_std,     tolerance: 0.45}
+    - {source: optical_features,   band: ndvi_amplitude_annual, tolerance: 0.030}
+  min_defined_criteria: 2
+  min_area_ha: 1.0
+  max_area_ha: 3.0
+  relax_factor: 1.75
+
+clustering:
+  k: 6
+  seed: 42
+  skewness_threshold: 1.0
+
+normalization:
+  method: robust
+
+features:
+  optical_harmonic: true
+  radar: true
+  canopy_height: true
+  terrain: true
+
+export:
+  export_geotiff: true
+  export_gee_asset: false
+  analysis_scale_m: 10
+  drive_folder: fmu_exports_odisha_phase2
+  export_vector_merged: true
+  export_vector_snic: true
+  export_vector_dissolved: true
+  vector_formats: [shp, geojson]
+  vector_min_stand_pixels: 4
+
+metrics:
+  reference_config_name: null
+  n_comparison_samples: 10000
+  n_silhouette_samples_per_cluster: 833

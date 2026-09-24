@@ -1,0 +1,57 @@
+====================================================================================================
+PHASE 3 STEP 0 -- field forest types from STRUCTURE, k by elbow
+====================================================================================================
+  plots: 274
+  structural variables: loreys_h_m, crown_cover_pct, log_basal_area, n_trees
+  basal area is a plot total, not per hectare: plot radius is still an open
+  question with FES, so an area denominator is not available. All plots share
+  the same protocol, so the total is proportional to density across plots.
+
+----------------------------------------------------------------------------------------------------
+CHOOSING k FROM THE FIELD DATA ALONE (no stand label is read anywhere above)
+----------------------------------------------------------------------------------------------------
+    k       inertia   silhouette   Calinski-H    Davies-B
+    2         632.8        0.277        100.4       1.416
+    3         502.6        0.350         98.0       1.139
+    4         394.4        0.328        107.7       1.021
+    5         333.4        0.280        107.5       1.107
+    6         288.8        0.280        107.2       1.081
+    7         253.1        0.274        107.8       0.956
+    8         220.9        0.276        111.0       0.907
+    9         198.9        0.278        111.2       0.968
+   10         183.9        0.280        108.9       0.976
+   11         171.4        0.277        106.6       1.010
+   12         161.2        0.281        104.2       1.008
+
+  elbow (knee of inertia)      k = 5
+  best silhouette              k = 3  (0.350)
+  best Calinski-Harabasz       k = 9
+  best Davies-Bouldin          k = 8
+  -> SELECTED k = 5 (elbow). Also preferred by: none of the other three.
+     The criteria disagree. The elbow is taken because it is the one the
+     supervisor named; the others are recorded so the choice is auditable.
+
+----------------------------------------------------------------------------------------------------
+THE 5 STRUCTURAL FOREST TYPES
+----------------------------------------------------------------------------------------------------
+  type 0:  78 plots | height   7.8 m | crown  33.0% |  14 trees | 7 spp | Sal 0.00 | BA 2,990
+  type 1:  47 plots | height  18.1 m | crown  48.0% |   8 trees | 4 spp | Sal 0.19 | BA 3,005
+  type 2:  20 plots | height   1.4 m | crown   1.2% |   0 trees | 0 spp | Sal 0.00 | BA 27
+  type 3:  15 plots | height  15.3 m | crown  48.0% |  29 trees | 9 spp | Sal 0.16 | BA 5,576
+  type 4: 114 plots | height   7.0 m | crown  40.5% |   6 trees | 4 spp | Sal 0.00 | BA 688
+
+  sizes: {0: 78, 1: 47, 2: 20, 3: 15, 4: 114}
+  largest group holds 114 of 274 plots (41.6%) -- compare the composition typology's 259/274 (94.5%).
+
+  by district:
+field_type   0   1   2  3   4
+district                     
+ANGUL        8  11   2  6  13
+DHENKANAL   17  30   0  8  21
+KENDUJHAR    0   2   5  0   5
+KORAPUT     53   4  13  1  75
+
+  SENSITIVITY: adding dbh_mean_cm (0 where no trees) moves the elbow to k = 5.
+               agreement with the primary grouping at k=5: ARI 0.462
+
+  wrote odisha_phase3_0_field_types.csv (274 plots) and odisha_phase3_0_results.txt

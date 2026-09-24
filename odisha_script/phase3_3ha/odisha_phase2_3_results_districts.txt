@@ -1,0 +1,132 @@
+
+==========================================================================================
+FIELD TABLE
+==========================================================================================
+  records: 5910 raw -> 5679 after GPS filter; plots: 274
+  Habit: {'Tree': 2729, 'SaplingSeedling': 1538, 'Shrub': 953, 'Climber': 285, 'Stump': 168, 'climber': 5, 'Seedling': 1}
+  species strings: 233 raw -> 182 by the token rule -> 179 after aliases
+  trailing '.' stripped from: ['Bhuinkurma Ixora sp.', 'Eucalyptus Eucalyptus spp.', 'Khajuri Phoneix spp.', 'urla Ficus spp.']
+  alias applications (key by the token rule -> alias; records; plots; raw strings):
+    cassia fistul              -> cassia fistula               61 records,  43 plots; ['Sunari Cassia fistul']
+    lagerstroemia parviflor    -> lagerstroemia parviflora    108 records,  28 plots; ['Sidha Lagerstroemia parviflor']
+    zizyphus oenoplia          -> ziziphus oenoplia            64 records,  37 plots; ['Kanteikoli Zizyphus oenoplia']
+  44 normalised name(s) collapse more than one raw string:
+    aegle marmelos               <- ['Bel Aegle marmelos ', 'Bela Aegle marmelos', 'Bila Aegle marmelos']
+    anacardium occidentale       <- ['Bhalia Anacardium occidentale', 'Kaju Anacardium occidentale']
+    anogeissus latifolia         <- ['Dhauda Anogeissus latifolia', 'Dheura_Anogeissus_latifolia', 'Dokarowa Anogeissus latifolia']
+    arbor tristis                <- ['Ganga Siuli Nyctanthes arbor tristis', 'Gangasioli Nyctanthes arbor tristis']
+    azadirachta indica           <- ['Limba Azadirachta indica', 'Nimba Azadirachta indica']
+    bauhinia vahlii              <- ['Siali Bauhinia vahlii', 'siali Bauhinia vahlii']
+    bombax ceiba                 <- ['Simili Bombax ceiba', 'simili_Bombax ceiba']
+    buchanania lanzan            <- ['Chara_Buchanania_lanzan', 'Charkauli Buchanania lanzan']
+    butea monosperma             <- ['Palasa Butea monosperma', 'Palsa Butea monosperma']
+    butea superba                <- ['Buduli Butea superba', 'Buduli Butea superba ', 'Palsa Butea superba']
+    careya arborea               <- ['Kumbhi Careya arborea', 'kumbhi Careya arborea']
+    cassia fistula               <- ['Sunari Cassia fistul', 'Sunari Cassia fistula', 'sunari cassia fistula']
+    chloroxylon swietenia        <- ['Bheru Chloroxylon swietenia', 'Veru Chloroxylon swietenia']
+    cipadessa baccifera          <- ['Lalbhali Cipadessa baccifera', 'Nahalbeli Cipadessa baccifera', 'Pitmari Cipadessa baccifera']
+    cleistanthus collinus        <- ['Karada Cleistanthus collinus', 'karada Cleistanthus collinus']
+    combretum roxburghii         <- ['Atandi Combretum roxburghii', 'Atendi_Combretum_roxburghii']
+    dalbergia paniculata         <- ['Barbakiliaa Dalbergia paniculata', 'Dhubuni Dalbergia paniculata']
+    dendrocalamus strictus       <- ['Bamboo_Dendrocalamus_strictus', 'Bausa Dendrocalamus strictus']
+    diospyros montana            <- ['Halada Diospyros montana', 'Halada_Diospyros_montana', 'Halda Diospyros montana']
+    eucalyptus spp               <- ['Eucalyptus Eucalyptus spp.', 'Nilgiri_Eucalyptus_spp']
+    euphorbia royleana           <- ['Sijhu Euphorbia royleana', 'Siju gaccha Euphorbia royleana']
+    ficus benghalensis           <- ['Bara Ficus benghalensis', 'Dimiri Ficus benghalensis']
+    gardenia gummifera           <- ['Ghurudu Gardenia gummifera', 'Gurhi Gardenia gummifera', 'Gurudu Gardenia gummifera']
+    gmelina arborea              <- ['Gambari Gmelina arborea', 'Gambhari Gmelina arborea']
+    holoptelea integrifolia      <- ['Kuday Holoptelea integrifolia', 'Kudedi Holoptelea integrifolia']
+    indigofera cassioides        <- ['Gilira Indigofera cassioides', 'Girli Indigofera cassioides']
+    jasminum scandens            <- ['Bana mali Jasminum scandens', 'Banamali Jasminum scandens']
+    lagerstroemia parviflora     <- ['Sidha Lagerstroemia parviflor', 'Sidha Lagerstroemia parviflora']
+    lantana camara               <- ['Bhalupadi Lantana camara', 'Bhalupati Lantana camara']
+    manilkara hexandra           <- ['Khira Koli Manilkara hexandra', 'Khirkachin Manilkara hexandra']
+    naringi crenulata            <- ['Beitha Naringi crenulata', 'beitha Naringi crenulata']
+    nux vomica                   <- ['Kalichia Strychnos nux vomica', 'Kaouchia Strychnos nux vomica', 'Kauchia Strychnos nux vomica', 'Pani kaouchia Strychnos nux vomica']
+    ougeinia oogeinsis           <- ['Bandhana Ougeinia oogeinsis', 'Bhandhana Ougeinia oogeinsis']
+    phoenix acaulis              <- ['Bana Khajuri Phoenix acaulis', 'Bana kanjari Phoenix acaulis']
+    pogostemon benghalense       <- ['Poka sungha Pogostemon benghalense', 'Pokasunga Pogostemon benghalense']
+    pterocarpus marsupium        <- ['Bija Pterocarpus marsupium', 'Pia sal_Pterocarpus_marsupium']
+    shorea robusta               <- ['Sal_Shorea_robusta', 'Sala Shorea robusta']
+    smilax zeylanica             <- ['Murturi Smilax zeylanica', 'Muturi Smilax zeylanica']
+    spondias pinnata             <- ['Ambada Spondias pinnata', 'Ambeda_Spondias_pinnata']
+    stachytarpheta jamaicensis   <- ['Jatjati Stachytarpheta jamaicensis ', 'Jhatiki Stachytarpheta jamaicensis ']
+    tectona grandis              <- ['Saguana Tectona grandis', 'Teak_Tectona_grandis', 'saugan Tectona grandis']
+    terminalia arjuna            <- ['Arjun_Terminalia arjuna', 'Arjuna Terminalia arjuna']
+    wrightia tinctoria           <- ['Rajkuehi Wrightia tinctoria', 'Rajkurehi Wrightia tinctoria']
+    ziziphus oenoplia            <- ['Kantakali_Ziziphus_oenoplia', 'Kanteikoli Zizyphus oenoplia']
+  loreys_h_m       max |phase2 - phase1| = 0.00e+00
+  h_top5_m         max |phase2 - phase1| = 0.00e+00
+  crown_cover_pct  max |phase2 - phase1| = 0.00e+00
+  plots with no Tree record: 15
+  |Lorey's all-habit - tree-only|: median 0.11 m, p90 0.96 m, max 4.77 m (n=259)
+  Tree records carry 95.5% of basal area
+  plots with any Sal basal area: 80; with sal_ba_frac > 0.5: 32
+
+==========================================================================================
+JOIN — plots to stands by geometry (set: districts)
+==========================================================================================
+  plots inside the set's AOIs: 267 of 274; by district {'koraput': 145, 'dhenkanal': 75, 'angul': 39, 'kendujhar': 8}
+  plots in this set holding a record whose key an alias or '.'-strip changed: 90 ['18.576485_82.834653', '18.576947_82.837561', '18.577439_82.833436', '18.577547_82.836866', '18.577639_82.837776', '18.577748_82.835758', '18.577832_82.83856', '18.578127_82.840014', '18.578158_82.833453', '18.578309_82.834858', '18.578663_82.834354', '18.578716_82.835005', '18.587441_82.81896', '18.58884_82.818969', '18.589041_82.818128', '18.589244_82.825077', '18.589582_82.817618', '18.590763_82.817554', '18.590826_82.820535', '18.590907_82.822339', '18.591008_82.821617', '18.591102_82.824347', '18.591473_82.819057', '18.591548_82.816364', '18.591818_82.815917', '18.592142_82.814825', '18.592398_82.819353', '18.594241_82.828147', '18.595601_82.827027', '18.595819_82.826677', '18.596347_82.826101', '18.596943_82.824312', '18.59743_82.823241', '18.597682_82.819763', '18.615788_82.855314', '18.615834_82.855468', '18.637046_82.971078', '18.637227_82.968882', '18.637924_82.967885', '18.6389_82.971745', '18.639738_82.971846', '18.639916_82.968455', '18.640693_82.972283', '18.641832_82.972375', '18.641893_82.969522', '18.644529_82.974055', '18.65244_82.811768', '18.652647_82.812143', '18.678063_82.960975', '18.681326_82.957064', '18.686566_82.958633', '20.741885_84.698598', '20.742247_84.697628', '20.742487_84.696332', '20.743825_84.696419', '20.744313_84.694294', '20.744556_84.693554', '20.745076_84.695402', '20.745582_84.692273', '20.746348_84.694433', '20.747267_84.691992', '20.759342_84.70982', '20.760064_84.721146', '20.760492_84.717751', '20.761327_84.711584', '20.76148_84.72302', '20.761498_84.715991', '20.76178_84.706629', '20.763036_84.72282', '20.76408_84.715482', '20.764457_84.718917', '20.802758_84.651615', '20.803305_84.650996', '20.803378_84.649662', '20.80382_84.649267', '20.804067_84.651992', '20.805056_84.651723', '20.805368_84.649812', '20.827024_84.643543', '20.828018_84.64283', '20.931593_85.663369', '20.969023_85.695805', '21.018825_85.612578', '21.021416_85.610006', '21.021861_85.613366', '21.022286_85.61525', '21.046252_85.683699', '21.047558_85.52488', '21.048834_85.524919', '21.049949_85.690852']
+
+  --- v120_3ha (odisha_v120_3ha_angul), fingerprint acc310dc26
+  merge: 1257 superpixels -> 200 stands; pass-2 fallback merges 109 of 257; stands below min area 8
+  stands_merged       200 stands (203 polygons), area ha p10 1.26 / median 2.37 / p90 2.94
+      plots assigned 39, in 30 stands; multi-plot stands 6 holding 15 plots; plots-per-stand histogram {1: 24, 2: 3, 3: 3}; boundary-ambiguous plots 0
+      distance to another stand: median 12 m; plots > 30 m from a boundary 4
+      raster cross-check: vector id == stand_clusters at plot pixel for 39 of 39
+  stands_snic        1062 stands (1070 polygons), area ha p10 0.08 / median 0.31 / p90 0.69
+      plots assigned 39, in 37 stands; multi-plot stands 2 holding 4 plots; plots-per-stand histogram {1: 35, 2: 2}; boundary-ambiguous plots 0
+      distance to another stand: median 6 m; plots > 30 m from a boundary 0
+      raster cross-check: vector id == snic_clusters at plot pixel for 39 of 39
+  stands_dissolved     98 stands (98 polygons), area ha p10 0.04 / median 0.22 / p90 6.30
+      plots assigned 37, in 9 stands; multi-plot stands 6 holding 34 plots; plots-per-stand histogram {1: 3, 2: 1, 3: 1, 4: 1, 5: 1, 10: 2}; boundary-ambiguous plots 0
+      distance to another stand: median 38 m; plots > 30 m from a boundary 24
+  plots whose merged stand carries a cluster_id: 39 of 39; cluster values after rounding [0.0, 1.0, 3.0, 4.0, 5.0] (non-integer: 0)
+
+  --- v120_3ha (odisha_v120_3ha_dhenkanal), fingerprint d4c8a81903
+  merge: 2827 superpixels -> 462 stands; pass-2 fallback merges 151 of 399; stands below min area 39
+  stands_merged       462 stands (473 polygons), area ha p10 1.05 / median 2.29 / p90 2.95
+      plots assigned 75, in 67 stands; multi-plot stands 6 holding 14 plots; plots-per-stand histogram {1: 61, 2: 4, 3: 2}; boundary-ambiguous plots 0
+      distance to another stand: median 12 m; plots > 30 m from a boundary 5
+      raster cross-check: vector id == stand_clusters at plot pixel for 75 of 75
+  stands_snic        2571 stands (2593 polygons), area ha p10 0.08 / median 0.31 / p90 0.70
+      plots assigned 75, in 74 stands; multi-plot stands 1 holding 2 plots; plots-per-stand histogram {1: 73, 2: 1}; boundary-ambiguous plots 0
+      distance to another stand: median 4 m; plots > 30 m from a boundary 0
+      raster cross-check: vector id == snic_clusters at plot pixel for 75 of 75
+  stands_dissolved    102 stands (102 polygons), area ha p10 0.05 / median 0.34 / p90 16.15
+      plots assigned 72, in 13 stands; multi-plot stands 10 holding 69 plots; plots-per-stand histogram {1: 3, 2: 1, 3: 1, 4: 2, 6: 1, 9: 2, 10: 1, 11: 2}; boundary-ambiguous plots 0
+      distance to another stand: median 146 m; plots > 30 m from a boundary 66
+  plots whose merged stand carries a cluster_id: 75 of 75; cluster values after rounding [1.0, 2.0, 3.0, 4.0, 5.0] (non-integer: 0)
+
+  --- v120_3ha (odisha_v120_3ha_kendujhar), fingerprint 44c7f8e832
+  merge: 1146 superpixels -> 183 stands; pass-2 fallback merges 165 of 353; stands below min area 11
+  stands_merged       183 stands (186 polygons), area ha p10 1.12 / median 2.36 / p90 2.96
+      plots assigned 8, in 6 stands; multi-plot stands 2 holding 4 plots; plots-per-stand histogram {1: 4, 2: 2}; boundary-ambiguous plots 0
+      distance to another stand: median 7 m; plots > 30 m from a boundary 0
+      raster cross-check: vector id == stand_clusters at plot pixel for 8 of 8
+  stands_snic         935 stands (946 polygons), area ha p10 0.11 / median 0.33 / p90 0.66
+      plots assigned 8, in 8 stands; multi-plot stands 0 holding 0 plots; plots-per-stand histogram {1: 8}; boundary-ambiguous plots 0
+      distance to another stand: median 6 m; plots > 30 m from a boundary 0
+      raster cross-check: vector id == snic_clusters at plot pixel for 8 of 8
+  stands_dissolved    100 stands (100 polygons), area ha p10 0.04 / median 0.30 / p90 6.42
+      plots assigned 7, in 3 stands; multi-plot stands 2 holding 6 plots; plots-per-stand histogram {1: 1, 3: 2}; boundary-ambiguous plots 0
+      distance to another stand: median 17 m; plots > 30 m from a boundary 2
+  plots whose merged stand carries a cluster_id: 8 of 8; cluster values after rounding [1.0, 2.0, 3.0] (non-integer: 0)
+
+  --- v120_3ha (odisha_v120_3ha_koraput), fingerprint a4bdc4e114
+  merge: 6939 superpixels -> 1109 stands; pass-2 fallback merges 687 of 1703; stands below min area 51
+  stands_merged      1109 stands (1131 polygons), area ha p10 1.28 / median 2.38 / p90 2.93
+      plots assigned 145, in 95 stands; multi-plot stands 30 holding 80 plots; plots-per-stand histogram {1: 65, 2: 19, 3: 6, 4: 4, 8: 1}; boundary-ambiguous plots 0
+      distance to another stand: median 11 m; plots > 30 m from a boundary 10
+      raster cross-check: vector id == stand_clusters at plot pixel for 145 of 145
+  stands_snic        4920 stands (4963 polygons), area ha p10 0.11 / median 0.33 / p90 0.66
+      plots assigned 143, in 121 stands; multi-plot stands 18 holding 40 plots; plots-per-stand histogram {1: 103, 2: 14, 3: 4}; boundary-ambiguous plots 0
+      distance to another stand: median 6 m; plots > 30 m from a boundary 1
+      raster cross-check: vector id == snic_clusters at plot pixel for 143 of 143
+  stands_dissolved    326 stands (326 polygons), area ha p10 0.06 / median 1.19 / p90 10.95
+      plots assigned 136, in 32 stands; multi-plot stands 21 holding 125 plots; plots-per-stand histogram {1: 11, 2: 6, 3: 4, 4: 1, 5: 2, 6: 3, 9: 1, 13: 2, 14: 1, 20: 1}; boundary-ambiguous plots 0
+      distance to another stand: median 35 m; plots > 30 m from a boundary 72
+  plots whose merged stand carries a cluster_id: 145 of 145; cluster values after rounding [0.0, 1.0, 2.0, 3.0, 4.0, 5.0] (non-integer: 0)
+
+  wrote phase2_plots_joined_districts.csv: 274 rows, 30 columns

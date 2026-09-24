@@ -1,0 +1,41 @@
+====================================================================================================
+PHASE 3 STEP 2 -- k for the stand types by elbow, arm=odisha_v120_handcrafted
+====================================================================================================
+  districts: angul, dhenkanal, kendujhar, koraput   stands: {'angul': 99, 'dhenkanal': 232, 'kendujhar': 108, 'koraput': 629}
+
+  feature bands used (22): annual_rainfall, aspect, canopy_height, canopy_height_max, canopy_height_std, distance_to_water, elevation, ndvi_amplitude_annual, ndvi_mean, ndvi_phase_annual, ndvi_residual_variance, ndvi_trend, slope, vh_iqr, vh_p10, vh_p50, vh_p90, vv_iqr, vv_minus_vh_median, vv_p10, vv_p50, vv_p90
+  no field measurement is read in this file.
+
+----------------------------------------------------------------------------------------------------
+ELBOW, PER DISTRICT (k-means is fitted per district: one config each)
+----------------------------------------------------------------------------------------------------
+  angul          n=   99   elbow k=6   silhouette k=2   Calinski k=2   Davies-B k=3
+  dhenkanal      n=  232   elbow k=6   silhouette k=6   Calinski k=2   Davies-B k=11
+  kendujhar      n=  108   elbow k=6   silhouette k=3   Calinski k=2   Davies-B k=3
+  koraput        n=  629   elbow k=5   silhouette k=2   Calinski k=2   Davies-B k=2
+
+----------------------------------------------------------------------------------------------------
+ELBOW, POOLED (all districts together, for a single k to set in the configs)
+----------------------------------------------------------------------------------------------------
+  pooled         n= 1068   elbow k=5   silhouette k=4   Calinski k=2   Davies-B k=8
+
+    k       inertia   silhouette   Calinski-H    Davies-B
+    2       11068.8        0.190        287.5       1.834
+    3        9349.7        0.203        267.9       1.614
+    4        8371.0        0.212        240.8       1.479
+    5        7570.1        0.190        227.6       1.611
+    6        7058.7        0.184        210.5       1.614
+    7        6594.0        0.193        200.1       1.540
+    8        6178.7        0.203        193.0       1.473
+    9        5853.5        0.191        185.5       1.529
+   10        5649.6        0.186        174.9       1.542
+   11        5482.8        0.176        165.2       1.567
+   12        5328.0        0.175        157.2       1.571
+
+----------------------------------------------------------------------------------------------------
+RECOMMENDATION
+----------------------------------------------------------------------------------------------------
+  per-district elbows: {'angul': 6, 'dhenkanal': 6, 'kendujhar': 6, 'koraput': 5}
+  pooled elbow:        5
+  -> median across district and pooled elbows: k = 6
+  (the pipeline currently uses k = 6)
