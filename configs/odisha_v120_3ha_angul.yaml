@@ -1,10 +1,12 @@
 # FULL SET, ANGUL district, 3 ha STAND CEILING.
 #
-# Copy of configs/odisha_v120_handcrafted_angul.yaml. The ONLY parameter that differs is
-# merge.max_area_ha: 10.0 -> 3.0. Everything else -- SNIC bands, merge criteria and
-# tolerances, min_defined_criteria, relax_factor, k, seed, masking, dates, ROI -- is
-# byte-identical to the arm already reported in PHASE2_STATUS.md, so the two runs differ
-# in stand size and nothing else.
+# Copy of configs/odisha_v120_handcrafted_angul.yaml. THREE parameters differ, each
+# explained below: merge.max_area_ha 10.0 -> 3.0 (the ceiling asked for),
+# segmentation.size 10 -> 6 (forced by it) and clustering.k 6 -> 5 (this arm's own elbow).
+# Everything else -- SNIC bands, merge criteria and tolerances, min_defined_criteria,
+# relax_factor, seed, masking, dates, ROI -- is identical to the arm reported in
+# PHASE2_STATUS.md. The two arms therefore differ in more than the ceiling, and a
+# difference between them cannot be put down to stand size alone.
 #
 # Why: the supervisor asked for stands merged to at most 2-3 ha. The reported run used a
 # 10 ha ceiling and produced a median stand of 3.09 ha with the top decile above 9.18 ha,
