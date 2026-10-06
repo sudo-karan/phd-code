@@ -26,7 +26,18 @@ alike plots put together" is only answerable where the partition puts anything
 together. Labelling is scored on pairs over 2 km apart, so "same type" cannot be
 explained by the two plots simply being neighbours.
 
+Sensitivity runs (PHASE3_PREDECLARED.md). --field-types scores against another
+typology file (the forced-k or the all-rows one); --exclude-types drops every
+plot whose field type is listed, before anything is counted: the plot is in no
+table, the multi-plot restriction is worked out again on the plots that remain,
+and labelling and far-apart pairs never see it. Either option makes the run a
+sensitivity run, which must not land on a primary output file: a suffix derived
+from the options (e.g. _ft-k4, _excl0) is ALWAYS added to the output name, after
+any --tag. (After, not instead: the 3 hectare arm's primary output already
+carries a --tag, so a tag alone would not keep a sensitivity run off it.)
+
 Usage:  python odisha_script/odisha_phase3_1_pairwise_score.py [--arm v120] [--set districts]
+            [--field-types PATH] [--exclude-types 0,3] [--tag _S1] [--out-dir DIR]
 Offline; no Earth Engine.
 """
 from __future__ import annotations
@@ -43,6 +54,7 @@ from sklearn.metrics import adjusted_rand_score
 HERE = Path(__file__).parent
 GEOD = Geod(ellps="WGS84")
 DISTANT_M = 2000.0
+FIELD_TYPES = HERE / "odisha_phase3_0_field_types.csv"     # the primary (trees-only) typology
 
 _lines: list[str] = []
 
@@ -83,6 +95,26 @@ def show(name: str, t: dict, ari: float, note: str = "") -> None:
     say("")
 
 
+def parse_types(text: str) -> list[int]:
+    """'0' or '0,3' -> [0] or [0, 3]; empty -> []."""
+    try:
+        return sorted({int(t) for t in text.split(",") if t.strip()})
+    except ValueError:
+        raise SystemExit(f"--exclude-types: expected integers separated by commas, got {text!r}")
+
+
+def sensitivity_tag(field_types: Path, excluded: list[int]) -> str:
+    """The filename suffix every sensitivity run gets, after any --tag, so it cannot overwrite a
+    primary output. Empty for a primary run (default typology, nothing excluded)."""
+    tag = ""
+    if field_types.resolve() != FIELD_TYPES.resolve():
+        stem = field_types.stem.replace(FIELD_TYPES.stem, "").strip("_")
+        tag += f"_ft-{stem or field_types.stem}"
+    if excluded:
+        tag += "_excl" + "-".join(str(t) for t in excluded)
+    return tag
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--arm", default="v120")
@@ -92,13 +124,35 @@ def main() -> int:
                     help="joined CSV to score; default odisha_script/phase2_plots_joined<suffix>.csv. "
                          "Point this at a separate join so a new arm never overwrites the committed one.")
     ap.add_argument("--tag", default="", help="suffix for the output filename, to keep runs apart")
+    ap.add_argument("--field-types", type=Path, default=FIELD_TYPES,
+                    help="field-types CSV (plot_key, field_type) to score against; default the primary "
+                         "typology odisha_phase3_0_field_types.csv. Any other file is a sensitivity run.")
+    ap.add_argument("--exclude-types", default="", metavar="T[,T]",
+                    help="field types to leave out, e.g. 0 or 0,3: their plots are dropped from every "
+                         "table and score. A sensitivity run.")
+    ap.add_argument("--out-dir", type=Path, default=HERE,
+                    help="where the score .txt goes (default odisha_script/)")
     args = ap.parse_args()
     suffix = "_districts" if args.set_name == "districts" else ""
+    excluded = parse_types(args.exclude_types)
+    if "_ft-" in args.tag or "_excl" in args.tag:
+        raise SystemExit(f"--tag {args.tag!r} looks like a suffix this script derives from its options (_ft-, _excl); "
+                         "a run tagged that way could land on a sensitivity run's output file")
+    auto_tag = sensitivity_tag(args.field_types, excluded)
+    tag = args.tag + auto_tag           # a sensitivity run never writes to a primary filename
 
     joined_path = args.joined if args.joined else HERE / f"phase2_plots_joined{suffix}.csv"
     joined = pd.read_csv(joined_path)
-    ftypes = pd.read_csv(HERE / "odisha_phase3_0_field_types.csv")[["plot_key", "field_type"]]
-    d = joined.merge(ftypes, on="plot_key", validate="1:1")
+    ftypes = pd.read_csv(args.field_types)[["plot_key", "field_type"]]
+    missing = [t for t in excluded if t not in set(ftypes.field_type)]
+    if missing:
+        raise SystemExit(f"--exclude-types: type(s) {missing} are not in {args.field_types.name} "
+                         f"(it has {sorted(set(ftypes.field_type))})")
+    d = joined.merge(ftypes, on="plot_key", how="left", validate="1:1")
+    if d.field_type.isna().any():
+        # an inner merge would score fewer plots without saying so; the significance script refuses too
+        raise SystemExit(f"{int(d.field_type.isna().sum())} plot(s) in {joined_path.name} have no field type in "
+                         f"{args.field_types.name}")
 
     id_col = f"{args.arm}_{args.layer}_id"
     cl_col = f"{args.arm}_{args.layer}_cluster"
@@ -108,6 +162,13 @@ def main() -> int:
         return 2
 
     d = d[d[id_col].notna()].reset_index(drop=True)
+    # Excluded field types leave here, before any stand is counted or any pair is formed, so
+    # nothing below can score them: stand sizes, the multi-plot restriction, the per-district
+    # labelling and the far-apart pairs are all built from the plots that remain.
+    n_before = len(d)
+    drop = d.field_type.isin(excluded).to_numpy()
+    dropped_by_type = d.field_type[drop].value_counts().sort_index().to_dict()
+    d = d[~drop].reset_index(drop=True)
 
     # Each district is its own pipeline run, so stand ids and k-means type numbers
     # both RESTART per district: stand 62 in angul is not stand 62 in koraput, and
@@ -122,7 +183,18 @@ def main() -> int:
     say(f"PHASE 3 STEP 1 -- pairwise score, arm={args.arm} layer={args.layer} set={args.set_name}")
     say("=" * 100)
     say(f"  joined table: {joined_path.name}")
-    say(f"  plots with a stand: {len(d)}")
+    say(f"  field types file: {args.field_types.name}"
+        + ("   (the primary typology)" if args.field_types.resolve() == FIELD_TYPES.resolve()
+           else "   (NOT the primary typology: a sensitivity run)"))
+    if excluded:
+        say(f"  EXCLUDED field type(s): {', '.join(str(t) for t in excluded)}   -> {n_before - len(d)} of "
+            f"{n_before} plots with a stand dropped {dropped_by_type}; they are in no table or score below")
+    else:
+        say("  excluded field types: none (0 plots dropped)")
+    if auto_tag:
+        say(f"  SENSITIVITY RUN, not the primary analysis. Output suffix: {tag}"
+            f"   ({auto_tag} is derived from the options)")
+    say(f"  plots with a stand: {len(d)}" + (" after the exclusion" if excluded else ""))
     sizes = d.groupby("skey").size()
     say(f"  stands holding them: {len(sizes)}   multi-plot stands: {int((sizes > 1).sum())} "
         f"holding {int(sizes[sizes > 1].sum())} plots   (stand key = district:id)")
@@ -195,7 +267,8 @@ def main() -> int:
     else:
         say("  no cluster labels on this layer; labelling not scored\n")
 
-    out = HERE / f"odisha_phase3_1_score_{args.arm}_{args.layer}{suffix}{args.tag}.txt"
+    out = args.out_dir / f"odisha_phase3_1_score_{args.arm}_{args.layer}{suffix}{tag}.txt"
+    out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text("\n".join(_lines) + "\n")
     say(f"  wrote {out.name}")
     return 0

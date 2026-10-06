@@ -61,6 +61,51 @@ KORAPUT     12  74  54  1   5
                agreement with the primary grouping at k=5: ARI 0.453
 
 ----------------------------------------------------------------------------------------------------
+HOW FIRM IS THE CHOICE OF k  (field data only; changes no label)
+----------------------------------------------------------------------------------------------------
+  1. Knee distance (distance from the inertia curve to its chord, k range 2..12;
+     the elbow is the k where it is largest):
+       k =  4   0.249
+       k =  5   0.263   <- selected
+       k =  6   0.250
+     The selected k = 5 leads its nearer rival k = 6 by 0.013, 5.1% of its own distance.
+
+  2. The elbow when the k range is changed (same fits, same rule):
+       2..8   elbow k = 4
+       2..10  elbow k = 5
+       2..12  elbow k = 5   <- the range used
+       2..16  elbow k = 6
+     The elbow is k = 5 under 2 of 4 ranges; 2..8 gives 4, 2..16 gives 6.
+     So the selected k depends on where the k range is stopped.
+
+  3. Bootstrap of plots (100 resamples of the 274 plots with replacement, seed 42;
+     scaling, k-means and the elbow redone on each): how often each k is the elbow
+       k =  5    81 of 100   <- selected
+       k =  6    19 of 100
+     k = 5 is the most frequent elbow, in 81 of 100 resamples; a majority.
+
+  4. The plots that have at least one Tree row (259 of 274), taken alone
+     (scaled and fitted afresh on those plots only):
+       elbow on those plots                                   k = 6
+       their grouping in the 274-plot fit at k = 5, against a 259-plot fit at k = 4:  ARI 0.959
+       274-plot types that hold plots with trees: {0: 3, 1: 111, 2: 77, 3: 15, 4: 53}
+       274-plot types that hold the 15 no-tree plots: {0: 15}
+     All no-tree plots fall in type 0, which holds 18 plots; 83% of it is no-tree plots and 3 have trees.
+     Thresholds fixed in the code beforehand: ARI >= 0.90 for 'the same grouping',
+     and a no-tree type that is at least 80% no-tree plots.
+     SUPPORTED: 'the typology is 4 tree types plus one no-tree type'. The plots with trees are grouped almost
+     the same way whether or not the no-tree plots are in the fit (ARI 0.959).
+     Note the elbow on the plots with trees is k = 6, not 4: the rule that
+     selected 5 would not itself select 4 tree types. The 4 above is the selected
+     k minus the no-tree type, not a number those plots choose.
+
+  IN SHORT: k = 5 is what the pre-set rule gives, but it is not a firm property of the
+  data: 2 of the 3 checks above (k range, bootstrap majority, elbow without the
+  no-tree plots) move it.
+  The knee leads its nearer neighbour by 0.013. Scores are therefore also reported with
+  the pre-declared sensitivity checks (PHASE3_PREDECLARED.md), whatever they show.
+
+----------------------------------------------------------------------------------------------------
 COMPARISON WITH THE ALL-ROWS TYPOLOGY (the grouping used before 2026-10-07)
 ----------------------------------------------------------------------------------------------------
   height, all rows vs Tree rows only, differs by more than 1 m in 37 of 274 plots:
