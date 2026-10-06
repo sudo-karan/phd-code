@@ -21,6 +21,13 @@ class Settings(BaseSettings):
     gee_asset_root: str = Field(default="")  # falls back to projects/{id}/assets/fmu if empty
     output_dir: Path = Field(default=Path("outputs"))
     log_level: str = Field(default="INFO")
+    # Priority for cache-export tasks within the Earth Engine project (0-9999,
+    # higher runs sooner; Earth Engine's own default is 100). Unset means the
+    # argument is not passed at all, which is the behaviour before this existed.
+    # It lives here and not in the experiment config on purpose: it decides WHEN
+    # a task runs, never what it computes, so it must not reach the cache
+    # fingerprint. Use it when another job shares the project's queue.
+    gee_task_priority: int | None = Field(default=None, ge=0, le=9999)
 
     def resolved_asset_root(self) -> str:
         if self.gee_asset_root:

@@ -25,6 +25,7 @@ from typing import Any
 
 import ee
 
+from fmu.settings import get_settings
 from fmu.utils.gee import asset_path
 from fmu.utils.logging import get_logger
 
@@ -240,6 +241,13 @@ def start_export(
     # and would fail every export. Create the parent hierarchy first.
     ensure_parent_folders(asset_path)
 
+    # Only pass `priority` when the machine's settings ask for one, so the call is
+    # byte-for-byte what it was when they do not.
+    extra: dict[str, Any] = {}
+    priority = get_settings().gee_task_priority
+    if priority is not None:
+        extra["priority"] = priority
+
     task = ee.batch.Export.image.toAsset(
         image=image,
         description=description,
@@ -247,6 +255,7 @@ def start_export(
         region=roi,
         scale=scale,
         maxPixels=max_pixels,
+        **extra,
     )
     task.start()
 
