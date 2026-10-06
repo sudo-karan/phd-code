@@ -2,7 +2,11 @@
 PHASE 3 STEP 0 -- field forest types from STRUCTURE, k by elbow
 ====================================================================================================
   plots: 274
-  structural variables: loreys_h_m, crown_cover_pct, log_basal_area, n_trees
+  rows counted: TREE rows only, for height, trunk area and tree count alike
+                (stumps, climbers, shrubs and saplings are not counted; rule of 2026-10-07)
+  cross-check passed: trees-only height matches the joined table's loreys_h_tree_m (max diff 7.1e-15 m, 259 plots);
+                      Tree-row count matches n_trees on all 274 plots; 15 plots have no Tree row.
+  structural variables: tree_height_m, crown_cover_pct, log_tree_trunk_area, n_trees
   basal area is a plot total, not per hectare: plot radius is still an open
   question with FES, so an area denominator is not available. All plots share
   the same protocol, so the total is proportional to density across plots.
@@ -11,22 +15,22 @@ PHASE 3 STEP 0 -- field forest types from STRUCTURE, k by elbow
 CHOOSING k FROM THE FIELD DATA ALONE (no stand label is read anywhere above)
 ----------------------------------------------------------------------------------------------------
     k       inertia   silhouette   Calinski-H    Davies-B
-    2         632.8        0.277        100.4       1.416
-    3         502.6        0.350         98.0       1.139
-    4         394.4        0.328        107.7       1.021
-    5         333.4        0.280        107.5       1.107
-    6         288.8        0.280        107.2       1.081
-    7         253.1        0.274        107.8       0.956
-    8         220.9        0.276        111.0       0.907
-    9         198.9        0.278        111.2       0.968
-   10         183.9        0.280        108.9       0.976
-   11         171.4        0.277        106.6       1.010
-   12         161.2        0.281        104.2       1.008
+    2         669.9        0.581        138.6       0.523
+    3         498.0        0.375        139.6       1.082
+    4         391.9        0.338        142.2       0.993
+    5         330.9        0.285        138.3       1.044
+    6         290.1        0.283        133.2       1.045
+    7         253.1        0.277        133.3       0.930
+    8         223.8        0.278        133.7       0.892
+    9         201.1        0.281        133.4       0.948
+   10         186.8        0.285        129.5       0.955
+   11         173.6        0.282        126.9       0.972
+   12         165.8        0.285        121.5       0.994
 
   elbow (knee of inertia)      k = 5
-  best silhouette              k = 3  (0.350)
-  best Calinski-Harabasz       k = 9
-  best Davies-Bouldin          k = 8
+  best silhouette              k = 2  (0.581)
+  best Calinski-Harabasz       k = 4
+  best Davies-Bouldin          k = 2
   -> SELECTED k = 5 (elbow). Also preferred by: none of the other three.
      The criteria disagree. The elbow is taken because it is the one the
      supervisor named; the others are recorded so the choice is auditable.
@@ -34,24 +38,50 @@ CHOOSING k FROM THE FIELD DATA ALONE (no stand label is read anywhere above)
 ----------------------------------------------------------------------------------------------------
 THE 5 STRUCTURAL FOREST TYPES
 ----------------------------------------------------------------------------------------------------
-  type 0:  78 plots | height   7.8 m | crown  33.0% |  14 trees | 7 spp | Sal 0.00 | BA 2,990
-  type 1:  47 plots | height  18.1 m | crown  48.0% |   8 trees | 4 spp | Sal 0.19 | BA 3,005
-  type 2:  20 plots | height   1.4 m | crown   1.2% |   0 trees | 0 spp | Sal 0.00 | BA 27
-  type 3:  15 plots | height  15.3 m | crown  48.0% |  29 trees | 9 spp | Sal 0.16 | BA 5,576
-  type 4: 114 plots | height   7.0 m | crown  40.5% |   6 trees | 4 spp | Sal 0.00 | BA 688
+  numbered from shortest (0) to tallest by median tree height
+  type 0:  18 plots | tree height   0.0 m | crown   0.0% |   0 trees | 0 spp | Sal 0.00 | tree trunk area 0 cm2
+  type 1: 111 plots | tree height   7.1 m | crown  38.0% |   6 trees | 4 spp | Sal 0.00 | tree trunk area 625 cm2
+  type 2:  77 plots | tree height   8.1 m | crown  33.0% |  14 trees | 7 spp | Sal 0.00 | tree trunk area 2,850 cm2
+  type 3:  15 plots | tree height  15.4 m | crown  48.0% |  29 trees | 9 spp | Sal 0.16 | tree trunk area 4,771 cm2
+  type 4:  53 plots | tree height  18.3 m | crown  53.0% |   8 trees | 4 spp | Sal 0.12 | tree trunk area 2,552 cm2
 
-  sizes: {0: 78, 1: 47, 2: 20, 3: 15, 4: 114}
-  largest group holds 114 of 274 plots (41.6%) -- compare the composition typology's 259/274 (94.5%).
+  sizes: {0: 18, 1: 111, 2: 77, 3: 15, 4: 53}
+  largest group holds 111 of 274 plots (40.5%) -- compare the composition typology's 259/274 (94.5%).
+  the 15 plots with no Tree row fall in type(s): {0: 15}
 
   by district:
 field_type   0   1   2  3   4
 district                     
-ANGUL        8  11   2  6  13
-DHENKANAL   17  30   0  8  21
-KENDUJHAR    0   2   5  0   5
-KORAPUT     53   4  13  1  75
+ANGUL        2  10   7  6  15
+DHENKANAL    0  21  16  8  31
+KENDUJHAR    4   6   0  0   2
+KORAPUT     12  74  54  1   5
 
   SENSITIVITY: adding dbh_mean_cm (0 where no trees) moves the elbow to k = 5.
-               agreement with the primary grouping at k=5: ARI 0.462
+               agreement with the primary grouping at k=5: ARI 0.453
+
+----------------------------------------------------------------------------------------------------
+COMPARISON WITH THE ALL-ROWS TYPOLOGY (the grouping used before 2026-10-07)
+----------------------------------------------------------------------------------------------------
+  height, all rows vs Tree rows only, differs by more than 1 m in 37 of 274 plots:
+    26 of the 259 plots that have trees (largest change 4.77 m), and
+    11 of the 15 plots with no Tree row, whose height is now 0.0 (it was up to 5.88 m,
+    measured on shrubs, saplings, climbers or stumps).
+  Tree rows carry 95.5% of all recorded trunk area.
+
+  number of types: 5 under both rules (each from its own elbow).
+  ARI between the two typologies: 0.914 (1 = identical grouping, 0 = no better than chance)
+
+  contingency table (rows: all-rows type, old numbering; columns: trees-only type):
+trees_only   0    1   2   3   4
+all_rows                       
+0            0    0  76   0   2
+1            0    0   0   0  47
+2           18    2   0   0   0
+3            0    0   0  15   0
+4            0  109   1   0   4
+
+  best one-to-one matching of types (all-rows -> trees-only): 0->2, 1->4, 2->0, 3->3, 4->1
+  plots that change group under that matching: 9 of 274 (3.3%); 265 stay.
 
   wrote odisha_phase3_0_field_types.csv (274 plots) and odisha_phase3_0_results.txt
