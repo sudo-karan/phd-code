@@ -1,0 +1,90 @@
+==============================================================================================================
+PHASE 3 STEP 3 -- significance of the pairwise score (rotation null), 10 ha arm ONLY
+==============================================================================================================
+  THIS RUN
+  * field types file: odisha_phase3_0_field_types.csv   (the primary typology)
+  * EXCLUDED field type(s): 0   -> 16 of 267 in-AOI plots {0: 16} are scored NOWHERE: not in the observed
+    statistics, not in any rotation-null realisation, not in the bootstrap, not in the jackknife. The
+    rotation nulls are drawn as in the primary run (same seeds, same plots forced to land, so the same
+    realisations); the excluded plots are masked out when each realisation is scored.
+  * arms: 10 ha (v120)   -- ONE ARM ONLY: the arm comparison, the paired bootstrap and the jackknife are SKIPPED
+  * NOT THE PRIMARY ANALYSIS (a sensitivity, single-arm or non-default-draws run). Results file suffix: _excl0_v120   (_excl0_v120 is derived from the options)
+  HOW TO READ THIS FILE
+  * Chance-level ARI is POSITIVE in this design. Field types and stands both cluster by village, so a stand
+    map with no information about the forest still scores above zero. Every statistic is therefore read
+    against a spatial ROTATION NULL (odisha_phase2_5_stats.rotation_null): each village's plot cloud moved
+    rigidly to a random position and angle inside its village, taking the stand under it. 'pctile' is the
+    observed value's mid-rank percentile in that null (share below + half the ties, x100); 'p(>=)' is the
+    one-sided (1 + #null >= observed) / (1 + n). Fewer than 100 usable realisations -> NOT ESTIMABLE.
+  * Labelling uses a CONDITIONAL null: each village's layer limited to polygons that carry a stand type and
+    the labelled plots forced to land on one, because under the unconditional null too few realisations
+    label every labelled plot (koraput's merged layer is ~19% untyped).
+  * Plot-level permutation and plot-level bootstrap p-values are ANTI-CONSERVATIVE here (plots in a
+    village are not independent) and are deliberately NOT reported as tests.
+  * The 19 villages (AOI parts) are the units of independence.
+    (1 of the 20 villages in the AOIs hold only excluded plots, so 19 villages have a plot to score.)
+  * Statistics are exactly those of odisha_phase3_1_pairwise_score.py: stands keyed (district, id);
+    labelling = plot-weighted mean of per-district ARIs; far-apart = same-district pairs > 2 km apart.
+  * MULTIPLE COMPARISONS. 5 statistics x 1 arm = 5 headline tests, plus per-district
+    rows. At that count one p near 0.05 is expected from chance alone, so no single
+    p-value below is a finding on its own. Holm-adjusted p-values over the headline tests are given at the
+    end, together with a plain statement of what the file does and does not show.
+  plots in the village AOIs: 267; villages: 20; field types of the 251 plots scored: {1: 108, 2: 76, 3: 15, 4: 52}; far-apart same-district pairs: 9351 before the labelled-plot restriction (each arm's count is in its own table)
+  rotations per null: 1999; bootstrap draws: 4000 (not used: one arm)
+
+  [10 ha] identity check at the real plot positions: stand ids PASS, stand types PASS
+  [10 ha] plots with a stand 267, with a stand type 266 (forced to land in the null, as in the primary run); SCORED after the exclusion: 251 and 250
+  [10 ha] multi-plot stands 59 holding 168 scored plots; observed statistics match the scorer's definition with the same types dropped (|diff| < 1e-12)
+  [10 ha] rotation nulls: unconditional 1999 in 590 s, failures 0; conditional (labelled polygons) 1999 in 618 s, failures 0
+
+--------------------------------------------------------------------------------------------------------------
+10 HA ARM (v120, merged layer) -- observed vs rotation null
+--------------------------------------------------------------------------------------------------------------
+  usable realisations: delineation 1999, labelling (conditional) 1999
+    statistic                                    observed |        null median [p5, p95]  pctile   p(>=)      n
+    delineation ARI, all plots                   +0.0107 | +0.0086 [+0.0064, +0.0111]    91.9   0.082   1999
+    delineation ARI, multi-plot stands           +0.0225 | +0.0203 [+0.0150, +0.0271]    72.1   0.279   1999
+    same-stand pair precision                    +0.5854 | +0.5804 [+0.5268, +0.6394]    54.7   0.454   1999
+    labelling ARI, per-district wmean            +0.0229 | +0.0288 [+0.0091, +0.0519]    34.3   0.657   1999
+    far-apart same-label rate, alike - differ    -0.0318 | -0.0172 [-0.0366, +0.0069]    12.3   0.877   1999
+      (multi-plot: 168 scored plots in 59 stands observed; redefined per realisation)
+      (far-apart: 9246 same-district pairs > 2 km with both plots typed)
+  per-district labelling ARI (descriptive: each district is 1-12 villages):
+      angul                                      +0.1033 | +0.0553 [-0.0104, +0.1399]    83.1   0.169   1999
+      dhenkanal                                  +0.0622 | +0.0699 [+0.0366, +0.1201]    36.6   0.634   1999
+      kendujhar                                  -0.1538 | -0.2000 [-0.2500, +0.5000]    61.5   0.429   1999
+      koraput                                    -0.0139 | -0.0013 [-0.0160, +0.0214]     8.2   0.918   1999
+  for contrast, labelling wmean under the UNCONDITIONAL null (why the conditional one is used):
+      labelling ARI, unconditional null          +0.0229 | NOT ESTIMABLE (usable realisations 5 < 100)
+
+--------------------------------------------------------------------------------------------------------------
+ARM COMPARISON -- NOT RUN
+--------------------------------------------------------------------------------------------------------------
+  Only the 10 ha arm was run (--arms v120), so there is no D = statistic(3 ha) - statistic(10 ha):
+  the differenced rotation null, the paired village bootstrap and the leave-one-village-out jackknife
+  are all skipped. Nothing in this file compares the two ceilings.
+
+--------------------------------------------------------------------------------------------------------------
+MULTIPLE COMPARISONS -- Holm over the 5 headline tests (one-sided p(>=), rotation null)
+--------------------------------------------------------------------------------------------------------------
+    test                                                         p(>=)   Holm p
+    10 ha: delineation ARI, all plots                            0.082    0.408
+    10 ha: delineation ARI, multi-plot stands                    0.279    1.000
+    10 ha: same-stand pair precision                             0.454    1.000
+    10 ha: labelling ARI, per-district wmean                     0.657    1.000
+    10 ha: far-apart same-label rate, alike - differ             0.877    1.000
+    (Holm here is over this arm's 5 tests only. The primary file corrects over both arms' tests, so
+     its Holm p-values are larger; compare the p(>=) column across files, not the Holm column.)
+
+--------------------------------------------------------------------------------------------------------------
+WHAT THIS SAYS
+--------------------------------------------------------------------------------------------------------------
+  * 0 of 5 headline tests beat chance after Holm correction at 0.05.
+  * Labelling sits at pctile 34.3 (10 ha) of its chance level: indistinguishable from a randomly placed stand map.
+  * Delineation on multi-plot stands sits at pctile 72.1 (10 ha): inside the null's central 90%.
+  * Arm difference: not tested, only the 10 ha arm was run.
+  * So the 10 ha ceiling does not group or label structurally alike plots better than chance in this run.
+    With 19 villages as the units of independence the data has little power to show it if it did.
+  * This is NOT the primary analysis (excl0_v120); read it beside the primary results file, not in place of it.
+  * NOT supported by this file: 'better than chance' from ARI > 0 (chance is positive here); any single
+    p-value read without the Holm column; any plot-level p-value.
