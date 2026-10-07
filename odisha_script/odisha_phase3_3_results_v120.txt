@@ -26,11 +26,13 @@ PHASE 3 STEP 3 -- significance of the pairwise score (rotation null), 10 ha arm 
     p-value below is a finding on its own. Holm-adjusted p-values over the headline tests are given at the
     end, together with a plain statement of what the file does and does not show.
   plots in the village AOIs: 267; villages: 20; field types: {0: 16, 1: 108, 2: 76, 3: 15, 4: 52}; far-apart same-district pairs: 10651 before the labelled-plot restriction (each arm's count is in its own table)
+  for scale (not a test): ARI between VILLAGE and field type, no stand map involved, over the 267 plots scored: +0.0756 pooled
+    (the form delineation takes), +0.0887 as the plot-weighted mean of per-district ARIs (the form labelling takes)
   rotations per null: 1999; bootstrap draws: 4000 (not used: one arm)
 
   [10 ha] identity check at the real plot positions: stand ids PASS, stand types PASS
   [10 ha] plots with a stand 267, with a stand type 266; multi-plot stands 61 holding 184 plots; observed statistics match the scorer's definition (|diff| < 1e-12)
-  [10 ha] rotation nulls: unconditional 1999 in 600 s, failures 0; conditional (labelled polygons) 1999 in 615 s, failures 0
+  [10 ha] rotation nulls: unconditional 1999 in 110 s, failures 0; conditional (labelled polygons) 1999 in 301 s, failures 0
 
 --------------------------------------------------------------------------------------------------------------
 10 HA ARM (v120, merged layer) -- observed vs rotation null

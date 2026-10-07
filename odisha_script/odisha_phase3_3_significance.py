@@ -615,8 +615,8 @@ def main() -> int:
     else:
         say(f"  * The {n_vill} villages (AOI parts) are the units of independence.")
     if n_vill != n_vill_all:
-        say(f"    ({n_vill_all - n_vill} of the {n_vill_all} villages in the AOIs hold only excluded plots, so {n_vill} "
-            "villages have a plot to score.)")
+        say(f"    ({n_vill_all - n_vill} of the {n_vill_all} villages in the AOIs hold{'s' if n_vill_all - n_vill == 1 else ''} "
+            f"only excluded plots, so {n_vill} villages have a plot to score.)")
     say("  * Statistics are exactly those of odisha_phase3_1_pairwise_score.py: stands keyed (district, id);")
     say("    labelling = plot-weighted mean of per-district ARIs; far-apart = same-district pairs > 2 km apart.")
     n_tests = len(arms) * len(STATS)
@@ -630,6 +630,14 @@ def main() -> int:
         f"{' of the ' + str(int(X.keep.sum())) + ' plots scored' if excluded else ''}: "
         f"{ {int(k): int(v) for k, v in zip(*np.unique(X.ft[X.keep], return_counts=True))} }; far-apart same-district pairs: "
         f"{len(X.fi)} before the labelled-plot restriction (each arm's count is in its own table)")
+    # A yardstick, not a test: how well the village alone, with no stand map, sorts the field types. Given in
+    # both forms the scores take, so that each is read against the matching one.
+    vb_pooled = ari(X.ft[X.keep], X.part[X.keep])
+    vb_dist, _ = lab_wmean(X.ft[X.keep], X.part[X.keep], X.dist[X.keep])
+    say(f"  for scale (not a test): ARI between VILLAGE and field type, no stand map involved, over the "
+        f"{int(X.keep.sum())} plots scored: {vb_pooled:+.4f} pooled")
+    say(f"    (the form delineation takes), {vb_dist:+.4f} as the plot-weighted mean of per-district ARIs "
+        "(the form labelling takes)")
     say(f"  rotations per null: {args.rotations}; bootstrap draws: {args.boot}"
         + ("" if both else " (not used: one arm)"))
     say("")
