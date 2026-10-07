@@ -411,7 +411,8 @@ def compare_arms(X: Plots, R: dict, n_boot: int) -> dict:
     bootstrap, (iii) leave-one-village-out jackknife. Returns the percentile of D per statistic from (i).
     R[arm]["A"] / ["L"] are the scored sets, so an excluded plot is in none of the three. The villages
     resampled and held out are those holding at least one scored plot: a village emptied by
-    --exclude-types is not a unit of anything, and counting it would shrink the jackknife SE."""
+    --exclude-types is not a unit of anything. Counting it reported one village too many and made the
+    jackknife SE and the bootstrap range slightly wider than they are."""
     a3, a10 = R["v120_3ha"], R["v120"]
     upart = np.unique(X.part[a3["A"] | a10["A"]])
     n_vill = len(upart)
