@@ -134,6 +134,7 @@ src/fmu/                package
 configs/                YAML configs, one per experiment
 aois/                   GeoJSON polygons
 scripts/                runnable inspect_*.py per stage + check_resolutions.py
+odisha_script/          field validation on Odisha: scripts, results, PHASE<n>_STATUS.md write-ups
 tests/                  pytest tests (fast + `-m live_gee` tiers)
 docs/
   current_flow.md       runtime order + per-stage details + lookup index
@@ -279,6 +280,7 @@ the new config's outputs cache to their own asset folder.
 | How config works, how to add a new experiment | [docs/configs.md](docs/configs.md) |
 | Stage contract, registry, caching internals, how to add a stage | [docs/architecture.md](docs/architecture.md) |
 | Module status (locked / paused / in progress) | [MODULES.md](MODULES.md) |
+| Whether the satellite features and the stands match field data (Odisha): what was tested, what it found | [PHASE1](odisha_script/PHASE1_STATUS.md) · [PHASE2](odisha_script/PHASE2_STATUS.md) · [PHASE3](odisha_script/PHASE3_STATUS.md) status notes |
 
 ## Tests
 
