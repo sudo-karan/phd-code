@@ -658,7 +658,9 @@ def main() -> int:
         say(f"      (multi-plot: {r['multi'][0]} {'scored ' if excluded else ''}plots in {r['multi'][1]} stands observed; "
             "redefined per realisation)")
         say(f"      (far-apart: {int((r['L'][X.fi] & r['L'][X.fj]).sum())} same-district pairs > 2 km with both plots typed)")
-        say("  per-district labelling ARI (descriptive: each district is 1-12 villages):")
+        # villages with a scored plot, per district: counted, not assumed (the text used to say "1-12")
+        nv = [len(np.unique(X.part[X.keep & (X.dist == d)])) for d in np.unique(X.dist)]
+        say(f"  per-district labelling ARI (descriptive, not tests: each district is {min(nv)}-{max(nv)} villages):")
         for k in sorted(x for x in r["obs"] if x.startswith("lab_") and x != "lab_wmean"):
             null_row(f"  {k[4:]}", r["obs"][k], r["null"][k])
         say("  for contrast, labelling wmean under the UNCONDITIONAL null (why the conditional one is used):")
@@ -713,7 +715,7 @@ def main() -> int:
     dmul = {ARM_LABEL[a]: S.percentile(R[a]["obs"]["delin_multi"], R[a]["null"]["delin_multi"])[0] for a in R}
     say(f"  * {n_surv} of {m} headline tests beat chance after Holm correction at 0.05.")
     say("  * Labelling sits at pctile " + ", ".join(f"{v:.1f} ({k})" for k, v in lab.items())
-        + " of its chance level: " + ("indistinguishable from a randomly placed stand map."
+        + " of its chance level: " + ("inside the null's central 90%, so this test cannot tell it from a randomly placed stand map."
                                       if all(5 <= v <= 95 for v in lab.values()) else "see the tables."))
     say("  * Delineation on multi-plot stands sits at pctile " + ", ".join(f"{v:.1f} ({k})" for k, v in dmul.items())
         + ": " + (("inside the null's central 90% in both arms." if both else "inside the null's central 90%.")
@@ -724,12 +726,12 @@ def main() -> int:
         say(f"  * Arm difference: {len(inside)} of {len(d_pct)} statistics differ between 3 ha and 10 ha by no more than")
         say("    their chance levels already differ ((i) inside the null's central 95%).")
         if n_surv == 0 and len(inside) == len(d_pct):
-            say("  * So neither ceiling groups or labels structurally alike plots better than chance, and the data cannot")
+            say("  * So neither ceiling can be SHOWN to group or label structurally alike plots better than chance, and the data cannot")
             say(f"    tell the two ceilings apart. With {n_vill} villages as the units of independence it has little power to.")
     else:
         say(f"  * Arm difference: not tested, only the {ARM_LABEL[arms[0]]} arm was run.")
         if n_surv == 0:
-            say(f"  * So the {ARM_LABEL[arms[0]]} ceiling does not group or label structurally alike plots better than "
+            say(f"  * So the {ARM_LABEL[arms[0]]} ceiling cannot be SHOWN to group or label structurally alike plots better than "
                 "chance in this run.")
             say(f"    With {n_vill} villages as the units of independence the data has little power to show it if it did.")
     if auto_tag:
