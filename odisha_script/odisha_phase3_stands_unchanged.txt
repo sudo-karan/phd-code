@@ -1,0 +1,33 @@
+stands of odisha_v120_3ha: /Users/karan/Desktop/phd-code/odisha_script/phase2_vectors against git ref main
+
+  angul
+    run record fingerprint: acc310dc26 at main, 8c472d39f9 on disk; the config as it is now gives 8c472d39f9
+    stands_snic    1070 outlines at the ref,  1070 on disk; 0 gone, 0 new
+    stands_merged   203 outlines at the ref,   203 on disk; 0 gone, 0 new
+                  stands 200 -> 200; of the 203 shared outlines: 0 with another stand label, 0 with another area, 48 with another stand type
+                  distinct stand types 6 -> 5
+
+  dhenkanal
+    run record fingerprint: d4c8a81903 at main, a516a24b2d on disk; the config as it is now gives a516a24b2d
+    stands_snic    2593 outlines at the ref,  2593 on disk; 0 gone, 0 new
+    stands_merged   473 outlines at the ref,   473 on disk; 0 gone, 0 new
+                  stands 462 -> 462; of the 473 shared outlines: 0 with another stand label, 0 with another area, 323 with another stand type
+                  distinct stand types 6 -> 5
+
+  kendujhar
+    run record fingerprint: 44c7f8e832 at main, 9908a3bb6b on disk; the config as it is now gives 9908a3bb6b
+    stands_snic     946 outlines at the ref,   946 on disk; 0 gone, 0 new
+    stands_merged   186 outlines at the ref,   186 on disk; 0 gone, 0 new
+                  stands 183 -> 183; of the 186 shared outlines: 0 with another stand label, 0 with another area, 45 with another stand type
+                  distinct stand types 6 -> 5
+
+  koraput
+    run record fingerprint: a4bdc4e114 at main, 030aafaa2c on disk; the config as it is now gives 030aafaa2c
+    stands_snic    4963 outlines at the ref,  4963 on disk; 0 gone, 0 new
+    stands_merged  1131 outlines at the ref,  1131 on disk; 0 gone, 0 new
+                  stands 1109 -> 1109; of the 1131 shared outlines: 0 with another stand label, 0 with another area, 293 with another stand type
+                  distinct stand types 6 -> 5
+
+RESULT: every building block and every stand is unchanged, and every district's files come from a new run under the current config.
+
+(written 2026-10-08 15:40 by: python odisha_script/check_stands_unchanged.py --ref main --expect-new-run ; main = PR #40's stand files, 6 stand types)
