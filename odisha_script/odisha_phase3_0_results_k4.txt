@@ -1,0 +1,94 @@
+====================================================================================================
+PHASE 3 STEP 0 -- field forest types from STRUCTURE, k FORCED to 4 (sensitivity)
+====================================================================================================
+  *** k IS FORCED TO 4 BY --k. THIS IS A PRE-DECLARED SENSITIVITY CHECK
+  *** (PHASE3_PREDECLARED.md), NOT THE PRIMARY TYPOLOGY. The primary typology takes
+  *** the k its own elbow gives; what the elbow gives here is printed below.
+  *** Written to odisha_phase3_0_field_types_k4.csv; the primary files are not touched.
+  plots: 274
+  rows counted: TREE rows only, for height, trunk area and tree count alike
+                (stumps, climbers, shrubs and saplings are not counted; rule of 2026-10-07)
+  cross-check passed: trees-only height matches the joined table's loreys_h_tree_m (max diff 7.1e-15 m, 259 plots);
+                      Tree-row count matches n_trees on all 274 plots; 15 plots have no Tree row.
+  structural variables: tree_height_m, crown_cover_pct, log_tree_trunk_area, n_trees
+  basal area is a plot total, not per hectare: plot radius is still an open
+  question with FES, so an area denominator is not available. All plots share
+  the same protocol, so the total is proportional to density across plots.
+
+----------------------------------------------------------------------------------------------------
+CHOOSING k FROM THE FIELD DATA ALONE (no stand label is read anywhere above)
+----------------------------------------------------------------------------------------------------
+    k       inertia   silhouette   Calinski-H    Davies-B
+    2         669.9        0.581        138.6       0.523
+    3         498.0        0.375        139.6       1.082
+    4         391.9        0.338        142.2       0.993
+    5         330.9        0.285        138.3       1.044
+    6         290.1        0.283        133.2       1.045
+    7         253.1        0.277        133.3       0.930
+    8         223.8        0.278        133.7       0.892
+    9         201.1        0.281        133.4       0.948
+   10         186.8        0.285        129.5       0.955
+   11         173.6        0.282        126.9       0.972
+   12         165.8        0.285        121.5       0.994
+
+  elbow (knee of inertia)      k = 5
+  best silhouette              k = 2  (0.581)
+  best Calinski-Harabasz       k = 4
+  best Davies-Bouldin          k = 2
+  -> k FORCED TO 4 (--k). The elbow would have chosen k = 5; it is NOT used in this run.
+     k = 4 is also preferred by: Calinski-Harabasz.
+     This grouping is a sensitivity check, fixed in advance; it is not the truth
+     the primary scores are computed against.
+
+----------------------------------------------------------------------------------------------------
+THE 4 STRUCTURAL FOREST TYPES  (k FORCED, sensitivity)
+----------------------------------------------------------------------------------------------------
+  numbered from shortest (0) to tallest by median tree height
+  type 0:  18 plots | tree height   0.0 m | crown   0.0% |   0 trees | 0 spp | Sal 0.00 | tree trunk area 0 cm2
+  type 1: 155 plots | tree height   7.0 m | crown  33.0% |   8 trees | 5 spp | Sal 0.00 | tree trunk area 848 cm2
+  type 2:  42 plots | tree height   9.9 m | crown  43.0% |  20 trees | 8 spp | Sal 0.00 | tree trunk area 4,605 cm2
+  type 3:  59 plots | tree height  17.3 m | crown  58.0% |   8 trees | 4 spp | Sal 0.10 | tree trunk area 2,296 cm2
+
+  sizes: {0: 18, 1: 155, 2: 42, 3: 59}
+  largest group holds 155 of 274 plots (56.6%) -- compare the composition typology's 259/274 (94.5%).
+  the 15 plots with no Tree row fall in type(s): {0: 15}
+
+  by district:
+field_type   0    1   2   3
+district                   
+ANGUL        2    7  12  19
+DHENKANAL    0   28  15  33
+KENDUJHAR    4    6   0   2
+KORAPUT     12  114  15   5
+
+  SENSITIVITY: adding dbh_mean_cm (0 where no trees) moves the elbow to k = 5.
+               agreement with the primary grouping at k=4: ARI 0.573
+
+----------------------------------------------------------------------------------------------------
+COMPARISON WITH THE ALL-ROWS TYPOLOGY (the grouping used before 2026-10-07)
+----------------------------------------------------------------------------------------------------
+  height, all rows vs Tree rows only, differs by more than 1 m in 37 of 274 plots:
+    26 of the 259 plots that have trees (largest change 4.77 m), and
+    11 of the 15 plots with no Tree row, whose height is now 0.0 (it was up to 5.88 m,
+    measured on shrubs, saplings, climbers or stumps).
+  Tree rows carry 95.5% of all recorded trunk area.
+
+  number of types: 4 with Tree rows only, FORCED by --k; the all-rows typology
+  keeps the k = 5 its own elbow gives.
+  ARI between the two typologies: 0.486 (1 = identical grouping, 0 = no better than chance)
+
+  contingency table (rows: all-rows type, old numbering; columns: trees-only type):
+trees_only   0    1   2   3
+all_rows                   
+0            0   47  27   4
+1            0    0   0  47
+2           18    2   0   0
+3            0    0  15   0
+4            0  106   0   8
+
+  best one-to-one matching of types (all-rows -> trees-only): 0->2, 1->3, 2->0, 4->1
+  plots that change group under that matching: 76 of 274 (27.7%); 198 stay.
+  (with different numbers of types, at least one type has no partner, so every
+   plot in it counts as changed.)
+
+  wrote odisha_phase3_0_field_types_k4.csv (274 plots) and odisha_phase3_0_results_k4.txt

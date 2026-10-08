@@ -1,10 +1,12 @@
 # FULL SET, ANGUL district, 3 ha STAND CEILING.
 #
-# Copy of configs/odisha_v120_handcrafted_angul.yaml. The ONLY parameter that differs is
-# merge.max_area_ha: 10.0 -> 3.0. Everything else -- SNIC bands, merge criteria and
-# tolerances, min_defined_criteria, relax_factor, k, seed, masking, dates, ROI -- is
-# byte-identical to the arm already reported in PHASE2_STATUS.md, so the two runs differ
-# in stand size and nothing else.
+# Copy of configs/odisha_v120_handcrafted_angul.yaml. THREE parameters differ, each
+# explained below: merge.max_area_ha 10.0 -> 3.0 (the ceiling asked for),
+# segmentation.size 10 -> 6 (forced by it) and clustering.k 6 -> 5 (this arm's own elbow).
+# Everything else -- SNIC bands, merge criteria and tolerances, min_defined_criteria,
+# relax_factor, seed, masking, dates, ROI -- is identical to the arm reported in
+# PHASE2_STATUS.md. The two arms therefore differ in more than the ceiling, and a
+# difference between them cannot be put down to stand size alone.
 #
 # Why: the supervisor asked for stands merged to at most 2-3 ha. The reported run used a
 # 10 ha ceiling and produced a median stand of 3.09 ha with the top decile above 9.18 ha,
@@ -21,6 +23,13 @@
 # "largest component is 519 px but maxSize is 360 px". Seed spacing drops 10 -> 6
 # (~100 m -> ~60 m), which scales cell area by ~0.36: projected median ~0.31 ha and
 # largest ~2.4 ha, clearing the 3 ha cap. Decision taken 2026-09-24.
+#
+# STAND TYPES: k = 5, chosen by the elbow rule on THESE stands. The first 3 ha run
+# carried k = 6 over from the 10 ha configs, whose own elbow gave 6, 6, 6 and 5 across the
+# districts. Run on the 3 ha stands themselves the elbow gives 5 in every district and
+# pooled (odisha_phase3_2_stand_k_elbow.py --arm odisha_v120_3ha), so 6 was the wrong
+# number for this arm. Only the labelling depends on k; stand boundaries do not.
+# Changed 2026-10-07; the k = 6 results are kept in PHASE3_STATUS.md for comparison.
 #
 # merge is part of the cache fingerprint, so this name gets its own asset namespace and
 # recomputes features, segmentation and clustering rather than reusing the 10 ha assets.
@@ -123,7 +132,7 @@ merge:
   relax_factor: 1.75
 
 clustering:
-  k: 6
+  k: 5
   seed: 42
   skewness_threshold: 1.0
 

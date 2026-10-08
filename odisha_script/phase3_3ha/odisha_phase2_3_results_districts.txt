@@ -69,7 +69,7 @@ JOIN — plots to stands by geometry (set: districts)
   plots inside the set's AOIs: 267 of 274; by district {'koraput': 145, 'dhenkanal': 75, 'angul': 39, 'kendujhar': 8}
   plots in this set holding a record whose key an alias or '.'-strip changed: 90 ['18.576485_82.834653', '18.576947_82.837561', '18.577439_82.833436', '18.577547_82.836866', '18.577639_82.837776', '18.577748_82.835758', '18.577832_82.83856', '18.578127_82.840014', '18.578158_82.833453', '18.578309_82.834858', '18.578663_82.834354', '18.578716_82.835005', '18.587441_82.81896', '18.58884_82.818969', '18.589041_82.818128', '18.589244_82.825077', '18.589582_82.817618', '18.590763_82.817554', '18.590826_82.820535', '18.590907_82.822339', '18.591008_82.821617', '18.591102_82.824347', '18.591473_82.819057', '18.591548_82.816364', '18.591818_82.815917', '18.592142_82.814825', '18.592398_82.819353', '18.594241_82.828147', '18.595601_82.827027', '18.595819_82.826677', '18.596347_82.826101', '18.596943_82.824312', '18.59743_82.823241', '18.597682_82.819763', '18.615788_82.855314', '18.615834_82.855468', '18.637046_82.971078', '18.637227_82.968882', '18.637924_82.967885', '18.6389_82.971745', '18.639738_82.971846', '18.639916_82.968455', '18.640693_82.972283', '18.641832_82.972375', '18.641893_82.969522', '18.644529_82.974055', '18.65244_82.811768', '18.652647_82.812143', '18.678063_82.960975', '18.681326_82.957064', '18.686566_82.958633', '20.741885_84.698598', '20.742247_84.697628', '20.742487_84.696332', '20.743825_84.696419', '20.744313_84.694294', '20.744556_84.693554', '20.745076_84.695402', '20.745582_84.692273', '20.746348_84.694433', '20.747267_84.691992', '20.759342_84.70982', '20.760064_84.721146', '20.760492_84.717751', '20.761327_84.711584', '20.76148_84.72302', '20.761498_84.715991', '20.76178_84.706629', '20.763036_84.72282', '20.76408_84.715482', '20.764457_84.718917', '20.802758_84.651615', '20.803305_84.650996', '20.803378_84.649662', '20.80382_84.649267', '20.804067_84.651992', '20.805056_84.651723', '20.805368_84.649812', '20.827024_84.643543', '20.828018_84.64283', '20.931593_85.663369', '20.969023_85.695805', '21.018825_85.612578', '21.021416_85.610006', '21.021861_85.613366', '21.022286_85.61525', '21.046252_85.683699', '21.047558_85.52488', '21.048834_85.524919', '21.049949_85.690852']
 
-  --- v120_3ha (odisha_v120_3ha_angul), fingerprint acc310dc26
+  --- v120_3ha (odisha_v120_3ha_angul), fingerprint 8c472d39f9
   merge: 1257 superpixels -> 200 stands; pass-2 fallback merges 109 of 257; stands below min area 8
   stands_merged       200 stands (203 polygons), area ha p10 1.26 / median 2.37 / p90 2.94
       plots assigned 39, in 30 stands; multi-plot stands 6 holding 15 plots; plots-per-stand histogram {1: 24, 2: 3, 3: 3}; boundary-ambiguous plots 0
@@ -79,12 +79,12 @@ JOIN — plots to stands by geometry (set: districts)
       plots assigned 39, in 37 stands; multi-plot stands 2 holding 4 plots; plots-per-stand histogram {1: 35, 2: 2}; boundary-ambiguous plots 0
       distance to another stand: median 6 m; plots > 30 m from a boundary 0
       raster cross-check: vector id == snic_clusters at plot pixel for 39 of 39
-  stands_dissolved     98 stands (98 polygons), area ha p10 0.04 / median 0.22 / p90 6.30
-      plots assigned 37, in 9 stands; multi-plot stands 6 holding 34 plots; plots-per-stand histogram {1: 3, 2: 1, 3: 1, 4: 1, 5: 1, 10: 2}; boundary-ambiguous plots 0
-      distance to another stand: median 38 m; plots > 30 m from a boundary 24
-  plots whose merged stand carries a cluster_id: 39 of 39; cluster values after rounding [0.0, 1.0, 3.0, 4.0, 5.0] (non-integer: 0)
+  stands_dissolved     99 stands (99 polygons), area ha p10 0.04 / median 0.25 / p90 6.17
+      plots assigned 37, in 10 stands; multi-plot stands 7 holding 34 plots; plots-per-stand histogram {1: 3, 2: 3, 5: 1, 6: 1, 7: 1, 10: 1}; boundary-ambiguous plots 0
+      distance to another stand: median 37 m; plots > 30 m from a boundary 22
+  plots whose merged stand carries a cluster_id: 39 of 39; cluster values after rounding [0.0, 1.0, 3.0, 4.0] (non-integer: 0)
 
-  --- v120_3ha (odisha_v120_3ha_dhenkanal), fingerprint d4c8a81903
+  --- v120_3ha (odisha_v120_3ha_dhenkanal), fingerprint a516a24b2d
   merge: 2827 superpixels -> 462 stands; pass-2 fallback merges 151 of 399; stands below min area 39
   stands_merged       462 stands (473 polygons), area ha p10 1.05 / median 2.29 / p90 2.95
       plots assigned 75, in 67 stands; multi-plot stands 6 holding 14 plots; plots-per-stand histogram {1: 61, 2: 4, 3: 2}; boundary-ambiguous plots 0
@@ -94,12 +94,12 @@ JOIN — plots to stands by geometry (set: districts)
       plots assigned 75, in 74 stands; multi-plot stands 1 holding 2 plots; plots-per-stand histogram {1: 73, 2: 1}; boundary-ambiguous plots 0
       distance to another stand: median 4 m; plots > 30 m from a boundary 0
       raster cross-check: vector id == snic_clusters at plot pixel for 75 of 75
-  stands_dissolved    102 stands (102 polygons), area ha p10 0.05 / median 0.34 / p90 16.15
-      plots assigned 72, in 13 stands; multi-plot stands 10 holding 69 plots; plots-per-stand histogram {1: 3, 2: 1, 3: 1, 4: 2, 6: 1, 9: 2, 10: 1, 11: 2}; boundary-ambiguous plots 0
-      distance to another stand: median 146 m; plots > 30 m from a boundary 66
-  plots whose merged stand carries a cluster_id: 75 of 75; cluster values after rounding [1.0, 2.0, 3.0, 4.0, 5.0] (non-integer: 0)
+  stands_dissolved     63 stands (63 polygons), area ha p10 0.05 / median 0.36 / p90 36.25
+      plots assigned 72, in 9 stands; multi-plot stands 9 holding 72 plots; plots-per-stand histogram {2: 1, 4: 1, 6: 1, 9: 2, 10: 2, 11: 2}; boundary-ambiguous plots 0
+      distance to another stand: median 242 m; plots > 30 m from a boundary 72
+  plots whose merged stand carries a cluster_id: 75 of 75; cluster values after rounding [0.0, 1.0, 2.0, 3.0, 4.0] (non-integer: 0)
 
-  --- v120_3ha (odisha_v120_3ha_kendujhar), fingerprint 44c7f8e832
+  --- v120_3ha (odisha_v120_3ha_kendujhar), fingerprint 9908a3bb6b
   merge: 1146 superpixels -> 183 stands; pass-2 fallback merges 165 of 353; stands below min area 11
   stands_merged       183 stands (186 polygons), area ha p10 1.12 / median 2.36 / p90 2.96
       plots assigned 8, in 6 stands; multi-plot stands 2 holding 4 plots; plots-per-stand histogram {1: 4, 2: 2}; boundary-ambiguous plots 0
@@ -109,12 +109,12 @@ JOIN — plots to stands by geometry (set: districts)
       plots assigned 8, in 8 stands; multi-plot stands 0 holding 0 plots; plots-per-stand histogram {1: 8}; boundary-ambiguous plots 0
       distance to another stand: median 6 m; plots > 30 m from a boundary 0
       raster cross-check: vector id == snic_clusters at plot pixel for 8 of 8
-  stands_dissolved    100 stands (100 polygons), area ha p10 0.04 / median 0.30 / p90 6.42
+  stands_dissolved    104 stands (104 polygons), area ha p10 0.04 / median 0.33 / p90 4.98
       plots assigned 7, in 3 stands; multi-plot stands 2 holding 6 plots; plots-per-stand histogram {1: 1, 3: 2}; boundary-ambiguous plots 0
-      distance to another stand: median 17 m; plots > 30 m from a boundary 2
+      distance to another stand: median 27 m; plots > 30 m from a boundary 3
   plots whose merged stand carries a cluster_id: 8 of 8; cluster values after rounding [1.0, 2.0, 3.0] (non-integer: 0)
 
-  --- v120_3ha (odisha_v120_3ha_koraput), fingerprint a4bdc4e114
+  --- v120_3ha (odisha_v120_3ha_koraput), fingerprint 030aafaa2c
   merge: 6939 superpixels -> 1109 stands; pass-2 fallback merges 687 of 1703; stands below min area 51
   stands_merged      1109 stands (1131 polygons), area ha p10 1.28 / median 2.38 / p90 2.93
       plots assigned 145, in 95 stands; multi-plot stands 30 holding 80 plots; plots-per-stand histogram {1: 65, 2: 19, 3: 6, 4: 4, 8: 1}; boundary-ambiguous plots 0
@@ -124,9 +124,9 @@ JOIN — plots to stands by geometry (set: districts)
       plots assigned 143, in 121 stands; multi-plot stands 18 holding 40 plots; plots-per-stand histogram {1: 103, 2: 14, 3: 4}; boundary-ambiguous plots 0
       distance to another stand: median 6 m; plots > 30 m from a boundary 1
       raster cross-check: vector id == snic_clusters at plot pixel for 143 of 143
-  stands_dissolved    326 stands (326 polygons), area ha p10 0.06 / median 1.19 / p90 10.95
-      plots assigned 136, in 32 stands; multi-plot stands 21 holding 125 plots; plots-per-stand histogram {1: 11, 2: 6, 3: 4, 4: 1, 5: 2, 6: 3, 9: 1, 13: 2, 14: 1, 20: 1}; boundary-ambiguous plots 0
-      distance to another stand: median 35 m; plots > 30 m from a boundary 72
-  plots whose merged stand carries a cluster_id: 145 of 145; cluster values after rounding [0.0, 1.0, 2.0, 3.0, 4.0, 5.0] (non-integer: 0)
+  stands_dissolved    292 stands (292 polygons), area ha p10 0.07 / median 1.44 / p90 12.08
+      plots assigned 137, in 31 stands; multi-plot stands 23 holding 129 plots; plots-per-stand histogram {1: 8, 2: 5, 3: 6, 4: 2, 5: 2, 6: 2, 7: 1, 9: 1, 12: 1, 13: 1, 14: 1, 16: 1}; boundary-ambiguous plots 0
+      distance to another stand: median 49 m; plots > 30 m from a boundary 85
+  plots whose merged stand carries a cluster_id: 145 of 145; cluster values after rounding [0.0, 1.0, 2.0, 3.0, 4.0] (non-integer: 0)
 
   wrote phase2_plots_joined_districts.csv: 274 rows, 30 columns

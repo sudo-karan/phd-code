@@ -46,3 +46,17 @@ v1.1.0 extended the export stage with vector outputs (per mentor request:
 vectorized stands with per-stand attributes), added masking source toggles, and
 made the harmonic-regression reference epoch configurable. Module 13 (custom CSV
 hook) is deferred; no current use case.
+
+## Field validation (Odisha)
+
+Not a pipeline module, so it has no row above, but it is where the method is tested against
+ground data. Scripts and results live in `odisha_script/`; each phase has a write-up that leads
+with its answer:
+
+- `odisha_script/PHASE1_STATUS.md` -- do the satellite features track the field measurements?
+- `odisha_script/PHASE2_STATUS.md` -- do stands (up to 10 ha) group plots that are alike on the ground?
+- `odisha_script/PHASE3_STATUS.md` -- the same question at 10 ha and at the 2-3 ha stand size the
+  supervisor asked for, scored for how stands are drawn and how they are labelled, with field forest
+  types built from structure.
+
+Phase 3 changed no pipeline module: it added configs and the scripts and results under `odisha_script/` only.
