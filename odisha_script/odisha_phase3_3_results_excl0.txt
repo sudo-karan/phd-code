@@ -1,0 +1,148 @@
+==============================================================================================================
+PHASE 3 STEP 3 -- significance of the pairwise score (rotation null) and the 3 ha vs 10 ha comparison
+==============================================================================================================
+  THIS RUN
+  * field types file: odisha_phase3_0_field_types.csv   (the primary typology)
+  * EXCLUDED field type(s): 0   -> 16 of 267 in-AOI plots {0: 16} are scored NOWHERE: not in the observed
+    statistics, not in any rotation-null realisation, not in the bootstrap, not in the jackknife. The
+    rotation nulls are drawn as in the primary run (same seeds, same plots forced to land, so the same
+    realisations); the excluded plots are masked out when each realisation is scored.
+  * arms: 10 ha (v120), 3 ha (v120_3ha)
+  * NOT THE PRIMARY ANALYSIS (a sensitivity, single-arm or non-default-draws run). Results file suffix: _excl0   (_excl0 is derived from the options)
+  HOW TO READ THIS FILE
+  * Chance-level ARI is POSITIVE in this design. Field types and stands both cluster by village, so a stand
+    map with no information about the forest still scores above zero. Every statistic is therefore read
+    against a spatial ROTATION NULL (odisha_phase2_5_stats.rotation_null): each village's plot cloud moved
+    rigidly to a random position and angle inside its village, taking the stand under it. 'pctile' is the
+    observed value's mid-rank percentile in that null (share below + half the ties, x100); 'p(>=)' is the
+    one-sided (1 + #null >= observed) / (1 + n). Fewer than 100 usable realisations -> NOT ESTIMABLE.
+  * Labelling uses a CONDITIONAL null: each village's layer limited to polygons that carry a stand type and
+    the labelled plots forced to land on one, because under the unconditional null too few realisations
+    label every labelled plot (koraput's merged layer is ~19% untyped).
+  * Plot-level permutation and plot-level bootstrap p-values are ANTI-CONSERVATIVE here (plots in a
+    village are not independent) and are deliberately NOT reported as tests.
+  * The 19 villages (AOI parts) are the units of independence. Arm differences get a paired village
+    cluster bootstrap CI and a leave-one-village-out jackknife SE on top of the rotation null.
+    (1 of the 20 villages in the AOIs holds only excluded plots, so 19 villages have a plot to score.)
+  * Statistics are exactly those of odisha_phase3_1_pairwise_score.py: stands keyed (district, id);
+    labelling = plot-weighted mean of per-district ARIs; far-apart = same-district pairs > 2 km apart.
+  * MULTIPLE COMPARISONS. 5 statistics x 2 arms = 10 headline tests, plus per-district
+    and arm-difference rows. At that count one p near 0.05 is expected from chance alone, so no single
+    p-value below is a finding on its own. Holm-adjusted p-values over the headline tests are given at the
+    end, together with a plain statement of what the file does and does not show.
+  plots in the village AOIs: 267; villages: 20; field types of the 251 plots scored: {1: 108, 2: 76, 3: 15, 4: 52}; far-apart same-district pairs: 9351 before the labelled-plot restriction (each arm's count is in its own table)
+  for scale (not a test): ARI between VILLAGE and field type, no stand map involved, over the 251 plots scored: +0.0789 pooled
+    (the form delineation takes), +0.0896 as the plot-weighted mean of per-district ARIs (the form labelling takes)
+  rotations per null: 1999; bootstrap draws: 4000
+
+  [10 ha] identity check at the real plot positions: stand ids PASS, stand types PASS
+  [10 ha] plots with a stand 267, with a stand type 266 (forced to land in the null, as in the primary run); SCORED after the exclusion: 251 and 250
+  [10 ha] multi-plot stands 59 holding 168 scored plots; observed statistics match the scorer's definition with the same types dropped (|diff| < 1e-12)
+  [10 ha] rotation nulls: unconditional 1999 in 232 s, failures 0; conditional (labelled polygons) 1999 in 448 s, failures 0
+  [3 ha] identity check at the real plot positions: stand ids PASS, stand types PASS
+  [3 ha] plots with a stand 267, with a stand type 267 (forced to land in the null, as in the primary run); SCORED after the exclusion: 251 and 251
+  [3 ha] multi-plot stands 40 holding 100 scored plots; observed statistics match the scorer's definition with the same types dropped (|diff| < 1e-12)
+  [3 ha] rotation nulls: unconditional 1999 in 241 s, failures 0; conditional (labelled polygons) 1999 in 464 s, failures 0
+
+--------------------------------------------------------------------------------------------------------------
+10 HA ARM (v120, merged layer) -- observed vs rotation null
+--------------------------------------------------------------------------------------------------------------
+  usable realisations: delineation 1999, labelling (conditional) 1999
+    statistic                                    observed |        null median [p5, p95]  pctile   p(>=)      n
+    delineation ARI, all plots                   +0.0107 | +0.0086 [+0.0064, +0.0111]    91.9   0.082   1999
+    delineation ARI, multi-plot stands           +0.0225 | +0.0203 [+0.0150, +0.0271]    72.1   0.279   1999
+    same-stand pair precision                    +0.5854 | +0.5804 [+0.5268, +0.6394]    54.7   0.454   1999
+    labelling ARI, per-district wmean            +0.0229 | +0.0288 [+0.0091, +0.0519]    34.3   0.657   1999
+    far-apart same-label rate, alike - differ    -0.0318 | -0.0172 [-0.0366, +0.0069]    12.3   0.877   1999
+      (multi-plot: 168 scored plots in 59 stands observed; redefined per realisation)
+      (far-apart: 9246 same-district pairs > 2 km with both plots typed)
+  per-district labelling ARI (descriptive: each district is 1-12 villages):
+      angul                                      +0.1033 | +0.0553 [-0.0104, +0.1399]    83.1   0.169   1999
+      dhenkanal                                  +0.0622 | +0.0699 [+0.0366, +0.1201]    36.6   0.634   1999
+      kendujhar                                  -0.1538 | -0.2000 [-0.2500, +0.5000]    61.5   0.429   1999
+      koraput                                    -0.0139 | -0.0013 [-0.0160, +0.0214]     8.2   0.918   1999
+  for contrast, labelling wmean under the UNCONDITIONAL null (why the conditional one is used):
+      labelling ARI, unconditional null          +0.0229 | NOT ESTIMABLE (usable realisations 5 < 100)
+
+--------------------------------------------------------------------------------------------------------------
+3 HA ARM (v120_3ha, merged layer) -- observed vs rotation null
+--------------------------------------------------------------------------------------------------------------
+  usable realisations: delineation 1999, labelling (conditional) 1999
+    statistic                                    observed |        null median [p5, p95]  pctile   p(>=)      n
+    delineation ARI, all plots                   +0.0048 | +0.0038 [+0.0026, +0.0053]    86.6   0.135   1999
+    delineation ARI, multi-plot stands           +0.0190 | +0.0184 [+0.0109, +0.0280]    54.7   0.454   1999
+    same-stand pair precision                    +0.5955 | +0.5821 [+0.5061, +0.6624]    61.0   0.391   1999
+    labelling ARI, per-district wmean            +0.0822 | +0.0682 [+0.0492, +0.0922]    84.4   0.156   1999
+    far-apart same-label rate, alike - differ    +0.0202 | +0.0157 [-0.0011, +0.0381]    65.2   0.348   1999
+      (multi-plot: 100 scored plots in 40 stands observed; redefined per realisation)
+      (far-apart: 9351 same-district pairs > 2 km with both plots typed)
+  per-district labelling ARI (descriptive: each district is 1-12 villages):
+      angul                                      +0.1598 | +0.0831 [+0.0093, +0.1640]    93.9   0.061   1999
+      dhenkanal                                  +0.1849 | +0.1845 [+0.1535, +0.2299]    54.5   0.495   1999
+      kendujhar                                  +0.3077 | -0.1538 [-0.2500, +0.5000]    86.5   0.176   1999
+      koraput                                    -0.0074 | +0.0010 [-0.0109, +0.0244]    16.6   0.835   1999
+  for contrast, labelling wmean under the UNCONDITIONAL null (why the conditional one is used):
+      labelling ARI, unconditional null          +0.0822 | NOT ESTIMABLE (usable realisations 7 < 100)
+
+--------------------------------------------------------------------------------------------------------------
+ARM COMPARISON -- D = statistic(3 ha) - statistic(10 ha), same plots
+--------------------------------------------------------------------------------------------------------------
+  (i) against the difference of the two arms' independent rotation nulls (realisations paired by index
+      only): is D larger than the difference in the arms' chance levels? 'excess' = D - null-D median.
+    statistic                                          D |  null-D median [p2.5, p97.5]   excess  pctile      n
+    delineation ARI, all plots                   -0.0059 | -0.0047 [-0.0080, -0.0015]  -0.0012    23.7   1999
+    delineation ARI, multi-plot stands           -0.0035 | -0.0020 [-0.0137, +0.0117]  -0.0015    39.1   1999
+    same-stand pair precision                    +0.0101 | -0.0006 [-0.1134, +0.1172]  +0.0107    57.0   1999
+    labelling ARI, per-district wmean            +0.0593 | +0.0398 [+0.0059, +0.0760]  +0.0195    85.2   1999
+    far-apart same-label rate, alike - differ    +0.0520 | +0.0331 [-0.0011, +0.0683]  +0.0189    86.5   1999
+
+  (ii) paired village cluster bootstrap: 19 villages resampled with replacement, the same draw for both
+       arms, stand ids unique per drawn copy; 95% percentile CI of D. (Far-apart is left out: a village
+       drawn twice would pair each plot with its own copy.)
+    statistic                                          D |               95% CI  share < 0      n
+    delineation ARI, all plots                   -0.0059 | [-0.0148, -0.0014]      1.000   4000
+      ^ excludes 0, but (i) puts D at pctile 23.7 of the null difference: the gap is the
+        difference in the arms' chance levels, not a difference in how well they delineate.
+    delineation ARI, multi-plot stands           -0.0035 | [-0.0271, +0.0051]      0.792   4000
+    same-stand pair precision                    +0.0101 | [-0.0664, +0.1182]      0.407   4000
+    labelling ARI, per-district wmean            +0.0593 | [-0.0444, +0.1563]      0.159   4000
+
+  (iii) leave-one-village-out jackknife: D recomputed with each village held out.
+    statistic                                          D | jackknife SE    D/SE    leave-one-out range
+    delineation ARI, all plots                   -0.0059 |       0.0042   -1.40  [-0.0091, -0.0047]
+    delineation ARI, multi-plot stands           -0.0035 |       0.0116   -0.30  [-0.0146, -0.0013]
+    same-stand pair precision                    +0.0101 |       0.0409   +0.25  [-0.0140, +0.0287]
+    labelling ARI, per-district wmean            +0.0593 |       0.0511   +1.16  [+0.0319, +0.0818]
+    far-apart same-label rate, alike - differ    +0.0520 |       0.0466   +1.12  [+0.0300, +0.0723]
+
+  Bootstrap and jackknife say how much D moves with the choice of villages; neither is a chance-level test.
+  The chance-level question for D is (i).
+
+--------------------------------------------------------------------------------------------------------------
+MULTIPLE COMPARISONS -- Holm over the 10 headline tests (one-sided p(>=), rotation null)
+--------------------------------------------------------------------------------------------------------------
+    test                                                         p(>=)   Holm p
+    10 ha: delineation ARI, all plots                            0.082    0.815
+    3 ha: delineation ARI, all plots                             0.135    1.000
+    3 ha: labelling ARI, per-district wmean                      0.156    1.000
+    10 ha: delineation ARI, multi-plot stands                    0.279    1.000
+    3 ha: far-apart same-label rate, alike - differ              0.348    1.000
+    3 ha: same-stand pair precision                              0.391    1.000
+    3 ha: delineation ARI, multi-plot stands                     0.454    1.000
+    10 ha: same-stand pair precision                             0.454    1.000
+    10 ha: labelling ARI, per-district wmean                     0.657    1.000
+    10 ha: far-apart same-label rate, alike - differ             0.877    1.000
+
+--------------------------------------------------------------------------------------------------------------
+WHAT THIS SAYS
+--------------------------------------------------------------------------------------------------------------
+  * 0 of 10 headline tests beat chance after Holm correction at 0.05.
+  * Labelling sits at pctile 34.3 (10 ha), 84.4 (3 ha) of its chance level: indistinguishable from a randomly placed stand map.
+  * Delineation on multi-plot stands sits at pctile 72.1 (10 ha), 54.7 (3 ha): inside the null's central 90% in both arms.
+  * Arm difference: 5 of 5 statistics differ between 3 ha and 10 ha by no more than
+    their chance levels already differ ((i) inside the null's central 95%).
+  * So neither ceiling groups or labels structurally alike plots better than chance, and the data cannot
+    tell the two ceilings apart. With 19 villages as the units of independence it has little power to.
+  * This is NOT the primary analysis (excl0); read it beside the primary results file, not in place of it.
+  * NOT supported by this file: 'better than chance' from ARI > 0 (chance is positive here); any single
+    p-value read without the Holm column; any plot-level p-value; the bootstrap CI read without (i).

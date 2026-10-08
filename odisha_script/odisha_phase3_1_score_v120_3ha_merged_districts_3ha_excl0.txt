@@ -3,10 +3,11 @@ PHASE 3 STEP 1 -- pairwise score, arm=v120_3ha layer=merged set=districts
 ====================================================================================================
   joined table: phase2_plots_joined_districts.csv
   field types file: odisha_phase3_0_field_types.csv   (the primary typology)
-  excluded field types: none (0 plots dropped)
-  plots with a stand: 267
-  stands holding them: 198   multi-plot stands: 44 holding 113 plots   (stand key = district:id)
-  field types: {0: 16, 1: 108, 2: 76, 3: 15, 4: 52}
+  EXCLUDED field type(s): 0   -> 16 of 267 plots with a stand dropped {0: 16}; they are in no table or score below
+  SENSITIVITY RUN, not the primary analysis. Output suffix: _3ha_excl0   (_excl0 is derived from the options)
+  plots with a stand: 251 after the exclusion
+  stands holding them: 191   multi-plot stands: 40 holding 100 plots   (stand key = district:id)
+  field types: {1: 108, 2: 76, 3: 15, 4: 52}
 
   READ ARI AGAINST ITS CHANCE LEVEL, NOT AGAINST ZERO. In this design chance-level
   ARI is positive: villages cluster both the field types and the stands, so a
@@ -18,20 +19,20 @@ PHASE 3 STEP 1 -- pairwise score, arm=v120_3ha layer=merged set=districts
 A. DELINEATION -- do alike plots end up in the same stand?
 ----------------------------------------------------------------------------------------------------
   all pairs
-      pairs 35,511   field-alike 28.7%   grouped-together 0.3%
+      pairs 31,375   field-alike 32.1%   grouped-together 0.3%
                       same group   different
-      field alike             63      10,116
-      field differs           50      25,282
-      accuracy 0.714   precision 0.558   recall 0.006   F1 0.012
-      >>> ARI +0.0060   (0 = no better than chance, 1 = perfect)
+      field alike             53      10,006
+      field differs           36      21,280
+      accuracy 0.680   precision 0.596   recall 0.005   F1 0.010
+      >>> ARI +0.0048   (0 = no better than chance, 1 = perfect)
 
-  restricted to plots in multi-plot stands  (113 plots in 44 stands)
-      pairs 6,328   field-alike 32.9%   grouped-together 1.8%
+  restricted to plots in multi-plot stands  (100 plots in 40 stands)
+      pairs 4,950   field-alike 38.8%   grouped-together 1.8%
                       same group   different
-      field alike             63       2,018
-      field differs           50       4,197
-      accuracy 0.673   precision 0.558   recall 0.030   F1 0.057
-      >>> ARI +0.0244   (0 = no better than chance, 1 = perfect)
+      field alike             53       1,870
+      field differs           36       2,991
+      accuracy 0.615   precision 0.596   recall 0.028   F1 0.053
+      >>> ARI +0.0190   (0 = no better than chance, 1 = perfect)
 
 ----------------------------------------------------------------------------------------------------
 B. LABELLING -- do alike plots get the same stand TYPE, even far apart?
@@ -40,24 +41,24 @@ B. LABELLING -- do alike plots get the same stand TYPE, even far apart?
   district. Pairs are restricted to same-district pairs, and the ARI is the
   plot-weighted mean of per-district ARIs.
 
-    ANGUL       n=  39   ARI +0.1461
+    ANGUL       n=  37   ARI +0.1598
     DHENKANAL   n=  75   ARI +0.1849
-    KENDUJHAR   n=   8   ARI +0.2265
-    KORAPUT     n= 145   ARI -0.0014
+    KENDUJHAR   n=   6   ARI +0.3077
+    KORAPUT     n= 133   ARI -0.0074
 
   same-district pairs  (ARI = plot-weighted mean of the per-district values above)
-      pairs 13,984   field-alike 36.7%   grouped-together 22.6%
+      pairs 12,234   field-alike 41.4%   grouped-together 22.6%
                       same group   different
-      field alike          1,267       3,865
-      field differs        1,891       6,961
-      accuracy 0.588   precision 0.401   recall 0.247   F1 0.306
-      >>> ARI +0.0793   (0 = no better than chance, 1 = perfect)
+      field alike          1,240       3,824
+      field differs        1,521       5,649
+      accuracy 0.563   precision 0.449   recall 0.245   F1 0.317
+      >>> ARI +0.0822   (0 = no better than chance, 1 = perfect)
 
   same-district pairs more than 2 km apart  (ARI is a whole-partition score, so it is not defined on a pair subset)
-      pairs 10,651   field-alike 35.1%   grouped-together 17.3%
+      pairs 9,351   field-alike 39.5%   grouped-together 17.1%
                       same group   different
-      field alike            679       3,055
-      field differs        1,159       5,758
-      accuracy 0.604   precision 0.369   recall 0.182   F1 0.244
+      field alike            678       3,014
+      field differs          925       4,734
+      accuracy 0.579   precision 0.423   recall 0.184   F1 0.256
       >>> ARI n/a (see note)
 
