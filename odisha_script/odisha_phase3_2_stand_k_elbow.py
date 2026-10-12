@@ -30,6 +30,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import yaml
 from sklearn.cluster import KMeans
 from sklearn.metrics import calinski_harabasz_score, davies_bouldin_score, silhouette_score
 
@@ -155,8 +156,14 @@ def main() -> int:
     say(f"  pooled elbow:        {pooled['elbow']}")
     rec = int(round(float(np.median(elbows + [pooled["elbow"]]))))
     say(f"  -> median across district and pooled elbows: k = {rec}")
-    say(f"  (the pipeline currently uses k = 6)")
-    if rec != 6:
+    # the k the arm's configs actually carry, read rather than assumed: the two arms differ
+    in_use = sorted({yaml.safe_load((HERE.parent / "configs" / f"{args.arm}_{d}.yaml").read_text())
+                     ["clustering"]["k"] for d in per})
+    if len(in_use) == 1:
+        say(f"  (the pipeline currently uses k = {in_use[0]})")
+    else:
+        say(f"  (the districts' configs disagree on k: {in_use})")
+    if in_use != [rec]:
         say(f"  Changing k changes clustering, which is in the cache fingerprint, so it")
         say(f"  means re-running clustering and export for every district.")
 

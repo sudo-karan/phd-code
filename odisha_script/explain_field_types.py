@@ -10,6 +10,8 @@ Run:  python odisha_script/explain_field_types.py
 No Earth Engine, no network. Mirrors odisha_phase2_5_stats.py lines 1801-1806.
 """
 import json
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 from scipy.cluster.hierarchy import fcluster, linkage
@@ -17,7 +19,8 @@ from scipy.spatial.distance import squareform
 
 N_TYPES = 6  # the k used for the field typology
 
-p = pd.read_csv("phase2_plots_joined_districts.csv")
+# read beside this file, so the command in the docstring works from the repo root too
+p = pd.read_csv(Path(__file__).parent / "phase2_plots_joined_districts.csv")
 print(f"plots in the field table: {len(p)}\n")
 
 # ---- 1. species x plot matrix of RELATIVE basal area -------------------

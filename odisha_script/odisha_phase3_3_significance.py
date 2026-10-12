@@ -57,17 +57,40 @@ at the REAL plot positions and must reproduce the joined stand ids and stand
 types exactly. If it does not, the null is not measuring the same thing as the
 observed statistic, and the script stops.
 
+Sensitivity runs (PHASE3_PREDECLARED.md). --field-types tests against another
+typology file; --exclude-types leaves out every plot whose field type is listed;
+--arms runs one arm alone. Exclusion is a MASK AT SCORING TIME: the rotation
+nulls are drawn exactly as in the primary run (same seeds, same plots forced to
+land, so the same realisations), and the excluded plots are then left out of the
+observed statistics, of every null realisation, of the bootstrap and of the
+jackknife alike. An excluded plot is never scored anywhere; a sensitivity run
+differs from the primary only in which plots are scored. "Multi-plot stands" are
+the stands holding >= 2 SCORED plots, in the observed map and in each realisation.
+With a single arm there is nothing to compare, so the arm comparison, the
+bootstrap and the jackknife are skipped and the file says so.
+Any of these three options makes the run a sensitivity run: a suffix derived from
+them (e.g. _ft-k4, _excl0, _v120) is always added to the results filename, after
+any --tag, so the primary results file cannot be overwritten by one. A run with
+other than the default --rotations / --boot gets a suffix too (_rot120), so a
+quick smoke run cannot land on it either, and a --tag that imitates a derived
+suffix is refused.
+The villages the arm comparison resamples and holds out are those with at least
+one scored plot. Excluding field type 0 empties one village (5 plots, koraput),
+so that run compares the arms over 19 villages, not 20.
+
 Usage:  python odisha_script/odisha_phase3_3_significance.py [--rotations 1999] [--boot 4000] [--out-dir odisha_script/]
+            [--field-types PATH] [--exclude-types 0,3] [--arms v120,v120_3ha] [--tag _S1]
 Input : odisha_script/phase2_plots_joined_districts.csv            (10 ha arm, v120)
         odisha_script/phase3_3ha/phase2_plots_joined_districts.csv  (3 ha arm, v120_3ha)
-        odisha_script/odisha_phase3_0_field_types.csv               (field_type 0..4)
-        the merged stand layers of both arms, via odisha_phase2_5_stats.Partition
-Output: <out-dir>/odisha_phase3_3_results.txt
+        odisha_script/odisha_phase3_0_field_types.csv               (field_type 0..4; or --field-types)
+        the merged stand layers of the arms run, via odisha_phase2_5_stats.Partition
+Output: <out-dir>/odisha_phase3_3_results<tag>.txt
 Offline; no Earth Engine. Every random stream is seeded from a fixed string.
 """
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 import time
 from pathlib import Path
@@ -87,10 +110,10 @@ import odisha_phase2_5_stats as S  # noqa: E402
 ARM_LABEL = {"v120": "10 ha", "v120_3ha": "3 ha"}
 JOINED = {"v120": HERE / "phase2_plots_joined_districts.csv",
           "v120_3ha": HERE / "phase3_3ha" / "phase2_plots_joined_districts.csv"}
-FIELD_TYPES = HERE / "odisha_phase3_0_field_types.csv"
+FIELD_TYPES = HERE / "odisha_phase3_0_field_types.csv"       # the primary (trees-only) typology
 LAYER = "merged"
 DISTANT_M = 2000.0          # the scorer's far-apart threshold
-OUT_NAME = "odisha_phase3_3_results.txt"
+OUT_STEM = "odisha_phase3_3_results"
 GEOD = Geod(ellps="WGS84")
 
 # rotation-null seed keys: the ones the reconciled analysis used, so this file reproduces its draws
@@ -144,17 +167,20 @@ def lab_wmean(f: np.ndarray, cl: np.ndarray, dist: np.ndarray) -> tuple[float, d
 
 
 class Plots:
-    """The 267 in-AOI plots, their field types, and the far-apart pair set."""
+    """The 267 in-AOI plots, their field types, and the far-apart pair set. `keep` is False for a plot
+    whose field type is excluded (--exclude-types): such a plot is in no scored set and in no far-apart
+    pair. The arrays stay full length so that they index the rotation null's output unchanged."""
 
-    def __init__(self, plots: pd.DataFrame):
+    def __init__(self, plots: pd.DataFrame, excluded: tuple = ()):
         self.ft = plots.field_type.to_numpy(int)
+        self.keep = ~np.isin(self.ft, list(excluded))
         self.dist = plots.district_set.to_numpy().astype(str)
         self.part = plots.aoi_part.to_numpy()
         self.n = len(plots)
         i, j = np.triu_indices(self.n, 1)
         lon, lat = plots.lon6.to_numpy(float), plots.lat6.to_numpy(float)
         _, _, dm = GEOD.inv(lon[i], lat[i], lon[j], lat[j])
-        far = (dm > DISTANT_M) & (self.dist[i] == self.dist[j])
+        far = (dm > DISTANT_M) & (self.dist[i] == self.dist[j]) & self.keep[i] & self.keep[j]
         self.fi, self.fj = i[far], j[far]
         self.f_alike = self.ft[self.fi] == self.ft[self.fj]
 
@@ -174,15 +200,16 @@ class Plots:
 
 
 # ---------------------------------------------------------------------- data and partitions
-def load_all():
+def load_all(arms: list, field_types: Path):
     J.ARMS.clear()
-    J.ARMS.update({k: J.ALL_ARMS[k] for k in ARM_LABEL})     # select the arms in place, as the join/stats expect
+    J.ARMS.update({k: J.ALL_ARMS[k] for k in arms})          # select the arms in place, as the join/stats expect
     spec = J.set_spec("districts")
     _, plots, parts = S.load(spec)                           # 10 ha joined CSV: plot set, AOI parts, UTM x/y
-    j3 = pd.read_csv(JOINED["v120_3ha"])
-    plots = plots.merge(j3[["plot_key"] + [c for c in j3.columns if c.startswith("v120_3ha_")]],
-                        on="plot_key", how="left", validate="1:1")
-    ft = pd.read_csv(FIELD_TYPES)[["plot_key", "field_type"]]
+    if "v120_3ha" in arms:
+        j3 = pd.read_csv(JOINED["v120_3ha"])
+        plots = plots.merge(j3[["plot_key"] + [c for c in j3.columns if c.startswith("v120_3ha_")]],
+                            on="plot_key", how="left", validate="1:1")
+    ft = pd.read_csv(field_types)[["plot_key", "field_type"]]
     plots = plots.merge(ft, on="plot_key", how="left", validate="1:1")
     if plots.field_type.isna().any():
         raise SystemExit(f"{int(plots.field_type.isna().sum())} in-AOI plot(s) have no field type")
@@ -233,13 +260,16 @@ def identity_check(P: S.Partition, plots: pd.DataFrame, parts: list) -> tuple[bo
     return same(cid_, P.ids), same(ccl_, P.cluster)
 
 
-def scorer_observed(arm: str) -> dict:
+def scorer_observed(arm: str, field_types: Path = FIELD_TYPES, excluded: tuple = ()) -> dict:
     """The observed statistics computed the fixed scorer's way (odisha_phase3_1): from the arm's joined CSV,
-    stand key the string 'district:id', labelling per district. Used only to prove the array path agrees."""
-    d = pd.read_csv(JOINED[arm]).merge(pd.read_csv(FIELD_TYPES)[["plot_key", "field_type"]],
+    stand key the string 'district:id', labelling per district. Used only to prove the array path agrees.
+    Excluded field types are DROPPED here, as the scorer drops them, where the array path masks them: two
+    different routes to the same plots, so agreement also proves the mask excludes what it should."""
+    d = pd.read_csv(JOINED[arm]).merge(pd.read_csv(field_types)[["plot_key", "field_type"]],
                                        on="plot_key", validate="1:1")
     id_col, cl_col = f"{arm}_{LAYER}_id", f"{arm}_{LAYER}_cluster"
     d = d[d[id_col].notna()].reset_index(drop=True)
+    d = d[~d.field_type.isin(list(excluded))].reset_index(drop=True)
     d["skey"] = d.district.astype(str) + ":" + d[id_col].round().astype(int).astype(str)
     out = {"delin_all": ari(d.skey, d.field_type)}
     multi = d.groupby("skey").skey.transform("size").to_numpy() > 1
@@ -255,13 +285,14 @@ def scorer_observed(arm: str) -> dict:
         if len(g) >= 2 and g.field_type.nunique() >= 2:
             per.append(ari(g.field_type, np.rint(g[cl_col].astype(float))))
             wts.append(len(g))
-    out["lab_wmean"] = float(np.average(per, weights=wts))
+    out["lab_wmean"] = float(np.average(per, weights=wts)) if per else np.nan
     i, j = np.triu_indices(len(d), 1)
     _, _, dm = GEOD.inv(d.lon6.to_numpy()[i], d.lat6.to_numpy()[i], d.lon6.to_numpy()[j], d.lat6.to_numpy()[j])
     far = ok[i] & ok[j] & (d.district.to_numpy()[i] == d.district.to_numpy()[j]) & (dm > DISTANT_M)
     st = d.field_type.to_numpy()[i] == d.field_type.to_numpy()[j]
     sl = lab[i] == lab[j]
-    out["far_gap"] = float(sl[far & st].mean() - sl[far & ~st].mean())
+    a, b = far & st, far & ~st
+    out["far_gap"] = float(sl[a].mean() - sl[b].mean()) if a.any() and b.any() else np.nan
     return out
 
 
@@ -287,7 +318,8 @@ def table_head() -> None:
 
 
 # ---------------------------------------------------------------------- per-arm analysis
-def analyse_arm(arm, spec, plots, parts, X: Plots, n_rot: int) -> dict:
+def analyse_arm(arm, spec, plots, parts, X: Plots, n_rot: int, field_types: Path = FIELD_TYPES,
+                excluded: tuple = ()) -> dict:
     nm = ARM_LABEL[arm]
     P = S.Partition(spec, arm, LAYER, plots, parts)
     if P.missing:
@@ -302,15 +334,27 @@ def analyse_arm(arm, spec, plots, parts, X: Plots, n_rot: int) -> dict:
 
     A = ~np.isnan(P.ids)                  # plots with a stand
     L = A & ~np.isnan(P.cluster)          # ... and a stand type
-    obs = {**X.delin(P.ids, A), **X.label(P.cluster, L)}
-    _, m_pl, m_st = multi_ari(X.ft[A], P.ids[A])
+    # A and L are the sets the rotation null FORCES to land, and stay exactly as in the primary run, so the
+    # realisations drawn are the same whatever is excluded. As and Ls are the sets that are SCORED: the same,
+    # minus the plots of an excluded field type. Every statistic below -- observed, null, bootstrap,
+    # jackknife -- is computed on As / Ls only. With nothing excluded As is A and Ls is L.
+    As, Ls = A & X.keep, L & X.keep
+    obs = {**X.delin(P.ids, As), **X.label(P.cluster, Ls)}
+    _, m_pl, m_st = multi_ari(X.ft[As], P.ids[As])
 
-    ref = scorer_observed(arm)
-    bad = {k: (obs[k], ref[k]) for k in ref if not np.isclose(obs[k], ref[k], rtol=0, atol=1e-12)}
+    ref = scorer_observed(arm, field_types, excluded)
+    bad = {k: (obs[k], ref[k]) for k in ref
+           if not np.isclose(obs[k], ref[k], rtol=0, atol=1e-12, equal_nan=True)}
     if bad:
         raise SystemExit(f"[{nm}] observed statistics disagree with the fixed scorer's definition: {bad}")
-    say(f"  [{nm}] plots with a stand {int(A.sum())}, with a stand type {int(L.sum())}; multi-plot stands "
-        f"{m_st} holding {m_pl} plots; observed statistics match the scorer's definition (|diff| < 1e-12)")
+    if excluded:
+        say(f"  [{nm}] plots with a stand {int(A.sum())}, with a stand type {int(L.sum())} (forced to land in the "
+            f"null, as in the primary run); SCORED after the exclusion: {int(As.sum())} and {int(Ls.sum())}")
+        say(f"  [{nm}] multi-plot stands {m_st} holding {m_pl} scored plots; observed statistics match the "
+            f"scorer's definition with the same types dropped (|diff| < 1e-12)")
+    else:
+        say(f"  [{nm}] plots with a stand {int(A.sum())}, with a stand type {int(L.sum())}; multi-plot stands "
+            f"{m_st} holding {m_pl} plots; observed statistics match the scorer's definition (|diff| < 1e-12)")
 
     t0 = time.time()
     rid, rcl, _, _, fails = S.rotation_null(plots, parts, P, A, n_rot, S.seeded(SEED_UNCOND.format(arm=arm)),
@@ -326,20 +370,24 @@ def analyse_arm(arm, spec, plots, parts, X: Plots, n_rot: int) -> dict:
     for f in fails + lfails:
         say(f"      FAILED PART {f}")
 
-    # a null with a failed part is not built (rotation_null's contract): every realisation is unusable
+    # a null with a failed part is not built (rotation_null's contract): every realisation is unusable.
+    # Usability is judged on the forced sets A / L, not the scored ones, so the usable realisations are the
+    # primary run's too.
     use_d = np.array([not fails and not np.isnan(rid[r, A]).any() for r in range(n_rot)])
     use_l = np.array([not lfails and not np.isnan(lcl[r, L]).any() for r in range(n_rot)])
     use_u = np.array([not fails and not np.isnan(rcl[r, L]).any() for r in range(n_rot)])
 
     null = {}
     for r in range(n_rot):
-        sd = X.delin(rid[r], A) if use_d[r] else {}
-        sl = X.label(lcl[r], L) if use_l[r] else {}
+        sd = X.delin(rid[r], As) if use_d[r] else {}
+        sl = X.label(lcl[r], Ls) if use_l[r] else {}
         for k in list(obs):
             null.setdefault(k, np.full(n_rot, np.nan))[r] = {**sd, **sl}.get(k, np.nan)
     # the unconditional null for labelling, for contrast only: why the conditional one is needed
-    null_uncond_lab = np.array([X.label(rcl[r], L)["lab_wmean"] if use_u[r] else np.nan for r in range(n_rot)])
-    return dict(obs=obs, null=null, null_uncond_lab=null_uncond_lab, ids=P.ids, cl=P.cluster, A=A, L=L,
+    null_uncond_lab = np.array([X.label(rcl[r], Ls)["lab_wmean"] if use_u[r] else np.nan for r in range(n_rot)])
+    # A and L are handed on as the SCORED sets: the bootstrap and the jackknife only score, and must not see
+    # an excluded plot either
+    return dict(obs=obs, null=null, null_uncond_lab=null_uncond_lab, ids=P.ids, cl=P.cluster, A=As, L=Ls,
                 multi=(m_pl, m_st), use=(int(use_d.sum()), int(use_l.sum()), int(use_u.sum())))
 
 
@@ -358,74 +406,16 @@ def resample_stats(X: Plots, R: dict, ix: np.ndarray, copy: np.ndarray) -> dict:
     return out
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--rotations", type=int, default=1999, help="rotation-null realisations per null (default 1999)")
-    ap.add_argument("--boot", type=int, default=4000, help="paired village cluster bootstrap draws (default 4000)")
-    ap.add_argument("--out-dir", type=Path, default=HERE, help="where the results .txt goes (default odisha_script/)")
-    ap.add_argument("--progress-every", type=int, default=0,
-                    help="rotation-null progress line every N accepted realisations per village (0: off)")
-    args = ap.parse_args()
-    S.apply_runtime_args(args)
-    t_start = time.time()
-
-    spec, plots, parts = load_all()
-    X = Plots(plots)
-    upart = np.unique(X.part)
-    n_vill = len(upart)
-
-    say("=" * 110)
-    say("PHASE 3 STEP 3 -- significance of the pairwise score (rotation null) and the 3 ha vs 10 ha comparison")
-    say("=" * 110)
-    say("  HOW TO READ THIS FILE")
-    say("  * Chance-level ARI is POSITIVE in this design. Field types and stands both cluster by village, so a stand")
-    say("    map with no information about the forest still scores above zero. Every statistic is therefore read")
-    say("    against a spatial ROTATION NULL (odisha_phase2_5_stats.rotation_null): each village's plot cloud moved")
-    say("    rigidly to a random position and angle inside its village, taking the stand under it. 'pctile' is the")
-    say("    observed value's mid-rank percentile in that null (share below + half the ties, x100); 'p(>=)' is the")
-    say("    one-sided (1 + #null >= observed) / (1 + n). Fewer than 100 usable realisations -> NOT ESTIMABLE.")
-    say("  * Labelling uses a CONDITIONAL null: each village's layer limited to polygons that carry a stand type and")
-    say("    the labelled plots forced to land on one, because under the unconditional null too few realisations")
-    say("    label every labelled plot (koraput's merged layer is ~19% untyped).")
-    say("  * Plot-level permutation and plot-level bootstrap p-values are ANTI-CONSERVATIVE here (plots in a")
-    say("    village are not independent) and are deliberately NOT reported as tests.")
-    say(f"  * The {n_vill} villages (AOI parts) are the units of independence. Arm differences get a paired village")
-    say("    cluster bootstrap CI and a leave-one-village-out jackknife SE on top of the rotation null.")
-    say("  * Statistics are exactly those of odisha_phase3_1_pairwise_score.py: stands keyed (district, id);")
-    say("    labelling = plot-weighted mean of per-district ARIs; far-apart = same-district pairs > 2 km apart.")
-    say(f"  * MULTIPLE COMPARISONS. {len(STATS)} statistics x 2 arms = {2 * len(STATS)} headline tests, plus per-district")
-    say("    and arm-difference rows. At that count one p near 0.05 is expected from chance alone, so no single")
-    say("    p-value below is a finding on its own. Holm-adjusted p-values over the headline tests are given at the")
-    say("    end, together with a plain statement of what the file does and does not show.")
-    say(f"  plots in the village AOIs: {X.n}; villages: {n_vill}; field types: "
-        f"{ {int(k): int(v) for k, v in zip(*np.unique(X.ft, return_counts=True))} }; far-apart same-district pairs: "
-        f"{len(X.fi)} before the labelled-plot restriction (each arm's count is in its own table)")
-    say(f"  rotations per null: {args.rotations}; bootstrap draws: {args.boot}")
-    say("")
-
-    R = {arm: analyse_arm(arm, spec, plots, parts, X, args.rotations) for arm in ARM_LABEL}
-
-    for arm, r in R.items():
-        nm = ARM_LABEL[arm]
-        say("")
-        say("-" * 110)
-        say(f"{nm.upper()} ARM ({arm}, {LAYER} layer) -- observed vs rotation null")
-        say("-" * 110)
-        say(f"  usable realisations: delineation {r['use'][0]}, labelling (conditional) {r['use'][1]}")
-        table_head()
-        for k, label in STATS:
-            null_row(label, r["obs"][k], r["null"][k])
-        say(f"      (multi-plot: {r['multi'][0]} plots in {r['multi'][1]} stands observed; redefined per realisation)")
-        say(f"      (far-apart: {int((r['L'][X.fi] & r['L'][X.fj]).sum())} same-district pairs > 2 km with both plots typed)")
-        say("  per-district labelling ARI (descriptive: each district is 1-12 villages):")
-        for k in sorted(x for x in r["obs"] if x.startswith("lab_") and x != "lab_wmean"):
-            null_row(f"  {k[4:]}", r["obs"][k], r["null"][k])
-        say("  for contrast, labelling wmean under the UNCONDITIONAL null (why the conditional one is used):")
-        null_row("  labelling ARI, unconditional null", r["obs"]["lab_wmean"], r["null_uncond_lab"])
-
-    # ------------------------------------------------------------------ arm comparison
+def compare_arms(X: Plots, R: dict, n_boot: int) -> dict:
+    """The 3 ha vs 10 ha comparison: (i) against the differenced rotation nulls, (ii) paired village
+    bootstrap, (iii) leave-one-village-out jackknife. Returns the percentile of D per statistic from (i).
+    R[arm]["A"] / ["L"] are the scored sets, so an excluded plot is in none of the three. The villages
+    resampled and held out are those holding at least one scored plot: a village emptied by
+    --exclude-types is not a unit of anything. Counting it reported one village too many and made the
+    jackknife SE and the bootstrap range slightly wider than they are."""
     a3, a10 = R["v120_3ha"], R["v120"]
-    say("")
+    upart = np.unique(X.part[a3["A"] | a10["A"]])
+    n_vill = len(upart)
     say("-" * 110)
     say("ARM COMPARISON -- D = statistic(3 ha) - statistic(10 ha), same plots")
     say("-" * 110)
@@ -452,8 +442,8 @@ def main() -> int:
     say("       drawn twice would pair each plot with its own copy.)")
     rng = S.seeded(SEED_BOOT)
     idx_part = {q: np.where(X.part == q)[0] for q in upart}
-    boot = {k: np.empty(args.boot) for k in BOOT_STATS}
-    for b in range(args.boot):
+    boot = {k: np.empty(n_boot) for k in BOOT_STATS}
+    for b in range(n_boot):
         pick = rng.choice(upart, n_vill, replace=True)
         ix = np.concatenate([idx_part[q] for q in pick])
         cp = np.concatenate([np.full(len(idx_part[q]), c) for c, q in enumerate(pick)])
@@ -498,11 +488,202 @@ def main() -> int:
     say("")
     say("  Bootstrap and jackknife say how much D moves with the choice of villages; neither is a chance-level test.")
     say("  The chance-level question for D is (i).")
+    return d_pct
+
+
+def parse_types(text: str) -> tuple:
+    """'0' or '0,3' -> (0,) or (0, 3); empty -> ()."""
+    try:
+        return tuple(sorted({int(t) for t in text.split(",") if t.strip()}))
+    except ValueError:
+        raise SystemExit(f"--exclude-types: expected integers separated by commas, got {text!r}")
+
+
+def parse_arms(text: str) -> list:
+    """The arms to run, in the fixed order of ARM_LABEL whatever order they were typed in."""
+    want = [a.strip() for a in text.split(",") if a.strip()]
+    unknown = [a for a in want if a not in ARM_LABEL]
+    if unknown or not want:
+        raise SystemExit(f"--arms: unknown or empty {unknown}; known: {list(ARM_LABEL)}")
+    return [a for a in ARM_LABEL if a in want]
+
+
+N_ROT, N_BOOT = 1999, 4000      # the primary run's draw counts
+DERIVED = re.compile(r"_(ft-|excl|rot\d|boot\d|v120)")
+
+
+def sensitivity_tag(field_types: Path, excluded: tuple, arms: list, n_rot: int = N_ROT, n_boot: int = N_BOOT) -> str:
+    """The filename suffix every non-primary run gets, after any --tag, so it cannot overwrite the primary
+    results file. Empty for the primary run (default typology, nothing excluded, both arms, default draws)."""
+    tag = ""
+    if field_types.resolve() != FIELD_TYPES.resolve():
+        stem = field_types.stem.replace(FIELD_TYPES.stem, "").strip("_")
+        tag += f"_ft-{stem or field_types.stem}"
+    if excluded:
+        tag += "_excl" + "-".join(str(t) for t in excluded)
+    if arms != list(ARM_LABEL):
+        tag += "_" + "-".join(arms)
+    if n_rot != N_ROT:
+        tag += f"_rot{n_rot}"
+    if n_boot != N_BOOT and len(arms) == 2:
+        tag += f"_boot{n_boot}"
+    return tag
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("--rotations", type=int, default=N_ROT, help=f"rotation-null realisations per null (default {N_ROT})")
+    ap.add_argument("--boot", type=int, default=N_BOOT, help=f"paired village cluster bootstrap draws (default {N_BOOT})")
+    ap.add_argument("--out-dir", type=Path, default=HERE, help="where the results .txt goes (default odisha_script/)")
+    ap.add_argument("--progress-every", type=int, default=0,
+                    help="rotation-null progress line every N accepted realisations per village (0: off)")
+    ap.add_argument("--field-types", type=Path, default=FIELD_TYPES,
+                    help="field-types CSV (plot_key, field_type) to test against; default the primary typology "
+                         "odisha_phase3_0_field_types.csv. Any other file is a sensitivity run")
+    ap.add_argument("--exclude-types", default="", metavar="T[,T]",
+                    help="field types to leave out, e.g. 0 or 0,3: their plots are masked out of every statistic "
+                         "(observed, null, bootstrap, jackknife); the null realisations drawn do not change")
+    ap.add_argument("--arms", default=",".join(ARM_LABEL),
+                    help=f"comma-separated subset of {','.join(ARM_LABEL)} (default both). One arm: no arm "
+                         "comparison, bootstrap or jackknife")
+    ap.add_argument("--tag", default="",
+                    help="suffix for the results filename. A suffix derived from --field-types/--exclude-types/"
+                         "--arms/--rotations/--boot is always added after it, so only the primary run lands on the "
+                         "primary file")
+    args = ap.parse_args()
+    S.apply_runtime_args(args)
+    t_start = time.time()
+    excluded = parse_types(args.exclude_types)
+    arms = parse_arms(args.arms)
+    both = len(arms) == 2
+    if DERIVED.search(args.tag):
+        raise SystemExit(f"--tag {args.tag!r} looks like a suffix this script derives from its options (_ft-, _excl, "
+                         "_rot, _boot, _v120); a run tagged that way could land on another run's results file")
+    auto_tag = sensitivity_tag(args.field_types, excluded, arms, args.rotations, args.boot)
+    tag = args.tag + auto_tag
+    primary_ft = args.field_types.resolve() == FIELD_TYPES.resolve()
+
+    spec, plots, parts = load_all(arms, args.field_types)
+    missing = [t for t in excluded if t not in set(plots.field_type.astype(int))]
+    if missing:
+        raise SystemExit(f"--exclude-types: type(s) {missing} are not among the in-AOI plots' field types in "
+                         f"{args.field_types.name} (it has {sorted(set(plots.field_type.astype(int)))})")
+    X = Plots(plots, excluded)
+    n_vill_all = len(np.unique(X.part))
+    n_vill = len(np.unique(X.part[X.keep]))      # villages left with a plot to score; all of them if nothing is excluded
+
+    say("=" * 110)
+    if both:
+        say("PHASE 3 STEP 3 -- significance of the pairwise score (rotation null) and the 3 ha vs 10 ha comparison")
+    else:
+        say(f"PHASE 3 STEP 3 -- significance of the pairwise score (rotation null), {ARM_LABEL[arms[0]]} arm ONLY")
+    say("=" * 110)
+    say("  THIS RUN")
+    say(f"  * field types file: {args.field_types.name}"
+        + ("   (the primary typology)" if primary_ft else "   (NOT the primary typology)"))
+    if excluded:
+        dropped = {int(t): int((X.ft == t).sum()) for t in excluded}
+        say(f"  * EXCLUDED field type(s): {', '.join(str(t) for t in excluded)}   -> {int((~X.keep).sum())} of {X.n} "
+            f"in-AOI plots {dropped} are scored NOWHERE: not in the observed")
+        say("    statistics, not in any rotation-null realisation, not in the bootstrap, not in the jackknife. The")
+        say("    rotation nulls are drawn as in the primary run (same seeds, same plots forced to land, so the same")
+        say("    realisations); the excluded plots are masked out when each realisation is scored.")
+    else:
+        say("  * excluded field types: none")
+    say(f"  * arms: {', '.join(f'{ARM_LABEL[a]} ({a})' for a in arms)}"
+        + ("" if both else "   -- ONE ARM ONLY: the arm comparison, the paired bootstrap and the jackknife are "
+                           "SKIPPED"))
+    if auto_tag:
+        say(f"  * NOT THE PRIMARY ANALYSIS (a sensitivity, single-arm or non-default-draws run). Results file suffix: {tag}   "
+            f"({auto_tag} is derived from the options)")
+    else:
+        say("  * this is the PRIMARY analysis (default typology, nothing excluded, both arms, default draws)")
+    say("  HOW TO READ THIS FILE")
+    say("  * Chance-level ARI is POSITIVE in this design. Field types and stands both cluster by village, so a stand")
+    say("    map with no information about the forest still scores above zero. Every statistic is therefore read")
+    say("    against a spatial ROTATION NULL (odisha_phase2_5_stats.rotation_null): each village's plot cloud moved")
+    say("    rigidly to a random position and angle inside its village, taking the stand under it. 'pctile' is the")
+    say("    observed value's mid-rank percentile in that null (share below + half the ties, x100); 'p(>=)' is the")
+    say("    one-sided (1 + #null >= observed) / (1 + n). Fewer than 100 usable realisations -> NOT ESTIMABLE.")
+    say("  * Labelling uses a CONDITIONAL null: each village's layer limited to polygons that carry a stand type and")
+    say("    the labelled plots forced to land on one, because under the unconditional null too few realisations")
+    say("    label every labelled plot (koraput's merged layer is ~19% untyped).")
+    say("  * Plot-level permutation and plot-level bootstrap p-values are ANTI-CONSERVATIVE here (plots in a")
+    say("    village are not independent) and are deliberately NOT reported as tests.")
+    if both:
+        say(f"  * The {n_vill} villages (AOI parts) are the units of independence. Arm differences get a paired village")
+        say("    cluster bootstrap CI and a leave-one-village-out jackknife SE on top of the rotation null.")
+    else:
+        say(f"  * The {n_vill} villages (AOI parts) are the units of independence.")
+    if n_vill != n_vill_all:
+        say(f"    ({n_vill_all - n_vill} of the {n_vill_all} villages in the AOIs hold{'s' if n_vill_all - n_vill == 1 else ''} "
+            f"only excluded plots, so {n_vill} villages have a plot to score.)")
+    say("  * Statistics are exactly those of odisha_phase3_1_pairwise_score.py: stands keyed (district, id);")
+    say("    labelling = plot-weighted mean of per-district ARIs; far-apart = same-district pairs > 2 km apart.")
+    n_tests = len(arms) * len(STATS)
+    say(f"  * MULTIPLE COMPARISONS. {len(STATS)} statistics x {len(arms)} arm{'s' if both else ''} = {n_tests} "
+        "headline tests, plus per-district")
+    say(("    and arm-difference rows." if both else "    rows.")
+        + " At that count one p near 0.05 is expected from chance alone, so no single")
+    say("    p-value below is a finding on its own. Holm-adjusted p-values over the headline tests are given at the")
+    say("    end, together with a plain statement of what the file does and does not show.")
+    say(f"  plots in the village AOIs: {X.n}; villages: {n_vill_all}; field types"
+        f"{' of the ' + str(int(X.keep.sum())) + ' plots scored' if excluded else ''}: "
+        f"{ {int(k): int(v) for k, v in zip(*np.unique(X.ft[X.keep], return_counts=True))} }; far-apart same-district pairs: "
+        f"{len(X.fi)} before the labelled-plot restriction (each arm's count is in its own table)")
+    # A yardstick, not a test: how well the village alone, with no stand map, sorts the field types. Given in
+    # both forms the scores take, so that each is read against the matching one.
+    vb_pooled = ari(X.ft[X.keep], X.part[X.keep])
+    vb_dist, _ = lab_wmean(X.ft[X.keep], X.part[X.keep], X.dist[X.keep])
+    say(f"  for scale (not a test): ARI between VILLAGE and field type, no stand map involved, over the "
+        f"{int(X.keep.sum())} plots scored: {vb_pooled:+.4f} pooled")
+    say(f"    (the form delineation takes), {vb_dist:+.4f} as the plot-weighted mean of per-district ARIs "
+        "(the form labelling takes)")
+    say(f"  rotations per null: {args.rotations}; bootstrap draws: {args.boot}"
+        + ("" if both else " (not used: one arm)"))
+    say("")
+
+    R = {arm: analyse_arm(arm, spec, plots, parts, X, args.rotations, args.field_types, excluded) for arm in arms}
+
+    for arm, r in R.items():
+        nm = ARM_LABEL[arm]
+        say("")
+        say("-" * 110)
+        say(f"{nm.upper()} ARM ({arm}, {LAYER} layer) -- observed vs rotation null")
+        say("-" * 110)
+        say(f"  usable realisations: delineation {r['use'][0]}, labelling (conditional) {r['use'][1]}")
+        table_head()
+        for k, label in STATS:
+            null_row(label, r["obs"][k], r["null"][k])
+        say(f"      (multi-plot: {r['multi'][0]} {'scored ' if excluded else ''}plots in {r['multi'][1]} stands observed; "
+            "redefined per realisation)")
+        say(f"      (far-apart: {int((r['L'][X.fi] & r['L'][X.fj]).sum())} same-district pairs > 2 km with both plots typed)")
+        # villages with a scored plot, per district: counted, not assumed (the text used to say "1-12")
+        nv = [len(np.unique(X.part[X.keep & (X.dist == d)])) for d in np.unique(X.dist)]
+        say(f"  per-district labelling ARI (descriptive, not tests: each district is {min(nv)}-{max(nv)} villages):")
+        for k in sorted(x for x in r["obs"] if x.startswith("lab_") and x != "lab_wmean"):
+            null_row(f"  {k[4:]}", r["obs"][k], r["null"][k])
+        say("  for contrast, labelling wmean under the UNCONDITIONAL null (why the conditional one is used):")
+        null_row("  labelling ARI, unconditional null", r["obs"]["lab_wmean"], r["null_uncond_lab"])
+
+    # ------------------------------------------------------------------ arm comparison
+    say("")
+    if both:
+        d_pct = compare_arms(X, R, args.boot)
+    else:
+        d_pct = {}
+        say("-" * 110)
+        say("ARM COMPARISON -- NOT RUN")
+        say("-" * 110)
+        say(f"  Only the {ARM_LABEL[arms[0]]} arm was run (--arms {arms[0]}), so there is no D = statistic(3 ha) - "
+            "statistic(10 ha):")
+        say("  the differenced rotation null, the paired village bootstrap and the leave-one-village-out jackknife")
+        say("  are all skipped. Nothing in this file compares the two ceilings.")
 
     # ------------------------------------------------------------------ multiplicity
     say("")
     say("-" * 110)
-    say(f"MULTIPLE COMPARISONS -- Holm over the {2 * len(STATS)} headline tests (one-sided p(>=), rotation null)")
+    say(f"MULTIPLE COMPARISONS -- Holm over the {n_tests} headline tests (one-sided p(>=), rotation null)")
     say("-" * 110)
     tests = []
     for arm, r in R.items():
@@ -519,6 +700,9 @@ def main() -> int:
     for t in order:
         say(f"    {tests[t][0]:58} {tests[t][1]:7.3f}  {holm[t]:7.3f}{'  <- survives' if holm[t] < .05 else ''}")
     n_surv = sum(h < .05 for h in holm.values())
+    if not both:
+        say(f"    (Holm here is over this arm's {m} tests only. The primary file corrects over both arms' tests, so")
+        say("     its Holm p-values are larger; compare the p(>=) column across files, not the Holm column.)")
 
     # ------------------------------------------------------------------ plain reading
     # Every sentence below is computed from the numbers above, so a rerun on other
@@ -531,21 +715,33 @@ def main() -> int:
     dmul = {ARM_LABEL[a]: S.percentile(R[a]["obs"]["delin_multi"], R[a]["null"]["delin_multi"])[0] for a in R}
     say(f"  * {n_surv} of {m} headline tests beat chance after Holm correction at 0.05.")
     say("  * Labelling sits at pctile " + ", ".join(f"{v:.1f} ({k})" for k, v in lab.items())
-        + " of its chance level: " + ("indistinguishable from a randomly placed stand map."
+        + " of its chance level: " + ("inside the null's central 90%, so this test cannot tell it from a randomly placed stand map."
                                       if all(5 <= v <= 95 for v in lab.values()) else "see the tables."))
     say("  * Delineation on multi-plot stands sits at pctile " + ", ".join(f"{v:.1f} ({k})" for k, v in dmul.items())
-        + ": " + ("inside the null's central 90% in both arms." if all(5 <= v <= 95 for v in dmul.values())
-                  else "outside the central 90% in at least one arm."))
-    inside = [lbl for k, lbl in STATS if k in d_pct and 2.5 <= d_pct[k] <= 97.5]
-    say(f"  * Arm difference: {len(inside)} of {len(d_pct)} statistics differ between 3 ha and 10 ha by no more than")
-    say("    their chance levels already differ ((i) inside the null's central 95%).")
-    if n_surv == 0 and len(inside) == len(d_pct):
-        say("  * So neither ceiling groups or labels structurally alike plots better than chance, and the data cannot")
-        say(f"    tell the two ceilings apart. With {n_vill} villages as the units of independence it has little power to.")
+        + ": " + (("inside the null's central 90% in both arms." if both else "inside the null's central 90%.")
+                  if all(5 <= v <= 95 for v in dmul.values())
+                  else ("outside the central 90% in at least one arm." if both else "outside the central 90%.")))
+    if both:
+        inside = [lbl for k, lbl in STATS if k in d_pct and 2.5 <= d_pct[k] <= 97.5]
+        say(f"  * Arm difference: {len(inside)} of {len(d_pct)} statistics differ between 3 ha and 10 ha by no more than")
+        say("    their chance levels already differ ((i) inside the null's central 95%).")
+        if n_surv == 0 and len(inside) == len(d_pct):
+            say("  * So neither ceiling can be SHOWN to group or label structurally alike plots better than chance, and the data cannot")
+            say(f"    tell the two ceilings apart. With {n_vill} villages as the units of independence it has little power to.")
+    else:
+        say(f"  * Arm difference: not tested, only the {ARM_LABEL[arms[0]]} arm was run.")
+        if n_surv == 0:
+            say(f"  * So the {ARM_LABEL[arms[0]]} ceiling cannot be SHOWN to group or label structurally alike plots better than "
+                "chance in this run.")
+            say(f"    With {n_vill} villages as the units of independence the data has little power to show it if it did.")
+    if auto_tag:
+        say(f"  * This is NOT the primary analysis ({auto_tag.strip('_')}); read it beside the primary results file, "
+            "not in place of it.")
     say("  * NOT supported by this file: 'better than chance' from ARI > 0 (chance is positive here); any single")
-    say("    p-value read without the Holm column; any plot-level p-value; the bootstrap CI read without (i).")
+    say("    p-value read without the Holm column; any plot-level p-value"
+        + ("; the bootstrap CI read without (i)." if both else "."))
 
-    out = args.out_dir / OUT_NAME
+    out = args.out_dir / f"{OUT_STEM}{tag}.txt"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text("\n".join(_lines) + "\n")
     print(f"\n  wrote {out}   (runtime {time.time() - t_start:.0f} s)", flush=True)
