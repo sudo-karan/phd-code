@@ -619,11 +619,11 @@ Each with its evidence and what should happen next.
    that no number changed.
 5. **Run times in result files.** `CLAUDE.md` says result files hold results only.
    - `odisha_phase3_3_results*.txt` (4 files): two run-time lines each. The script has been changed (commit `20727c1`) so that these two lines no longer carry seconds; the timings go to a `.log` beside the results file (git-ignored). Confirmed for all four files: re-run with the edited script in a clean clone, the diff against each committed file is exactly those two lines (`2 2` in `git diff --numstat`), with every statistic identical; for example `[10 ha] rotation nulls: unconditional 1999 in 235 s, failures 0; ...` becomes `[10 ha] rotation nulls: unconditional 1999, failures 0; ...`. The four regenerated files are committed in `a4a29b9`; they are byte for byte the files that run wrote. Done.
-   - `odisha_phase2_5_results.txt` and `odisha_phase2_5_results_districts.txt`: one
-     `rotation null: ...; N s; ...` line per stand layer and a last line `total runtime N s`
-     (10 such lines in each file). Evidence: they are the only lines that changed when the pilot
-     statistics were re-run. Next: the same fix in `odisha_phase2_5_stats.py`, then re-run and
-     confirm only those lines change. Not done tonight.
+   - `odisha_phase2_5_results.txt` and `odisha_phase2_5_results_districts.txt`: FIXED. The script
+     was changed the same way and both files were regenerated with it in a clean clone (pilot and
+     full set). In each file the only lines that changed are the nine `rotation null:` lines,
+     which lose their seconds, and the closing blank line and `total runtime N s` line, which
+     are gone. Every statistic is identical; the summary CSVs and figures are byte-identical.
    - `odisha_script/gate_effect_results.txt`: five lines such as
      `segmentation for gate_effect_arm_a took 94.8s`, written by `scripts/gate_effect.py`.
      That script needs Earth Engine, so the fix cannot be confirmed by a re-run tonight.
@@ -662,5 +662,5 @@ Every offline job has finished and is in the tables above. Not started, and need
 
 1. The Odisha Earth Engine comparisons for the ten configs still running (the marked table in "Earth Engine re-runs"), with the Phase 3 scores from the new plot tables.
 2. Fix the figure scripts and `phase3_figstyle.py`, regenerate the eleven figures and rewrite `deck_facts.md` from the final results (Problems 1 to 3).
-3. Move run times out of `odisha_phase2_5_stats.py` and `scripts/gate_effect.py` (Problem 5).
+3. Move run times out of `scripts/gate_effect.py` and regenerate `gate_effect_results.txt` at the next Earth Engine run (Problem 5).
 4. Regenerate `odisha_phase1_tests456_results.txt` and `odisha_phase3_stands_unchanged.txt` in their own commits (Problems 4 and 7).
