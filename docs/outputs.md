@@ -795,9 +795,9 @@ stands the counts add up to the totals in `merge_diagnostics`. The values are
 looked up by `stand_lbl`, so every polygon of a stand that was split into
 pieces carries the same values. Both formats carry all six; in the shapefile
 they follow the six columns above. Unless `merge.pass2_skip_at_min_area` is
-set, a second-pass merge does not always add a piece that was below the minimum
+true, a second-pass merge does not always add a piece that was below the minimum
 size at that moment: each sweep lists the undersized pieces once, and a piece
-that grows past the minimum earlier in a sweep still takes its turn in that
+that reaches the minimum earlier in a sweep still takes its turn in that
 sweep. With the setting on, such a piece is skipped (register entry
 `spec-merge-pass2-skip-at-minimum`). The layer is written without the six
 (and the stage logs a warning) only when the context holds no

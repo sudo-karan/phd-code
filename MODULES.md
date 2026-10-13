@@ -11,7 +11,7 @@ A module is **Locked** when the code is read, has tests (fast + live where appli
 | # | Module | Status | Locked at | Notes |
 |---|---|---|---|---|
 | 1 | Repo scaffold | Locked | v0.1-scaffold | Layout, pyproject, .env handling, .gitignore |
-| 2 | `config.py` + baseline YAML | Locked | v0.2-config | Pydantic schema, locked baseline Since v1.3.0: `merge.pass2_skip_at_min_area` (default false, the behaviour of every earlier run; register entry `spec-merge-pass2-skip-at-minimum`). No shipped config sets it; `tests/test_merge_config.py` checks that |
+| 2 | `config.py` + baseline YAML | Locked | v0.2-config | Pydantic schema, locked baseline Since v1.3.0: `merge.pass2_skip_at_min_area` (default false, the behaviour of every earlier run; register entry `spec-merge-pass2-skip-at-minimum`). The 14 `_repro` configs and every config older than them leave it at the default; the four box configs `configs/odisha_v120_3ha_squares_<district>.yaml` turn it on (`tests/test_squares_configs.py`) |
 | 2 | `settings.py` | Locked | v0.2-config | Pydantic-settings, .env |
 | 3 | `utils/logging.py` | Locked | v0.3-utils | Rich + per-run dirs |
 | 3 | `utils/gee.py` | Locked | v0.3-utils | Init, safe_get_info, ROI loader, asset_path |

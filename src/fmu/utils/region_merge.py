@@ -15,8 +15,8 @@ Pass 1 -- merge homogeneous neighbours, iterating to convergence:
 
 Pass 2 -- eliminate undersized regions, smallest first:
   - each sweep lists the undersized regions once and takes them in turn. A
-    listed region that has reached `min_area_ha` by its turn is merged once
-    more all the same, unless `pass2_skip_at_min_area` is set, which skips it;
+    listed region that has reached `min_area_ha` by its turn can be merged once
+    more all the same, unless `pass2_skip_at_min_area` is true, which skips it;
   - same rule with tolerances multiplied by `relax_factor`;
   - if no neighbour passes even relaxed, absorb into the neighbour sharing the
     longest boundary. This fallback is what prevents orphans;
@@ -211,7 +211,7 @@ def merge_superpixels(
     undersized when the sweep listed it and has reached `min_area_ha` by the
     time its turn comes (a smaller region joined it earlier in the sweep).
     False, the default and the behaviour of every earlier run: it still takes
-    its turn and is merged once more. True: it is skipped, since it is no
+    its turn and can be merged once more. True: it is skipped, since it is no
     longer undersized. See docs/decisions.yaml, spec-merge-pass2-skip-at-minimum.
     """
     n = graph.n_regions

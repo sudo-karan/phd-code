@@ -553,8 +553,8 @@ class MergeParams(BaseModel):
     # A listed region can reach `min_area_ha` before its turn comes, when a
     # smaller one joins it earlier in the same sweep. False (the default, and
     # the behaviour of every run made before this setting existed): it still
-    # takes its turn and is merged once more. True: it is skipped, because it is
-    # no longer undersized (docs/decisions.yaml,
+    # takes its turn and can be merged once more. True: it is skipped, because
+    # it is no longer undersized (docs/decisions.yaml,
     # spec-merge-pass2-skip-at-minimum). The default is left out of the cache
     # fingerprint (`fmu.utils.caching._OMITTED_AT_DEFAULT`), so adding this
     # field moved no existing config's cached assets; a config that sets it to

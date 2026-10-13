@@ -516,8 +516,8 @@ a two-tier threshold scheme.
 - `pass2_skip_at_min_area`: what pass 2 does with a region that was undersized
   when the sweep listed it and has reached `min_area_ha` by the time its turn
   comes. `false` (default, and the behaviour of every run made before the
-  setting existed): it is merged once more. `true`: it is skipped, since it is
-  no longer undersized (register entry `spec-merge-pass2-skip-at-minimum`).
+  setting existed): it can be merged once more. `true`: it is skipped, since it
+  is no longer undersized (register entry `spec-merge-pass2-skip-at-minimum`).
   The default is left out of the cache fingerprint, so existing configs keep
   their cached assets; a config that sets it to `true` gets a new fingerprint.
 - `max_superpixels`: fail loudly above this many superpixels (default 50000),

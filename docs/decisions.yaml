@@ -4524,9 +4524,11 @@ decisions:
     Pass 2 of the merge lists the regions below merge.min_area_ha once at the start of each sweep, smallest
     first, and then takes them in turn. Under this rule a listed region that has since reached min_area_ha
     (because a smaller region joined it earlier in the same sweep) is skipped when its turn comes: it is no
-    longer undersized, so pass 2 has nothing to do with it. The committed code did not skip it. Such a region
-    still took its turn in that sweep and was merged once more, under the relaxed tolerances or, where no
-    neighbour passed them, by the shared-edge fallback. The rule is selected by a merge setting,
+    longer undersized, so it does not start a merge of its own. The rule stops only that: an undersized
+    neighbour whose turn comes later, in the same sweep or a later one, can still merge into it. The committed
+    code did not skip it. Such a region still took its turn in that sweep and, where a neighbour could take it
+    under merge.max_area_ha, was merged once more, under the relaxed tolerances or, where no neighbour passed
+    them, by the shared-edge fallback. The rule is selected by a merge setting,
     merge.pass2_skip_at_min_area. Its default, false, keeps the committed behaviour, so that earlier runs
     can still be reproduced; true applies this rule. config_fingerprint leaves the key out of the hashed merge
     block while it is at its default, so the fingerprint of every existing config is unchanged, the 14 _repro
@@ -4561,12 +4563,14 @@ decisions:
   - path: src/fmu/utils/region_merge.py
     what: >-
       Module docstring, 'Pass 2 -- eliminate undersized regions, smallest first'. In merge_superpixels() the
-      pass 2 loop builds the list `undersized` once per sweep and then merges every listed region that is still
-      present, with no second check of its area
+      pass 2 loop builds the list `undersized` once per sweep. Before commit 9fa2a05 it then gave every listed
+      region that was still present its turn, with no second check of its area. Since that commit the argument
+      pass2_skip_at_min_area decides: false, the loop is as it was; true, a listed region whose area is at or
+      above min_area_ha when its turn comes is skipped
   - path: src/fmu/stages/merge.py
     what: >-
       The note under the merge_kind legend (_MERGE_KIND_NOTE): 'each sweep lists the undersized pieces once,
-      and a piece that grows past the minimum earlier in a sweep still takes its turn in that sweep'
+      and a piece that reaches the minimum earlier in a sweep still takes its turn in that sweep'
   - path: docs/outputs.md
     what: The same sentence, in the description of the merge provenance
   - path: src/fmu/config.py
