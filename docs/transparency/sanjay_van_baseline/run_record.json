@@ -6,38 +6,16 @@
   "roi_parts": [
     "sanjay_van"
   ],
-  "date": "2026-10-13T08:08:15+05:30",
+  "date": "2026-10-13T08:21:18+05:30",
   "command_line": "python scripts/transparency_masking.py --config configs/sanjay_van_baseline.yaml --title 'Sanjay Van, Delhi: land-cover (habitat) mask of the rectangle the pipeline runs on' --compare-mask-asset projects/replicating-paper/assets/fmu/sanjay_van_baseline/masking/habitat_mask__bbc3e3d624 --note 'The ROI is the rectangle the pipeline runs on (77.16 to 77.19 E, 28.51 to 28.55 N), not the park boundary. It takes in the built-up neighbourhoods around the park, so every share here is a share of that rectangle, not of Sanjay Van.' --map-note 'The ROI is the rectangle the pipeline runs on (77.16 to 77.19 E, 28.51 to 28.55 N), not the park boundary: it takes in the built-up neighbourhoods around the park, so the shares are of the rectangle, not of Sanjay Van.' --note 'Nothing is cached under this config'\"'\"'s current fingerprint, so the mask here is computed live. The cached assets carry fingerprint bbc3e3d624, from before canopy_height_std was dropped from the config on 10 September; the masking rule did not change then, and that older cached mask is compared with the live one below.'",
   "git": {
-    "commit": "06852f39e762528d57efc0f1a76cd08466bcdb72",
-    "dirty": true,
-    "modified": [
-      "odisha_script/odisha_phase3_3_significance.py",
-      "src/fmu/stages/export.py",
-      "src/fmu/stages/merge.py",
-      "src/fmu/utils/region_merge.py",
-      "tests/test_export_merged_layer.py",
-      "tests/test_merge_stage.py"
-    ],
+    "commit": "4d7f0d5c9dd67ff66cb2165899a2d33d6ccdcdc3",
+    "dirty": false,
+    "modified": [],
     "modified_truncated": false,
-    "untracked": [
-      ".claude/",
-      "docs/reproducibility.md",
-      "docs/transparency/",
-      "odisha_script/odisha_repro_compare.py",
-      "odisha_script/odisha_transparency_masking.py",
-      "scripts/compare_stand_runs.py",
-      "scripts/inspect_merge.py",
-      "scripts/transparency_masking.py",
-      "src/fmu/evaluation/",
-      "tests/data/",
-      "tests/test_compare_stand_runs.py",
-      "tests/test_inspect_merge.py",
-      "tests/test_region_merge_provenance.py",
-      "tests/test_transparency_masking_script.py"
-    ],
+    "untracked": [],
     "untracked_truncated": false,
-    "root": "/Users/karan/Desktop/phd-code",
+    "root": "/private/tmp/claude-501/-Users-karan-Desktop-phd-code/4c6f8818-2378-415e-b987-bd48af5a38c5/scratchpad/task2maps/tree_clean",
     "error": null
   },
   "code_git_blob_ids": {
@@ -98,7 +76,7 @@
     "note": "rasters count pixels whose centre is inside a part; the manifest weights edge pixels by coverage"
   },
   "points_file": null,
-  "pipeline_run_dir": "runs/sanjay_van_baseline_20261013_080820",
+  "pipeline_run_dir": "runs/sanjay_van_baseline_20261013_082125",
   "data_dir": "outputs/transparency/sanjay_van_baseline",
   "redraws_since_this_run": []
 }
