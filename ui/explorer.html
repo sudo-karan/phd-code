@@ -1,0 +1,881 @@
+<title>FMU Pipeline Explorer</title>
+<meta name="description" content="Forest stands drawn from satellite data, shown step by step for Sanjay Van and four Odisha districts, with the decisions behind each step and the comparison with FES field plots.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: a rail that lists the pipeline steps in the order they run, beside a map that shows
+   whatever the rail switches on. Rail and map share one ground; the map carries the colour. */
+:root {
+  --bg: #edf0ea;
+  --surface: #f8f9f6;
+  --ink: #17201b;
+  --muted: #56625b;
+  --line: #d2d8d0;
+  --accent: #1c6b56;
+  --accent-ink: #ffffff;
+  --accent-soft: #d7ebe3;
+  --map-bg: #dde3da;
+  --good: #2d7a34;
+  --good-soft: #dcefdc;
+  --warn: #9a5b00;
+  --warn-soft: #f6e6c9;
+  --neutral-soft: #e4e8e2;
+  --shadow: 0 1px 2px rgba(23, 32, 27, .08), 0 6px 18px rgba(23, 32, 27, .08);
+  --stand-line: #ff4fa3;
+  --font-ui: "IBM Plex Sans", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-label: "IBM Plex Sans Condensed", "Arial Narrow", "IBM Plex Sans", sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111613;
+    --surface: #182019;
+    --ink: #e3eae5;
+    --muted: #98a59d;
+    --line: #2a352e;
+    --accent: #5ec6a4;
+    --accent-ink: #0b1310;
+    --accent-soft: #1d3a31;
+    --map-bg: #0d1210;
+    --good: #85c98a;
+    --good-soft: #1f3522;
+    --warn: #e2a84d;
+    --warn-soft: #3a2c14;
+    --neutral-soft: #222b25;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 18px rgba(0, 0, 0, .35);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111613;
+  --surface: #182019;
+  --ink: #e3eae5;
+  --muted: #98a59d;
+  --line: #2a352e;
+  --accent: #5ec6a4;
+  --accent-ink: #0b1310;
+  --accent-soft: #1d3a31;
+  --map-bg: #0d1210;
+  --good: #85c98a;
+  --good-soft: #1f3522;
+  --warn: #e2a84d;
+  --warn-soft: #3a2c14;
+  --neutral-soft: #222b25;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 18px rgba(0, 0, 0, .35);
+  color-scheme: dark;
+}
+
+/* Leaflet 1.9.4 stylesheet (BSD-2-Clause, (c) Volodymyr Agafonkin and contributors), image rules removed: the page uses no marker images. */
+.leaflet-pane, .leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow, .leaflet-tile-container, .leaflet-pane > svg, .leaflet-pane > canvas, .leaflet-zoom-box, .leaflet-image-layer, .leaflet-layer{ position:absolute;left:0;top:0;}.leaflet-container{ overflow:hidden;}.leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow{ -webkit-user-select:none;-moz-user-select:none;user-select:none;-webkit-user-drag:none;}.leaflet-tile::selection{ background:transparent;}.leaflet-safari .leaflet-tile{ image-rendering:-webkit-optimize-contrast;}.leaflet-safari .leaflet-tile-container{ width:1600px;height:1600px;-webkit-transform-origin:0 0;}.leaflet-marker-icon, .leaflet-marker-shadow{ display:block;}.leaflet-container .leaflet-overlay-pane svg{ max-width:none !important;max-height:none !important;}.leaflet-container .leaflet-marker-pane img, .leaflet-container .leaflet-shadow-pane img, .leaflet-container .leaflet-tile-pane img, .leaflet-container img.leaflet-image-layer, .leaflet-container .leaflet-tile{ max-width:none !important;max-height:none !important;width:auto;padding:0;}.leaflet-container img.leaflet-tile{ mix-blend-mode:plus-lighter;}.leaflet-container.leaflet-touch-zoom{ -ms-touch-action:pan-x pan-y;touch-action:pan-x pan-y;}.leaflet-container.leaflet-touch-drag{ -ms-touch-action:pinch-zoom;touch-action:none;touch-action:pinch-zoom;}.leaflet-container.leaflet-touch-drag.leaflet-touch-zoom{ -ms-touch-action:none;touch-action:none;}.leaflet-container{ -webkit-tap-highlight-color:transparent;}.leaflet-container a{ -webkit-tap-highlight-color:rgba(51, 181, 229, 0.4);}.leaflet-tile{ filter:inherit;visibility:hidden;}.leaflet-tile-loaded{ visibility:inherit;}.leaflet-zoom-box{ width:0;height:0;-moz-box-sizing:border-box;box-sizing:border-box;z-index:800;}.leaflet-overlay-pane svg{ -moz-user-select:none;}.leaflet-pane{ z-index:400;}.leaflet-tile-pane{ z-index:200;}.leaflet-overlay-pane{ z-index:400;}.leaflet-shadow-pane{ z-index:500;}.leaflet-marker-pane{ z-index:600;}.leaflet-tooltip-pane{ z-index:650;}.leaflet-popup-pane{ z-index:700;}.leaflet-map-pane canvas{ z-index:100;}.leaflet-map-pane svg{ z-index:200;}.leaflet-vml-shape{ width:1px;height:1px;}.leaflet-control{ position:relative;z-index:800;pointer-events:visiblePainted;pointer-events:auto;}.leaflet-top, .leaflet-bottom{ position:absolute;z-index:1000;pointer-events:none;}.leaflet-top{ top:0;}.leaflet-right{ right:0;}.leaflet-bottom{ bottom:0;}.leaflet-left{ left:0;}.leaflet-control{ float:left;clear:both;}.leaflet-right .leaflet-control{ float:right;}.leaflet-top .leaflet-control{ margin-top:10px;}.leaflet-bottom .leaflet-control{ margin-bottom:10px;}.leaflet-left .leaflet-control{ margin-left:10px;}.leaflet-right .leaflet-control{ margin-right:10px;}.leaflet-fade-anim .leaflet-popup{ opacity:0;-webkit-transition:opacity 0.2s linear;-moz-transition:opacity 0.2s linear;transition:opacity 0.2s linear;}.leaflet-fade-anim .leaflet-map-pane .leaflet-popup{ opacity:1;}.leaflet-zoom-animated{ -webkit-transform-origin:0 0;-ms-transform-origin:0 0;transform-origin:0 0;}svg.leaflet-zoom-animated{ will-change:transform;}.leaflet-zoom-anim .leaflet-zoom-animated{ -webkit-transition:-webkit-transform 0.25s cubic-bezier(0,0,0.25,1);-moz-transition:-moz-transform 0.25s cubic-bezier(0,0,0.25,1);transition:transform 0.25s cubic-bezier(0,0,0.25,1);}.leaflet-zoom-anim .leaflet-tile, .leaflet-pan-anim .leaflet-tile{ -webkit-transition:none;-moz-transition:none;transition:none;}.leaflet-zoom-anim .leaflet-zoom-hide{ visibility:hidden;}.leaflet-interactive{ cursor:pointer;}.leaflet-grab{ cursor:-webkit-grab;cursor:-moz-grab;cursor:grab;}.leaflet-crosshair, .leaflet-crosshair .leaflet-interactive{ cursor:crosshair;}.leaflet-popup-pane, .leaflet-control{ cursor:auto;}.leaflet-dragging .leaflet-grab, .leaflet-dragging .leaflet-grab .leaflet-interactive, .leaflet-dragging .leaflet-marker-draggable{ cursor:move;cursor:-webkit-grabbing;cursor:-moz-grabbing;cursor:grabbing;}.leaflet-marker-icon, .leaflet-marker-shadow, .leaflet-image-layer, .leaflet-pane > svg path, .leaflet-tile-container{ pointer-events:none;}.leaflet-marker-icon.leaflet-interactive, .leaflet-image-layer.leaflet-interactive, .leaflet-pane > svg path.leaflet-interactive, svg.leaflet-image-layer.leaflet-interactive path{ pointer-events:visiblePainted;pointer-events:auto;}.leaflet-container{ background:#ddd;outline-offset:1px;}.leaflet-container a{ color:#0078A8;}.leaflet-zoom-box{ border:2px dotted #38f;background:rgba(255,255,255,0.5);}.leaflet-container{ font-family:"Helvetica Neue", Arial, Helvetica, sans-serif;font-size:12px;font-size:0.75rem;line-height:1.5;}.leaflet-bar{ box-shadow:0 1px 5px rgba(0,0,0,0.65);border-radius:4px;}.leaflet-bar a{ background-color:#fff;border-bottom:1px solid #ccc;width:26px;height:26px;line-height:26px;display:block;text-align:center;text-decoration:none;color:black;}.leaflet-bar a, .leaflet-control-layers-toggle{ background-position:50% 50%;background-repeat:no-repeat;display:block;}.leaflet-bar a:hover, .leaflet-bar a:focus{ background-color:#f4f4f4;}.leaflet-bar a:first-child{ border-top-left-radius:4px;border-top-right-radius:4px;}.leaflet-bar a:last-child{ border-bottom-left-radius:4px;border-bottom-right-radius:4px;border-bottom:none;}.leaflet-bar a.leaflet-disabled{ cursor:default;background-color:#f4f4f4;color:#bbb;}.leaflet-touch .leaflet-bar a{ width:30px;height:30px;line-height:30px;}.leaflet-touch .leaflet-bar a:first-child{ border-top-left-radius:2px;border-top-right-radius:2px;}.leaflet-touch .leaflet-bar a:last-child{ border-bottom-left-radius:2px;border-bottom-right-radius:2px;}.leaflet-control-zoom-in, .leaflet-control-zoom-out{ font:bold 18px 'Lucida Console', Monaco, monospace;text-indent:1px;}.leaflet-touch .leaflet-control-zoom-in, .leaflet-touch .leaflet-control-zoom-out{ font-size:22px;}.leaflet-control-layers{ box-shadow:0 1px 5px rgba(0,0,0,0.4);background:#fff;border-radius:5px;}.leaflet-touch .leaflet-control-layers-toggle{ width:44px;height:44px;}.leaflet-control-layers .leaflet-control-layers-list, .leaflet-control-layers-expanded .leaflet-control-layers-toggle{ display:none;}.leaflet-control-layers-expanded .leaflet-control-layers-list{ display:block;position:relative;}.leaflet-control-layers-expanded{ padding:6px 10px 6px 6px;color:#333;background:#fff;}.leaflet-control-layers-scrollbar{ overflow-y:scroll;overflow-x:hidden;padding-right:5px;}.leaflet-control-layers-selector{ margin-top:2px;position:relative;top:1px;}.leaflet-control-layers label{ display:block;font-size:13px;font-size:1.08333em;}.leaflet-control-layers-separator{ height:0;border-top:1px solid #ddd;margin:5px -10px 5px -6px;}.leaflet-container .leaflet-control-attribution{ background:#fff;background:rgba(255, 255, 255, 0.8);margin:0;}.leaflet-control-attribution, .leaflet-control-scale-line{ padding:0 5px;color:#333;line-height:1.4;}.leaflet-control-attribution a{ text-decoration:none;}.leaflet-control-attribution a:hover, .leaflet-control-attribution a:focus{ text-decoration:underline;}.leaflet-attribution-flag{ display:inline !important;vertical-align:baseline !important;width:1em;height:0.6669em;}.leaflet-left .leaflet-control-scale{ margin-left:5px;}.leaflet-bottom .leaflet-control-scale{ margin-bottom:5px;}.leaflet-control-scale-line{ border:2px solid #777;border-top:none;line-height:1.1;padding:2px 5px 1px;white-space:nowrap;-moz-box-sizing:border-box;box-sizing:border-box;background:rgba(255, 255, 255, 0.8);text-shadow:1px 1px #fff;}.leaflet-control-scale-line:not(:first-child){ border-top:2px solid #777;border-bottom:none;margin-top:-2px;}.leaflet-control-scale-line:not(:first-child):not(:last-child){ border-bottom:2px solid #777;}.leaflet-touch .leaflet-control-attribution, .leaflet-touch .leaflet-control-layers, .leaflet-touch .leaflet-bar{ box-shadow:none;}.leaflet-touch .leaflet-control-layers, .leaflet-touch .leaflet-bar{ border:2px solid rgba(0,0,0,0.2);background-clip:padding-box;}.leaflet-popup{ position:absolute;text-align:center;margin-bottom:20px;}.leaflet-popup-content-wrapper{ padding:1px;text-align:left;border-radius:12px;}.leaflet-popup-content{ margin:13px 24px 13px 20px;line-height:1.3;font-size:13px;font-size:1.08333em;min-height:1px;}.leaflet-popup-content p{ margin:17px 0;margin:1.3em 0;}.leaflet-popup-tip-container{ width:40px;height:20px;position:absolute;left:50%;margin-top:-1px;margin-left:-20px;overflow:hidden;pointer-events:none;}.leaflet-popup-tip{ width:17px;height:17px;padding:1px;margin:-10px auto 0;pointer-events:auto;-webkit-transform:rotate(45deg);-moz-transform:rotate(45deg);-ms-transform:rotate(45deg);transform:rotate(45deg);}.leaflet-popup-content-wrapper, .leaflet-popup-tip{ background:white;color:#333;box-shadow:0 3px 14px rgba(0,0,0,0.4);}.leaflet-container a.leaflet-popup-close-button{ position:absolute;top:0;right:0;border:none;text-align:center;width:24px;height:24px;font:16px/24px Tahoma, Verdana, sans-serif;color:#757575;text-decoration:none;background:transparent;}.leaflet-container a.leaflet-popup-close-button:hover, .leaflet-container a.leaflet-popup-close-button:focus{ color:#585858;}.leaflet-popup-scrolled{ overflow:auto;}.leaflet-oldie .leaflet-popup-content-wrapper{ -ms-zoom:1;}.leaflet-oldie .leaflet-popup-tip{ width:24px;margin:0 auto;-ms-filter:"progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)";filter:progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678);}.leaflet-oldie .leaflet-control-zoom, .leaflet-oldie .leaflet-control-layers, .leaflet-oldie .leaflet-popup-content-wrapper, .leaflet-oldie .leaflet-popup-tip{ border:1px solid #999;}.leaflet-div-icon{ background:#fff;border:1px solid #666;}.leaflet-tooltip{ position:absolute;padding:6px;background-color:#fff;border:1px solid #fff;border-radius:3px;color:#222;white-space:nowrap;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;pointer-events:none;box-shadow:0 1px 3px rgba(0,0,0,0.4);}.leaflet-tooltip.leaflet-interactive{ cursor:pointer;pointer-events:auto;}.leaflet-tooltip-top:before, .leaflet-tooltip-bottom:before, .leaflet-tooltip-left:before, .leaflet-tooltip-right:before{ position:absolute;pointer-events:none;border:6px solid transparent;background:transparent;content:"";}.leaflet-tooltip-bottom{ margin-top:6px;}.leaflet-tooltip-top{ margin-top:-6px;}.leaflet-tooltip-bottom:before, .leaflet-tooltip-top:before{ left:50%;margin-left:-6px;}.leaflet-tooltip-top:before{ bottom:0;margin-bottom:-12px;border-top-color:#fff;}.leaflet-tooltip-bottom:before{ top:0;margin-top:-12px;margin-left:-6px;border-bottom-color:#fff;}.leaflet-tooltip-left{ margin-left:-6px;}.leaflet-tooltip-right{ margin-left:6px;}.leaflet-tooltip-left:before, .leaflet-tooltip-right:before{ top:50%;margin-top:-6px;}.leaflet-tooltip-left:before{ right:0;margin-right:-12px;border-left-color:#fff;}.leaflet-tooltip-right:before{ left:0;margin-left:-12px;border-right-color:#fff;}.leaflet-control{ -webkit-print-color-adjust:exact;print-color-adjust:exact;}
+
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.45;
+}
+* { box-sizing: border-box; }
+button, select, input { font: inherit; color: inherit; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app {
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 10px;
+  padding-inline: 16px;
+  padding-block: 12px;
+}
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 10px 24px;
+}
+.brand { min-width: 0; }
+.brand h1 {
+  margin: 0;
+  font-family: var(--font-label);
+  font-weight: 600;
+  font-size: 20px;
+  letter-spacing: .01em;
+  text-wrap: balance;
+}
+.brand p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+.pickers { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: end; }
+.field { display: grid; gap: 3px; justify-items: start; }
+.field > span, .eyebrow {
+  font-family: var(--font-label);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+select {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 8px;
+  min-width: 13rem;
+  max-width: 100%;
+}
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 2px;
+  gap: 2px;
+}
+.seg button {
+  border: 0;
+  background: transparent;
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.seg button[aria-checked="true"] { background: var(--accent); color: var(--accent-ink); }
+.seg button:disabled { opacity: .4; cursor: not-allowed; }
+.banner {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--muted);
+  border-left: 3px solid var(--warn);
+  padding: 2px 0 2px 10px;
+  max-width: 120ch;
+}
+.banner strong { color: var(--ink); font-weight: 600; }
+
+.main {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(300px, 400px) minmax(0, 1fr);
+  gap: 12px;
+}
+.rail {
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.runfacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.runfacts code { font-family: var(--font-data); font-size: 11.5px; color: var(--ink); }
+.note {
+  margin: 0;
+  font-size: 12.5px;
+  background: var(--warn-soft);
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+ol.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.step {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.step-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.num {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: var(--font-data);
+  font-size: 12px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 500;
+}
+.step h2 { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.25; text-wrap: balance; }
+.step h2 small { display: block; font-weight: 400; font-size: 12px; color: var(--muted); }
+.info {
+  border: 1px solid var(--line);
+  background: transparent;
+  border-radius: 999px;
+  padding: 3px 9px 3px 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.info b {
+  display: inline-grid; place-items: center;
+  width: 17px; height: 17px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-family: Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-size: 12px;
+}
+.info:hover { border-color: var(--accent); color: var(--ink); }
+.layers { display: flex; flex-direction: column; gap: 4px; }
+.layer { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 8px; align-items: center; cursor: pointer; }
+.layer input { accent-color: var(--accent); margin: 0; width: 16px; height: 16px; }
+.layer .sw { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--line); }
+.layer .t { min-width: 0; }
+.opacity { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; align-items: center; padding-left: 46px; font-size: 11.5px; color: var(--muted); }
+.opacity input { width: 100%; accent-color: var(--accent); }
+.empty-layers { margin: 0; font-size: 12.5px; color: var(--muted); }
+dl.nums { margin: 0; display: grid; grid-template-columns: minmax(7.5rem, 1fr) minmax(0, 1.25fr); gap: 2px 12px; font-size: 12.5px; }
+dl.nums dt { color: var(--muted); min-width: 0; }
+dl.nums dd { margin: 0; font-family: var(--font-data); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
+.fes { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.fes h2 { margin: 0; font-size: 15px; }
+.fes p { margin: 0; font-size: 12.5px; }
+.fes .muted { color: var(--muted); }
+.tests { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.tests-cap { font-family: var(--font-label); font-weight: 600; font-size: 11.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); margin: 4px 0 2px; }
+.test { border-top: 1px solid var(--line); padding: 7px 0; display: grid; gap: 4px; }
+.test .tt { font-size: 12.5px; }
+.test .vals { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; font-size: 12px; }
+.test .vals span.k { color: var(--muted); margin-right: 4px; }
+.test .vals .n { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+.test .gauge { display: inline-block; vertical-align: middle; margin: 0 0 0 6px; }
+.gauge { position: relative; height: 8px; width: 64px; border-radius: 4px; background: var(--neutral-soft); margin-top: 4px; }
+.gauge i { position: absolute; top: -3px; width: 2px; height: 14px; background: var(--muted); left: 95%; }
+.gauge b { position: absolute; top: 0; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); transform: translateX(-4px); }
+.chip { display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 500; white-space: nowrap; background: var(--neutral-soft); color: var(--muted); }
+.chip.good { background: var(--good-soft); color: var(--good); }
+.chip.warn { background: var(--warn-soft); color: var(--warn); }
+.chip.accent { background: var(--accent-soft); color: var(--accent); }
+details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
+
+.mapwrap { position: relative; min-height: 0; min-width: 0; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); }
+#map { position: absolute; inset: 0; background: var(--map-bg); }
+.leaflet-container { font-family: var(--font-ui); background: var(--map-bg); }
+.leaflet-image-layer.crisp { image-rendering: pixelated; }
+.leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+.leaflet-popup-content { margin: 10px 12px; font-size: 12.5px; }
+.leaflet-container a.leaflet-popup-close-button { color: var(--muted); }
+.leaflet-control-attribution { background: color-mix(in srgb, var(--surface) 85%, transparent) !important; color: var(--muted); font-size: 10.5px; }
+.leaflet-control-attribution a { color: var(--accent); }
+.leaflet-control-scale-line { background: color-mix(in srgb, var(--surface) 85%, transparent); color: var(--ink); border-color: var(--ink); }
+.leaflet-bar a { background: var(--surface); color: var(--ink); border-bottom-color: var(--line); }
+.leaflet-bar a:hover { background: var(--bg); }
+.pop h4 { margin: 0 0 6px; font-size: 13px; }
+.pop table { border-collapse: collapse; }
+.pop td { padding: 1px 0; vertical-align: top; }
+.pop td:first-child { color: var(--muted); padding-right: 12px; }
+.pop td:last-child { font-family: var(--font-data); font-size: 11.5px; }
+
+.legend {
+  position: absolute; left: 10px; bottom: 26px; z-index: 800;
+  max-width: min(320px, calc(100% - 20px)); max-height: 46%; overflow-y: auto;
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow);
+  padding: 8px 10px; font-size: 12px; display: flex; flex-direction: column; gap: 8px;
+}
+.legend h5 { margin: 0 0 3px; font-size: 12px; font-weight: 600; }
+.legend-toggle { border: 0; background: transparent; padding: 0; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 12px; font-family: var(--font-label); font-weight: 600; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.legend-body { display: flex; flex-direction: column; gap: 8px; }
+.legend[data-collapsed="true"] .legend-body { display: none; }
+.legend ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.legend li { display: grid; grid-template-columns: 14px minmax(0, 1fr); gap: 6px; align-items: center; }
+.legend .sq { width: 14px; height: 12px; border-radius: 2px; }
+.legend .dot { width: 12px; height: 12px; border-radius: 50%; }
+.legend .ramp { height: 10px; border-radius: 3px; }
+.legend .ends { display: flex; justify-content: space-between; font-family: var(--font-data); font-size: 11px; color: var(--muted); }
+.legend p { margin: 0; color: var(--muted); }
+
+.zoomto { position: absolute; top: 10px; right: 10px; z-index: 800; max-width: min(320px, calc(100% - 70px)); }
+.zoomto select { min-width: 0; width: 100%; box-shadow: var(--shadow); }
+.basemap { position: absolute; right: 10px; bottom: 26px; z-index: 800; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 5px 9px; font-size: 12px; display: flex; gap: 6px; align-items: center; box-shadow: var(--shadow); }
+.basemap input { accent-color: var(--accent); margin: 0; }
+
+.drawer {
+  position: absolute; top: 0; right: 0; bottom: 0; z-index: 900;
+  width: min(460px, 100%);
+  background: var(--surface); color: var(--ink);
+  border-left: 1px solid var(--line); box-shadow: var(--shadow);
+  display: flex; flex-direction: column;
+}
+.drawer header { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 12px 14px 10px; border-bottom: 1px solid var(--line); }
+.drawer header h3 { margin: 2px 0 0; font-size: 16px; text-wrap: balance; }
+.drawer .close { border: 1px solid var(--line); background: transparent; border-radius: 8px; padding: 4px 10px; cursor: pointer; height: fit-content; }
+.drawer .key { margin: 0; padding: 8px 14px; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--line); }
+.drawer .list { overflow-y: auto; padding: 10px 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+.dec { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.dec h4 { margin: 0; font-size: 13.5px; line-height: 1.3; }
+.dec .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.dec .id { font-family: var(--font-data); font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
+.dec p { margin: 0; font-size: 12.5px; }
+.dec ul { margin: 4px 0 0; padding-left: 18px; font-size: 12px; display: grid; gap: 4px; }
+.papers { list-style: none; padding: 0 !important; }
+.papers li { border-top: 1px dashed var(--line); padding-top: 6px; }
+.papers .what { color: var(--muted); font-size: 11.5px; }
+.nopaper { color: var(--warn) !important; }
+
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.empty { display: grid; place-items: center; height: 100%; padding: 24px; text-align: center; color: var(--muted); }
+.empty h2 { color: var(--ink); font-size: 16px; margin: 0 0 6px; }
+
+@media (max-width: 860px) {
+  .app { height: auto; grid-template-rows: auto auto auto; }
+  .main { grid-template-columns: minmax(0, 1fr); }
+  .mapwrap { height: 58vh; min-height: 320px; order: -1; }
+  .rail { overflow: visible; padding-right: 0; }
+  .drawer { position: fixed; inset: 0; width: 100%; padding-top: env(safe-area-inset-top, 0px); }
+  select { min-width: 0; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+</style>
+
+<div class="app" id="app">
+  <header class="top">
+    <div class="brand">
+      <h1>FMU Pipeline Explorer</h1>
+      <p>Forest stands drawn from satellite data, one pipeline step at a time</p>
+    </div>
+    <div class="pickers">
+      <label class="field"><span>Site</span><select id="pick-area" aria-label="Site"></select></label>
+      <div class="field"><span>Features</span><div class="seg" role="radiogroup" aria-label="Features" id="pick-arm"></div></div>
+      <div class="field"><span>Largest stand</span><div class="seg" role="radiogroup" aria-label="Largest stand" id="pick-ceiling"></div></div>
+    </div>
+  </header>
+  <p class="banner" id="banner">Loading the pipeline data.</p>
+  <main class="main">
+    <aside class="rail" id="rail" aria-label="Pipeline steps"></aside>
+    <section class="mapwrap" aria-label="Map">
+      <div id="map"></div>
+      <div class="legend" id="legend" hidden></div>
+      <label class="zoomto" id="zoomto-wrap" hidden><span class="sr">Zoom to</span><select id="zoomto" aria-label="Zoom to part of the area"></select></label>
+      <label class="basemap" id="basemap-toggle"><input type="checkbox" id="basemap"> Street map behind</label>
+      <aside class="drawer" id="drawer" hidden aria-label="Decisions behind this step">
+        <header>
+          <div><span class="eyebrow">Decisions behind</span><h3 id="drawer-title"></h3></div>
+          <button class="close" id="drawer-close" type="button">Close</button>
+        </header>
+        <p class="key"><strong>How strong is the support?</strong> <span class="chip accent">used</span> others use the method; <span class="chip accent">recommended</span> a review recommends it; <span class="chip good">shown better</span> a comparison shows it beats the alternatives.</p>
+        <div class="list" id="drawer-list"></div>
+      </aside>
+    </section>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script>
+(() => {
+  "use strict";
+  const DATA = "ui_data/";
+  const REPO = "https://github.com/sudo-karan/phd-code/blob/main/";
+  const ARM_LABEL = { feature_vector: "Feature vector", alphaearth: "AlphaEarth" };
+  const STEP_RANK = { data_load: 1, masking: 2, features: 3, segmentation: 4, merge: 5, clustering: 6, fes_plots: 7 };
+  const STAND_LINE = "#ff4fa3"; // stand outlines sit on imagery; this magenta reads in both themes
+  const PALETTE = ["#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#999999"];
+  const FIELDS = {
+    stand_id: ["Stand", v => String(v)],
+    stand_type: ["Stand type", v => "Type " + Math.round(v)],
+    area_ha: ["Area", v => fmt(v, 2) + " ha"],
+    perim_m: ["Perimeter", v => fmt(v, 0) + " m"],
+    canopy_height: ["Canopy height (ETH)", v => fmt(v, 1) + " m"],
+    canopy_height_std: ["Canopy height spread", v => fmt(v, 2) + " m"],
+    ndvi_amplitude_annual: ["NDVI seasonal amplitude", v => fmt(v, 3)],
+    ndvi_mean: ["NDVI mean", v => fmt(v, 3)],
+    vv_minus_vh_median: ["Radar VV minus VH", v => fmt(v, 2) + " dB"],
+    elevation: ["Elevation", v => fmt(v, 0) + " m"],
+    slope: ["Slope", v => fmt(v, 1) + "°"],
+    n_superpx: ["Superpixels", v => String(v)],
+    n_pass1: ["Merges, first pass", v => String(v)],
+    n_relaxed: ["Merges, relaxed pass", v => String(v)],
+    n_fallback: ["Merges on shared edge only", v => String(v)],
+    below_min: ["Below the minimum size", v => (v ? "Yes" : "No")],
+    below_why: ["Why", v => String(v)],
+    plot_key: ["Plot", v => String(v)],
+    habitation: ["Habitation", v => String(v)],
+    field_type: ["Field type", v => "Type " + Math.round(v)],
+    mask: ["Mask at the plot", v => (v === "kept" ? "Kept" : "Removed")],
+    in_mapped_area: ["Inside the mapped area", v => (v ? "Yes" : "No")],
+    outside_reason: ["Why outside", v => String(v)],
+  };
+
+  const state = { index: null, decisions: null, fes: null, run: null, active: new Map(), cache: new Map(), map: null, renderers: {} };
+  const $ = (s, el = document) => el.querySelector(s);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  function fmt(v, d) {
+    if (v === null || v === undefined || Number.isNaN(Number(v))) return "–";
+    return Number(v).toLocaleString("en-IN", { minimumFractionDigits: d, maximumFractionDigits: d });
+  }
+  function store(key, val) { try { localStorage.setItem(key, val); } catch (e) { /* storage unavailable */ } }
+  function recall(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+  function getJSON(path) {
+    if (!state.cache.has(path)) {
+      state.cache.set(path, fetch(path).then(r => {
+        if (!r.ok) throw new Error(path + " (" + r.status + ")");
+        return r.json();
+      }));
+    }
+    return state.cache.get(path);
+  }
+  function hexToRgb(h) { const x = h.replace("#", ""); return [0, 2, 4].map(i => parseInt(x.slice(i, i + 2), 16)); }
+  function ramp(palette, t) {
+    if (!palette || !palette.length) return "#888888";
+    if (palette.length === 1) return palette[0];
+    const x = Math.min(1, Math.max(0, t)) * (palette.length - 1);
+    const i = Math.min(palette.length - 2, Math.floor(x));
+    const f = x - i;
+    const a = hexToRgb(palette[i]), b = hexToRgb(palette[i + 1]);
+    const c = a.map((v, k) => Math.round(v + (b[k] - v) * f));
+    return "#" + c.map(v => v.toString(16).padStart(2, "0")).join("");
+  }
+  function categoryColor(layer, value) {
+    if (value === null || value === undefined) return null;
+    const legend = layer.legend || [];
+    const num = Number(value);
+    const key = Number.isFinite(num) ? String(Math.round(num)) : String(value);
+    const hit = legend.find(e => e.value !== undefined && String(e.value) === key);
+    if (hit) return hit.color;
+    return PALETTE[(Number.isFinite(num) ? Math.round(num) : 0) % PALETTE.length];
+  }
+  function featureColor(layer, props) {
+    if (!layer.color_by) return null;
+    const v = props[layer.color_by];
+    if (layer.color_is_value) return v || null;
+    if (layer.colormap) {
+      if (v === null || v === undefined) return null;
+      const cm = layer.colormap;
+      return ramp(cm.palette, (v - cm.min) / ((cm.max - cm.min) || 1));
+    }
+    return categoryColor(layer, v);
+  }
+
+  /* ---------- map ---------- */
+  function initMap() {
+    const map = L.map("map", { zoomControl: true, preferCanvas: true, minZoom: 3, maxZoom: 19, worldCopyJump: false });
+    map.attributionControl.setPrefix(false);
+    map.attributionControl.addAttribution("Sentinel-2 (Copernicus), IndiaSAT LULC (CoRE Stack), ESA WorldCover, ETH canopy height, Google Satellite Embedding, FES plots");
+    L.control.scale({ metric: true, imperial: false }).addTo(map);
+    [["rasters", 350], ["fills", 420], ["lines", 440], ["points", 460]].forEach(([n, z]) => {
+      map.createPane(n).style.zIndex = z;
+    });
+    state.renderers = {
+      fills: L.canvas({ pane: "fills", padding: 0.5 }),
+      lines: L.canvas({ pane: "lines", padding: 0.5 }),
+      points: L.canvas({ pane: "points", padding: 0.5 }),
+    };
+    map.setView([22, 82], 5);
+    state.map = map;
+    map.on("zoomend", restyleOutlines);
+    const osm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19, attribution: "© OpenStreetMap contributors", opacity: 0.85,
+    });
+    let warned = false;
+    osm.on("tileerror", () => {
+      if (warned) return;
+      warned = true;
+      const t = $("#basemap-toggle");
+      t.title = "The street map could not load in this view.";
+      t.lastChild.textContent = " Street map unavailable here";
+    });
+    $("#basemap").addEventListener("change", e => {
+      if (e.target.checked) osm.addTo(map); else map.removeLayer(osm);
+    });
+  }
+
+  function partsOf(layer) {
+    if (Array.isArray(layer.parts) && layer.parts.length) return layer.parts;
+    if (layer.file && layer.bounds) return [{ file: layer.file, bounds: layer.bounds }];
+    return [];
+  }
+
+  async function makeLayer(step, layer) {
+    const z = (STEP_RANK[step.step] || 5) * 10;
+    if (layer.kind === "raster") {
+      const group = L.layerGroup();
+      partsOf(layer).forEach(p => {
+        const b = p.bounds;
+        L.imageOverlay(DATA + p.file, [[b[1], b[0]], [b[3], b[2]]], {
+          pane: "rasters", opacity: layer._opacity ?? 0.9, interactive: false, className: "crisp", zIndex: z,
+        }).addTo(group);
+      });
+      return group;
+    }
+    const data = await getJSON(DATA + layer.file);
+    const isOutline = layer.style === "outline" || (!layer.color_by && !isPoints(data));
+    const pane = isPoints(data) ? "points" : (isOutline ? "lines" : "fills");
+    const renderer = state.renderers[pane];
+    return L.geoJSON(data, {
+      pane,
+      renderer,
+      style: f => {
+        if (isOutline) return outlineStyle(layer, renderer, pane);
+        const c = featureColor(layer, f.properties);
+        if (!c) return { renderer, pane, color: "#9aa39d", weight: 0.6, fillColor: "#9aa39d", fillOpacity: 0.18, dashArray: "3 3" };
+        return { renderer, pane, color: c, weight: 0.6, opacity: 0.9, fillColor: c, fillOpacity: 0.62 };
+      },
+      pointToLayer: (f, latlng) => {
+        const p = f.properties || {};
+        const c = featureColor(layer, p) || "#777777";
+        const outside = p.in_mapped_area === false;
+        return L.circleMarker(latlng, {
+          renderer, pane, radius: 6, weight: 2,
+          color: p.mask === "dropped" ? "#e3342f" : "#ffffff",
+          fillColor: c, fillOpacity: outside ? 0.15 : 0.95,
+        });
+      },
+      onEachFeature: (f, l) => l.bindPopup(() => popupHTML(layer, f), { maxWidth: 320 }),
+    });
+  }
+  function outlineStyle(layer, renderer, pane) {
+    const z = state.map ? state.map.getZoom() : 14;
+    const roi = layer.layer_id === "roi_outline";
+    const w = roi ? (z >= 13 ? 2 : 1.4) : (z >= 16 ? 1.6 : z >= 15 ? 1.2 : z >= 14 ? 0.8 : z >= 13 ? 0.5 : 0.3);
+    const o = roi ? 0.95 : (z >= 14 ? 0.95 : z >= 13 ? 0.7 : 0.45);
+    return { renderer, pane, color: STAND_LINE, weight: w, opacity: o, fill: false };
+  }
+  function restyleOutlines() {
+    const run = state.run;
+    if (!run) return;
+    run.steps.forEach(step => (step.layers || []).forEach(layer => {
+      const l = state.active.get(layer._key);
+      if (l && l.setStyle && layer.kind === "vector" && (layer.style === "outline" || !layer.color_by) && layer.layer_id !== "plots") {
+        l.setStyle(outlineStyle(layer, state.renderers.lines, "lines"));
+      }
+    }));
+  }
+  function isPoints(data) {
+    const g = data && data.features && data.features[0] && data.features[0].geometry;
+    return !!g && (g.type === "Point" || g.type === "MultiPoint");
+  }
+  function popupHTML(layer, f) {
+    const p = f.properties || {};
+    const keys = (layer.popup_fields && layer.popup_fields.length) ? layer.popup_fields : Object.keys(p).slice(0, 8);
+    const rows = keys.filter(k => p[k] !== undefined && p[k] !== null && p[k] !== "").map(k => {
+      const [label, show] = FIELDS[k] || [k, v => String(v)];
+      return `<tr><td>${esc(label)}</td><td>${esc(show(p[k]))}</td></tr>`;
+    }).join("");
+    return `<div class="pop"><h4>${esc(layer.title)}</h4><table>${rows || "<tr><td>No attributes</td></tr>"}</table></div>`;
+  }
+
+  async function setLayer(step, layer, on) {
+    const key = layer._key;
+    const map = state.map;
+    if (!on) {
+      const l = state.active.get(key);
+      if (l) map.removeLayer(l);
+      state.active.delete(key);
+      renderLegend();
+      return;
+    }
+    if (state.active.has(key)) return;
+    state.active.set(key, null);
+    try {
+      const l = await makeLayer(step, layer);
+      if (!state.active.has(key)) return; // switched off while loading
+      state.active.set(key, l);
+      l.addTo(map);
+    } catch (err) {
+      state.active.delete(key);
+      const box = document.querySelector(`[data-key="${CSS.escape(key)}"]`);
+      if (box) { box.checked = false; box.closest(".layer").title = "Could not load: " + err.message; }
+    }
+    renderLegend();
+  }
+
+  /* ---------- run selection ---------- */
+  const runsBy = (f) => state.index.runs.filter(f);
+  function areas() { return [...new Map(state.index.runs.map(r => [r.area, r.site])).entries()]; }
+
+  function renderPickers() {
+    const run = state.run;
+    const sel = $("#pick-area");
+    sel.innerHTML = areas().map(([a, site]) => `<option value="${esc(a)}"${a === run.area ? " selected" : ""}>${esc(a)}${site && site !== a && !a.startsWith(site) ? " (" + esc(site) + ")" : ""}</option>`).join("");
+    const arms = ["feature_vector", "alphaearth"];
+    $("#pick-arm").innerHTML = arms.map(arm => {
+      const avail = runsBy(r => r.area === run.area && r.arm === arm).length > 0;
+      return `<button type="button" role="radio" data-arm="${arm}" aria-checked="${arm === run.arm}"${avail ? "" : " disabled"}>${ARM_LABEL[arm]}</button>`;
+    }).join("");
+    const ceilings = [...new Set(runsBy(r => r.area === run.area).map(r => r.stand_ceiling_ha))].sort((a, b) => a - b);
+    $("#pick-ceiling").innerHTML = ceilings.map(c => {
+      const avail = runsBy(r => r.area === run.area && r.arm === run.arm && r.stand_ceiling_ha === c).length > 0;
+      return `<button type="button" role="radio" data-ceiling="${c}" aria-checked="${c === run.stand_ceiling_ha}"${avail ? "" : " disabled"}>${fmt(c, 0)} ha</button>`;
+    }).join("");
+  }
+  function chooseRun({ area, arm, ceiling }) {
+    const pool = state.index.runs;
+    const exact = pool.find(r => r.area === area && r.arm === arm && r.stand_ceiling_ha === ceiling);
+    const sameArm = pool.find(r => r.area === area && r.arm === arm);
+    const sameArea = pool.find(r => r.area === area);
+    selectRun(exact || sameArm || sameArea || pool[0]);
+  }
+
+  function selectRun(run, { fit = true } = {}) {
+    for (const l of state.active.values()) if (l) state.map.removeLayer(l);
+    state.active.clear();
+    state.run = run;
+    store("fmu-run", run.run_id);
+    try { history.replaceState(null, "", "#" + run.run_id); } catch (e) { /* not allowed here */ }
+    renderPickers();
+    renderRail();
+    if (fit && run.bounds) {
+      const b = run.bounds;
+      state.map.fitBounds([[b[1], b[0]], [b[3], b[2]]], { padding: [24, 24] });
+    }
+    run.steps.forEach(step => (step.layers || []).forEach(layer => {
+      if (layer.default_on) setLayer(step, layer, true);
+    }));
+    renderLegend();
+    closeDrawer();
+    buildZoomTo(run);
+  }
+  async function buildZoomTo(run) {
+    const wrap = $("#zoomto-wrap");
+    const sel = $("#zoomto");
+    wrap.hidden = true;
+    state.zoomParts = null;
+    let roiLayer = null;
+    run.steps.forEach(step => (step.layers || []).forEach(layer => {
+      if (layer.layer_id === "roi_outline" && layer.file) roiLayer = layer;
+    }));
+    if (!roiLayer) return;
+    try {
+      const data = await getJSON(DATA + roiLayer.file);
+      if (state.run !== run) return;
+      const feats = (data.features || []).filter(f => f.geometry);
+      if (feats.length < 2) return;
+      state.zoomParts = feats.map((f, i) => ({ name: (f.properties && (f.properties.name || f.properties.part)) || `Part ${i + 1}`, bounds: L.geoJSON(f).getBounds() }));
+      sel.innerHTML = `<option value="-1">Whole area (${feats.length} village forests)</option>` + state.zoomParts.map((p, i) => `<option value="${i}">${esc(p.name)}</option>`).join("");
+      wrap.hidden = false;
+    } catch (e) { /* no outline: no zoom list */ }
+  }
+
+  /* ---------- rail ---------- */
+  function layerSwatch(layer) {
+    if (layer.colormap && layer.colormap.palette) return `linear-gradient(90deg, ${layer.colormap.palette.join(", ")})`;
+    if (layer.legend && layer.legend.length) {
+      const cols = layer.legend.map(e => e.color).slice(0, 6);
+      return cols.length === 1 ? cols[0] : `linear-gradient(90deg, ${cols.join(", ")})`;
+    }
+    if (layer.color_is_value) return "linear-gradient(90deg, #d95f02, #7570b3, #1b9e77)";
+    if (layer.style === "outline") return "transparent";
+    return "var(--line)";
+  }
+  function renderRail() {
+    const run = state.run;
+    const rail = $("#rail");
+    const decisionsCount = s => (s.decisions || []).length;
+    const facts = `<div class="runfacts"><span>Run <code>${esc(run.run_id)}</code></span><span>Stand types k = <code>${esc(run.k)}</code></span><span>From commit <code>${esc(run.source_commit || "?")}</code></span><span>Merge rule: ${esc(run.merge_rule || "?")}</span></div>`;
+    const note = run.note ? `<p class="note">${esc(run.note)}</p>` : "";
+    const steps = run.steps.slice().sort((a, b) => (order(a.step) - order(b.step)));
+    const items = steps.map((step, i) => {
+      const layers = (step.layers || []).map((layer, j) => {
+        layer._key = `${run.run_id}|${step.step}|${layer.layer_id || j}`;
+        const isRaster = layer.kind === "raster";
+        const sw = layerSwatch(layer);
+        const border = layer.style === "outline" ? "border:2px solid var(--stand-line);" : "";
+        return `<label class="layer"${layer.description ? ` title="${esc(layer.description)}"` : ""}><input type="checkbox" data-key="${esc(layer._key)}" data-step="${i}" data-layer="${j}"${layer.default_on ? " checked" : ""}><span class="sw" style="background:${sw};${border}"></span><span class="t">${esc(layer.title)}</span></label>` +
+          (isRaster ? `<div class="opacity"${layer.default_on ? "" : " hidden"} data-op="${esc(layer._key)}"><span>Opacity</span><input type="range" min="0.1" max="1" step="0.05" value="${layer._opacity ?? 0.9}" aria-label="Opacity of ${esc(layer.title)}" data-step="${i}" data-layer="${j}"></div>` : "");
+      }).join("") || `<p class="empty-layers">No map layer for this step yet.</p>`;
+      const nums = step.summary && Object.keys(step.summary).length
+        ? `<dl class="nums">${Object.entries(step.summary).map(([k, v]) => `<div style="display:contents"><dt>${esc(k)}</dt><dd>${esc(typeof v === "object" ? JSON.stringify(v) : v)}</dd></div>`).join("")}</dl>` : "";
+      return `<li class="step"><div class="step-head"><span class="num" aria-hidden="true">${i + 1}</span><h2>${esc(step.title)}</h2>` +
+        (decisionsCount(step) ? `<button class="info" type="button" data-info="${i}" aria-label="Decisions behind ${esc(step.title)}"><b>i</b>${decisionsCount(step)}</button>` : "") +
+        `</div><div class="layers">${layers}</div>${nums}</li>`;
+    }).join("");
+    rail.innerHTML = facts + note + `<ol class="steps">${items}</ol>` + fesSection();
+    rail._steps = steps;
+  }
+  const order = s => STEP_RANK_ORDER.indexOf(s) === -1 ? 50 : STEP_RANK_ORDER.indexOf(s);
+  const STEP_RANK_ORDER = ["masking", "data_load", "features", "segmentation", "merge", "clustering", "fes_plots"];
+
+  function onRailInput(e) {
+    const t = e.target;
+    const steps = $("#rail")._steps;
+    if (t.matches('input[type="checkbox"][data-key]')) {
+      const step = steps[+t.dataset.step];
+      const layer = step.layers[+t.dataset.layer];
+      const op = document.querySelector(`[data-op="${CSS.escape(layer._key)}"]`);
+      if (op) op.hidden = !t.checked;
+      setLayer(step, layer, t.checked);
+    } else if (t.matches('input[type="range"]')) {
+      const step = steps[+t.dataset.step];
+      const layer = step.layers[+t.dataset.layer];
+      layer._opacity = +t.value;
+      const l = state.active.get(layer._key);
+      if (l && l.eachLayer) l.eachLayer(x => x.setOpacity && x.setOpacity(layer._opacity));
+    }
+  }
+
+  /* ---------- legend ---------- */
+  function renderLegend() {
+    const box = $("#legend");
+    const run = state.run;
+    if (!run) { box.hidden = true; return; }
+    const blocks = [];
+    run.steps.forEach(step => (step.layers || []).forEach(layer => {
+      if (!state.active.has(layer._key)) return;
+      if (layer.colormap) {
+        const cm = layer.colormap;
+        blocks.push(`<div><h5>${esc(layer.title)}</h5><div class="ramp" style="background:linear-gradient(90deg, ${cm.palette.join(", ")})"></div><div class="ends"><span>${fmt(cm.min, 2)}</span><span>${esc(cm.units || "")}</span><span>${fmt(cm.max, 2)}</span></div></div>`);
+      } else if (layer.legend && layer.legend.length) {
+        const pts = layer.layer_id === "plots";
+        blocks.push(`<div><h5>${esc(layer.title)}</h5><ul>${layer.legend.map(e => `<li><span class="${pts ? "dot" : "sq"}" style="background:${esc(e.color)}"></span><span>${esc(e.label)}</span></li>`).join("")}</ul>` +
+          (pts ? `<p>White ring: on a kept pixel. Red ring: on a removed pixel. Faint fill: outside the mapped area.</p>` : "") + `</div>`);
+      } else if (layer.color_is_value) {
+        blocks.push(`<div><h5>${esc(layer.title)}</h5><p>${esc(layer.description || "Similar colours mean similar values.")}</p></div>`);
+      } else if (layer.style === "outline") {
+        blocks.push(`<div><ul><li><span class="sq" style="border:2px solid var(--stand-line)"></span><span>${esc(layer.title)}</span></li></ul></div>`);
+      }
+    }));
+    if (box.dataset.collapsed === undefined) box.dataset.collapsed = String(window.matchMedia("(max-width: 860px)").matches);
+    const open = box.dataset.collapsed !== "true";
+    box.innerHTML = `<button type="button" class="legend-toggle" aria-expanded="${open}">Legend <span aria-hidden="true">${open ? "\u2212" : "+"}</span></button><div class="legend-body">${blocks.join("")}</div>`;
+    box.hidden = blocks.length === 0;
+  }
+
+  /* ---------- decisions drawer ---------- */
+  function supportChip(s) {
+    if (!s) return "";
+    const label = s === "shown_better" ? "shown better" : s;
+    return `<span class="chip ${s === "shown_better" ? "good" : "accent"}">${esc(label)}</span>`;
+  }
+  function openDrawer(step) {
+    $("#drawer-title").textContent = step.title;
+    const list = $("#drawer-list");
+    if (!state.decisions) {
+      list.innerHTML = `<p>The decision register did not load. It lives in <a href="${REPO}docs/decisions.yaml" target="_blank" rel="noopener">docs/decisions.yaml</a>.</p>`;
+    } else {
+      list.innerHTML = (step.decisions || []).map(id => {
+        const d = state.decisions[id];
+        if (!d) return `<article class="dec"><h4>${esc(id)}</h4><p class="muted">Not found in the register.</p></article>`;
+        const papers = (d.papers || []);
+        const paperHTML = papers.length
+          ? `<ul class="papers">${papers.map(p => `<li><a href="https://doi.org/${esc(p.doi)}" target="_blank" rel="noopener">${esc(p.title || p.doi)}</a> <span class="muted">${esc(p.first_author || "")}${p.year ? " " + esc(p.year) : ""}</span><div class="meta">${supportChip(p.supports)}<span class="chip ${p.verified ? "good" : "warn"}">${p.verified ? "DOI checked" : "UNVERIFIED"}</span></div>${p.supports_what ? `<div class="what">${esc(String(p.supports_what).slice(0, 260))}${String(p.supports_what).length > 260 ? "…" : ""}</div>` : ""}</li>`).join("")}</ul>`
+          : `<p class="nopaper">No paper cited for this decision yet.</p>`;
+        const alts = (d.alternatives_considered || []).length
+          ? `<p><strong>Alternatives considered</strong></p><ul>${d.alternatives_considered.map(a => `<li>${esc(a)}</li>`).join("")}</ul>` : "";
+        const ev = (d.evidence || []).length
+          ? `<details><summary>Where this is in the repository</summary><ul>${d.evidence.map(e => `<li><a href="${REPO}${esc(e.path)}" target="_blank" rel="noopener">${esc(e.path)}</a>${e.what ? ": " + esc(e.what) : ""}</li>`).join("")}</ul></details>` : "";
+        return `<article class="dec"><div class="meta"><span class="chip ${d.status === "adopted" ? "good" : (d.status === "superseded" ? "" : "warn")}">${esc(d.status || "?")}</span><span class="id">${esc(d.id)}</span></div><h4>${esc(d.title)}</h4><p>${esc(d.decision)}</p>${paperHTML}<details><summary>Why, and what else was considered</summary><p>${esc(d.rationale || "")}</p>${alts}</details>${ev}</article>`;
+      }).join("") || `<p>No decisions are linked to this step yet.</p>`;
+    }
+    $("#drawer").hidden = false;
+    $("#drawer-close").focus();
+  }
+  function closeDrawer() { $("#drawer").hidden = true; }
+
+  /* ---------- FES comparison ---------- */
+  function verdict(r) {
+    if (r.p_holm !== null && r.p_holm !== undefined && r.p_holm <= 0.05) return `<span class="chip good">Beats chance</span>`;
+    if (r.p !== null && r.p !== undefined && r.p <= 0.05) return `<span class="chip warn">Only before correction</span>`;
+    if (r.p !== null && r.p !== undefined) return `<span class="chip">Not shown</span>`;
+    return `<span class="chip">Not tested yet</span>`;
+  }
+  function gauge(pct) {
+    if (pct === null || pct === undefined) return "";
+    return `<div class="gauge" title="Percentile of chance: ${fmt(pct, 1)}. The bar marks the 95th."><i></i><b style="left:${Math.max(0, Math.min(100, pct))}%"></b></div>`;
+  }
+  function fesSection() {
+    const run = state.run;
+    if (run.site !== "Odisha") {
+      return `<section class="fes"><span class="eyebrow">Field check</span><h2>How well the stands match the FES plots</h2><p class="muted">Sanjay Van has no FES field plots. The comparison is made in the four Odisha districts.</p></section>`;
+    }
+    const fes = state.fes;
+    if (!fes) return `<section class="fes"><span class="eyebrow">Field check</span><h2>How well the stands match the FES plots</h2><p class="muted">The comparison file did not load.</p></section>`;
+    const rows = (fes.rows || []).filter(r => r.arm === run.arm && Number(r.stand_ceiling_ha) === Number(run.stand_ceiling_ha));
+    const groups = [...new Set(rows.map(r => r.analysis))];
+    const tables = groups.map(g => {
+      const rs = rows.filter(r => r.analysis === g);
+      const items = rs.map(r => {
+        const pct = r.chance_percentile === null || r.chance_percentile === undefined ? "" :
+          `<span><span class="k">Chance</span><span class="n">${fmt(r.chance_percentile, 1)}</span>${gauge(r.chance_percentile)}</span>`;
+        const ps = r.p === null || r.p === undefined ? "" :
+          `<span><span class="k">p</span><span class="n">${fmt(r.p, 3)}</span></span><span><span class="k">Holm p</span><span class="n">${fmt(r.p_holm, 3)}</span></span>`;
+        return `<li class="test"><span class="tt">${esc(r.title)}</span><div class="vals"><span><span class="k">Score</span><span class="n">${fmt(r.score, 4)}</span></span>${pct}${ps}${verdict(r)}</div></li>`;
+      }).join("");
+      return `<div><p class="tests-cap">${esc(g)}</p><ul class="tests">${items}</ul></div>`;
+    }).join("");
+    const none = rows.length ? "" : `<p class="muted">${run.arm === "alphaearth" ? "AlphaEarth has not been scored against the FES plots yet. Its analysis is written down before it is run." : "No scores for this run yet."}</p>`;
+    return `<section class="fes"><span class="eyebrow">Field check, Odisha</span><h2>How well the stands match the FES plots</h2>` +
+      `<p class="muted">Scores are adjusted Rand indices on 267 plots in 20 villages, except pair precision and the far-apart rate. "Chance" is the score's percentile among 1,999 randomly rotated copies of the stand map; a test passes above the 95th, after Holm's correction for running ten tests.</p>` +
+      none + tables + (fes.reading ? `<details><summary>What the numbers say</summary><p>${esc(fes.reading)}</p></details>` : "") +
+      (fes.label ? `<p class="muted">${esc(fes.label)}</p>` : "") + `</section>`;
+  }
+
+  /* ---------- boot ---------- */
+  function emptyState(msg) {
+    $("#rail").innerHTML = "";
+    $("#banner").textContent = "";
+    $(".mapwrap").insertAdjacentHTML("beforeend", `<div class="empty" style="position:absolute;inset:0;z-index:1000;background:var(--map-bg)"><div><h2>No pipeline data here yet</h2><p>${msg}</p><p>The data is exported by Claude Code into <code>ui_data/</code> (handoff brief, task A3).</p></div></div>`);
+  }
+  async function boot() {
+    initMap();
+    try {
+      state.index = await getJSON(DATA + "index.json");
+    } catch (e) {
+      emptyState("The file <code>ui_data/index.json</code> could not be read.");
+      return;
+    }
+    if (!state.index.runs || !state.index.runs.length) { emptyState("The index lists no runs."); return; }
+    try {
+      const reg = await getJSON("decisions.json");
+      state.decisions = Object.fromEntries((reg.decisions || []).map(d => [d.id, d]));
+    } catch (e) { state.decisions = null; }
+    if (state.index.fes_comparison) {
+      try { state.fes = await getJSON(DATA + state.index.fes_comparison); } catch (e) { state.fes = null; }
+    }
+    $("#banner").innerHTML = `<strong>Demo data.</strong> ${esc(state.index.label || "")}`;
+    $("#pick-area").addEventListener("change", e => chooseRun({ area: e.target.value, arm: state.run.arm, ceiling: state.run.stand_ceiling_ha }));
+    $("#pick-arm").addEventListener("click", e => {
+      const b = e.target.closest("button[data-arm]");
+      if (b && !b.disabled) chooseRun({ area: state.run.area, arm: b.dataset.arm, ceiling: state.run.stand_ceiling_ha });
+    });
+    $("#pick-ceiling").addEventListener("click", e => {
+      const b = e.target.closest("button[data-ceiling]");
+      if (b && !b.disabled) chooseRun({ area: state.run.area, arm: state.run.arm, ceiling: Number(b.dataset.ceiling) });
+    });
+    $("#rail").addEventListener("change", onRailInput);
+    $("#rail").addEventListener("input", e => { if (e.target.matches('input[type="range"]')) onRailInput(e); });
+    $("#rail").addEventListener("click", e => {
+      const b = e.target.closest("button[data-info]");
+      if (b) openDrawer($("#rail")._steps[+b.dataset.info]);
+    });
+    $("#drawer-close").addEventListener("click", closeDrawer);
+    $("#legend").addEventListener("click", e => {
+      if (!e.target.closest(".legend-toggle")) return;
+      const box = $("#legend");
+      box.dataset.collapsed = String(box.dataset.collapsed !== "true");
+      renderLegend();
+    });
+    $("#zoomto").addEventListener("change", e => {
+      const i = +e.target.value;
+      if (i < 0) {
+        const b = state.run.bounds;
+        state.map.fitBounds([[b[1], b[0]], [b[3], b[2]]], { padding: [24, 24] });
+      } else if (state.zoomParts && state.zoomParts[i]) {
+        state.map.fitBounds(state.zoomParts[i].bounds, { padding: [24, 24] });
+      }
+    });
+    document.addEventListener("keydown", e => { if (e.key === "Escape") closeDrawer(); });
+    const wanted = (location.hash || "").replace(/^#/, "") || recall("fmu-run");
+    const first = state.index.runs.find(r => r.run_id === wanted) || state.index.runs[0];
+    selectRun(first);
+  }
+  boot();
+})();
+</script>
