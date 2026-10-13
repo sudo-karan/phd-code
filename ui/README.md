@@ -1,11 +1,24 @@
-# FMU Pipeline Explorer
+# Forest Stand Explorer
 
-A static web page that shows the pipeline one step at a time, for Sanjay Van and the four Odisha
-districts, both arms (feature vector and AlphaEarth): the land-cover mask and why each pixel was
-kept or removed, the Sentinel-2 composite, the features, the superpixels, the merged stands, the
-stand types, and the FES field plots with the field check. Each step has an "i" button that opens
-the decisions behind it, from `docs/decisions.yaml`, with their papers and how strongly each paper
-supports the choice.
+A static web page that walks through the pipeline one step at a time, for Sanjay Van and the four
+Odisha districts, both arms (our features and AlphaEarth):
+
+1. **Area**: the land we work on, over a Sentinel-2 image.
+2. **Land cover**: which pixels IndiaSAT (or WorldCover) calls trees or scrub.
+3. **Measures**: what the satellite tells us per pixel (our 22 measurements, or AlphaEarth's 64).
+4. **Superpixels**: SNIC's small patches of similar pixels.
+5. **Stands**: superpixels joined into stands, with how many joins each rule made.
+6. **Types**: k-means stand types, with the land that isn't trees or scrub shaded.
+7. **Field check** (Odisha): lines between plots that share a stand (green when they are the same
+   field type, red dashed when not), a stand type against field type table, and the chance test in
+   plain words (how many of 100 random placements the real one beats, against the 95 set in
+   advance).
+
+Each step's text is written from the run's own numbers (`facts` in `ui_data/index.json`), and sets
+the map for that step; every layer can still be switched on and off. "Why we did it this way" opens
+the decisions behind the step, from `docs/decisions.yaml`, with their papers and how strongly each
+supports the choice. Superpixels and land cover are drawn as encoded lines and shapes, so they stay
+sharp at any zoom; the satellite image is smoothed rather than shown as 10 m blocks.
 
 ## Files
 
@@ -15,10 +28,11 @@ supports the choice.
   and `decisions.json` (from `docs/decisions.yaml`) into `_site/`. A file named in the index but
   missing stops the build.
 - `ui_data/`: the data the page reads. `ui_data/index.json` is the contract; its format is in
-  `docs/handoff/2026-10-13-round2.md`, task A3. The pipeline's export writes it.
-- `scripts/build_ui_early_data.py`: built the first `ui_data/` from files the 13 October re-runs
-  had already saved (stands before the merge fix; features as stand means). The A3 export
-  replaces that folder.
+  `docs/handoff/2026-10-13-round2.md`, task A3, with "Version 2 of the index". The pipeline's
+  export writes it.
+- `scripts/build_ui_early_data.py`: built the current `ui_data/` from files the 13 October re-runs
+  had already saved (stands before the merge fix; features as stand means; only the superpixels
+  that hold some trees or scrub). The A3 export replaces that folder.
 
 ## See it locally
 
@@ -28,10 +42,12 @@ python -m http.server -d _site 8000
 ```
 
 Then open http://localhost:8000. Opening `_site/index.html` directly does not work, because
-browsers block a page read from disk from reading its data files.
+browsers block a page read from disk from reading its data files. A link can point at a run and a
+step: `#odisha_v120_3ha_koraput_repro/field`.
 
 ## Hosting
 
 `.github/workflows/pages.yml` builds the site on every push and pull request to `main`, and
 publishes it to GitHub Pages from `main` only. The repository is public, so the site is public,
-FES plot locations included (they are already in the repository).
+FES plot locations included (they are already in the repository). The street map underneath only
+loads on the published site; the Claude preview blocks outside map tiles.

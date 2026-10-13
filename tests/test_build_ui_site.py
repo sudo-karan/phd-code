@@ -78,7 +78,7 @@ def test_builds_a_full_document_with_data(tmp_path: Path) -> None:
     html = (out / "index.html").read_text()
     assert html.startswith("<!doctype html>")
     head, body = html.split("</head>", 1)
-    assert "<title>FMU Pipeline Explorer</title>" in head
+    assert "<title>Forest Stand Explorer</title>" in head
     assert '<div class="app"' in body
     assert json.loads((out / "decisions.json").read_text())["decisions"][0]["id"] == "dn-example"
     assert (out / "ui_data" / "runs" / "r1" / "mask.png").is_file()
