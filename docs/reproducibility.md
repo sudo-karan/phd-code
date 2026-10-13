@@ -8,12 +8,12 @@ that writes it, and what happened when that command was run again.
 
 There are **170 committed result files** under `odisha_script/`.
 
-- **38 reproduced exactly** (byte for byte).
-- **13 differ.** No number differs in any of them except in the summary figures. The cause is
+- **42 reproduced exactly** (byte for byte).
+- **14 differ.** No number differs in any of them except in the summary figures. The cause is
   demonstrated for each, with one part left open: why the one Phase 1 figure, identical in
   every pixel, is stored in a different number of bytes.
-  - 5 text files differ only in lines that record run times: the Phase 2 pilot statistics and
-    the four Phase 3 chance-test files. Every statistic in them is identical. (The four
+  - 6 text files differ only in lines that record run times: the Phase 2 pilot and full-set
+    statistics and the four Phase 3 chance-test files. Every statistic in them is identical. (The four
     chance-test files have since been regenerated without their run times; see Problem 5.)
   - 1 Phase 1 text file was never regenerated after its script was changed to print a warning.
     No number differs.
@@ -26,12 +26,10 @@ There are **170 committed result files** under `odisha_script/`.
   - 4 Phase 3 summary figures differ because **the committed figures were drawn on
     24 September from the first Phase 3 analysis (PR #40) and were never redrawn after the
     results changed on 7 and 8 October.**
-- **119 were not run.**
+- **114 were not run.**
   - 105 need Earth Engine, which the offline check was not allowed to touch. 95 of them are the
     stand files and run records under `phase2_vectors/`. A from-scratch Earth Engine re-run of
     twelve Odisha configs is in progress; its comparison goes in the Earth Engine section.
-  - 5 were still being computed when this report was written (the Phase 2 full-set
-    statistics). The commands to finish the comparison are under "Still to do".
   - 4 summary figures could not be regenerated because their scripts stop with an
     error: they were written against the scripts and results of 24 September.
   - 4 are kept records of runs on stand files that no longer exist.
@@ -169,11 +167,11 @@ Commands are run from the repo root.
 | `odisha_phase2_5_primary_r2_null.png` | `python odisha_script/odisha_phase2_5_stats.py --set pilot` | **reproduced exactly** |  |
 | `odisha_phase2_5_arms_excess.png` | `python odisha_script/odisha_phase2_5_stats.py --set pilot` | **reproduced exactly** |  |
 | `odisha_phase2_5_pairwise_bands.png` | `python odisha_script/odisha_phase2_5_stats.py --set pilot` | **reproduced exactly** |  |
-| `odisha_phase2_5_results_districts.txt` | `python odisha_script/odisha_phase2_5_stats.py --set districts --jobs 4` | **not run** | running when the report was written |
-| `odisha_phase2_5_summary_districts.csv` | `python odisha_script/odisha_phase2_5_stats.py --set districts --jobs 4` | **not run** | running when the report was written |
-| `odisha_phase2_5_primary_r2_null_districts.png` | `python odisha_script/odisha_phase2_5_stats.py --set districts --jobs 4` | **not run** | running when the report was written |
-| `odisha_phase2_5_arms_excess_districts.png` | `python odisha_script/odisha_phase2_5_stats.py --set districts --jobs 4` | **not run** | running when the report was written |
-| `odisha_phase2_5_pairwise_bands_districts.png` | `python odisha_script/odisha_phase2_5_stats.py --set districts --jobs 4` | **not run** | running when the report was written |
+| `odisha_phase2_5_results_districts.txt` | `python odisha_script/odisha_phase2_5_stats.py --set districts --jobs 4` | **differs** | Run-time fields only: the nine `rotation null:` lines carry the seconds each null took and the last line the total. With the seconds masked the file is the same as the committed one, so every statistic is identical. Run here with `--jobs 3`; the partitions are seeded by name, so the number of workers does not change a result. |
+| `odisha_phase2_5_summary_districts.csv` | `python odisha_script/odisha_phase2_5_stats.py --set districts --jobs 4` | **reproduced exactly** | Same run as the row above (`--jobs 3`). |
+| `odisha_phase2_5_primary_r2_null_districts.png` | `python odisha_script/odisha_phase2_5_stats.py --set districts --jobs 4` | **reproduced exactly** | Same run as the row above (`--jobs 3`). |
+| `odisha_phase2_5_arms_excess_districts.png` | `python odisha_script/odisha_phase2_5_stats.py --set districts --jobs 4` | **reproduced exactly** | Same run as the row above (`--jobs 3`). |
+| `odisha_phase2_5_pairwise_bands_districts.png` | `python odisha_script/odisha_phase2_5_stats.py --set districts --jobs 4` | **reproduced exactly** | Same run as the row above (`--jobs 3`). |
 | `odisha_phase2_6_results.txt` | `python odisha_script/odisha_phase2_6_label_drift.py` | **not run** | Needs Earth Engine, which this check was not allowed to touch. |
 | `odisha_phase2_6_plot_labels.csv` | `python odisha_script/odisha_phase2_6_label_drift.py` | **not run** | Needs Earth Engine, which this check was not allowed to touch. |
 
@@ -660,23 +658,9 @@ Each with its evidence and what should happen next.
 
 ## Still to do
 
-One job was still running when this report was written. It runs in its own clean clone at `a477ab1`; `<scratch>` is the session's scratch folder.
+Every offline job has finished and is in the tables above. Not started, and needed before the report is complete:
 
-1. **Phase 2 full-set statistics** (clone `<scratch>/task3/tree_p2`; log `<scratch>/repro/p2.log`; run with `--jobs 3`, where the write-up used `--jobs 4`). When the log ends with `repro_run done`:
-
-   ```bash
-   C=<scratch>/task3/tree_p2
-   git -C $C status --porcelain          # expect odisha_phase2_5_results.txt and, at most, odisha_phase2_5_results_districts.txt
-   m='s/; [0-9]+ s;/;/; s/total runtime [0-9]+ s/total runtime/'
-   for f in odisha_script/odisha_phase2_5_results.txt odisha_script/odisha_phase2_5_results_districts.txt; do
-     diff <(git -C $C show a477ab1:$f | sed -E "$m") <(sed -E "$m" $C/$f)
-   done
-   # expect no output: with the seconds removed the files are the same
-   ```
-
-Not started, and needed before the report is complete:
-
-2. The Odisha Earth Engine comparisons for the ten configs still running (the marked table in "Earth Engine re-runs"), with the Phase 3 scores from the new plot tables.
-3. Fix the figure scripts and `phase3_figstyle.py`, regenerate the eleven figures and rewrite `deck_facts.md` from the final results (Problems 1 to 3).
-4. Move run times out of `odisha_phase2_5_stats.py` and `scripts/gate_effect.py` (Problem 5).
-5. Regenerate `odisha_phase1_tests456_results.txt` and `odisha_phase3_stands_unchanged.txt` in their own commits (Problems 4 and 7).
+1. The Odisha Earth Engine comparisons for the ten configs still running (the marked table in "Earth Engine re-runs"), with the Phase 3 scores from the new plot tables.
+2. Fix the figure scripts and `phase3_figstyle.py`, regenerate the eleven figures and rewrite `deck_facts.md` from the final results (Problems 1 to 3).
+3. Move run times out of `odisha_phase2_5_stats.py` and `scripts/gate_effect.py` (Problem 5).
+4. Regenerate `odisha_phase1_tests456_results.txt` and `odisha_phase3_stands_unchanged.txt` in their own commits (Problems 4 and 7).
