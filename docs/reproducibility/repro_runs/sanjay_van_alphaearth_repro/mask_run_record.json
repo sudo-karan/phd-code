@@ -1,0 +1,74 @@
+{
+  "config_name": "sanjay_van_alphaearth_repro",
+  "config_path": "configs/sanjay_van_alphaearth_repro.yaml",
+  "cache_fingerprint": "105fc40547",
+  "roi_file": "aois/sanjay_van.geojson",
+  "roi_parts": [
+    "sanjay_van"
+  ],
+  "date": "2026-10-13T12:29:49+05:30",
+  "command_line": "python scripts/transparency_masking.py --config configs/sanjay_van_alphaearth_repro.yaml --docs-dir /private/tmp/claude-501/-Users-karan-Desktop-phd-code/4c6f8818-2378-415e-b987-bd48af5a38c5/scratchpad/task5/repro_provenance/_mask_docs --data-dir /private/tmp/claude-501/-Users-karan-Desktop-phd-code/4c6f8818-2378-415e-b987-bd48af5a38c5/scratchpad/task5/repro_provenance/_mask_data",
+  "git": {
+    "commit": "b27b790d0982852aceffe5bc4432008a845a82b6",
+    "dirty": false,
+    "modified": [],
+    "modified_truncated": false,
+    "untracked": [],
+    "untracked_truncated": false,
+    "root": "/private/tmp/claude-501/-Users-karan-Desktop-phd-code/4c6f8818-2378-415e-b987-bd48af5a38c5/scratchpad/task5/tree_prov",
+    "error": null
+  },
+  "code_git_blob_ids": {
+    "scripts/transparency_masking.py": "e2cf4fc3b43c6ee3b6c102258f0bd9bd125f24a9"
+  },
+  "earth_engine": {
+    "read_only": true,
+    "pipeline": "Pipeline(['masking', 'data_load'], use_cache=True, submit_exports=False)",
+    "export_tasks_submitted": 0,
+    "download_grid": "EPSG:4326 at 10 m, anchored at (0, 0)"
+  },
+  "layers": {
+    "habitat_mask": {
+      "stage": "masking",
+      "cache_status": "hit",
+      "read_from": "cached asset",
+      "asset": "projects/replicating-paper/assets/fmu/sanjay_van_alphaearth_repro/masking/habitat_mask__105fc40547"
+    },
+    "landcover_summary": {
+      "stage": "masking",
+      "cache_status": "hit",
+      "read_from": "cached asset",
+      "asset": "projects/replicating-paper/assets/fmu/sanjay_van_alphaearth_repro/masking/landcover_summary__105fc40547"
+    },
+    "mask_provenance": {
+      "stage": "masking",
+      "cache_status": "miss",
+      "read_from": "computed live, not exported",
+      "asset": null
+    },
+    "water_mask": {
+      "stage": "masking",
+      "cache_status": "hit",
+      "read_from": "cached asset",
+      "asset": "projects/replicating-paper/assets/fmu/sanjay_van_alphaearth_repro/masking/water_mask__105fc40547"
+    },
+    "s2_composite": {
+      "stage": "data_load",
+      "cache_status": "hit",
+      "read_from": "cached asset",
+      "asset": "projects/replicating-paper/assets/fmu/sanjay_van_alphaearth_repro/data_load/s2_composite__105fc40547"
+    }
+  },
+  "comparison_masks": [],
+  "raster_check": {
+    "area_ha": 1301.0434,
+    "share_kept": 0.65105,
+    "manifest_area_ha": 1301.609,
+    "manifest_share_kept": 0.651044,
+    "note": "rasters count pixels whose centre is inside a part; the manifest weights edge pixels by coverage"
+  },
+  "points_file": null,
+  "pipeline_run_dir": "runs/sanjay_van_alphaearth_repro_20261013_122951",
+  "data_dir": "/private/tmp/claude-501/-Users-karan-Desktop-phd-code/4c6f8818-2378-415e-b987-bd48af5a38c5/scratchpad/task5/repro_provenance/_mask_data/sanjay_van_alphaearth_repro",
+  "redraws_since_this_run": []
+}
