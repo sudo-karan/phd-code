@@ -44,3 +44,16 @@ def test_grid_files_are_the_true_colour_files_in_part_order(tmp_path):
     assert [p.name for p in fetch.grid_files(tmp_path, "a_run")] == ["part01_a_true_colour.tif", "part02_b_true_colour.tif"]
     with pytest.raises(SystemExit, match="masking transparency tool"):
         fetch.grid_files(tmp_path, "another_run")
+
+
+def test_band_groups_keep_each_request_under_the_limit_and_lose_no_band():
+    names = [f"A{i:02d}" for i in range(64)]
+    # A small part: everything in one request.
+    assert fetch.band_groups(names, 100_000) == [names]
+    # A part of 360,000 pixels: 64 bands and a validity band would be 93.6 MB.
+    groups = fetch.band_groups(names, 360_000)
+    assert [b for g in groups for b in g] == names
+    assert all((len(g) + 1) * 360_000 * 4 <= fetch.MAX_REQUEST_BYTES for g in groups)
+    assert len(groups) > 1
+    # A part so large that one band is over the limit still goes one band at a time.
+    assert fetch.band_groups(names[:3], 20_000_000) == [["A00"], ["A01"], ["A02"]]

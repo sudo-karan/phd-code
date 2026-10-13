@@ -43,6 +43,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 # ETH canopy height: (the context key of the image that holds it, its band).
 CANOPY_HEIGHT = ("structure_features", "canopy_height")
 NODATA = -9999.0
+# Earth Engine refuses a download over 50,331,648 bytes. A part is fetched a few bands at a
+# time so that no request comes near it.
+MAX_REQUEST_BYTES = 36_000_000
 
 
 def bands_to_fetch(input_bands: list[tuple[str, str]]) -> list[tuple[str, str]]:
@@ -71,6 +74,13 @@ def mask_nodata(data: np.ndarray, valid: np.ndarray) -> np.ndarray:
     return out
 
 
+def band_groups(band_names: list[str], n_pixels: int, max_bytes: int = MAX_REQUEST_BYTES) -> list[list[str]]:
+    """Split the bands so that one request (the group and a validity band, float32) fits `max_bytes`."""
+    per_band = n_pixels * 4
+    size = max(1, max_bytes // per_band - 1)
+    return [band_names[i:i + size] for i in range(0, len(band_names), size)]
+
+
 def fetch_part(image: Any, band_names: list[str], grid: Path, out: Path, attempts: int = 4) -> None:
     """One part: `image` sampled on the grid of `grid`, written to `out` with named bands."""
     import ee
@@ -87,26 +97,30 @@ def fetch_part(image: Any, band_names: list[str], grid: Path, out: Path, attempt
         "crs_transform": [transform.a, transform.b, transform.c, transform.d, transform.e, transform.f],
         "format": "GEO_TIFF",
     }
-    valid = image.mask().reduce(ee.Reducer.min()).gt(0).rename("valid")
-    request = image.unmask(NODATA, False).toFloat().addBands(valid.unmask(0, False).toFloat())
+    # A pixel is valid where every band of the image has data, whatever group it is fetched in.
+    valid = image.mask().reduce(ee.Reducer.min()).gt(0).rename("valid").unmask(0, False).toFloat()
     tmp = out.with_suffix(".download.tif")
-    for attempt in range(1, attempts + 1):
-        try:
-            url = request.getDownloadURL(params)
-            with urllib.request.urlopen(url, timeout=900) as response:  # noqa: S310 - Earth Engine url
-                tmp.write_bytes(response.read())
-            break
-        except Exception as exc:  # noqa: BLE001 - retried, then raised
-            print(f"  ... {out.name}: attempt {attempt} of {attempts} failed: {str(exc)[:160]}", file=sys.stderr, flush=True)
-            if attempt == attempts:
-                raise RuntimeError(f"could not fetch {out.name}: {exc}") from exc
-            time.sleep(20)
-    with rasterio.open(tmp) as got:
-        data = got.read()
-        if got.shape != shape or got.transform != transform:
-            raise SystemExit(f"{out.name}: fetched on another grid than {grid.name} "
-                             f"({got.shape} against {shape}); not written")
-    bands = mask_nodata(data[:-1], data[-1])
+    fetched = []
+    for group in band_groups(band_names, shape[0] * shape[1]):
+        request = image.select(group).unmask(NODATA, False).toFloat().addBands(valid)
+        for attempt in range(1, attempts + 1):
+            try:
+                url = request.getDownloadURL(params)
+                with urllib.request.urlopen(url, timeout=900) as response:  # noqa: S310 - Earth Engine url
+                    tmp.write_bytes(response.read())
+                break
+            except Exception as exc:  # noqa: BLE001 - retried, then raised
+                print(f"  ... {out.name}: attempt {attempt} of {attempts} failed: {str(exc)[:160]}", file=sys.stderr, flush=True)
+                if attempt == attempts:
+                    raise RuntimeError(f"could not fetch {out.name}: {exc}") from exc
+                time.sleep(20)
+        with rasterio.open(tmp) as got:
+            data = got.read()
+            if got.shape != shape or got.transform != transform:
+                raise SystemExit(f"{out.name}: fetched on another grid than {grid.name} "
+                                 f"({got.shape} against {shape}); not written")
+        fetched.append(mask_nodata(data[:-1], data[-1]))
+    bands = np.concatenate(fetched)
     profile = {"driver": "GTiff", "height": shape[0], "width": shape[1], "count": bands.shape[0],
                "dtype": "float32", "crs": crs, "transform": transform, "compress": "deflate",
                "nodata": float("nan")}
