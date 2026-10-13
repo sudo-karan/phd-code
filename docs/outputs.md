@@ -20,11 +20,25 @@ manifest.json                           always
 export_manifest_<config>.json           after export stage
 cluster_profiles.csv                    after profiling stage
 metrics_<config>.json                   after metrics stage (via inspect script)
+merge_provenance.csv, .json             after scripts/inspect_merge.py
 ```
 
 The directory is gitignored; checking outputs into git is not the
 intended workflow. Reproducibility is via `manifest.json` (the inputs)
 plus the cached GEE assets (the outputs).
+
+### What is committed and what is not
+
+| Where | In git? | What |
+|---|---|---|
+| `outputs/runs/<config>_<timestamp>/` | ignored (`outputs/`) | run directories: log, manifests, CSVs |
+| `outputs/transparency/<config>/` | ignored (`outputs/`) | rasters and GeoJSON behind the mask maps (see "Transparency outputs") |
+| `runs/`, `fmu_exports_clean/`, `reports/` | ignored | what `scripts/report.py` reads and writes (see "Reports") |
+| `docs/transparency/<config>/` | **committed** | the mask maps, `summary.md`, `run_record.json` |
+| `docs/reproducibility/`, `docs/evaluation/` | **committed** | results of the asset comparisons and of the synthetic validation |
+| `odisha_script/phase2_vectors/` | **committed** | Odisha stand layers and `<config>_run.json` run records |
+| `*.log`, `logs/` | ignored | run times and pass logs |
+| Earth Engine assets, Google Drive files | not in the repo | cached stage outputs; exported rasters and vectors |
 
 ## `fmu.log`
 
@@ -48,19 +62,55 @@ everything needed to know what happened:
   "config_name": "sanjay_van_baseline",
   "run_dir": "outputs/runs/sanjay_van_baseline_20260520-013522",
   "total_elapsed_sec": 142.815,
+  "use_cache": true,
+  "submit_exports": true,
+  "summaries": true,
+  "git": {
+    "commit": "<full hash of HEAD>",
+    "dirty": false,
+    "modified": [],
+    "modified_truncated": false,
+    "untracked": [],
+    "untracked_truncated": false,
+    "root": "/path/to/the/checkout",
+    "error": null
+  },
   "stages": [
     {
       "name": "masking",
       "elapsed_sec": 18.244,
-      "produced": ["habitat_mask", "landcover_summary", "water_mask"],
+      "produced": ["habitat_mask", "landcover_summary", "mask_provenance", "water_mask"],
       "warnings": [],
       "metadata": { "...stage-specific..." },
       "cache_status": {
         "habitat_mask": "hit",
         "water_mask": "hit",
-        "landcover_summary": "hit"
+        "landcover_summary": "hit",
+        "mask_provenance": "hit"
       },
-      "export_tasks": []
+      "export_tasks": [],
+      "transparency": {
+        "display_layers": [
+          {
+            "key": "mask_provenance",
+            "band": "reason",
+            "title": "Habitat mask, by reason",
+            "description": "...",
+            "vis": { "bands": ["reason"], "min": 0, "max": 5, "palette": ["000000", "1a9850", "..."] },
+            "legend": [
+              { "value": 0, "label": "No land-cover data in either map (not habitat)", "color": "000000" },
+              { "value": 1, "label": "Kept as habitat (not only forest)", "color": "1a9850" }
+            ],
+            "legend_note": "This is a habitat mask, not a strict forest mask. ...",
+            "asset": "projects/.../sanjay_van_baseline/masking/mask_provenance__<fingerprint>",
+            "asset_status": "hit"
+          }
+        ],
+        "summary_numbers": [
+          { "name": "area_ha", "description": "Area of the ROI the mask was tabulated over", "unit": "ha", "value": 0.0 },
+          { "name": "share_kept", "description": "Share of that area kept as habitat", "unit": "fraction", "value": 0.0 }
+        ]
+      }
     },
     {
       "name": "data_load",
@@ -72,10 +122,11 @@ everything needed to know what happened:
       "export_tasks": [
         {
           "task_id": "ABCDEF123456",
-          "asset_path": "projects/.../sanjay_van_baseline/data_load/s2_composite",
+          "asset_path": "projects/.../sanjay_van_baseline/data_load/s2_composite__<fingerprint>",
           "description": "sanjay_van_baseline_data_load_s2_composite"
         }
-      ]
+      ],
+      "transparency": { "display_layers": [], "summary_numbers": [] }
     }
   ],
   "config": {
@@ -94,6 +145,10 @@ everything needed to know what happened:
 |---|---|
 | `config_name` | The `name` field from the input YAML |
 | `total_elapsed_sec` | Wall-clock time for the full pipeline run |
+| `use_cache` | The `use_cache` argument given to `Pipeline()` |
+| `submit_exports` | The `submit_exports` argument given to `Pipeline()`. `false` means the run read the cache and submitted no cache export. It has no effect unless `use_cache` is on |
+| `summaries` | The `summaries` argument given to `Pipeline()`. `false` means no stage's summary numbers were computed |
+| `git` | Which code ran: commit and uncommitted changes. See "The `git` block" below |
 | `stages[].name` | Stage name (matches the `@register_stage` decorator) |
 | `stages[].elapsed_sec` | Wall-clock time for this stage |
 | `stages[].produced` | Sorted list of context keys this stage actually wrote |
@@ -101,17 +156,108 @@ everything needed to know what happened:
 | `stages[].metadata` | Stage-specific stats: band counts, sample sizes, etc. |
 | `stages[].cache_status` | Per-output-key: `"hit"`, `"miss"`, `"miss-exported"`, or `"off"` |
 | `stages[].export_tasks` | Async GEE export tasks submitted during this stage |
+| `stages[].transparency` | What the stage declares about itself, filled in: display layers and summary numbers. See "The transparency record" below |
 | `config` | The entire input config, serialized. Proves what was run. |
 
 ### Cache status values
 
 - `"hit"`: asset was already cached; cached version loaded into context
-- `"miss"`: asset wasn't cached; live computation used
+- `"miss"`: asset wasn't cached; live computation used and nothing was
+  submitted. This is what every uncached output of a read-only run
+  (`submit_exports=False`) records
 - `"miss-exported"`: asset wasn't cached; live computation used AND an
   export task was started so next run will hit
-- `"off"`: caching was disabled for this run (`use_cache=False`)
 - Key absent: output is not cacheable (e.g., a Python dict, an
-  `ee.ImageCollection`)
+  `ee.ImageCollection`). With caching off (`use_cache=False`, see the
+  top-level key) `cache_status` is empty for every stage
+
+### The `git` block
+
+Written by `git_state()` in `src/fmu/utils/provenance.py`. It describes the
+checkout the `fmu` package was imported from, not the working directory. The
+same block is in `export_manifest_<config>.json`, in the Odisha
+`<config>_run.json` records, in `docs/transparency/<config>/run_record.json`
+and in `evaluation_manifest.json`. Result files do not carry it.
+
+| Key | Meaning |
+|---|---|
+| `commit` | Full hash of HEAD, or `null` |
+| `dirty` | `true` if any tracked file is modified, staged, deleted or renamed relative to HEAD; `false` if none; `null` if it could not be determined |
+| `modified` | The tracked paths behind `dirty`, sorted, at most 50 |
+| `modified_truncated` | `true` if there were more than 50 |
+| `untracked` | Untracked, non-ignored paths, sorted, at most 50. They do not make the tree dirty, but an untracked source file can change what ran |
+| `untracked_truncated` | `true` if there were more than 50 |
+| `root` | The checkout's root directory, or `null` |
+| `error` | `null`, or why the state could not be read (git not installed, the code is not in a git checkout, a git command failed) |
+
+### The transparency record
+
+Each stage can declare display layers and summary numbers
+(`Stage.display_layers`, `Stage.summary_numbers` and `Stage.summarise()` in
+`src/fmu/stages/base.py`). The orchestrator writes them into
+`stages[].transparency`, the same whether the stage ran live or was read from
+the cache. Masking and merge declare something today; the other stages have an
+empty record (`tests/test_transparency_contract.py` lists which stages must
+declare and which are still pending).
+
+`display_layers` has one entry per declared layer:
+
+| Key | Meaning |
+|---|---|
+| `key`, `band` | The context key holding the image, and the band on it |
+| `title`, `description` | What the layer shows |
+| `vis` | Earth Engine visualisation parameters (`bands`, `min`, `max`, `palette`). For a categorical layer the palette covers every integer from the lowest legend value to the highest |
+| `legend` | For a categorical layer, one `{value, label, color}` per class; empty for a continuous layer |
+| `legend_note` | What a reader must be told in order not to misread the layer. Show it wherever the legend is drawn |
+| `asset` | The cache asset the layer belongs at; `null` when caching is off or the stage does not cache that key (the merge layer) |
+| `asset_status` | That asset's cache status for this run. Under `"miss"` there is no asset to draw from, and under `"miss-exported"` not until the task finishes. `null` when `asset` is |
+
+`summary_numbers` has one `{name, description, unit, value}` per declared
+number. It is empty, with a reason beside it, in two cases: `summary_skipped`
+when the run was made with `Pipeline(summaries=False)`, and `summary_error`
+when the numbers could not be computed (the error is also in the stage's
+`warnings`; the run carries on, because the stage's products are already made).
+
+**Masking** declares two layers on `mask_provenance` (bands `reason` and
+`source`; the codes are under "Cached GEE assets") and these numbers, from one
+grouped area sum over the ROI:
+
+| Name | Meaning |
+|---|---|
+| `area_ha` | Area of the ROI the mask was tabulated over |
+| `share_kept` | Share of that area kept as habitat, read off `habitat_mask` |
+| `share_by_reason` | Share under each reason: `kept`, `cropland`, `built_up`, `water`, `other_non_habitat`, `no_data`. Adds up to 1 |
+| `share_kept_by_source` | Share of the whole area kept as habitat, by the map that decided it (`indiasat`, `worldcover`, `none`). Adds up to `share_kept` |
+| `share_decided_by_source` | Share of the area each map decided, kept or removed. Adds up to 1 |
+| `area_ha_by_reason_and_source` | Hectares under each reason, split by deciding map |
+| `area_ha_reason_disagrees_with_habitat_mask` | Hectares where the reason layer says kept and `habitat_mask` does not, or the reverse. Zero when both come from the same inputs; anything else means the cached `habitat_mask` predates a change in a land-cover input |
+| `kept_classes` | The classes this run kept as habitat, from the config: `indiasat` and `worldcover` lists |
+
+**Merge** declares one layer, `merge_provenance.merge_kind`: each stand coloured
+by the weakest kind of merge it contains.
+
+| `merge_kind` | Meaning |
+|---|---|
+| 0 | A single superpixel: it merged with nothing |
+| 1 | First-pass merges only: every merge passed every criterion at its configured tolerance |
+| 2 | Contains a relaxed second-pass merge |
+| 3 | Contains a shared-edge fallback merge, which no criterion justified |
+
+It is a remap of the SNIC label image and is not cached, so its `asset` and
+`asset_status` are `null`. The merge's numbers are read from
+`merge_diagnostics` with no Earth Engine call:
+
+| Name | Meaning |
+|---|---|
+| `superpixels_in`, `stands_out` | SNIC superpixels the merge started from; stands left after both passes |
+| `merges_first_pass` | Merges where the neighbours pass every criterion at its configured tolerance |
+| `merges_second_pass_relaxed` | Second-pass merges where a neighbour passed the relaxed tolerances |
+| `merges_second_pass_shared_edge_fallback` | Second-pass merges made on shared-edge length alone |
+| `stands_below_min_area` | Stands still below `merge.min_area_ha` after both passes |
+| `stands_below_min_area_by_cause` | Those stands by cause: `isolated`, `area_blocked`, `iteration_cap` |
+| `area_ha_in_stands_below_min_area` | Area in those stands |
+
+The three merge counts add up to `superpixels_in - stands_out`.
 
 ### Stage source
 
@@ -151,6 +297,7 @@ Structure:
 {
   "config_name": "sanjay_van_baseline",
   "pipeline_version": "1.1.0",
+  "git": { "commit": "<full hash of HEAD>", "dirty": false, "...": "as in manifest.json" },
   "run_timestamp": "2026-05-20T01:35:22+00:00",
   "roi": {
     "name": "sanjay_van",
@@ -159,14 +306,15 @@ Structure:
   },
   "config_snapshot": { "...entire YAML...": "..." },
   "asset_paths": {
-    "habitat_mask": "projects/.../sanjay_van_baseline/masking/habitat_mask",
-    "water_mask":   "projects/.../sanjay_van_baseline/masking/water_mask",
-    "landcover_summary": "projects/.../sanjay_van_baseline/masking/landcover_summary",
-    "s2_composite": "projects/.../sanjay_van_baseline/data_load/s2_composite",
-    "optical_features": "projects/.../sanjay_van_baseline/features_optical/optical_features",
-    "radar_features":   "projects/.../sanjay_van_baseline/features_radar/radar_features",
-    "structure_features": "projects/.../sanjay_van_baseline/features_structure/structure_features",
-    "static_features":  "projects/.../sanjay_van_baseline/features_static/static_features",
+    "habitat_mask": "projects/.../sanjay_van_baseline/masking/habitat_mask__bbc3e3d624",
+    "water_mask":   "projects/.../sanjay_van_baseline/masking/water_mask__bbc3e3d624",
+    "landcover_summary": "projects/.../sanjay_van_baseline/masking/landcover_summary__bbc3e3d624",
+    "mask_provenance": "projects/.../sanjay_van_baseline/masking/mask_provenance__bbc3e3d624",
+    "s2_composite": "projects/.../sanjay_van_baseline/data_load/s2_composite__bbc3e3d624",
+    "optical_features": "projects/.../sanjay_van_baseline/features_optical/optical_features__bbc3e3d624",
+    "radar_features":   "projects/.../sanjay_van_baseline/features_radar/radar_features__bbc3e3d624",
+    "structure_features": "projects/.../sanjay_van_baseline/features_structure/structure_features__bbc3e3d624",
+    "static_features":  "projects/.../sanjay_van_baseline/features_static/static_features__bbc3e3d624",
     "snic_clusters":    "projects/.../sanjay_van_baseline/segmentation/snic_clusters__bbc3e3d624",
     "snic_means":       "projects/.../sanjay_van_baseline/segmentation/snic_means__bbc3e3d624",
     "cluster_labels":   "projects/.../sanjay_van_baseline/clustering/cluster_labels__bbc3e3d624",
@@ -259,7 +407,8 @@ Structure:
       "id_field": "stand_id",
       "id_renumbering": "1..N, sorted by centroid lat desc then lon asc.",
       "unclustered_stands_retained": true,
-      "shp_attributes": ["stand_id", "stand_lbl", "cluster_id", "area_ha", "perim_m", "n_pixels"],
+      "shp_attributes": ["stand_id", "stand_lbl", "cluster_id", "area_ha", "perim_m", "n_pixels", "n_superpx", "n_pass1", "n_relaxed", "n_fallback", "below_min", "below_why"],
+      "provenance_attributes": ["n_superpx", "n_pass1", "n_relaxed", "n_fallback", "below_min", "below_why"],
       "geojson_attributes": "all SHP attributes plus per-stand means of every features_* band"
     },
     "stands_snic": {
@@ -291,6 +440,12 @@ Structure:
 > Past on-disk manifests are unaffected (archival), but any code reading
 > `manifest["drive_export"]["task_id"]` must migrate to
 > `manifest["drive_exports"]["raster_cluster_labels"]["task_id"]`.
+
+`git` is the block described under `manifest.json`. `asset_paths` lists only
+the assets that exist, so `mask_provenance` is absent until a run has exported
+it. `provenance_attributes` names the merge-provenance properties on
+`stands_merged`; it is empty, and `shp_attributes` has only the first six names,
+when the context held no `stand_provenance`.
 
 ### How to use this
 
@@ -434,7 +589,8 @@ rows, at matched `n_stands`. The `held_out: false` row exists so the number can
 be set beside published figures (Xiong et al. 2024 report 81.80% on mean canopy
 height; Jia et al. 2019 84.7–94.2%; Sun et al. 2021 >80%; Pukkala 2018 66–87%),
 not as evidence about this partition — canopy height is a merge criterion, so
-R² on it is partly circular by construction.
+R² on it is partly circular by construction. Explained variance rises as stands
+get smaller whatever the layer; see `docs/evaluation_metrics.md`, section 3.1.
 
 **How to read silhouette:** values around 0 indicate overlapping
 clusters; values approaching 1 indicate well-separated, tight clusters.
@@ -570,6 +726,32 @@ SHP attributes (capped at 10-char field-name limit):
 | `area_ha` | float | Polygon area in hectares. |
 | `perim_m` | float | Polygon perimeter in metres. |
 | `n_pixels` | int | `area_m² / (analysis_scale_m)²`. Derived from area, consistent with `area_ha`. |
+| `n_superpx` | int | Superpixels the stand is made of (1 = it never merged). |
+| `n_pass1` | int | Merges inside the stand made by the first pass: every criterion within its configured tolerance. |
+| `n_relaxed` | int | Merges inside the stand made by the second pass under tolerances multiplied by `merge.relax_factor`. |
+| `n_fallback` | int | Merges inside the stand made by the second pass's shared-edge fallback: no criterion justified them, even relaxed. These are the merges to look at first. |
+| `below_min` | int (0/1) | 1 if the stand ended below `merge.min_area_ha`. |
+| `below_why` | string | Empty unless `below_min` is 1; then `isolated` (touches no other stand), `area_blocked` (every neighbour is too big to take it under `merge.max_area_ha`) or `iteration_cap` (it still had a neighbour it could have joined when the second pass stopped at `merge.max_pass2_iterations`). |
+
+The last six are the merge provenance (`PROVENANCE_FIELDS` in
+`src/fmu/utils/region_merge.py`). A stand of m superpixels contains exactly
+m - 1 merges, so `n_pass1 + n_relaxed + n_fallback = n_superpx - 1`. Over all
+stands the counts add up to the totals in `merge_diagnostics`. The values are
+looked up by `stand_lbl`, so every polygon of a stand that was split into
+pieces carries the same values. Both formats carry all six; in the shapefile
+they follow the six columns above. A second-pass merge does not always add a
+piece that was below the minimum size at that moment: each sweep lists the
+undersized pieces once, and a piece that grows past the minimum earlier in a
+sweep still takes its turn in that sweep. The layer is written without the six
+(and the stage logs a warning) only when the context holds no
+`stand_provenance`, which a pipeline run always does.
+
+The same per-stand table, with `area_ha`, `n_pixels` and the `merge_kind` code
+of the display layer, is what `scripts/inspect_merge.py` writes to the run
+directory as `merge_provenance.csv` and `merge_provenance.json`: one row per
+stand in `stand_lbl` order, results only (no times or dates). The JSON also
+carries the config name, the cache fingerprint, the merge summary numbers, the
+stand-size distribution and the stands and area under each `merge_kind`.
 
 GeoJSON attributes: every SHP attribute, **plus** per-stand means of every
 features_* band, plus centroid lat/lon.
@@ -693,7 +875,37 @@ have `embedding_features`; it still has `features_optical` and
 is held identical across arms. The `merge` stage caches nothing at all — its
 `stand_clusters` output is a `remap` of a cached image, cheap to rebuild, and
 caching it would need the merge thresholds hashed into the key when those
-thresholds are exactly what a run is iterating on.
+thresholds are exactly what a run is iterating on. The same holds for its
+`merge_provenance` image (band `merge_kind`, another remap of the SNIC labels);
+`stand_provenance` is a Python dict and is not an asset at all.
+
+`mask_provenance` (masking stage) says why each pixel is in or out of
+`habitat_mask`. Two `uint8` bands:
+
+| Band | Code | Meaning |
+|---|---|---|
+| `reason` | 0 | No land-cover data in either map (not habitat) |
+| | 1 | Kept as habitat |
+| | 2 | Removed: cropland |
+| | 3 | Removed: built-up |
+| | 4 | Removed: water |
+| | 5 | Removed: other non-habitat (every remaining class) |
+| `source` | 0 | Neither map has data |
+| | 1 | IndiaSAT decided |
+| | 2 | WorldCover decided (IndiaSAT has no data) |
+
+`reason == 1` exactly where `habitat_mask == 1`, by construction. A pixel
+IndiaSAT removed takes the reason of its most recent non-habitat year. The layer
+is derived beside the mask and never feeds it. The code-to-name tables are also
+in the masking stage's `metadata` as `mask_provenance_reason_codes` and
+`mask_provenance_source_codes`.
+
+`mask_provenance` was added after the other three masking outputs had been
+cached for the configs run so far. For such a config the next cached run reads
+those three back, computes `mask_provenance` live and (unless
+`submit_exports=False`) exports only it; downstream stages keep receiving the
+cached `habitat_mask`. The summary number
+`area_ha_reason_disagrees_with_habitat_mask` is the check on that pairing.
 
 Special property on `cluster_labels`: the asset carries a JSON-encoded
 `clustering_metadata` property listing every preprocessing parameter
@@ -704,7 +916,7 @@ section. To read it from a separate GEE script:
 ```python
 import ee
 import json
-labels = ee.Image("projects/.../sanjay_van_baseline/clustering/cluster_labels")
+labels = ee.Image("projects/.../sanjay_van_baseline/clustering/cluster_labels__<fingerprint>")
 meta = json.loads(labels.get("clustering_metadata").getInfo())
 print(meta["scaling"])           # per-band center/spread
 ```
@@ -758,3 +970,96 @@ from a live run. They were tracked until v1.2.1; the numbers in the committed
 copies predate the merge stage, so keeping them presented superseded results as
 current. Recover them from history if needed:
 `git checkout b24fad3 -- runs/ fmu_exports_clean/ reports/`.
+
+## Transparency outputs: the land-cover mask
+
+`scripts/transparency_masking.py` writes, for one config, what the masking stage
+did and why. It is read-only on Earth Engine: it reads cached assets, computes
+the rest live and submits no export.
+
+```
+docs/transparency/<config>/            COMMITTED
+  habitat_mask.png                     true colour beside the mask coloured by reason, one panel pair per ROI part
+  habitat_mask_sheet<i>of<n>.png       the same, when the ROI has more than four parts
+  summary.md                           the numbers only; no date, so git diff after a re-run shows real changes
+  run_record.json                      config, cache fingerprint, the layers read and their cached asset ids,
+                                       the git block, git blob ids of the scripts that ran, date, command line;
+                                       --redraw appends an entry under redraws_since_this_run
+outputs/transparency/<config>/         IGNORED BY GIT
+  <part>_mask_provenance.tif           uint8, band 1 reason, band 2 source (codes under "Cached GEE assets");
+                                       255 outside the part
+  <part>_habitat_mask.tif              uint8, 1 habitat, 0 not; 255 outside the part or where the mask has no value
+  <part>_landcover_summary.tif         uint8; the most recent usable year's IndiaSAT class where it is a habitat
+                                       class (6, 12 by default), 80 where JRC water, 0 elsewhere; 255 outside the
+                                       part. It can differ from the mask, which is a majority vote over years
+  <part>_true_colour.tif               uint16, the red, green and blue bands of s2_composite; 0 outside the part
+  roi_outline.geojson                  one feature per ROI part
+  points.geojson                       only with --points: per point the part, kept, reason code, name and label,
+                                       source code, name and label, and kept pixels in the 5 x 5 window around it
+  masking_transparency.json            what --redraw reads: the config name and fingerprint, the masking stage's
+                                       transparency record from the run manifest, each layer's cache status,
+                                       the true-colour band names and any --compare-mask-asset results
+```
+
+`--docs-dir` and `--data-dir` change the two folders (defaults `docs/transparency`
+and `outputs/transparency`). `<part>` is the name of one polygon of the ROI
+file, in lower case with underscores (`part_N` when the file gives no name).
+
+All rasters are EPSG:4326 at the analysis scale (`export.analysis_scale_m`),
+on a grid anchored at (0, 0). At 10 m that is the grid cache exports land on,
+so a cached mask is read pixel for pixel. Whole-ROI numbers in `summary.md` come
+from the run manifest (the masking stage's `transparency.summary_numbers`).
+Per-part numbers are tabulated from the saved rasters with the stage's own
+arithmetic, and can differ slightly from the manifest at the edges of a part.
+The colours, labels and the note on what "habitat" means are read from the
+stage's display-layer declaration, not typed in the script.
+
+Committed: `sanjay_van_baseline` and `odisha_v120_3ha_<district>` for
+Angul, Dhenkanal, Kendujhar and Koraput (the Odisha ones are written by
+`odisha_script/odisha_transparency_masking.py`, which adds the field plots as
+points).
+
+## `<config>_run.json` (Odisha run records)
+
+`odisha_script/odisha_phase2_2_run_pipeline.py --through export` writes one run
+record per config to `odisha_script/phase2_vectors/` (committed), beside the
+stand layers it pulls down. Keys: `config`, `fingerprint`, `git`, `run_dir`,
+`cache_status`, `pulled_polygon_counts`, `export_vector_layers`,
+`drive_exports`, `snic_distance_scale`, `merge_diagnostics`,
+`stand_attributes`, `stand_provenance`.
+
+- `git` is the block described under `manifest.json`.
+- `stand_provenance` maps each stand id (the `stand_lbl` of `stands_merged`, the
+  same ids as `stand_attributes`) to the six provenance fields listed under
+  `stands_merged`.
+
+The run records committed so far were written before these two keys existed and
+have neither. A record written from the current code has both.
+
+## Evaluation outputs (`scripts/run_evaluation.py`)
+
+Written to `--out-dir`. The script has not been run on any real site; see
+`docs/evaluation_metrics.md`.
+
+- `evaluation_results.json`: results only (no run times, dates or paths; numbers
+  to 10 significant digits; `null` means not estimable). Keys: `about` and
+  `predeclared_sha256` always; when `--statistics` is given, `inputs`,
+  `label_check`, `null`, `tests` (under `rows`, one row per statistic: `observed`,
+  `p_value`, `n_draws`, `n_valid`, the mean, standard deviation and quantiles of
+  the chance values, and `p_holm`) and `descriptive` (the working behind each
+  statistic); `reference_polygons` when `--reference-polygons` was given. The
+  same inputs, arguments and seed give the same file byte for byte. The script
+  refuses to replace an existing results file unless `--overwrite` is given.
+- `evaluation_manifest.json`: the `git` block, the predeclaration's path, sha256
+  and git status, the sha256 of every input file, the command line and
+  arguments, library versions, and the sha256 of the results file.
+
+`scripts/evaluation_synthetic_validation.py` writes
+`docs/evaluation/synthetic_validation.md` and `.csv` (committed).
+
+## Run times go to logs
+
+Result files hold results only, so that `git diff` after a re-run shows whether
+it reproduced. The Odisha chance test (`odisha_phase3_3_significance.py`) and
+the Phase 2 statistics (`odisha_phase2_5_stats.py`) print their run times and
+append them to a `.log` file beside the results file; `*.log` is git-ignored.
