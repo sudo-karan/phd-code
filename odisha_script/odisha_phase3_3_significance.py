@@ -138,6 +138,17 @@ def say(s: str = "") -> None:
     _lines.append(s)
 
 
+_timings: list[str] = []
+
+
+def note_time(s: str) -> None:
+    """Run times go to the terminal and to a .log beside the results file, never into the results file.
+    A results file holds results only, so that `git diff` after a re-run shows whether the numbers
+    reproduced (CLAUDE.md, "Results"); a line that changes with the machine's load would hide that."""
+    print(s, flush=True)
+    _timings.append(s)
+
+
 # ---------------------------------------------------------------------- the scorer's statistics, on arrays
 def multi_ari(f: np.ndarray, s: np.ndarray) -> tuple[float, int, int]:
     """ARI over plots in stands holding >= 2 of these plots; the stand set is whatever s gives."""
@@ -365,8 +376,9 @@ def analyse_arm(arm, spec, plots, parts, X: Plots, n_rot: int, field_types: Path
                                            S.seeded(SEED_LABELLED.format(arm=arm)), strict=False,
                                            tag=arm + "/labelled")
     t2 = time.time()
-    say(f"  [{nm}] rotation nulls: unconditional {n_rot} in {t1 - t0:.0f} s, failures {len(fails)}; "
-        f"conditional (labelled polygons) {n_rot} in {t2 - t1:.0f} s, failures {len(lfails)}")
+    say(f"  [{nm}] rotation nulls: unconditional {n_rot}, failures {len(fails)}; "
+        f"conditional (labelled polygons) {n_rot}, failures {len(lfails)}")
+    note_time(f"  [{nm}] rotation nulls took {t1 - t0:.0f} s (unconditional) and {t2 - t1:.0f} s (conditional)")
     for f in fails + lfails:
         say(f"      FAILED PART {f}")
 
@@ -744,7 +756,11 @@ def main() -> int:
     out = args.out_dir / f"{OUT_STEM}{tag}.txt"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text("\n".join(_lines) + "\n")
-    print(f"\n  wrote {out}   (runtime {time.time() - t_start:.0f} s)", flush=True)
+    note_time(f"  whole run took {time.time() - t_start:.0f} s")
+    log = out.with_suffix(".log")          # *.log is git-ignored
+    with log.open("a") as f:
+        f.write("\n".join(_timings) + "\n")
+    print(f"\n  wrote {out}   (run times in {log.name})", flush=True)
     return 0
 
 
