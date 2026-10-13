@@ -51,6 +51,18 @@ It does NOT verify GEE. That needs the live tier:
 pytest -m live_gee                        # per-stage tests, need auth
 ```
 
+There is a third tier, offline and not run in CI because it takes minutes:
+
+```bash
+pytest -m slow                            # no auth needed
+```
+
+It runs the chance test of the FES comparison (`odisha_phase3_3_significance.py`) plain
+and through `odisha_phase3_demo_sigwrap.py` on the committed hand-crafted stands, and
+checks that the two outputs are byte-identical. Run it after any change to
+`odisha_phase3_3_significance.py` or `odisha_phase3_demo_*.py`, and say in the PR that
+it was run.
+
 The live tests connect to real GEE. They skip themselves cleanly with an
 informative message if `GEE_PROJECT_ID` is empty or `earthengine
 authenticate` hasn't been run.
