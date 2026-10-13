@@ -45,6 +45,11 @@ Outputs:
                        stage can fold it into metrics_<config>.json -- the
                        orphan split is a result, not a log line, and reading it
                        should not require digging through the manifest.
+
+Transparency. The stage declares summary numbers (how many superpixels went in,
+how many stands came out, how many merges each pass made, and what was left
+below the minimum size and why). `summarise()` reads them from
+`merge_diagnostics` in the context and makes no Earth Engine call.
 """
 
 from __future__ import annotations
@@ -54,7 +59,13 @@ from typing import Any
 import ee
 
 from fmu.config import Config
-from fmu.stages.base import PipelineContext, Stage, StageResult, register_stage
+from fmu.stages.base import (
+    PipelineContext,
+    Stage,
+    StageResult,
+    SummaryNumber,
+    register_stage,
+)
 from fmu.utils.adjacency import (
     extract_superpixel_attributes,
     extract_superpixel_graph,
@@ -87,6 +98,50 @@ class MergeStage(Stage):
     # silently poison exactly that). `stand_attributes` is a Python dict and is
     # not an ee.Image at all.
     cacheable_outputs = set()
+
+    # What the merge did, as counts. Every merge joins two regions into one, so
+    # superpixels_in - stands_out is the three merge counts added together.
+    summary_numbers = (
+        SummaryNumber(
+            "superpixels_in", "SNIC superpixels the merge started from", "count"
+        ),
+        SummaryNumber("stands_out", "Stands left after both passes", "count"),
+        SummaryNumber(
+            "merges_first_pass",
+            "Merges made in the first pass: neighbours that pass every merge "
+            "criterion at its configured tolerance",
+            "count",
+        ),
+        SummaryNumber(
+            "merges_second_pass_relaxed",
+            "Merges made in the second pass, which absorbs regions below the "
+            "minimum size, where a neighbour passed the relaxed tolerances",
+            "count",
+        ),
+        SummaryNumber(
+            "merges_second_pass_shared_edge_fallback",
+            "Merges made in the second pass by the fallback: no neighbour passed "
+            "even the relaxed tolerances, so the region joined the neighbour it "
+            "shares the longest edge with",
+            "count",
+        ),
+        SummaryNumber(
+            "stands_below_min_area",
+            "Stands still below the minimum size after both passes",
+            "count",
+        ),
+        SummaryNumber(
+            "stands_below_min_area_by_cause",
+            "Why those stands stayed small. isolated: it touches no other "
+            "stand. area_blocked: every neighbour is already too big to take it "
+            "under the maximum size. iteration_cap: it still had a neighbour it "
+            "could have joined when the second pass ran out of iterations",
+            "count",
+        ),
+        SummaryNumber(
+            "area_ha_in_stands_below_min_area", "Area in those stands", "ha"
+        ),
+    )
 
     def validate(self, ctx: PipelineContext, config: Config) -> None:
         needed = {"roi", "snic_clusters"} | config.merge.input_sources()
@@ -216,10 +271,51 @@ class MergeStage(Stage):
             warnings=warnings,
         )
 
+    def summarise(self, ctx: PipelineContext, config: Config) -> dict[str, Any]:
+        """The declared summary numbers, read from `merge_diagnostics`.
+
+        No Earth Engine call: the merge ran client-side and already counted
+        everything this reports.
+        """
+        return summarise_merge_diagnostics(ctx.get("merge_diagnostics"))
+
 
 # ---------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------
+
+
+def summarise_merge_diagnostics(d: dict[str, Any]) -> dict[str, Any]:
+    """The merge's summary numbers from its diagnostics dict. Pure Python.
+
+    `d` is `MergeResult.diagnostics` as `fmu.utils.region_merge` builds it. Two
+    things are re-expressed rather than copied:
+
+      - `pass2_merges` counts every second-pass merge, fallback included. It is
+        split here into the merges a relaxed criterion justified and the ones
+        the shared-edge fallback made, so the three merge counts add up to
+        `superpixels_in - stands_out`.
+      - the three `orphans_*` counts are the reasons a stand stayed below
+        `merge.min_area_ha`, and add up to `stands_below_min_area`. The third,
+        `orphans_no_attribute_match`, is reported as `iteration_cap`, which is
+        what it means: the shared-edge fallback ignores attributes, so a stand
+        with a neighbour it could join is only ever left behind when the
+        second pass stops at `merge.max_pass2_iterations`.
+    """
+    return {
+        "superpixels_in": d["n_superpixels"],
+        "stands_out": d["n_stands"],
+        "merges_first_pass": d["pass1_merges"],
+        "merges_second_pass_relaxed": d["pass2_merges"] - d["pass2_fallback_merges"],
+        "merges_second_pass_shared_edge_fallback": d["pass2_fallback_merges"],
+        "stands_below_min_area": d["stands_below_min_area"],
+        "stands_below_min_area_by_cause": {
+            "isolated": d["orphans_isolated"],
+            "area_blocked": d["orphans_area_blocked"],
+            "iteration_cap": d["orphans_no_attribute_match"],
+        },
+        "area_ha_in_stands_below_min_area": d["area_in_undersized_stands_ha"],
+    }
 
 
 def _criteria_image(ctx: PipelineContext, params: Any) -> ee.Image:
