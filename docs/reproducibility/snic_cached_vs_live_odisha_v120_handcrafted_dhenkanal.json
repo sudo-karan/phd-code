@@ -1,0 +1,137 @@
+{
+ "config": "odisha_v120_handcrafted_dhenkanal_repro",
+ "fingerprint": "57b7c569b3",
+ "upstream_cache_status": {
+  "masking": {
+   "habitat_mask": "hit",
+   "landcover_summary": "hit",
+   "mask_provenance": "miss",
+   "water_mask": "hit"
+  },
+  "data_load": {
+   "s2_composite": "hit"
+  },
+  "features_optical": {
+   "optical_features": "hit"
+  },
+  "features_radar": {
+   "radar_features": "hit"
+  },
+  "features_structure": {
+   "structure_features": "hit"
+  }
+ },
+ "cached_asset_grids": {
+  "masking/habitat_mask": {
+   "crs": "EPSG:4326",
+   "transform": [
+    8.983152841195215e-05,
+    0,
+    85.36025391677565,
+    0,
+    -8.983152841195215e-05,
+    21.164577588441162
+   ]
+  },
+  "masking/landcover_summary": {
+   "crs": "EPSG:4326",
+   "transform": [
+    8.983152841195215e-05,
+    0,
+    85.36025391677565,
+    0,
+    -8.983152841195215e-05,
+    21.164577588441162
+   ]
+  },
+  "masking/water_mask": {
+   "crs": "EPSG:4326",
+   "transform": [
+    8.983152841195215e-05,
+    0,
+    85.36025391677563,
+    0,
+    -8.983152841195215e-05,
+    21.164577588441176
+   ]
+  },
+  "data_load/s2_composite": {
+   "crs": "EPSG:4326",
+   "transform": [
+    8.983152841195215e-05,
+    0,
+    85.36025391677565,
+    0,
+    -8.983152841195215e-05,
+    21.164577588441162
+   ]
+  },
+  "features_optical/optical_features": {
+   "crs": "EPSG:4326",
+   "transform": [
+    8.983152841195215e-05,
+    0,
+    85.36025391677565,
+    0,
+    -8.983152841195215e-05,
+    21.164577588441162
+   ]
+  },
+  "features_radar/radar_features": {
+   "crs": "EPSG:4326",
+   "transform": [
+    8.983152841195215e-05,
+    0,
+    85.36025391677565,
+    0,
+    -8.983152841195215e-05,
+    21.164577588441162
+   ]
+  },
+  "features_structure/structure_features": {
+   "crs": "EPSG:4326",
+   "transform": [
+    8.983152841195215e-05,
+    0,
+    85.36026880375317,
+    0,
+    -8.983152841195215e-05,
+    21.164552674879296
+   ]
+  }
+ },
+ "inputs": {
+  "cached": {
+   "distance_scale": 1.2653932692915015
+  }
+ },
+ "comparisons": [
+  {
+   "inputs": "cached",
+   "against": "odisha_v120_handcrafted_dhenkanal_repro",
+   "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_dhenkanal_repro/segmentation/snic_clusters__57b7c569b3",
+   "pixels_compared": 107193,
+   "pixels_with_another_label": 225
+  },
+  {
+   "inputs": "cached",
+   "against": "odisha_v120_handcrafted_dhenkanal",
+   "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_dhenkanal/segmentation/snic_clusters__57b7c569b3",
+   "pixels_compared": 107193,
+   "pixels_with_another_label": 9064
+  }
+ ],
+ "between_inputs": [],
+ "superpixel_grid": {
+  "crs": "EPSG:32645",
+  "transform": [
+   10,
+   0,
+   329750,
+   0,
+   10,
+   2314300
+  ]
+ },
+ "export_tasks_submitted": 0
+}

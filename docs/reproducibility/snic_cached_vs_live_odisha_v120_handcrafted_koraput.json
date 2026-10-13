@@ -21,19 +21,117 @@
    "structure_features": "hit"
   }
  },
- "export_tasks_submitted": 0,
+ "cached_asset_grids": {
+  "masking/habitat_mask": {
+   "crs": "EPSG:4326",
+   "transform": [
+    8.983152841195215e-05,
+    0,
+    82.80805036306367,
+    0,
+    -8.983152841195215e-05,
+    18.69385123099883
+   ]
+  },
+  "masking/landcover_summary": {
+   "crs": "EPSG:4326",
+   "transform": [
+    8.983152841195215e-05,
+    0,
+    82.80805036306367,
+    0,
+    -8.983152841195215e-05,
+    18.69385123099883
+   ]
+  },
+  "masking/water_mask": {
+   "crs": "EPSG:4326",
+   "transform": [
+    8.983152841195215e-05,
+    0,
+    82.80805036306364,
+    0,
+    -8.983152841195215e-05,
+    18.693851230998845
+   ]
+  },
+  "data_load/s2_composite": {
+   "crs": "EPSG:4326",
+   "transform": [
+    8.983152841195215e-05,
+    0,
+    82.80805036306367,
+    0,
+    -8.983152841195215e-05,
+    18.69385123099883
+   ]
+  },
+  "features_optical/optical_features": {
+   "crs": "EPSG:4326",
+   "transform": [
+    8.983152841195215e-05,
+    0,
+    82.80805036306367,
+    0,
+    -8.983152841195215e-05,
+    18.69385123099883
+   ]
+  },
+  "features_radar/radar_features": {
+   "crs": "EPSG:4326",
+   "transform": [
+    8.983152841195215e-05,
+    0,
+    82.80805036306367,
+    0,
+    -8.983152841195215e-05,
+    18.69385123099883
+   ]
+  },
+  "features_structure/structure_features": {
+   "crs": "EPSG:4326",
+   "transform": [
+    8.983152841195215e-05,
+    0,
+    82.8079754185128,
+    0,
+    -8.983152841195215e-05,
+    18.693826317436972
+   ]
+  }
+ },
+ "inputs": {
+  "cached": {
+   "distance_scale": 1.1528029468367025
+  }
+ },
  "comparisons": [
   {
+   "inputs": "cached",
    "against": "odisha_v120_handcrafted_koraput_repro",
    "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_koraput_repro/segmentation/snic_clusters__4bdfadbe7c",
    "pixels_compared": 260901,
    "pixels_with_another_label": 92356
   },
   {
+   "inputs": "cached",
    "against": "odisha_v120_handcrafted_koraput",
    "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_koraput/segmentation/snic_clusters__4bdfadbe7c",
    "pixels_compared": 260901,
    "pixels_with_another_label": 16511
   }
- ]
+ ],
+ "between_inputs": [],
+ "superpixel_grid": {
+  "crs": "EPSG:32644",
+  "transform": [
+   10,
+   0,
+   690710,
+   0,
+   10,
+   2054580
+  ]
+ },
+ "export_tasks_submitted": 0
 }

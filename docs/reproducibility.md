@@ -210,7 +210,7 @@ Commands are run from the repo root, as in `PHASE3_STATUS.md`, "Reproducing".
 | `phase3_before_regroup/odisha_phase3_3_results_ft-k4.txt` | `python odisha_script/odisha_phase3_3_significance.py --field-types odisha_script/odisha_phase3_0_field_types_k4.csv  (on PR #40's 3 hectare stand files, which f4ca143 replaced)` | **not run** | A record of runs made on stand files that are no longer in the tree (see its README). Not a current result, so it was not re-run. It carries two run-time lines, like the files it was copied from. |
 | `phase3_before_regroup/odisha_phase3_3_results_ft-allrows.txt` | `python odisha_script/odisha_phase3_3_significance.py --field-types odisha_script/odisha_phase3_0_field_types_allrows.csv  (on PR #40's 3 hectare stand files, which f4ca143 replaced)` | **not run** | A record of runs made on stand files that are no longer in the tree (see its README). Not a current result, so it was not re-run. It carries two run-time lines, like the files it was copied from. |
 
-All four chance-test files were regenerated twice tonight, in two clones at `a477ab1`. With the committed script, each file differs from the committed one in exactly two lines, the run-time lines. With the script edited to keep run times out of the file, the same two lines lose their seconds and nothing else changes. The two runs agree with each other line for line once the seconds are removed. The outcomes in the table are for the files as committed at `a477ab1`, compared with what the committed script writes. Those four files have since been replaced by the edited script's output (commits `20727c1` for the script and `a4a29b9` for the files; Problem 5), so a re-run with the current script should reproduce them exactly. That re-run has not been made.
+All four chance-test files were regenerated twice tonight, in two clones at `a477ab1`. With the committed script, each file differs from the committed one in exactly two lines, the run-time lines. With the script edited to keep run times out of the file, the same two lines lose their seconds and nothing else changes. The two runs agree with each other line for line once the seconds are removed. The outcomes in the table are for the files as committed at `a477ab1`, compared with what the committed script writes. Those four files have since been replaced by the edited script's output (commits `20727c1` for the script and `a4a29b9` for the files; Problem 5), so a re-run with the current script should reproduce them exactly. For the primary file it has been made since (clean clone at `6198d46`, 13 October, by the check of this PR's report): `odisha_phase3_3_results.txt` came back byte for byte. The three check files were not re-run again.
 
 ## Other
 
@@ -496,11 +496,12 @@ None of these was edited.
 
 ## Earth Engine re-runs
 
-This check did not touch Earth Engine. The facts below were established tonight by the
-orchestrating session and are recorded here as given.
+The offline check above did not touch Earth Engine. What follows comes from re-running the
+configs on Earth Engine on 13 October and from requests that read Earth Engine without
+submitting anything. The tool and the result file are named with each item.
 
 - Every config was copied under `<name>_repro` (same content and cache fingerprint, fresh asset
-  namespace; commit `df45350`) and is being re-run from scratch.
+  namespace; commit `df45350`) and re-run from scratch. All fourteen re-runs finished.
 - **Sanjay Van**, both pipelines, finished in one pass, on the code at `df45350`.
 - **Sanjay Van cannot be compared stand for stand.** The cached assets of `sanjay_van_baseline`
   carry fingerprint `bbc3e3d624` (27 August). Commit `128b1c4` (10 September) dropped
@@ -508,7 +509,10 @@ orchestrating session and are recorded here as given.
   `7f642cf2ca`, and nothing was cached under that fingerprint until this morning.
   `sanjay_van_alphaearth` had no cached assets at all. This morning's run of the current
   config gives 1,298 superpixels and 291 stands (hand-crafted) and 1,298 and 290 (AlphaEarth).
-  The docs quote 1,249 superpixels and 269 stands, from the old stack.
+  The docs quote 1,249 superpixels for the Sanjay Van run (`docs/design_notes.md`,
+  `docs/configs.md`, `docs/outputs.md`, comments in `src/fmu/config.py`); that number predates
+  the change. 269 stands appears only in one example block of `docs/outputs.md`, which is
+  labelled `sanjay_van_nirv_dual`.
 - **Upstream of segmentation the settings are the same in both, so those assets were compared
   pixel for pixel** (`scripts/compare_cached_assets.py`; output in
   `docs/reproducibility/sanjay_van_baseline_assets_aug27_vs_repro.json`):
@@ -526,8 +530,11 @@ orchestrating session and are recorded here as given.
 
   The masks, radar, structure and static features reproduce exactly. The Sentinel-2 composite
   and everything computed from it do not: the number of NDVI observations per pixel differs by
-  up to 7. So the Sentinel-2 archive on Earth Engine changed for 2017-2022 between 27 August
-  and 13 October. (`mask_provenance` was not cached under either name.)
+  up to 7. So what Earth Engine returns for Sentinel-2 over the configured window (2017 to
+  2022) changed between 27 August and 13 October. The run logs show it directly: the same
+  window and cloud filter gave 192 images on 27 August and 195 on 13 October
+  (`runs/sanjay_van_baseline_20260827_*/fmu.log`, `outputs/repro_runs/logs/sanjay_van.log`;
+  both ignored by git). (`mask_provenance` was not cached under either name.)
 - **The mask**, checked read-only today: for `odisha_v120_3ha_kendujhar`, today's recomputed
   mask reasons disagree with the `habitat_mask` asset cached weeks ago on 0.0 hectares.
 - **`odisha_phase2_1_mask_retention.py`** (Phase 2 step 1) was regenerated for the task 2
@@ -574,12 +581,29 @@ Share of pixel values that differ; "exact" means none does:
 whose superpixel label differs.
 
 - The land-cover masks, the structure features (ETH canopy height) and the static features
-  reproduce exactly in all twelve configs; radar reproduces exactly or to rounding.
+  reproduce exactly in all twelve configs. Radar reproduces exactly in five of the eight
+  configs that have it and to rounding (at most 1e-14) in the other three.
 - The Sentinel-2 composite does not, in any config, and the optical features built on it differ
-  almost everywhere. The settings are identical, so the Sentinel-2 archive on Earth Engine has
-  changed for 2017-2022 since the committed runs were cached. The share is larger for the
-  10 hectare and AlphaEarth configs than for the 3 hectare ones in the same district: their
-  committed assets are older.
+  almost everywhere. The settings are identical, so what Earth Engine returns for Sentinel-2
+  over the configured window (2017 to 2022) has changed since the committed runs were cached.
+  Three things support this, and one part is not explained:
+  - The run logs count the images left after the cloud filter. On 14 September, when the
+    10 hectare and AlphaEarth assets were cached, the window gave 705, 173, 355 and 334 images
+    (Angul, Dhenkanal, Kendujhar, Koraput; `fmu.log` in the run folders under `runs/`). On
+    13 October it gave 713, 174, 356 and 335 (`outputs/repro_runs/logs/odisha_all.log`).
+  - In every district the older asset differs more: 24.5% to 36.9% of values for the assets of
+    14 September, 12.6% to 21.8% for those of the 3 hectare configs, which were cached on or
+    after 24 September (the day those configs were added).
+  - It is not noise from one run to the next. The 10 hectare and the AlphaEarth config of a
+    district were cached on the same day, and each differs from its re-run in exactly the same
+    number of values (452,201 in Angul, 844,993 in Dhenkanal, 370,394 in Kendujhar, 1,662,617 in
+    Koraput).
+  - Not explained: for the 3 hectare configs the run logs from 24 September on already show
+    713, 174, 356 and 335 images, the same as on 13 October, and yet 12.6% to 21.8% of the
+    values differ. The Kendujhar composite was cached on 7 October from 356 images and differs
+    from the one of 13 October, also from 356 images, at 21.8% of its values. So images, or the
+    cloud masks applied to them, also changed without the count changing. Which was not
+    found out.
 - **SNIC is repeatable when its inputs are.** The AlphaEarth arm segments on the embedding, which
   did not change, and its superpixel labels are identical at every pixel in all four districts.
 - Where the inputs changed (the hand-crafted arms), 3.8% to 8.6% of pixels carry another
@@ -665,10 +689,14 @@ grouping against the other; 1 means every plot shares its stand with the same pl
 | AlphaEarth | SNIC superpixels | 64, 64, 64 | 1.0000 |
 
 - The scores stay small in the re-run, as they were. Nothing here changes what Phase 3 concluded.
-- They move by amounts comparable to their own size. The labelling score goes from 0.0793 to
-  0.0478 at 3 hectares and from 0.0389 to 0.0619 at 10 hectares, so **which stand size labels
-  better flips between the committed run and the re-run.** A difference of that size between two
-  stand sizes should not be read as a finding.
+- Four of the six move by 30% to 60% of their own size; the two drawing scores at 3 hectares
+  barely move (5%). The labelling score goes from 0.0793 to 0.0478 at 3 hectares and from
+  0.0389 to 0.0619 at 10 hectares, so **which stand size labels better flips between the
+  committed run and the re-run.** It flips in the primary analysis and in two of the three
+  declared checks (field type 0 left out: 0.0822 and 0.0229 become 0.0496 and 0.0565; four
+  field types: 0.0726 and 0.0340 become 0.0417 and 0.0495), and not in the third (all-rows
+  field types: 0.0930 and 0.0354 become 0.0568 and 0.0531). A difference of that size between
+  two stand sizes should not be read as a finding.
 - The 10 hectare re-run includes the Koraput stands of section 4, drawn from features that were
   not yet cached; Koraput holds 145 of the 267 plots. So the 10 hectare column mixes two causes.
 - Only the scores were recomputed. The chance tests were not re-run on the new stands.
@@ -680,42 +708,149 @@ grouping against the other; 1 means every plot shares its stand with the same pl
 
 #### 4. Superpixels depend on whether the features were cached when SNIC ran
 
-With caching on, a stage that misses the cache runs live. On a cold cache the segmentation of a
-small ROI usually succeeds at once, on feature images still being computed on the fly; for a
-large ROI it fails with a memory limit and succeeds on the next pass, on the same features read
-back as cached assets. In the re-run, three hand-crafted configs segmented in the first pass
-(Kendujhar at 3 and at 10 hectares, and Koraput at 10 hectares); the other five segmented in the
-second.
+**What happens.** With caching on, a stage whose output is not in the cache runs live and
+submits an export of what it computed. Before it runs SNIC, the segmentation stage asks Earth
+Engine for two statistics of its input features over the whole ROI (the mean and spread of
+each band, and the distance normaliser). On features that are still being computed live that
+request sometimes fails: with a memory limit in Angul and Dhenkanal, with a time-out in
+Koraput (the batch log of the re-runs, and `fmu.log` in the run folders of 14 and 24
+September). The pass then stops, the exports it had already submitted finish, and the next
+pass reads the features from the cache and segments on those. Where the request succeeds at
+once, the superpixels are drawn on the live features.
 
-`scripts/snic_cached_vs_live.py` (read-only) recomputes SNIC now from a re-run's cached features
-and compares the labels with the re-run's own cached SNIC asset and with the committed run's
-(output in `docs/reproducibility/snic_cached_vs_live_<config>.json`):
+So which of the two a config gets is not a setting, and it is not simply the size of the ROI.
+Kendujhar (405 ha) segmented live every time. Angul (439 ha) and Dhenkanal (996 ha) never did
+with hand-crafted features. Koraput (2,459 ha, the largest) timed out at 3 hectares; at
+10 hectares it timed out in September and was segmented from the cache, and in the re-run the
+same request succeeded and it was segmented live. The AlphaEarth configs and both Sanjay Van
+re-runs segmented live.
 
-| Config | The re-run segmented | Recomputed from cached features, against the re-run's own SNIC asset | against the committed run's SNIC asset |
+**Which run took which route** is in the manifest each run leaves in its run folder
+(`scripts/segmentation_route.py`, offline; output in
+`docs/reproducibility/segmentation_route.json`). The run folders of the committed runs are in
+`runs/` on the Mac and those of the re-runs in `outputs/repro_runs/runs/`; git ignores both.
+"Not recorded" means that no run in those folders made the superpixel asset under the config's
+current fingerprint. For the three 3 hectare configs marked so, no run did: when the stand
+types were regrouped on 7 October, the assets of 24 September were copied to the new
+fingerprint (`odisha_script/copy_upstream_cache.py`; `PHASE3_STATUS.md`, deviation 5). The
+runs of 24 September that made those assets segmented from the cache
+(`odisha_v120_3ha_angul_20260924_045840`, `odisha_v120_3ha_dhenkanal_20260924_055012` and
+`odisha_v120_3ha_koraput_20260924_061805`, under the fingerprints of that day).
+
+| Config | The committed run segmented | The re-run segmented | Superpixel labels that differ, committed run against re-run (section 1) |
 |---|---|---|---|
-| `odisha_v120_3ha_koraput` | in the second pass, from cached features | 0.1% of pixels differ | 3.8% |
-| `odisha_v120_handcrafted_angul` | in the second pass, from cached features | 0.4% | 7.8% |
-| `odisha_v120_handcrafted_koraput` | in the first pass, from live features | 35.4% | 6.3% |
-| `odisha_v120_handcrafted_kendujhar` | in the first pass, from live features | 26.4% | 26.4% |
+| 3 hectare, Angul (`odisha_v120_3ha_angul`) | not recorded | from the cache | 3.9% |
+| 3 hectare, Dhenkanal (`odisha_v120_3ha_dhenkanal`) | not recorded | from the cache | 4.8% |
+| 3 hectare, Kendujhar (`odisha_v120_3ha_kendujhar`) | live | live | 4.0% |
+| 3 hectare, Koraput (`odisha_v120_3ha_koraput`) | not recorded | from the cache | 3.8% |
+| 10 hectare, Angul (`odisha_v120_handcrafted_angul`) | from the cache | from the cache | 8.1% |
+| 10 hectare, Dhenkanal (`odisha_v120_handcrafted_dhenkanal`) | from the cache | from the cache | 8.6% |
+| 10 hectare, Kendujhar (`odisha_v120_handcrafted_kendujhar`) | live | live | 5.6% |
+| 10 hectare, Koraput (`odisha_v120_handcrafted_koraput`) | from the cache | live | 36.0% |
+| AlphaEarth, Angul (`odisha_alphaearth_angul`) | live | live | none |
+| AlphaEarth, Dhenkanal (`odisha_alphaearth_dhenkanal`) | live | live | none |
+| AlphaEarth, Kendujhar (`odisha_alphaearth_kendujhar`) | live | live | none |
+| AlphaEarth, Koraput (`odisha_alphaearth_koraput`) | live | live | none |
+| Sanjay Van, hand-crafted (`sanjay_van_baseline`) | never run | live | n/a |
+| Sanjay Van, AlphaEarth (`sanjay_van_alphaearth`) | never run | live | n/a |
 
-- Where the re-run segmented from cached features, recomputing from cached features gives the
-  same superpixels again (0.1% and 0.4% of pixels differ).
-- Where the re-run segmented from live features, the same features once cached give superpixels
-  that differ at 26% to 35% of pixels. That is several times the effect of the Sentinel-2 change
-  (4% to 9%).
-- This accounts for Koraput at 10 hectares, the outlier in sections 1 and 2. The re-run drew its
-  superpixels live (the batch log shows its segmentation succeeding in the first pass). The
-  committed run's superpixels match a from-cache computation to 6.3%, which indicates they
-  were drawn from cached features; no log of that run survives to confirm it. For Kendujhar at
-  10 hectares the committed and re-run superpixels agree with each other (5.6% of pixels
-  differ) and both differ from the from-cache computation by 26.4%, which indicates both were
-  drawn live.
+One hand-crafted Odisha config took a different route in its two runs,
+`odisha_v120_handcrafted_koraput`: from the cache in the committed run, live in the re-run. It
+is the outlier of sections 1 and 2, with 36.0% of pixels in another superpixel. The other
+seven took the same route in both runs (three of them through the copy just described), and
+their superpixels differ at 3.8% to 8.6% of pixels: the effect of the Sentinel-2 change alone.
 
-**So a config's superpixels, and with them its stands, depend on which pass its segmentation
-happened to succeed in.** This is a property of the pipeline's cache path, not of any setting. It
-was not changed tonight: making segmentation wait for cached features would move the stands of
-every config that segmented live, Kendujhar's committed stands among them. It is a question for
-Jaskaran in the PR.
+**The test, on every re-run.** `scripts/snic_cached_vs_live.py` reads Earth Engine and submits
+nothing. It runs SNIC now on a re-run's cached features and compares the labels, pixel by
+pixel, with the re-run's own superpixel asset and with the committed run's (output in
+`docs/reproducibility/snic_cached_vs_live_<config>.json`, each with a run record beside it):
+
+| Config | The re-run segmented | Recomputed from the re-run's cached features, against the re-run's own superpixel asset | against the committed run's superpixel asset |
+|---|---|---|---|
+| 3 hectare, Angul | from the cache | 0.2% (78 of 47,184) | 3.8% (1,800 of 47,184) |
+| 3 hectare, Dhenkanal | from the cache | 0.1% (62 of 107,193) | 4.8% (5,186 of 107,193) |
+| 3 hectare, Kendujhar | live | 26.0% (11,379 of 43,732) | 26.7% (11,671 of 43,732) |
+| 3 hectare, Koraput | from the cache | 0.1% (272 of 260,901) | 3.8% (9,915 of 260,901) |
+| 10 hectare, Angul | from the cache | 0.4% (189 of 47,184) | 7.8% (3,670 of 47,184) |
+| 10 hectare, Dhenkanal | from the cache | 0.2% (225 of 107,193) | 8.5% (9,064 of 107,193) |
+| 10 hectare, Kendujhar | live | 26.4% (11,552 of 43,732) | 26.4% (11,554 of 43,732) |
+| 10 hectare, Koraput | live | 35.4% (92,356 of 260,901) | 6.3% (16,511 of 260,901) |
+| AlphaEarth, Angul | live | 1.7% (825 of 47,181) | 1.7% (825 of 47,181) |
+| AlphaEarth, Dhenkanal | live | 1.0% (1,097 of 107,186) | 1.0% (1,097 of 107,186) |
+| AlphaEarth, Kendujhar | live | 1.1% (499 of 43,719) | 1.1% (499 of 43,719) |
+| AlphaEarth, Koraput | live | 1.0% (2,616 of 260,894) | 1.0% (2,616 of 260,894) |
+| Sanjay Van, hand-crafted | live | 21.8% (32,336 of 148,601) | n/a (never run) |
+| Sanjay Van, AlphaEarth | live | 1.2% (1,835 of 148,601) | n/a (never run) |
+
+- **Hand-crafted features, re-run segmented from the cache** (five configs): SNIC from the
+  cached features gives the same superpixels again, to within 0.1% to 0.4% of pixels.
+- **Hand-crafted features, re-run segmented live** (four configs, the Sanjay Van re-run among
+  them): SNIC from the cached features gives superpixels that differ at 22% to 35% of pixels.
+  That is several times the effect of the Sentinel-2 change.
+- **AlphaEarth** (five configs, all segmented live): 1.0% to 1.7%. The embedding is far less
+  sensitive to this than the hand-crafted features are.
+- The last column agrees with the routes in the first table. Where the committed superpixels
+  were drawn from the cache (Angul, Dhenkanal and Koraput at both stand sizes), a from-cache
+  computation matches them to 3.8% to 8.5% of pixels, the Sentinel-2 effect. For Kendujhar,
+  drawn live, it is about 26%.
+
+**Why they differ: the pixel grid of the cache.** The cache export is given no CRS
+(`start_export` in `src/fmu/utils/caching.py`), so Earth Engine writes a cached feature asset
+on a geographic grid: pixels of 1/11132 of a degree, which is 10 m from north to south and
+9.3 to 9.5 m from east to west in Odisha (8.8 m at Sanjay Van). Segmentation works on the UTM
+grid of the ROI at 10 m (`fmu.utils.grid`), and its own outputs are stored on that grid. So
+when segmentation reads the cache, each UTM pixel takes the value of the nearest pixel of the
+geographic grid: the features reach SNIC resampled. Computed live, they are computed on the
+UTM grid directly.
+
+The result files record it: in all 14 re-runs every cached input of segmentation is on EPSG:4326
+with pixels of 0.0000898315 degrees, and the superpixel asset is on a UTM grid at 10 m
+(EPSG:32643, EPSG:32644, EPSG:32645).
+
+To test whether this, and nothing else, is the cause, the script can build the inputs of
+segmentation in two more ways (`--inputs`). "Live" computes the stages before segmentation now
+and reads nothing from the cache. "Live, evaluated on the grid of the cache" does the same and
+then evaluates each image on the pixel grid of its cached asset before segmentation reads it,
+which is how the cache export computed that asset. The two differ in the grid and in nothing
+else. It was run on the five re-runs of the two smallest ROIs, Kendujhar and Sanjay Van, where
+live features can be computed within the limits of an interactive request; all five had
+segmented live. The set was declared in commit `a999575`, before the runs.
+
+| Config | Input of segmentation | Distance normaliser | Against the re-run's own superpixel asset (made live) | Against SNIC from the cached features |
+|---|---|---|---|---|
+| 10 hectare, Kendujhar | cached features | 1.265826 | 26.4% (11,552 of 43,732) | the same computation |
+| 10 hectare, Kendujhar | live features | 1.266710 | 0.0% (11 of 43,734) | 26.4% (11,556 of 43,732) |
+| 10 hectare, Kendujhar | live features, evaluated on the grid of the cache | 1.265826 | 26.4% (11,552 of 43,732) | 0.0% (0 of 43,732) |
+
+The test has finished on one of the five so far, Kendujhar at 10 hectares. The other four are
+added to this table by a later commit.
+
+- **Live features give back the re-run's own superpixels**, which were drawn live in the
+  morning: 11 of 43,734 pixels differ. So the live route repeats itself.
+- **Live features evaluated on the grid of the cache give exactly the superpixels of the
+  cached features**: 0 of 43,732 pixels differ, and the distance normaliser agrees with the
+  cached one to ten digits.
+- So the whole difference between cached and live features is the grid they are evaluated on.
+  Nothing else in the cache contributes: not the stored data type, not the masks, not the
+  source data changing during the day.
+
+**What this means.**
+
+- A config's superpixels, and with them its stands, depend on which route its segmentation
+  took, and that is decided by whether one request to Earth Engine happened to succeed. It is
+  a property of how the cache is written, not of any setting.
+- It accounts for Koraput at 10 hectares, the one config whose two runs took different routes.
+- It bears on the primary site too. The Sanjay Van hand-crafted re-run segmented live. A
+  from-scratch run of the same config that happened to segment from the cache would give
+  superpixels that differ from it at 21.8% of pixels.
+- Of the committed Odisha stands, those of Kendujhar (3 and 10 hectares) and of the four
+  AlphaEarth configs were drawn on live features; those of Angul, Dhenkanal and Koraput (3 and
+  10 hectares) on cached, resampled ones.
+- Nothing in the pipeline was changed. There are two ways to remove the dependence, and both
+  move stands. Writing the cache on the UTM grid would make cached and live features the same
+  pixels; every cached feature asset changes, so every config is re-run. Making segmentation
+  always read the cache changes only the runs that segmented live, and the superpixels are
+  then always drawn on resampled features. It is a question for Jaskaran in the PR.
 
 #### 5. Mask and merge provenance of the re-runs
 
@@ -791,7 +926,7 @@ Each with its evidence and what should happen next.
 
 Every offline job has finished and is in the tables above. Not started, and needed before the report is complete:
 
-1. Decide whether segmentation should always run from cached features ("Earth Engine re-runs", section 4), and if so re-run the configs that segmented live. Re-run the chance tests on re-run stands if the stand-level differences are to be carried into Phase 3.
+1. Decide how to stop a config's superpixels depending on whether its features were cached when it segmented ("Earth Engine re-runs", section 4): write the cache on the UTM grid, or make segmentation always read the cache. Either moves stands, so the configs it touches are then re-run. Re-run the chance tests on re-run stands if the stand-level differences are to be carried into Phase 3.
 2. Fix the figure scripts and `phase3_figstyle.py`, regenerate the eleven figures and rewrite `deck_facts.md` from the final results (Problems 1 to 3).
 3. Move run times out of `scripts/gate_effect.py` and regenerate `gate_effect_results.txt` at the next Earth Engine run (Problem 5).
 4. Regenerate `odisha_phase1_tests456_results.txt` and `odisha_phase3_stands_unchanged.txt` in their own commits (Problems 4 and 7).

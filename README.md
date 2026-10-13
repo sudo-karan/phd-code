@@ -257,6 +257,11 @@ hit the cache and skip the live computation.
   `python scripts/compare_stand_runs.py OLD.geojson NEW.geojson`: did a
   re-run reproduce an earlier one, by cached asset and by exported stands.
   See "Re-running a config from scratch" in [docs/running.md](docs/running.md).
+- `python scripts/segmentation_route.py --runs-dir runs --config <path>` and
+  `python scripts/snic_cached_vs_live.py --config <path>`: whether a run drew
+  its superpixels on cached features or on live ones, and how much that changes
+  them. See "Superpixels depend on whether the features were cached" in
+  [docs/running.md](docs/running.md).
 - `python scripts/run_evaluation.py --predeclared <file> ...` and
   `python scripts/evaluation_synthetic_validation.py`: the evaluation metrics
   of `src/fmu/evaluation/`, on a site's reference data and on planted data.

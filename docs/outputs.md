@@ -35,7 +35,7 @@ plus the cached GEE assets (the outputs).
 | `outputs/transparency/<config>/` | ignored (`outputs/`) | rasters and GeoJSON behind the mask maps (see "Transparency outputs") |
 | `runs/`, `fmu_exports_clean/`, `reports/` | ignored | what `scripts/report.py` reads and writes (see "Reports") |
 | `docs/transparency/<config>/` | **committed** | the mask maps, `summary.md`, `run_record.json` |
-| `docs/reproducibility/`, `docs/evaluation/` | **committed** | results of the asset comparisons and of the synthetic validation |
+| `docs/reproducibility/`, `docs/evaluation/` | **committed** | results of the asset comparisons, of the cached-versus-live superpixel test (each with a `_run.json` run record) and of the synthetic validation |
 | `odisha_script/phase2_vectors/` | **committed** | Odisha stand layers and `<config>_run.json` run records |
 | `*.log`, `logs/` | ignored | run times and pass logs |
 | Earth Engine assets, Google Drive files | not in the repo | cached stage outputs; exported rasters and vectors |

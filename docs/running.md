@@ -351,6 +351,35 @@ changes `_repro`.
 Results of the re-runs made so far are in
 [reproducibility.md](reproducibility.md) and `docs/reproducibility/`.
 
+### Superpixels depend on whether the features were cached
+
+A cached feature asset sits on a geographic grid, because the cache export is
+given no CRS. Segmentation works on the UTM grid of the ROI. So segmentation
+gives different superpixels when it reads its features from the cache than when
+it draws on features computed live in the same run: by about a quarter of the
+pixels with hand-crafted features, and by one to two per cent with AlphaEarth.
+Which of the two a from-scratch run gets depends on whether its first attempt
+at segmentation succeeds, not on any setting. The measurements are in
+[reproducibility.md](reproducibility.md), "Superpixels depend on whether the
+features were cached when SNIC ran". Nothing in the pipeline has been changed
+for this. Until that is decided, check which route two runs took before
+comparing their stands:
+
+```bash
+# which inputs each run segmented on, read from the run manifests. Offline.
+python scripts/segmentation_route.py --runs-dir runs --config configs/<name>.yaml [configs/<other>.yaml ...]
+
+# SNIC from a config's cached features, against its cached superpixels and another run's.
+# --inputs adds live features, and live features evaluated on the grid of the cache.
+# Reads Earth Engine, submits nothing.
+python scripts/snic_cached_vs_live.py --config configs/<name>_repro.yaml --also configs/<name>.yaml \
+    [--inputs cached live live-on-cache-grid] [--out <file.json>]
+```
+
+Both comparison scripts that take `--out` (`compare_cached_assets.py` and
+`snic_cached_vs_live.py`) write a run record beside the result,
+`<name>_run.json`: the command, the date and the git commit it ran from.
+
 **One more segmentation pass on configs already run.** `mask_provenance` is a
 new cached output of the masking stage. `odisha_phase2_2_run_pipeline.py`
 refuses a `--through clustering` or `--through export` pass while any upstream
