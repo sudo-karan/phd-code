@@ -94,3 +94,18 @@ def test_the_result_file_holds_no_date_and_the_run_record_holds_the_commit():
     result_part, record_part = code.split("record = {", 1)
     assert "datetime.datetime.now" not in result_part and "git_state()" not in result_part.split("import")[-1]
     assert '"date"' in record_part and "git_state()" in record_part and '"command_line"' in record_part
+
+
+def test_progress_goes_to_stderr_so_stdout_stays_the_results(capsys):
+    _load().progress("SNIC from live features against site")
+    out = capsys.readouterr()
+    assert out.out == "" and "SNIC from live features against site" in out.err
+    code = SCRIPT.read_text().split('"""', 2)[2]
+    assert code.count("progress(") >= 3  # the definition, each segmentation, each comparison
+
+
+def test_a_request_is_given_up_after_the_deadline_instead_of_waiting_for_ever():
+    mod = _load()
+    assert 5 * 60 * 1000 < mod.REQUEST_DEADLINE_MS <= 10 * 60 * 1000  # past Earth Engine's own five minutes
+    code = SCRIPT.read_text().split('"""', 2)[2]
+    assert code.index("init_gee()") < code.index("ee.data.setDeadline(REQUEST_DEADLINE_MS)") < code.index("run_upstream(use_cache=True)")

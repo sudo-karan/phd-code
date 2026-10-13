@@ -50,7 +50,10 @@ same computation gives the same ids; "differs" means the pixel belongs to anothe
 superpixel.
 
 The live inputs can fail on a large ROI for the reason the pipeline's first pass does. The
-failure is then recorded for that input and the others are still compared.
+failure is then recorded for that input and the others are still compared. While it runs the
+script says on stderr which request it is making, and it gives a request up after seven
+minutes: Earth Engine stops an interactive computation after five, so a longer wait means
+the connection is gone.
 
 `--out` writes two files: the result, which holds results only, and beside it
 `<name>_run.json` with the command, the date and the git commit it ran from.
@@ -70,6 +73,10 @@ from pathlib import Path
 from typing import Any
 
 INPUTS = ("cached", "live", "live-on-cache-grid")
+# Earth Engine stops an interactive computation after five minutes, so a request that has not
+# answered after seven has lost its connection (a laptop that changed network, for example)
+# and would otherwise wait for ever.
+REQUEST_DEADLINE_MS = 7 * 60 * 1000
 
 
 def run_record_path(out: Path) -> Path:
@@ -92,6 +99,12 @@ def describe(result: dict[str, Any]) -> list[str]:
         lines.append(f"{what}: {_outcome(row)}")
     lines.append(f"export tasks submitted: {result['export_tasks_submitted']}")
     return lines
+
+
+def progress(what: str) -> None:
+    """Say on stderr which request is about to be made. A live input can take minutes per
+    request, and the results are printed only at the end."""
+    print(f"  ... {what}", file=sys.stderr, flush=True)
 
 
 def _outcome(row: dict[str, Any]) -> str:
@@ -132,6 +145,7 @@ def main() -> None:
 
     cfg = load_config(args.config)
     init_gee()
+    ee.data.setDeadline(REQUEST_DEADLINE_MS)
     roi = load_roi_geometry(cfg.roi.roi_file)
     fingerprint = config_fingerprint(cfg)
     upstream = segmentation_stage_names(cfg)[:-1]
@@ -203,6 +217,7 @@ def main() -> None:
     }
     snic: dict[str, Any] = {}
     for kind in kinds:
+        progress(f"segmentation on {kind} features")
         try:
             stage_result = SegmentationStage().run(contexts[kind], cfg)
         except Exception as exc:  # a live input on a large ROI: report it and go on
@@ -220,6 +235,7 @@ def main() -> None:
     }
 
     def share(a: Any, b: Any, context: str) -> dict[str, Any]:
+        progress(context)
         neq = a.neq(b)
         try:
             got = safe_get_info(
