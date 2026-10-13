@@ -560,6 +560,7 @@ def test_the_stage_passes_the_provenance_through_and_builds_the_layer(monkeypatc
         min_defined_criteria = 2
         min_frac_valid = 0.5
         max_pass2_iterations = 60
+        pass2_skip_at_min_area = False
 
         def tolerances(self):
             return {"ch": 2.0, "std": 0.45}
@@ -594,7 +595,26 @@ def test_the_stage_passes_the_provenance_through_and_builds_the_layer(monkeypatc
     ctx.set("roi", "<roi>")
     ctx.set("snic_clusters", _FakeImage(relabels))
 
-    out = MergeStage().run(ctx, _Config()).outputs
+    # The second-pass setting must reach the merge as configured, and the stage
+    # must say in its metadata which rule ran.
+    seen: list[bool] = []
+    real_merge = merge_module.merge_superpixels
+
+    def spy(*args, **kwargs):
+        seen.append(kwargs["pass2_skip_at_min_area"])
+        return real_merge(*args, **kwargs)
+
+    monkeypatch.setattr(merge_module, "merge_superpixels", spy)
+    result = MergeStage().run(ctx, _Config())
+    out = result.outputs
+    assert seen == [False] and result.metadata["pass2_skip_at_min_area"] is False
+
+    _Params.pass2_skip_at_min_area = True
+    ctx_on = PipelineContext()
+    ctx_on.set("roi", "<roi>")
+    ctx_on.set("snic_clusters", _FakeImage([]))
+    assert MergeStage().run(ctx_on, _Config()).metadata["pass2_skip_at_min_area"] is True
+    assert seen == [False, True]
 
     assert set(out) == MergeStage.produces
     # Same stand ids as stand_attributes, the documented fields, and totals that

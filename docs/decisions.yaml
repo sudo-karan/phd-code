@@ -4570,13 +4570,22 @@ decisions:
   - path: docs/outputs.md
     what: The same sentence, in the description of the merge provenance
   - path: src/fmu/config.py
-    what: 'MergeParams, where the setting pass2_skip_at_min_area lives (added by the commit after this entry)'
+    what: 'MergeParams.pass2_skip_at_min_area, default false, with the reason in its comment'
   - path: src/fmu/utils/caching.py
     what: >-
-      config_fingerprint(), which leaves the setting out of the hash while it is at its default (added by the
-      commit after this entry)
+      _OMITTED_AT_DEFAULT and config_fingerprint(): the setting is left out of the hash while it holds its
+      default and hashed otherwise
   - path: tests/test_repro_fingerprints.py
     what: Pins the fingerprints of the 14 _repro configs to those in the names of their saved assets
+  - path: tests/test_cache_fingerprint.py
+    what: >-
+      The setting off, left out or written out, hashes as before; on, it changes the fingerprint; the default
+      in the table is the model's default
+  - path: tests/test_region_merge_provenance.py
+    what: >-
+      Hand-built chains where a region reaches the minimum before its turn, under both rules; the 200 golden
+      graphs give their committed digests at the default, keep every invariant with the rule on, and move on
+      some of them
   - path: docs/handoff/2026-10-13-round2.md
     what: 'The decision on question 5, (b), and task A2'
   papers:

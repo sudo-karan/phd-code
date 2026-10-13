@@ -337,7 +337,8 @@ def main() -> None:
     print(
         f"Settings: min_area_ha {params.min_area_ha}, max_area_ha {params.max_area_ha}, "
         f"relax_factor {params.relax_factor}, min_defined_criteria "
-        f"{params.min_defined_criteria}, max_pass2_iterations {params.max_pass2_iterations}"
+        f"{params.min_defined_criteria}, max_pass2_iterations {params.max_pass2_iterations}, "
+        f"pass2_skip_at_min_area {params.pass2_skip_at_min_area}"
     )
 
     _heading("Summary numbers")

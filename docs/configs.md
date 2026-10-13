@@ -513,6 +513,13 @@ a two-tier threshold scheme.
   has zero shared boundary length.
 - `max_pass2_iterations`: cap so a pathological AOI logs its stragglers instead
   of looping (default 60).
+- `pass2_skip_at_min_area`: what pass 2 does with a region that was undersized
+  when the sweep listed it and has reached `min_area_ha` by the time its turn
+  comes. `false` (default, and the behaviour of every run made before the
+  setting existed): it is merged once more. `true`: it is skipped, since it is
+  no longer undersized (register entry `spec-merge-pass2-skip-at-minimum`).
+  The default is left out of the cache fingerprint, so existing configs keep
+  their cached assets; a config that sets it to `true` gets a new fingerprint.
 - `max_superpixels`: fail loudly above this many superpixels (default 50000),
   where the client-side `remap` label list stops being reasonable.
 

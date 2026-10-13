@@ -135,12 +135,14 @@ _MERGE_KIND_NOTE = (
     "colours the whole stand red however many well-justified merges it also "
     "contains. A fallback merge is one that no merge criterion justified, even "
     "relaxed: the second pass, which exists so that no stand stays below the "
-    "minimum size, joined the two on the length of their shared edge only. A "
-    "second-pass merge does not always add a piece that was below the minimum "
-    "size at that moment: each sweep lists the undersized pieces once, and a "
-    "piece that grows past the minimum earlier in a sweep still takes its turn "
-    "in that sweep. The exact counts per stand are in stand_provenance and on "
-    "the exported stands_merged layer (n_pass1, n_relaxed, n_fallback)."
+    "minimum size, joined the two on the length of their shared edge only. "
+    "Unless merge.pass2_skip_at_min_area is set, a second-pass merge does not "
+    "always add a piece that was below the minimum size at that moment: each "
+    "sweep lists the undersized pieces once, and a piece that grows past the "
+    "minimum earlier in a sweep still takes its turn in that sweep. With the "
+    "setting on, such a piece is skipped. The exact counts per stand are in "
+    "stand_provenance and on the exported stands_merged layer (n_pass1, "
+    "n_relaxed, n_fallback)."
 )
 
 
@@ -298,6 +300,7 @@ class MergeStage(Stage):
             min_frac_valid=params.min_frac_valid,
             max_pass2_iterations=params.max_pass2_iterations,
             centroids=centroids,
+            pass2_skip_at_min_area=params.pass2_skip_at_min_area,
         )
 
         # Back up to the server as a relabel of the SNIC image. No export, no
@@ -358,6 +361,7 @@ class MergeStage(Stage):
                 "max_area_ha": params.max_area_ha,
                 "min_defined_criteria": params.min_defined_criteria,
                 "min_frac_valid": params.min_frac_valid,
+                "pass2_skip_at_min_area": params.pass2_skip_at_min_area,
                 "adjacency": graph.summary(),
                 # Where the configured thresholds actually land in this AOI's
                 # own neighbour-difference distribution, including the joint

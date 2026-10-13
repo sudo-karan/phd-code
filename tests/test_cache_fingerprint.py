@@ -25,6 +25,7 @@ from fmu.config import Config, load_config
 from fmu.utils.caching import (
     _CACHE_IRRELEVANT_BLOCKS,
     _CACHE_RELEVANT_BLOCKS,
+    _OMITTED_AT_DEFAULT,
     cached_asset_path,
     config_fingerprint,
 )
@@ -292,3 +293,53 @@ def test_round_trip_through_model_dump_is_stable():
     cfg = load_config(BASELINE_YAML)
     reloaded = Config.model_validate(copy.deepcopy(cfg.model_dump(mode="json")))
     assert config_fingerprint(cfg) == config_fingerprint(reloaded)
+
+
+# ---------- settings added after assets were cached ----------
+
+
+def test_a_setting_left_out_at_its_default_is_named_with_the_models_own_default():
+    """`_OMITTED_AT_DEFAULT` repeats each default. If the model's default moved
+    and the table did not, the fingerprint would treat the OLD default as the
+    one to leave out, and existing configs would silently change behaviour
+    under an unchanged fingerprint."""
+    assert _OMITTED_AT_DEFAULT, "the table is empty: delete this test with it"
+    for (block, field), default in _OMITTED_AT_DEFAULT.items():
+        assert block in _CACHE_RELEVANT_BLOCKS, block
+        model = Config.model_fields[block].annotation
+        assert field in model.model_fields, (block, field)
+        assert model.model_fields[field].default == default, (block, field)
+
+
+def test_the_second_pass_setting_leaves_the_fingerprint_alone_while_off():
+    """Off, whether left out of the YAML or written out as false, hashes as the
+    config did before the setting existed. The literal is the fingerprint of the
+    baseline's saved assets (tests/test_repro_fingerprints.py pins all 14)."""
+    assert _fp() == "7f642cf2ca"
+
+    def written_out(raw):
+        raw.setdefault("merge", {})["pass2_skip_at_min_area"] = False
+
+    assert _fp(written_out) == "7f642cf2ca"
+
+
+def test_switching_the_second_pass_setting_on_changes_the_fingerprint():
+    """On is a different merge, so it must not share cached assets with off:
+    clustering is cached under the same key, and would hand back stand types
+    computed for the other stands."""
+
+    def on(raw):
+        raw.setdefault("merge", {})["pass2_skip_at_min_area"] = True
+
+    assert _fp(on) != _fp()
+    cfg_on = Config.model_validate({**_raw(), "merge": {"pass2_skip_at_min_area": True}})
+    assert cfg_on.merge.pass2_skip_at_min_area is True
+    assert cached_asset_path(cfg_on.name, "clustering", "cluster_labels", config_fingerprint(cfg_on)) != (
+        cached_asset_path(cfg_on.name, "clustering", "cluster_labels", _fp())
+    )
+
+
+def test_the_dump_written_to_manifests_still_carries_the_setting():
+    """Only the hash leaves it out. The config dumped into a manifest says
+    which rule ran."""
+    assert Config.model_validate(_raw()).model_dump(mode="json")["merge"]["pass2_skip_at_min_area"] is False

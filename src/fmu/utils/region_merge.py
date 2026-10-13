@@ -14,6 +14,9 @@ Pass 1 -- merge homogeneous neighbours, iterating to convergence:
     region already merged this round.
 
 Pass 2 -- eliminate undersized regions, smallest first:
+  - each sweep lists the undersized regions once and takes them in turn. A
+    listed region that has reached `min_area_ha` by its turn is merged once
+    more all the same, unless `pass2_skip_at_min_area` is set, which skips it;
   - same rule with tolerances multiplied by `relax_factor`;
   - if no neighbour passes even relaxed, absorb into the neighbour sharing the
     longest boundary. This fallback is what prevents orphans;
@@ -200,8 +203,17 @@ def merge_superpixels(
     min_frac_valid: float,
     max_pass2_iterations: int,
     centroids: dict[int, tuple[float, float]] | None = None,
+    pass2_skip_at_min_area: bool = False,
 ) -> MergeResult:
-    """Run both passes and return the stand assignment plus diagnostics."""
+    """Run both passes and return the stand assignment plus diagnostics.
+
+    `pass2_skip_at_min_area` chooses what pass 2 does with a region that was
+    undersized when the sweep listed it and has reached `min_area_ha` by the
+    time its turn comes (a smaller region joined it earlier in the sweep).
+    False, the default and the behaviour of every earlier run: it still takes
+    its turn and is merged once more. True: it is skipped, since it is no
+    longer undersized. See docs/decisions.yaml, spec-merge-pass2-skip-at-minimum.
+    """
     n = graph.n_regions
     if n == 0:
         return MergeResult(assignment=[], n_stands=0, diagnostics={"n_superpixels": 0})
@@ -415,6 +427,8 @@ def merge_superpixels(
         for r in undersized:
             if r not in regions:
                 continue  # absorbed earlier in this same sweep
+            if pass2_skip_at_min_area and area(r) >= min_area_ha:
+                continue  # grew to the minimum earlier in this sweep: not undersized
             fitting = sorted(
                 (
                     nb

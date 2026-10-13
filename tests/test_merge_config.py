@@ -280,6 +280,7 @@ def test_shipped_configs_share_the_merge_rules(path: Path):
         "tie_break",
         "max_pass2_iterations",
         "max_superpixels",
+        "pass2_skip_at_min_area",
     ):
         assert getattr(got, knob) == getattr(base, knob), (path.stem, knob)
     assert sorted(got.tolerances().values()) == sorted(base.tolerances().values())

@@ -71,6 +71,19 @@ _CACHE_IRRELEVANT_BLOCKS: frozenset[str] = frozenset(
 # away an expensive raster.
 _CACHE_RELEVANT_EXPORT_FIELDS: tuple[str, ...] = ("analysis_scale_m",)
 
+# Settings added after assets had been cached, keyed (block, field) -> default.
+# The fingerprint is taken over the dumped config, defaults included, so a new
+# field in a relevant block changes the fingerprint of every config at once and
+# their saved assets can no longer be found by name. A field listed here is left
+# out of the hash while it holds its default, which is by definition the
+# behaviour the saved assets were made with; any other value is hashed, so a
+# config that switches the setting on gets a new fingerprint. A test pins each
+# default here to the one in the config model, and another pins the
+# fingerprints of the 14 `_repro` configs (tests/test_repro_fingerprints.py).
+_OMITTED_AT_DEFAULT: dict[tuple[str, str], Any] = {
+    ("merge", "pass2_skip_at_min_area"): False,
+}
+
 
 def config_fingerprint(config: Any) -> str:
     """Short stable hash of the config content that can change a cached asset.
@@ -91,10 +104,14 @@ def config_fingerprint(config: Any) -> str:
     result. Narrowing it per stage is a worthwhile follow-up with the
     completeness test already in place to keep it honest.
     """
+    dumped = config.model_dump(mode="json")
     payload: dict[str, Any] = {
-        block: config.model_dump(mode="json").get(block)
-        for block in sorted(_CACHE_RELEVANT_BLOCKS)
+        block: dumped.get(block) for block in sorted(_CACHE_RELEVANT_BLOCKS)
     }
+    for (block, field), default in _OMITTED_AT_DEFAULT.items():
+        values = payload.get(block)
+        if isinstance(values, dict) and field in values and values[field] == default:
+            payload[block] = {k: v for k, v in values.items() if k != field}
     payload["export"] = {
         f: getattr(config.export, f) for f in _CACHE_RELEVANT_EXPORT_FIELDS
     }

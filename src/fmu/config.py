@@ -549,6 +549,18 @@ class MergeParams(BaseModel):
     # stragglers instead of looping forever.
     max_pass2_iterations: int = Field(default=60, ge=1)
 
+    # Pass 2 lists the undersized regions once per sweep and takes them in turn.
+    # A listed region can reach `min_area_ha` before its turn comes, when a
+    # smaller one joins it earlier in the same sweep. False (the default, and
+    # the behaviour of every run made before this setting existed): it still
+    # takes its turn and is merged once more. True: it is skipped, because it is
+    # no longer undersized (docs/decisions.yaml,
+    # spec-merge-pass2-skip-at-minimum). The default is left out of the cache
+    # fingerprint (`fmu.utils.caching._OMITTED_AT_DEFAULT`), so adding this
+    # field moved no existing config's cached assets; a config that sets it to
+    # true gets a new fingerprint.
+    pass2_skip_at_min_area: bool = False
+
     # The merge runs client-side over a {snic_label -> stand_id} lookup table
     # and comes back as `snic_clusters.remap(...)`, so the label list has to
     # stay a reasonable size. Fail loudly rather than emitting a remap call with

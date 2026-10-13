@@ -299,6 +299,57 @@ def test_one_more_sweep_resolves_the_iteration_cap_case():
     assert r.stand_provenance == {0: _made_of(4, fallback=3)}
 
 
+# A chain A - B - C of 60, 70 and 500 pixels, none alike; the minimum is 100 px.
+# One sweep lists A and B, smallest first. A joins B (its only neighbour) by the
+# fallback, and B, the larger, is the one that stays: 130 px, no longer
+# undersized. Then comes B's own turn.
+_GROWN_CHAIN: dict[str, Any] = dict(
+    n_pixels=[60, 70, 500],
+    edges={(0, 1): 2, (1, 2): 2},
+    ch=[5.0, 25.0, 45.0],
+)
+
+
+def test_a_region_that_reached_the_minimum_still_takes_its_turn_by_default():
+    """The committed behaviour: B, already 1.3 ha, is merged once more, and by
+    the fallback, so the whole chain becomes one stand."""
+    r = _run(**_GROWN_CHAIN)
+    assert r.stand_provenance == {0: _made_of(3, fallback=2)}
+    assert r.diagnostics["pass2_merges"] == r.diagnostics["pass2_fallback_merges"] == 2
+    assert _run(**_GROWN_CHAIN, pass2_skip_at_min_area=False).assignment == r.assignment
+
+
+def test_with_the_setting_on_a_region_that_reached_the_minimum_is_skipped():
+    """spec-merge-pass2-skip-at-minimum: B is no longer undersized when its turn
+    comes, so pass 2 leaves it alone and C stays a stand of its own."""
+    r = _run(**_GROWN_CHAIN, pass2_skip_at_min_area=True)
+    assert r.n_stands == 2
+    assert _stand_of(r, 0) == _stand_of(r, 1) == _made_of(2, fallback=1)
+    assert _stand_of(r, 2) == _made_of(1)
+    assert r.diagnostics["pass2_merges"] == r.diagnostics["pass2_fallback_merges"] == 1
+    assert r.diagnostics["stands_below_min_area"] == 0
+
+
+def test_the_setting_also_stops_a_second_relaxed_merge():
+    """The same chain with neighbours alike enough for the relaxed tolerances
+    (3.5 for `ch`) but not for the first pass (2.0). A joins B; their mean,
+    25.35, is within 3.5 of C's 28.7. By default B then joins C as well."""
+    chain = dict(n_pixels=[60, 70, 500], edges={(0, 1): 2, (1, 2): 2}, ch=[24.0, 26.5, 28.7])
+    assert _run(**chain).stand_provenance == {0: _made_of(3, relaxed=2)}
+    r = _run(**chain, pass2_skip_at_min_area=True)
+    assert r.n_stands == 2
+    assert _stand_of(r, 1) == _made_of(2, relaxed=1) and _stand_of(r, 2) == _made_of(1)
+
+
+def test_the_setting_leaves_a_region_still_below_the_minimum_alone():
+    """In the iteration-cap chain the region that grows (U, 15 then 27 px) never
+    reaches the minimum, so the setting changes nothing there."""
+    for sweeps in (1, 2):
+        off = _run(**_CAP_CHAIN, max_pass2_iterations=sweeps)
+        on = _run(**_CAP_CHAIN, max_pass2_iterations=sweeps, pass2_skip_at_min_area=True)
+        assert on.assignment == off.assignment and on.stand_provenance == off.stand_provenance
+
+
 def test_a_graph_where_nothing_merges():
     """Two 2 ha regions 20 m apart in height. Pass 1 rejects the pair and pass 2
     has nothing undersized, so each stand is one superpixel with no merges."""
@@ -782,6 +833,24 @@ def test_invariants_hold_on_every_golden_graph(golden_runs):
 # ---------------------------------------------------------------------------
 # Regenerating the fixture:  python tests/test_region_merge_provenance.py <commit>
 # ---------------------------------------------------------------------------
+
+
+def test_the_new_rule_keeps_the_invariants_and_moves_stands_on_some_golden_graphs(golden_runs):
+    """With the setting on, the same 200 graphs still satisfy every invariant
+    between provenance and totals, no merge is added, and on some of them the
+    stands differ: the graphs do reach the case the setting is about. (The
+    digests above are the proof that the default moves nothing.)"""
+    differ = []
+    for seed, case, off in golden_runs:
+        settings = {**case.settings, "pass2_skip_at_min_area": True}
+        on = merge_superpixels(case.graph, case.means, case.valid_counts, **settings)
+        assert_provenance_invariants(on, case.graph, **settings)
+        assert on.diagnostics["pass1_merges"] == off.diagnostics["pass1_merges"], seed
+        assert on.diagnostics["pass2_merges"] <= off.diagnostics["pass2_merges"], seed
+        assert on.n_stands >= off.n_stands, seed
+        if on.assignment != off.assignment:
+            differ.append(seed)
+    assert differ, "no golden graph reaches a region that grows to the minimum before its turn"
 
 
 def _git(*args: str) -> str:
