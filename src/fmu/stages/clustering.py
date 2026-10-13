@@ -69,11 +69,20 @@ from __future__ import annotations
 
 import json
 import math
+from typing import Any
 
 import ee
 
 from fmu.config import Config
-from fmu.stages.base import PipelineContext, Stage, StageResult, register_stage
+from fmu.stages.base import (
+    DisplayLayer,
+    LegendEntry,
+    PipelineContext,
+    Stage,
+    StageResult,
+    SummaryNumber,
+    register_stage,
+)
 from fmu.utils.components import assert_components_fit
 from fmu.utils.gee import LABEL_BAND, safe_call, safe_get_info
 from fmu.utils.logging import get_logger
@@ -115,12 +124,175 @@ _HANDCRAFTED_INPUTS: frozenset[str] = frozenset(
 _EMBEDDING_INPUTS: frozenset[str] = frozenset({"embedding_features"})
 
 
+# ---------------------------------------------------------------------
+# Transparency: the stand types, and how many units the fit rested on
+# ---------------------------------------------------------------------
+
+# One colour per stand type, for types 0 to 9. A legend is static and k is a
+# config value, so the legend names more types than most runs have; a run uses
+# the first k. The first eight are the Okabe-Ito colour-blind-safe set, with its
+# black moved to the end as a grey: black is what a legend gap is drawn in. The
+# first six are in the order the early ui_data build of 13 Oct 2026
+# (scripts/build_ui_early_data.py) coloured stand types, so the page and the
+# manifest agree. The last two extend
+# the set and have not been checked for colour-blind safety; no config under
+# configs/ has k above 6.
+_STAND_TYPE_COLORS: tuple[str, ...] = (
+    "E69F00",
+    "56B4E9",
+    "009E73",
+    "F0E442",
+    "0072B2",
+    "D55E00",
+    "CC79A7",
+    "999999",
+    "882255",
+    "44AA99",
+)
+_STAND_TYPE_LEGEND = tuple(
+    LegendEntry(value, f"Stand type {value}", color)
+    for value, color in enumerate(_STAND_TYPE_COLORS)
+)
+_STAND_TYPE_NOTE = (
+    "A run uses the first k of these types, where k is clustering.k in its "
+    "config; the rest do not occur. Type numbers are fitted afresh in every "
+    "run and mean nothing across runs: type 2 of one run is not type 2 of "
+    "another, and the same colour in two runs is a coincidence. Pixels "
+    "outside the habitat mask are left blank, so a stand wholly outside it has "
+    "no type; nor has a stand with no data in one of the feature bands."
+)
+
+# Summary number -> the clustering_metadata key it is read from. The four
+# counts are the ones _train_and_apply_kmeans reports; see there for what each
+# means.
+_SUMMARY_FROM_METADATA: dict[str, str] = {
+    "k": "k",
+    "units_total": "n_units_total",
+    "units_in_habitat": "n_units_in_habitat",
+    "units_fitted": "n_training_units",
+    "units_dropped_missing_band": "n_units_dropped_null_band",
+}
+
+
+def read_clustering_metadata(cluster_labels: ee.Image) -> dict[str, Any]:
+    """The `clustering_metadata` property of a cluster_labels image, parsed.
+
+    One small request: it reads a string property, not pixels. The property is
+    set by `run()` and is kept by the cache export, so this works on the image
+    of a live run and on one read back from the cache alike.
+    """
+    raw = safe_get_info(
+        cluster_labels.get("clustering_metadata"),
+        context="clustering_metadata property (summary numbers)",
+    )
+    if not raw:
+        raise ValueError(
+            "cluster_labels has no 'clustering_metadata' property, so the "
+            "summary numbers cannot be read from it. The cached asset was made "
+            "by an older clustering stage."
+        )
+    metadata = json.loads(raw)
+    if not isinstance(metadata, dict):
+        raise ValueError(
+            f"clustering_metadata is not a JSON object: {type(metadata).__name__}."
+        )
+    return metadata
+
+
+def tabulate_clustering_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
+    """Clustering's summary numbers, picked out of `clustering_metadata`.
+
+    Raises if a count is absent, which it is on an asset made before the fit
+    reported its coverage: a missing count must not be read as zero.
+    """
+    missing = sorted(
+        key for key in _SUMMARY_FROM_METADATA.values() if metadata.get(key) is None
+    )
+    if missing:
+        raise ValueError(
+            f"clustering_metadata lacks {missing}, so the summary numbers "
+            f"cannot be given. The cached asset was made by an older "
+            f"clustering stage."
+        )
+    return {
+        name: int(metadata[key]) for name, key in _SUMMARY_FROM_METADATA.items()
+    }
+
+
 @register_stage("clustering")
 class ClusteringStage(Stage):
     name = "clustering"
     required_inputs = set(_INVARIANT_INPUTS)
     produces = {"cluster_labels", "feature_stack"}
     cacheable_outputs = {"cluster_labels", "feature_stack"}
+
+    display_layers = (
+        DisplayLayer(
+            key="cluster_labels",
+            band="cluster_id",
+            title="Stand types",
+            description=(
+                "Each stand, coloured by the type k-means gave it. The stands "
+                "are grouped by their mean features (the hand-crafted bands, "
+                "or the embedding) into k types, so stands of one colour are "
+                "similar in those features. A type is a group the data fell "
+                "into, not a forest class anyone named: what a type is has to "
+                "be read from its profile, and whether it matches the field "
+                "from the comparison with the field plots."
+            ),
+            legend=_STAND_TYPE_LEGEND,
+            legend_note=_STAND_TYPE_NOTE,
+        ),
+    )
+
+    # What the fit rested on, as counts. They are read from the
+    # clustering_metadata property the stage already attaches to
+    # cluster_labels, so they cost one small request and no reduction. A unit
+    # is a stand when merge ran and a superpixel when it did not.
+    #
+    # They count distinct labels on the analysis grid, as the fit saw them
+    # (_count_units), and that is not the number of polygons in the stand
+    # layer the same run exports: in the 14 re-runs of 13 Oct 2026 the
+    # exported layer has between 4 fewer and 20 more stands than units_total,
+    # and always more typed stands than units_in_habitat (sanjay_van_baseline_repro:
+    # 291 and 257 here, 295 stands and 269 typed in the file). Two causes are
+    # known: a stand in several pieces is several polygons, and the export
+    # stage types a stand from the typed pixels its polygon touches, so a
+    # stand with no habitat pixel of its own can take a neighbour's type. A
+    # layer with fewer stands than units_total is not explained. The
+    # descriptions say the counts differ, because a reader shown these
+    # numbers beside the stand map would otherwise try to make them add up.
+    summary_numbers = (
+        SummaryNumber("k", "Number of stand types the run fitted", "count"),
+        SummaryNumber(
+            "units_total",
+            "Distinct unit labels in the ROI on the analysis grid, as the fit "
+            "saw them. A unit is a stand, or a superpixel in a run without "
+            "merge. This is not the number of polygons in the exported stand "
+            "layer, which can differ from it by a few",
+            "count",
+        ),
+        SummaryNumber(
+            "units_in_habitat",
+            "Distinct unit labels with at least one pixel inside the habitat "
+            "mask on the analysis grid; the fit takes no row from the rest. "
+            "The exported stand layer can hold more stands with a type than "
+            "this count",
+            "count",
+        ),
+        SummaryNumber(
+            "units_fitted",
+            "Units the k-means fit was trained on, one row each",
+            "count",
+        ),
+        SummaryNumber(
+            "units_dropped_missing_band",
+            "Units inside the habitat mask that the fit left out because a "
+            "feature band has no data over them. They have no type on the "
+            "map: holes, not mistyped stands",
+            "count",
+        ),
+    )
 
     def validate(self, ctx: PipelineContext, config: Config) -> None:
         """Require the context keys the configured feature source needs.
@@ -367,6 +539,17 @@ class ClusteringStage(Stage):
                 "widest_unit_extent_px": neighbourhood_widest_px,
             },
         )
+
+
+    def summarise(self, ctx: PipelineContext, config: Config) -> dict[str, Any]:
+        """Report the fit's unit counts from the image's own metadata.
+
+        Reads the property off `cluster_labels` in the context, so the numbers
+        describe the image the run actually carries: the one just computed, or
+        the cached one.
+        """
+        metadata = read_clustering_metadata(ctx.get("cluster_labels"))
+        return tabulate_clustering_metadata(metadata)
 
 
 # ---------------------------------------------------------------------

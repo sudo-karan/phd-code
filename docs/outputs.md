@@ -196,17 +196,19 @@ Each stage can declare display layers and summary numbers
 (`Stage.display_layers`, `Stage.summary_numbers` and `Stage.summarise()` in
 `src/fmu/stages/base.py`). The orchestrator writes them into
 `stages[].transparency`, the same whether the stage ran live or was read from
-the cache. Masking and merge declare something today; the other stages have an
-empty record (`tests/test_transparency_contract.py` lists which stages must
-declare and which are still pending).
+the cache. Ten stages declare something today: masking, data load, the five
+feature stages, segmentation, merge and clustering. Profiling, export and
+metrics have an empty record (`tests/test_transparency_contract.py` lists which
+stages must declare and which are still pending).
 
 `display_layers` has one entry per declared layer:
 
 | Key | Meaning |
 |---|---|
 | `key`, `band` | The context key holding the image, and the band on it |
+| `bands` | Only on a colour composite (true colour, the embedding view): its three bands, as red, green and blue. `band` is the first of them. A single-band layer has no such key |
 | `title`, `description` | What the layer shows |
-| `vis` | Earth Engine visualisation parameters (`bands`, `min`, `max`, `palette`). For a categorical layer the palette covers every integer from the lowest legend value to the highest |
+| `vis` | Earth Engine visualisation parameters (`bands`, `min`, `max`, `palette`). `bands` is filled in from `band` or `bands` above; a declaration cannot set it. For a categorical layer the palette covers every integer from the lowest legend value to the highest. A composite has `min` and `max` and no palette. One value is not Earth Engine's: `"style": "outline"` (the superpixels) asks the reader to draw the boundaries between labels in the palette's one colour, because a label's value means nothing as a colour. `min` and `max` of a continuous layer are a starting stretch, not the range of the data |
 | `legend` | For a categorical layer, one `{value, label, color}` per class; empty for a continuous layer |
 | `legend_note` | What a reader must be told in order not to misread the layer. Show it wherever the legend is drawn |
 | `asset` | The cache asset the layer belongs at; `null` when caching is off or the stage does not cache that key (the merge layer) |
@@ -217,6 +219,59 @@ number. It is empty, with a reason beside it, in two cases: `summary_skipped`
 when the run was made with `Pipeline(summaries=False)`, and `summary_error`
 when the numbers could not be computed (the error is also in the stage's
 `warnings`; the run carries on, because the stage's products are already made).
+
+The layers each stage declares. Only masking, merge and clustering also report
+numbers: a declaration costs nothing on a run, and a summary is a request to
+Earth Engine on every run.
+
+| Stage | Key | Band or bands | Drawn as |
+|---|---|---|---|
+| masking | `mask_provenance` | `reason`; `source` | Two categorical layers |
+| data_load | `s2_composite` | `B4_median`, `B3_median`, `B2_median` | True colour, 0 to 3000 |
+| features_optical | `optical_features` | `ndvi_amplitude_annual` | Continuous, 0 to 0.4 |
+| features_radar | `radar_features` | `vv_minus_vh_median` | Continuous, 3 to 12 dB |
+| features_structure | `structure_features` | `canopy_height`; `canopy_height_std` | Continuous, 0 to 30 m and 0 to 3 m |
+| features_static | `static_features` | `elevation` | Continuous, 0 to 1500 m |
+| features_embedding | `embedding_features` | `A00`, `A01`, `A02` | Colour composite of three of the 64 bands, -0.3 to 0.3 |
+| segmentation | `snic_clusters` | `snic_clusters` | Outlines |
+| merge | `merge_provenance` | `merge_kind` | Categorical |
+| clustering | `cluster_labels` | `cluster_id` | Categorical, stand types 0 to 9 |
+
+A declaration is fixed in the code, and three band names are not: the true
+colour bands carry the compositing reducer (`median` by default), the optical
+band carries the index (`ndvi` by default), and the embedding bands are
+AlphaEarth's. Every config under `configs/` writes the declared bands except
+two: `sanjay_van_nirv_dual`, whose optical band is `nirv_amplitude_annual`,
+and `sanjay_van_tessera`, whose embedding is an uploaded Tessera image (128
+channels, not AlphaEarth's 64), so the embedding layer's title, bands and
+description are not those of its runs. Tests in
+`tests/test_transparency_contract.py` hold both lists and fail for a third
+config. The layer descriptions speak of the defaults in the same way: "by
+default" in a description means the default segmentation bands and merge
+criteria, which a config can replace. The stand-type legend names ten types
+and a run uses the first `clustering.k` of them.
+
+**Clustering** reports five counts, read from the `clustering_metadata`
+property of `cluster_labels` (one small request, no reduction): `k`,
+`units_total`, `units_in_habitat`, `units_fitted` and
+`units_dropped_missing_band`. A unit is a stand, or a superpixel in a run
+without merge. On a cached `cluster_labels` made before the fit recorded its
+coverage, the counts are absent and the record carries a `summary_error`.
+
+These counts are distinct unit labels on the analysis grid, as the fit saw
+them. They are not counts of the polygons in the exported stand layer, and the
+two do not agree: in the 14 re-runs of 13 Oct 2026 the exported
+`stands_merged` layer holds between 4 fewer and 20 more stands than
+`units_total`, and in every one of the 14 more stands with a `cluster_id` than
+`units_in_habitat`
+(`sanjay_van_baseline_repro`: 291 units and 257 in habitat, against 295 stands
+of which 269 carry a type; `odisha_alphaearth_angul_repro`: 102 and 86, against
+100 and 92). Two causes are known (`scripts/remerge_demo_set.py`): a stand in
+several pieces is several polygons, and the export stage types a stand from the
+typed pixels its polygon touches, weighted by the share of each pixel inside
+it, so a stand with no habitat pixel of its own can take a neighbour's type. A
+layer with fewer stands than `units_total` is not explained. Do not show these
+counts beside a count of stands without saying so.
 
 **Masking** declares two layers on `mask_provenance` (bands `reason` and
 `source`; the codes are under "Cached GEE assets") and these numbers, from one

@@ -29,7 +29,13 @@ from __future__ import annotations
 import ee
 
 from fmu.config import Config
-from fmu.stages.base import PipelineContext, Stage, StageResult, register_stage
+from fmu.stages.base import (
+    DisplayLayer,
+    PipelineContext,
+    Stage,
+    StageResult,
+    register_stage,
+)
 from fmu.utils.gee import safe_call, safe_get_info
 from fmu.utils.logging import get_logger
 
@@ -42,6 +48,43 @@ class FeaturesEmbeddingStage(Stage):
     required_inputs = {"roi"}
     produces = {"embedding_features"}
     cacheable_outputs = {"embedding_features"}
+
+    # Transparency: three of the embedding's bands as one colour picture. The
+    # names and the count of 64 are AlphaEarth's (A00..A63, docs/datasets.md).
+    # A declaration is static and the embedding is not: `datasets.embedding`
+    # may point at another one (an uploaded Tessera image has 128 channels), and
+    # `band_names` may restrict the bands. For such a run this layer names
+    # bands, and a product, that are not the run's. tests/
+    # test_transparency_contract.py lists the one config under configs/ on
+    # another embedding and fails for any other, and for one that restricts
+    # the bands.
+    #
+    # Stretch -0.3 to 0.3: a starting value, not checked against the saved
+    # assets. A band of a 64-band embedding is a signed number well inside
+    # -1 to 1; a reader should stretch to the ROI's own range.
+    display_layers = (
+        DisplayLayer(
+            key="embedding_features",
+            band="A00",
+            bands=("A00", "A01", "A02"),
+            title="AlphaEarth embedding, three of its 64 bands as colour",
+            description=(
+                "The first three of the 64 bands of the embedding, drawn as "
+                "red, green and blue. Places with similar colours are similar "
+                "in these three bands; the colours themselves mean nothing, "
+                "and the other 61 bands are not shown. Segmentation and "
+                "clustering in the embedding arm use all 64. A view through "
+                "the first three principal components shows more of the "
+                "embedding, but it depends on the area it is fitted over, so "
+                "it is the exporter's business and not declared here. The "
+                "band names and the count of 64 are those of the default "
+                "AlphaEarth embedding; a config that points datasets.embedding "
+                "at another embedding writes other bands, and this layer does "
+                "not describe them."
+            ),
+            vis={"min": -0.3, "max": 0.3},
+        ),
+    )
 
     @safe_call("computing embedding features")
     def run(self, ctx: PipelineContext, config: Config) -> StageResult:

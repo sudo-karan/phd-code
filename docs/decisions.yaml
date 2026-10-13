@@ -4604,3 +4604,71 @@ decisions:
   status: adopted
   design_notes_section: null
   source: 'docs/handoff/2026-10-13-round2.md (decision on question 5; task A2); PR #42, question 5'
+- id: spec-transparency-contract-eight-more-stages
+  title: >-
+    Eight more stages declare what they show: data load, the five feature stages, segmentation and clustering
+  decision: >-
+    The transparency contract of night-transparency-contract now binds ten stages. data_load declares the
+    Sentinel-2 composite in true colour; features_optical, features_radar, features_structure and features_static
+    each declare the band or bands a reader most needs (NDVI annual amplitude, VV minus VH, ETH 2020 canopy
+    height and its local spread, elevation); features_embedding declares three of AlphaEarth's 64 bands as a
+    colour composite; segmentation declares the superpixels as outlines; clustering declares the stand types
+    with a legend for types 0 to 9 and reports five counts read from the clustering_metadata property of
+    cluster_labels. DisplayLayer gains an optional bands field for a colour composite (exactly three distinct
+    bands, band being the first); the manifest gets a "bands" key only for a composite, so the record of every
+    earlier layer is unchanged. The declarations are class attributes: no config field, no change to any cache
+    fingerprint, and no new Earth Engine request on a run except one property read for clustering. PENDING is
+    now profiling, export and metrics.
+  alternatives_considered:
+  - >-
+    Summary numbers for the seven other stages: not done. The orchestrator calls summarise() on every run,
+    and a whole-ROI reduction on these images is a new request each time
+  - >-
+    Band names taken from the config at run time: not done. A declaration is a class attribute; the names
+    declared are those of the defaults, and tests fail for a config under configs/ that they do not fit,
+    with two named exceptions (sanjay_van_nirv_dual, sanjay_van_tessera)
+  - >-
+    A principal-component view of the embedding: not declared. It depends on the area it is fitted over, so
+    it is left to the exporter
+  rationale: >-
+    docs/handoff/2026-10-13-round2.md, task A3: the explorer shows a step for each of these stages and reads
+    what to draw from the manifest. The minimum and maximum of each continuous layer are starting stretches
+    and not measured ranges; those of elevation, the embedding and canopy_height_std have no measured basis.
+    The clustering counts are distinct unit labels on the analysis grid and do not agree with the number of
+    polygons in the exported stand layer (all 14 re-runs of 13 Oct 2026); the descriptions and docs/outputs.md
+    say so. Two causes are known (scripts/remerge_demo_set.py): a stand in several pieces is several polygons,
+    and the export stage types a stand by the typed pixels its polygon touches, which gives some stands with
+    no habitat pixel of their own a neighbour's type.
+  evidence:
+  - path: src/fmu/stages/base.py
+    what: DisplayLayer.bands, its validation, and the "bands" key in to_manifest() for a composite only
+  - path: src/fmu/stages/data_load.py
+    what: The true-colour layer on s2_composite
+  - path: src/fmu/stages/features_optical.py
+    what: The ndvi_amplitude_annual layer
+  - path: src/fmu/stages/features_radar.py
+    what: The vv_minus_vh_median layer
+  - path: src/fmu/stages/features_structure.py
+    what: The canopy_height and canopy_height_std layers
+  - path: src/fmu/stages/features_static.py
+    what: The elevation layer
+  - path: src/fmu/stages/features_embedding.py
+    what: The A00, A01, A02 composite
+  - path: src/fmu/stages/segmentation.py
+    what: The superpixel outline layer
+  - path: src/fmu/stages/clustering.py
+    what: The stand-type layer and legend, the five summary numbers and summarise()
+  - path: tests/test_transparency_contract.py
+    what: >-
+      ENFORCED and PENDING; what each stage declares; that declared bands are bands the stage writes; the two
+      configs the declarations do not fit
+  - path: tests/test_stages_base.py
+    what: The bands tests of DisplayLayer, including that a single-band layer's record has no "bands" key
+  - path: tests/test_repro_fingerprints.py
+    what: The 14 _repro fingerprints are unchanged
+  - path: docs/outputs.md
+    what: 'Section "The transparency record": the table of layers, the exceptions, and the note on the counts'
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: docs/handoff/2026-10-13-round2.md, task A3

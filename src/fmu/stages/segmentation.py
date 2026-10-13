@@ -54,7 +54,13 @@ from __future__ import annotations
 import ee
 
 from fmu.config import Config
-from fmu.stages.base import PipelineContext, Stage, StageResult, register_stage
+from fmu.stages.base import (
+    DisplayLayer,
+    PipelineContext,
+    Stage,
+    StageResult,
+    register_stage,
+)
 from fmu.utils.gee import safe_call, safe_get_info
 from fmu.utils.grid import analysis_grid
 from fmu.utils.logging import get_logger
@@ -79,6 +85,29 @@ class SegmentationStage(Stage):
     required_inputs = {"roi"}
     produces = {"snic_clusters", "snic_means"}
     cacheable_outputs = {"snic_clusters", "snic_means"}
+
+    # Transparency: the superpixels as outlines. A superpixel label is an
+    # arbitrary 32-bit number (one seen: 1779165740), so it can carry neither a
+    # legend nor a colour scale; what there is to see is where the boundaries
+    # run. `style: outline` says so (see DisplayLayer). The colour is the one
+    # the early ui_data build of 13 Oct 2026 (scripts/build_ui_early_data.py)
+    # drew superpixel boundaries in.
+    display_layers = (
+        DisplayLayer(
+            key="snic_clusters",
+            band="snic_clusters",
+            title="Superpixels (outlines)",
+            description=(
+                "The boundaries of the SNIC superpixels: small patches of "
+                "similar pixels, grown from a regular grid of seeds on the "
+                "bands named in segmentation.input_bands. They are the pieces "
+                "the merge step joins into stands, so every stand boundary "
+                "runs along one of these lines. The superpixels are not "
+                "stands, and their numbers mean nothing."
+            ),
+            vis={"style": "outline", "palette": ["ffd400"]},
+        ),
+    )
 
     def validate(self, ctx: PipelineContext, config: Config) -> None:
         needed = {"roi"} | config.segmentation.input_sources()
