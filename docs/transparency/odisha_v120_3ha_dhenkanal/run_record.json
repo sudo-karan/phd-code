@@ -1,0 +1,119 @@
+{
+  "config_name": "odisha_v120_3ha_dhenkanal",
+  "config_path": "configs/odisha_v120_3ha_dhenkanal.yaml",
+  "cache_fingerprint": "a516a24b2d",
+  "roi_file": "aois/odisha_habitations_dhenkanal.geojson",
+  "roi_parts": [
+    "TULASIPASI",
+    "KANKANA",
+    "BALIKUMA",
+    "NUA SAHI",
+    "ADHAPALLI",
+    "BURUGI BHUIN",
+    "BALI SAHI",
+    "RAIJHARANA"
+  ],
+  "date": "2026-10-13T08:04:31+05:30",
+  "command_line": "python odisha_script/odisha_transparency_masking.py --district dhenkanal   # which runs: python scripts/transparency_masking.py --config configs/odisha_v120_3ha_dhenkanal.yaml --points outputs/transparency/_points/odisha_plots_dhenkanal.csv --id-col plot_key --lon-col lon6 --lat-col lat6 --point-noun 'field plot' --part-name-key habitations --title 'Dhenkanal district, Odisha: land-cover (habitat) mask of the mapped village forests' --note 'This map stands for the three pipeline variants run on this district (the three arms: 3 ha, handcrafted, AlphaEarth). Everything the masking stage reads is identical in `odisha_v120_handcrafted_dhenkanal`, `odisha_alphaearth_dhenkanal` and this config (`odisha_v120_3ha_dhenkanal`): the roi block, the masking block, and the datasets entries indiasat, worldcover, water. So all three use the same mask rule on the same ROI. The cached mask of `odisha_v120_handcrafted_dhenkanal` and of `odisha_alphaearth_dhenkanal` is compared with this one, pixel by pixel, below. The datasets block as a whole is not identical; what differs is not read by masking: `datasets.embedding` in `odisha_alphaearth_dhenkanal` ('\"'\"'GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL'\"'\"' against None).' --note 'The field plots are the 76 of the district (`odisha_script/odisha_plots_clean.csv`, coordinates from `plot_key`). Each part of the ROI is the forest around one or two habitations, named after them.' --map-note 'One map for the three pipeline variants run on this district (the three arms: 3 ha, handcrafted, AlphaEarth): they use the same mask rule on the same ROI, and their cached masks were compared pixel by pixel (summary.md).' --note '1 of the district'\"'\"'s 76 field plots lies outside the mapped village forests (the ROI) and is on no map. The Phase 2 step 1 retention table, which samples the same mask rule at every plot, has 73 of 76 plots of this district on a habitat pixel (257 of 274 over the four districts). That count includes the 1 outside the ROI: 1 kept and 0 dropped there. The map and the tables below cover only the 75 inside. Table: `odisha_script/odisha_phase2_1_mask_retention.csv`.' --map-note 'The Phase 2 step 1 retention table, which samples the same mask rule at every plot, has 73 of 76 plots of this district on a habitat pixel (257 of 274 over the four districts). That count includes the 1 outside the ROI: 1 kept and 0 dropped there.' --compare-mask-asset projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_dhenkanal/masking/habitat_mask__57b7c569b3 --compare-mask-asset projects/replicating-paper/assets/fmu/odisha_alphaearth_dhenkanal/masking/habitat_mask__6e7046a5ce",
+  "git": {
+    "commit": "06852f39e762528d57efc0f1a76cd08466bcdb72",
+    "dirty": true,
+    "modified": [
+      "odisha_script/odisha_phase3_3_significance.py",
+      "src/fmu/stages/export.py",
+      "src/fmu/stages/merge.py",
+      "src/fmu/utils/region_merge.py",
+      "tests/test_export_merged_layer.py",
+      "tests/test_merge_stage.py"
+    ],
+    "modified_truncated": false,
+    "untracked": [
+      ".claude/",
+      "docs/reproducibility.md",
+      "docs/transparency/",
+      "odisha_script/odisha_repro_compare.py",
+      "odisha_script/odisha_transparency_masking.py",
+      "scripts/compare_stand_runs.py",
+      "scripts/inspect_merge.py",
+      "scripts/transparency_masking.py",
+      "src/fmu/evaluation/",
+      "tests/data/",
+      "tests/test_compare_stand_runs.py",
+      "tests/test_inspect_merge.py",
+      "tests/test_region_merge_provenance.py",
+      "tests/test_transparency_masking_script.py"
+    ],
+    "untracked_truncated": false,
+    "root": "/Users/karan/Desktop/phd-code",
+    "error": null
+  },
+  "code_git_blob_ids": {
+    "scripts/transparency_masking.py": "e2cf4fc3b43c6ee3b6c102258f0bd9bd125f24a9",
+    "odisha_script/odisha_transparency_masking.py": "efa24596351f8001373f82016d83e4e25863004c"
+  },
+  "earth_engine": {
+    "read_only": true,
+    "pipeline": "Pipeline(['masking', 'data_load'], use_cache=True, submit_exports=False)",
+    "export_tasks_submitted": 0,
+    "download_grid": "EPSG:4326 at 10 m, anchored at (0, 0)"
+  },
+  "layers": {
+    "habitat_mask": {
+      "stage": "masking",
+      "cache_status": "hit",
+      "read_from": "cached asset",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_dhenkanal/masking/habitat_mask__a516a24b2d"
+    },
+    "landcover_summary": {
+      "stage": "masking",
+      "cache_status": "hit",
+      "read_from": "cached asset",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_dhenkanal/masking/landcover_summary__a516a24b2d"
+    },
+    "mask_provenance": {
+      "stage": "masking",
+      "cache_status": "miss",
+      "read_from": "computed live, not exported",
+      "asset": null
+    },
+    "water_mask": {
+      "stage": "masking",
+      "cache_status": "hit",
+      "read_from": "cached asset",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_dhenkanal/masking/water_mask__a516a24b2d"
+    },
+    "s2_composite": {
+      "stage": "data_load",
+      "cache_status": "hit",
+      "read_from": "cached asset",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_dhenkanal/data_load/s2_composite__a516a24b2d"
+    }
+  },
+  "comparison_masks": [
+    {
+      "label": "odisha_v120_handcrafted_dhenkanal/masking/habitat_mask__57b7c569b3",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_dhenkanal/masking/habitat_mask__57b7c569b3",
+      "area_ha": 995.6312,
+      "area_ha_differs": 0.0,
+      "share_differs": 0.0
+    },
+    {
+      "label": "odisha_alphaearth_dhenkanal/masking/habitat_mask__6e7046a5ce",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_dhenkanal/masking/habitat_mask__6e7046a5ce",
+      "area_ha": 995.6312,
+      "area_ha_differs": 0.0,
+      "share_differs": 0.0
+    }
+  ],
+  "raster_check": {
+    "area_ha": 995.6454,
+    "share_kept": 0.794598,
+    "manifest_area_ha": 995.6312,
+    "manifest_share_kept": 0.794461,
+    "note": "rasters count pixels whose centre is inside a part; the manifest weights edge pixels by coverage"
+  },
+  "points_file": "outputs/transparency/_points/odisha_plots_dhenkanal.csv",
+  "pipeline_run_dir": "runs/odisha_v120_3ha_dhenkanal_20261013_080431",
+  "data_dir": "outputs/transparency/odisha_v120_3ha_dhenkanal",
+  "redraws_since_this_run": []
+}
