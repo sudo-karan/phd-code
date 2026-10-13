@@ -312,7 +312,7 @@ NASADEM (30 m), CHIRPS (5,500 m), and cyclic features (phase, aspect) remain exc
 
 **Related decisions:** DEC-001 (superpixels not pixels), DEC-014 (compute everywhere, mask at clustering), DEC-016 (cross-pol metric definition).
 
-### 7b. merge - `src/fmu/stages/merge.py`
+### 8. merge - `src/fmu/stages/merge.py`
 
 SNIC superpixels to stands, in two passes over the adjacency graph, client-side (`src/fmu/utils/region_merge.py`). Runs when `merge.enabled`. The rule and its settings are in `docs/configs.md` (`merge`).
 
@@ -322,7 +322,7 @@ SNIC superpixels to stands, in two passes over the adjacency graph, client-side 
 
 **Declares** (transparency contract): one display layer, `merge_provenance.merge_kind`, and summary numbers read from `merge_diagnostics`: superpixels in, stands out, merges by kind (first pass, second pass relaxed, second pass shared-edge fallback), and the stands left below the minimum size with their cause and area. The provenance is bookkeeping: no merge decision reads it. The export stage puts the six `stand_provenance` fields on the `stands_merged` layer; `scripts/inspect_merge.py` prints them.
 
-### 8. clustering - `src/fmu/stages/clustering.py`
+### 9. clustering - `src/fmu/stages/clustering.py`
 
 Per-superpixel feature stack to preprocessing to k-means to per-pixel cluster labels. Implements the locked DEC-001 (cluster on superpixel means), DEC-003 (median/IQR robust scaling), DEC-004 (log-transform right-skewed bands).
 
@@ -361,7 +361,7 @@ Per-superpixel feature stack to preprocessing to k-means to per-pixel cluster la
 
 **Related decisions:** DEC-001, DEC-003, DEC-004, DEC-014.
 
-### 9. profiling - `src/fmu/stages/profiling.py`
+### 10. profiling - `src/fmu/stages/profiling.py`
 
 Per-cluster feature statistics in **original units** (un-scaled, un-log-transformed). Bridges from cluster IDs to ecological interpretation.
 
@@ -379,7 +379,7 @@ Profile data lives in the `manifest.json` `metadata.profiles` block, so it's aut
 
 **Memory:** safe by construction; each cluster contains a subset of pixels, and the per-cluster reduceRegion calls are independent and small.
 
-### 10. export - `src/fmu/stages/export.py`
+### 11. export - `src/fmu/stages/export.py`
 
 Packages the pipeline's final research-ready outputs. As of v1.1.0 there are three deliverable classes plus a run manifest, all driven by config toggles:
 
@@ -429,7 +429,7 @@ SHP outputs use the `selectors` argument to pick a minimal SHP-safe attribute su
 - `vector_formats`; list of formats to export per vector layer (default `[shp, geojson]`; rejects duplicates and unknown formats)
 - `vector_min_stand_pixels`; minimum pixels for a dissolved stand to survive filtering (default 4; SNIC layer is unfiltered because SNIC enforces its own minimum via `segmentation.size`)
 
-### 11. metrics - `src/fmu/stages/metrics.py`
+### 12. metrics - `src/fmu/stages/metrics.py`
 
 The actual research deliverable. Quantitative comparison between the two clusterings, answering the thesis question "does NIRv + dual harmonic meaningfully improve clustering?"
 
@@ -475,7 +475,7 @@ Each one will get its own section here as it's built.
 | Pipeline config schema | `src/fmu/config.py` |
 | Baseline config values | `configs/sanjay_van_baseline.yaml` |
 | Per-machine settings (`.env`) | `src/fmu/settings.py` |
-| Sanjay Van ROI polygon | `aois/sanjay_van.geojson` (placeholder; needs replacement) |
+| Sanjay Van ROI | `aois/sanjay_van.geojson`: the 1,300 ha working rectangle (77.16 to 77.19 E, 28.51 to 28.55 N) around the park, not the park boundary |
 | GEE init / safe_get_info | `src/fmu/utils/gee.py` |
 | Logging setup | `src/fmu/utils/logging.py` |
 | Stage abstract / registry | `src/fmu/stages/base.py` |

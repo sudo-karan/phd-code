@@ -128,8 +128,9 @@ this machine covers the same files in the Phase 3 table.
 
 ## Phase 1
 
-Commands are run from inside `odisha_script/`. `PHASE1_STATUS.md`, "Reproducing", lists only
-steps 7 to 11; the commands for steps 0 to 6 are from the scripts themselves.
+Commands are run from inside `odisha_script/`. When this check was made, `PHASE1_STATUS.md`,
+"Reproducing", listed only steps 7 to 11, so the commands for steps 0 to 6 are from the scripts
+themselves. They have since been added there (Problem 8).
 
 | File | Command | Outcome | Detail |
 |---|---|---|---|
@@ -963,8 +964,9 @@ Each with its evidence and what should happen next.
    It records `--ref main`; `main` has moved. Evidence: the Phase 3 row. Next: regenerate with
    `--ref cff45d9`, the command `PHASE3_STATUS.md` already gives, and drop the dated line.
 8. **`PHASE1_STATUS.md`, "Reproducing", covers only steps 7 to 11.** Steps 0 to 6 write eight
-   of the committed files and have no listed command. Next: add them (they are in the Phase 1
-   table above).
+   of the committed files and had no listed command. FIXED (the decision on question 10 of
+   PR #42): the section now lists the commands for steps 0 to 6, what each reads and writes,
+   and which need Earth Engine.
 9. **`odisha_phase1_7_meta_zero_diagnosis.py` cannot be run offline on purpose.** It calls
    Earth Engine whenever credentials are present, and rewrites the whole results file. Next:
    an option to run part A alone.

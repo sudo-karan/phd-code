@@ -2,9 +2,9 @@
 
 Tracks each module's state. Not started · Under review · Locked.
 
-A module is **Locked** when the code is read, has tests (fast + live where applicable), is documented, and is part of the smoke test. Modifications to locked modules need a new `decisions.md` entry.
+A module is **Locked** when the code is read, has tests (fast + live where applicable), is documented, and is part of the smoke test. A change to a Locked module needs an entry in `docs/decisions.yaml`. `utils/provenance.py` and the evaluation package (`src/fmu/evaluation/`) are **Under review** until they meet these criteria.
 
-`decisions.md` is not in this repo. The decisions this repo records are in `docs/decisions.yaml`, one entry per decision with its alternatives, rationale, evidence and papers; `tests/test_decisions_register.py` checks its structure. The decisions behind the additions marked "Since v1.2.0" in the table below are recorded there under ids starting `night-`, with status `pending` until reviewed. Each addition adds outputs, properties or manifest keys; none changes a value an existing output held.
+`docs/decisions.yaml` is the decision register: one entry per decision with its alternatives, rationale, evidence and papers; `tests/test_decisions_register.py` checks its structure. The decisions behind the additions marked "Since v1.2.0" in the table below are recorded there under ids starting `night-`, with status `pending` until reviewed. Each addition adds outputs, properties or manifest keys; none changes a value an existing output held.
 
 **Build order is not runtime order.** This file is build order, what was worked on in which order. Runtime order (what runs in a pipeline run) lives in `docs/current_flow.md`.
 
@@ -33,6 +33,7 @@ A module is **Locked** when the code is read, has tests (fast + live where appli
 | 16 | `stages/profiling.py` | Locked | v0.16-profiling | Per-cluster feature stats in original units. Mean + IQR per band. Saved to CSV in run dir |
 | 17 | `stages/export.py` | Locked · extended v1.2.0 | v0.17-export · extended v1.2.0 | v0.17: Drive GeoTIFF + run manifest (config, asset paths, clustering metadata, distribution). Asset inventory auto-discovered from the stage registry. v1.1.0: added two vector layers (`stands_snic`, `stands_dissolved`) in SHP + GeoJSON, configurable `drive_folder`, manifest moved from singular `drive_export` to `drive_exports` dict + new `vector_layers` section. **v1.2.0**: added `stands_merged` — one polygon per merged stand, the primary deliverable, written whenever `merge.enabled` (all four shipped configs). Unlike `stands_snic` it KEEPS stands clustering could not type, with a null `cluster_id`, so the coverage gap is visible in the layer rather than only in the log. Manifest records `n_stands` beside `n_features` because `reduceToVectors` emits one polygon per connected component, not per label. Since v1.2.0: `stands_merged` polygons carry the six merge-provenance fields in SHP and GeoJSON, attached by `stand_lbl` after renumbering; geometry and existing properties are unchanged. A `stand_lbl` with no provenance entry fails the layer. The manifest adds `provenance_attributes` under `vector_layers.stands_merged` and a `git` block |
 | 18 | `stages/metrics.py` | Locked · extended v1.2.0 | v1.0.0 | ARI / NMI / Hungarian correspondence / agreement map. v1.2.0: adds **stand geometry** (area distribution, Polsby-Popper, sub-minimum count, largest-decile area share) and **held-out explained variance R²** with `n_stands` beside it, computed at pixel level. Silhouette demoted from cross-arm headline to internal diagnostic — it is dimensionality-dependent and the arms have different feature spaces |
+| - | `evaluation/` (package) | Under review | - | Offline evaluation metrics. Not a pipeline stage and not run on any real site. Its modules, tests and scripts are listed under "Evaluation (offline, general)" below |
 
 Pipeline is at v1.2.0 with all 13 runtime stages implemented and tested.
 
@@ -66,7 +67,7 @@ Phase 3 changed no pipeline module: it added configs and the scripts and results
 
 ## Evaluation (offline, general)
 
-Not a pipeline stage and not run on any real site: the list of metrics in `docs/evaluation_metrics.md` is for approval first. No Earth Engine, no site-specific code.
+Status: **Under review** (row `evaluation/` in the table above). Not a pipeline stage and not run on any real site: the list of metrics in `docs/evaluation_metrics.md` is for approval first. No Earth Engine, no site-specific code.
 
 - `src/fmu/evaluation/`: `agreement` (Rand and adjusted Rand index), `pairs` (pair comparison inside villages and distance bands), `permutation` (Mantel, partial Mantel, ANOSIM, PERMANOVA, permutation nulls, the test driver, Holm), `spatial_null` (rotation null, torus translation; they return relabelled plots, never a score), `segmentation_accuracy` (over- and under-segmentation, boundary match), `unsupervised` (explained variance, area-weighted variance, Moran's I, Global Score), `synthetic` (planted data with known answers), `_common` (shared helpers). Tests: `tests/test_evaluation_*.py`.
 - `scripts/evaluation_synthetic_validation.py` checks the methods on planted data and writes `docs/evaluation/synthetic_validation.md` and `.csv`. `docs/evaluation/rotation_size_followup.md` is the declared follow-up on the rotation null.
