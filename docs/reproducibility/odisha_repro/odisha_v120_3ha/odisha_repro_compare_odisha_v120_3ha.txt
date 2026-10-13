@@ -1,0 +1,995 @@
+
+====================================================================================================
+RE-RUN AGAINST COMMITTED OUTPUTS -- odisha_v120_3ha (3 hectare stands)
+====================================================================================================
+  committed files: odisha_script/phase2_vectors/odisha_v120_3ha_<district>_*
+  re-run files:    odisha_v120_3ha_<district>_repro_*   in the folder outputs/repro_runs/phase2_vectors
+  'old' below is always the committed output, 'new' the re-run.
+
+====================================================================================================
+(a) STANDS -- summary; the full table for each district and layer is at the end
+====================================================================================================
+  IoU = area-weighted intersection over union, each stand against the stand of the other run that
+  overlaps it most (1 = the same stands). 'same outline' = stands whose outline is in both runs.
+  district   layer                 stands     polygons  same outline  IoU old->new  IoU new->old  area IoU>=0.9  footprint IoU
+  angul      stands_merged     200 -> 204   203 -> 207            18      0.751582      0.751648         37.10%       1.000000
+  angul      stands_snic     1062 -> 1064 1070 -> 1069           539      0.929282      0.926953         79.01%       0.995567
+  dhenkanal  stands_merged     462 -> 462   473 -> 474            43      0.685608      0.688133         33.87%       1.000000
+  dhenkanal  stands_snic     2571 -> 2571 2593 -> 2595          1230      0.916523      0.915856         74.66%       0.997137
+  kendujhar  stands_merged     183 -> 180   186 -> 184            10      0.674766      0.678004         32.78%       1.000000
+  kendujhar  stands_snic       935 -> 934   946 -> 944           437      0.929970      0.929217         79.35%       0.991214
+  koraput    stands_merged   1109 -> 1125 1131 -> 1145            60      0.707044      0.706039         33.53%       1.000000
+  koraput    stands_snic     4920 -> 4911 4963 -> 4950          2355      0.930746      0.932379         80.14%       0.993968
+
+====================================================================================================
+(b) RUN RECORDS -- <config>_run.json, committed against re-run
+====================================================================================================
+  angul
+    cache fingerprint: committed 8c472d39f9, re-run 8c472d39f9: the same, so the re-run used the same cache-relevant settings as the committed run (the fingerprint covers the config, not the version of the code)
+    the re-run's record names git commit nothing (the record has no git entry)
+    71 recorded values compared, 41 differ:
+      pulled_polygon_counts.stands_merged: 203 -> 207
+      pulled_polygon_counts.stands_snic: 1070 -> 1069
+      pulled_polygon_counts.stands_dissolved: 99 -> 112
+      export_vector_layers.stands_merged.n_features: 203 -> 207
+      export_vector_layers.stands_merged.n_stands: 200 -> 204
+      export_vector_layers.stands_snic.n_features: 1070 -> 1069
+      export_vector_layers.stands_dissolved.n_features: 99 -> 112
+      merge_diagnostics.n_stands: 200 -> 204
+      merge_diagnostics.reduction_factor: 6.285 -> 6.162
+      merge_diagnostics.pass1_rounds: 5 -> 6
+      merge_diagnostics.pass1_merges: 800 -> 797
+      merge_diagnostics.pass2_iterations: 2 -> 3
+      merge_diagnostics.pass2_merges: 257 -> 256
+      merge_diagnostics.pass2_fallback_merges: 109 -> 108
+      merge_diagnostics.stands_below_min_area: 8 -> 14
+      merge_diagnostics.area_in_undersized_stands_ha: 4.57 -> 7.21
+      merge_diagnostics.orphans_area_blocked: 8 -> 14
+      merge_diagnostics.adjacency.n_edges: 3350 -> 3370
+      merge_diagnostics.adjacency.mean_degree: 5.33 -> 5.362
+      merge_diagnostics.threshold_calibration.n_pairs: 3350 -> 3370
+      merge_diagnostics.threshold_calibration.per_band.canopy_height.n_pairs_defined: 3350 -> 3370
+      merge_diagnostics.threshold_calibration.per_band.canopy_height.percentile_of_threshold: 70.57 -> 70.68
+      merge_diagnostics.threshold_calibration.per_band.canopy_height.p25: 0.472028 -> 0.469583
+      merge_diagnostics.threshold_calibration.per_band.canopy_height.p50: 1.125497 -> 1.128571
+      merge_diagnostics.threshold_calibration.per_band.canopy_height.p75: 2.267606 -> 2.258824
+      merge_diagnostics.threshold_calibration.per_band.canopy_height.p90: 3.848287 -> 3.851082
+      merge_diagnostics.threshold_calibration.per_band.canopy_height_std.n_pairs_defined: 3350 -> 3370
+      merge_diagnostics.threshold_calibration.per_band.canopy_height_std.percentile_of_threshold: 77.22 -> 77.03
+      merge_diagnostics.threshold_calibration.per_band.canopy_height_std.p25: 0.080209 -> 0.081035
+      merge_diagnostics.threshold_calibration.per_band.canopy_height_std.p50: 0.182618 -> 0.183765
+      merge_diagnostics.threshold_calibration.per_band.canopy_height_std.p75: 0.409975 -> 0.409746
+      merge_diagnostics.threshold_calibration.per_band.canopy_height_std.p90: 0.998968 -> 1.00274
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.n_pairs_defined: 3345 -> 3365
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.percentile_of_threshold: 72.44 -> 72.12
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p25: 0.008446 -> 0.008749
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p50: 0.018601 -> 0.01883
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p75: 0.031415 -> 0.031756
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p90: 0.046213 -> 0.046709
+      merge_diagnostics.threshold_calibration.joint_admit_rate_pct: 45.79 -> 45.43
+      merge_diagnostics.threshold_calibration.n_pairs_with_any_defined_criterion: 3350 -> 3370
+      merge_diagnostics.warnings: ["8 stand(s) stayed below min_area_ha (1.0 ha) because every neighbour is already too big to absorb them un... -> ["14 stand(s) stayed below min_area_ha (1.0 ha) because every neighbour is already too big to absorb them u...
+    stand attributes: 200 stands -> 204; pixels 43,795 -> 43,797; area 437.95 -> 437.97 ha; 0 of the 200 stand numbers present in both carry identical attributes
+    not compared, because they differ between any two runs: config, run_dir, drive_exports, git
+  dhenkanal
+    cache fingerprint: committed a516a24b2d, re-run a516a24b2d: the same, so the re-run used the same cache-relevant settings as the committed run (the fingerprint covers the config, not the version of the code)
+    the re-run's record names git commit nothing (the record has no git entry)
+    71 recorded values compared, 36 differ:
+      pulled_polygon_counts.stands_merged: 473 -> 474
+      pulled_polygon_counts.stands_snic: 2593 -> 2595
+      pulled_polygon_counts.stands_dissolved: 63 -> 68
+      export_vector_layers.stands_merged.n_features: 473 -> 474
+      export_vector_layers.stands_merged.n_stands_split_into_pieces: 11 -> 12
+      export_vector_layers.stands_snic.n_features: 2593 -> 2595
+      export_vector_layers.stands_dissolved.n_features: 63 -> 68
+      merge_diagnostics.pass1_merges: 1966 -> 1945
+      merge_diagnostics.pass2_merges: 399 -> 420
+      merge_diagnostics.stands_below_min_area: 39 -> 37
+      merge_diagnostics.area_in_undersized_stands_ha: 18.9 -> 19.13
+      merge_diagnostics.orphans_area_blocked: 39 -> 37
+      merge_diagnostics.adjacency.n_edges: 7655 -> 7664
+      merge_diagnostics.adjacency.mean_degree: 5.416 -> 5.422
+      merge_diagnostics.threshold_calibration.n_pairs: 7655 -> 7664
+      merge_diagnostics.threshold_calibration.per_band.canopy_height.n_pairs_defined: 7641 -> 7650
+      merge_diagnostics.threshold_calibration.per_band.canopy_height.percentile_of_threshold: 78.71 -> 78.84
+      merge_diagnostics.threshold_calibration.per_band.canopy_height.p25: 0.384615 -> 0.383099
+      merge_diagnostics.threshold_calibration.per_band.canopy_height.p50: 0.864235 -> 0.866667
+      merge_diagnostics.threshold_calibration.per_band.canopy_height.p75: 1.752157 -> 1.758897
+      merge_diagnostics.threshold_calibration.per_band.canopy_height.p90: 3.090866 -> 3.096491
+      merge_diagnostics.threshold_calibration.per_band.canopy_height_std.n_pairs_defined: 7641 -> 7650
+      merge_diagnostics.threshold_calibration.per_band.canopy_height_std.percentile_of_threshold: 80.84 -> 80.72
+      merge_diagnostics.threshold_calibration.per_band.canopy_height_std.p25: 0.079447 -> 0.076499
+      merge_diagnostics.threshold_calibration.per_band.canopy_height_std.p50: 0.205686 -> 0.206161
+      merge_diagnostics.threshold_calibration.per_band.canopy_height_std.p75: 0.406116 -> 0.406427
+      merge_diagnostics.threshold_calibration.per_band.canopy_height_std.p90: 0.713362 -> 0.70983
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.n_pairs_defined: 7645 -> 7654
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.percentile_of_threshold: 81.67 -> 81.85
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p25: 0.005429 -> 0.005406
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p50: 0.012319 -> 0.012391
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p75: 0.02462 -> 0.024562
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p90: 0.040724 -> 0.040545
+      merge_diagnostics.threshold_calibration.joint_admit_rate_pct: 59.69 -> 59.86
+      merge_diagnostics.threshold_calibration.n_pairs_with_any_defined_criterion: 7655 -> 7664
+      merge_diagnostics.warnings: ["39 stand(s) stayed below min_area_ha (1.0 ha) because every neighbour is already too big to absorb them u... -> ["37 stand(s) stayed below min_area_ha (1.0 ha) because every neighbour is already too big to absorb them u...
+    stand attributes: 462 stands -> 462; pixels 99,274 -> 99,273; area 992.74 -> 992.73 ha; 0 of the 462 stand numbers present in both carry identical attributes
+    not compared, because they differ between any two runs: config, run_dir, drive_exports, git
+  kendujhar
+    cache fingerprint: committed 9908a3bb6b, re-run 9908a3bb6b: the same, so the re-run used the same cache-relevant settings as the committed run (the fingerprint covers the config, not the version of the code)
+    the re-run's record names git commit nothing (the record has no git entry)
+    71 recorded values compared, 40 differ:
+      pulled_polygon_counts.stands_merged: 186 -> 184
+      pulled_polygon_counts.stands_snic: 946 -> 944
+      pulled_polygon_counts.stands_dissolved: 104 -> 98
+      export_vector_layers.stands_merged.n_features: 186 -> 184
+      export_vector_layers.stands_merged.n_stands: 183 -> 180
+      export_vector_layers.stands_merged.n_stands_split_into_pieces: 3 -> 4
+      export_vector_layers.stands_snic.n_features: 946 -> 944
+      export_vector_layers.stands_dissolved.n_features: 104 -> 98
+      merge_diagnostics.n_stands: 183 -> 180
+      merge_diagnostics.reduction_factor: 6.262 -> 6.367
+      merge_diagnostics.pass1_merges: 610 -> 611
+      merge_diagnostics.pass2_merges: 353 -> 355
+      merge_diagnostics.pass2_fallback_merges: 165 -> 180
+      merge_diagnostics.stands_below_min_area: 11 -> 8
+      merge_diagnostics.area_in_undersized_stands_ha: 8.47 -> 5.79
+      merge_diagnostics.orphans_area_blocked: 11 -> 8
+      merge_diagnostics.adjacency.n_edges: 3131 -> 3140
+      merge_diagnostics.adjacency.mean_degree: 5.464 -> 5.48
+      merge_diagnostics.threshold_calibration.n_pairs: 3131 -> 3140
+      merge_diagnostics.threshold_calibration.per_band.canopy_height.n_pairs_defined: 3131 -> 3140
+      merge_diagnostics.threshold_calibration.per_band.canopy_height.percentile_of_threshold: 61.26 -> 60.41
+      merge_diagnostics.threshold_calibration.per_band.canopy_height.p25: 0.691388 -> 0.714745
+      merge_diagnostics.threshold_calibration.per_band.canopy_height.p50: 1.49431 -> 1.503846
+      merge_diagnostics.threshold_calibration.per_band.canopy_height.p75: 2.932118 -> 2.952381
+      merge_diagnostics.threshold_calibration.per_band.canopy_height.p90: 4.753968 -> 4.762443
+      merge_diagnostics.threshold_calibration.per_band.canopy_height_std.n_pairs_defined: 3131 -> 3140
+      merge_diagnostics.threshold_calibration.per_band.canopy_height_std.percentile_of_threshold: 66.94 -> 66.5
+      merge_diagnostics.threshold_calibration.per_band.canopy_height_std.p25: 0.102766 -> 0.098898
+      merge_diagnostics.threshold_calibration.per_band.canopy_height_std.p50: 0.248022 -> 0.246865
+      merge_diagnostics.threshold_calibration.per_band.canopy_height_std.p75: 0.667617 -> 0.678542
+      merge_diagnostics.threshold_calibration.per_band.canopy_height_std.p90: 1.647377 -> 1.673534
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.n_pairs_defined: 3131 -> 3140
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.percentile_of_threshold: 62.06 -> 62.52
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p25: 0.009402 -> 0.009787
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p50: 0.02218 -> 0.022056
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p75: 0.041708 -> 0.041888
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p90: 0.064617 -> 0.063717
+      merge_diagnostics.threshold_calibration.joint_admit_rate_pct: 34.65 -> 34.11
+      merge_diagnostics.threshold_calibration.n_pairs_with_any_defined_criterion: 3131 -> 3140
+      merge_diagnostics.warnings: ["11 stand(s) stayed below min_area_ha (1.0 ha) because every neighbour is already too big to absorb them u... -> ["8 stand(s) stayed below min_area_ha (1.0 ha) because every neighbour is already too big to absorb them un...
+    stand attributes: 183 stands -> 180; pixels 40,373 -> 40,374; area 403.73 -> 403.74 ha; 0 of the 180 stand numbers present in both carry identical attributes
+    not compared, because they differ between any two runs: config, run_dir, drive_exports, git
+  koraput
+    cache fingerprint: committed 030aafaa2c, re-run 030aafaa2c: the same, so the re-run used the same cache-relevant settings as the committed run (the fingerprint covers the config, not the version of the code)
+    the re-run's record names git commit nothing (the record has no git entry)
+    71 recorded values compared, 41 differ:
+      pulled_polygon_counts.stands_merged: 1131 -> 1145
+      pulled_polygon_counts.stands_snic: 4963 -> 4950
+      pulled_polygon_counts.stands_dissolved: 292 -> 303
+      export_vector_layers.stands_merged.n_features: 1131 -> 1145
+      export_vector_layers.stands_merged.n_stands: 1109 -> 1125
+      export_vector_layers.stands_merged.n_stands_split_into_pieces: 22 -> 20
+      export_vector_layers.stands_snic.n_features: 4963 -> 4950
+      export_vector_layers.stands_dissolved.n_features: 292 -> 303
+      merge_diagnostics.n_stands: 1109 -> 1125
+      merge_diagnostics.reduction_factor: 6.257 -> 6.168
+      merge_diagnostics.pass1_merges: 4127 -> 4119
+      merge_diagnostics.pass1_pairs_blocked_by_undefined_criteria_round1: 31 -> 28
+      merge_diagnostics.pass2_merges: 1703 -> 1695
+      merge_diagnostics.pass2_fallback_merges: 687 -> 686
+      merge_diagnostics.stands_below_min_area: 51 -> 54
+      merge_diagnostics.area_in_undersized_stands_ha: 30.71 -> 29.83
+      merge_diagnostics.orphans_area_blocked: 51 -> 54
+      merge_diagnostics.adjacency.n_edges: 19313 -> 19321
+      merge_diagnostics.adjacency.mean_degree: 5.567 -> 5.569
+      merge_diagnostics.threshold_calibration.n_pairs: 19313 -> 19321
+      merge_diagnostics.threshold_calibration.per_band.canopy_height.n_pairs_defined: 19282 -> 19293
+      merge_diagnostics.threshold_calibration.per_band.canopy_height.percentile_of_threshold: 69.28 -> 69.62
+      merge_diagnostics.threshold_calibration.per_band.canopy_height.p25: 0.522267 -> 0.522989
+      merge_diagnostics.threshold_calibration.per_band.canopy_height.p50: 1.18 -> 1.184885
+      merge_diagnostics.threshold_calibration.per_band.canopy_height.p75: 2.332227 -> 2.324314
+      merge_diagnostics.threshold_calibration.per_band.canopy_height.p90: 3.915385 -> 3.937682
+      merge_diagnostics.threshold_calibration.per_band.canopy_height_std.n_pairs_defined: 19282 -> 19293
+      merge_diagnostics.threshold_calibration.per_band.canopy_height_std.percentile_of_threshold: 75.01 -> 75.07
+      merge_diagnostics.threshold_calibration.per_band.canopy_height_std.p25: 0.08348 -> 0.083392
+      merge_diagnostics.threshold_calibration.per_band.canopy_height_std.p50: 0.193717 -> 0.193858
+      merge_diagnostics.threshold_calibration.per_band.canopy_height_std.p75: 0.449473 -> 0.447977
+      merge_diagnostics.threshold_calibration.per_band.canopy_height_std.p90: 1.188754 -> 1.193584
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.n_pairs_defined: 19287 -> 19295
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.percentile_of_threshold: 65.59 -> 65.63
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p25: 0.008972 -> 0.009135
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p50: 0.020066 -> 0.020264
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p75: 0.037697 -> 0.038026
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p90: 0.059721 -> 0.060279
+      merge_diagnostics.threshold_calibration.joint_admit_rate_pct: 41.83 -> 42.06
+      merge_diagnostics.threshold_calibration.n_pairs_with_any_defined_criterion: 19313 -> 19321
+      merge_diagnostics.warnings: ["51 stand(s) stayed below min_area_ha (1.0 ha) because every neighbour is already too big to absorb them u... -> ["54 stand(s) stayed below min_area_ha (1.0 ha) because every neighbour is already too big to absorb them u...
+    stand attributes: 1109 stands -> 1125; pixels 245,444 -> 245,439; area 2,454.44 -> 2,454.39 ha; 0 of the 1109 stand numbers present in both carry identical attributes
+    not compared, because they differ between any two runs: config, run_dir, drive_exports, git
+
+====================================================================================================
+(c) PLOTS JOINED TO THE NEW STANDS -- odisha_script/odisha_phase2_3_join.py --set districts --arms v120_3ha
+====================================================================================================
+  the re-run's files were presented to the join under the committed names in a temporary folder;
+  nothing else differs from the committed join.
+  committed plot table: odisha_script/phase3_3ha/phase2_plots_joined_districts.csv
+  new plot table:       phase2_plots_joined_districts.csv in the output folder
+  the two files are not identical byte for byte
+    plots: 274 committed, 274 new; the same plots in both
+    columns in both: 30
+    columns with at least one differing plot: 12 of 30 (of them field-data columns, which no re-run should change: 0)
+      column                       plots differing  one side empty  largest |difference|
+      v120_3ha_merged_id                       256               0                    25
+      v120_3ha_merged_cluster                  205               0                     4
+      v120_3ha_merged_area_ha                  256               0               2.06621
+      v120_3ha_merged_bdist_m                  119               0               42.8719
+      v120_3ha_snic_id                           8               0           2.36813e+09
+      v120_3ha_snic_cluster                    204               0                     4
+      v120_3ha_snic_area_ha                    265               0              0.601799
+      v120_3ha_snic_bdist_m                     63               0               13.9576
+      v120_3ha_dissolved_id                    228               0                    25
+      v120_3ha_dissolved_cluster               191               0                     4
+      v120_3ha_dissolved_area_ha               240               0               161.108
+      v120_3ha_dissolved_bdist_m               159               0                   inf
+      (inf: the value is infinite in one table and finite in the other, for 9 plot value(s) in all; the largest finite difference is then not shown)
+      (a stand number is a label: a re-run may give the same stand another number, so a
+       differing _id column alone does not mean a plot changed stand; see the lines below)
+    v120_3ha merged: plots with a stand 267 -> 267 (267 in both, 0 lost theirs, 0 gained one); stands holding them 198 -> 192
+      pairs of plots sharing a stand: 113 committed, 111 new, 79 in both; adjusted Rand index of the old grouping of plots against the new 0.7044 (1 = the same grouping)
+    v120_3ha snic: plots with a stand 265 -> 265 (265 in both, 0 lost theirs, 0 gained one); stands holding them 240 -> 242
+      pairs of plots sharing a stand: 29 committed, 26 new, 26 in both; adjusted Rand index of the old grouping of plots against the new 0.9454 (1 = the same grouping)
+    v120_3ha stand type of the plot's stand: plots with a type 267 -> 267 (267 in both). Type numbers are refitted per run and per district, so they are
+      compared as groupings (adjusted Rand index, 1 = the same grouping), with the count of
+      plots keeping the same number beside it:
+        ANGUL       n=  39   adjusted Rand index 0.3538   same type number 7 of 39
+        DHENKANAL   n=  75   adjusted Rand index 0.5398   same type number 31 of 75
+        KENDUJHAR   n=   8   adjusted Rand index 0.5088   same type number 1 of 8
+        KORAPUT     n= 145   adjusted Rand index 0.5059   same type number 23 of 145
+
+====================================================================================================
+(d), (e) PHASE 3 SCORES FROM THE NEW PLOT TABLE -- odisha_script/odisha_phase3_1_pairwise_score.py
+====================================================================================================
+
+  primary: options --arm v120_3ha --tag _3ha   (plus --joined and --out-dir, which only say where to read and write)
+    committed: odisha_script/odisha_phase3_1_score_v120_3ha_merged_districts_3ha.txt      new: odisha_phase3_1_score_v120_3ha_merged_districts_3ha.txt in the output folder
+       quantity                                                                      committed        new  new - committed
+       plots with a stand                                                                  267        267                0  
+       stands holding them                                                                 198        192               -6 *
+       multi-plot stands                                                                    44         51               +7 *
+       plots in multi-plot stands                                                          113        126              +13 *
+       A delineation, all pairs: pairs                                                  35,511     35,511                0  
+       A delineation, all pairs: field-alike %                                            28.7       28.7                0  
+       A delineation, all pairs: grouped-together %                                        0.3        0.3                0  
+       A delineation, all pairs: alike, same group                                          63         61               -2 *
+       A delineation, all pairs: alike, different                                       10,116     10,118               +2 *
+       A delineation, all pairs: differs, same group                                        50         50                0  
+       A delineation, all pairs: differs, different                                     25,282     25,282                0  
+       A delineation, all pairs: accuracy                                                0.714      0.714                0  
+       A delineation, all pairs: precision                                               0.558      0.550           -0.008 *
+       A delineation, all pairs: recall                                                  0.006      0.006                0  
+       A delineation, all pairs: F1                                                      0.012      0.012                0  
+    >>>A delineation, all pairs: ARI                                                   +0.0060    +0.0057          -0.0003 *
+       A delineation, restricted to plots in multi-plot stands: pairs                    6,328      7,875           +1,547 *
+       A delineation, restricted to plots in multi-plot stands: field-alike %             32.9       29.8             -3.1 *
+       A delineation, restricted to plots in multi-plot stands: grouped-together %         1.8        1.4             -0.4 *
+       A delineation, restricted to plots in multi-plot stands: alike, same group           63         61               -2 *
+       A delineation, restricted to plots in multi-plot stands: alike, different         2,018      2,286             +268 *
+       A delineation, restricted to plots in multi-plot stands: differs, same group         50         50                0  
+       A delineation, restricted to plots in multi-plot stands: differs, different       4,197      5,478           +1,281 *
+       A delineation, restricted to plots in multi-plot stands: accuracy                 0.673      0.703           +0.030 *
+       A delineation, restricted to plots in multi-plot stands: precision                0.558      0.550           -0.008 *
+       A delineation, restricted to plots in multi-plot stands: recall                   0.030      0.026           -0.004 *
+       A delineation, restricted to plots in multi-plot stands: F1                       0.057      0.050           -0.007 *
+    >>>A delineation, restricted to plots in multi-plot stands: ARI                    +0.0244    +0.0233          -0.0011 *
+       B labelling, ANGUL: plots                                                            39         39                0  
+    >>>B labelling, ANGUL: ARI                                                         +0.1461    +0.0968          -0.0493 *
+       B labelling, DHENKANAL: plots                                                        75         75                0  
+    >>>B labelling, DHENKANAL: ARI                                                     +0.1849    +0.1605          -0.0244 *
+       B labelling, KENDUJHAR: plots                                                         8          8                0  
+    >>>B labelling, KENDUJHAR: ARI                                                     +0.2265    +0.0718          -0.1547 *
+       B labelling, KORAPUT: plots                                                         145        145                0  
+    >>>B labelling, KORAPUT: ARI                                                       -0.0014    -0.0250          -0.0236 *
+       B labelling, same-district pairs: pairs                                          13,984     13,984                0  
+       B labelling, same-district pairs: field-alike %                                    36.7       36.7                0  
+       B labelling, same-district pairs: grouped-together %                               22.6       24.2             +1.6 *
+       B labelling, same-district pairs: alike, same group                               1,267      1,281              +14 *
+       B labelling, same-district pairs: alike, different                                3,865      3,851              -14 *
+       B labelling, same-district pairs: differs, same group                             1,891      2,101             +210 *
+       B labelling, same-district pairs: differs, different                              6,961      6,751             -210 *
+       B labelling, same-district pairs: accuracy                                        0.588      0.574           -0.014 *
+       B labelling, same-district pairs: precision                                       0.401      0.379           -0.022 *
+       B labelling, same-district pairs: recall                                          0.247      0.250           +0.003 *
+       B labelling, same-district pairs: F1                                              0.306      0.301           -0.005 *
+    >>>B labelling, same-district pairs: ARI                                           +0.0793    +0.0478          -0.0315 *
+       B labelling, same-district pairs more than 2 km apart: pairs                     10,651     10,651                0  
+       B labelling, same-district pairs more than 2 km apart: field-alike %               35.1       35.1                0  
+       B labelling, same-district pairs more than 2 km apart: grouped-together %          17.3       18.5             +1.2 *
+       B labelling, same-district pairs more than 2 km apart: alike, same group            679        668              -11 *
+       B labelling, same-district pairs more than 2 km apart: alike, different           3,055      3,066              +11 *
+       B labelling, same-district pairs more than 2 km apart: differs, same group        1,159      1,300             +141 *
+       B labelling, same-district pairs more than 2 km apart: differs, different         5,758      5,617             -141 *
+       B labelling, same-district pairs more than 2 km apart: accuracy                   0.604      0.590           -0.014 *
+       B labelling, same-district pairs more than 2 km apart: precision                  0.369      0.339           -0.030 *
+       B labelling, same-district pairs more than 2 km apart: recall                     0.182      0.179           -0.003 *
+       B labelling, same-district pairs more than 2 km apart: F1                         0.244      0.234           -0.010 *
+    59 numbers read from the score files; 41 differ (marked *). Lines marked >>> are the headline scores (ARI).
+    the new score file is NOT identical to the committed one
+
+  check S1 (field type 0 left out): options --arm v120_3ha --tag _3ha --exclude-types 0   (plus --joined and --out-dir, which only say where to read and write)
+    committed: odisha_script/odisha_phase3_1_score_v120_3ha_merged_districts_3ha_excl0.txt      new: odisha_phase3_1_score_v120_3ha_merged_districts_3ha_excl0.txt in the output folder
+       quantity                                                                      committed        new  new - committed
+       plots dropped by the exclusion                                                       16         16                0  
+       plots with a stand                                                                  251        251                0  
+       stands holding them                                                                 191        187               -4 *
+       multi-plot stands                                                                    40         47               +7 *
+       plots in multi-plot stands                                                          100        111              +11 *
+       A delineation, all pairs: pairs                                                  31,375     31,375                0  
+       A delineation, all pairs: field-alike %                                            32.1       32.1                0  
+       A delineation, all pairs: grouped-together %                                        0.3        0.3                0  
+       A delineation, all pairs: alike, same group                                          53         51               -2 *
+       A delineation, all pairs: alike, different                                       10,006     10,008               +2 *
+       A delineation, all pairs: differs, same group                                        36         36                0  
+       A delineation, all pairs: differs, different                                     21,280     21,280                0  
+       A delineation, all pairs: accuracy                                                0.680      0.680                0  
+       A delineation, all pairs: precision                                               0.596      0.586           -0.010 *
+       A delineation, all pairs: recall                                                  0.005      0.005                0  
+       A delineation, all pairs: F1                                                      0.010      0.010                0  
+    >>>A delineation, all pairs: ARI                                                   +0.0048    +0.0046          -0.0002 *
+       A delineation, restricted to plots in multi-plot stands: pairs                    4,950      6,105           +1,155 *
+       A delineation, restricted to plots in multi-plot stands: field-alike %             38.8       36.1             -2.7 *
+       A delineation, restricted to plots in multi-plot stands: grouped-together %         1.8        1.4             -0.4 *
+       A delineation, restricted to plots in multi-plot stands: alike, same group           53         51               -2 *
+       A delineation, restricted to plots in multi-plot stands: alike, different         1,870      2,151             +281 *
+       A delineation, restricted to plots in multi-plot stands: differs, same group         36         36                0  
+       A delineation, restricted to plots in multi-plot stands: differs, different       2,991      3,867             +876 *
+       A delineation, restricted to plots in multi-plot stands: accuracy                 0.615      0.642           +0.027 *
+       A delineation, restricted to plots in multi-plot stands: precision                0.596      0.586           -0.010 *
+       A delineation, restricted to plots in multi-plot stands: recall                   0.028      0.023           -0.005 *
+       A delineation, restricted to plots in multi-plot stands: F1                       0.053      0.045           -0.008 *
+    >>>A delineation, restricted to plots in multi-plot stands: ARI                    +0.0190    +0.0176          -0.0014 *
+       B labelling, ANGUL: plots                                                            37         37                0  
+    >>>B labelling, ANGUL: ARI                                                         +0.1598    +0.0928          -0.0670 *
+       B labelling, DHENKANAL: plots                                                        75         75                0  
+    >>>B labelling, DHENKANAL: ARI                                                     +0.1849    +0.1605          -0.0244 *
+       B labelling, KENDUJHAR: plots                                                         6          6                0  
+    >>>B labelling, KENDUJHAR: ARI                                                     +0.3077    -0.2500          -0.5577 *
+       B labelling, KORAPUT: plots                                                         133        133                0  
+    >>>B labelling, KORAPUT: ARI                                                       -0.0074    -0.0115          -0.0041 *
+       B labelling, same-district pairs: pairs                                          12,234     12,234                0  
+       B labelling, same-district pairs: field-alike %                                    41.4       41.4                0  
+       B labelling, same-district pairs: grouped-together %                               22.6       22.9             +0.3 *
+       B labelling, same-district pairs: alike, same group                               1,240      1,224              -16 *
+       B labelling, same-district pairs: alike, different                                3,824      3,840              +16 *
+       B labelling, same-district pairs: differs, same group                             1,521      1,578              +57 *
+       B labelling, same-district pairs: differs, different                              5,649      5,592              -57 *
+       B labelling, same-district pairs: accuracy                                        0.563      0.557           -0.006 *
+       B labelling, same-district pairs: precision                                       0.449      0.437           -0.012 *
+       B labelling, same-district pairs: recall                                          0.245      0.242           -0.003 *
+       B labelling, same-district pairs: F1                                              0.317      0.311           -0.006 *
+    >>>B labelling, same-district pairs: ARI                                           +0.0822    +0.0496          -0.0326 *
+       B labelling, same-district pairs more than 2 km apart: pairs                      9,351      9,351                0  
+       B labelling, same-district pairs more than 2 km apart: field-alike %               39.5       39.5                0  
+       B labelling, same-district pairs more than 2 km apart: grouped-together %          17.1       17.2             +0.1 *
+       B labelling, same-district pairs more than 2 km apart: alike, same group            678        637              -41 *
+       B labelling, same-district pairs more than 2 km apart: alike, different           3,014      3,055              +41 *
+       B labelling, same-district pairs more than 2 km apart: differs, same group          925        969              +44 *
+       B labelling, same-district pairs more than 2 km apart: differs, different         4,734      4,690              -44 *
+       B labelling, same-district pairs more than 2 km apart: accuracy                   0.579      0.570           -0.009 *
+       B labelling, same-district pairs more than 2 km apart: precision                  0.423      0.397           -0.026 *
+       B labelling, same-district pairs more than 2 km apart: recall                     0.184      0.173           -0.011 *
+       B labelling, same-district pairs more than 2 km apart: F1                         0.256      0.240           -0.016 *
+    60 numbers read from the score files; 41 differ (marked *). Lines marked >>> are the headline scores (ARI).
+    the new score file is NOT identical to the committed one
+
+  check S2 (four field types): options --arm v120_3ha --tag _3ha --field-types odisha_script/odisha_phase3_0_field_types_k4.csv   (plus --joined and --out-dir, which only say where to read and write)
+    committed: odisha_script/odisha_phase3_1_score_v120_3ha_merged_districts_3ha_ft-k4.txt      new: odisha_phase3_1_score_v120_3ha_merged_districts_3ha_ft-k4.txt in the output folder
+       quantity                                                                      committed        new  new - committed
+       plots with a stand                                                                  267        267                0  
+       stands holding them                                                                 198        192               -6 *
+       multi-plot stands                                                                    44         51               +7 *
+       plots in multi-plot stands                                                          113        126              +13 *
+       A delineation, all pairs: pairs                                                  35,511     35,511                0  
+       A delineation, all pairs: field-alike %                                            39.3       39.3                0  
+       A delineation, all pairs: grouped-together %                                        0.3        0.3                0  
+       A delineation, all pairs: alike, same group                                          79         77               -2 *
+       A delineation, all pairs: alike, different                                       13,880     13,882               +2 *
+       A delineation, all pairs: differs, same group                                        34         34                0  
+       A delineation, all pairs: differs, different                                     21,518     21,518                0  
+       A delineation, all pairs: accuracy                                                0.608      0.608                0  
+       A delineation, all pairs: precision                                               0.699      0.694           -0.005 *
+       A delineation, all pairs: recall                                                  0.006      0.006                0  
+       A delineation, all pairs: F1                                                      0.011      0.011                0  
+    >>>A delineation, all pairs: ARI                                                   +0.0049    +0.0048          -0.0001 *
+       A delineation, restricted to plots in multi-plot stands: pairs                    6,328      7,875           +1,547 *
+       A delineation, restricted to plots in multi-plot stands: field-alike %             45.0       40.1             -4.9 *
+       A delineation, restricted to plots in multi-plot stands: grouped-together %         1.8        1.4             -0.4 *
+       A delineation, restricted to plots in multi-plot stands: alike, same group           79         77               -2 *
+       A delineation, restricted to plots in multi-plot stands: alike, different         2,767      3,083             +316 *
+       A delineation, restricted to plots in multi-plot stands: differs, same group         34         34                0  
+       A delineation, restricted to plots in multi-plot stands: differs, different       3,448      4,681           +1,233 *
+       A delineation, restricted to plots in multi-plot stands: accuracy                 0.557      0.604           +0.047 *
+       A delineation, restricted to plots in multi-plot stands: precision                0.699      0.694           -0.005 *
+       A delineation, restricted to plots in multi-plot stands: recall                   0.028      0.024           -0.004 *
+       A delineation, restricted to plots in multi-plot stands: F1                       0.053      0.047           -0.006 *
+    >>>A delineation, restricted to plots in multi-plot stands: ARI                    +0.0197    +0.0204          +0.0007 *
+       B labelling, ANGUL: plots                                                            39         39                0  
+    >>>B labelling, ANGUL: ARI                                                         +0.1196    +0.0365          -0.0831 *
+       B labelling, DHENKANAL: plots                                                        75         75                0  
+    >>>B labelling, DHENKANAL: ARI                                                     +0.1778    +0.2065          +0.0287 *
+       B labelling, KENDUJHAR: plots                                                         8          8                0  
+    >>>B labelling, KENDUJHAR: ARI                                                     +0.2265    +0.0718          -0.1547 *
+       B labelling, KORAPUT: plots                                                         145        145                0  
+    >>>B labelling, KORAPUT: ARI                                                       -0.0029    -0.0438          -0.0409 *
+       B labelling, same-district pairs: pairs                                          13,984     13,984                0  
+       B labelling, same-district pairs: field-alike %                                    55.5       55.5                0  
+       B labelling, same-district pairs: grouped-together %                               22.6       24.2             +1.6 *
+       B labelling, same-district pairs: alike, same group                               1,852      1,871              +19 *
+       B labelling, same-district pairs: alike, different                                5,905      5,886              -19 *
+       B labelling, same-district pairs: differs, same group                             1,306      1,511             +205 *
+       B labelling, same-district pairs: differs, different                              4,921      4,716             -205 *
+       B labelling, same-district pairs: accuracy                                        0.484      0.471           -0.013 *
+       B labelling, same-district pairs: precision                                       0.586      0.553           -0.033 *
+       B labelling, same-district pairs: recall                                          0.239      0.241           +0.002 *
+       B labelling, same-district pairs: F1                                              0.339      0.336           -0.003 *
+    >>>B labelling, same-district pairs: ARI                                           +0.0726    +0.0417          -0.0309 *
+       B labelling, same-district pairs more than 2 km apart: pairs                     10,651     10,651                0  
+       B labelling, same-district pairs more than 2 km apart: field-alike %               53.7       53.7                0  
+       B labelling, same-district pairs more than 2 km apart: grouped-together %          17.3       18.5             +1.2 *
+       B labelling, same-district pairs more than 2 km apart: alike, same group          1,021      1,019               -2 *
+       B labelling, same-district pairs more than 2 km apart: alike, different           4,694      4,696               +2 *
+       B labelling, same-district pairs more than 2 km apart: differs, same group          817        949             +132 *
+       B labelling, same-district pairs more than 2 km apart: differs, different         4,119      3,987             -132 *
+       B labelling, same-district pairs more than 2 km apart: accuracy                   0.483      0.470           -0.013 *
+       B labelling, same-district pairs more than 2 km apart: precision                  0.555      0.518           -0.037 *
+       B labelling, same-district pairs more than 2 km apart: recall                     0.179      0.178           -0.001 *
+       B labelling, same-district pairs more than 2 km apart: F1                         0.270      0.265           -0.005 *
+    59 numbers read from the score files; 41 differ (marked *). Lines marked >>> are the headline scores (ARI).
+    the new score file is NOT identical to the committed one
+
+  check S3 (all-rows field types): options --arm v120_3ha --tag _3ha --field-types odisha_script/odisha_phase3_0_field_types_allrows.csv   (plus --joined and --out-dir, which only say where to read and write)
+    committed: odisha_script/odisha_phase3_1_score_v120_3ha_merged_districts_3ha_ft-allrows.txt      new: odisha_phase3_1_score_v120_3ha_merged_districts_3ha_ft-allrows.txt in the output folder
+       quantity                                                                      committed        new  new - committed
+       plots with a stand                                                                  267        267                0  
+       stands holding them                                                                 198        192               -6 *
+       multi-plot stands                                                                    44         51               +7 *
+       plots in multi-plot stands                                                          113        126              +13 *
+       A delineation, all pairs: pairs                                                  35,511     35,511                0  
+       A delineation, all pairs: field-alike %                                            29.1       29.1                0  
+       A delineation, all pairs: grouped-together %                                        0.3        0.3                0  
+       A delineation, all pairs: alike, same group                                          67         64               -3 *
+       A delineation, all pairs: alike, different                                       10,257     10,260               +3 *
+       A delineation, all pairs: differs, same group                                        46         47               +1 *
+       A delineation, all pairs: differs, different                                     25,141     25,140               -1 *
+       A delineation, all pairs: accuracy                                                0.710      0.710                0  
+       A delineation, all pairs: precision                                               0.593      0.577           -0.016 *
+       A delineation, all pairs: recall                                                  0.006      0.006                0  
+       A delineation, all pairs: F1                                                      0.013      0.012           -0.001 *
+    >>>A delineation, all pairs: ARI                                                   +0.0066    +0.0061          -0.0005 *
+       A delineation, restricted to plots in multi-plot stands: pairs                    6,328      7,875           +1,547 *
+       A delineation, restricted to plots in multi-plot stands: field-alike %             34.5       30.2             -4.3 *
+       A delineation, restricted to plots in multi-plot stands: grouped-together %         1.8        1.4             -0.4 *
+       A delineation, restricted to plots in multi-plot stands: alike, same group           67         64               -3 *
+       A delineation, restricted to plots in multi-plot stands: alike, different         2,113      2,316             +203 *
+       A delineation, restricted to plots in multi-plot stands: differs, same group         46         47               +1 *
+       A delineation, restricted to plots in multi-plot stands: differs, different       4,102      5,448           +1,346 *
+       A delineation, restricted to plots in multi-plot stands: accuracy                 0.659      0.700           +0.041 *
+       A delineation, restricted to plots in multi-plot stands: precision                0.593      0.577           -0.016 *
+       A delineation, restricted to plots in multi-plot stands: recall                   0.031      0.027           -0.004 *
+       A delineation, restricted to plots in multi-plot stands: F1                       0.058      0.051           -0.007 *
+    >>>A delineation, restricted to plots in multi-plot stands: ARI                    +0.0253    +0.0251          -0.0002 *
+       B labelling, ANGUL: plots                                                            39         39                0  
+    >>>B labelling, ANGUL: ARI                                                         +0.2161    +0.0837          -0.1324 *
+       B labelling, DHENKANAL: plots                                                        75         75                0  
+    >>>B labelling, DHENKANAL: ARI                                                     +0.1675    +0.1513          -0.0162 *
+       B labelling, KENDUJHAR: plots                                                         8          8                0  
+    >>>B labelling, KENDUJHAR: ARI                                                     +0.5088    +0.5088                0  
+       B labelling, KORAPUT: plots                                                         145        145                0  
+    >>>B labelling, KORAPUT: ARI                                                       -0.0015    -0.0243          -0.0228 *
+       B labelling, same-district pairs: pairs                                          13,984     13,984                0  
+       B labelling, same-district pairs: field-alike %                                    36.7       36.7                0  
+       B labelling, same-district pairs: grouped-together %                               22.6       24.2             +1.6 *
+       B labelling, same-district pairs: alike, same group                               1,267      1,276               +9 *
+       B labelling, same-district pairs: alike, different                                3,863      3,854               -9 *
+       B labelling, same-district pairs: differs, same group                             1,891      2,106             +215 *
+       B labelling, same-district pairs: differs, different                              6,963      6,748             -215 *
+       B labelling, same-district pairs: accuracy                                        0.589      0.574           -0.015 *
+       B labelling, same-district pairs: precision                                       0.401      0.377           -0.024 *
+       B labelling, same-district pairs: recall                                          0.247      0.249           +0.002 *
+       B labelling, same-district pairs: F1                                              0.306      0.300           -0.006 *
+    >>>B labelling, same-district pairs: ARI                                           +0.0930    +0.0568          -0.0362 *
+       B labelling, same-district pairs more than 2 km apart: pairs                     10,651     10,651                0  
+       B labelling, same-district pairs more than 2 km apart: field-alike %               35.0       35.0                0  
+       B labelling, same-district pairs more than 2 km apart: grouped-together %          17.3       18.5             +1.2 *
+       B labelling, same-district pairs more than 2 km apart: alike, same group            672        658              -14 *
+       B labelling, same-district pairs more than 2 km apart: alike, different           3,053      3,067              +14 *
+       B labelling, same-district pairs more than 2 km apart: differs, same group        1,166      1,310             +144 *
+       B labelling, same-district pairs more than 2 km apart: differs, different         5,760      5,616             -144 *
+       B labelling, same-district pairs more than 2 km apart: accuracy                   0.604      0.589           -0.015 *
+       B labelling, same-district pairs more than 2 km apart: precision                  0.366      0.334           -0.032 *
+       B labelling, same-district pairs more than 2 km apart: recall                     0.180      0.177           -0.003 *
+       B labelling, same-district pairs more than 2 km apart: F1                         0.242      0.231           -0.011 *
+    59 numbers read from the score files; 44 differ (marked *). Lines marked >>> are the headline scores (ARI).
+    the new score file is NOT identical to the committed one
+
+====================================================================================================
+IN SHORT
+====================================================================================================
+  stands angul stands_merged                 DIFFERS
+  stands angul stands_snic                   DIFFERS
+  stands dhenkanal stands_merged             DIFFERS
+  stands dhenkanal stands_snic               DIFFERS
+  stands kendujhar stands_merged             DIFFERS
+  stands kendujhar stands_snic               DIFFERS
+  stands koraput stands_merged               DIFFERS
+  stands koraput stands_snic                 DIFFERS
+  run record angul                           DIFFERS
+  run record dhenkanal                       DIFFERS
+  run record kendujhar                       DIFFERS
+  run record koraput                         DIFFERS
+  plot table (columns in both)               DIFFERS
+  scores, primary                            DIFFERS
+  scores, check S1 (field type 0 left out)   DIFFERS
+  scores, check S2 (four field types)        DIFFERS
+  scores, check S3 (all-rows field types)    DIFFERS
+
+  The re-run is not identical to the committed outputs; the sections above say by how much.
+
+====================================================================================================
+STANDS IN FULL -- one table per district and layer
+====================================================================================================
+
+angul -- stands_merged
+  old: odisha_v120_3ha_angul_stands_merged.geojson   (stand id: stand_lbl)
+  new: odisha_v120_3ha_angul_repro_stands_merged.geojson   (stand id: stand_lbl)
+  Areas are in hectares, measured in a Lambert azimuthal equal-area projection centred on the data (lat 20.7851, lon 84.6826).
+
+                                                   old           new     new - old
+  polygons                                         203           207            +4
+  stands                                           200           204            +4
+  stands in more than one piece                      3             3             0
+  invalid polygons repaired                          0             0              
+  features left out (no geometry or id)              0             0              
+  total stand area                              439.13        439.13          0.00
+  area covered (footprint)                      439.13        439.13          0.00
+  median stand area                               2.35          2.33         -0.02
+  largest stand                                   3.00          3.02         +0.02
+
+  area covered by both: 439.13 ha = 100.0000% of the old footprint, 100.0000% of the new; footprint IoU 1.000000
+  covered by the old only: 0.00 ha; by the new only: 0.00 ha
+
+  SAME OUTLINE (after snapping to 1e-07 degrees, about 1 cm)
+    stands:   18 of 200 old stands have their outline in the new layer (18 of 204 new stands have theirs in the old); 1 of them also carry the same id
+    polygons: 19 outlines in both, of 203 old and 207 new
+    stand ids: 200 in both, 0 only in the old, 4 only in the new (an id is a label: a re-run may number the same stand differently)
+
+  INTERSECTION OVER UNION (IoU), each stand against the stand of the other layer that
+  overlaps it most; means are weighted by stand area. 1 = the same stands, 0 = no overlap.
+                                                      old -> new      new -> old
+    area-weighted mean IoU                              0.751582        0.751648
+    unweighted mean IoU                                 0.744670        0.733008
+    median IoU                                          0.824252        0.817750
+    lowest IoU                                          0.042471        0.018519
+    share of area in stands with IoU >= 0.5             81.3544%        81.3339%
+    share of area in stands with IoU >= 0.9             37.1043%        37.0952%
+    share of area in stands with IoU >= 0.99            14.1688%        14.1620%
+    stands with IoU >= 0.5                            160 of 200      160 of 204
+    stands with IoU >= 0.9                             75 of 200       75 of 204
+    stands with IoU >= 0.99                            31 of 200       31 of 204
+    stands that nothing overlaps                               0               0
+      their area (ha)                                       0.00            0.00
+    stands that are the best match of 2 or more               15              12
+    (last line: old stands that two or more new stands match best, a sign of splitting;
+     new stands that two or more old stands match best, a sign of merging)
+
+  STAND TYPES (cluster_id), over the area where both layers have a typed stand (418.09 of 439.13 ha in common)
+    types in the old layer: [0, 1, 2, 3, 4]; in the new: [0, 1, 2, 3, 4]
+    stands without a type: 9 old, 9 new; stands whose pieces carry different types: 0 old, 1 new
+    share of that area with the same type number:            22.1111%
+    the same after the best one-to-one renumbering of types: 67.7110%   (old -> new: {0: 0, 1: 2, 2: 3, 3: 4, 4: 1})
+    stands with the same outline that also carry the same type number: 7 of 18
+    area in hectares, old type (rows) against new type (columns):
+                       0           1           2           3           4
+           0       81.14       10.06        2.92       45.04        3.52
+           1        0.02        6.74       63.81        0.00        0.00
+           2        0.00        0.11        0.10        0.00        0.00
+           3       35.75        3.18        0.00        4.42       52.88
+           4        6.36       85.27       16.68        0.06        0.05
+
+angul -- stands_snic
+  old: odisha_v120_3ha_angul_stands_snic.geojson   (stand id: snic_label)
+  new: odisha_v120_3ha_angul_repro_stands_snic.geojson   (stand id: snic_label)
+  Areas are in hectares, measured in a Lambert azimuthal equal-area projection centred on the data (lat 20.7851, lon 84.6827).
+
+                                                   old           new     new - old
+  polygons                                       1,070         1,069            -1
+  stands                                         1,062         1,064            +2
+  stands in more than one piece                      7             4            -3
+  invalid polygons repaired                          0             0              
+  features left out (no geometry or id)              0             0              
+  total stand area                              379.72        380.63         +0.91
+  area covered (footprint)                      379.72        380.63         +0.91
+  median stand area                               0.31          0.31          0.00
+  largest stand                                   1.43          1.45         +0.02
+
+  area covered by both: 379.33 ha = 99.8974% of the old footprint, 99.6587% of the new; footprint IoU 0.995567
+  covered by the old only: 0.39 ha; by the new only: 1.30 ha
+
+  SAME OUTLINE (after snapping to 1e-07 degrees, about 1 cm)
+    stands:   539 of 1062 old stands have their outline in the new layer (539 of 1064 new stands have theirs in the old); 539 of them also carry the same id
+    polygons: 544 outlines in both, of 1070 old and 1069 new
+    stand ids: 1060 in both, 2 only in the old, 4 only in the new (an id is a label: a re-run may number the same stand differently)
+
+  INTERSECTION OVER UNION (IoU), each stand against the stand of the other layer that
+  overlaps it most; means are weighted by stand area. 1 = the same stands, 0 = no overlap.
+                                                      old -> new      new -> old
+    area-weighted mean IoU                              0.929282        0.926953
+    unweighted mean IoU                                 0.928281        0.926451
+    median IoU                                          1.000000        1.000000
+    lowest IoU                                          0.022727        0.012500
+    share of area in stands with IoU >= 0.5             97.3471%        97.3088%
+    share of area in stands with IoU >= 0.9             79.0082%        78.7721%
+    share of area in stands with IoU >= 0.99            39.9406%        39.8452%
+    stands with IoU >= 0.5                          1027 of 1062    1027 of 1064
+    stands with IoU >= 0.9                           848 of 1062     848 of 1064
+    stands with IoU >= 0.99                          543 of 1062     543 of 1064
+    stands that nothing overlaps                               0               0
+      their area (ha)                                       0.00            0.00
+    stands that are the best match of 2 or more               11              10
+    (last line: old stands that two or more new stands match best, a sign of splitting;
+     new stands that two or more old stands match best, a sign of merging)
+
+  STAND TYPES (cluster_id), over the area where both layers have a typed stand (379.33 of 379.33 ha in common)
+    types in the old layer: [0, 1, 2, 3, 4]; in the new: [0, 1, 2, 3, 4]
+    stands without a type: 0 old, 0 new; stands whose pieces carry different types: 0 old, 0 new
+    share of that area with the same type number:            22.9316%
+    the same after the best one-to-one renumbering of types: 66.6463%   (old -> new: {0: 0, 1: 2, 2: 3, 3: 4, 4: 1})
+    stands with the same outline that also carry the same type number: 116 of 539
+    area in hectares, old type (rows) against new type (columns):
+                       0           1           2           3           4
+           0       80.36        9.39        0.77       45.46        3.52
+           1        0.02        2.06       37.87        0.00        0.00
+           2        0.00        0.11        0.10        0.00        0.00
+           3       35.94        3.18        0.00        4.42       53.18
+           4        7.50       81.40       13.95        0.06        0.05
+
+dhenkanal -- stands_merged
+  old: odisha_v120_3ha_dhenkanal_stands_merged.geojson   (stand id: stand_lbl)
+  new: odisha_v120_3ha_dhenkanal_repro_stands_merged.geojson   (stand id: stand_lbl)
+  Areas are in hectares, measured in a Lambert azimuthal equal-area projection centred on the data (lat 21.0441, lon 85.5304).
+
+                                                   old           new     new - old
+  polygons                                         473           474            +1
+  stands                                           462           462             0
+  stands in more than one piece                     11            12            +1
+  invalid polygons repaired                          0             0              
+  features left out (no geometry or id)              0             0              
+  total stand area                              995.87        995.87          0.00
+  area covered (footprint)                      995.87        995.87          0.00
+  median stand area                               2.28          2.32         +0.03
+  largest stand                                   3.03          3.03          0.00
+
+  area covered by both: 995.87 ha = 100.0000% of the old footprint, 100.0000% of the new; footprint IoU 1.000000
+  covered by the old only: 0.00 ha; by the new only: 0.00 ha
+
+  SAME OUTLINE (after snapping to 1e-07 degrees, about 1 cm)
+    stands:   43 of 462 old stands have their outline in the new layer (43 of 462 new stands have theirs in the old); 8 of them also carry the same id
+    polygons: 52 outlines in both, of 473 old and 474 new
+    stand ids: 462 in both, 0 only in the old, 0 only in the new (an id is a label: a re-run may number the same stand differently)
+
+  INTERSECTION OVER UNION (IoU), each stand against the stand of the other layer that
+  overlaps it most; means are weighted by stand area. 1 = the same stands, 0 = no overlap.
+                                                      old -> new      new -> old
+    area-weighted mean IoU                              0.685608        0.688133
+    unweighted mean IoU                                 0.674390        0.676310
+    median IoU                                          0.687843        0.687843
+    lowest IoU                                          0.022222        0.020134
+    share of area in stands with IoU >= 0.5             69.3689%        70.2267%
+    share of area in stands with IoU >= 0.9             33.8738%        34.0164%
+    share of area in stands with IoU >= 0.99            15.2929%        15.2909%
+    stands with IoU >= 0.5                            314 of 462      314 of 462
+    stands with IoU >= 0.9                            161 of 462      161 of 462
+    stands with IoU >= 0.99                            75 of 462       75 of 462
+    stands that nothing overlaps                               0               0
+      their area (ha)                                       0.00            0.00
+    stands that are the best match of 2 or more               49              48
+    (last line: old stands that two or more new stands match best, a sign of splitting;
+     new stands that two or more old stands match best, a sign of merging)
+
+  STAND TYPES (cluster_id), over the area where both layers have a typed stand (960.31 of 995.87 ha in common)
+    types in the old layer: [0, 1, 2, 3, 4]; in the new: [0, 1, 2, 3, 4]
+    stands without a type: 14 old, 17 new; stands whose pieces carry different types: 2 old, 4 new
+    share of that area with the same type number:            33.3552%
+    the same after the best one-to-one renumbering of types: 71.6855%   (old -> new: {0: 3, 1: 1, 2: 0, 3: 2, 4: 4})
+    stands with the same outline that also carry the same type number: 17 of 43
+    area in hectares, old type (rows) against new type (columns):
+                       0           1           2           3           4
+           0        0.00        0.00        0.00      206.38        1.05
+           1        0.91       68.28        0.00        0.00        0.00
+           2       99.49        0.83      110.57        0.00        0.00
+           3        7.71       63.83      172.79        0.00        0.00
+           4        0.00        0.00        0.00       87.00      141.46
+
+dhenkanal -- stands_snic
+  old: odisha_v120_3ha_dhenkanal_stands_snic.geojson   (stand id: snic_label)
+  new: odisha_v120_3ha_dhenkanal_repro_stands_snic.geojson   (stand id: snic_label)
+  Areas are in hectares, measured in a Lambert azimuthal equal-area projection centred on the data (lat 21.0441, lon 85.5304).
+
+                                                   old           new     new - old
+  polygons                                       2,593         2,595            +2
+  stands                                         2,571         2,571             0
+  stands in more than one piece                     22            24            +2
+  invalid polygons repaired                          0             0              
+  features left out (no geometry or id)              0             0              
+  total stand area                              921.54        920.70         -0.84
+  area covered (footprint)                      921.54        920.70         -0.84
+  median stand area                               0.31          0.31          0.00
+  largest stand                                   2.01          1.67         -0.34
+
+  area covered by both: 919.80 ha = 99.8111% of the old footprint, 99.9022% of the new; footprint IoU 0.997137
+  covered by the old only: 1.74 ha; by the new only: 0.90 ha
+
+  SAME OUTLINE (after snapping to 1e-07 degrees, about 1 cm)
+    stands:   1230 of 2571 old stands have their outline in the new layer (1230 of 2571 new stands have theirs in the old); 1230 of them also carry the same id
+    polygons: 1249 outlines in both, of 2593 old and 2595 new
+    stand ids: 2568 in both, 3 only in the old, 3 only in the new (an id is a label: a re-run may number the same stand differently)
+
+  INTERSECTION OVER UNION (IoU), each stand against the stand of the other layer that
+  overlaps it most; means are weighted by stand area. 1 = the same stands, 0 = no overlap.
+                                                      old -> new      new -> old
+    area-weighted mean IoU                              0.916523        0.915856
+    unweighted mean IoU                                 0.918223        0.917519
+    median IoU                                          0.983051        0.983051
+    lowest IoU                                          0.023256        0.023810
+    share of area in stands with IoU >= 0.5             97.1497%        97.0504%
+    share of area in stands with IoU >= 0.9             74.6648%        74.7993%
+    share of area in stands with IoU >= 0.99            37.9033%        37.9400%
+    stands with IoU >= 0.5                          2478 of 2571    2478 of 2571
+    stands with IoU >= 0.9                          1964 of 2571    1964 of 2571
+    stands with IoU >= 0.99                         1234 of 2571    1234 of 2571
+    stands that nothing overlaps                               0               0
+      their area (ha)                                       0.00            0.00
+    stands that are the best match of 2 or more               32              20
+    (last line: old stands that two or more new stands match best, a sign of splitting;
+     new stands that two or more old stands match best, a sign of merging)
+
+  STAND TYPES (cluster_id), over the area where both layers have a typed stand (919.80 of 919.80 ha in common)
+    types in the old layer: [0, 1, 2, 3, 4]; in the new: [0, 1, 2, 3, 4]
+    stands without a type: 0 old, 0 new; stands whose pieces carry different types: 0 old, 2 new
+    share of that area with the same type number:            34.3618%
+    the same after the best one-to-one renumbering of types: 70.6889%   (old -> new: {0: 3, 1: 1, 2: 0, 3: 2, 4: 4})
+    stands with the same outline that also carry the same type number: 465 of 1230
+    area in hectares, old type (rows) against new type (columns):
+                       0           1           2           3           4
+           0        0.00        0.00        0.00      182.89        1.05
+           1        0.64       67.63        0.00        0.00        0.00
+           2       94.50        0.98      107.40        0.00        0.00
+           3        7.71       63.83      164.15        0.00        0.00
+           4        0.00        0.00        0.00       87.99      141.03
+
+kendujhar -- stands_merged
+  old: odisha_v120_3ha_kendujhar_stands_merged.geojson   (stand id: stand_lbl)
+  new: odisha_v120_3ha_kendujhar_repro_stands_merged.geojson   (stand id: stand_lbl)
+  Areas are in hectares, measured in a Lambert azimuthal equal-area projection centred on the data (lat 21.5945, lon 85.3976).
+
+                                                   old           new     new - old
+  polygons                                         186           184            -2
+  stands                                           183           180            -3
+  stands in more than one piece                      3             4            +1
+  invalid polygons repaired                          0             0              
+  features left out (no geometry or id)              0             0              
+  total stand area                              404.53        404.53          0.00
+  area covered (footprint)                      404.53        404.53          0.00
+  median stand area                               2.35          2.40         +0.05
+  largest stand                                   3.00          3.02         +0.02
+
+  area covered by both: 404.53 ha = 100.0000% of the old footprint, 100.0000% of the new; footprint IoU 1.000000
+  covered by the old only: 0.00 ha; by the new only: 0.00 ha
+
+  SAME OUTLINE (after snapping to 1e-07 degrees, about 1 cm)
+    stands:   10 of 183 old stands have their outline in the new layer (10 of 180 new stands have theirs in the old); 3 of them also carry the same id
+    polygons: 13 outlines in both, of 186 old and 184 new
+    stand ids: 180 in both, 3 only in the old, 0 only in the new (an id is a label: a re-run may number the same stand differently)
+
+  INTERSECTION OVER UNION (IoU), each stand against the stand of the other layer that
+  overlaps it most; means are weighted by stand area. 1 = the same stands, 0 = no overlap.
+                                                      old -> new      new -> old
+    area-weighted mean IoU                              0.674766        0.678004
+    unweighted mean IoU                                 0.658675        0.665134
+    median IoU                                          0.636964        0.662204
+    lowest IoU                                          0.123376        0.187023
+    share of area in stands with IoU >= 0.5             66.7252%        67.6078%
+    share of area in stands with IoU >= 0.9             32.7779%        32.8447%
+    share of area in stands with IoU >= 0.99            11.7806%        11.7632%
+    stands with IoU >= 0.5                            117 of 183      117 of 180
+    stands with IoU >= 0.9                             57 of 183       57 of 180
+    stands with IoU >= 0.99                            22 of 183       22 of 180
+    stands that nothing overlaps                               0               0
+      their area (ha)                                       0.00            0.00
+    stands that are the best match of 2 or more               22              22
+    (last line: old stands that two or more new stands match best, a sign of splitting;
+     new stands that two or more old stands match best, a sign of merging)
+
+  STAND TYPES (cluster_id), over the area where both layers have a typed stand (379.53 of 404.53 ha in common)
+    types in the old layer: [0, 1, 2, 3, 4]; in the new: [0, 1, 2, 3, 4]
+    stands without a type: 10 old, 7 new; stands whose pieces carry different types: 1 old, 0 new
+    share of that area with the same type number:            8.1269%
+    the same after the best one-to-one renumbering of types: 68.1170%   (old -> new: {0: 3, 1: 0, 2: 1, 3: 4, 4: 2})
+    stands with the same outline that also carry the same type number: 1 of 10
+    area in hectares, old type (rows) against new type (columns):
+                       0           1           2           3           4
+           0        0.02        2.22       17.52       75.78        0.38
+           1        0.01       21.42        0.00        0.05        0.00
+           2        0.09       38.70        0.58        8.01        0.01
+           3       28.18       12.30        7.57        1.97       50.19
+           4        9.42        2.65       93.84        1.75        6.85
+
+kendujhar -- stands_snic
+  old: odisha_v120_3ha_kendujhar_stands_snic.geojson   (stand id: snic_label)
+  new: odisha_v120_3ha_kendujhar_repro_stands_snic.geojson   (stand id: snic_label)
+  Areas are in hectares, measured in a Lambert azimuthal equal-area projection centred on the data (lat 21.5945, lon 85.3976).
+
+                                                   old           new     new - old
+  polygons                                         946           944            -2
+  stands                                           935           934            -1
+  stands in more than one piece                     10             9            -1
+  invalid polygons repaired                          0             0              
+  features left out (no geometry or id)              0             0              
+  total stand area                              338.83        338.88         +0.05
+  area covered (footprint)                      338.83        338.88         +0.05
+  median stand area                               0.33          0.33          0.00
+  largest stand                                   1.72          1.74         +0.02
+
+  area covered by both: 337.36 ha = 99.5661% of the old footprint, 99.5514% of the new; footprint IoU 0.991214
+  covered by the old only: 1.47 ha; by the new only: 1.52 ha
+
+  SAME OUTLINE (after snapping to 1e-07 degrees, about 1 cm)
+    stands:   437 of 935 old stands have their outline in the new layer (437 of 934 new stands have theirs in the old); 437 of them also carry the same id
+    polygons: 446 outlines in both, of 946 old and 944 new
+    stand ids: 931 in both, 4 only in the old, 3 only in the new (an id is a label: a re-run may number the same stand differently)
+
+  INTERSECTION OVER UNION (IoU), each stand against the stand of the other layer that
+  overlaps it most; means are weighted by stand area. 1 = the same stands, 0 = no overlap.
+                                                      old -> new      new -> old
+    area-weighted mean IoU                              0.929970        0.929217
+    unweighted mean IoU                                 0.930050        0.930248
+    median IoU                                          0.982143        0.982451
+    lowest IoU                                          0.034188        0.014706
+    share of area in stands with IoU >= 0.5             98.0696%        98.0050%
+    share of area in stands with IoU >= 0.9             79.3501%        79.2262%
+    share of area in stands with IoU >= 0.99            38.6168%        38.6171%
+    stands with IoU >= 0.5                            912 of 935      912 of 934
+    stands with IoU >= 0.9                            741 of 935      741 of 934
+    stands with IoU >= 0.99                           439 of 935      439 of 934
+    stands that nothing overlaps                               0               0
+      their area (ha)                                       0.00            0.00
+    stands that are the best match of 2 or more                6              10
+    (last line: old stands that two or more new stands match best, a sign of splitting;
+     new stands that two or more old stands match best, a sign of merging)
+
+  STAND TYPES (cluster_id), over the area where both layers have a typed stand (337.36 of 337.36 ha in common)
+    types in the old layer: [0, 1, 2, 3, 4]; in the new: [0, 1, 2, 3, 4]
+    stands without a type: 0 old, 0 new; stands whose pieces carry different types: 1 old, 0 new
+    share of that area with the same type number:            7.3254%
+    the same after the best one-to-one renumbering of types: 67.0966%   (old -> new: {0: 3, 1: 0, 2: 1, 3: 4, 4: 2})
+    stands with the same outline that also carry the same type number: 26 of 437
+    area in hectares, old type (rows) against new type (columns):
+                       0           1           2           3           4
+           0        0.02        2.22       16.87       75.09        0.24
+           1        0.01       21.03        0.00        0.05        0.00
+           2        0.09       38.63        0.58        8.01        0.00
+           3       26.45       12.30        6.76        0.76       31.02
+           4        8.39        2.64       81.60        2.26        2.32
+
+koraput -- stands_merged
+  old: odisha_v120_3ha_koraput_stands_merged.geojson   (stand id: stand_lbl)
+  new: odisha_v120_3ha_koraput_repro_stands_merged.geojson   (stand id: stand_lbl)
+  Areas are in hectares, measured in a Lambert azimuthal equal-area projection centred on the data (lat 18.6334, lon 82.8931).
+
+                                                   old           new     new - old
+  polygons                                       1,131         1,145           +14
+  stands                                         1,109         1,125           +16
+  stands in more than one piece                     22            20            -2
+  invalid polygons repaired                          0             0              
+  features left out (no geometry or id)              0             0              
+  total stand area                            2,459.07      2,459.07          0.00
+  area covered (footprint)                    2,459.07      2,459.07          0.00
+  median stand area                               2.36          2.35         -0.01
+  largest stand                                   3.02          3.02          0.00
+
+  area covered by both: 2,459.07 ha = 100.0000% of the old footprint, 100.0000% of the new; footprint IoU 1.000000
+  covered by the old only: 0.00 ha; by the new only: 0.00 ha
+
+  SAME OUTLINE (after snapping to 1e-07 degrees, about 1 cm)
+    stands:   60 of 1109 old stands have their outline in the new layer (60 of 1125 new stands have theirs in the old); 0 of them also carry the same id
+    polygons: 72 outlines in both, of 1131 old and 1145 new
+    stand ids: 1109 in both, 0 only in the old, 16 only in the new (an id is a label: a re-run may number the same stand differently)
+
+  INTERSECTION OVER UNION (IoU), each stand against the stand of the other layer that
+  overlaps it most; means are weighted by stand area. 1 = the same stands, 0 = no overlap.
+                                                      old -> new      new -> old
+    area-weighted mean IoU                              0.707044        0.706039
+    unweighted mean IoU                                 0.701480        0.694591
+    median IoU                                          0.737013        0.728522
+    lowest IoU                                          0.020270        0.016892
+    share of area in stands with IoU >= 0.5             73.6533%        73.4748%
+    share of area in stands with IoU >= 0.9             33.5252%        33.4671%
+    share of area in stands with IoU >= 0.99            12.5570%        12.5582%
+    stands with IoU >= 0.5                           805 of 1109     805 of 1125
+    stands with IoU >= 0.9                           378 of 1109     378 of 1125
+    stands with IoU >= 0.99                          146 of 1109     146 of 1125
+    stands that nothing overlaps                               0               0
+      their area (ha)                                       0.00            0.00
+    stands that are the best match of 2 or more              107              96
+    (last line: old stands that two or more new stands match best, a sign of splitting;
+     new stands that two or more old stands match best, a sign of merging)
+
+  STAND TYPES (cluster_id), over the area where both layers have a typed stand (1,943.09 of 2,459.07 ha in common)
+    types in the old layer: [0, 1, 2, 3, 4]; in the new: [0, 1, 2, 3, 4]
+    stands without a type: 223 old, 220 new; stands whose pieces carry different types: 3 old, 8 new
+    share of that area with the same type number:            17.9612%
+    the same after the best one-to-one renumbering of types: 53.5434%   (old -> new: {0: 1, 1: 4, 2: 3, 3: 2, 4: 0})
+    stands with the same outline that also carry the same type number: 28 of 60
+    area in hectares, old type (rows) against new type (columns):
+                       0           1           2           3           4
+           0       64.55      238.88        2.52        0.69        1.02
+           1        1.78       58.44        1.73       41.02      282.91
+           2       63.93      169.01        1.87       94.65        5.21
+           3        1.49        3.61      140.14      223.04       27.78
+           4      283.81        3.85      190.13       39.92        1.10
+
+koraput -- stands_snic
+  old: odisha_v120_3ha_koraput_stands_snic.geojson   (stand id: snic_label)
+  new: odisha_v120_3ha_koraput_repro_stands_snic.geojson   (stand id: snic_label)
+  Areas are in hectares, measured in a Lambert azimuthal equal-area projection centred on the data (lat 18.6335, lon 82.8932).
+
+                                                   old           new     new - old
+  polygons                                       4,963         4,950           -13
+  stands                                         4,920         4,911            -9
+  stands in more than one piece                     41            37            -4
+  invalid polygons repaired                          0             0              
+  features left out (no geometry or id)              0             0              
+  total stand area                            1,786.22      1,783.56         -2.66
+  area covered (footprint)                    1,786.22      1,783.56         -2.66
+  median stand area                               0.33          0.33          0.00
+  largest stand                                   1.78          1.79         +0.01
+
+  area covered by both: 1,779.49 ha = 99.6233% of the old footprint, 99.7718% of the new; footprint IoU 0.993968
+  covered by the old only: 6.73 ha; by the new only: 4.07 ha
+
+  SAME OUTLINE (after snapping to 1e-07 degrees, about 1 cm)
+    stands:   2355 of 4920 old stands have their outline in the new layer (2355 of 4911 new stands have theirs in the old); 2355 of them also carry the same id
+    polygons: 2391 outlines in both, of 4963 old and 4950 new
+    stand ids: 4907 in both, 13 only in the old, 4 only in the new (an id is a label: a re-run may number the same stand differently)
+
+  INTERSECTION OVER UNION (IoU), each stand against the stand of the other layer that
+  overlaps it most; means are weighted by stand area. 1 = the same stands, 0 = no overlap.
+                                                      old -> new      new -> old
+    area-weighted mean IoU                              0.930746        0.932379
+    unweighted mean IoU                                 0.931124        0.933091
+    median IoU                                          0.983739        0.984000
+    lowest IoU                                          0.000000        0.006993
+    share of area in stands with IoU >= 0.5             97.9575%        98.1372%
+    share of area in stands with IoU >= 0.9             80.1390%        80.3173%
+    share of area in stands with IoU >= 0.99            39.4772%        39.5383%
+    stands with IoU >= 0.5                          4805 of 4920    4805 of 4911
+    stands with IoU >= 0.9                          3937 of 4920    3937 of 4911
+    stands with IoU >= 0.99                         2365 of 4920    2365 of 4911
+    stands that nothing overlaps                               1               0
+      their area (ha)                                       0.11            0.00
+    stands that are the best match of 2 or more               33              43
+    (last line: old stands that two or more new stands match best, a sign of splitting;
+     new stands that two or more old stands match best, a sign of merging)
+
+  STAND TYPES (cluster_id), over the area where both layers have a typed stand (1,779.49 of 1,779.49 ha in common)
+    types in the old layer: [0, 1, 2, 3, 4]; in the new: [0, 1, 2, 3, 4]
+    stands without a type: 0 old, 0 new; stands whose pieces carry different types: 1 old, 3 new
+    share of that area with the same type number:            18.8039%
+    the same after the best one-to-one renumbering of types: 53.6113%   (old -> new: {0: 1, 1: 4, 2: 3, 3: 2, 4: 0})
+    stands with the same outline that also carry the same type number: 473 of 2355
+    area in hectares, old type (rows) against new type (columns):
+                       0           1           2           3           4
+           0       54.97      206.71        2.52        0.69        1.01
+           1        2.08       55.42        1.73       41.02      283.77
+           2       40.08      133.90        1.79       84.55        2.70
+           3        1.49        3.58      138.97      221.34       27.78
+           4      240.01        3.67      189.24       39.38        1.10

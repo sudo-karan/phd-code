@@ -1,0 +1,63 @@
+====================================================================================================
+PHASE 3 STEP 1 -- pairwise score, arm=v120_3ha layer=merged set=districts
+====================================================================================================
+  joined table: phase2_plots_joined_districts.csv
+  field types file: odisha_phase3_0_field_types.csv   (the primary typology)
+  excluded field types: none (0 plots dropped)
+  plots with a stand: 267
+  stands holding them: 192   multi-plot stands: 51 holding 126 plots   (stand key = district:id)
+  field types: {0: 16, 1: 108, 2: 76, 3: 15, 4: 52}
+
+  READ ARI AGAINST ITS CHANCE LEVEL, NOT AGAINST ZERO. In this design chance-level
+  ARI is positive: villages cluster both the field types and the stands, so a
+  rotated stand map scores ~0.005-0.022 on delineation and ~0.04-0.06 on labelling.
+  Whether a value beats chance is tested with the spatial rotation null in
+  odisha_phase3_3_significance.py, not read off this file.
+
+----------------------------------------------------------------------------------------------------
+A. DELINEATION -- do alike plots end up in the same stand?
+----------------------------------------------------------------------------------------------------
+  all pairs
+      pairs 35,511   field-alike 28.7%   grouped-together 0.3%
+                      same group   different
+      field alike             61      10,118
+      field differs           50      25,282
+      accuracy 0.714   precision 0.550   recall 0.006   F1 0.012
+      >>> ARI +0.0057   (0 = no better than chance, 1 = perfect)
+
+  restricted to plots in multi-plot stands  (126 plots in 51 stands)
+      pairs 7,875   field-alike 29.8%   grouped-together 1.4%
+                      same group   different
+      field alike             61       2,286
+      field differs           50       5,478
+      accuracy 0.703   precision 0.550   recall 0.026   F1 0.050
+      >>> ARI +0.0233   (0 = no better than chance, 1 = perfect)
+
+----------------------------------------------------------------------------------------------------
+B. LABELLING -- do alike plots get the same stand TYPE, even far apart?
+----------------------------------------------------------------------------------------------------
+  k-means is fitted per district, so types are comparable only WITHIN a
+  district. Pairs are restricted to same-district pairs, and the ARI is the
+  plot-weighted mean of per-district ARIs.
+
+    ANGUL       n=  39   ARI +0.0968
+    DHENKANAL   n=  75   ARI +0.1605
+    KENDUJHAR   n=   8   ARI +0.0718
+    KORAPUT     n= 145   ARI -0.0250
+
+  same-district pairs  (ARI = plot-weighted mean of the per-district values above)
+      pairs 13,984   field-alike 36.7%   grouped-together 24.2%
+                      same group   different
+      field alike          1,281       3,851
+      field differs        2,101       6,751
+      accuracy 0.574   precision 0.379   recall 0.250   F1 0.301
+      >>> ARI +0.0478   (0 = no better than chance, 1 = perfect)
+
+  same-district pairs more than 2 km apart  (ARI is a whole-partition score, so it is not defined on a pair subset)
+      pairs 10,651   field-alike 35.1%   grouped-together 18.5%
+                      same group   different
+      field alike            668       3,066
+      field differs        1,300       5,617
+      accuracy 0.590   precision 0.339   recall 0.179   F1 0.234
+      >>> ARI n/a (see note)
+

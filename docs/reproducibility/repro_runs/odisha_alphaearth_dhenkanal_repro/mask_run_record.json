@@ -1,0 +1,81 @@
+{
+  "config_name": "odisha_alphaearth_dhenkanal_repro",
+  "config_path": "configs/odisha_alphaearth_dhenkanal_repro.yaml",
+  "cache_fingerprint": "6e7046a5ce",
+  "roi_file": "aois/odisha_habitations_dhenkanal.geojson",
+  "roi_parts": [
+    "part 1",
+    "part 2",
+    "part 3",
+    "part 4",
+    "part 5",
+    "part 6",
+    "part 7",
+    "part 8"
+  ],
+  "date": "2026-10-13T15:59:37+05:30",
+  "command_line": "python scripts/transparency_masking.py --config configs/odisha_alphaearth_dhenkanal_repro.yaml --docs-dir /private/tmp/claude-501/-Users-karan-Desktop-phd-code/092bb2e0-8d70-411c-b4d8-5875ac97fba1/scratchpad/task5/repro_provenance/_mask_docs --data-dir /private/tmp/claude-501/-Users-karan-Desktop-phd-code/092bb2e0-8d70-411c-b4d8-5875ac97fba1/scratchpad/task5/repro_provenance/_mask_data",
+  "git": {
+    "commit": "db0920cb93e793e93183a54d2c02466f4be3b7fc",
+    "dirty": false,
+    "modified": [],
+    "modified_truncated": false,
+    "untracked": [],
+    "untracked_truncated": false,
+    "root": "/private/tmp/claude-501/-Users-karan-Desktop-phd-code/092bb2e0-8d70-411c-b4d8-5875ac97fba1/scratchpad/task5/tree_prov",
+    "error": null
+  },
+  "code_git_blob_ids": {
+    "scripts/transparency_masking.py": "e2cf4fc3b43c6ee3b6c102258f0bd9bd125f24a9"
+  },
+  "earth_engine": {
+    "read_only": true,
+    "pipeline": "Pipeline(['masking', 'data_load'], use_cache=True, submit_exports=False)",
+    "export_tasks_submitted": 0,
+    "download_grid": "EPSG:4326 at 10 m, anchored at (0, 0)"
+  },
+  "layers": {
+    "habitat_mask": {
+      "stage": "masking",
+      "cache_status": "hit",
+      "read_from": "cached asset",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_dhenkanal_repro/masking/habitat_mask__6e7046a5ce"
+    },
+    "landcover_summary": {
+      "stage": "masking",
+      "cache_status": "hit",
+      "read_from": "cached asset",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_dhenkanal_repro/masking/landcover_summary__6e7046a5ce"
+    },
+    "mask_provenance": {
+      "stage": "masking",
+      "cache_status": "miss",
+      "read_from": "computed live, not exported",
+      "asset": null
+    },
+    "water_mask": {
+      "stage": "masking",
+      "cache_status": "hit",
+      "read_from": "cached asset",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_dhenkanal_repro/masking/water_mask__6e7046a5ce"
+    },
+    "s2_composite": {
+      "stage": "data_load",
+      "cache_status": "hit",
+      "read_from": "cached asset",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_dhenkanal_repro/data_load/s2_composite__6e7046a5ce"
+    }
+  },
+  "comparison_masks": [],
+  "raster_check": {
+    "area_ha": 995.6454,
+    "share_kept": 0.794598,
+    "manifest_area_ha": 995.6312,
+    "manifest_share_kept": 0.794461,
+    "note": "rasters count pixels whose centre is inside a part; the manifest weights edge pixels by coverage"
+  },
+  "points_file": null,
+  "pipeline_run_dir": "runs/odisha_alphaearth_dhenkanal_repro_20261013_155941",
+  "data_dir": "/private/tmp/claude-501/-Users-karan-Desktop-phd-code/092bb2e0-8d70-411c-b4d8-5875ac97fba1/scratchpad/task5/repro_provenance/_mask_data/odisha_alphaearth_dhenkanal_repro",
+  "redraws_since_this_run": []
+}

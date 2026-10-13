@@ -28,8 +28,9 @@ There are **170 committed result files** under `odisha_script/`.
     results changed on 7 and 8 October.**
 - **114 were not run.**
   - 105 need Earth Engine, which the offline check was not allowed to touch. 95 of them are the
-    stand files and run records under `phase2_vectors/`. A from-scratch Earth Engine re-run of
-    twelve Odisha configs is in progress; its comparison goes in the Earth Engine section.
+    stand files and run records under `phase2_vectors/`. Those were not regenerated in place.
+    Every config was instead re-run from scratch under a new name and compared: see "Earth
+    Engine re-runs". None of the hand-crafted configs reproduces its committed stands exactly.
   - 4 summary figures could not be regenerated because their scripts stop with an
     error: they were written against the scripts and results of 24 September.
   - 4 are kept records of runs on stand files that no longer exist.
@@ -535,64 +536,194 @@ orchestrating session and are recorded here as given.
   same plots as the regenerated table.
 - **The mask maps reproduce.** Made again from a clean clone of their commit (`4d7f0d5`), all
   7 map images and all 5 `summary.md` files came out byte-identical.
-- **The twelve Odisha configs** are queued in one batch: 3 hectares, then 10 hectares, then
-  AlphaEarth. The batch runs `run_config_passes.sh` one pass at a time through
-  `odisha_script/run_passes_safely.py`'s logic, from a clean clone pinned to `df45350`.
+- **All twelve Odisha configs** have been re-run from scratch: eleven in one batch, and
+  `odisha_alphaearth_angul_repro` in a second start, because its export pass stopped on a
+  network failure before anything was submitted. Each ran from a clean clone pinned to
+  `df45350`, with `run_config_passes.sh` called one pass at a time and a wait for the task
+  queue to drain in between (the logic of `odisha_script/run_passes_safely.py`).
 
-### Odisha: what has been compared so far
+### Odisha: the re-runs against the committed outputs
 
-Two configs had finished when this was written, both for Kendujhar, the smallest district.
-They have the same cache fingerprint as the committed runs, so every stage can be compared.
+Every Odisha re-run has the same cache fingerprint as the committed run it copies, so every
+stage can be compared. **No hand-crafted config reproduces its committed stands exactly.
+The AlphaEarth superpixels reproduce exactly in all four districts.** What follows says where the
+differences enter and how large they are.
 
-**Stage by stage** (`scripts/compare_cached_assets.py`, the committed run's cached assets
-against the re-run's; output in `docs/reproducibility/odisha_v120_3ha_kendujhar_assets.json`
-and `docs/reproducibility/odisha_v120_handcrafted_kendujhar_assets.json`):
+#### 1. Where the difference enters
 
-| Stage output | 3 hectare config | 10 hectare config |
-|---|---|---|
-| habitat mask, land-cover summary, water mask | reproduced exactly | reproduced exactly |
-| structure features (ETH canopy height), static features | reproduced exactly | reproduced exactly |
-| radar features | reproduced exactly | 8.5% of values differ, by at most 1e-14 (rounding) |
-| Sentinel-2 composite | 21.8% of values differ | 32.6% of values differ |
-| optical features | 91.9% of values differ | 92.5% of values differ |
-| SNIC superpixel labels | 4.0% of pixels carry another label | 5.6% of pixels carry another label |
+**Stage by stage** (`scripts/compare_cached_assets.py`: the committed run's cached assets against
+the re-run's, pixel for pixel; one file per config, `docs/reproducibility/<config>_assets.json`).
+Share of pixel values that differ; "exact" means none does:
 
-So the first stage that differs is the Sentinel-2 composite, as at Sanjay Van; every other
-input reproduces. The optical features and the superpixels downstream of it differ too. This
-shows where the difference enters. It does not show that the composite is the only cause: a
-from-scratch SNIC run on identical inputs was not tested. (Cluster labels and the scaled
-feature stack also differ, but cluster numbers are arbitrary, so that says nothing by itself.)
+| Config | masks (3) | structure, static | radar | Sentinel-2 composite | optical features | embedding | SNIC labels |
+|---|---|---|---|---|---|---|---|
+| `odisha_v120_3ha_angul` | exact | exact | exact | 15.6% | 87.1% | n/a | 3.9% |
+| `odisha_v120_3ha_dhenkanal` | exact | exact | exact | 12.6% | 84.8% | n/a | 4.8% |
+| `odisha_v120_3ha_kendujhar` | exact | exact | exact | 21.8% | 91.9% | n/a | 4.0% |
+| `odisha_v120_3ha_koraput` | exact | exact | 6.2% (rounding, at most 1e-14) | 15.4% | 84.6% | n/a | 3.8% |
+| `odisha_v120_handcrafted_angul` | exact | exact | exact | 36.9% | 99.9% | n/a | 8.1% |
+| `odisha_v120_handcrafted_dhenkanal` | exact | exact | 3.9% (rounding, at most 1e-14) | 30.3% | 98.7% | n/a | 8.6% |
+| `odisha_v120_handcrafted_kendujhar` | exact | exact | 8.5% (rounding, at most 1e-14) | 32.6% | 92.5% | n/a | 5.6% |
+| `odisha_v120_handcrafted_koraput` | exact | exact | exact | 24.5% | 88.4% | n/a | 36.0% |
+| `odisha_alphaearth_angul` | exact | exact | n/a | 36.9% | 99.9% | exact | exact |
+| `odisha_alphaearth_dhenkanal` | exact | exact | n/a | 30.3% | 98.7% | exact | exact |
+| `odisha_alphaearth_kendujhar` | exact | exact | n/a | 32.6% | 92.5% | exact | exact |
+| `odisha_alphaearth_koraput` | exact | exact | n/a | 24.5% | 88.4% | exact | exact |
 
-**Stand by stand** (`scripts/compare_stand_runs.py`, the committed stand files against the
-re-run's; nothing is matched by id):
+"n/a" means the config does not run that stage. For SNIC labels the figure is the share of pixels
+whose superpixel label differs.
 
-| Config | Layer | Units, committed to re-run | Same outline | Area-weighted IoU, old to new | new to old |
-|---|---|---|---|---|---|
-| `odisha_v120_3ha_kendujhar` | merged stands | 183 to 180 | 10 of 183 | 0.675 | 0.678 |
-| `odisha_v120_3ha_kendujhar` | SNIC superpixels | 935 to 934 | 437 of 935 | 0.930 | 0.929 |
-| `odisha_v120_handcrafted_kendujhar` | merged stands | 105 to 103 | 6 of 105 | 0.837 | 0.840 |
-| `odisha_v120_handcrafted_kendujhar` | SNIC superpixels | 358 to 361 | 71 of 358 | 0.904 | 0.900 |
+- The land-cover masks, the structure features (ETH canopy height) and the static features
+  reproduce exactly in all twelve configs; radar reproduces exactly or to rounding.
+- The Sentinel-2 composite does not, in any config, and the optical features built on it differ
+  almost everywhere. The settings are identical, so the Sentinel-2 archive on Earth Engine has
+  changed for 2017-2022 since the committed runs were cached. The share is larger for the
+  10 hectare and AlphaEarth configs than for the 3 hectare ones in the same district: their
+  committed assets are older.
+- **SNIC is repeatable when its inputs are.** The AlphaEarth arm segments on the embedding, which
+  did not change, and its superpixel labels are identical at every pixel in all four districts.
+- Where the inputs changed (the hand-crafted arms), 3.8% to 8.6% of pixels carry another
+  superpixel label, with one exception, `odisha_v120_handcrafted_koraput` at 36.0%. Section 4
+  explains the exception.
 
-IoU is intersection over union: each stand is paired with the stand of the other run that
-overlaps it most, and the overlap is divided by the area the two cover together; 1 means the
-same stands. The stands are less alike than the superpixels they are built from, most of all
-at 3 hectares: the merge turns small differences in the superpixels into larger ones in the
-stands. Stand counts barely move (183 to 180, 105 to 103), so a count alone would have hidden
-this.
+#### 2. The stands
 
-Kendujhar holds 8 of the 267 plots, so nothing can be said yet about the Phase 3 scores.
+**Stand by stand** (`odisha_script/odisha_repro_compare.py`, which uses
+`scripts/compare_stand_runs.py`; the committed stand files against the re-run's; nothing is matched
+by id). IoU is intersection over union: each stand is paired with the stand of the other run that
+overlaps it most, the overlap is divided by the area the two cover together, and the mean is weighted
+by stand area; 1 means the same stands.
 
-<!-- ODISHA-REPRO-COMPARISONS: START. One row per arm goes here when all four of its districts
-     have finished: stand count old and new, area-weighted overlap of old and new stands, and the
-     Phase 3 scores from the new plot tables (odisha_script/odisha_repro_compare.py). -->
+| Arm | District | Layer | Units, committed to re-run | Same outline | IoU, old to new | IoU, new to old | Area in units with IoU of 0.9 or more |
+|---|---|---|---|---|---|---|---|
+| 3 hectare | Angul | merged stands | 200 to 204 | 18 of 200 | 0.752 | 0.752 | 37.1% |
+| 3 hectare | Angul | SNIC superpixels | 1062 to 1064 | 539 of 1062 | 0.929 | 0.927 | 79.0% |
+| 3 hectare | Dhenkanal | merged stands | 462 to 462 | 43 of 462 | 0.686 | 0.688 | 33.9% |
+| 3 hectare | Dhenkanal | SNIC superpixels | 2571 to 2571 | 1230 of 2571 | 0.917 | 0.916 | 74.7% |
+| 3 hectare | Kendujhar | merged stands | 183 to 180 | 10 of 183 | 0.675 | 0.678 | 32.8% |
+| 3 hectare | Kendujhar | SNIC superpixels | 935 to 934 | 437 of 935 | 0.930 | 0.929 | 79.3% |
+| 3 hectare | Koraput | merged stands | 1109 to 1125 | 60 of 1109 | 0.707 | 0.706 | 33.5% |
+| 3 hectare | Koraput | SNIC superpixels | 4920 to 4911 | 2355 of 4920 | 0.931 | 0.932 | 80.1% |
+| 10 hectare | Angul | merged stands | 96 to 96 | 4 of 96 | 0.689 | 0.682 | 26.1% |
+| 10 hectare | Angul | SNIC superpixels | 402 to 403 | 56 of 402 | 0.859 | 0.854 | 57.0% |
+| 10 hectare | Dhenkanal | merged stands | 224 to 231 | 7 of 224 | 0.688 | 0.676 | 34.3% |
+| 10 hectare | Dhenkanal | SNIC superpixels | 965 to 964 | 166 of 965 | 0.863 | 0.864 | 61.7% |
+| 10 hectare | Kendujhar | merged stands | 105 to 103 | 6 of 105 | 0.837 | 0.840 | 58.8% |
+| 10 hectare | Kendujhar | SNIC superpixels | 358 to 361 | 71 of 358 | 0.904 | 0.900 | 74.1% |
+| 10 hectare | Koraput | merged stands | 614 to 617 | 0 of 614 | 0.507 | 0.498 | 1.6% |
+| 10 hectare | Koraput | SNIC superpixels | 1871 to 1883 | 7 of 1871 | 0.530 | 0.525 | 1.3% |
+| AlphaEarth | Angul | merged stands | 99 to 97 | 85 of 99 | 0.923 | 0.932 | 84.5% |
+| AlphaEarth | Angul | SNIC superpixels | 405 to 405 | 405 of 405 | 1.000 | 1.000 | 100.0% |
+| AlphaEarth | Dhenkanal | merged stands | 215 to 215 | 206 of 215 | 0.979 | 0.980 | 94.6% |
+| AlphaEarth | Dhenkanal | SNIC superpixels | 953 to 953 | 953 of 953 | 1.000 | 1.000 | 100.0% |
+| AlphaEarth | Kendujhar | merged stands | 121 to 118 | 113 of 121 | 0.978 | 0.979 | 92.8% |
+| AlphaEarth | Kendujhar | SNIC superpixels | 361 to 361 | 361 of 361 | 1.000 | 1.000 | 100.0% |
+| AlphaEarth | Koraput | merged stands | 626 to 623 | 560 of 626 | 0.949 | 0.949 | 86.9% |
+| AlphaEarth | Koraput | SNIC superpixels | 1870 to 1870 | 1870 of 1870 | 1.000 | 1.000 | 100.0% |
 
-| Config | Outcome |
-|---|---|
-| `odisha_v120_3ha_<district>` (4) | Kendujhar finished and compared above; Angul, Dhenkanal and Koraput not yet compared: re-run in progress |
-| `odisha_v120_handcrafted_<district>` (4) | Kendujhar finished and compared above; the other three not yet compared: re-run in progress |
-| `odisha_alphaearth_<district>` (4) | not yet compared: re-run queued |
+- **AlphaEarth:** the superpixels are the same in every district, and the merged stands nearly so
+  (IoU 0.92 to 0.98). They are not identical because the merge rule reads `ndvi_amplitude_annual`,
+  an optical feature, and that changed.
+- **3 hectares:** superpixels overlap with an IoU of 0.92 to 0.93, merged stands with 0.67 to 0.75.
+  Between 5% and 9% of stands have exactly the same outline.
+- **10 hectares:** superpixels 0.86 to 0.90 and merged stands 0.69 to 0.84 in three districts;
+  in Koraput 0.53 and 0.51 (section 4).
+- The stands are always less alike than the superpixels they are built from: the merge turns small
+  differences in the superpixels into larger ones in the stands. Stand counts barely move
+  (for example 462 to 462 in Dhenkanal at 3 hectares, with an IoU of 0.69), so a count alone
+  would have hidden all of this.
 
-<!-- ODISHA-REPRO-COMPARISONS: END -->
+#### 3. The plots and the Phase 3 scores
+
+**The plots and the Phase 3 scores.** The plots were joined to the re-run's stands with the Phase 2
+join code, and the Phase 3 scores computed from that new plot table with the options of
+`PHASE3_STATUS.md`'s "Reproducing" section (primary analysis). The committed score is beside it.
+
+| Arm | Quantity | Committed | Re-run |
+|---|---|---|---|
+| 3 hectare | drawing, all pairs: adjusted Rand index | +0.0060 | +0.0057 |
+| 3 hectare | drawing, plots in stands that hold more than one plot: adjusted Rand index | +0.0244 | +0.0233 |
+| 3 hectare | labelling, pairs within a district: adjusted Rand index | +0.0793 | +0.0478 |
+| 3 hectare | stands holding the 267 plots | 198 | 192 |
+| 3 hectare | stands holding more than one plot | 44 | 51 |
+| 10 hectare | drawing, all pairs: adjusted Rand index | +0.0121 | +0.0157 |
+| 10 hectare | drawing, plots in stands that hold more than one plot: adjusted Rand index | +0.0257 | +0.0364 |
+| 10 hectare | labelling, pairs within a district: adjusted Rand index | +0.0389 | +0.0619 |
+| 10 hectare | stands holding the 267 plots | 144 | 146 |
+| 10 hectare | stands holding more than one plot | 61 | 57 |
+
+How the plots are grouped into stands, committed run against re-run (adjusted Rand index of one
+grouping against the other; 1 means every plot shares its stand with the same plots):
+
+| Arm | Layer | Pairs of plots sharing a unit: committed, re-run, in both | Adjusted Rand index, old grouping against new |
+|---|---|---|---|
+| 3 hectare | merged stands | 113, 111, 79 | 0.7044 |
+| 3 hectare | SNIC superpixels | 29, 26, 26 | 0.9454 |
+| 10 hectare | merged stands | 247, 262, 149 | 0.5825 |
+| 10 hectare | SNIC superpixels | 76, 72, 43 | 0.5802 |
+| AlphaEarth | merged stands | 302, 302, 296 | 0.9800 |
+| AlphaEarth | SNIC superpixels | 64, 64, 64 | 1.0000 |
+
+- The scores stay small in the re-run, as they were. Nothing here changes what Phase 3 concluded.
+- They move by amounts comparable to their own size. The labelling score goes from 0.0793 to
+  0.0478 at 3 hectares and from 0.0389 to 0.0619 at 10 hectares, so **which stand size labels
+  better flips between the committed run and the re-run.** A difference of that size between two
+  stand sizes should not be read as a finding.
+- The 10 hectare re-run includes the Koraput stands of section 4, drawn from features that were
+  not yet cached; Koraput holds 145 of the 267 plots. So the 10 hectare column mixes two causes.
+- Only the scores were recomputed. The chance tests were not re-run on the new stands.
+- Phase 3 never scored the AlphaEarth arm, so there is no committed score to compare with and none
+  was computed.
+- The full output for each arm is in `docs/reproducibility/odisha_repro/<arm>/`: the results
+  file, the new plot table, the new score files (primary analysis and the three declared checks)
+  and one table per district and layer of every stand's best match.
+
+#### 4. Superpixels depend on whether the features were cached when SNIC ran
+
+With caching on, a stage that misses the cache runs live. On a cold cache the segmentation of a
+small ROI usually succeeds at once, on feature images still being computed on the fly; for a
+large ROI it fails with a memory limit and succeeds on the next pass, on the same features read
+back as cached assets. In the re-run, three hand-crafted configs segmented in the first pass
+(Kendujhar at 3 and at 10 hectares, and Koraput at 10 hectares); the other five segmented in the
+second.
+
+`scripts/snic_cached_vs_live.py` (read-only) recomputes SNIC now from a re-run's cached features
+and compares the labels with the re-run's own cached SNIC asset and with the committed run's
+(output in `docs/reproducibility/snic_cached_vs_live_<config>.json`):
+
+| Config | The re-run segmented | Recomputed from cached features, against the re-run's own SNIC asset | against the committed run's SNIC asset |
+|---|---|---|---|
+| `odisha_v120_3ha_koraput` | in the second pass, from cached features | 0.1% of pixels differ | 3.8% |
+| `odisha_v120_handcrafted_angul` | in the second pass, from cached features | 0.4% | 7.8% |
+| `odisha_v120_handcrafted_koraput` | in the first pass, from live features | 35.4% | 6.3% |
+| `odisha_v120_handcrafted_kendujhar` | in the first pass, from live features | 26.4% | 26.4% |
+
+- Where the re-run segmented from cached features, recomputing from cached features gives the
+  same superpixels again (0.1% and 0.4% of pixels differ).
+- Where the re-run segmented from live features, the same features once cached give superpixels
+  that differ at 26% to 35% of pixels. That is several times the effect of the Sentinel-2 change
+  (4% to 9%).
+- This accounts for Koraput at 10 hectares, the outlier in sections 1 and 2. The re-run drew its
+  superpixels live (the batch log shows its segmentation succeeding in the first pass). The
+  committed run's superpixels match a from-cache computation to 6.3%, which indicates they
+  were drawn from cached features; no log of that run survives to confirm it. For Kendujhar at
+  10 hectares the committed and re-run superpixels agree with each other (5.6% of pixels
+  differ) and both differ from the from-cache computation by 26.4%, which indicates both were
+  drawn live.
+
+**So a config's superpixels, and with them its stands, depend on which pass its segmentation
+happened to succeed in.** This is a property of the pipeline's cache path, not of any setting. It
+was not changed tonight: making segmentation wait for cached features would move the stands of
+every config that segmented live, Kendujhar's committed stands among them. It is a question for
+Jaskaran in the PR.
+
+#### 5. Mask and merge provenance of the re-runs
+
+`docs/reproducibility/repro_runs/<config>_repro/` holds, for each of the fourteen re-runs, the
+mask summary and the per-stand merge provenance, read from the re-run's own cached assets
+without submitting anything.
+
+<!-- ODISHA-REPRO-COMPARISONS: all twelve configs are in the tables above. -->
 
 ## Problems found
 
@@ -660,7 +791,7 @@ Each with its evidence and what should happen next.
 
 Every offline job has finished and is in the tables above. Not started, and needed before the report is complete:
 
-1. The Odisha Earth Engine comparisons for the ten configs still running (the marked table in "Earth Engine re-runs"), with the Phase 3 scores from the new plot tables.
+1. Decide whether segmentation should always run from cached features ("Earth Engine re-runs", section 4), and if so re-run the configs that segmented live. Re-run the chance tests on re-run stands if the stand-level differences are to be carried into Phase 3.
 2. Fix the figure scripts and `phase3_figstyle.py`, regenerate the eleven figures and rewrite `deck_facts.md` from the final results (Problems 1 to 3).
 3. Move run times out of `scripts/gate_effect.py` and regenerate `gate_effect_results.txt` at the next Earth Engine run (Problem 5).
 4. Regenerate `odisha_phase1_tests456_results.txt` and `odisha_phase3_stands_unchanged.txt` in their own commits (Problems 4 and 7).

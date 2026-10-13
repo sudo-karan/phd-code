@@ -1,0 +1,54 @@
+# Habitat mask: odisha_v120_3ha_dhenkanal_repro
+
+The ROI is 995.6 ha. The land-cover mask keeps 79.4% of it as habitat and removes the rest: cropland 19.2%, water 0.7%, built-up 0.5%, other non-habitat 0.2%.
+
+This is a habitat mask, not a strict forest mask. By default it keeps IndiaSAT Trees and Shrubs/Scrub, and WorldCover tree cover, shrubland and grassland where IndiaSAT has no data; the classes a run kept are listed in its masking summary (kept_classes). The definition and the reasoning behind it are in docs/design_notes.md, section "Masking: IndiaSAT-primary, single-phase habitat".
+
+Maps: `habitat_mask_sheet1of2.png`, `habitat_mask_sheet2of2.png`.
+
+## Whole ROI
+
+| Quantity | Value |
+| --- | --- |
+| Area of the ROI | 995.6 ha |
+| Kept as habitat (not only forest) | 79.4% |
+| Removed: cropland | 19.2% |
+| Removed: built-up | 0.5% |
+| Removed: water | 0.7% |
+| Removed: other non-habitat | 0.2% |
+| No land-cover data in either map (not habitat) | 0.0% |
+
+Which map decided. IndiaSAT decided: 100.0% of the area. So every kept pixel was kept on that map's word.
+
+Check against the cached mask: 0.0 ha. That is the area where the reason layer, computed in this run from today's land-cover data, says kept and the cached `habitat_mask` does not, or the reverse. Above zero would mean a land-cover input has changed since the mask was cached, so the stands were built on a mask today's data would not reproduce exactly.
+
+Classes this run kept as habitat: indiasat [6, 12]; worldcover [10, 20, 30].
+
+## By part
+
+Tabulated from the saved rasters, counting the pixels whose centre is inside the part. The whole-ROI table above comes from Earth Engine, which weights edge pixels by how much of them the ROI covers, so the two can differ by a fraction of a percent.
+
+| Part | Area | Kept | cropland | built-up | water | other non-habitat |
+| --- | --- | --- | --- | --- | --- | --- |
+| part 1 | 247.0 ha | 73.0% | 23.1% | 1.2% | 2.6% | 0.1% |
+| part 2 | 68.0 ha | 46.9% | 50.7% | 2.2% | 0.0% | 0.2% |
+| part 3 | 144.9 ha | 91.5% | 8.2% | 0.2% | 0.0% | 0.0% |
+| part 4 | 189.0 ha | 92.3% | 7.5% | 0.0% | 0.0% | 0.2% |
+| part 5 | 105.6 ha | 86.7% | 13.0% | 0.1% | 0.0% | 0.2% |
+| part 6 | 73.8 ha | 87.2% | 12.7% | 0.0% | 0.0% | 0.0% |
+| part 7 | 63.9 ha | 65.6% | 33.5% | 0.9% | 0.0% | 0.0% |
+| part 8 | 103.4 ha | 71.7% | 27.9% | 0.0% | 0.0% | 0.4% |
+
+Columns after Kept are shares of the part's area removed for each reason. No part has a pixel without land-cover data. One map decided every pixel of every part (see above).
+
+## How the maps are drawn
+
+True colour is Sentinel-2 red, green and blue (B4_median, B3_median, B2_median) of `s2_composite`, the image the pipeline segments on (read from the cached asset). All three bands share one linear stretch, from 348 to 1258 (percentiles 1 and 99 of the pixels inside the ROI), then gamma 0.75. Colours and labels of the mask are the masking stage's own display-layer declaration. North is up. White is outside the ROI.
+
+## For the record
+
+- Config: `configs/odisha_v120_3ha_dhenkanal_repro.yaml` (name `odisha_v120_3ha_dhenkanal_repro`, cache fingerprint `a516a24b2d`)
+- ROI file: `aois/odisha_habitations_dhenkanal.geojson`, 8 parts
+- `habitat_mask`, the mask the rest of the pipeline uses: read from the cached asset
+- `mask_provenance`, the reason and deciding-map layer: computed live
+- The code, the cached asset ids, the date and the command line are in `run_record.json` beside this file.
