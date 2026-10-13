@@ -4516,3 +4516,82 @@ decisions:
   status: pending
   design_notes_section: null
   source: 'PR #42 and commit 4d7f0d5'
+- id: spec-merge-pass2-skip-at-minimum
+  title: >-
+    In the relaxed second pass, a region that has already reached the minimum stand size when its turn comes
+    is skipped
+  decision: >-
+    Pass 2 of the merge lists the regions below merge.min_area_ha once at the start of each sweep, smallest
+    first, and then takes them in turn. Under this rule a listed region that has since reached min_area_ha
+    (because a smaller region joined it earlier in the same sweep) is skipped when its turn comes: it is no
+    longer undersized, so pass 2 has nothing to do with it. The committed code did not skip it. Such a region
+    still took its turn in that sweep and was merged once more, under the relaxed tolerances or, where no
+    neighbour passed them, by the shared-edge fallback. The rule is selected by a merge setting,
+    merge.pass2_skip_at_min_area. Its default, false, keeps the committed behaviour, so that earlier runs
+    can still be reproduced; true applies this rule. config_fingerprint leaves the key out of the hashed merge
+    block while it is at its default, so the fingerprint of every existing config is unchanged, the 14 _repro
+    configs among them, and a config that sets it to true gets a new fingerprint. The demo set (the Earth
+    Engine runs of 13 Oct 2026) is re-merged with the rule on, from the saved superpixel and feature assets.
+    Configs of the final round set it explicitly.
+  alternatives_considered:
+  - >-
+    Leave the merge as committed, so that no stand moves (option (a) of question 5 in PR #42, and that PR's
+    recommendation): kept as the default of the setting, not as the rule for new runs
+  - >-
+    Change the rule in place, with no setting: not done. The stands of every existing config would change under
+    an unchanged cache fingerprint, and the clustering cache, which is keyed by that fingerprint, would return
+    stand types computed for the old stands
+  - >-
+    Add the setting as an ordinary merge field: not done. config_fingerprint hashes the whole merge block,
+    defaults included, so all 14 _repro fingerprints would change at once and their saved assets could no
+    longer be found by name
+  rationale: >-
+    The stated purpose of pass 2 is to remove undersized regions: 'Pass 2 -- eliminate undersized regions,
+    smallest first' (module docstring of src/fmu/utils/region_merge.py), 'Pass 2 takes regions still below
+    the minimum area, smallest first' (register entry spec-merge-two-pass-hard-gate), and 'Regions below
+    min_area_ha (default 1) are what pass 2 tries to absorb' (spec-merge-hard-area-bounds). A region that has
+    reached the minimum is not undersized, so a further merge of it is one the stated rule does not ask for,
+    and it is made under the weaker tests of pass 2, sometimes by the fallback, which no criterion supports.
+    PR #42 described the committed behaviour when it added merge provenance (the note under the merge_kind
+    legend) and asked about it as question 5. Jaskaran chose option (b), as its own declared decision, applied
+    now to the demo set (docs/handoff/2026-10-13-round2.md, decision table and task A2). This entry was
+    committed before any run under the rule. How many stands and how much stand area it changes in each of the
+    14 runs is measured by task A2 and recorded with its results, not here.
+  evidence:
+  - path: src/fmu/utils/region_merge.py
+    what: >-
+      Module docstring, 'Pass 2 -- eliminate undersized regions, smallest first'. In merge_superpixels() the
+      pass 2 loop builds the list `undersized` once per sweep and then merges every listed region that is still
+      present, with no second check of its area
+  - path: src/fmu/stages/merge.py
+    what: >-
+      The note under the merge_kind legend (_MERGE_KIND_NOTE): 'each sweep lists the undersized pieces once,
+      and a piece that grows past the minimum earlier in a sweep still takes its turn in that sweep'
+  - path: docs/outputs.md
+    what: The same sentence, in the description of the merge provenance
+  - path: src/fmu/config.py
+    what: 'MergeParams, where the setting pass2_skip_at_min_area lives (added by the commit after this entry)'
+  - path: src/fmu/utils/caching.py
+    what: >-
+      config_fingerprint(), which leaves the setting out of the hash while it is at its default (added by the
+      commit after this entry)
+  - path: tests/test_repro_fingerprints.py
+    what: Pins the fingerprints of the 14 _repro configs to those in the names of their saved assets
+  - path: docs/handoff/2026-10-13-round2.md
+    what: 'The decision on question 5, (b), and task A2'
+  papers:
+  - doi: 10.14214/sf.23014
+    title: Forest stand delineation using airborne LiDAR and hyperspectral data
+    first_author: Xiong
+    year: 2024
+    verified: true
+    supports: used
+    supports_what: >-
+      The source of the two-pass merge (see spec-merge-two-pass-hard-gate for what was confirmed in the paper).
+      It is cited here only for the purpose of the second pass, removing undersized segments. Whether the paper
+      says in which order undersized segments are taken, or what happens to one that grows during the pass, was
+      NOT checked for this entry.
+    cited_in: src/fmu/utils/region_merge.py:3; src/fmu/config.py:435-437
+  status: adopted
+  design_notes_section: null
+  source: 'docs/handoff/2026-10-13-round2.md (decision on question 5; task A2); PR #42, question 5'
