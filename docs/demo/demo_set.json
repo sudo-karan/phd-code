@@ -1,0 +1,1952 @@
+{
+ "label": "Demo set: Earth Engine runs of 13 Oct 2026 (commit df45350), stands re-merged under `spec-merge-pass2-skip-at-minimum`. Upstream of the merge it carries the open cache-grid issue (PR #42, question 1). The final re-run replaces it.",
+ "merge_rule": "spec-merge-pass2-skip-at-minimum",
+ "what": "The 14 from-scratch re-runs of 13 Oct 2026 (PR #42), one per configs/*_repro.yaml. Tools read the saved assets by the paths given here, never by recomputing a fingerprint.",
+ "source_commit": "df4535016c9f434fec73627596b0daac9ea87270",
+ "source_commit_recorded_in": "outputs/repro_runs/logs/*.state.json (git-ignored) and docs/reproducibility.md",
+ "asset_root": "projects/replicating-paper/assets/fmu",
+ "assets_listed": "ee.data.listAssets on each run's asset folder, read-only",
+ "n_assets": 163,
+ "open_issue": "Cached features sit on a geographic grid and segmentation works on the UTM grid, so a run's superpixels depend on whether its features were cached when it segmented (docs/reproducibility.md, 'Superpixels depend on whether the features were cached when SNIC ran'; PR #42, question 1). The route each run took is in segmentation_route.",
+ "runs": [
+  {
+   "run_id": "odisha_alphaearth_angul_repro",
+   "config": "configs/odisha_alphaearth_angul_repro.yaml",
+   "site": "Odisha",
+   "district": "Angul",
+   "area": "Angul",
+   "arm": "alphaearth",
+   "feature_source": "embedding",
+   "stand_ceiling_ha": 10.0,
+   "stand_minimum_ha": 1.0,
+   "segmentation_size": 10,
+   "k": 6,
+   "roi_file": "aois/odisha_habitations_angul.geojson",
+   "drive_folder": "fmu_exports_odisha_phase2",
+   "fingerprint": "34bffb7611",
+   "assets": [
+    {
+     "stage": "clustering",
+     "key": "cluster_labels",
+     "fingerprint": "34bffb7611",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_angul_repro/clustering/cluster_labels__34bffb7611"
+    },
+    {
+     "stage": "clustering",
+     "key": "feature_stack",
+     "fingerprint": "34bffb7611",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_angul_repro/clustering/feature_stack__34bffb7611"
+    },
+    {
+     "stage": "data_load",
+     "key": "s2_composite",
+     "fingerprint": "34bffb7611",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_angul_repro/data_load/s2_composite__34bffb7611"
+    },
+    {
+     "stage": "features_embedding",
+     "key": "embedding_features",
+     "fingerprint": "34bffb7611",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_angul_repro/features_embedding/embedding_features__34bffb7611"
+    },
+    {
+     "stage": "features_optical",
+     "key": "optical_features",
+     "fingerprint": "34bffb7611",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_angul_repro/features_optical/optical_features__34bffb7611"
+    },
+    {
+     "stage": "features_structure",
+     "key": "structure_features",
+     "fingerprint": "34bffb7611",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_angul_repro/features_structure/structure_features__34bffb7611"
+    },
+    {
+     "stage": "masking",
+     "key": "habitat_mask",
+     "fingerprint": "34bffb7611",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_angul_repro/masking/habitat_mask__34bffb7611"
+    },
+    {
+     "stage": "masking",
+     "key": "landcover_summary",
+     "fingerprint": "34bffb7611",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_angul_repro/masking/landcover_summary__34bffb7611"
+    },
+    {
+     "stage": "masking",
+     "key": "water_mask",
+     "fingerprint": "34bffb7611",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_angul_repro/masking/water_mask__34bffb7611"
+    },
+    {
+     "stage": "segmentation",
+     "key": "snic_clusters",
+     "fingerprint": "34bffb7611",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_angul_repro/segmentation/snic_clusters__34bffb7611"
+    },
+    {
+     "stage": "segmentation",
+     "key": "snic_means",
+     "fingerprint": "34bffb7611",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_angul_repro/segmentation/snic_means__34bffb7611"
+    }
+   ],
+   "not_cached": [
+    "masking/mask_provenance"
+   ],
+   "segmentation_route": "live",
+   "segmentation_run": "odisha_alphaearth_angul_repro_20261013_103003",
+   "committed": {
+    "merge_provenance": "docs/reproducibility/repro_runs/odisha_alphaearth_angul_repro/merge_provenance.csv",
+    "mask_summary": "docs/reproducibility/repro_runs/odisha_alphaearth_angul_repro/mask_summary.md",
+    "snic_cached_vs_live": "docs/reproducibility/snic_cached_vs_live_odisha_alphaearth_angul.json"
+   },
+   "local": {
+    "run_record": "outputs/repro_runs/phase2_vectors/odisha_alphaearth_angul_repro_run.json",
+    "stands_merged": "outputs/repro_runs/phase2_vectors/odisha_alphaearth_angul_repro_stands_merged.geojson",
+    "stands_snic": "outputs/repro_runs/phase2_vectors/odisha_alphaearth_angul_repro_stands_snic.geojson",
+    "stands_dissolved": "outputs/repro_runs/phase2_vectors/odisha_alphaearth_angul_repro_stands_dissolved.geojson",
+    "raster_at_plots": "outputs/repro_runs/phase2_vectors/odisha_alphaearth_angul_repro_raster_at_plots.csv",
+    "mask_data": "outputs/transparency_repro/_mask_data/odisha_alphaearth_angul_repro",
+    "mask_docs": "outputs/transparency_repro/_mask_docs/odisha_alphaearth_angul_repro",
+    "run_folders": [
+     "outputs/repro_runs/runs/odisha_alphaearth_angul_repro_20261013_103003",
+     "outputs/repro_runs/runs/odisha_alphaearth_angul_repro_20261013_104838",
+     "outputs/repro_runs/runs/odisha_alphaearth_angul_repro_20261013_155100",
+     "outputs/repro_runs/runs/odisha_alphaearth_angul_repro_20261013_155120",
+     "outputs/repro_runs/runs/odisha_alphaearth_angul_repro_20261013_155215"
+    ],
+    "missing_here": []
+   },
+   "drive": {
+    "folder": "fmu_exports_odisha_phase2",
+    "files": [
+     "odisha_alphaearth_angul_repro_cluster_labels.tif",
+     "odisha_alphaearth_angul_repro_features_raw.tif",
+     "odisha_alphaearth_angul_repro_features_scaled.tif",
+     "odisha_alphaearth_angul_repro_stands_dissolved.geojson",
+     "odisha_alphaearth_angul_repro_stands_dissolved.zip",
+     "odisha_alphaearth_angul_repro_stands_merged.geojson",
+     "odisha_alphaearth_angul_repro_stands_merged.zip",
+     "odisha_alphaearth_angul_repro_stands_snic.geojson",
+     "odisha_alphaearth_angul_repro_stands_snic.zip"
+    ],
+    "checked": "every export task succeeded (Earth Engine task list); on Drive the files were looked up for one run only, sanjay_van_baseline_repro"
+   },
+   "counts": {
+    "superpixels_in_merge": 446,
+    "stands": 97,
+    "stand_polygons_exported": 100,
+    "superpixel_polygons_exported": 407
+   },
+   "run_record_fingerprint": "34bffb7611",
+   "source_commit": "df4535016c9f434fec73627596b0daac9ea87270",
+   "source_tree_dirty": false,
+   "batch_state_file": "outputs/repro_runs/logs/odisha_alphaearth_angul_retry.state.json"
+  },
+  {
+   "run_id": "odisha_alphaearth_dhenkanal_repro",
+   "config": "configs/odisha_alphaearth_dhenkanal_repro.yaml",
+   "site": "Odisha",
+   "district": "Dhenkanal",
+   "area": "Dhenkanal",
+   "arm": "alphaearth",
+   "feature_source": "embedding",
+   "stand_ceiling_ha": 10.0,
+   "stand_minimum_ha": 1.0,
+   "segmentation_size": 10,
+   "k": 6,
+   "roi_file": "aois/odisha_habitations_dhenkanal.geojson",
+   "drive_folder": "fmu_exports_odisha_phase2",
+   "fingerprint": "6e7046a5ce",
+   "assets": [
+    {
+     "stage": "clustering",
+     "key": "cluster_labels",
+     "fingerprint": "6e7046a5ce",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_dhenkanal_repro/clustering/cluster_labels__6e7046a5ce"
+    },
+    {
+     "stage": "clustering",
+     "key": "feature_stack",
+     "fingerprint": "6e7046a5ce",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_dhenkanal_repro/clustering/feature_stack__6e7046a5ce"
+    },
+    {
+     "stage": "data_load",
+     "key": "s2_composite",
+     "fingerprint": "6e7046a5ce",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_dhenkanal_repro/data_load/s2_composite__6e7046a5ce"
+    },
+    {
+     "stage": "features_embedding",
+     "key": "embedding_features",
+     "fingerprint": "6e7046a5ce",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_dhenkanal_repro/features_embedding/embedding_features__6e7046a5ce"
+    },
+    {
+     "stage": "features_optical",
+     "key": "optical_features",
+     "fingerprint": "6e7046a5ce",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_dhenkanal_repro/features_optical/optical_features__6e7046a5ce"
+    },
+    {
+     "stage": "features_structure",
+     "key": "structure_features",
+     "fingerprint": "6e7046a5ce",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_dhenkanal_repro/features_structure/structure_features__6e7046a5ce"
+    },
+    {
+     "stage": "masking",
+     "key": "habitat_mask",
+     "fingerprint": "6e7046a5ce",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_dhenkanal_repro/masking/habitat_mask__6e7046a5ce"
+    },
+    {
+     "stage": "masking",
+     "key": "landcover_summary",
+     "fingerprint": "6e7046a5ce",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_dhenkanal_repro/masking/landcover_summary__6e7046a5ce"
+    },
+    {
+     "stage": "masking",
+     "key": "water_mask",
+     "fingerprint": "6e7046a5ce",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_dhenkanal_repro/masking/water_mask__6e7046a5ce"
+    },
+    {
+     "stage": "segmentation",
+     "key": "snic_clusters",
+     "fingerprint": "6e7046a5ce",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_dhenkanal_repro/segmentation/snic_clusters__6e7046a5ce"
+    },
+    {
+     "stage": "segmentation",
+     "key": "snic_means",
+     "fingerprint": "6e7046a5ce",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_dhenkanal_repro/segmentation/snic_means__6e7046a5ce"
+    }
+   ],
+   "not_cached": [
+    "masking/mask_provenance"
+   ],
+   "segmentation_route": "live",
+   "segmentation_run": "odisha_alphaearth_dhenkanal_repro_20261013_142447",
+   "committed": {
+    "merge_provenance": "docs/reproducibility/repro_runs/odisha_alphaearth_dhenkanal_repro/merge_provenance.csv",
+    "mask_summary": "docs/reproducibility/repro_runs/odisha_alphaearth_dhenkanal_repro/mask_summary.md",
+    "snic_cached_vs_live": "docs/reproducibility/snic_cached_vs_live_odisha_alphaearth_dhenkanal.json"
+   },
+   "local": {
+    "run_record": "outputs/repro_runs/phase2_vectors/odisha_alphaearth_dhenkanal_repro_run.json",
+    "stands_merged": "outputs/repro_runs/phase2_vectors/odisha_alphaearth_dhenkanal_repro_stands_merged.geojson",
+    "stands_snic": "outputs/repro_runs/phase2_vectors/odisha_alphaearth_dhenkanal_repro_stands_snic.geojson",
+    "stands_dissolved": "outputs/repro_runs/phase2_vectors/odisha_alphaearth_dhenkanal_repro_stands_dissolved.geojson",
+    "raster_at_plots": "outputs/repro_runs/phase2_vectors/odisha_alphaearth_dhenkanal_repro_raster_at_plots.csv",
+    "mask_data": "outputs/transparency_repro/_mask_data/odisha_alphaearth_dhenkanal_repro",
+    "mask_docs": "outputs/transparency_repro/_mask_docs/odisha_alphaearth_dhenkanal_repro",
+    "run_folders": [
+     "outputs/repro_runs/runs/odisha_alphaearth_dhenkanal_repro_20261013_142447",
+     "outputs/repro_runs/runs/odisha_alphaearth_dhenkanal_repro_20261013_152242",
+     "outputs/repro_runs/runs/odisha_alphaearth_dhenkanal_repro_20261013_153350",
+     "outputs/repro_runs/runs/odisha_alphaearth_dhenkanal_repro_20261013_153440",
+     "outputs/repro_runs/runs/odisha_alphaearth_dhenkanal_repro_20261013_154706"
+    ],
+    "missing_here": []
+   },
+   "drive": {
+    "folder": "fmu_exports_odisha_phase2",
+    "files": [
+     "odisha_alphaearth_dhenkanal_repro_cluster_labels.tif",
+     "odisha_alphaearth_dhenkanal_repro_features_raw.tif",
+     "odisha_alphaearth_dhenkanal_repro_features_scaled.tif",
+     "odisha_alphaearth_dhenkanal_repro_stands_dissolved.geojson",
+     "odisha_alphaearth_dhenkanal_repro_stands_dissolved.zip",
+     "odisha_alphaearth_dhenkanal_repro_stands_merged.geojson",
+     "odisha_alphaearth_dhenkanal_repro_stands_merged.zip",
+     "odisha_alphaearth_dhenkanal_repro_stands_snic.geojson",
+     "odisha_alphaearth_dhenkanal_repro_stands_snic.zip"
+    ],
+    "checked": "every export task succeeded (Earth Engine task list); on Drive the files were looked up for one run only, sanjay_van_baseline_repro"
+   },
+   "counts": {
+    "superpixels_in_merge": 1017,
+    "stands": 215,
+    "stand_polygons_exported": 217,
+    "superpixel_polygons_exported": 959
+   },
+   "run_record_fingerprint": "6e7046a5ce",
+   "source_commit": "df4535016c9f434fec73627596b0daac9ea87270",
+   "source_tree_dirty": false,
+   "batch_state_file": "outputs/repro_runs/logs/odisha_all.state.json"
+  },
+  {
+   "run_id": "odisha_alphaearth_kendujhar_repro",
+   "config": "configs/odisha_alphaearth_kendujhar_repro.yaml",
+   "site": "Odisha",
+   "district": "Kendujhar",
+   "area": "Kendujhar",
+   "arm": "alphaearth",
+   "feature_source": "embedding",
+   "stand_ceiling_ha": 10.0,
+   "stand_minimum_ha": 1.0,
+   "segmentation_size": 10,
+   "k": 6,
+   "roi_file": "aois/odisha_habitations_kendujhar.geojson",
+   "drive_folder": "fmu_exports_odisha_phase2",
+   "fingerprint": "4c14ee1bce",
+   "assets": [
+    {
+     "stage": "clustering",
+     "key": "cluster_labels",
+     "fingerprint": "4c14ee1bce",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_kendujhar_repro/clustering/cluster_labels__4c14ee1bce"
+    },
+    {
+     "stage": "clustering",
+     "key": "feature_stack",
+     "fingerprint": "4c14ee1bce",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_kendujhar_repro/clustering/feature_stack__4c14ee1bce"
+    },
+    {
+     "stage": "data_load",
+     "key": "s2_composite",
+     "fingerprint": "4c14ee1bce",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_kendujhar_repro/data_load/s2_composite__4c14ee1bce"
+    },
+    {
+     "stage": "features_embedding",
+     "key": "embedding_features",
+     "fingerprint": "4c14ee1bce",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_kendujhar_repro/features_embedding/embedding_features__4c14ee1bce"
+    },
+    {
+     "stage": "features_optical",
+     "key": "optical_features",
+     "fingerprint": "4c14ee1bce",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_kendujhar_repro/features_optical/optical_features__4c14ee1bce"
+    },
+    {
+     "stage": "features_structure",
+     "key": "structure_features",
+     "fingerprint": "4c14ee1bce",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_kendujhar_repro/features_structure/structure_features__4c14ee1bce"
+    },
+    {
+     "stage": "masking",
+     "key": "habitat_mask",
+     "fingerprint": "4c14ee1bce",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_kendujhar_repro/masking/habitat_mask__4c14ee1bce"
+    },
+    {
+     "stage": "masking",
+     "key": "landcover_summary",
+     "fingerprint": "4c14ee1bce",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_kendujhar_repro/masking/landcover_summary__4c14ee1bce"
+    },
+    {
+     "stage": "masking",
+     "key": "water_mask",
+     "fingerprint": "4c14ee1bce",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_kendujhar_repro/masking/water_mask__4c14ee1bce"
+    },
+    {
+     "stage": "segmentation",
+     "key": "snic_clusters",
+     "fingerprint": "4c14ee1bce",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_kendujhar_repro/segmentation/snic_clusters__4c14ee1bce"
+    },
+    {
+     "stage": "segmentation",
+     "key": "snic_means",
+     "fingerprint": "4c14ee1bce",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_kendujhar_repro/segmentation/snic_means__4c14ee1bce"
+    }
+   ],
+   "not_cached": [
+    "masking/mask_provenance"
+   ],
+   "segmentation_route": "live",
+   "segmentation_run": "odisha_alphaearth_kendujhar_repro_20261013_111053",
+   "committed": {
+    "merge_provenance": "docs/reproducibility/repro_runs/odisha_alphaearth_kendujhar_repro/merge_provenance.csv",
+    "mask_summary": "docs/reproducibility/repro_runs/odisha_alphaearth_kendujhar_repro/mask_summary.md",
+    "snic_cached_vs_live": "docs/reproducibility/snic_cached_vs_live_odisha_alphaearth_kendujhar.json"
+   },
+   "local": {
+    "run_record": "outputs/repro_runs/phase2_vectors/odisha_alphaearth_kendujhar_repro_run.json",
+    "stands_merged": "outputs/repro_runs/phase2_vectors/odisha_alphaearth_kendujhar_repro_stands_merged.geojson",
+    "stands_snic": "outputs/repro_runs/phase2_vectors/odisha_alphaearth_kendujhar_repro_stands_snic.geojson",
+    "stands_dissolved": "outputs/repro_runs/phase2_vectors/odisha_alphaearth_kendujhar_repro_stands_dissolved.geojson",
+    "raster_at_plots": "outputs/repro_runs/phase2_vectors/odisha_alphaearth_kendujhar_repro_raster_at_plots.csv",
+    "mask_data": "outputs/transparency_repro/_mask_data/odisha_alphaearth_kendujhar_repro",
+    "mask_docs": "outputs/transparency_repro/_mask_docs/odisha_alphaearth_kendujhar_repro",
+    "run_folders": [
+     "outputs/repro_runs/runs/odisha_alphaearth_kendujhar_repro_20261013_111053",
+     "outputs/repro_runs/runs/odisha_alphaearth_kendujhar_repro_20261013_111917",
+     "outputs/repro_runs/runs/odisha_alphaearth_kendujhar_repro_20261013_112349"
+    ],
+    "missing_here": []
+   },
+   "drive": {
+    "folder": "fmu_exports_odisha_phase2",
+    "files": [
+     "odisha_alphaearth_kendujhar_repro_cluster_labels.tif",
+     "odisha_alphaearth_kendujhar_repro_features_raw.tif",
+     "odisha_alphaearth_kendujhar_repro_features_scaled.tif",
+     "odisha_alphaearth_kendujhar_repro_stands_dissolved.geojson",
+     "odisha_alphaearth_kendujhar_repro_stands_dissolved.zip",
+     "odisha_alphaearth_kendujhar_repro_stands_merged.geojson",
+     "odisha_alphaearth_kendujhar_repro_stands_merged.zip",
+     "odisha_alphaearth_kendujhar_repro_stands_snic.geojson",
+     "odisha_alphaearth_kendujhar_repro_stands_snic.zip"
+    ],
+    "checked": "every export task succeeded (Earth Engine task list); on Drive the files were looked up for one run only, sanjay_van_baseline_repro"
+   },
+   "counts": {
+    "superpixels_in_merge": 412,
+    "stands": 118,
+    "stand_polygons_exported": 120,
+    "superpixel_polygons_exported": 365
+   },
+   "run_record_fingerprint": "4c14ee1bce",
+   "source_commit": "df4535016c9f434fec73627596b0daac9ea87270",
+   "source_tree_dirty": false,
+   "batch_state_file": "outputs/repro_runs/logs/odisha_all.state.json"
+  },
+  {
+   "run_id": "odisha_alphaearth_koraput_repro",
+   "config": "configs/odisha_alphaearth_koraput_repro.yaml",
+   "site": "Odisha",
+   "district": "Koraput",
+   "area": "Koraput",
+   "arm": "alphaearth",
+   "feature_source": "embedding",
+   "stand_ceiling_ha": 10.0,
+   "stand_minimum_ha": 1.0,
+   "segmentation_size": 10,
+   "k": 6,
+   "roi_file": "aois/odisha_habitations_koraput.geojson",
+   "drive_folder": "fmu_exports_odisha_phase2",
+   "fingerprint": "f1a8cc9cfa",
+   "assets": [
+    {
+     "stage": "clustering",
+     "key": "cluster_labels",
+     "fingerprint": "f1a8cc9cfa",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_koraput_repro/clustering/cluster_labels__f1a8cc9cfa"
+    },
+    {
+     "stage": "clustering",
+     "key": "feature_stack",
+     "fingerprint": "f1a8cc9cfa",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_koraput_repro/clustering/feature_stack__f1a8cc9cfa"
+    },
+    {
+     "stage": "data_load",
+     "key": "s2_composite",
+     "fingerprint": "f1a8cc9cfa",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_koraput_repro/data_load/s2_composite__f1a8cc9cfa"
+    },
+    {
+     "stage": "features_embedding",
+     "key": "embedding_features",
+     "fingerprint": "f1a8cc9cfa",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_koraput_repro/features_embedding/embedding_features__f1a8cc9cfa"
+    },
+    {
+     "stage": "features_optical",
+     "key": "optical_features",
+     "fingerprint": "f1a8cc9cfa",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_koraput_repro/features_optical/optical_features__f1a8cc9cfa"
+    },
+    {
+     "stage": "features_structure",
+     "key": "structure_features",
+     "fingerprint": "f1a8cc9cfa",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_koraput_repro/features_structure/structure_features__f1a8cc9cfa"
+    },
+    {
+     "stage": "masking",
+     "key": "habitat_mask",
+     "fingerprint": "f1a8cc9cfa",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_koraput_repro/masking/habitat_mask__f1a8cc9cfa"
+    },
+    {
+     "stage": "masking",
+     "key": "landcover_summary",
+     "fingerprint": "f1a8cc9cfa",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_koraput_repro/masking/landcover_summary__f1a8cc9cfa"
+    },
+    {
+     "stage": "masking",
+     "key": "water_mask",
+     "fingerprint": "f1a8cc9cfa",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_koraput_repro/masking/water_mask__f1a8cc9cfa"
+    },
+    {
+     "stage": "segmentation",
+     "key": "snic_clusters",
+     "fingerprint": "f1a8cc9cfa",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_koraput_repro/segmentation/snic_clusters__f1a8cc9cfa"
+    },
+    {
+     "stage": "segmentation",
+     "key": "snic_means",
+     "fingerprint": "f1a8cc9cfa",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_koraput_repro/segmentation/snic_means__f1a8cc9cfa"
+    }
+   ],
+   "not_cached": [
+    "masking/mask_provenance"
+   ],
+   "segmentation_route": "live",
+   "segmentation_run": "odisha_alphaearth_koraput_repro_20261013_112517",
+   "committed": {
+    "merge_provenance": "docs/reproducibility/repro_runs/odisha_alphaearth_koraput_repro/merge_provenance.csv",
+    "mask_summary": "docs/reproducibility/repro_runs/odisha_alphaearth_koraput_repro/mask_summary.md",
+    "snic_cached_vs_live": "docs/reproducibility/snic_cached_vs_live_odisha_alphaearth_koraput.json"
+   },
+   "local": {
+    "run_record": "outputs/repro_runs/phase2_vectors/odisha_alphaearth_koraput_repro_run.json",
+    "stands_merged": "outputs/repro_runs/phase2_vectors/odisha_alphaearth_koraput_repro_stands_merged.geojson",
+    "stands_snic": "outputs/repro_runs/phase2_vectors/odisha_alphaearth_koraput_repro_stands_snic.geojson",
+    "stands_dissolved": "outputs/repro_runs/phase2_vectors/odisha_alphaearth_koraput_repro_stands_dissolved.geojson",
+    "raster_at_plots": "outputs/repro_runs/phase2_vectors/odisha_alphaearth_koraput_repro_raster_at_plots.csv",
+    "mask_data": "outputs/transparency_repro/_mask_data/odisha_alphaearth_koraput_repro",
+    "mask_docs": "outputs/transparency_repro/_mask_docs/odisha_alphaearth_koraput_repro",
+    "run_folders": [
+     "outputs/repro_runs/runs/odisha_alphaearth_koraput_repro_20261013_112517",
+     "outputs/repro_runs/runs/odisha_alphaearth_koraput_repro_20261013_115954",
+     "outputs/repro_runs/runs/odisha_alphaearth_koraput_repro_20261013_121443"
+    ],
+    "missing_here": []
+   },
+   "drive": {
+    "folder": "fmu_exports_odisha_phase2",
+    "files": [
+     "odisha_alphaearth_koraput_repro_cluster_labels.tif",
+     "odisha_alphaearth_koraput_repro_features_raw.tif",
+     "odisha_alphaearth_koraput_repro_features_scaled.tif",
+     "odisha_alphaearth_koraput_repro_stands_dissolved.geojson",
+     "odisha_alphaearth_koraput_repro_stands_dissolved.zip",
+     "odisha_alphaearth_koraput_repro_stands_merged.geojson",
+     "odisha_alphaearth_koraput_repro_stands_merged.zip",
+     "odisha_alphaearth_koraput_repro_stands_snic.geojson",
+     "odisha_alphaearth_koraput_repro_stands_snic.zip"
+    ],
+    "checked": "every export task succeeded (Earth Engine task list); on Drive the files were looked up for one run only, sanjay_van_baseline_repro"
+   },
+   "counts": {
+    "superpixels_in_merge": 2499,
+    "stands": 623,
+    "stand_polygons_exported": 630,
+    "superpixel_polygons_exported": 1877
+   },
+   "run_record_fingerprint": "f1a8cc9cfa",
+   "source_commit": "df4535016c9f434fec73627596b0daac9ea87270",
+   "source_tree_dirty": false,
+   "batch_state_file": "outputs/repro_runs/logs/odisha_all.state.json"
+  },
+  {
+   "run_id": "odisha_v120_3ha_angul_repro",
+   "config": "configs/odisha_v120_3ha_angul_repro.yaml",
+   "site": "Odisha",
+   "district": "Angul",
+   "area": "Angul",
+   "arm": "feature_vector",
+   "feature_source": "handcrafted",
+   "stand_ceiling_ha": 3.0,
+   "stand_minimum_ha": 1.0,
+   "segmentation_size": 6,
+   "k": 5,
+   "roi_file": "aois/odisha_habitations_angul.geojson",
+   "drive_folder": "fmu_exports_odisha_phase2",
+   "fingerprint": "8c472d39f9",
+   "assets": [
+    {
+     "stage": "clustering",
+     "key": "cluster_labels",
+     "fingerprint": "8c472d39f9",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_angul_repro/clustering/cluster_labels__8c472d39f9"
+    },
+    {
+     "stage": "clustering",
+     "key": "feature_stack",
+     "fingerprint": "8c472d39f9",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_angul_repro/clustering/feature_stack__8c472d39f9"
+    },
+    {
+     "stage": "data_load",
+     "key": "s2_composite",
+     "fingerprint": "8c472d39f9",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_angul_repro/data_load/s2_composite__8c472d39f9"
+    },
+    {
+     "stage": "features_optical",
+     "key": "optical_features",
+     "fingerprint": "8c472d39f9",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_angul_repro/features_optical/optical_features__8c472d39f9"
+    },
+    {
+     "stage": "features_radar",
+     "key": "radar_features",
+     "fingerprint": "8c472d39f9",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_angul_repro/features_radar/radar_features__8c472d39f9"
+    },
+    {
+     "stage": "features_static",
+     "key": "static_features",
+     "fingerprint": "8c472d39f9",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_angul_repro/features_static/static_features__8c472d39f9"
+    },
+    {
+     "stage": "features_structure",
+     "key": "structure_features",
+     "fingerprint": "8c472d39f9",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_angul_repro/features_structure/structure_features__8c472d39f9"
+    },
+    {
+     "stage": "masking",
+     "key": "habitat_mask",
+     "fingerprint": "8c472d39f9",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_angul_repro/masking/habitat_mask__8c472d39f9"
+    },
+    {
+     "stage": "masking",
+     "key": "landcover_summary",
+     "fingerprint": "8c472d39f9",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_angul_repro/masking/landcover_summary__8c472d39f9"
+    },
+    {
+     "stage": "masking",
+     "key": "water_mask",
+     "fingerprint": "8c472d39f9",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_angul_repro/masking/water_mask__8c472d39f9"
+    },
+    {
+     "stage": "segmentation",
+     "key": "snic_clusters",
+     "fingerprint": "8c472d39f9",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_angul_repro/segmentation/snic_clusters__8c472d39f9"
+    },
+    {
+     "stage": "segmentation",
+     "key": "snic_means",
+     "fingerprint": "8c472d39f9",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_angul_repro/segmentation/snic_means__8c472d39f9"
+    }
+   ],
+   "not_cached": [
+    "masking/mask_provenance"
+   ],
+   "segmentation_route": "cached",
+   "segmentation_run": "odisha_v120_3ha_angul_repro_20261013_121803",
+   "committed": {
+    "merge_provenance": "docs/reproducibility/repro_runs/odisha_v120_3ha_angul_repro/merge_provenance.csv",
+    "mask_summary": "docs/reproducibility/repro_runs/odisha_v120_3ha_angul_repro/mask_summary.md",
+    "snic_cached_vs_live": "docs/reproducibility/snic_cached_vs_live_odisha_v120_3ha_angul.json"
+   },
+   "local": {
+    "run_record": "outputs/repro_runs/phase2_vectors/odisha_v120_3ha_angul_repro_run.json",
+    "stands_merged": "outputs/repro_runs/phase2_vectors/odisha_v120_3ha_angul_repro_stands_merged.geojson",
+    "stands_snic": "outputs/repro_runs/phase2_vectors/odisha_v120_3ha_angul_repro_stands_snic.geojson",
+    "stands_dissolved": "outputs/repro_runs/phase2_vectors/odisha_v120_3ha_angul_repro_stands_dissolved.geojson",
+    "raster_at_plots": "outputs/repro_runs/phase2_vectors/odisha_v120_3ha_angul_repro_raster_at_plots.csv",
+    "mask_data": "outputs/transparency_repro/_mask_data/odisha_v120_3ha_angul_repro",
+    "mask_docs": "outputs/transparency_repro/_mask_docs/odisha_v120_3ha_angul_repro",
+    "run_folders": [
+     "outputs/repro_runs/runs/odisha_v120_3ha_angul_repro_20261013_071301",
+     "outputs/repro_runs/runs/odisha_v120_3ha_angul_repro_20261013_121803",
+     "outputs/repro_runs/runs/odisha_v120_3ha_angul_repro_20261013_122353",
+     "outputs/repro_runs/runs/odisha_v120_3ha_angul_repro_20261013_123210"
+    ],
+    "missing_here": []
+   },
+   "drive": {
+    "folder": "fmu_exports_odisha_phase2",
+    "files": [
+     "odisha_v120_3ha_angul_repro_cluster_labels.tif",
+     "odisha_v120_3ha_angul_repro_features_raw.tif",
+     "odisha_v120_3ha_angul_repro_features_scaled.tif",
+     "odisha_v120_3ha_angul_repro_stands_dissolved.geojson",
+     "odisha_v120_3ha_angul_repro_stands_dissolved.zip",
+     "odisha_v120_3ha_angul_repro_stands_merged.geojson",
+     "odisha_v120_3ha_angul_repro_stands_merged.zip",
+     "odisha_v120_3ha_angul_repro_stands_snic.geojson",
+     "odisha_v120_3ha_angul_repro_stands_snic.zip"
+    ],
+    "checked": "every export task succeeded (Earth Engine task list); on Drive the files were looked up for one run only, sanjay_van_baseline_repro"
+   },
+   "counts": {
+    "superpixels_in_merge": 1257,
+    "stands": 204,
+    "stand_polygons_exported": 207,
+    "superpixel_polygons_exported": 1069
+   },
+   "run_record_fingerprint": "8c472d39f9",
+   "source_commit": "df4535016c9f434fec73627596b0daac9ea87270",
+   "source_tree_dirty": false,
+   "batch_state_file": "outputs/repro_runs/logs/odisha_all.state.json"
+  },
+  {
+   "run_id": "odisha_v120_3ha_dhenkanal_repro",
+   "config": "configs/odisha_v120_3ha_dhenkanal_repro.yaml",
+   "site": "Odisha",
+   "district": "Dhenkanal",
+   "area": "Dhenkanal",
+   "arm": "feature_vector",
+   "feature_source": "handcrafted",
+   "stand_ceiling_ha": 3.0,
+   "stand_minimum_ha": 1.0,
+   "segmentation_size": 6,
+   "k": 5,
+   "roi_file": "aois/odisha_habitations_dhenkanal.geojson",
+   "drive_folder": "fmu_exports_odisha_phase2",
+   "fingerprint": "a516a24b2d",
+   "assets": [
+    {
+     "stage": "clustering",
+     "key": "cluster_labels",
+     "fingerprint": "a516a24b2d",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_dhenkanal_repro/clustering/cluster_labels__a516a24b2d"
+    },
+    {
+     "stage": "clustering",
+     "key": "feature_stack",
+     "fingerprint": "a516a24b2d",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_dhenkanal_repro/clustering/feature_stack__a516a24b2d"
+    },
+    {
+     "stage": "data_load",
+     "key": "s2_composite",
+     "fingerprint": "a516a24b2d",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_dhenkanal_repro/data_load/s2_composite__a516a24b2d"
+    },
+    {
+     "stage": "features_optical",
+     "key": "optical_features",
+     "fingerprint": "a516a24b2d",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_dhenkanal_repro/features_optical/optical_features__a516a24b2d"
+    },
+    {
+     "stage": "features_radar",
+     "key": "radar_features",
+     "fingerprint": "a516a24b2d",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_dhenkanal_repro/features_radar/radar_features__a516a24b2d"
+    },
+    {
+     "stage": "features_static",
+     "key": "static_features",
+     "fingerprint": "a516a24b2d",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_dhenkanal_repro/features_static/static_features__a516a24b2d"
+    },
+    {
+     "stage": "features_structure",
+     "key": "structure_features",
+     "fingerprint": "a516a24b2d",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_dhenkanal_repro/features_structure/structure_features__a516a24b2d"
+    },
+    {
+     "stage": "masking",
+     "key": "habitat_mask",
+     "fingerprint": "a516a24b2d",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_dhenkanal_repro/masking/habitat_mask__a516a24b2d"
+    },
+    {
+     "stage": "masking",
+     "key": "landcover_summary",
+     "fingerprint": "a516a24b2d",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_dhenkanal_repro/masking/landcover_summary__a516a24b2d"
+    },
+    {
+     "stage": "masking",
+     "key": "water_mask",
+     "fingerprint": "a516a24b2d",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_dhenkanal_repro/masking/water_mask__a516a24b2d"
+    },
+    {
+     "stage": "segmentation",
+     "key": "snic_clusters",
+     "fingerprint": "a516a24b2d",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_dhenkanal_repro/segmentation/snic_clusters__a516a24b2d"
+    },
+    {
+     "stage": "segmentation",
+     "key": "snic_means",
+     "fingerprint": "a516a24b2d",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_dhenkanal_repro/segmentation/snic_means__a516a24b2d"
+    }
+   ],
+   "not_cached": [
+    "masking/mask_provenance"
+   ],
+   "segmentation_route": "cached",
+   "segmentation_run": "odisha_v120_3ha_dhenkanal_repro_20261013_123425",
+   "committed": {
+    "merge_provenance": "docs/reproducibility/repro_runs/odisha_v120_3ha_dhenkanal_repro/merge_provenance.csv",
+    "mask_summary": "docs/reproducibility/repro_runs/odisha_v120_3ha_dhenkanal_repro/mask_summary.md",
+    "snic_cached_vs_live": "docs/reproducibility/snic_cached_vs_live_odisha_v120_3ha_dhenkanal.json"
+   },
+   "local": {
+    "run_record": "outputs/repro_runs/phase2_vectors/odisha_v120_3ha_dhenkanal_repro_run.json",
+    "stands_merged": "outputs/repro_runs/phase2_vectors/odisha_v120_3ha_dhenkanal_repro_stands_merged.geojson",
+    "stands_snic": "outputs/repro_runs/phase2_vectors/odisha_v120_3ha_dhenkanal_repro_stands_snic.geojson",
+    "stands_dissolved": "outputs/repro_runs/phase2_vectors/odisha_v120_3ha_dhenkanal_repro_stands_dissolved.geojson",
+    "raster_at_plots": "outputs/repro_runs/phase2_vectors/odisha_v120_3ha_dhenkanal_repro_raster_at_plots.csv",
+    "mask_data": "outputs/transparency_repro/_mask_data/odisha_v120_3ha_dhenkanal_repro",
+    "mask_docs": "outputs/transparency_repro/_mask_docs/odisha_v120_3ha_dhenkanal_repro",
+    "run_folders": [
+     "outputs/repro_runs/runs/odisha_v120_3ha_dhenkanal_repro_20261013_071420",
+     "outputs/repro_runs/runs/odisha_v120_3ha_dhenkanal_repro_20261013_123425",
+     "outputs/repro_runs/runs/odisha_v120_3ha_dhenkanal_repro_20261013_125354",
+     "outputs/repro_runs/runs/odisha_v120_3ha_dhenkanal_repro_20261013_130617"
+    ],
+    "missing_here": []
+   },
+   "drive": {
+    "folder": "fmu_exports_odisha_phase2",
+    "files": [
+     "odisha_v120_3ha_dhenkanal_repro_cluster_labels.tif",
+     "odisha_v120_3ha_dhenkanal_repro_features_raw.tif",
+     "odisha_v120_3ha_dhenkanal_repro_features_scaled.tif",
+     "odisha_v120_3ha_dhenkanal_repro_stands_dissolved.geojson",
+     "odisha_v120_3ha_dhenkanal_repro_stands_dissolved.zip",
+     "odisha_v120_3ha_dhenkanal_repro_stands_merged.geojson",
+     "odisha_v120_3ha_dhenkanal_repro_stands_merged.zip",
+     "odisha_v120_3ha_dhenkanal_repro_stands_snic.geojson",
+     "odisha_v120_3ha_dhenkanal_repro_stands_snic.zip"
+    ],
+    "checked": "every export task succeeded (Earth Engine task list); on Drive the files were looked up for one run only, sanjay_van_baseline_repro"
+   },
+   "counts": {
+    "superpixels_in_merge": 2827,
+    "stands": 462,
+    "stand_polygons_exported": 474,
+    "superpixel_polygons_exported": 2595
+   },
+   "run_record_fingerprint": "a516a24b2d",
+   "source_commit": "df4535016c9f434fec73627596b0daac9ea87270",
+   "source_tree_dirty": false,
+   "batch_state_file": "outputs/repro_runs/logs/odisha_all.state.json"
+  },
+  {
+   "run_id": "odisha_v120_3ha_kendujhar_repro",
+   "config": "configs/odisha_v120_3ha_kendujhar_repro.yaml",
+   "site": "Odisha",
+   "district": "Kendujhar",
+   "area": "Kendujhar",
+   "arm": "feature_vector",
+   "feature_source": "handcrafted",
+   "stand_ceiling_ha": 3.0,
+   "stand_minimum_ha": 1.0,
+   "segmentation_size": 6,
+   "k": 5,
+   "roi_file": "aois/odisha_habitations_kendujhar.geojson",
+   "drive_folder": "fmu_exports_odisha_phase2",
+   "fingerprint": "9908a3bb6b",
+   "assets": [
+    {
+     "stage": "clustering",
+     "key": "cluster_labels",
+     "fingerprint": "9908a3bb6b",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_kendujhar_repro/clustering/cluster_labels__9908a3bb6b"
+    },
+    {
+     "stage": "clustering",
+     "key": "feature_stack",
+     "fingerprint": "9908a3bb6b",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_kendujhar_repro/clustering/feature_stack__9908a3bb6b"
+    },
+    {
+     "stage": "data_load",
+     "key": "s2_composite",
+     "fingerprint": "9908a3bb6b",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_kendujhar_repro/data_load/s2_composite__9908a3bb6b"
+    },
+    {
+     "stage": "features_optical",
+     "key": "optical_features",
+     "fingerprint": "9908a3bb6b",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_kendujhar_repro/features_optical/optical_features__9908a3bb6b"
+    },
+    {
+     "stage": "features_radar",
+     "key": "radar_features",
+     "fingerprint": "9908a3bb6b",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_kendujhar_repro/features_radar/radar_features__9908a3bb6b"
+    },
+    {
+     "stage": "features_static",
+     "key": "static_features",
+     "fingerprint": "9908a3bb6b",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_kendujhar_repro/features_static/static_features__9908a3bb6b"
+    },
+    {
+     "stage": "features_structure",
+     "key": "structure_features",
+     "fingerprint": "9908a3bb6b",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_kendujhar_repro/features_structure/structure_features__9908a3bb6b"
+    },
+    {
+     "stage": "masking",
+     "key": "habitat_mask",
+     "fingerprint": "9908a3bb6b",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_kendujhar_repro/masking/habitat_mask__9908a3bb6b"
+    },
+    {
+     "stage": "masking",
+     "key": "landcover_summary",
+     "fingerprint": "9908a3bb6b",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_kendujhar_repro/masking/landcover_summary__9908a3bb6b"
+    },
+    {
+     "stage": "masking",
+     "key": "water_mask",
+     "fingerprint": "9908a3bb6b",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_kendujhar_repro/masking/water_mask__9908a3bb6b"
+    },
+    {
+     "stage": "segmentation",
+     "key": "snic_clusters",
+     "fingerprint": "9908a3bb6b",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_kendujhar_repro/segmentation/snic_clusters__9908a3bb6b"
+    },
+    {
+     "stage": "segmentation",
+     "key": "snic_means",
+     "fingerprint": "9908a3bb6b",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_kendujhar_repro/segmentation/snic_means__9908a3bb6b"
+    }
+   ],
+   "not_cached": [
+    "masking/mask_provenance"
+   ],
+   "segmentation_route": "live",
+   "segmentation_run": "odisha_v120_3ha_kendujhar_repro_20261013_071532",
+   "committed": {
+    "merge_provenance": "docs/reproducibility/repro_runs/odisha_v120_3ha_kendujhar_repro/merge_provenance.csv",
+    "mask_summary": "docs/reproducibility/repro_runs/odisha_v120_3ha_kendujhar_repro/mask_summary.md",
+    "snic_cached_vs_live": "docs/reproducibility/snic_cached_vs_live_odisha_v120_3ha_kendujhar.json"
+   },
+   "local": {
+    "run_record": "outputs/repro_runs/phase2_vectors/odisha_v120_3ha_kendujhar_repro_run.json",
+    "stands_merged": "outputs/repro_runs/phase2_vectors/odisha_v120_3ha_kendujhar_repro_stands_merged.geojson",
+    "stands_snic": "outputs/repro_runs/phase2_vectors/odisha_v120_3ha_kendujhar_repro_stands_snic.geojson",
+    "stands_dissolved": "outputs/repro_runs/phase2_vectors/odisha_v120_3ha_kendujhar_repro_stands_dissolved.geojson",
+    "raster_at_plots": "outputs/repro_runs/phase2_vectors/odisha_v120_3ha_kendujhar_repro_raster_at_plots.csv",
+    "mask_data": "outputs/transparency_repro/_mask_data/odisha_v120_3ha_kendujhar_repro",
+    "mask_docs": "outputs/transparency_repro/_mask_docs/odisha_v120_3ha_kendujhar_repro",
+    "run_folders": [
+     "outputs/repro_runs/runs/odisha_v120_3ha_kendujhar_repro_20261013_071532",
+     "outputs/repro_runs/runs/odisha_v120_3ha_kendujhar_repro_20261013_075927",
+     "outputs/repro_runs/runs/odisha_v120_3ha_kendujhar_repro_20261013_080412"
+    ],
+    "missing_here": []
+   },
+   "drive": {
+    "folder": "fmu_exports_odisha_phase2",
+    "files": [
+     "odisha_v120_3ha_kendujhar_repro_cluster_labels.tif",
+     "odisha_v120_3ha_kendujhar_repro_features_raw.tif",
+     "odisha_v120_3ha_kendujhar_repro_features_scaled.tif",
+     "odisha_v120_3ha_kendujhar_repro_stands_dissolved.geojson",
+     "odisha_v120_3ha_kendujhar_repro_stands_dissolved.zip",
+     "odisha_v120_3ha_kendujhar_repro_stands_merged.geojson",
+     "odisha_v120_3ha_kendujhar_repro_stands_merged.zip",
+     "odisha_v120_3ha_kendujhar_repro_stands_snic.geojson",
+     "odisha_v120_3ha_kendujhar_repro_stands_snic.zip"
+    ],
+    "checked": "every export task succeeded (Earth Engine task list); on Drive the files were looked up for one run only, sanjay_van_baseline_repro"
+   },
+   "counts": {
+    "superpixels_in_merge": 1146,
+    "stands": 180,
+    "stand_polygons_exported": 184,
+    "superpixel_polygons_exported": 944
+   },
+   "run_record_fingerprint": "9908a3bb6b",
+   "source_commit": "df4535016c9f434fec73627596b0daac9ea87270",
+   "source_tree_dirty": false,
+   "batch_state_file": "outputs/repro_runs/logs/odisha_all.state.json"
+  },
+  {
+   "run_id": "odisha_v120_3ha_koraput_repro",
+   "config": "configs/odisha_v120_3ha_koraput_repro.yaml",
+   "site": "Odisha",
+   "district": "Koraput",
+   "area": "Koraput",
+   "arm": "feature_vector",
+   "feature_source": "handcrafted",
+   "stand_ceiling_ha": 3.0,
+   "stand_minimum_ha": 1.0,
+   "segmentation_size": 6,
+   "k": 5,
+   "roi_file": "aois/odisha_habitations_koraput.geojson",
+   "drive_folder": "fmu_exports_odisha_phase2",
+   "fingerprint": "030aafaa2c",
+   "assets": [
+    {
+     "stage": "clustering",
+     "key": "cluster_labels",
+     "fingerprint": "030aafaa2c",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_koraput_repro/clustering/cluster_labels__030aafaa2c"
+    },
+    {
+     "stage": "clustering",
+     "key": "feature_stack",
+     "fingerprint": "030aafaa2c",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_koraput_repro/clustering/feature_stack__030aafaa2c"
+    },
+    {
+     "stage": "data_load",
+     "key": "s2_composite",
+     "fingerprint": "030aafaa2c",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_koraput_repro/data_load/s2_composite__030aafaa2c"
+    },
+    {
+     "stage": "features_optical",
+     "key": "optical_features",
+     "fingerprint": "030aafaa2c",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_koraput_repro/features_optical/optical_features__030aafaa2c"
+    },
+    {
+     "stage": "features_radar",
+     "key": "radar_features",
+     "fingerprint": "030aafaa2c",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_koraput_repro/features_radar/radar_features__030aafaa2c"
+    },
+    {
+     "stage": "features_static",
+     "key": "static_features",
+     "fingerprint": "030aafaa2c",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_koraput_repro/features_static/static_features__030aafaa2c"
+    },
+    {
+     "stage": "features_structure",
+     "key": "structure_features",
+     "fingerprint": "030aafaa2c",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_koraput_repro/features_structure/structure_features__030aafaa2c"
+    },
+    {
+     "stage": "masking",
+     "key": "habitat_mask",
+     "fingerprint": "030aafaa2c",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_koraput_repro/masking/habitat_mask__030aafaa2c"
+    },
+    {
+     "stage": "masking",
+     "key": "landcover_summary",
+     "fingerprint": "030aafaa2c",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_koraput_repro/masking/landcover_summary__030aafaa2c"
+    },
+    {
+     "stage": "masking",
+     "key": "water_mask",
+     "fingerprint": "030aafaa2c",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_koraput_repro/masking/water_mask__030aafaa2c"
+    },
+    {
+     "stage": "segmentation",
+     "key": "snic_clusters",
+     "fingerprint": "030aafaa2c",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_koraput_repro/segmentation/snic_clusters__030aafaa2c"
+    },
+    {
+     "stage": "segmentation",
+     "key": "snic_means",
+     "fingerprint": "030aafaa2c",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_koraput_repro/segmentation/snic_means__030aafaa2c"
+    }
+   ],
+   "not_cached": [
+    "masking/mask_provenance"
+   ],
+   "segmentation_route": "cached",
+   "segmentation_run": "odisha_v120_3ha_koraput_repro_20261013_130748",
+   "committed": {
+    "merge_provenance": "docs/reproducibility/repro_runs/odisha_v120_3ha_koraput_repro/merge_provenance.csv",
+    "mask_summary": "docs/reproducibility/repro_runs/odisha_v120_3ha_koraput_repro/mask_summary.md",
+    "snic_cached_vs_live": "docs/reproducibility/snic_cached_vs_live_odisha_v120_3ha_koraput.json"
+   },
+   "local": {
+    "run_record": "outputs/repro_runs/phase2_vectors/odisha_v120_3ha_koraput_repro_run.json",
+    "stands_merged": "outputs/repro_runs/phase2_vectors/odisha_v120_3ha_koraput_repro_stands_merged.geojson",
+    "stands_snic": "outputs/repro_runs/phase2_vectors/odisha_v120_3ha_koraput_repro_stands_snic.geojson",
+    "stands_dissolved": "outputs/repro_runs/phase2_vectors/odisha_v120_3ha_koraput_repro_stands_dissolved.geojson",
+    "raster_at_plots": "outputs/repro_runs/phase2_vectors/odisha_v120_3ha_koraput_repro_raster_at_plots.csv",
+    "mask_data": "outputs/transparency_repro/_mask_data/odisha_v120_3ha_koraput_repro",
+    "mask_docs": "outputs/transparency_repro/_mask_docs/odisha_v120_3ha_koraput_repro",
+    "run_folders": [
+     "outputs/repro_runs/runs/odisha_v120_3ha_koraput_repro_20261013_080553",
+     "outputs/repro_runs/runs/odisha_v120_3ha_koraput_repro_20261013_130748",
+     "outputs/repro_runs/runs/odisha_v120_3ha_koraput_repro_20261013_132013",
+     "outputs/repro_runs/runs/odisha_v120_3ha_koraput_repro_20261013_133402"
+    ],
+    "missing_here": []
+   },
+   "drive": {
+    "folder": "fmu_exports_odisha_phase2",
+    "files": [
+     "odisha_v120_3ha_koraput_repro_cluster_labels.tif",
+     "odisha_v120_3ha_koraput_repro_features_raw.tif",
+     "odisha_v120_3ha_koraput_repro_features_scaled.tif",
+     "odisha_v120_3ha_koraput_repro_stands_dissolved.geojson",
+     "odisha_v120_3ha_koraput_repro_stands_dissolved.zip",
+     "odisha_v120_3ha_koraput_repro_stands_merged.geojson",
+     "odisha_v120_3ha_koraput_repro_stands_merged.zip",
+     "odisha_v120_3ha_koraput_repro_stands_snic.geojson",
+     "odisha_v120_3ha_koraput_repro_stands_snic.zip"
+    ],
+    "checked": "every export task succeeded (Earth Engine task list); on Drive the files were looked up for one run only, sanjay_van_baseline_repro"
+   },
+   "counts": {
+    "superpixels_in_merge": 6939,
+    "stands": 1125,
+    "stand_polygons_exported": 1145,
+    "superpixel_polygons_exported": 4950
+   },
+   "run_record_fingerprint": "030aafaa2c",
+   "source_commit": "df4535016c9f434fec73627596b0daac9ea87270",
+   "source_tree_dirty": false,
+   "batch_state_file": "outputs/repro_runs/logs/odisha_all.state.json"
+  },
+  {
+   "run_id": "odisha_v120_handcrafted_angul_repro",
+   "config": "configs/odisha_v120_handcrafted_angul_repro.yaml",
+   "site": "Odisha",
+   "district": "Angul",
+   "area": "Angul",
+   "arm": "feature_vector",
+   "feature_source": "handcrafted",
+   "stand_ceiling_ha": 10.0,
+   "stand_minimum_ha": 1.0,
+   "segmentation_size": 10,
+   "k": 6,
+   "roi_file": "aois/odisha_habitations_angul.geojson",
+   "drive_folder": "fmu_exports_odisha_phase2",
+   "fingerprint": "d6096dce2e",
+   "assets": [
+    {
+     "stage": "clustering",
+     "key": "cluster_labels",
+     "fingerprint": "d6096dce2e",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_angul_repro/clustering/cluster_labels__d6096dce2e"
+    },
+    {
+     "stage": "clustering",
+     "key": "feature_stack",
+     "fingerprint": "d6096dce2e",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_angul_repro/clustering/feature_stack__d6096dce2e"
+    },
+    {
+     "stage": "data_load",
+     "key": "s2_composite",
+     "fingerprint": "d6096dce2e",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_angul_repro/data_load/s2_composite__d6096dce2e"
+    },
+    {
+     "stage": "features_optical",
+     "key": "optical_features",
+     "fingerprint": "d6096dce2e",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_angul_repro/features_optical/optical_features__d6096dce2e"
+    },
+    {
+     "stage": "features_radar",
+     "key": "radar_features",
+     "fingerprint": "d6096dce2e",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_angul_repro/features_radar/radar_features__d6096dce2e"
+    },
+    {
+     "stage": "features_static",
+     "key": "static_features",
+     "fingerprint": "d6096dce2e",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_angul_repro/features_static/static_features__d6096dce2e"
+    },
+    {
+     "stage": "features_structure",
+     "key": "structure_features",
+     "fingerprint": "d6096dce2e",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_angul_repro/features_structure/structure_features__d6096dce2e"
+    },
+    {
+     "stage": "masking",
+     "key": "habitat_mask",
+     "fingerprint": "d6096dce2e",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_angul_repro/masking/habitat_mask__d6096dce2e"
+    },
+    {
+     "stage": "masking",
+     "key": "landcover_summary",
+     "fingerprint": "d6096dce2e",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_angul_repro/masking/landcover_summary__d6096dce2e"
+    },
+    {
+     "stage": "masking",
+     "key": "water_mask",
+     "fingerprint": "d6096dce2e",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_angul_repro/masking/water_mask__d6096dce2e"
+    },
+    {
+     "stage": "segmentation",
+     "key": "snic_clusters",
+     "fingerprint": "d6096dce2e",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_angul_repro/segmentation/snic_clusters__d6096dce2e"
+    },
+    {
+     "stage": "segmentation",
+     "key": "snic_means",
+     "fingerprint": "d6096dce2e",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_angul_repro/segmentation/snic_means__d6096dce2e"
+    }
+   ],
+   "not_cached": [
+    "masking/mask_provenance"
+   ],
+   "segmentation_route": "cached",
+   "segmentation_run": "odisha_v120_handcrafted_angul_repro_20261013_133654",
+   "committed": {
+    "merge_provenance": "docs/reproducibility/repro_runs/odisha_v120_handcrafted_angul_repro/merge_provenance.csv",
+    "mask_summary": "docs/reproducibility/repro_runs/odisha_v120_handcrafted_angul_repro/mask_summary.md",
+    "snic_cached_vs_live": "docs/reproducibility/snic_cached_vs_live_odisha_v120_handcrafted_angul.json"
+   },
+   "local": {
+    "run_record": "outputs/repro_runs/phase2_vectors/odisha_v120_handcrafted_angul_repro_run.json",
+    "stands_merged": "outputs/repro_runs/phase2_vectors/odisha_v120_handcrafted_angul_repro_stands_merged.geojson",
+    "stands_snic": "outputs/repro_runs/phase2_vectors/odisha_v120_handcrafted_angul_repro_stands_snic.geojson",
+    "stands_dissolved": "outputs/repro_runs/phase2_vectors/odisha_v120_handcrafted_angul_repro_stands_dissolved.geojson",
+    "raster_at_plots": "outputs/repro_runs/phase2_vectors/odisha_v120_handcrafted_angul_repro_raster_at_plots.csv",
+    "mask_data": "outputs/transparency_repro/_mask_data/odisha_v120_handcrafted_angul_repro",
+    "mask_docs": "outputs/transparency_repro/_mask_docs/odisha_v120_handcrafted_angul_repro",
+    "run_folders": [
+     "outputs/repro_runs/runs/odisha_v120_handcrafted_angul_repro_20261013_081230",
+     "outputs/repro_runs/runs/odisha_v120_handcrafted_angul_repro_20261013_133654",
+     "outputs/repro_runs/runs/odisha_v120_handcrafted_angul_repro_20261013_134215",
+     "outputs/repro_runs/runs/odisha_v120_handcrafted_angul_repro_20261013_135642"
+    ],
+    "missing_here": []
+   },
+   "drive": {
+    "folder": "fmu_exports_odisha_phase2",
+    "files": [
+     "odisha_v120_handcrafted_angul_repro_cluster_labels.tif",
+     "odisha_v120_handcrafted_angul_repro_features_raw.tif",
+     "odisha_v120_handcrafted_angul_repro_features_scaled.tif",
+     "odisha_v120_handcrafted_angul_repro_stands_dissolved.geojson",
+     "odisha_v120_handcrafted_angul_repro_stands_dissolved.zip",
+     "odisha_v120_handcrafted_angul_repro_stands_merged.geojson",
+     "odisha_v120_handcrafted_angul_repro_stands_merged.zip",
+     "odisha_v120_handcrafted_angul_repro_stands_snic.geojson",
+     "odisha_v120_handcrafted_angul_repro_stands_snic.zip"
+    ],
+    "checked": "every export task succeeded (Earth Engine task list); on Drive the files were looked up for one run only, sanjay_van_baseline_repro"
+   },
+   "counts": {
+    "superpixels_in_merge": 447,
+    "stands": 96,
+    "stand_polygons_exported": 98,
+    "superpixel_polygons_exported": 406
+   },
+   "run_record_fingerprint": "d6096dce2e",
+   "source_commit": "df4535016c9f434fec73627596b0daac9ea87270",
+   "source_tree_dirty": false,
+   "batch_state_file": "outputs/repro_runs/logs/odisha_all.state.json"
+  },
+  {
+   "run_id": "odisha_v120_handcrafted_dhenkanal_repro",
+   "config": "configs/odisha_v120_handcrafted_dhenkanal_repro.yaml",
+   "site": "Odisha",
+   "district": "Dhenkanal",
+   "area": "Dhenkanal",
+   "arm": "feature_vector",
+   "feature_source": "handcrafted",
+   "stand_ceiling_ha": 10.0,
+   "stand_minimum_ha": 1.0,
+   "segmentation_size": 10,
+   "k": 6,
+   "roi_file": "aois/odisha_habitations_dhenkanal.geojson",
+   "drive_folder": "fmu_exports_odisha_phase2",
+   "fingerprint": "57b7c569b3",
+   "assets": [
+    {
+     "stage": "clustering",
+     "key": "cluster_labels",
+     "fingerprint": "57b7c569b3",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_dhenkanal_repro/clustering/cluster_labels__57b7c569b3"
+    },
+    {
+     "stage": "clustering",
+     "key": "feature_stack",
+     "fingerprint": "57b7c569b3",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_dhenkanal_repro/clustering/feature_stack__57b7c569b3"
+    },
+    {
+     "stage": "data_load",
+     "key": "s2_composite",
+     "fingerprint": "57b7c569b3",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_dhenkanal_repro/data_load/s2_composite__57b7c569b3"
+    },
+    {
+     "stage": "features_optical",
+     "key": "optical_features",
+     "fingerprint": "57b7c569b3",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_dhenkanal_repro/features_optical/optical_features__57b7c569b3"
+    },
+    {
+     "stage": "features_radar",
+     "key": "radar_features",
+     "fingerprint": "57b7c569b3",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_dhenkanal_repro/features_radar/radar_features__57b7c569b3"
+    },
+    {
+     "stage": "features_static",
+     "key": "static_features",
+     "fingerprint": "57b7c569b3",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_dhenkanal_repro/features_static/static_features__57b7c569b3"
+    },
+    {
+     "stage": "features_structure",
+     "key": "structure_features",
+     "fingerprint": "57b7c569b3",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_dhenkanal_repro/features_structure/structure_features__57b7c569b3"
+    },
+    {
+     "stage": "masking",
+     "key": "habitat_mask",
+     "fingerprint": "57b7c569b3",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_dhenkanal_repro/masking/habitat_mask__57b7c569b3"
+    },
+    {
+     "stage": "masking",
+     "key": "landcover_summary",
+     "fingerprint": "57b7c569b3",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_dhenkanal_repro/masking/landcover_summary__57b7c569b3"
+    },
+    {
+     "stage": "masking",
+     "key": "water_mask",
+     "fingerprint": "57b7c569b3",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_dhenkanal_repro/masking/water_mask__57b7c569b3"
+    },
+    {
+     "stage": "segmentation",
+     "key": "snic_clusters",
+     "fingerprint": "57b7c569b3",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_dhenkanal_repro/segmentation/snic_clusters__57b7c569b3"
+    },
+    {
+     "stage": "segmentation",
+     "key": "snic_means",
+     "fingerprint": "57b7c569b3",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_dhenkanal_repro/segmentation/snic_means__57b7c569b3"
+    }
+   ],
+   "not_cached": [
+    "masking/mask_provenance"
+   ],
+   "segmentation_route": "cached",
+   "segmentation_run": "odisha_v120_handcrafted_dhenkanal_repro_20261013_135800",
+   "committed": {
+    "merge_provenance": "docs/reproducibility/repro_runs/odisha_v120_handcrafted_dhenkanal_repro/merge_provenance.csv",
+    "mask_summary": "docs/reproducibility/repro_runs/odisha_v120_handcrafted_dhenkanal_repro/mask_summary.md",
+    "snic_cached_vs_live": "docs/reproducibility/snic_cached_vs_live_odisha_v120_handcrafted_dhenkanal.json"
+   },
+   "local": {
+    "run_record": "outputs/repro_runs/phase2_vectors/odisha_v120_handcrafted_dhenkanal_repro_run.json",
+    "stands_merged": "outputs/repro_runs/phase2_vectors/odisha_v120_handcrafted_dhenkanal_repro_stands_merged.geojson",
+    "stands_snic": "outputs/repro_runs/phase2_vectors/odisha_v120_handcrafted_dhenkanal_repro_stands_snic.geojson",
+    "stands_dissolved": "outputs/repro_runs/phase2_vectors/odisha_v120_handcrafted_dhenkanal_repro_stands_dissolved.geojson",
+    "raster_at_plots": "outputs/repro_runs/phase2_vectors/odisha_v120_handcrafted_dhenkanal_repro_raster_at_plots.csv",
+    "mask_data": "outputs/transparency_repro/_mask_data/odisha_v120_handcrafted_dhenkanal_repro",
+    "mask_docs": "outputs/transparency_repro/_mask_docs/odisha_v120_handcrafted_dhenkanal_repro",
+    "run_folders": [
+     "outputs/repro_runs/runs/odisha_v120_handcrafted_dhenkanal_repro_20261013_081417",
+     "outputs/repro_runs/runs/odisha_v120_handcrafted_dhenkanal_repro_20261013_135800",
+     "outputs/repro_runs/runs/odisha_v120_handcrafted_dhenkanal_repro_20261013_140705",
+     "outputs/repro_runs/runs/odisha_v120_handcrafted_dhenkanal_repro_20261013_142317"
+    ],
+    "missing_here": []
+   },
+   "drive": {
+    "folder": "fmu_exports_odisha_phase2",
+    "files": [
+     "odisha_v120_handcrafted_dhenkanal_repro_cluster_labels.tif",
+     "odisha_v120_handcrafted_dhenkanal_repro_features_raw.tif",
+     "odisha_v120_handcrafted_dhenkanal_repro_features_scaled.tif",
+     "odisha_v120_handcrafted_dhenkanal_repro_stands_dissolved.geojson",
+     "odisha_v120_handcrafted_dhenkanal_repro_stands_dissolved.zip",
+     "odisha_v120_handcrafted_dhenkanal_repro_stands_merged.geojson",
+     "odisha_v120_handcrafted_dhenkanal_repro_stands_merged.zip",
+     "odisha_v120_handcrafted_dhenkanal_repro_stands_snic.geojson",
+     "odisha_v120_handcrafted_dhenkanal_repro_stands_snic.zip"
+    ],
+    "checked": "every export task succeeded (Earth Engine task list); on Drive the files were looked up for one run only, sanjay_van_baseline_repro"
+   },
+   "counts": {
+    "superpixels_in_merge": 1020,
+    "stands": 231,
+    "stand_polygons_exported": 243,
+    "superpixel_polygons_exported": 982
+   },
+   "run_record_fingerprint": "57b7c569b3",
+   "source_commit": "df4535016c9f434fec73627596b0daac9ea87270",
+   "source_tree_dirty": false,
+   "batch_state_file": "outputs/repro_runs/logs/odisha_all.state.json"
+  },
+  {
+   "run_id": "odisha_v120_handcrafted_kendujhar_repro",
+   "config": "configs/odisha_v120_handcrafted_kendujhar_repro.yaml",
+   "site": "Odisha",
+   "district": "Kendujhar",
+   "area": "Kendujhar",
+   "arm": "feature_vector",
+   "feature_source": "handcrafted",
+   "stand_ceiling_ha": 10.0,
+   "stand_minimum_ha": 1.0,
+   "segmentation_size": 10,
+   "k": 6,
+   "roi_file": "aois/odisha_habitations_kendujhar.geojson",
+   "drive_folder": "fmu_exports_odisha_phase2",
+   "fingerprint": "5bf920bc83",
+   "assets": [
+    {
+     "stage": "clustering",
+     "key": "cluster_labels",
+     "fingerprint": "5bf920bc83",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_kendujhar_repro/clustering/cluster_labels__5bf920bc83"
+    },
+    {
+     "stage": "clustering",
+     "key": "feature_stack",
+     "fingerprint": "5bf920bc83",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_kendujhar_repro/clustering/feature_stack__5bf920bc83"
+    },
+    {
+     "stage": "data_load",
+     "key": "s2_composite",
+     "fingerprint": "5bf920bc83",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_kendujhar_repro/data_load/s2_composite__5bf920bc83"
+    },
+    {
+     "stage": "features_optical",
+     "key": "optical_features",
+     "fingerprint": "5bf920bc83",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_kendujhar_repro/features_optical/optical_features__5bf920bc83"
+    },
+    {
+     "stage": "features_radar",
+     "key": "radar_features",
+     "fingerprint": "5bf920bc83",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_kendujhar_repro/features_radar/radar_features__5bf920bc83"
+    },
+    {
+     "stage": "features_static",
+     "key": "static_features",
+     "fingerprint": "5bf920bc83",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_kendujhar_repro/features_static/static_features__5bf920bc83"
+    },
+    {
+     "stage": "features_structure",
+     "key": "structure_features",
+     "fingerprint": "5bf920bc83",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_kendujhar_repro/features_structure/structure_features__5bf920bc83"
+    },
+    {
+     "stage": "masking",
+     "key": "habitat_mask",
+     "fingerprint": "5bf920bc83",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_kendujhar_repro/masking/habitat_mask__5bf920bc83"
+    },
+    {
+     "stage": "masking",
+     "key": "landcover_summary",
+     "fingerprint": "5bf920bc83",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_kendujhar_repro/masking/landcover_summary__5bf920bc83"
+    },
+    {
+     "stage": "masking",
+     "key": "water_mask",
+     "fingerprint": "5bf920bc83",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_kendujhar_repro/masking/water_mask__5bf920bc83"
+    },
+    {
+     "stage": "segmentation",
+     "key": "snic_clusters",
+     "fingerprint": "5bf920bc83",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_kendujhar_repro/segmentation/snic_clusters__5bf920bc83"
+    },
+    {
+     "stage": "segmentation",
+     "key": "snic_means",
+     "fingerprint": "5bf920bc83",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_kendujhar_repro/segmentation/snic_means__5bf920bc83"
+    }
+   ],
+   "not_cached": [
+    "masking/mask_provenance"
+   ],
+   "segmentation_route": "live",
+   "segmentation_run": "odisha_v120_handcrafted_kendujhar_repro_20261013_081528",
+   "committed": {
+    "merge_provenance": "docs/reproducibility/repro_runs/odisha_v120_handcrafted_kendujhar_repro/merge_provenance.csv",
+    "mask_summary": "docs/reproducibility/repro_runs/odisha_v120_handcrafted_kendujhar_repro/mask_summary.md",
+    "snic_cached_vs_live": "docs/reproducibility/snic_cached_vs_live_odisha_v120_handcrafted_kendujhar.json"
+   },
+   "local": {
+    "run_record": "outputs/repro_runs/phase2_vectors/odisha_v120_handcrafted_kendujhar_repro_run.json",
+    "stands_merged": "outputs/repro_runs/phase2_vectors/odisha_v120_handcrafted_kendujhar_repro_stands_merged.geojson",
+    "stands_snic": "outputs/repro_runs/phase2_vectors/odisha_v120_handcrafted_kendujhar_repro_stands_snic.geojson",
+    "stands_dissolved": "outputs/repro_runs/phase2_vectors/odisha_v120_handcrafted_kendujhar_repro_stands_dissolved.geojson",
+    "raster_at_plots": "outputs/repro_runs/phase2_vectors/odisha_v120_handcrafted_kendujhar_repro_raster_at_plots.csv",
+    "mask_data": "outputs/transparency_repro/_mask_data/odisha_v120_handcrafted_kendujhar_repro",
+    "mask_docs": "outputs/transparency_repro/_mask_docs/odisha_v120_handcrafted_kendujhar_repro",
+    "run_folders": [
+     "outputs/repro_runs/runs/odisha_v120_handcrafted_kendujhar_repro_20261013_081528",
+     "outputs/repro_runs/runs/odisha_v120_handcrafted_kendujhar_repro_20261013_091408",
+     "outputs/repro_runs/runs/odisha_v120_handcrafted_kendujhar_repro_20261013_091835"
+    ],
+    "missing_here": []
+   },
+   "drive": {
+    "folder": "fmu_exports_odisha_phase2",
+    "files": [
+     "odisha_v120_handcrafted_kendujhar_repro_cluster_labels.tif",
+     "odisha_v120_handcrafted_kendujhar_repro_features_raw.tif",
+     "odisha_v120_handcrafted_kendujhar_repro_features_scaled.tif",
+     "odisha_v120_handcrafted_kendujhar_repro_stands_dissolved.geojson",
+     "odisha_v120_handcrafted_kendujhar_repro_stands_dissolved.zip",
+     "odisha_v120_handcrafted_kendujhar_repro_stands_merged.geojson",
+     "odisha_v120_handcrafted_kendujhar_repro_stands_merged.zip",
+     "odisha_v120_handcrafted_kendujhar_repro_stands_snic.geojson",
+     "odisha_v120_handcrafted_kendujhar_repro_stands_snic.zip"
+    ],
+    "checked": "every export task succeeded (Earth Engine task list); on Drive the files were looked up for one run only, sanjay_van_baseline_repro"
+   },
+   "counts": {
+    "superpixels_in_merge": 412,
+    "stands": 103,
+    "stand_polygons_exported": 106,
+    "superpixel_polygons_exported": 365
+   },
+   "run_record_fingerprint": "5bf920bc83",
+   "source_commit": "df4535016c9f434fec73627596b0daac9ea87270",
+   "source_tree_dirty": false,
+   "batch_state_file": "outputs/repro_runs/logs/odisha_all.state.json"
+  },
+  {
+   "run_id": "odisha_v120_handcrafted_koraput_repro",
+   "config": "configs/odisha_v120_handcrafted_koraput_repro.yaml",
+   "site": "Odisha",
+   "district": "Koraput",
+   "area": "Koraput",
+   "arm": "feature_vector",
+   "feature_source": "handcrafted",
+   "stand_ceiling_ha": 10.0,
+   "stand_minimum_ha": 1.0,
+   "segmentation_size": 10,
+   "k": 6,
+   "roi_file": "aois/odisha_habitations_koraput.geojson",
+   "drive_folder": "fmu_exports_odisha_phase2",
+   "fingerprint": "4bdfadbe7c",
+   "assets": [
+    {
+     "stage": "clustering",
+     "key": "cluster_labels",
+     "fingerprint": "4bdfadbe7c",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_koraput_repro/clustering/cluster_labels__4bdfadbe7c"
+    },
+    {
+     "stage": "clustering",
+     "key": "feature_stack",
+     "fingerprint": "4bdfadbe7c",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_koraput_repro/clustering/feature_stack__4bdfadbe7c"
+    },
+    {
+     "stage": "data_load",
+     "key": "s2_composite",
+     "fingerprint": "4bdfadbe7c",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_koraput_repro/data_load/s2_composite__4bdfadbe7c"
+    },
+    {
+     "stage": "features_optical",
+     "key": "optical_features",
+     "fingerprint": "4bdfadbe7c",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_koraput_repro/features_optical/optical_features__4bdfadbe7c"
+    },
+    {
+     "stage": "features_radar",
+     "key": "radar_features",
+     "fingerprint": "4bdfadbe7c",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_koraput_repro/features_radar/radar_features__4bdfadbe7c"
+    },
+    {
+     "stage": "features_static",
+     "key": "static_features",
+     "fingerprint": "4bdfadbe7c",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_koraput_repro/features_static/static_features__4bdfadbe7c"
+    },
+    {
+     "stage": "features_structure",
+     "key": "structure_features",
+     "fingerprint": "4bdfadbe7c",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_koraput_repro/features_structure/structure_features__4bdfadbe7c"
+    },
+    {
+     "stage": "masking",
+     "key": "habitat_mask",
+     "fingerprint": "4bdfadbe7c",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_koraput_repro/masking/habitat_mask__4bdfadbe7c"
+    },
+    {
+     "stage": "masking",
+     "key": "landcover_summary",
+     "fingerprint": "4bdfadbe7c",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_koraput_repro/masking/landcover_summary__4bdfadbe7c"
+    },
+    {
+     "stage": "masking",
+     "key": "water_mask",
+     "fingerprint": "4bdfadbe7c",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_koraput_repro/masking/water_mask__4bdfadbe7c"
+    },
+    {
+     "stage": "segmentation",
+     "key": "snic_clusters",
+     "fingerprint": "4bdfadbe7c",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_koraput_repro/segmentation/snic_clusters__4bdfadbe7c"
+    },
+    {
+     "stage": "segmentation",
+     "key": "snic_means",
+     "fingerprint": "4bdfadbe7c",
+     "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_koraput_repro/segmentation/snic_means__4bdfadbe7c"
+    }
+   ],
+   "not_cached": [
+    "masking/mask_provenance"
+   ],
+   "segmentation_route": "live",
+   "segmentation_run": "odisha_v120_handcrafted_koraput_repro_20261013_092019",
+   "committed": {
+    "merge_provenance": "docs/reproducibility/repro_runs/odisha_v120_handcrafted_koraput_repro/merge_provenance.csv",
+    "mask_summary": "docs/reproducibility/repro_runs/odisha_v120_handcrafted_koraput_repro/mask_summary.md",
+    "snic_cached_vs_live": "docs/reproducibility/snic_cached_vs_live_odisha_v120_handcrafted_koraput.json"
+   },
+   "local": {
+    "run_record": "outputs/repro_runs/phase2_vectors/odisha_v120_handcrafted_koraput_repro_run.json",
+    "stands_merged": "outputs/repro_runs/phase2_vectors/odisha_v120_handcrafted_koraput_repro_stands_merged.geojson",
+    "stands_snic": "outputs/repro_runs/phase2_vectors/odisha_v120_handcrafted_koraput_repro_stands_snic.geojson",
+    "stands_dissolved": "outputs/repro_runs/phase2_vectors/odisha_v120_handcrafted_koraput_repro_stands_dissolved.geojson",
+    "raster_at_plots": "outputs/repro_runs/phase2_vectors/odisha_v120_handcrafted_koraput_repro_raster_at_plots.csv",
+    "mask_data": "outputs/transparency_repro/_mask_data/odisha_v120_handcrafted_koraput_repro",
+    "mask_docs": "outputs/transparency_repro/_mask_docs/odisha_v120_handcrafted_koraput_repro",
+    "run_folders": [
+     "outputs/repro_runs/runs/odisha_v120_handcrafted_koraput_repro_20261013_092019",
+     "outputs/repro_runs/runs/odisha_v120_handcrafted_koraput_repro_20261013_101929",
+     "outputs/repro_runs/runs/odisha_v120_handcrafted_koraput_repro_20261013_102737"
+    ],
+    "missing_here": []
+   },
+   "drive": {
+    "folder": "fmu_exports_odisha_phase2",
+    "files": [
+     "odisha_v120_handcrafted_koraput_repro_cluster_labels.tif",
+     "odisha_v120_handcrafted_koraput_repro_features_raw.tif",
+     "odisha_v120_handcrafted_koraput_repro_features_scaled.tif",
+     "odisha_v120_handcrafted_koraput_repro_stands_dissolved.geojson",
+     "odisha_v120_handcrafted_koraput_repro_stands_dissolved.zip",
+     "odisha_v120_handcrafted_koraput_repro_stands_merged.geojson",
+     "odisha_v120_handcrafted_koraput_repro_stands_merged.zip",
+     "odisha_v120_handcrafted_koraput_repro_stands_snic.geojson",
+     "odisha_v120_handcrafted_koraput_repro_stands_snic.zip"
+    ],
+    "checked": "every export task succeeded (Earth Engine task list); on Drive the files were looked up for one run only, sanjay_van_baseline_repro"
+   },
+   "counts": {
+    "superpixels_in_merge": 2499,
+    "stands": 617,
+    "stand_polygons_exported": 629,
+    "superpixel_polygons_exported": 1900
+   },
+   "run_record_fingerprint": "4bdfadbe7c",
+   "source_commit": "df4535016c9f434fec73627596b0daac9ea87270",
+   "source_tree_dirty": false,
+   "batch_state_file": "outputs/repro_runs/logs/odisha_all.state.json"
+  },
+  {
+   "run_id": "sanjay_van_alphaearth_repro",
+   "config": "configs/sanjay_van_alphaearth_repro.yaml",
+   "site": "Sanjay Van",
+   "district": null,
+   "area": "Sanjay Van working area",
+   "arm": "alphaearth",
+   "feature_source": "embedding",
+   "stand_ceiling_ha": 10.0,
+   "stand_minimum_ha": 1.0,
+   "segmentation_size": 10,
+   "k": 6,
+   "roi_file": "aois/sanjay_van.geojson",
+   "drive_folder": "fmu_exports",
+   "fingerprint": "105fc40547",
+   "assets": [
+    {
+     "stage": "clustering",
+     "key": "cluster_labels",
+     "fingerprint": "105fc40547",
+     "asset": "projects/replicating-paper/assets/fmu/sanjay_van_alphaearth_repro/clustering/cluster_labels__105fc40547"
+    },
+    {
+     "stage": "clustering",
+     "key": "feature_stack",
+     "fingerprint": "105fc40547",
+     "asset": "projects/replicating-paper/assets/fmu/sanjay_van_alphaearth_repro/clustering/feature_stack__105fc40547"
+    },
+    {
+     "stage": "data_load",
+     "key": "s2_composite",
+     "fingerprint": "105fc40547",
+     "asset": "projects/replicating-paper/assets/fmu/sanjay_van_alphaearth_repro/data_load/s2_composite__105fc40547"
+    },
+    {
+     "stage": "features_embedding",
+     "key": "embedding_features",
+     "fingerprint": "105fc40547",
+     "asset": "projects/replicating-paper/assets/fmu/sanjay_van_alphaearth_repro/features_embedding/embedding_features__105fc40547"
+    },
+    {
+     "stage": "features_optical",
+     "key": "optical_features",
+     "fingerprint": "105fc40547",
+     "asset": "projects/replicating-paper/assets/fmu/sanjay_van_alphaearth_repro/features_optical/optical_features__105fc40547"
+    },
+    {
+     "stage": "features_structure",
+     "key": "structure_features",
+     "fingerprint": "105fc40547",
+     "asset": "projects/replicating-paper/assets/fmu/sanjay_van_alphaearth_repro/features_structure/structure_features__105fc40547"
+    },
+    {
+     "stage": "masking",
+     "key": "habitat_mask",
+     "fingerprint": "105fc40547",
+     "asset": "projects/replicating-paper/assets/fmu/sanjay_van_alphaearth_repro/masking/habitat_mask__105fc40547"
+    },
+    {
+     "stage": "masking",
+     "key": "landcover_summary",
+     "fingerprint": "105fc40547",
+     "asset": "projects/replicating-paper/assets/fmu/sanjay_van_alphaearth_repro/masking/landcover_summary__105fc40547"
+    },
+    {
+     "stage": "masking",
+     "key": "water_mask",
+     "fingerprint": "105fc40547",
+     "asset": "projects/replicating-paper/assets/fmu/sanjay_van_alphaearth_repro/masking/water_mask__105fc40547"
+    },
+    {
+     "stage": "segmentation",
+     "key": "snic_clusters",
+     "fingerprint": "105fc40547",
+     "asset": "projects/replicating-paper/assets/fmu/sanjay_van_alphaearth_repro/segmentation/snic_clusters__105fc40547"
+    },
+    {
+     "stage": "segmentation",
+     "key": "snic_means",
+     "fingerprint": "105fc40547",
+     "asset": "projects/replicating-paper/assets/fmu/sanjay_van_alphaearth_repro/segmentation/snic_means__105fc40547"
+    }
+   ],
+   "not_cached": [
+    "masking/mask_provenance"
+   ],
+   "segmentation_route": "live",
+   "segmentation_run": "sanjay_van_alphaearth_repro_20261013_060142",
+   "committed": {
+    "merge_provenance": "docs/reproducibility/repro_runs/sanjay_van_alphaearth_repro/merge_provenance.csv",
+    "mask_summary": "docs/reproducibility/repro_runs/sanjay_van_alphaearth_repro/mask_summary.md",
+    "snic_cached_vs_live": "docs/reproducibility/snic_cached_vs_live_sanjay_van_alphaearth.json"
+   },
+   "local": {
+    "run_record": "outputs/repro_runs/phase2_vectors/sanjay_van_alphaearth_repro_run.json",
+    "stands_merged": "outputs/repro_runs/phase2_vectors/sanjay_van_alphaearth_repro_stands_merged.geojson",
+    "stands_snic": "outputs/repro_runs/phase2_vectors/sanjay_van_alphaearth_repro_stands_snic.geojson",
+    "stands_dissolved": "outputs/repro_runs/phase2_vectors/sanjay_van_alphaearth_repro_stands_dissolved.geojson",
+    "raster_at_plots": "outputs/repro_runs/phase2_vectors/sanjay_van_alphaearth_repro_raster_at_plots.csv",
+    "mask_data": "outputs/transparency_repro/_mask_data/sanjay_van_alphaearth_repro",
+    "mask_docs": "outputs/transparency_repro/_mask_docs/sanjay_van_alphaearth_repro",
+    "run_folders": [
+     "outputs/repro_runs/runs/sanjay_van_alphaearth_repro_20261013_060142",
+     "outputs/repro_runs/runs/sanjay_van_alphaearth_repro_20261013_060634",
+     "outputs/repro_runs/runs/sanjay_van_alphaearth_repro_20261013_061153"
+    ],
+    "missing_here": []
+   },
+   "drive": {
+    "folder": "fmu_exports",
+    "files": [
+     "sanjay_van_alphaearth_repro_cluster_labels.tif",
+     "sanjay_van_alphaearth_repro_features_raw.tif",
+     "sanjay_van_alphaearth_repro_features_scaled.tif",
+     "sanjay_van_alphaearth_repro_stands_dissolved.geojson",
+     "sanjay_van_alphaearth_repro_stands_dissolved.zip",
+     "sanjay_van_alphaearth_repro_stands_merged.geojson",
+     "sanjay_van_alphaearth_repro_stands_merged.zip",
+     "sanjay_van_alphaearth_repro_stands_snic.geojson",
+     "sanjay_van_alphaearth_repro_stands_snic.zip"
+    ],
+    "checked": "every export task succeeded (Earth Engine task list); on Drive the files were looked up for one run only, sanjay_van_baseline_repro"
+   },
+   "counts": {
+    "superpixels_in_merge": 1298,
+    "stands": 290,
+    "stand_polygons_exported": 290,
+    "superpixel_polygons_exported": 1195
+   },
+   "run_record_fingerprint": "105fc40547",
+   "source_commit": "df4535016c9f434fec73627596b0daac9ea87270",
+   "source_tree_dirty": false,
+   "batch_state_file": "outputs/repro_runs/logs/sanjay_van.state.json"
+  },
+  {
+   "run_id": "sanjay_van_baseline_repro",
+   "config": "configs/sanjay_van_baseline_repro.yaml",
+   "site": "Sanjay Van",
+   "district": null,
+   "area": "Sanjay Van working area",
+   "arm": "feature_vector",
+   "feature_source": "handcrafted",
+   "stand_ceiling_ha": 10.0,
+   "stand_minimum_ha": 1.0,
+   "segmentation_size": 10,
+   "k": 6,
+   "roi_file": "aois/sanjay_van.geojson",
+   "drive_folder": "fmu_exports",
+   "fingerprint": "7f642cf2ca",
+   "assets": [
+    {
+     "stage": "clustering",
+     "key": "cluster_labels",
+     "fingerprint": "7f642cf2ca",
+     "asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline_repro/clustering/cluster_labels__7f642cf2ca"
+    },
+    {
+     "stage": "clustering",
+     "key": "feature_stack",
+     "fingerprint": "7f642cf2ca",
+     "asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline_repro/clustering/feature_stack__7f642cf2ca"
+    },
+    {
+     "stage": "data_load",
+     "key": "s2_composite",
+     "fingerprint": "7f642cf2ca",
+     "asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline_repro/data_load/s2_composite__7f642cf2ca"
+    },
+    {
+     "stage": "features_optical",
+     "key": "optical_features",
+     "fingerprint": "7f642cf2ca",
+     "asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline_repro/features_optical/optical_features__7f642cf2ca"
+    },
+    {
+     "stage": "features_radar",
+     "key": "radar_features",
+     "fingerprint": "7f642cf2ca",
+     "asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline_repro/features_radar/radar_features__7f642cf2ca"
+    },
+    {
+     "stage": "features_static",
+     "key": "static_features",
+     "fingerprint": "7f642cf2ca",
+     "asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline_repro/features_static/static_features__7f642cf2ca"
+    },
+    {
+     "stage": "features_structure",
+     "key": "structure_features",
+     "fingerprint": "7f642cf2ca",
+     "asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline_repro/features_structure/structure_features__7f642cf2ca"
+    },
+    {
+     "stage": "masking",
+     "key": "habitat_mask",
+     "fingerprint": "7f642cf2ca",
+     "asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline_repro/masking/habitat_mask__7f642cf2ca"
+    },
+    {
+     "stage": "masking",
+     "key": "landcover_summary",
+     "fingerprint": "7f642cf2ca",
+     "asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline_repro/masking/landcover_summary__7f642cf2ca"
+    },
+    {
+     "stage": "masking",
+     "key": "water_mask",
+     "fingerprint": "7f642cf2ca",
+     "asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline_repro/masking/water_mask__7f642cf2ca"
+    },
+    {
+     "stage": "segmentation",
+     "key": "snic_clusters",
+     "fingerprint": "7f642cf2ca",
+     "asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline_repro/segmentation/snic_clusters__7f642cf2ca"
+    },
+    {
+     "stage": "segmentation",
+     "key": "snic_means",
+     "fingerprint": "7f642cf2ca",
+     "asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline_repro/segmentation/snic_means__7f642cf2ca"
+    }
+   ],
+   "not_cached": [
+    "masking/mask_provenance"
+   ],
+   "segmentation_route": "live",
+   "segmentation_run": "sanjay_van_baseline_repro_20261013_054040",
+   "committed": {
+    "merge_provenance": "docs/reproducibility/repro_runs/sanjay_van_baseline_repro/merge_provenance.csv",
+    "mask_summary": "docs/reproducibility/repro_runs/sanjay_van_baseline_repro/mask_summary.md",
+    "snic_cached_vs_live": "docs/reproducibility/snic_cached_vs_live_sanjay_van_baseline.json"
+   },
+   "local": {
+    "run_record": "outputs/repro_runs/phase2_vectors/sanjay_van_baseline_repro_run.json",
+    "stands_merged": "outputs/repro_runs/phase2_vectors/sanjay_van_baseline_repro_stands_merged.geojson",
+    "stands_snic": "outputs/repro_runs/phase2_vectors/sanjay_van_baseline_repro_stands_snic.geojson",
+    "stands_dissolved": "outputs/repro_runs/phase2_vectors/sanjay_van_baseline_repro_stands_dissolved.geojson",
+    "raster_at_plots": "outputs/repro_runs/phase2_vectors/sanjay_van_baseline_repro_raster_at_plots.csv",
+    "mask_data": "outputs/transparency_repro/_mask_data/sanjay_van_baseline_repro",
+    "mask_docs": "outputs/transparency_repro/_mask_docs/sanjay_van_baseline_repro",
+    "run_folders": [
+     "outputs/repro_runs/runs/sanjay_van_baseline_repro_20261013_054040",
+     "outputs/repro_runs/runs/sanjay_van_baseline_repro_20261013_055544",
+     "outputs/repro_runs/runs/sanjay_van_baseline_repro_20261013_055947"
+    ],
+    "missing_here": []
+   },
+   "drive": {
+    "folder": "fmu_exports",
+    "files": [
+     "sanjay_van_baseline_repro_cluster_labels.tif",
+     "sanjay_van_baseline_repro_features_raw.tif",
+     "sanjay_van_baseline_repro_features_scaled.tif",
+     "sanjay_van_baseline_repro_stands_dissolved.geojson",
+     "sanjay_van_baseline_repro_stands_dissolved.zip",
+     "sanjay_van_baseline_repro_stands_merged.geojson",
+     "sanjay_van_baseline_repro_stands_merged.zip",
+     "sanjay_van_baseline_repro_stands_snic.geojson",
+     "sanjay_van_baseline_repro_stands_snic.zip"
+    ],
+    "checked": "every export task succeeded (Earth Engine task list); on Drive the files were looked up for one run only, sanjay_van_baseline_repro"
+   },
+   "counts": {
+    "superpixels_in_merge": 1298,
+    "stands": 291,
+    "stand_polygons_exported": 295,
+    "superpixel_polygons_exported": 1188
+   },
+   "run_record_fingerprint": "7f642cf2ca",
+   "source_commit": "df4535016c9f434fec73627596b0daac9ea87270",
+   "source_tree_dirty": false,
+   "batch_state_file": "outputs/repro_runs/logs/sanjay_van.state.json"
+  }
+ ]
+}
