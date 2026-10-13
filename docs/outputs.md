@@ -266,12 +266,15 @@ two do not agree: in the 14 re-runs of 13 Oct 2026 the exported
 `units_in_habitat`
 (`sanjay_van_baseline_repro`: 291 units and 257 in habitat, against 295 stands
 of which 269 carry a type; `odisha_alphaearth_angul_repro`: 102 and 86, against
-100 and 92). Two causes are known (`scripts/remerge_demo_set.py`): a stand in
-several pieces is several polygons, and the export stage types a stand from the
+100 and 92). Three causes are known (`docs/demo/remerge/README.md`): a stand in
+several pieces is several polygons; the export stage types a stand from the
 typed pixels its polygon touches, weighted by the share of each pixel inside
-it, so a stand with no habitat pixel of its own can take a neighbour's type. A
-layer with fewer stands than `units_total` is not explained. Do not show these
-counts beside a count of stands without saying so.
+it, so a stand with no habitat pixel of its own can take a neighbour's type;
+and the merge is not cached, so the pass that fits the types and the pass that
+exports the stands each merge again, and where one of them computed a merge
+criterion live they did not get the same stands (`odisha_alphaearth_angul_repro`:
+the fit counted 102 stands, the run exported 97). Do not show these counts
+beside a count of stands without saying so.
 
 **Masking** declares two layers on `mask_provenance` (bands `reason` and
 `source`; the codes are under "Cached GEE assets") and these numbers, from one

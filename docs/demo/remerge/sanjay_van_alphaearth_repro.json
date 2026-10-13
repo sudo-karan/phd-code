@@ -1,0 +1,290 @@
+{
+ "run_id": "sanjay_van_alphaearth_repro",
+ "site": "Sanjay Van",
+ "area": "Sanjay Van working area",
+ "arm": "alphaearth",
+ "stand_ceiling_ha": 10.0,
+ "k": 6,
+ "merge_rule": {
+  "old": "merge.pass2_skip_at_min_area false, as the run was made",
+  "new": "merge.pass2_skip_at_min_area true (spec-merge-pass2-skip-at-minimum)"
+ },
+ "superpixels_in_merge": 1298,
+ "pixels": {
+  "in_the_merge": 130143,
+  "on_the_downloaded_grid": 130218
+ },
+ "old_rule_check": {
+  "reproduces": true,
+  "types_reproduce": false,
+  "layer_reproduces": false,
+  "record": {
+   "totals_equal": true,
+   "totals_that_differ": {},
+   "stands_mine": 290,
+   "stands_theirs": 290,
+   "same_stand_ids": true,
+   "stand_values_that_differ": 0,
+   "largest_difference": 0.0,
+   "examples": [],
+   "equal": true
+  },
+  "pixels": {
+   "pixels_compared": 130178,
+   "pixels_in_another_stand": 0,
+   "same_stand_ids_everywhere": true,
+   "same_partition": true,
+   "pixels_with_no_exported_polygon": 40
+  },
+  "layer": {
+   "features": {
+    "mine": 290,
+    "theirs": 290
+   },
+   "stands": {
+    "mine": 290,
+    "theirs": 290,
+    "only_in_mine": 0,
+    "only_in_theirs": 0
+   },
+   "stands_whose_type_differs": 207,
+   "stands_typed_in_one_layer_only": 0,
+   "stand_types_up_to_renumbering": {
+    "compared": 260,
+    "same_numbers": 53,
+    "same_after_best_renumbering": 184,
+    "differ_after_best_renumbering": 76,
+    "adjusted_rand_index": 0.4385
+   },
+   "stands_whose_area_differs": 0,
+   "stands_whose_number_of_pieces_differs": 0,
+   "stands_whose_outline_differs": 0,
+   "examples_of_a_different_type": [
+    [
+     0,
+     0,
+     3
+    ],
+    [
+     1,
+     2,
+     5
+    ],
+    [
+     2,
+     5,
+     0
+    ],
+    [
+     3,
+     2,
+     5
+    ],
+    [
+     4,
+     5,
+     0
+    ],
+    [
+     5,
+     2,
+     5
+    ],
+    [
+     7,
+     5,
+     0
+    ],
+    [
+     9,
+     5,
+     0
+    ],
+    [
+     10,
+     2,
+     5
+    ],
+    [
+     11,
+     2,
+     5
+    ]
+   ],
+   "equal": false,
+   "type_pixels_against_the_saved_type_raster": {
+    "pixels_typed_in_both": 97184,
+    "pixels_typed_in_one_only": 0,
+    "pixels_whose_type_number_differs": 66673,
+    "up_to_renumbering": {
+     "compared": 97184,
+     "same_numbers": 30511,
+     "same_after_best_renumbering": 68773,
+     "differ_after_best_renumbering": 28411,
+     "adjusted_rand_index": 0.3921
+    }
+   }
+  },
+  "saved_fit": {
+   "k": 6,
+   "n_units_total": 294,
+   "n_units_in_habitat": 254,
+   "n_training_units": 254
+  }
+ },
+ "stands": {
+  "old": 290,
+  "new": 296
+ },
+ "merge_totals": {
+  "old": {
+   "n_superpixels": 1298,
+   "n_stands": 290,
+   "reduction_factor": 4.476,
+   "pass1_rounds": 6,
+   "pass1_merges": 875,
+   "pass1_pairs_blocked_by_area_round1": 0,
+   "pass1_pairs_blocked_by_undefined_criteria_round1": 360,
+   "pass2_iterations": 2,
+   "pass2_merges": 133,
+   "pass2_fallback_merges": 82,
+   "stands_below_min_area": 2,
+   "area_in_undersized_stands_ha": 1.5,
+   "orphans_isolated": 0,
+   "orphans_area_blocked": 2,
+   "orphans_no_attribute_match": 0,
+   "stands_with_incomplete_criteria": 97
+  },
+  "new": {
+   "n_superpixels": 1298,
+   "n_stands": 296,
+   "reduction_factor": 4.385,
+   "pass1_rounds": 6,
+   "pass1_merges": 875,
+   "pass1_pairs_blocked_by_area_round1": 0,
+   "pass1_pairs_blocked_by_undefined_criteria_round1": 360,
+   "pass2_iterations": 2,
+   "pass2_merges": 127,
+   "pass2_fallback_merges": 78,
+   "stands_below_min_area": 2,
+   "area_in_undersized_stands_ha": 1.5,
+   "orphans_isolated": 0,
+   "orphans_area_blocked": 2,
+   "orphans_no_attribute_match": 0,
+   "stands_with_incomplete_criteria": 103
+  }
+ },
+ "stands_with_a_type": {
+  "old": 260,
+  "new": 263
+ },
+ "clustering": {
+  "old": {
+   "k": 6,
+   "seed": 42,
+   "n_training_units": 252,
+   "n_units_total": 290,
+   "n_units_in_habitat": 252,
+   "n_units_outside_habitat": 38,
+   "n_units_dropped_null_band": 0,
+   "stands_typed_by_the_export_only": 8,
+   "stands_the_export_types_differently_from_the_fit": 2,
+   "stands_whose_pixel_centres_disagree_with_the_fit": 0
+  },
+  "new": {
+   "k": 6,
+   "seed": 42,
+   "n_training_units": 255,
+   "n_units_total": 296,
+   "n_units_in_habitat": 255,
+   "n_units_outside_habitat": 41,
+   "n_units_dropped_null_band": 0,
+   "stands_typed_by_the_export_only": 8,
+   "stands_the_export_types_differently_from_the_fit": 0,
+   "stands_whose_pixel_centres_disagree_with_the_fit": 0
+  }
+ },
+ "change": {
+  "n_old": 290,
+  "n_new": 296,
+  "n_unchanged": 284,
+  "n_pixels": 130218,
+  "n_pixels_changed": 3329,
+  "area_ha_total": 1302.18,
+  "area_ha_changed": 33.29,
+  "share_area_changed": 0.0255648220676097,
+  "area_weighted_iou_old_to_new": 0.9926815033251931,
+  "area_weighted_iou_new_to_old": 0.9899865035977828,
+  "n_parts": 1,
+  "n_old_in_several_parts": 0,
+  "n_new_in_several_parts": 0
+ },
+ "types_old_against_new": {
+  "pixels_typed_in_both": 96820,
+  "adjusted_rand_index": 0.3073
+ },
+ "plots": null,
+ "elbow": {
+  "old": {
+   "rows": 252,
+   "ks": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "inertia": [
+    11113.412173,
+    9243.758354,
+    7709.020771,
+    6987.578799,
+    6400.317748,
+    5960.860349,
+    5600.093304,
+    5258.329132,
+    4890.802064,
+    4650.680321,
+    4467.320141
+   ],
+   "elbow_k": 5
+  },
+  "new": {
+   "rows": 255,
+   "ks": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "inertia": [
+    11881.546779,
+    10005.212629,
+    8382.170961,
+    7630.240671,
+    7023.621501,
+    6440.288657,
+    5993.143326,
+    5642.3956,
+    5331.306553,
+    4967.057084,
+    4870.290089
+   ],
+   "elbow_k": 5
+  }
+ },
+ "export_tasks_submitted": 0
+}

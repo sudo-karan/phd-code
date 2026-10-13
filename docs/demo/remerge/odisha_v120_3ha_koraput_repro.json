@@ -1,0 +1,304 @@
+{
+ "run_id": "odisha_v120_3ha_koraput_repro",
+ "site": "Odisha",
+ "area": "Koraput",
+ "arm": "feature_vector",
+ "stand_ceiling_ha": 3.0,
+ "k": 5,
+ "merge_rule": {
+  "old": "merge.pass2_skip_at_min_area false, as the run was made",
+  "new": "merge.pass2_skip_at_min_area true (spec-merge-pass2-skip-at-minimum)"
+ },
+ "superpixels_in_merge": 6939,
+ "pixels": {
+  "in_the_merge": 245439,
+  "on_the_downloaded_grid": 245945
+ },
+ "old_rule_check": {
+  "reproduces": true,
+  "types_reproduce": false,
+  "layer_reproduces": false,
+  "record": {
+   "totals_equal": true,
+   "totals_that_differ": {},
+   "stands_mine": 1125,
+   "stands_theirs": 1125,
+   "same_stand_ids": true,
+   "stand_values_that_differ": 0,
+   "largest_difference": 0.0,
+   "examples": [],
+   "equal": true
+  },
+  "pixels": {
+   "pixels_compared": 245936,
+   "pixels_in_another_stand": 0,
+   "same_stand_ids_everywhere": true,
+   "same_partition": true,
+   "pixels_with_no_exported_polygon": 9
+  },
+  "layer": {
+   "features": {
+    "mine": 1145,
+    "theirs": 1145
+   },
+   "stands": {
+    "mine": 1125,
+    "theirs": 1125,
+    "only_in_mine": 0,
+    "only_in_theirs": 0
+   },
+   "stands_whose_type_differs": 76,
+   "stands_typed_in_one_layer_only": 0,
+   "stand_types_up_to_renumbering": {
+    "compared": 905,
+    "same_numbers": 829,
+    "same_after_best_renumbering": 829,
+    "differ_after_best_renumbering": 76,
+    "adjusted_rand_index": 0.8153
+   },
+   "stands_whose_area_differs": 0,
+   "stands_whose_number_of_pieces_differs": 0,
+   "stands_whose_outline_differs": 0,
+   "examples_of_a_different_type": [
+    [
+     32,
+     4,
+     1
+    ],
+    [
+     36,
+     3,
+     2
+    ],
+    [
+     42,
+     2,
+     0
+    ],
+    [
+     120,
+     3,
+     2
+    ],
+    [
+     141,
+     2,
+     0
+    ],
+    [
+     154,
+     2,
+     0
+    ],
+    [
+     191,
+     3,
+     2
+    ],
+    [
+     195,
+     0,
+     1
+    ],
+    [
+     240,
+     0,
+     3
+    ],
+    [
+     247,
+     4,
+     1
+    ]
+   ],
+   "equal": false,
+   "type_pixels_against_the_saved_type_raster": {
+    "pixels_typed_in_both": 163417,
+    "pixels_typed_in_one_only": 1,
+    "pixels_whose_type_number_differs": 15129,
+    "up_to_renumbering": {
+     "compared": 163417,
+     "same_numbers": 148288,
+     "same_after_best_renumbering": 148288,
+     "differ_after_best_renumbering": 15129,
+     "adjusted_rand_index": 0.7842
+    }
+   }
+  },
+  "saved_fit": {
+   "k": 5,
+   "n_units_total": 1125,
+   "n_units_in_habitat": 881,
+   "n_training_units": 879
+  }
+ },
+ "stands": {
+  "old": 1125,
+  "new": 1187
+ },
+ "merge_totals": {
+  "old": {
+   "n_superpixels": 6939,
+   "n_stands": 1125,
+   "reduction_factor": 6.168,
+   "pass1_rounds": 6,
+   "pass1_merges": 4119,
+   "pass1_pairs_blocked_by_area_round1": 0,
+   "pass1_pairs_blocked_by_undefined_criteria_round1": 28,
+   "pass2_iterations": 3,
+   "pass2_merges": 1695,
+   "pass2_fallback_merges": 686,
+   "stands_below_min_area": 54,
+   "area_in_undersized_stands_ha": 29.83,
+   "orphans_isolated": 0,
+   "orphans_area_blocked": 54,
+   "orphans_no_attribute_match": 0,
+   "stands_with_incomplete_criteria": 0
+  },
+  "new": {
+   "n_superpixels": 6939,
+   "n_stands": 1187,
+   "reduction_factor": 5.846,
+   "pass1_rounds": 6,
+   "pass1_merges": 4119,
+   "pass1_pairs_blocked_by_area_round1": 0,
+   "pass1_pairs_blocked_by_undefined_criteria_round1": 28,
+   "pass2_iterations": 3,
+   "pass2_merges": 1633,
+   "pass2_fallback_merges": 649,
+   "stands_below_min_area": 47,
+   "area_in_undersized_stands_ha": 23.89,
+   "orphans_isolated": 0,
+   "orphans_area_blocked": 47,
+   "orphans_no_attribute_match": 0,
+   "stands_with_incomplete_criteria": 0
+  }
+ },
+ "stands_with_a_type": {
+  "old": 905,
+  "new": 931
+ },
+ "clustering": {
+  "old": {
+   "k": 5,
+   "seed": 42,
+   "n_training_units": 879,
+   "n_units_total": 1125,
+   "n_units_in_habitat": 881,
+   "n_units_outside_habitat": 244,
+   "n_units_dropped_null_band": 2,
+   "stands_typed_by_the_export_only": 26,
+   "stands_the_export_types_differently_from_the_fit": 1,
+   "stands_whose_pixel_centres_disagree_with_the_fit": 0
+  },
+  "new": {
+   "k": 5,
+   "seed": 42,
+   "n_training_units": 899,
+   "n_units_total": 1187,
+   "n_units_in_habitat": 901,
+   "n_units_outside_habitat": 286,
+   "n_units_dropped_null_band": 2,
+   "stands_typed_by_the_export_only": 32,
+   "stands_the_export_types_differently_from_the_fit": 3,
+   "stands_whose_pixel_centres_disagree_with_the_fit": 0
+  }
+ },
+ "change": {
+  "n_old": 1125,
+  "n_new": 1187,
+  "n_unchanged": 1019,
+  "n_pixels": 245945,
+  "n_pixels_changed": 25180,
+  "area_ha_total": 2459.4500000000003,
+  "area_ha_changed": 251.8,
+  "share_area_changed": 0.10238061355181037,
+  "area_weighted_iou_old_to_new": 0.9562687171187013,
+  "area_weighted_iou_new_to_old": 0.9515826286597501,
+  "n_parts": 7,
+  "n_old_in_several_parts": 0,
+  "n_new_in_several_parts": 0
+ },
+ "types_old_against_new": {
+  "pixels_typed_in_both": 162117,
+  "adjusted_rand_index": 0.461
+ },
+ "plots": {
+  "in_the_district": 146,
+  "in_a_stand": 145,
+  "changed_stand": 4,
+  "changed_stand_keys": [
+   "18.575806_82.837232",
+   "18.596228_82.824514",
+   "18.678063_82.960975",
+   "18.681858_82.963077"
+  ],
+  "with_a_type": {
+   "old": 145,
+   "new": 144
+  }
+ },
+ "elbow": {
+  "old": {
+   "rows": 879,
+   "ks": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "inertia": [
+    7227.633396,
+    6242.710732,
+    5680.242744,
+    5267.697763,
+    4945.279706,
+    4648.510756,
+    4455.214347,
+    4270.999817,
+    4113.154062,
+    3948.644093,
+    3825.807017
+   ],
+   "elbow_k": 5
+  },
+  "new": {
+   "rows": 899,
+   "ks": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "inertia": [
+    7509.251806,
+    6502.994898,
+    5914.167808,
+    5497.168642,
+    5160.018089,
+    4854.531003,
+    4658.098524,
+    4476.980021,
+    4296.903967,
+    4134.630115,
+    3995.004895
+   ],
+   "elbow_k": 5
+  }
+ },
+ "export_tasks_submitted": 0
+}

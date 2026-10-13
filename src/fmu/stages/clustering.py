@@ -255,12 +255,15 @@ class ClusteringStage(Stage):
     # layer the same run exports: in the 14 re-runs of 13 Oct 2026 the
     # exported layer has between 4 fewer and 20 more stands than units_total,
     # and always more typed stands than units_in_habitat (sanjay_van_baseline_repro:
-    # 291 and 257 here, 295 stands and 269 typed in the file). Two causes are
-    # known: a stand in several pieces is several polygons, and the export
-    # stage types a stand from the typed pixels its polygon touches, so a
-    # stand with no habitat pixel of its own can take a neighbour's type. A
-    # layer with fewer stands than units_total is not explained. The
-    # descriptions say the counts differ, because a reader shown these
+    # 291 and 257 here, 295 stands and 269 typed in the file). Three causes
+    # are known (docs/demo/remerge/README.md): a stand in several pieces is
+    # several polygons; the export stage types a stand from the typed pixels
+    # its polygon touches, so a stand with no habitat pixel of its own can
+    # take a neighbour's type; and the merge is not cached, so the pass that
+    # fits the types and the pass that exports the stands each merge again,
+    # and where one of them computed a merge criterion live they did not get
+    # the same stands (102 here against 97 exported, odisha_alphaearth_angul_repro).
+    # The descriptions say the counts differ, because a reader shown these
     # numbers beside the stand map would otherwise try to make them add up.
     summary_numbers = (
         SummaryNumber("k", "Number of stand types the run fitted", "count"),

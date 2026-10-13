@@ -1,0 +1,301 @@
+{
+ "run_id": "odisha_alphaearth_koraput_repro",
+ "site": "Odisha",
+ "area": "Koraput",
+ "arm": "alphaearth",
+ "stand_ceiling_ha": 10.0,
+ "k": 6,
+ "merge_rule": {
+  "old": "merge.pass2_skip_at_min_area false, as the run was made",
+  "new": "merge.pass2_skip_at_min_area true (spec-merge-pass2-skip-at-minimum)"
+ },
+ "superpixels_in_merge": 2499,
+ "pixels": {
+  "in_the_merge": 245618,
+  "on_the_downloaded_grid": 245945
+ },
+ "old_rule_check": {
+  "reproduces": true,
+  "types_reproduce": false,
+  "layer_reproduces": false,
+  "record": {
+   "totals_equal": true,
+   "totals_that_differ": {},
+   "stands_mine": 623,
+   "stands_theirs": 623,
+   "same_stand_ids": true,
+   "stand_values_that_differ": 0,
+   "largest_difference": 0.0,
+   "examples": [],
+   "equal": true
+  },
+  "pixels": {
+   "pixels_compared": 245936,
+   "pixels_in_another_stand": 0,
+   "same_stand_ids_everywhere": true,
+   "same_partition": true,
+   "pixels_with_no_exported_polygon": 9
+  },
+  "layer": {
+   "features": {
+    "mine": 630,
+    "theirs": 630
+   },
+   "stands": {
+    "mine": 623,
+    "theirs": 623,
+    "only_in_mine": 0,
+    "only_in_theirs": 0
+   },
+   "stands_whose_type_differs": 257,
+   "stands_typed_in_one_layer_only": 0,
+   "stand_types_up_to_renumbering": {
+    "compared": 455,
+    "same_numbers": 198,
+    "same_after_best_renumbering": 256,
+    "differ_after_best_renumbering": 199,
+    "adjusted_rand_index": 0.3765
+   },
+   "stands_whose_area_differs": 0,
+   "stands_whose_number_of_pieces_differs": 0,
+   "stands_whose_outline_differs": 0,
+   "examples_of_a_different_type": [
+    [
+     0,
+     2,
+     1
+    ],
+    [
+     7,
+     5,
+     2
+    ],
+    [
+     10,
+     2,
+     1
+    ],
+    [
+     12,
+     4,
+     3
+    ],
+    [
+     13,
+     1,
+     2
+    ],
+    [
+     23,
+     2,
+     1
+    ],
+    [
+     25,
+     2,
+     1
+    ],
+    [
+     26,
+     2,
+     5
+    ],
+    [
+     27,
+     1,
+     0
+    ],
+    [
+     29,
+     2,
+     1
+    ]
+   ],
+   "equal": false,
+   "type_pixels_against_the_saved_type_raster": {
+    "pixels_typed_in_both": 163424,
+    "pixels_typed_in_one_only": 0,
+    "pixels_whose_type_number_differs": 89536,
+    "up_to_renumbering": {
+     "compared": 163424,
+     "same_numbers": 73888,
+     "same_after_best_renumbering": 92454,
+     "differ_after_best_renumbering": 70970,
+     "adjusted_rand_index": 0.3764
+    }
+   }
+  },
+  "saved_fit": {
+   "k": 6,
+   "n_units_total": 621,
+   "n_units_in_habitat": 425,
+   "n_training_units": 424
+  }
+ },
+ "stands": {
+  "old": 623,
+  "new": 642
+ },
+ "merge_totals": {
+  "old": {
+   "n_superpixels": 2499,
+   "n_stands": 623,
+   "reduction_factor": 4.011,
+   "pass1_rounds": 6,
+   "pass1_merges": 1579,
+   "pass1_pairs_blocked_by_area_round1": 0,
+   "pass1_pairs_blocked_by_undefined_criteria_round1": 0,
+   "pass2_iterations": 2,
+   "pass2_merges": 297,
+   "pass2_fallback_merges": 96,
+   "stands_below_min_area": 3,
+   "area_in_undersized_stands_ha": 1.88,
+   "orphans_isolated": 0,
+   "orphans_area_blocked": 3,
+   "orphans_no_attribute_match": 0,
+   "stands_with_incomplete_criteria": 0
+  },
+  "new": {
+   "n_superpixels": 2499,
+   "n_stands": 642,
+   "reduction_factor": 3.893,
+   "pass1_rounds": 6,
+   "pass1_merges": 1579,
+   "pass1_pairs_blocked_by_area_round1": 0,
+   "pass1_pairs_blocked_by_undefined_criteria_round1": 0,
+   "pass2_iterations": 2,
+   "pass2_merges": 278,
+   "pass2_fallback_merges": 87,
+   "stands_below_min_area": 3,
+   "area_in_undersized_stands_ha": 1.88,
+   "orphans_isolated": 0,
+   "orphans_area_blocked": 3,
+   "orphans_no_attribute_match": 0,
+   "stands_with_incomplete_criteria": 0
+  }
+ },
+ "stands_with_a_type": {
+  "old": 455,
+  "new": 465
+ },
+ "clustering": {
+  "old": {
+   "k": 6,
+   "seed": 42,
+   "n_training_units": 425,
+   "n_units_total": 623,
+   "n_units_in_habitat": 426,
+   "n_units_outside_habitat": 197,
+   "n_units_dropped_null_band": 1,
+   "stands_typed_by_the_export_only": 30,
+   "stands_the_export_types_differently_from_the_fit": 3,
+   "stands_whose_pixel_centres_disagree_with_the_fit": 0
+  },
+  "new": {
+   "k": 6,
+   "seed": 42,
+   "n_training_units": 434,
+   "n_units_total": 642,
+   "n_units_in_habitat": 435,
+   "n_units_outside_habitat": 207,
+   "n_units_dropped_null_band": 1,
+   "stands_typed_by_the_export_only": 31,
+   "stands_the_export_types_differently_from_the_fit": 3,
+   "stands_whose_pixel_centres_disagree_with_the_fit": 0
+  }
+ },
+ "change": {
+  "n_old": 623,
+  "n_new": 642,
+  "n_unchanged": 602,
+  "n_pixels": 245945,
+  "n_pixels_changed": 10022,
+  "area_ha_total": 2459.4500000000003,
+  "area_ha_changed": 100.22,
+  "share_area_changed": 0.040748947935514035,
+  "area_weighted_iou_old_to_new": 0.9864587957998207,
+  "area_weighted_iou_new_to_old": 0.9832566440209445,
+  "n_parts": 7,
+  "n_old_in_several_parts": 0,
+  "n_new_in_several_parts": 0
+ },
+ "types_old_against_new": {
+  "pixels_typed_in_both": 162122,
+  "adjusted_rand_index": 0.5324
+ },
+ "plots": {
+  "in_the_district": 146,
+  "in_a_stand": 145,
+  "changed_stand": 1,
+  "changed_stand_keys": [
+   "18.69107_82.868956"
+  ],
+  "with_a_type": {
+   "old": 145,
+   "new": 145
+  }
+ },
+ "elbow": {
+  "old": {
+   "rows": 425,
+   "ks": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "inertia": [
+    14964.070242,
+    13091.004303,
+    11449.457553,
+    10381.469787,
+    9591.184999,
+    8898.750316,
+    8431.279694,
+    7860.542707,
+    7427.161212,
+    7068.866589,
+    6775.461578
+   ],
+   "elbow_k": 5
+  },
+  "new": {
+   "rows": 434,
+   "ks": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "inertia": [
+    14911.696863,
+    13068.837778,
+    11471.442246,
+    10376.276243,
+    9593.093844,
+    9070.883107,
+    8380.439581,
+    7911.581288,
+    7461.353699,
+    7111.101071,
+    6830.868446
+   ],
+   "elbow_k": 5
+  }
+ },
+ "export_tasks_submitted": 0
+}

@@ -2,6 +2,7 @@
 
     python scripts/segmentation_route.py --config configs/<name>.yaml [configs/<other>.yaml ...]
         --runs-dir runs [--runs-dir <another folder of run folders> ...] [--out <file.json>]
+        [--stage clustering --output cluster_labels]
 
 Offline. It reads the manifest.json every pipeline run leaves in its run folder; no Earth Engine.
 
@@ -31,6 +32,12 @@ A config with no such run is reported as "not recorded": its superpixel asset wa
 whose folder is not in the folders given. Run folders are local and ignored by git, so the
 answer is only as complete as the folders are.
 
+The same question for another stage. `--stage clustering --output cluster_labels` asks it of the
+run that made a config's stand types: were the outputs of the stages before clustering read from
+the cache, or computed live? The stands a run exports are merged again in the export pass, from
+whatever that pass reads, so stand types fitted in a pass that computed a feature stage live were
+fitted on other inputs than the exported stands were made from (docs/demo/remerge/README.md).
+
 The result holds run folder names, which carry the date and time the run started. They are
 there as the name of the evidence, not as a run time of this script: the same folders give the
 same file.
@@ -53,17 +60,19 @@ SUPERPIXELS = "snic_clusters"
 IGNORED_OUTPUTS = {"mask_provenance"}
 
 
-def route_of(stages: list[dict[str, Any]]) -> tuple[str, dict[str, str]] | None:
+def route_of(stages: list[dict[str, Any]], stage_name: str = SEGMENTATION,
+             output: str = SUPERPIXELS) -> tuple[str, dict[str, str]] | None:
     """The route one run took, from the `stages` list of its manifest.
 
-    None when the run did not compute `snic_clusters` and submit its export (it read the
-    asset back, computed it without exporting, or never reached segmentation).
+    None when the run did not compute `output` (by default `snic_clusters`) in `stage_name` and
+    submit its export (it read the asset back, computed it without exporting, or never reached
+    that stage).
     """
     inputs: dict[str, str] = {}
     for stage in stages:
         status = stage.get("cache_status") or {}
-        if stage.get("name") == SEGMENTATION:
-            if status.get(SUPERPIXELS) != "miss-exported":
+        if stage.get("name") == stage_name:
+            if status.get(output) != "miss-exported":
                 return None
             states = set(inputs.values())
             if states == {"hit"}:
@@ -77,20 +86,22 @@ def route_of(stages: list[dict[str, Any]]) -> tuple[str, dict[str, str]] | None:
     return None
 
 
-def exported_fingerprint(stages: list[dict[str, Any]]) -> str | None:
-    """The fingerprint in the name of the superpixel asset this run exported, if it exported one."""
+def exported_fingerprint(stages: list[dict[str, Any]], stage_name: str = SEGMENTATION,
+                         output: str = SUPERPIXELS) -> str | None:
+    """The fingerprint in the name of the asset this run exported for `output`, if it exported one."""
     for stage in stages:
-        if stage.get("name") != SEGMENTATION:
+        if stage.get("name") != stage_name:
             continue
         for task in stage.get("export_tasks") or []:
-            found = re.search(rf"/{SUPERPIXELS}__([0-9a-f]+)$", str(task.get("asset_path", "")))
+            found = re.search(rf"/{re.escape(output)}__([0-9a-f]+)$", str(task.get("asset_path", "")))
             if found:
                 return found.group(1)
     return None
 
 
-def routes(config_name: str, fingerprint: str, runs_dirs: list[Path]) -> dict[str, Any]:
-    """Every run of `config_name` in `runs_dirs` that made its superpixel asset under `fingerprint`."""
+def routes(config_name: str, fingerprint: str, runs_dirs: list[Path], stage_name: str = SEGMENTATION,
+           output: str = SUPERPIXELS) -> dict[str, Any]:
+    """Every run of `config_name` in `runs_dirs` that made its `output` asset under `fingerprint`."""
     found: list[dict[str, Any]] = []
     unreadable: list[str] = []
     for runs_dir in runs_dirs:
@@ -103,15 +114,17 @@ def routes(config_name: str, fingerprint: str, runs_dirs: list[Path]) -> dict[st
             if record.get("config_name") != config_name:
                 continue
             stages = record.get("stages") or []
-            took = route_of(stages)
-            if took is None or exported_fingerprint(stages) != fingerprint:
+            took = route_of(stages, stage_name, output)
+            if took is None or exported_fingerprint(stages, stage_name, output) != fingerprint:
                 continue
             route, inputs = took
             found.append({"run": manifest.parent.name, "route": route, "inputs": inputs})
     found.sort(key=lambda r: r["run"])
+    asked = {} if (stage_name, output) == (SEGMENTATION, SUPERPIXELS) else {"stage": stage_name, "output": output}
     return {
         "config": config_name,
         "fingerprint": fingerprint,
+        **asked,
         # The last run to export the asset is the one whose superpixels the cache holds,
         # unless an earlier export was still in the queue; all are listed.
         "route": found[-1]["route"] if found else "not recorded",
@@ -124,7 +137,8 @@ def describe(result: dict[str, Any]) -> list[str]:
     """Plain lines for one config. Pure Python, so it is testable offline."""
     head = f"{result['config']} (fingerprint {result['fingerprint']}): "
     if not result["runs"]:
-        return [head + "not recorded: no run in these folders made its superpixel asset"]
+        what = f"`{result['output']}`" if "output" in result else "superpixel"
+        return [head + f"not recorded: no run in these folders made its {what} asset"]
     lines = []
     for run in result["runs"]:
         line = f"{head}{run['route']:6s} in run {run['run']}"
@@ -140,6 +154,8 @@ def main() -> None:
     ap.add_argument("--runs-dir", type=Path, action="append", required=True,
                     help="a folder of run folders, each with a manifest.json. Repeatable.")
     ap.add_argument("--out", type=Path, default=None, help="write the result here as JSON")
+    ap.add_argument("--stage", default=SEGMENTATION, help="the stage whose inputs are asked about (default segmentation)")
+    ap.add_argument("--output", default=SUPERPIXELS, help="the output of that stage a run must have made (default snic_clusters)")
     args = ap.parse_args()
 
     from fmu.config import load_config
@@ -151,7 +167,7 @@ def main() -> None:
     results = []
     for path in args.config:
         cfg = load_config(path)
-        result = routes(cfg.name, config_fingerprint(cfg), args.runs_dir)
+        result = routes(cfg.name, config_fingerprint(cfg), args.runs_dir, args.stage, args.output)
         results.append(result)
         print("\n".join(describe(result)))
     if args.out:

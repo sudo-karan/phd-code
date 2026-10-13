@@ -2,11 +2,13 @@
 
     python scripts/remerge_demo_set.py --run <run_id> [<run_id> ...]      # or --all
         [--out-dir outputs/demo] [--summary-dir docs/demo/remerge]
+    python scripts/remerge_demo_set.py --recheck                         # offline: the old-rule checks again, from the saved files
+    python scripts/remerge_demo_set.py --saved-fit                       # read-only: how many stands each run's saved fit counted
     python scripts/remerge_demo_set.py --table                           # offline: the table of all runs
 
 READ-ONLY on Earth Engine. It opens saved assets, runs reductions and makes small interactive
 downloads. It submits no task and writes, changes or deletes no asset: `ee_read_only.forbid_writes()`
-makes any such call raise before it is sent. `--table` needs no Earth Engine at all.
+makes any such call raise before it is sent. `--recheck` and `--table` need no Earth Engine at all.
 
 What it is for (brief of 13 Oct 2026, task A2; register entry spec-merge-pass2-skip-at-minimum).
 The demo set is the 14 Earth Engine runs of 13 Oct 2026 (docs/demo/demo_set.json). Their stands
@@ -37,7 +39,10 @@ How, for one run:
   5. Old rule against the run. (a) The merge totals and every stand's pixel count and means
      against the run's own record. (b) The stand raster against the polygons the run exported,
      rasterised on the same grid: every pixel in the same stand. (c) The stand layer read back in
-     step 3 against the one the run exported: each stand's type, area and outline.
+     step 3 against the one the run exported: each stand's type, area and outline. Types are
+     compared twice: by their numbers, and as groupings whatever the numbers (k-means numbers its
+     types afresh on every fit), which is the comparison that says whether the fit came out the
+     same. The stands are what "reproduces" means in a summary; the types are reported beside.
   6. New rule against old: stands before and after, the share of stand area whose stand
      changed, the plots whose stand changed.
   7. The elbow of k-means on the rows of step 3, for k = 2 to 12, beside the config's k (which is
@@ -83,6 +88,10 @@ sys.path.insert(0, str(REPO / "odisha_script"))
 import raster_vector_tools as tools  # noqa: E402
 
 DEMO_SET = REPO / "docs" / "demo" / "demo_set.json"
+# Written by scripts/segmentation_route.py --stage clustering --output cluster_labels.
+CLUSTERING_ROUTE = REPO / "docs" / "reproducibility" / "clustering_route.json"
+# What a run's saved fit says about itself (the clustering_metadata property of cluster_labels).
+SAVED_FIT_KEYS = ("k", "n_units_total", "n_units_in_habitat", "n_training_units")
 RULES = {"old": False, "new": True}  # rule name -> merge.pass2_skip_at_min_area
 SETTING = "pass2_skip_at_min_area"
 NODATA = -1
@@ -218,6 +227,47 @@ def typing_agreement(a: np.ndarray, b: np.ndarray, both: np.ndarray) -> dict[str
             "adjusted_rand_index": round(float(adjusted_rand_score(a[both], b[both])), 4) if n else None}
 
 
+def renumbering_agreement(a: Any, b: Any) -> dict[str, Any]:
+    """Two typings of the same items, compared whatever the type numbers.
+
+    k-means numbers its types afresh on every fit, so "type 3" of one fit need not be "type 3"
+    of another. This pairs the types of `a` with the types of `b` one to one so that as many
+    items as possible agree (the assignment problem), and counts what is left. It also gives the
+    adjusted Rand index, which needs no pairing. Both are None when there is nothing to compare.
+    """
+    from scipy.optimize import linear_sum_assignment
+    from sklearn.metrics import adjusted_rand_score
+
+    a, b = np.asarray(a).ravel(), np.asarray(b).ravel()
+    if a.shape != b.shape:
+        raise ValueError("the two typings must be of the same items")
+    n = int(a.size)
+    if n == 0:
+        return {"compared": 0, "same_numbers": None, "same_after_best_renumbering": None,
+                "differ_after_best_renumbering": None, "adjusted_rand_index": None}
+    ua, ia = np.unique(a, return_inverse=True)
+    ub, ib = np.unique(b, return_inverse=True)
+    table = np.zeros((ua.size, ub.size), dtype=np.int64)
+    np.add.at(table, (ia, ib), 1)
+    rows, cols = linear_sum_assignment(-table)
+    same = int(table[rows, cols].sum())
+    return {"compared": n, "same_numbers": int(np.count_nonzero(a == b)),
+            "same_after_best_renumbering": same, "differ_after_best_renumbering": n - same,
+            "adjusted_rand_index": round(float(adjusted_rand_score(a, b)), 4)}
+
+
+def type_pixel_check(live: np.ndarray, saved: np.ndarray, untyped: int = UNTYPED) -> dict[str, Any]:
+    """The live type of every pixel against the one the run saved (same grid; `untyped` = none)."""
+    live, saved = np.asarray(live).ravel(), np.asarray(saved).ravel()
+    both = (live != untyped) & (saved != untyped)
+    return {
+        "pixels_typed_in_both": int(np.count_nonzero(both)),
+        "pixels_typed_in_one_only": int(np.count_nonzero((live != untyped) ^ (saved != untyped))),
+        "pixels_whose_type_number_differs": int(np.count_nonzero(live[both] != saved[both])),
+        "up_to_renumbering": renumbering_agreement(live[both], saved[both]),
+    }
+
+
 def knee(ks: list[int], inertia: list[float]) -> int:
     """The k at the elbow: the point farthest from the chord between the first and last.
 
@@ -302,10 +352,14 @@ def compare_layers(mine: list[dict[str, Any]], theirs: list[dict[str, Any]], *,
         if union > 0 and ga.symmetric_difference(gb).area / union > outline_tolerance:
             outline_differs.append(s)
     only = {"only_in_mine": sorted(set(a) - set(b)), "only_in_theirs": sorted(set(b) - set(a))}
+    typed_in_both = [s for s in shared if types_a[s] is not None and types_b[s] is not None]
     return {
         "features": {"mine": len(mine), "theirs": len(theirs)},
         "stands": {"mine": len(a), "theirs": len(b), **{k: len(v) for k, v in only.items()}},
         "stands_whose_type_differs": len(type_differs),
+        "stands_typed_in_one_layer_only": sum((types_a[s] is None) != (types_b[s] is None) for s in shared),
+        "stand_types_up_to_renumbering": renumbering_agreement(
+            [types_a[s] for s in typed_in_both], [types_b[s] for s in typed_in_both]),
         "stands_whose_area_differs": len(area_differs),
         "stands_whose_number_of_pieces_differs": len(pieces_differ),
         "stands_whose_outline_differs": len(outline_differs),
@@ -315,18 +369,64 @@ def compare_layers(mine: list[dict[str, Any]], theirs: list[dict[str, Any]], *,
     }
 
 
+def types_table(summaries: list[dict[str, Any]], routes: list[dict[str, Any]]) -> str:
+    """The Markdown table of the stand types: the saved fit of each run against the live fit.
+
+    `routes` is docs/reproducibility/clustering_route.json: for each run, which outputs the pass
+    that made its saved stand types read from the cache ("hit") and which it computed live.
+    """
+    by_config = {r["config"]: r for r in routes}
+    head = ("| Run | Computed live in the pass that fitted the saved types | Stands the saved fit counted | "
+            "Stands the run exported | Typed stands whose type differs, after the best renumbering | "
+            "Agreement over pixels (adjusted Rand index) |\n|---|---|---|---|---|---|")
+    lines = [head]
+    for s in sorted(summaries, key=lambda s: s["run_id"]):
+        check = s["old_rule_check"]
+        runs = (by_config.get(s["run_id"]) or {}).get("runs") or []
+        if runs:
+            live = sorted(k.split("/", 1)[1] for k, v in runs[-1]["inputs"].items() if v != "hit")
+            computed = ", ".join(f"`{k}`" for k in live) if live else "nothing (all read from the cache)"
+        else:
+            computed = "not recorded"
+        saved = (check.get("saved_fit") or {}).get("n_units_total")
+        agree = check["layer"]["stand_types_up_to_renumbering"]
+        pixels = check["layer"]["type_pixels_against_the_saved_type_raster"]["up_to_renumbering"]["adjusted_rand_index"]
+        differ = ("no typed stand" if agree["compared"] == 0
+                  else f"{agree['differ_after_best_renumbering']} of {agree['compared']}")
+        lines.append(f"| `{s['run_id']}` | {computed} | {'not read' if saved is None else saved} | {s['stands']['old']} | "
+                     f"{differ} | {'n/a' if pixels is None else format(pixels, '.2f')} |")
+    return "\n".join(lines) + "\n"
+
+
+def types_reproduce(layer_check: dict[str, Any]) -> bool:
+    """The live fit gives the run's stand types: the same stands typed, and the same grouping."""
+    return (layer_check["stands_typed_in_one_layer_only"] == 0
+            and layer_check["stand_types_up_to_renumbering"]["differ_after_best_renumbering"] in (0, None))
+
+
 def summary_table(summaries: list[dict[str, Any]]) -> str:
     """The Markdown table of docs/demo/remerge.md from the per-run summaries."""
-    head = ("| Run | Old rule reproduces the run | Stands, old to new | Stand area that changed stand | "
-            "Plots that changed stand | k in the config | Elbow, old / new stands |\n|---|---|---|---|---|---|---|")
+    head = ("| Run | Old rule gives the run's stands | Live fit gives the run's stand types | Stands, old to new | "
+            "Stand area that changed stand | Plots that changed stand | k in the config | Elbow, old / new stands |"
+            "\n|---|---|---|---|---|---|---|---|")
     lines = [head]
     for s in sorted(summaries, key=lambda s: s["run_id"]):
         check = s["old_rule_check"]
         ok = "yes" if check["reproduces"] else "**NO**"
+        agree = check["layer"]["stand_types_up_to_renumbering"]
+        one_only = check["layer"]["stands_typed_in_one_layer_only"]
+        if agree["compared"] == 0:
+            types = "no typed stand"
+        elif check["types_reproduce"]:
+            types = f"yes ({agree['compared']} stands)"
+        else:
+            types = (f"no: {agree['differ_after_best_renumbering']} of {agree['compared']} stands differ"
+                     + (f", {one_only} typed in one only" if one_only else "")
+                     + f" (ARI {agree['adjusted_rand_index']:.2f})")
         ch = s["change"]
         plots = s.get("plots")
         lines.append(
-            f"| `{s['run_id']}` | {ok} | {s['stands']['old']} to {s['stands']['new']} | "
+            f"| `{s['run_id']}` | {ok} | {types} | {s['stands']['old']} to {s['stands']['new']} | "
             f"{100.0 * ch['share_area_changed']:.1f}% ({ch['area_ha_changed']:.1f} of {ch['area_ha_total']:.1f} ha) | "
             + (f"{plots['changed_stand']} of {plots['in_a_stand']}" if plots else "no field plots")
             + f" | {s['k']} | {s['elbow']['old']['elbow_k']} / {s['elbow']['new']['elbow_k']} |"
@@ -562,6 +662,7 @@ def remerge_run(run: dict[str, Any], out_dir: Path, summary_dir: Path, argv: lis
         .toInt32()
     )
     saved_labels = ee.Image(assets["cluster_labels"]).select(0)
+    saved_fit = read_saved_fit(assets["cluster_labels"])
     type_proj = safe_get_info(saved_labels.projection(), context="grid of the saved stand types")
     type_crs, type_scale = type_proj["crs"], abs(type_proj["transform"][0])
     record["type_grid"] = {"crs": type_crs, "transform": type_proj["transform"]}
@@ -641,10 +742,7 @@ def remerge_run(run: dict[str, Any], out_dir: Path, summary_dir: Path, argv: lis
     live_old = np.concatenate([p["types"]["old"][m] for p, m in zip(part_data, in_roi, strict=True)])
     saved = np.concatenate([p["types"]["saved"][m] for p, m in zip(part_data, in_roi, strict=True)])
     live_new = np.concatenate([p["types"]["new"][m] for p, m in zip(part_data, in_roi, strict=True)])
-    saved_pixels = {
-        "pixels_compared": int(live_old.size),
-        "pixels_whose_type_differs": int(np.count_nonzero(live_old != saved)),
-    }
+    saved_pixels = type_pixel_check(live_old, saved)
     both_typed = (live_old != UNTYPED) & (live_new != UNTYPED)
     types_old_new = typing_agreement(live_old, live_new, both_typed)
 
@@ -673,8 +771,8 @@ def remerge_run(run: dict[str, Any], out_dir: Path, summary_dir: Path, argv: lis
     layer_check = compare_layers(layers["old"], exported)
     layer_check["type_pixels_against_the_saved_type_raster"] = saved_pixels
     reproduces = bool(records["equal"] and partition["same_partition"] and partition["pixels_in_another_stand"] == 0)
-    old_rule_check = {"reproduces": reproduces, "types_reproduce": layer_check["stands_whose_type_differs"] == 0,
-                      "layer_reproduces": layer_check["equal"],
+    old_rule_check = {"reproduces": reproduces, "types_reproduce": types_reproduce(layer_check),
+                      "layer_reproduces": layer_check["equal"], "saved_fit": saved_fit,
                       "record": records, "pixels": partition, "layer": layer_check}
 
     # ---- 6. new against old
@@ -751,6 +849,43 @@ def remerge_run(run: dict[str, Any], out_dir: Path, summary_dir: Path, argv: lis
     return summary
 
 
+def read_saved_fit(cluster_labels_asset: str) -> dict[str, Any]:
+    """What a run's saved fit says about itself: one property read of its `cluster_labels` asset."""
+    import ee
+
+    from fmu.utils.gee import safe_get_info
+
+    meta = json.loads(safe_get_info(ee.Image(cluster_labels_asset).get("clustering_metadata"),
+                                    context="the saved fit's metadata"))
+    return {key: meta.get(key) for key in SAVED_FIT_KEYS}
+
+
+def recheck(run: dict[str, Any], out_dir: Path, summary_dir: Path) -> dict[str, Any]:
+    """The old-rule checks on the stand layer and the types again, from files a run of this tool saved.
+
+    Offline. It reads the stand layer of the old rule (`vectors_old/`), the run's exported layer and
+    the type rasters under `remerge/<run_id>/`, and rewrites `old_rule_check` in the run's summary
+    with the same functions a full run uses. The merge and the stands are not touched.
+    """
+    run_id = run["run_id"]
+    summary_path = summary_dir / f"{run_id}.json"
+    summary = json.loads(summary_path.read_text())
+    mine = json.loads((out_dir / "vectors_old" / f"{run_id}_stands_merged.geojson").read_text())["features"]
+    exported = json.loads((REPO / run["local"]["stands_merged"]).read_text())["features"]
+    layer_check = compare_layers(mine, exported)
+    live, saved = [], []
+    for path in sorted((out_dir / "remerge" / run_id).glob("types_old_part*.tif")):
+        live.append(tools.read_raster(path).array.ravel())
+        saved.append(tools.read_raster(path.with_name(path.name.replace("types_old", "types_saved"))).array.ravel())
+    layer_check["type_pixels_against_the_saved_type_raster"] = type_pixel_check(np.concatenate(live), np.concatenate(saved))
+    check = summary["old_rule_check"]
+    check["layer"] = layer_check
+    check["layer_reproduces"] = layer_check["equal"]
+    check["types_reproduce"] = types_reproduce(layer_check)
+    summary_path.write_text(json.dumps(summary, indent=1) + "\n")
+    return summary
+
+
 def _write_raster(path: Path, array: np.ndarray, like: Any, valid: np.ndarray) -> None:
     import rasterio
 
@@ -767,17 +902,48 @@ def main() -> None:
     ap.add_argument("--all", action="store_true", help="every run of the demo set")
     ap.add_argument("--out-dir", type=Path, default=REPO / "outputs" / "demo")
     ap.add_argument("--summary-dir", type=Path, default=REPO / "docs" / "demo" / "remerge")
+    ap.add_argument("--recheck", action="store_true",
+                    help="offline: redo the old-rule checks of the stand layer and the types from the saved "
+                         "files, and rewrite them in each summary of --summary-dir")
+    ap.add_argument("--saved-fit", action="store_true",
+                    help="read-only on Earth Engine: read each run's saved clustering metadata and write its "
+                         "counts into the summaries of --summary-dir (one property read per run)")
     ap.add_argument("--table", action="store_true",
-                    help="offline: print the table of every summary in --summary-dir and write it to its README.md")
+                    help="offline: print the two tables of every summary in --summary-dir")
     args = ap.parse_args()
 
     if args.table:
         summaries = [json.loads(p.read_text()) for p in sorted(args.summary_dir.glob("*_repro.json"))]
         print(summary_table(summaries))
+        if CLUSTERING_ROUTE.exists():
+            print(types_table(summaries, json.loads(CLUSTERING_ROUTE.read_text())))
         return
 
     demo = json.loads(DEMO_SET.read_text())
     runs = {r["run_id"]: r for r in demo["runs"]}
+    if args.recheck:
+        for path in sorted(args.summary_dir.glob("*_repro.json")):
+            s = recheck(runs[path.stem], args.out_dir, args.summary_dir)
+            agree = s["old_rule_check"]["layer"]["stand_types_up_to_renumbering"]
+            print(f"{path.stem}: stands {s['old_rule_check']['reproduces']}, types {s['old_rule_check']['types_reproduce']} "
+                  f"({agree['differ_after_best_renumbering']} of {agree['compared']} differ after the best renumbering)")
+        return
+    if args.saved_fit:
+        import ee_read_only
+
+        from fmu.utils.gee import init_gee
+
+        init_gee()
+        ee_read_only.forbid_writes()
+        for path in sorted(args.summary_dir.glob("*_repro.json")):
+            summary = json.loads(path.read_text())
+            asset = next(a["asset"] for a in runs[path.stem]["assets"] if a["key"] == "cluster_labels")
+            summary["old_rule_check"]["saved_fit"] = read_saved_fit(asset)
+            path.write_text(json.dumps(summary, indent=1) + "\n")
+            print(f"{path.stem}: the saved fit counted {summary['old_rule_check']['saved_fit']['n_units_total']} stands; "
+                  f"the run exported {summary['stands']['old']}")
+        print("export tasks submitted: 0")
+        return
     wanted = sorted(runs) if args.all else args.run
     unknown = [r for r in wanted if r not in runs]
     if unknown or not wanted:
@@ -806,9 +972,10 @@ def main() -> None:
         print(
             f"{run_id}: old rule reproduces the run: {check['reproduces']} "
             f"(record equal {check['record']['equal']}, pixels in another stand {check['pixels']['pixels_in_another_stand']} "
-            f"of {check['pixels']['pixels_compared']}), its stand layer: {check['layer_reproduces']} "
-            f"({check['layer']['stands_whose_type_differs']} stands differ in type, "
-            f"{check['layer']['stands_whose_outline_differs']} in outline, from the exported layer); "
+            f"of {check['pixels']['pixels_compared']}, {check['layer']['stands_whose_outline_differs']} stand outlines differ "
+            f"from the exported layer); the live fit gives the run's stand types: {check['types_reproduce']} "
+            f"({check['layer']['stand_types_up_to_renumbering']['differ_after_best_renumbering']} of "
+            f"{check['layer']['stand_types_up_to_renumbering']['compared']} stands differ after the best renumbering); "
             f"stands {s['stands']['old']} -> {s['stands']['new']}; "
             f"{100.0 * ch['share_area_changed']:.1f}% of stand area changed stand; "
             f"elbow {s['elbow']['old']['elbow_k']} / {s['elbow']['new']['elbow_k']} (k {s['k']})",
