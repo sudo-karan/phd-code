@@ -75,6 +75,12 @@
  "inputs": {
   "cached": {
    "distance_scale": 2.5635026954642726
+  },
+  "live": {
+   "distance_scale": 2.5629343608415964
+  },
+  "live-on-cache-grid": {
+   "distance_scale": 2.5635026954642726
   }
  },
  "comparisons": [
@@ -86,13 +92,58 @@
    "pixels_with_another_label": 1835
   },
   {
+   "inputs": "live",
+   "against": "sanjay_van_alphaearth_repro",
+   "asset": "projects/replicating-paper/assets/fmu/sanjay_van_alphaearth_repro/segmentation/snic_clusters__105fc40547",
+   "pixels_compared": 148630,
+   "pixels_with_another_label": 502
+  },
+  {
+   "inputs": "live-on-cache-grid",
+   "against": "sanjay_van_alphaearth_repro",
+   "asset": "projects/replicating-paper/assets/fmu/sanjay_van_alphaearth_repro/segmentation/snic_clusters__105fc40547",
+   "pixels_compared": 148601,
+   "pixels_with_another_label": 1835
+  },
+  {
    "inputs": "cached",
+   "against": "sanjay_van_alphaearth",
+   "asset": "projects/replicating-paper/assets/fmu/sanjay_van_alphaearth/segmentation/snic_clusters__105fc40547",
+   "outcome": "its snic_clusters asset is not cached"
+  },
+  {
+   "inputs": "live",
+   "against": "sanjay_van_alphaearth",
+   "asset": "projects/replicating-paper/assets/fmu/sanjay_van_alphaearth/segmentation/snic_clusters__105fc40547",
+   "outcome": "its snic_clusters asset is not cached"
+  },
+  {
+   "inputs": "live-on-cache-grid",
    "against": "sanjay_van_alphaearth",
    "asset": "projects/replicating-paper/assets/fmu/sanjay_van_alphaearth/segmentation/snic_clusters__105fc40547",
    "outcome": "its snic_clusters asset is not cached"
   }
  ],
- "between_inputs": [],
+ "between_inputs": [
+  {
+   "a": "cached",
+   "b": "live",
+   "pixels_compared": 148601,
+   "pixels_with_another_label": 1375
+  },
+  {
+   "a": "cached",
+   "b": "live-on-cache-grid",
+   "pixels_compared": 148601,
+   "pixels_with_another_label": 0
+  },
+  {
+   "a": "live",
+   "b": "live-on-cache-grid",
+   "pixels_compared": 148601,
+   "pixels_with_another_label": 1375
+  }
+ ],
  "superpixel_grid": {
   "crs": "EPSG:32643",
   "transform": [

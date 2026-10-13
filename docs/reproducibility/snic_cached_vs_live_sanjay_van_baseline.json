@@ -103,6 +103,12 @@
  "inputs": {
   "cached": {
    "distance_scale": 0.9436352216137993
+  },
+  "live": {
+   "distance_scale": 0.9417797272678088
+  },
+  "live-on-cache-grid": {
+   "distance_scale": 0.9436352216186756
   }
  },
  "comparisons": [
@@ -114,13 +120,58 @@
    "pixels_with_another_label": 32336
   },
   {
+   "inputs": "live",
+   "against": "sanjay_van_baseline_repro",
+   "asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline_repro/segmentation/snic_clusters__7f642cf2ca",
+   "pixels_compared": 148630,
+   "pixels_with_another_label": 127
+  },
+  {
+   "inputs": "live-on-cache-grid",
+   "against": "sanjay_van_baseline_repro",
+   "asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline_repro/segmentation/snic_clusters__7f642cf2ca",
+   "pixels_compared": 148601,
+   "pixels_with_another_label": 32336
+  },
+  {
    "inputs": "cached",
+   "against": "sanjay_van_baseline",
+   "asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline/segmentation/snic_clusters__7f642cf2ca",
+   "outcome": "its snic_clusters asset is not cached"
+  },
+  {
+   "inputs": "live",
+   "against": "sanjay_van_baseline",
+   "asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline/segmentation/snic_clusters__7f642cf2ca",
+   "outcome": "its snic_clusters asset is not cached"
+  },
+  {
+   "inputs": "live-on-cache-grid",
    "against": "sanjay_van_baseline",
    "asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline/segmentation/snic_clusters__7f642cf2ca",
    "outcome": "its snic_clusters asset is not cached"
   }
  ],
- "between_inputs": [],
+ "between_inputs": [
+  {
+   "a": "cached",
+   "b": "live",
+   "pixels_compared": 148601,
+   "pixels_with_another_label": 32341
+  },
+  {
+   "a": "cached",
+   "b": "live-on-cache-grid",
+   "pixels_compared": 148601,
+   "pixels_with_another_label": 0
+  },
+  {
+   "a": "live",
+   "b": "live-on-cache-grid",
+   "pixels_compared": 148601,
+   "pixels_with_another_label": 32341
+  }
+ ],
  "superpixel_grid": {
   "crs": "EPSG:32643",
   "transform": [

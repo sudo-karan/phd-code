@@ -818,21 +818,34 @@ segmented live. The set was declared in commit `a999575`, before the runs.
 
 | Config | Input of segmentation | Distance normaliser | Against the re-run's own superpixel asset (made live) | Against SNIC from the cached features |
 |---|---|---|---|---|
+| 3 hectare, Kendujhar | cached features | 1.265826 | 26.0% (11,379 of 43,732) | the same computation |
+| 3 hectare, Kendujhar | live features | 1.266710 | 0.3% (120 of 43,734) | 26.1% (11,395 of 43,732) |
+| 3 hectare, Kendujhar | live features, evaluated on the grid of the cache | 1.265826 | 26.0% (11,379 of 43,732) | 0.0% (0 of 43,732) |
 | 10 hectare, Kendujhar | cached features | 1.265826 | 26.4% (11,552 of 43,732) | the same computation |
 | 10 hectare, Kendujhar | live features | 1.266710 | 0.0% (11 of 43,734) | 26.4% (11,556 of 43,732) |
 | 10 hectare, Kendujhar | live features, evaluated on the grid of the cache | 1.265826 | 26.4% (11,552 of 43,732) | 0.0% (0 of 43,732) |
+| AlphaEarth, Kendujhar | cached features | 2.293519 | 1.1% (499 of 43,719) | the same computation |
+| AlphaEarth, Kendujhar | live features | 2.295036 | 0.2% (85 of 43,734) | 1.0% (418 of 43,719) |
+| AlphaEarth, Kendujhar | live features, evaluated on the grid of the cache | 2.293519 | 1.1% (499 of 43,719) | 0.0% (0 of 43,719) |
+| Sanjay Van, hand-crafted | cached features | 0.943635 | 21.8% (32,336 of 148,601) | the same computation |
+| Sanjay Van, hand-crafted | live features | 0.941780 | 0.1% (127 of 148,630) | 21.8% (32,341 of 148,601) |
+| Sanjay Van, hand-crafted | live features, evaluated on the grid of the cache | 0.943635 | 21.8% (32,336 of 148,601) | 0.0% (0 of 148,601) |
+| Sanjay Van, AlphaEarth | cached features | 2.563503 | 1.2% (1,835 of 148,601) | the same computation |
+| Sanjay Van, AlphaEarth | live features | 2.562934 | 0.3% (502 of 148,630) | 0.9% (1,375 of 148,601) |
+| Sanjay Van, AlphaEarth | live features, evaluated on the grid of the cache | 2.563503 | 1.2% (1,835 of 148,601) | 0.0% (0 of 148,601) |
 
-The test has finished on one of the five so far, Kendujhar at 10 hectares. The other four are
-added to this table by a later commit.
+All five ran to the end, with no request failing.
 
 - **Live features give back the re-run's own superpixels**, which were drawn live in the
-  morning: 11 of 43,734 pixels differ. So the live route repeats itself.
+  morning: between 11 and 502 pixels differ, 0.0% to 0.3%. So the live route repeats itself.
 - **Live features evaluated on the grid of the cache give exactly the superpixels of the
-  cached features**: 0 of 43,732 pixels differ, and the distance normaliser agrees with the
-  cached one to ten digits.
-- So the whole difference between cached and live features is the grid they are evaluated on.
-  Nothing else in the cache contributes: not the stored data type, not the masks, not the
-  source data changing during the day.
+  cached features**: 0 pixels differ in all five, and the distance normaliser agrees with the
+  cached one to ten digits or more.
+- **So the whole difference between cached and live features is the grid they are evaluated
+  on**, at both sites and for both kinds of feature: 26% of pixels with hand-crafted features
+  at Kendujhar and 22% at Sanjay Van, 1% with AlphaEarth at either. Nothing else in the cache
+  contributes: not the stored data type, not the masks, not the source data changing during
+  the day.
 
 **What this means.**
 

@@ -103,6 +103,12 @@
  "inputs": {
   "cached": {
    "distance_scale": 1.265826200792497
+  },
+  "live": {
+   "distance_scale": 1.2667101341553946
+  },
+  "live-on-cache-grid": {
+   "distance_scale": 1.2658262008411285
   }
  },
  "comparisons": [
@@ -114,14 +120,61 @@
    "pixels_with_another_label": 11379
   },
   {
+   "inputs": "live",
+   "against": "odisha_v120_3ha_kendujhar_repro",
+   "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_kendujhar_repro/segmentation/snic_clusters__9908a3bb6b",
+   "pixels_compared": 43734,
+   "pixels_with_another_label": 120
+  },
+  {
+   "inputs": "live-on-cache-grid",
+   "against": "odisha_v120_3ha_kendujhar_repro",
+   "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_kendujhar_repro/segmentation/snic_clusters__9908a3bb6b",
+   "pixels_compared": 43732,
+   "pixels_with_another_label": 11379
+  },
+  {
    "inputs": "cached",
+   "against": "odisha_v120_3ha_kendujhar",
+   "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_kendujhar/segmentation/snic_clusters__9908a3bb6b",
+   "pixels_compared": 43732,
+   "pixels_with_another_label": 11671
+  },
+  {
+   "inputs": "live",
+   "against": "odisha_v120_3ha_kendujhar",
+   "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_kendujhar/segmentation/snic_clusters__9908a3bb6b",
+   "pixels_compared": 43734,
+   "pixels_with_another_label": 1642
+  },
+  {
+   "inputs": "live-on-cache-grid",
    "against": "odisha_v120_3ha_kendujhar",
    "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_kendujhar/segmentation/snic_clusters__9908a3bb6b",
    "pixels_compared": 43732,
    "pixels_with_another_label": 11671
   }
  ],
- "between_inputs": [],
+ "between_inputs": [
+  {
+   "a": "cached",
+   "b": "live",
+   "pixels_compared": 43732,
+   "pixels_with_another_label": 11395
+  },
+  {
+   "a": "cached",
+   "b": "live-on-cache-grid",
+   "pixels_compared": 43732,
+   "pixels_with_another_label": 0
+  },
+  {
+   "a": "live",
+   "b": "live-on-cache-grid",
+   "pixels_compared": 43732,
+   "pixels_with_another_label": 11395
+  }
+ ],
  "superpixel_grid": {
   "crs": "EPSG:32645",
   "transform": [
