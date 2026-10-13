@@ -25,6 +25,7 @@ from fmu.stages.export import (
     _SHP_SELECTORS_SNIC,
     ExportStage,
 )
+from fmu.utils.region_merge import PROVENANCE_FIELDS
 
 REPO_ROOT = Path(__file__).parent.parent
 BASELINE_YAML = REPO_ROOT / "configs" / "sanjay_van_baseline.yaml"
@@ -235,6 +236,170 @@ def test_the_two_layers_are_not_the_same_layer():
     polygon layer and it held superpixels."""
     assert export_mod._MERGED_LAYER_NAME != export_mod._SNIC_LAYER_NAME
     assert _SHP_SELECTORS_MERGED != _SHP_SELECTORS_SNIC
+
+
+# ---------- merge provenance on the merged layer ----------
+
+# What the merge stage puts in the context: stand id -> provenance.
+_PROVENANCE = {
+    0: {"n_superpx": 1, "n_pass1": 0, "n_relaxed": 0, "n_fallback": 0,
+        "below_min": 1, "below_why": "isolated"},
+    1: {"n_superpx": 5, "n_pass1": 2, "n_relaxed": 1, "n_fallback": 1,
+        "below_min": 0, "below_why": ""},
+}
+
+
+def test_provenance_fields_fit_the_shapefile_and_clash_with_no_column():
+    for name in PROVENANCE_FIELDS:
+        assert len(name) <= 10, name
+    assert not set(PROVENANCE_FIELDS) & set(_SHP_SELECTORS_MERGED)
+    assert not set(PROVENANCE_FIELDS) & {"centroid_lat", "centroid_lon", "mode", "count"}
+
+
+def test_no_shipped_config_merges_on_a_band_named_like_a_provenance_field():
+    """Every config in configs/: no merge criterion band has one of the six
+    names.
+
+    This covers the merge criteria only. The GeoJSON also carries a per-stand
+    mean of every features_* band, and those names exist only on the server, so
+    no offline test can list them; `_attach_stand_provenance` would overwrite a
+    property with one of these names. (Checked by hand on 2026-10-13: none of
+    the 94 property names in the 19 committed stands_merged files is one.)
+    """
+    paths = sorted((REPO_ROOT / "configs").glob("*.yaml"))
+    assert BASELINE_YAML in paths and ALPHAEARTH_YAML in paths
+    for path in paths:
+        cfg = load_config(path)
+        bands = {c.band for c in cfg.merge.criteria}
+        assert not bands & set(PROVENANCE_FIELDS), path.name
+
+
+def test_the_layer_carries_provenance_only_when_the_merge_supplied_it():
+    ctx = _ctx(_INVARIANT)
+    assert export_mod._stand_provenance_fields(ctx) == ()
+    ctx.set("stand_provenance", _PROVENANCE)
+    assert export_mod._stand_provenance_fields(ctx) == PROVENANCE_FIELDS
+
+
+def test_export_does_not_require_the_provenance():
+    """A context without it still validates: the layer is then written as it
+    was before, rather than the export failing."""
+    cfg = load_config(BASELINE_YAML)
+    assert "stand_provenance" not in ExportStage.required_inputs
+    ExportStage().validate(_ctx(_INVARIANT | _HANDCRAFTED), cfg)
+
+
+def test_without_provenance_the_merged_layer_is_built_exactly_as_before(
+    fake_ee, monkeypatch
+):
+    """The builder's calls with no `stand_provenance` in the context: the two
+    renames, the vectorisation and three maps, and nothing after them."""
+    calls: list = []
+    _run_builder(export_mod._build_merged_feature_collection, calls, monkeypatch)
+    assert calls == [
+        ("rename", "stand_lbl"),
+        ("labelProperty", "stand_lbl"),
+        ("rename", "cluster_id"),
+        "map",
+        "map",
+        "map",
+    ]
+
+
+class _Feature:
+    """A feature as a dict of properties plus a geometry that must not change."""
+
+    def __init__(self, props, geometry):
+        self.props, self.geometry = dict(props), geometry
+
+    def get(self, name):
+        return self.props[name]
+
+    def set(self, new):
+        return _Feature({**self.props, **new}, self.geometry)
+
+
+class _MappedFC:
+    def __init__(self, features):
+        self.features = features
+
+    def map(self, fn):
+        return _MappedFC([fn(f) for f in self.features])
+
+
+@pytest.fixture
+def lookup_ee(monkeypatch):
+    """Enough of `ee` for the server-side lookup to run in Python."""
+
+    class _Number:
+        def __init__(self, value):
+            self.value = value
+
+        def format(self, pattern):
+            return pattern % self.value
+
+    class _Dictionary(dict):
+        def get(self, key):  # an unknown key is an error, as it is server-side
+            return self[key]
+
+    class _FakeEE:
+        Number = _Number
+        Dictionary = _Dictionary
+        Feature = staticmethod(lambda f: f)
+
+    monkeypatch.setattr(export_mod, "ee", _FakeEE)
+
+
+def test_every_polygon_gets_its_stands_provenance_and_keeps_everything_else(lookup_ee):
+    """Looked up by `stand_lbl`, the merge's own id -- not `stand_id`, which is a
+    renumbering of polygons. Stand 1 is in two pieces; both carry its values."""
+    before = [
+        _Feature({"stand_id": 1, "stand_lbl": 1, "cluster_id": 2, "area_ha": 3.5}, "<g1>"),
+        _Feature({"stand_id": 2, "stand_lbl": 0, "cluster_id": None, "area_ha": 0.4}, "<g2>"),
+        _Feature({"stand_id": 3, "stand_lbl": 1, "cluster_id": 2, "area_ha": 0.1}, "<g3>"),
+    ]
+    ctx = PipelineContext()
+    ctx.set("stand_provenance", _PROVENANCE)
+
+    after = export_mod._attach_stand_provenance(_MappedFC(before), ctx).features
+
+    assert len(after) == len(before)
+    for old, new in zip(before, after, strict=True):
+        assert new.geometry is old.geometry
+        assert {k: new.props[k] for k in old.props} == old.props
+        assert set(new.props) - set(old.props) == set(PROVENANCE_FIELDS)
+        assert {k: new.props[k] for k in PROVENANCE_FIELDS} == _PROVENANCE[old.props["stand_lbl"]]
+    assert after[0].props["n_fallback"] == after[2].props["n_fallback"] == 1
+    assert after[1].props["below_why"] == "isolated"
+
+
+def test_a_polygon_whose_stand_has_no_provenance_fails_the_layer(lookup_ee):
+    """A `stand_lbl` that is not in `stand_provenance` is an error, not a
+    polygon with blank provenance: the lookup has no default. Server-side,
+    `ee.Dictionary.get` on a missing key fails the same way. Not reachable in a
+    pipeline run (the merge stage writes both from one result); pinned so that
+    nobody adds a default that would hide a mixed-up context."""
+    fc = _MappedFC([_Feature({"stand_lbl": 0}, "<g0>"), _Feature({"stand_lbl": 7}, "<g7>")])
+    ctx = PipelineContext()
+    ctx.set("stand_provenance", _PROVENANCE)
+    with pytest.raises(KeyError, match="7"):
+        export_mod._attach_stand_provenance(fc, ctx)
+
+
+def test_without_provenance_the_collection_is_returned_untouched(lookup_ee):
+    fc = _MappedFC([_Feature({"stand_lbl": 0}, "<g>")])
+    assert export_mod._attach_stand_provenance(fc, PipelineContext()) is fc
+
+
+def test_the_shapefile_export_and_the_manifest_list_the_provenance_fields():
+    """The shapefile export names its columns; a property left out of the
+    selectors would be on the GeoJSON and silently missing from the shapefile."""
+    import inspect
+
+    src = inspect.getsource(export_mod.ExportStage.run)
+    assert "provenance_fields = _stand_provenance_fields(ctx)" in src
+    assert src.count("[*_SHP_SELECTORS_MERGED, *provenance_fields]") == 2
+    assert '"provenance_attributes": list(provenance_fields)' in src
 
 
 # ---------- the GeoTIFF exports ----------

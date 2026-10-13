@@ -87,6 +87,7 @@ from fmu.utils.caching import asset_exists, cached_asset_path, config_fingerprin
 from fmu.utils.gee import safe_call, safe_get_info
 from fmu.utils.logging import get_logger
 from fmu.utils.provenance import git_state
+from fmu.utils.region_merge import PROVENANCE_FIELDS
 
 log = get_logger(__name__)
 
@@ -297,6 +298,9 @@ class ExportStage(Stage):
                 merged_counts["n_stands"],
             )
             _warn_on_split_stands(merged_counts, merged_n_features)
+            # Merge provenance (n_superpx, n_pass1, ...): on the layer whenever
+            # the merge stage put `stand_provenance` in the context.
+            provenance_fields = _stand_provenance_fields(ctx)
 
             vector_layers[_MERGED_LAYER_NAME] = {
                 "description": (
@@ -323,9 +327,10 @@ class ExportStage(Stage):
                     "merged geometry."
                 ),
                 "unclustered_stands_retained": True,
-                "shp_attributes": list(_SHP_SELECTORS_MERGED),
+                "shp_attributes": [*_SHP_SELECTORS_MERGED, *provenance_fields],
                 "geojson_attributes": "all SHP attributes plus per-stand means "
                                       "of every features_* band",
+                "provenance_attributes": list(provenance_fields),
             }
             for fmt in config.export.vector_formats:
                 filename = f"{config.name}_{_MERGED_LAYER_NAME}"
@@ -335,7 +340,9 @@ class ExportStage(Stage):
                     drive_folder=drive_folder,
                     file_format=fmt,
                     selectors=(
-                        list(_SHP_SELECTORS_MERGED) if fmt == "shp" else None
+                        [*_SHP_SELECTORS_MERGED, *provenance_fields]
+                        if fmt == "shp"
+                        else None
                     ),
                 )
                 drive_exports[f"vector_{_MERGED_LAYER_NAME}_{fmt}"] = (
@@ -877,7 +884,64 @@ def _build_merged_feature_collection(
         lambda f: _add_geom_attrs(f, scale)
     ).map(_drop_internal_properties)
 
-    return _renumber_by_centroid(polygons_with_geom, id_field="stand_id")
+    renumbered = _renumber_by_centroid(polygons_with_geom, id_field="stand_id")
+
+    # Step 6: merge provenance, added last so that nothing above sees it.
+    return _attach_stand_provenance(renumbered, ctx)
+
+
+def _stand_provenance_fields(ctx: PipelineContext) -> tuple[str, ...]:
+    """The provenance properties `stands_merged` carries in this run.
+
+    All of `PROVENANCE_FIELDS` when the merge stage put `stand_provenance` in
+    the context, none when it did not (a context built by hand, or by a merge
+    stage older than the provenance).
+    """
+    return PROVENANCE_FIELDS if ctx.has("stand_provenance") else ()
+
+
+def _attach_stand_provenance(
+    fc: ee.FeatureCollection, ctx: PipelineContext
+) -> ee.FeatureCollection:
+    """Add the merge's per-stand provenance to every stand polygon.
+
+    The properties are `fmu.utils.region_merge.PROVENANCE_FIELDS` (documented
+    there): how many superpixels the stand is made of, how many merges of each
+    kind it contains, and whether and why it ended below the minimum size. They
+    are looked up by `stand_lbl`, the merge's own stand id, so every polygon of
+    a stand that was split into pieces carries the same values. Only `set()` is
+    called on a feature: no geometry is changed, and no existing property is
+    changed unless it already has one of the six names, which `set()` would
+    overwrite (no property of a stand file exported so far has such a name).
+
+    Every `stand_lbl` on the layer must be a key of `stand_provenance`. One that
+    is not makes the server-side lookup fail, and with it the whole layer: a
+    loud failure on purpose, rather than a polygon written with empty or wrong
+    provenance. It cannot happen in a pipeline run, where the merge stage
+    writes `stand_clusters` and `stand_provenance` from the same result; it can
+    with a context put together by hand from two different merges.
+    """
+    if not _stand_provenance_fields(ctx):
+        log.warning(
+            "  stands_merged: no stand_provenance in the context, so the layer "
+            "is written without the merge provenance properties."
+        )
+        return fc
+    stand_provenance: dict[int, dict[str, Any]] = ctx.get("stand_provenance")
+    lookups = {
+        name: ee.Dictionary(
+            {str(sid): p[name] for sid, p in stand_provenance.items()}
+        )
+        for name in PROVENANCE_FIELDS
+    }
+
+    def attach(feature: ee.Feature) -> ee.Feature:
+        key = ee.Number(feature.get("stand_lbl")).format("%d")
+        return ee.Feature(
+            feature.set({name: lookups[name].get(key) for name in PROVENANCE_FIELDS})
+        )
+
+    return fc.map(attach)
 
 
 def _build_snic_feature_collection(

@@ -234,6 +234,8 @@ def main() -> int:
             "snic_distance_scale": by_name["segmentation"].metadata.get("distance_scale"),
             "merge_diagnostics": ctx.get("merge_diagnostics"),
             "stand_attributes": ctx.get("stand_attributes"),
+            # Per stand: superpixels, merges by kind, and whether and why it ended below the minimum size.
+            "stand_provenance": ctx.get("stand_provenance"),
         }
         path = VECTOR_DIR / f"{cfg.name}_run.json"
         path.write_text(json.dumps(run, indent=1, default=str))
