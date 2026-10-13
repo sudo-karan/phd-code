@@ -21,6 +21,21 @@ from fmu.evaluation._common import Statistic, pair_indices
 # ---------------------------------------------------------------------------
 
 
+def test_mantel_is_the_same_to_the_last_bit_wherever_the_arrays_sit_in_memory():
+    # A BLAS dot product can change in its last binary digit with the memory
+    # offset of its inputs. The same numbers must give the same correlation.
+    rng = np.random.default_rng(0)
+    x, y, z = rng.random(300), rng.random(300), rng.random(300)
+    seen = set()
+    for kx in range(8):
+        for ky in range(8):
+            a, b, c = np.empty(308), np.empty(308), np.empty(308)
+            a[kx : kx + 300], b[ky : ky + 300], c[kx : kx + 300] = x, y, z
+            av, bv, cv = a[kx : kx + 300], b[ky : ky + 300], c[kx : kx + 300]
+            seen.add((pm.mantel_r(av, bv), pm.partial_mantel_r(av, bv, cv)))
+    assert len(seen) == 1
+
+
 def test_mantel_equals_pearson_and_spearman_of_the_condensed_vectors():
     rng = np.random.default_rng(1)
     for n in (5, 12, 30):

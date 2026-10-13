@@ -197,11 +197,13 @@ def _band_sums(codes: IntArray, n_codes: int, x: FloatArray) -> _BandSums:
     dev = v - centre
     shift = float(dev.mean())  # what is left of the mean after the first pass
     dev -= shift
-    ss_total = float(np.dot(dev, dev))
+    # np.sum of products, not np.dot: a BLAS dot product can change in its last
+    # binary digit with where the array sits in memory.
+    ss_total = float(np.sum(dev * dev))
     seg_dev = np.zeros(n_codes, dtype=np.float64)
     seg_dev[has] = np.bincount(c, weights=dev, minlength=n_codes)[has] / counts[has]
     resid = dev - seg_dev[c]
-    ss_within = float(np.dot(resid, resid))
+    ss_within = float(np.sum(resid * resid))
     means[has] = seg_dev[has] + (centre + shift)
     return _BandSums(n, int(has.sum()), ss_within, ss_total, means)
 
@@ -375,10 +377,10 @@ def _morans_i(y: FloatArray, adj: IntArray) -> tuple[float, int, int]:
     if float(vals.min()) == float(vals.max()):
         return _NAN, n, m
     dev = y - float(vals.mean())
-    denom = float(np.dot(dev[has], dev[has]))
+    denom = float(np.sum(dev[has] * dev[has]))
     if not denom > 0:
         return _NAN, n, m
-    cross = float(np.dot(dev[adj[:, 0]], dev[adj[:, 1]]))
+    cross = float(np.sum(dev[adj[:, 0]] * dev[adj[:, 1]]))
     # (n / S0) * (2 * cross) / denom with S0 = 2 m: each pair counts in both directions.
     return n * cross / (m * denom), n, m
 
@@ -485,18 +487,32 @@ def segment_morans_i(
 # ---------------------------------------------------------------------------
 
 
+# Two values of a component closer than this are the same value: the difference
+# is rounding, not a difference between maps. A rounding allowance, not a setting.
+_EQUAL_RTOL = 1e-9
+_EQUAL_ATOL = 1e-12
+
+
 def _min_max(x: FloatArray) -> FloatArray:
     """`(x - min) / (max - min)` over the values that are not `NaN`.
 
     All 0 when the values are equal. All `NaN` when fewer than two values are
     defined: one value cannot be placed between a best and a worst.
+
+    "Equal" means equal up to rounding (`_EQUAL_RTOL`, `_EQUAL_ATOL`). Without
+    that, two candidates that are the same map with its segments numbered
+    differently can differ in the last binary digit of a component, and the
+    rescaling would stretch that digit to the full range from 0 to 1.
     """
     out = np.full(x.shape, np.nan, dtype=np.float64)
     ok = ~np.isnan(x)
     if int(ok.sum()) < 2:
         return out
     lo, hi = float(x[ok].min()), float(x[ok].max())
-    out[ok] = (x[ok] - lo) / (hi - lo) if hi > lo else 0.0
+    if hi - lo <= _EQUAL_RTOL * max(abs(lo), abs(hi)) + _EQUAL_ATOL:
+        out[ok] = 0.0
+    else:
+        out[ok] = np.clip((x[ok] - lo) / (hi - lo), 0.0, 1.0)
     return out
 
 

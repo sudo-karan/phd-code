@@ -610,3 +610,19 @@ def test_large_raster_is_fast():
     assert ev.iloc[1]["r2"] == pytest.approx(4.0 / 5.0, abs=0.01)  # variance 4 between, 1 within
     assert mi.iloc[0]["n_adjacent_pairs"] == 2 * 72 * 71
     assert used < 3.0
+
+
+def test_global_score_gives_one_map_entered_twice_the_same_score():
+    # The same map with its segments numbered differently is the same map. Its
+    # components may differ in the last binary digit; the rescaling must not
+    # stretch that digit to the full range from 0 to 1.
+    rng = np.random.default_rng(1)
+    for _ in range(40):
+        labels = rng.integers(0, 5, size=(6, 7))
+        renumbered = rng.permutation(5)[labels]
+        values = rng.normal(size=(6, 7)) + 1000.0
+        table = global_score({"a": labels, "same_as_a": renumbered}, values)
+        rows = table[table["band"] == "band_0"]
+        assert (rows["weighted_variance_norm"] == 0).all()
+        assert (rows["morans_i_norm"] == 0).all()
+        assert (rows["global_score"] == 0).all()

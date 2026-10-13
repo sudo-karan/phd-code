@@ -15,7 +15,7 @@ Three things live here.
     to a named, established statistic.
 
 Chance is always simulated by relabelling PLOTS. Pairs of plots are never
-permuted: 267 plots make 35,511 pairs, but there are still only 267 plots.
+permuted: `n` plots make `n (n - 1) / 2` pairs, but there are still only `n` plots.
 
 Nothing here knows about any site. Inputs are arrays of integer codes
 (`_common.encode_labels`) and distances.
@@ -88,16 +88,24 @@ def _n_from_condensed(length: int) -> int:
     return int(round((1 + np.sqrt(1 + 8 * length)) / 2))
 
 
+def _sum_of_products(a: FloatArray, b: FloatArray) -> float:
+    """`sum(a * b)`, the same to the last bit wherever the arrays sit in memory."""
+    return float(np.sum(a * b))
+
+
 def _pearson(x: FloatArray, y: FloatArray) -> float:
     """Pearson correlation of two complete vectors; `NaN` if not estimable."""
     if x.shape[0] < 3 or np.ptp(x) == 0 or np.ptp(y) == 0:
         return float("nan")
     xc = x - x.mean()
     yc = y - y.mean()
-    den = float(np.sqrt((xc @ xc) * (yc @ yc)))
+    # Sums of products are taken with np.sum, not with `@` or np.dot: a BLAS
+    # dot product can change in its last binary digit with where the arrays
+    # happen to sit in memory, and the same inputs must give the same number.
+    den = float(np.sqrt(_sum_of_products(xc, xc) * _sum_of_products(yc, yc)))
     if not den > 0:
         return float("nan")
-    return float(min(1.0, max(-1.0, float(xc @ yc) / den)))
+    return float(min(1.0, max(-1.0, _sum_of_products(xc, yc) / den)))
 
 
 def _partial(r_xy: float, r_xz: float, r_yz: float) -> float:

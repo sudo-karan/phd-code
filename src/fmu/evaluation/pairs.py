@@ -26,8 +26,8 @@ every stratum, each stratum is reported, and the strata are pooled with a
 declared weight. The distance bands have no default: the caller declares them
 before looking at any result.
 
-This module gives the estimate only. Pairs of plots are not independent (267
-plots make 35,511 pairs but are still 267 plots), so no p-value is taken from
+This module gives the estimate only. Pairs of plots are not independent (`n`
+plots make `n (n - 1) / 2` pairs but are still `n` plots), so no p-value is taken from
 the pairs. `PairComparison.statistic` hands the estimate to the significance
 tests of the package, which relabel plots and recompute it.
 
