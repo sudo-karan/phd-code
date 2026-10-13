@@ -52,6 +52,16 @@ Checking the methods themselves
 Shared helpers (label codes, robust scaling, pair indexing, distance bands,
 the permutation p-value) are in `_common`.
 
+Sources
+    The docstrings of this package name papers by author and year. Their DOIs,
+    whether each DOI was checked against Crossref, how much of each paper was
+    read and what it supports are in the references tables of
+    `docs/evaluation_metrics.md` ("Cited", and "Considered and not cited" for
+    Moran 1950, which is named in `unsupervised` only as the origin of
+    Moran's I). Two of the papers named here are UNVERIFIED: Mantel (1967),
+    for which no DOI is registered, and Holm (1979), for which no Crossref
+    record was found.
+
 Modules are imported by name, for example
 `from fmu.evaluation import agreement`. Nothing is imported here, so the
 package imports cleanly whichever of its modules are present.
