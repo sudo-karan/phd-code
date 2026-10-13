@@ -175,6 +175,32 @@ class TestPipelineSmokeRun:
         # config is embedded so the manifest is self-describing
         assert manifest["config"]["name"] == "manifest_test"
 
+    def test_manifest_records_which_code_ran(self, tmp_path):
+        """Every run manifest names the git commit it ran from and says whether
+        the tree had uncommitted changes (CLAUDE.md, "Results"). The commit
+        itself differs from one checkout to the next, so only the shape is
+        asserted here; tests/test_provenance.py tests the values."""
+
+        @register_stage("noop")
+        class NoOpStage(Stage):
+            name = "noop"
+            required_inputs: set[str] = set()
+            produces: set[str] = set()
+
+            def run(self, ctx, config):
+                return StageResult()
+
+        Pipeline(stage_names=["noop"]).run(
+            config=_make_config(name="git_test"), run_dir=tmp_path
+        )
+        git = json.loads((tmp_path / "manifest.json").read_text())["git"]
+        assert set(git) == {
+            "commit", "dirty", "modified", "modified_truncated",
+            "untracked", "untracked_truncated", "root", "error",
+        }
+        assert git["commit"] is None or len(git["commit"]) == 40
+        assert git["dirty"] in (True, False, None)
+
 
 # ---------- Error paths ----------
 

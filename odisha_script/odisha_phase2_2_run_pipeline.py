@@ -77,6 +77,7 @@ from fmu.stages.export import (
 from fmu.utils.caching import asset_exists, cached_asset_path, config_fingerprint
 from fmu.utils.gee import init_gee, load_roi_geometry, safe_get_info
 from fmu.utils.logging import init_logging
+from fmu.utils.provenance import git_state
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -222,6 +223,7 @@ def main() -> int:
         run = {
             "config": cfg.name,
             "fingerprint": config_fingerprint(cfg),
+            "git": git_state(),
             "run_dir": str(run_dir),
             "cache_status": status,
             "pulled_polygon_counts": counts,

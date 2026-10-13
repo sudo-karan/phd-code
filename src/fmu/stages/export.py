@@ -86,6 +86,7 @@ from fmu.stages.base import PipelineContext, Stage, StageResult, register_stage
 from fmu.utils.caching import asset_exists, cached_asset_path, config_fingerprint
 from fmu.utils.gee import safe_call, safe_get_info
 from fmu.utils.logging import get_logger
+from fmu.utils.provenance import git_state
 
 log = get_logger(__name__)
 
@@ -474,6 +475,7 @@ class ExportStage(Stage):
         manifest: dict[str, Any] = {
             "config_name": config.name,
             "pipeline_version": __version__,
+            "git": git_state(),
             "run_timestamp": now_iso,
             "roi": {
                 "name": config.roi.name,

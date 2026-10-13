@@ -19,6 +19,7 @@ from fmu.utils.caching import (
     start_export,
 )
 from fmu.utils.logging import get_logger
+from fmu.utils.provenance import git_state
 
 log = get_logger(__name__)
 
@@ -605,6 +606,9 @@ class Pipeline:
             "use_cache": self.use_cache,
             "submit_exports": self.submit_exports,
             "summaries": self.summaries,
+            # Which code ran: the commit of the checkout the fmu package was
+            # imported from, and whether it had uncommitted changes.
+            "git": git_state(),
             "stages": [
                 {
                     "name": s.name,
