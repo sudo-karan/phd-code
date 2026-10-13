@@ -67,3 +67,13 @@ def test_the_script_cannot_submit_a_task_or_write_an_asset():
     for forbidden in ("ee.batch", "Export.", "start_export", "copyAsset", "deleteAsset",
                       "createFolder", "createAsset", "use_cache=True"):
         assert forbidden not in src, forbidden
+
+
+def test_the_run_record_sits_beside_the_result_and_holds_the_commit():
+    mod = _load()
+    assert mod.run_record_path(Path("docs/x/site_assets.json")) == Path("docs/x/site_assets_run.json")
+    src = SCRIPT.read_text()
+    rows_part, record_part = src.split("record = {", 1)
+    assert '"date"' in record_part and "git_state()" in record_part and '"command_line"' in record_part
+    # The rows themselves stay results only: no date and no commit goes into them.
+    assert "datetime.datetime.now" not in rows_part

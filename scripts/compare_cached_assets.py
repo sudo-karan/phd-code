@@ -25,15 +25,26 @@ scripts/compare_stand_runs.py to say how far apart the two partitions are.
 changed (the fingerprint in the asset name is then not the one the config gives today).
 Only compare stages whose settings did not change between the two.
 
+`--out` writes two files: the rows, which hold results only, and beside them
+`<name>_run.json` with the command, the date and the git commit it ran from.
+
 Run from the repo root (fmu reads .env from the working directory).
 """
 
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
+import shlex
+import sys
 from pathlib import Path
 from typing import Any
+
+
+def run_record_path(out: Path) -> Path:
+    """Where the run record of a result file goes: beside it, `<name>_run.json`."""
+    return out.with_name(out.stem + "_run.json")
 
 
 def summarise_rows(rows: list[dict[str, Any]]) -> list[str]:
@@ -177,7 +188,17 @@ def main() -> None:
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(rows, indent=1) + "\n")
-        print(f"wrote {args.out}")
+        from fmu.utils.provenance import git_state
+
+        record = {
+            "result_file": args.out.name,
+            "command_line": "python " + " ".join(shlex.quote(a) for a in sys.argv),
+            "date": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
+            # Without `root`: the folder the checkout sits in says nothing about the code.
+            "git": {k: v for k, v in git_state().items() if k != "root"},
+        }
+        run_record_path(args.out).write_text(json.dumps(record, indent=1) + "\n")
+        print(f"wrote {args.out} and {run_record_path(args.out).name}")
 
 
 if __name__ == "__main__":
