@@ -921,7 +921,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       if (feats.length < 2) return;
       state.zoomParts = feats.map((f, i) => ({ name: (f.properties && f.properties.name) || `Part ${i + 1}`, n: (f.properties && f.properties.n_plots) || 0, bounds: L.geoJSON(f).getBounds() }));
       const busiest = state.zoomParts.reduce((m, p, i, a) => (p.n > a[m].n ? i : m), 0);
-      const word = r.roi === "boxes" ? "boxes" : "patches";
+      const word = (r.roi || "hulls") === "boxes" ? "boxes" : "patches";
       sel.innerHTML = `<option value="-1">All ${feats.length} ${word} in ${esc(r.area)}</option>` + state.zoomParts.map((p, i) => `<option value="${i}"${i === busiest && r.start_bounds ? " selected" : ""}>${esc(p.name)}</option>`).join("");
       wrap.hidden = false;
     } catch (e) { /* no outline, no list */ }
@@ -942,32 +942,45 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       `<div class="barkey">${parts.map(p => `<span><i style="background:${p[2]}"></i>${esc(p[0])} ${pct(p[1])}</span>`).join("")}</div></div>`;
   }
   function stepText(w) {
+    // Every number comes from the run's facts. A sentence whose numbers are missing is either left
+    // out or written without them, so an export with fewer facts still reads as plain prose.
     const r = run(), f = r.facts || {}, odisha = isOdisha(r);
+    const has = (...xs) => xs.every(x => x !== null && x !== undefined && !(typeof x === "number" && Number.isNaN(x)));
+    const roi = r.roi || (odisha ? "hulls" : "rectangle");
+    const parts = roi === "boxes" ? "boxes" : "patches";
     const where = odisha ? r.area : "Sanjay Van";
-    const out = { kicker: "", title: "", body: [], facts: "", extra: "" };
+    const plotsInside = has(f.plots_inside) ? f.plots_inside : (state.plots ? state.plots.filter(x => x.properties && x.properties.in_mapped_area).length : null);
+    const out = { title: "", body: [], facts: "", extra: "" };
     if (w.id === "area") {
       out.title = odisha ? `The area: land around the FES plots in ${r.area}` : "The area: Sanjay Van";
-      if (r.roi === "rectangle") {
-        out.body.push(`We start with a rectangle of about ${n0(Math.round(f.area_ha / 100) * 100)} ha around Sanjay Van, the forest in south Delhi. It is a working area drawn around the park, not the park's official boundary.`);
-      } else if (r.roi === "boxes") {
-        out.body.push(`We start with a box around each village's FES plots, 300 m wider than the plots on every side: ${plural(f.n_parts, "box", "boxes")}, ${ha(f.area_ha)} in all, holding ${n0(f.plots_inside)} of the district's ${n0(f.plots_in_district)} plots.`);
+      const count = has(f.n_parts, f.area_ha)
+        ? ` That gives ${plural(f.n_parts, roi === "boxes" ? "box" : "patch", parts)}, ${ha(f.area_ha)} in all` + (has(plotsInside, f.plots_in_district) ? `, holding ${n0(plotsInside)} of the district's ${n0(f.plots_in_district)} plots.` : ".")
+        : "";
+      if (roi === "rectangle") {
+        out.body.push(`We start with a rectangle${has(f.area_ha) ? ` of about ${n0(Math.round(f.area_ha / 100) * 100)} ha` : ""} around Sanjay Van, the forest in south Delhi. It is a working area drawn around the park, not the park's official boundary.`);
+      } else if (roi === "boxes") {
+        out.body.push(`We start with a box around each village's FES plots in ${r.area}, 300 m wider than the plots on every side.` + count);
       } else {
-        out.body.push(`We start with the land around the FES plots in ${r.area}. For each village we took the smallest outline that holds all its plots and widened it by 300 m. That gives ${plural(f.n_parts, "patch", "patches")}, ${ha(f.area_ha)} in all, holding ${n0(f.plots_inside)} of the district's ${n0(f.plots_in_district)} plots.`);
+        out.body.push(`We start with the land around the FES plots in ${r.area}. For each village we took the smallest outline that holds all its plots and widened it by 300 m.` + count);
         out.body.push(`These outlines hug the plots, so the maps look like small blobs. The next runs use a box around each village instead.`);
       }
       out.body.push(`The picture is a Sentinel-2 satellite image: for every 10 m pixel, the middle value of the clear views from 2017 to 2022.`);
-      if (odisha && f.n_parts > 1) out.body.push(`The map opens on the village with the most plots. Use the list at its top right to move between villages.`);
+      if (odisha && (!has(f.n_parts) || f.n_parts > 1)) out.body.push(`The map opens on the village with the most plots. Use the list at its top right to move between villages.`);
       if (r.note) out.extra = `<p class="small">${esc(r.note)}</p>`;
-      out.facts = factBox(ha(f.area_ha), "area we work on") + (odisha ? factBox(n0(f.n_parts), r.roi === "boxes" ? "boxes" : "patches") + factBox(n0(f.plots_inside), "FES plots inside") : "");
+      out.facts = (has(f.area_ha) ? factBox(ha(f.area_ha), "area we work on") : "") +
+        (odisha && has(f.n_parts) ? factBox(n0(f.n_parts), parts) : "") + (odisha && has(plotsInside) ? factBox(n0(plotsInside), "FES plots inside") : "");
     } else if (w.id === "land") {
       out.title = "Mark the trees and scrub";
       out.body.push(`Stands are about forest, so we mark the pixels that a land-cover map calls trees or scrub. The map is IndiaSAT's LULC v4 from CoRE Stack, for 2017 to 2021. A pixel counts as trees or scrub if it was in most of those years.`);
-      const removed = [["cropland", "cropland"], ["built_up", "built-up land"], ["water", "water"], ["other", "other land"], ["no_data", "pixels with no land-cover data"]]
-        .filter(([k]) => (f.share_removed?.[k] || 0) > 0).sort((a, b) => f.share_removed[b[0]] - f.share_removed[a[0]]).map(([k, word]) => `${word} (${pct(f.share_removed[k])})`);
-      out.body.push(`In ${odisha ? r.area + "'s " + (r.roi === "boxes" ? "boxes" : "patches") : "the Sanjay Van rectangle"}, ${pct(f.share_kept)} of the area is trees or scrub.` + (removed.length ? ` The rest is ${listWords(removed)}.` : ""));
+      if (has(f.share_kept)) {
+        const sr = f.share_removed || {};
+        const removed = [["cropland", "cropland"], ["built_up", "built-up land"], ["water", "water"], ["other", "other land"], ["no_data", "pixels with no land-cover data"]]
+          .filter(([k]) => (sr[k] || 0) > 0).sort((a, b) => sr[b[0]] - sr[a[0]]).map(([k, word]) => `${word} (${pct(sr[k])})`);
+        out.body.push(`In ${odisha ? r.area + "'s " + parts : "the Sanjay Van rectangle"}, ${pct(f.share_kept)} of the area is trees or scrub.` + (removed.length ? ` The rest is ${listWords(removed)}.` : ""));
+        out.extra = landBar(f);
+      }
       if ((f.share_decided_by_worldcover || 0) > 0) out.body.push(`Where IndiaSAT has no data (${pct(f.share_decided_by_worldcover)} of the area) we use ESA WorldCover instead.`);
       out.body.push(`We don't cut the rest out yet. The superpixels and stands in the next steps cover the whole area; the mark comes back when we sort the stands into types, and only stands with some trees or scrub get a type.`);
-      out.extra = landBar(f);
     } else if (w.id === "measure") {
       if (r.arm === "alphaearth") {
         out.title = "What the satellite tells us: AlphaEarth";
@@ -976,10 +989,11 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
         out.facts = factBox("64", "numbers per pixel") + factBox("10 m", "pixel size");
       } else {
         out.title = "What the satellite tells us";
-        out.body.push(`For every 10 m pixel we compute ${n0(f.n_feature_bands)} measurements: how green it is and how that changes through the year (Sentinel-2), how it scatters radar (Sentinel-1), how tall the canopy is (ETH canopy height, 2020), and the terrain, the distance to water and the rainfall.`);
-        out.body.push(`The map shows three of them. In this version each is averaged over a stand; the next version shows them pixel by pixel.`);
-        out.facts = factBox(n0(f.n_feature_bands), "measurements per pixel") + factBox("10 m", "pixel size");
+        out.body.push(`For every 10 m pixel we compute ${has(f.n_feature_bands) ? n0(f.n_feature_bands) + " measurements" : "a set of measurements"}: how green it is and how that changes through the year (Sentinel-2), how it scatters radar (Sentinel-1), how tall the canopy is (ETH canopy height, 2020), and the terrain, the distance to water and the rainfall.`);
         const fl = featureLayers(r);
+        const perStand = fl.some(l => l.kind === "vector");
+        if (fl.length) out.body.push(`The map shows ${fl.length === 1 ? "one of them" : fl.length === 2 ? "two of them" : fl.length === 3 ? "three of them" : n0(fl.length) + " of them"}.` + (perStand ? ` In this version each is averaged over a stand; the next version shows them pixel by pixel.` : ""));
+        out.facts = (has(f.n_feature_bands) ? factBox(n0(f.n_feature_bands), "measurements per pixel") : "") + factBox("10 m", "pixel size");
         if (fl.length > 1) {
           const cur = (fl.find(l => l.layer_id === state.feature) || fl[0]).layer_id;
           out.extra = `<div class="chips" role="group" aria-label="Which measurement">${fl.map(l => `<button type="button" data-feature="${esc(l.layer_id)}" aria-pressed="${l.layer_id === cur}">${esc(l.title)}</button>`).join("")}</div>`;
@@ -987,36 +1001,45 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       }
     } else if (w.id === "superpixels") {
       out.title = "Cut the land into superpixels";
-      const bands = f.segmentation_bands ? listWords(f.segmentation_bands.map(b => BAND_WORDS[b] || b)) : "all 64 AlphaEarth numbers";
-      out.body.push(`Next we cut the whole area into small patches of pixels that look alike, called superpixels, with an algorithm called SNIC. It plants a seed every ${n0(f.seed_spacing_m)} m and grows a patch around each one, adding nearby pixels that are similar in ${f.segmentation_bands ? n0(f.n_segmentation_bands) + " measurements: " + bands : bands}.`);
-      out.body.push(`${where} ends up with ${n0(f.n_superpixels)} superpixels` + (f.median_superpixel_ha ? `, a typical one ${ha(f.median_superpixel_ha)}` : "") + `. Zoom in to see the yellow edges.`);
+      const bands = f.segmentation_bands && f.segmentation_bands.length
+        ? `${n0(f.segmentation_bands.length)} measurements: ${listWords(f.segmentation_bands.map(b => BAND_WORDS[b] || b))}`
+        : r.arm === "alphaearth" ? "all 64 AlphaEarth numbers" : "a few of the measurements: light, canopy height, greenness through the year and radar";
+      out.body.push(`Next we cut the whole area into small patches of pixels that look alike, called superpixels, with an algorithm called SNIC. It plants ${has(f.seed_spacing_m) ? `a seed every ${n0(f.seed_spacing_m)} m` : "seeds on a regular grid"} and grows a patch around each one, adding nearby pixels that are similar in ${bands}.`);
+      if (has(f.n_superpixels)) out.body.push(`${where} ends up with ${n0(f.n_superpixels)} superpixels` + (has(f.median_superpixel_ha) ? `, a typical one ${ha(f.median_superpixel_ha)}` : "") + `. Zoom in to see the yellow edges.`);
+      else out.body.push(`Zoom in to see the yellow edges.`);
       if (state.index && state.index.commit === "early build") out.body.push(`In this early version the map draws only the superpixels that hold some trees or scrub: the saved file left out the ones on fields and villages alone.`);
-      out.facts = factBox(n0(f.n_superpixels), "superpixels") + factBox(`${n0(f.seed_spacing_m)} m`, "between seeds") + (f.median_superpixel_ha ? factBox(ha(f.median_superpixel_ha), "typical size") : "");
+      out.facts = (has(f.n_superpixels) ? factBox(n0(f.n_superpixels), "superpixels") : "") + (has(f.seed_spacing_m) ? factBox(`${n0(f.seed_spacing_m)} m`, "between seeds") : "") + (has(f.median_superpixel_ha) ? factBox(ha(f.median_superpixel_ha), "typical size") : "");
     } else if (w.id === "stands") {
       out.title = "Join superpixels into stands";
       const crit = (f.merge_criteria || []).map(c => (CRITERION_WORDS[c.band] || (t => `${c.band} within ${t}`))(c.tolerance));
-      out.body.push(`A superpixel is smaller than a stand, so we join neighbours that are alike. Two neighbours join only if they match on ${listWords(crit)}, and only while the joined stand stays under ${ha(f.max_stand_ha)}. That makes ${plural(f.merges_pass1, "join")}.`);
-      const loosen = f.relax_factor ? Math.round((f.relax_factor - 1) * 100) : null;
-      out.body.push(`Pieces still under ${ha(f.min_stand_ha)} then join their most similar neighbour, with the limits loosened${loosen ? ` by ${loosen}%` : ""} (${plural(f.merges_relaxed, "join")}), or, when no neighbour is close enough, the neighbour they share the longest border with (${plural(f.merges_fallback, "join")}).`);
-      let tail = `In the end ${n0(f.n_superpixels)} superpixels become ${n0(f.n_stands)} stands; a typical stand is ${ha(f.median_stand_ha)}. They cover the whole area, fields and villages included, for now.`;
-      if (f.stands_below_min) {
+      const limit = has(f.max_stand_ha) ? `under ${ha(f.max_stand_ha)}` : `under the size limit (${fmt(r.stand_ceiling_ha, 0)} ha)`;
+      out.body.push(`A superpixel is smaller than a stand, so we join neighbours that are alike. Two neighbours join only if they match on ${crit.length ? listWords(crit) : "every merge measurement (canopy height and greenness through the year among them)"}, and only while the joined stand stays ${limit}.` + (has(f.merges_pass1) ? ` That makes ${plural(f.merges_pass1, "join")}.` : ""));
+      const loosen = has(f.relax_factor) ? Math.round((f.relax_factor - 1) * 100) : null;
+      const minHa = has(f.min_stand_ha) ? ha(f.min_stand_ha) : "the minimum size";
+      out.body.push(`Pieces still under ${minHa} then join their most similar neighbour, with the limits loosened${loosen ? ` by ${loosen}%` : ""}${has(f.merges_relaxed) ? ` (${plural(f.merges_relaxed, "join")})` : ""}, or, when no neighbour is close enough, the neighbour they share the longest border with${has(f.merges_fallback) ? ` (${plural(f.merges_fallback, "join")})` : ""}.`);
+      let tail = has(f.n_superpixels, f.n_stands) ? `In the end ${n0(f.n_superpixels)} superpixels become ${n0(f.n_stands)} stands` + (has(f.median_stand_ha) ? `; a typical stand is ${ha(f.median_stand_ha)}.` : ".") : "";
+      tail += `${tail ? " " : ""}The stands cover the whole area, fields and villages included, for now.`;
+      if (has(f.stands_below_min) && f.stands_below_min > 0) {
         const why = f.below_min_blocked === f.stands_below_min ? "because every neighbour was already too big to take them" : f.below_min_isolated === f.stands_below_min ? "because they touch no other stand" : "because no neighbour could take them";
-        tail += ` ${plural(f.stands_below_min, "stand")} stay under ${ha(f.min_stand_ha)}, ${why}.`;
+        tail += ` ${plural(f.stands_below_min, "stand")} stay under ${minHa}, ${why}.`;
       }
       out.body.push(tail);
-      if (r.merge_rule === "before the merge fix") out.body.push(`These are the stands before this week's fix to that second step, which stops a piece that has already reached ${ha(f.min_stand_ha)} from joining again.`);
-      out.facts = factBox(n0(f.n_stands), "stands") + factBox(ha(f.median_stand_ha), "typical stand") + factBox(`${fmt(f.min_stand_ha, 0)}–${fmt(f.max_stand_ha, 0)} ha`, "allowed size");
+      if (r.merge_rule === "before the merge fix") out.body.push(`These are the stands before this week's fix to that second step, which stops a piece that has already reached ${minHa} from joining again.`);
+      out.facts = (has(f.n_stands) ? factBox(n0(f.n_stands), "stands") : "") + (has(f.median_stand_ha) ? factBox(ha(f.median_stand_ha), "typical stand") : "") +
+        (has(f.min_stand_ha, f.max_stand_ha) ? factBox(`${fmt(f.min_stand_ha, 0)}–${fmt(f.max_stand_ha, 0)} ha`, "allowed size") : "");
     } else if (w.id === "types") {
       out.title = "Sort the stands into types";
-      const what = r.arm === "alphaearth" ? "their 64 AlphaEarth numbers, averaged over each stand" : `their ${n0(f.n_feature_bands)} measurements, averaged over each stand and scaled so that no single one dominates`;
-      out.body.push(`Last, we sort the stands into ${n0(f.k)} types with k-means, a standard way of grouping similar things. It groups stands by ${what}. Same colour, same type.`);
-      if (f.n_untyped_stands !== undefined && f.n_untyped_stands !== null) out.body.push(`Only stands with some trees or scrub get a type: ${plural(f.n_untyped_stands, "stand")} (${pct(f.share_stand_area_untyped)} of the stand area) have none. The dark shading marks land that isn't trees or scrub; a stand that is mostly field can still get a type from the trees in it, and its averages include the field.`);
+      const k = has(f.k) ? f.k : r.k;
+      const what = r.arm === "alphaearth" ? "their 64 AlphaEarth numbers, averaged over each stand" : `their ${has(f.n_feature_bands) ? n0(f.n_feature_bands) + " " : ""}measurements, averaged over each stand and scaled so that no single one dominates`;
+      out.body.push(`Last, we sort the stands into ${has(k) ? n0(k) + " " : ""}types with k-means, a standard way of grouping similar things. It groups stands by ${what}. Same colour, same type.`);
+      if (has(f.n_untyped_stands, f.share_stand_area_untyped)) out.body.push(`Only stands with some trees or scrub get a type: ${plural(f.n_untyped_stands, "stand")} (${pct(f.share_stand_area_untyped)} of the stand area) have none. The dark shading marks land that isn't trees or scrub; a stand that is mostly field can still get a type from the trees in it, and its averages include the field.`);
+      else out.body.push(`Only stands with some trees or scrub get a type. The dark shading marks land that isn't trees or scrub.`);
       if (odisha) out.body.push(`The type numbers are only names. The types are worked out for each district separately, so type 2 in ${r.area} has nothing to do with type 2 in another district.`);
       else out.body.push(`The type numbers are only names. Sanjay Van has no field plots, so the check against the ground is done in Odisha.`);
-      out.facts = factBox(n0(f.k), "stand types") + factBox(n0(f.n_stands), "stands");
+      out.facts = (has(k) ? factBox(n0(k), "stand types") : "") + (has(f.n_stands) ? factBox(n0(f.n_stands), "stands") : "");
     } else if (w.id === "field") {
       out.title = "Do the stands follow the field plots?";
-      out.body.push(`FES measured the trees on ${n0(f.plots_inside)} plots inside these ${r.roi === "boxes" ? "boxes" : "patches"}, and every Odisha plot was sorted into one of five field types by its trees: height, trunk size, crown cover and how many there are.`);
+      out.body.push(`FES measured the trees on ${has(plotsInside) ? n0(plotsInside) + " plots" : "the plots"} inside these ${parts}, and every Odisha plot was sorted into one of five field types by its trees: height, trunk size, crown cover and how many there are.`);
       out.body.push(`If our stands follow the forest, plots that fall in the same stand should be the same field type, and plots of the same field type should get the same stand type.`);
       out.extra = fieldExtras();
     }
@@ -1112,7 +1135,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     $("#story").innerHTML =
       `<div><p class="eyebrow kicker">Step ${state.step + 1} of ${walk.length} · ${esc(r.area)} · ${r.arm === "alphaearth" ? "AlphaEarth" : "our features"} · stands up to ${fmt(r.stand_ceiling_ha, 0)} ha</p><h2>${esc(t.title)}</h2></div>` +
       t.body.map(p => `<p>${p}</p>`).join("") +
-      (t.facts ? `<div class="facts">${t.facts}</div>` : "") + (t.extra || "") +
+      (t.facts && r.facts ? `<div class="facts">${t.facts}</div>` : "") + (t.extra || "") + summaryHTML(r, w) +
       (toggles.length ? `<div class="toggles"><p class="eyebrow cap">On the map</p>${toggles.map(togHTML).join("")}</div>` : "") +
       (decisions.length ? `<button type="button" class="why" id="why"><b>i</b>Why we did it this way (${decisions.length})</button>` : "");
     const prev = $("#prev"), next = $("#next");
@@ -1120,6 +1143,14 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     if (state.step < walk.length - 1) { next.disabled = false; next.innerHTML = `Next: ${esc(walk[state.step + 1].label)} &rarr;`; }
     else { next.disabled = true; next.innerHTML = "The end"; }
     setHash();
+  }
+  function summaryHTML(r, w) {
+    // An export without run facts (version 1 of the index) still has each step's formatted summary.
+    if (r.facts) return "";
+    const step = stepOf(r, w.decisions);
+    const sum = step && step.summary;
+    if (!sum || !Object.keys(sum).length) return "";
+    return `<div class="facts">${Object.entries(sum).map(([k, v]) => factBox(esc(typeof v === "object" ? JSON.stringify(v) : v), k)).join("")}</div>`;
   }
   function swatch(layer) {
     if (layer.kind === "lines") return `background:${EDGE_LINE}`;
