@@ -314,8 +314,8 @@ def superpixel_outlines(run_id: str, area_info: dict) -> list[dict]:
         rgba = np.zeros((h, w, 4), dtype="uint8")
         rgba[edge] = (255, 212, 0, 255)
         name = f"superpixels_part{i:02d}.png"
-        png(OUT / "runs" / run_id / name, rgba)
-        parts.append({"file": f"runs/{run_id}/{name}",
+        png(OUT / "by_run" / run_id / name, rgba)
+        parts.append({"file": f"by_run/{run_id}/{name}",
                       "bounds": [r6(b.left), r6(b.bottom), r6(b.right), r6(b.top)]})
     return parts
 
@@ -376,7 +376,7 @@ def main() -> None:
         md = run["merge_diagnostics"]
         ai = area_cache[area]
         stands_fc, st = run_stands(run_id, arm)
-        write_json(OUT / "runs" / run_id / "stands.geojson", stands_fc)
+        write_json(OUT / "by_run" / run_id / "stands.geojson", stands_fc)
         sp_parts = superpixel_outlines(run_id, ai)
         steps = []
         steps.append({
@@ -424,7 +424,7 @@ def main() -> None:
                 vmin, vmax = (float(v) for v in np.percentile(vals, [2, 98]))
                 feat_layers.append({
                     "layer_id": f"feature_{prop}", "title": title + ", mean per stand",
-                    "kind": "vector", "file": f"runs/{run_id}/stands.geojson",
+                    "kind": "vector", "file": f"by_run/{run_id}/stands.geojson",
                     "color_by": prop, "popup_fields": ["stand_id", prop, "area_ha"],
                     "legend": None,
                     "colormap": {"min": round(vmin, 3), "max": round(vmax, 3), "palette": pal,
@@ -436,7 +436,7 @@ def main() -> None:
             feat_layers.append({
                 "layer_id": "embedding_rgb",
                 "title": "AlphaEarth embedding, first three principal components as colour",
-                "kind": "vector", "file": f"runs/{run_id}/stands.geojson",
+                "kind": "vector", "file": f"by_run/{run_id}/stands.geojson",
                 "color_by": "emb_rgb", "color_is_value": True,
                 "popup_fields": ["stand_id", "area_ha"], "legend": None, "colormap": None,
                 "default_on": False,
@@ -471,7 +471,7 @@ def main() -> None:
             "step": "merge", "title": "Stands (superpixels merged)",
             "decisions": STEP_DECISIONS["merge"], "summary": merge_summary,
             "layers": [{"layer_id": "stands", "title": "Stand boundaries", "kind": "vector",
-                        "file": f"runs/{run_id}/stands.geojson", "color_by": None,
+                        "file": f"by_run/{run_id}/stands.geojson", "color_by": None,
                         "style": "outline",
                         "popup_fields": ["stand_id", "area_ha", "canopy_height",
                                          "ndvi_amplitude_annual", "stand_type"],
@@ -487,13 +487,13 @@ def main() -> None:
                                             "districts"} if AREAS[area]["site"] == "Odisha"
                            else {})},
             "layers": [{"layer_id": "stand_types", "title": "Stands coloured by type",
-                        "kind": "vector", "file": f"runs/{run_id}/stands.geojson",
+                        "kind": "vector", "file": f"by_run/{run_id}/stands.geojson",
                         "color_by": "stand_type", "legend": legend_types,
                         "popup_fields": ["stand_id", "stand_type", "area_ha"],
                         "default_on": False}]})
         if AREAS[area]["site"] == "Odisha":
             pfc, pn = plots_for(run_id, area)
-            write_json(OUT / "runs" / run_id / "plots.geojson", pfc)
+            write_json(OUT / "by_run" / run_id / "plots.geojson", pfc)
             steps.append({
                 "step": "fes_plots", "title": "FES field plots",
                 "decisions": STEP_DECISIONS["fes_plots"],
@@ -502,7 +502,7 @@ def main() -> None:
                             "On a kept pixel (all plots)": str(pn["kept"]),
                             "In a stand of this run": str(pn["with_stand"])},
                 "layers": [{"layer_id": "plots", "title": "Plots, coloured by field type",
-                            "kind": "vector", "file": f"runs/{run_id}/plots.geojson",
+                            "kind": "vector", "file": f"by_run/{run_id}/plots.geojson",
                             "color_by": "field_type",
                             "legend": [{"value": int(v), "label": lab, "color": FIELD_COLORS[int(v)]}
                                        for v, lab in FIELD_TYPES],
