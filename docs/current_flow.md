@@ -23,7 +23,8 @@ The pipeline runs a sequence of stages, each producing context keys consumed by 
 ```
 [ROI loaded into context]
         |
-1. masking          produces habitat_mask, water_mask, landcover_summary  [cached]
+1. masking          produces habitat_mask, water_mask, landcover_summary,
+                    mask_provenance                                       [cached]
         |
 2. data_load        produces s2_collection, s1_collection, s2_composite   [cached]
         |
@@ -35,7 +36,8 @@ The pipeline runs a sequence of stages, each producing context keys consumed by 
         |
 7. segmentation     produces snic_clusters, snic_means                    [cached]
         |
-8. merge            produces stand_clusters, stand_attributes             [not cached]
+8. merge            produces stand_clusters, stand_attributes,
+                    merge_diagnostics, stand_provenance, merge_provenance [not cached]
         |
 9. clustering       produces cluster_labels, feature_stack                [cached]
         |
@@ -66,7 +68,8 @@ The orchestrator (`fmu.pipeline.Pipeline`) walks the stages, validates the conte
 Builds the habitat mask, water mask, and labeled landcover summary. IndiaSAT-primary, single-phase masking (deck Stage 1): habitat is the IndiaSAT LULC Trees/Shrubs classes, with ESA WorldCover as a fallback only where IndiaSAT has no data. Water, cropland, and built-up are excluded simply because their classes are not in the habitat set — there is no separate water-mask or built-up subtraction.
 
 **Reads from context:** `roi`
-**Writes to context:** `habitat_mask`, `water_mask`, `landcover_summary`
+**Writes to context:** `habitat_mask`, `water_mask`, `landcover_summary`, `mask_provenance`
+**Cacheable:** yes, all four.
 
 **Datasets:**
 - CoRE Stack LULC (`projects/corestack-trees/assets/LULC_v4`, a folder of per-year images `lulc_v4_YYYY_YYYY`, class band `predicted_label`); primary habitat source, 30 m annual maps, hydrological-year window `masking.indiasat_year_min/max` (default 2017-2021). Mirror of the private `projects/ee-indiasat/...` product
@@ -79,6 +82,9 @@ Builds the habitat mask, water mask, and labeled landcover summary. IndiaSAT-pri
 - `habitat_mask` = `veg_indiasat` where IndiaSAT has data, else `veg_wc`. Single-phase: no water or built-up subtraction — those classes are simply not in the habitat set.
 - `water_mask` = JRC occurrence ≥ threshold. Built for the distance-to-water feature; NOT used for habitat exclusion.
 - `landcover_summary` = labeled image: `6` / `12` for the IndiaSAT habitat classes kept, `80` for JRC water (water wins where they overlap), `0` for other/excluded.
+- `mask_provenance` = why each pixel is in or out of `habitat_mask`. Band `reason`: `1` kept, `2` removed as cropland, `3` built-up, `4` water, `5` other non-habitat, `0` no land-cover data in either map. Band `source`: `1` IndiaSAT decided, `2` WorldCover decided, `0` neither has data. `reason == 1` exactly where `habitat_mask == 1`; a pixel IndiaSAT removed takes the reason of its most recent non-habitat year. Derived beside the mask, never fed back into it.
+
+**Declares** (transparency contract, written to the run manifest; see `docs/outputs.md`): two display layers on `mask_provenance` (`reason`, `source`) with legends, and summary numbers: ROI area, share kept, share by reason, share by deciding map, area by reason and map, the area where the reason layer and `habitat_mask` disagree (zero unless a land-cover input changed after the mask was cached), and the classes kept. `scripts/transparency_masking.py` draws them.
 
 **Config knobs** (in `configs/*.yaml` under `masking:`):
 - `indiasat_habitat_classes`; IndiaSAT classes kept as habitat (default `[6, 12]`)
@@ -306,6 +312,16 @@ NASADEM (30 m), CHIRPS (5,500 m), and cyclic features (phase, aspect) remain exc
 
 **Related decisions:** DEC-001 (superpixels not pixels), DEC-014 (compute everywhere, mask at clustering), DEC-016 (cross-pol metric definition).
 
+### 7b. merge - `src/fmu/stages/merge.py`
+
+SNIC superpixels to stands, in two passes over the adjacency graph, client-side (`src/fmu/utils/region_merge.py`). Runs when `merge.enabled`. The rule and its settings are in `docs/configs.md` (`merge`).
+
+**Reads from context:** `roi`, `snic_clusters` (the static `required_inputs`), plus the feature images `merge.criteria` names
+**Writes to context:** `stand_clusters` (stand id per pixel, a remap of `snic_clusters`), `stand_attributes` and `merge_diagnostics` (Python dicts), `stand_provenance` (Python dict: per stand, the fields `n_superpx`, `n_pass1`, `n_relaxed`, `n_fallback`, `below_min`, `below_why`), `merge_provenance` (image, band `merge_kind`: each stand coded by the weakest kind of merge it contains, `0` single superpixel, `1` first-pass merges only, `2` contains a relaxed second-pass merge, `3` contains a shared-edge fallback merge)
+**Cacheable:** no, none of them.
+
+**Declares** (transparency contract): one display layer, `merge_provenance.merge_kind`, and summary numbers read from `merge_diagnostics`: superpixels in, stands out, merges by kind (first pass, second pass relaxed, second pass shared-edge fallback), and the stands left below the minimum size with their cause and area. The provenance is bookkeeping: no merge decision reads it. The export stage puts the six `stand_provenance` fields on the `stands_merged` layer; `scripts/inspect_merge.py` prints them.
+
 ### 8. clustering - `src/fmu/stages/clustering.py`
 
 Per-superpixel feature stack to preprocessing to k-means to per-pixel cluster labels. Implements the locked DEC-001 (cluster on superpixel means), DEC-003 (median/IQR robust scaling), DEC-004 (log-transform right-skewed bands).
@@ -499,6 +515,9 @@ Each one will get its own section here as it's built.
 | IndiaSAT habitat classes | `configs/sanjay_van_baseline.yaml` to `masking.indiasat_habitat_classes` |
 | WorldCover fallback class filter | `configs/sanjay_van_baseline.yaml` to `masking.keep_worldcover_classes` |
 | JRC water threshold | `configs/sanjay_van_baseline.yaml` to `masking.jrc_water_occurrence_threshold` |
+| Transparency contract (display layers, summary numbers) | `src/fmu/stages/base.py` (`DisplayLayer`, `LegendEntry`, `SummaryNumber`, `Stage.summarise`); which stages must declare: `tests/test_transparency_contract.py` |
+| Git commit of a run | `src/fmu/utils/provenance.py` (`git_state()`), written to every manifest |
+| Recorded decisions | `docs/decisions.yaml` |
 | Per-run output folder | `outputs/runs/<config>_<timestamp>/` (created by `init_logging`) |
 | Manifest of a run | `outputs/runs/<config>_<timestamp>/manifest.json` |
 | Asset caching utility | `src/fmu/utils/caching.py` |

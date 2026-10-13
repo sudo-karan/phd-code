@@ -130,10 +130,13 @@ src/fmu/                package
     components.py       guards around reduceConnectedComponents' silent maxSize
     adjacency.py        superpixel region-adjacency graph + stand geometry
     region_merge.py     Xiong's two-pass merge, pure Python (no ee import)
+    provenance.py       git commit + dirty flag of the code that ran, for manifests
     logging.py          Rich logging + per-run output dir
-configs/                YAML configs, one per experiment
+  evaluation/           evaluation metrics, offline; not a pipeline stage, not yet run on a site
+configs/                YAML configs, one per experiment (+ *_repro copies for from-scratch re-runs)
 aois/                   GeoJSON polygons
-scripts/                runnable inspect_*.py per stage + check_resolutions.py
+scripts/                runnable inspect_*.py per stage + check_resolutions.py,
+                        transparency, comparison and evaluation scripts (see "One-off helpers")
 odisha_script/          field validation on Odisha: scripts, results, PHASE<n>_STATUS.md write-ups
 tests/                  pytest tests (fast + `-m live_gee` tiers)
 docs/
@@ -144,6 +147,10 @@ docs/
   outputs.md            per-file format spec for everything the pipeline emits
   configs.md            schema tour, how to add a new experiment
   architecture.md       Stage contract, registry, caching internals, extending
+  decisions.yaml        the decision register: one entry per recorded decision
+  transparency/         land-cover mask maps and numbers, one folder per config
+  reproducibility.md    which committed results reproduce on a re-run
+  evaluation_metrics.md proposed evaluation metrics, for approval (+ evaluation/)
 legacy/                 pre-package Colab notebooks (read-only reference)
 MODULES.md              build-order status
 ```
@@ -179,15 +186,18 @@ result = Pipeline(stage_names=["masking"], use_cache=True).run(
 ```
 
 `use_cache=True` makes the orchestrator look up each cacheable output as a
-GEE asset under `{GEE_ASSET_ROOT}/{config_name}/{stage_name}/{key}`. On a
+GEE asset under `{GEE_ASSET_ROOT}/{config_name}/{stage_name}/{key}__{fingerprint}`,
+where the fingerprint is a hash of the config content. On a
 miss it submits an async export task and continues with the live-computed
-image; the asset becomes available for the next run. Tests should leave
-caching off.
+image; the asset becomes available for the next run. Add
+`submit_exports=False` to read the cache without submitting anything. Tests
+should leave caching off.
 
 Per-run artifacts (logs, manifest, any CSVs the inspect scripts emit) land
 in `outputs/runs/<config>_<timestamp>/`. The `manifest.json` records every
-stage, its elapsed time, what it produced, cache hit/miss per key, and any
-export tasks submitted.
+stage, its elapsed time, what it produced, cache hit/miss per key, any
+export tasks submitted, the git commit the run was made from, and what each
+stage declares about itself (display layers and summary numbers).
 
 ## Running individual modules
 
@@ -198,7 +208,7 @@ and default to `configs/sanjay_van_baseline.yaml`.
 
 | Stage | Script | Upstream stages run | Cacheable outputs |
 |---|---|---|---|
-| 1. masking | `python scripts/inspect_masking.py` | (none) | `habitat_mask`, `water_mask`, `landcover_summary` |
+| 1. masking | `python scripts/inspect_masking.py` | (none) | `habitat_mask`, `water_mask`, `landcover_summary`, `mask_provenance` |
 | 2. data_load | `python scripts/inspect_data_load.py` | loads collections + composite | `s2_composite` only (collections aren't cacheable) |
 | 3. features_optical | `python scripts/inspect_features_optical.py` | masking, data_load | `optical_features` |
 | 4. features_radar | `python scripts/inspect_features_radar.py` | masking, data_load | `radar_features` |
@@ -206,7 +216,7 @@ and default to `configs/sanjay_van_baseline.yaml`.
 | 6. features_static | `python scripts/inspect_features_static.py` | masking (for `water_mask`) | `static_features` |
 | 6b. features_embedding (embedding arm) | no dedicated script — runs via `inspect_metrics.py` / `inspect_clustering.py` with an embedding config (`clustering.feature_source: embedding`) | (uses ROI only) | `embedding_features` |
 | 7. segmentation | `python scripts/inspect_segmentation.py` | masking, data_load, features_optical, features_radar, features_structure — config-driven via `segmentation.input_bands`, so the real list follows the config rather than this row | `snic_clusters`, `snic_means` |
-| 8. merge | no dedicated script — runs inside `inspect_clustering.py`, `inspect_export.py` and `inspect_metrics.py` | all of 1-7 | not cached: thresholds are the iteration variable, so a cached stand map would hide the thing being tuned |
+| 8. merge | `python scripts/inspect_merge.py` (read-only by default: submits no export) | all of 1-7 | not cached: thresholds are the iteration variable, so a cached stand map would hide the thing being tuned |
 | 9. clustering | `python scripts/inspect_clustering.py` | all of 1-8 | `cluster_labels`, `feature_stack` |
 | 10. profiling | `python scripts/inspect_profiling.py` | all of 1-9 | not cached, writes `cluster_profiles.csv` to the run dir |
 | 11. export | `python scripts/inspect_export.py` | all of 1-10 | not cached, submits Drive GeoTIFF task and writes manifest JSON |
@@ -238,6 +248,24 @@ hit the cache and skip the live computation.
   `GEE_ASSET_ROOT` for every config. Run once per fresh GEE project so the
   cache layer has somewhere to write to. Optional positional args specify
   which configs to provision; defaults to both shipped configs.
+- `python scripts/transparency_masking.py --config <path>`: the land-cover
+  mask of a config. Maps of the habitat mask coloured by reason (kept,
+  cropland, built-up, water, other) beside the true-colour image, with the
+  numbers, in `docs/transparency/<config>/`. Read-only on Earth Engine.
+  Current maps: Sanjay Van and the four Odisha districts.
+- `python scripts/compare_cached_assets.py --old <config> --new <config>` and
+  `python scripts/compare_stand_runs.py OLD.geojson NEW.geojson`: did a
+  re-run reproduce an earlier one, by cached asset and by exported stands.
+  See "Re-running a config from scratch" in [docs/running.md](docs/running.md).
+- `python scripts/segmentation_route.py --runs-dir runs --config <path>` and
+  `python scripts/snic_cached_vs_live.py --config <path>`: whether a run drew
+  its superpixels on cached features or on live ones, and how much that changes
+  them. See "Superpixels depend on whether the features were cached" in
+  [docs/running.md](docs/running.md).
+- `python scripts/run_evaluation.py --predeclared <file> ...` and
+  `python scripts/evaluation_synthetic_validation.py`: the evaluation metrics
+  of `src/fmu/evaluation/`, on a site's reference data and on planted data.
+  Not yet run on a real site; see [docs/evaluation_metrics.md](docs/evaluation_metrics.md).
 
 ## Configs
 
@@ -280,6 +308,10 @@ the new config's outputs cache to their own asset folder.
 | How config works, how to add a new experiment | [docs/configs.md](docs/configs.md) |
 | Stage contract, registry, caching internals, how to add a stage | [docs/architecture.md](docs/architecture.md) |
 | Module status (locked / paused / in progress) | [MODULES.md](MODULES.md) |
+| What was decided, with alternatives, evidence and papers | [docs/decisions.yaml](docs/decisions.yaml) |
+| What the land-cover mask kept and removed, per config | [docs/transparency/](docs/transparency/) |
+| Which committed results reproduce when re-run | [docs/reproducibility.md](docs/reproducibility.md) |
+| Which metrics are proposed for scoring a stand map (for approval; not yet run on real data) | [docs/evaluation_metrics.md](docs/evaluation_metrics.md) |
 | Whether the satellite features and the stands match field data (Odisha): what was tested, what it found | [PHASE1](odisha_script/PHASE1_STATUS.md) · [PHASE2](odisha_script/PHASE2_STATUS.md) · [PHASE3](odisha_script/PHASE3_STATUS.md) status notes |
 
 ## Tests

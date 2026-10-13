@@ -1,0 +1,647 @@
+
+====================================================================================================
+RE-RUN AGAINST COMMITTED OUTPUTS -- odisha_alphaearth (AlphaEarth stands)
+====================================================================================================
+  committed files: odisha_script/phase2_vectors/odisha_alphaearth_<district>_*
+  re-run files:    odisha_alphaearth_<district>_repro_*   in the folder outputs/repro_runs/phase2_vectors
+  'old' below is always the committed output, 'new' the re-run.
+
+====================================================================================================
+(a) STANDS -- summary; the full table for each district and layer is at the end
+====================================================================================================
+  IoU = area-weighted intersection over union, each stand against the stand of the other run that
+  overlaps it most (1 = the same stands). 'same outline' = stands whose outline is in both runs.
+  district   layer                 stands     polygons  same outline  IoU old->new  IoU new->old  area IoU>=0.9  footprint IoU
+  angul      stands_merged       99 -> 97   102 -> 100            85      0.923102      0.932418         84.48%       1.000000
+  angul      stands_snic       405 -> 405   407 -> 407           405      1.000000      1.000000        100.00%       1.000000
+  dhenkanal  stands_merged     215 -> 215   217 -> 217           206      0.978883      0.980439         94.64%       1.000000
+  dhenkanal  stands_snic       953 -> 953   959 -> 959           953      1.000000      1.000000        100.00%       1.000000
+  kendujhar  stands_merged     121 -> 118   123 -> 120           113      0.978013      0.978583         92.82%       1.000000
+  kendujhar  stands_snic       361 -> 361   365 -> 365           361      1.000000      1.000000        100.00%       1.000000
+  koraput    stands_merged     626 -> 623   632 -> 630           560      0.949129      0.948651         86.94%       1.000000
+  koraput    stands_snic     1870 -> 1870 1877 -> 1877          1870      1.000000      1.000000        100.00%       1.000000
+
+====================================================================================================
+(b) RUN RECORDS -- <config>_run.json, committed against re-run
+====================================================================================================
+  angul
+    cache fingerprint: committed 34bffb7611, re-run 34bffb7611: the same, so the re-run used the same cache-relevant settings as the committed run (the fingerprint covers the config, not the version of the code)
+    the re-run's record names git commit nothing (the record has no git entry)
+    70 recorded values compared, 18 differ:
+      pulled_polygon_counts.stands_merged: 102 -> 100
+      pulled_polygon_counts.stands_dissolved: 79 -> 100
+      export_vector_layers.stands_merged.n_features: 102 -> 100
+      export_vector_layers.stands_merged.n_stands: 99 -> 97
+      export_vector_layers.stands_dissolved.n_features: 79 -> 100
+      merge_diagnostics.n_stands: 99 -> 97
+      merge_diagnostics.reduction_factor: 4.505 -> 4.598
+      merge_diagnostics.pass1_merges: 301 -> 305
+      merge_diagnostics.pass2_merges: 46 -> 44
+      merge_diagnostics.pass2_fallback_merges: 10 -> 12
+      merge_diagnostics.stands_below_min_area: 2 -> 1
+      merge_diagnostics.area_in_undersized_stands_ha: 0.99 -> 0.8
+      merge_diagnostics.orphans_area_blocked: 2 -> 1
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p25: 0.006433 -> 0.006384
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p50: 0.015035 -> 0.015044
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p75: 0.026941 -> 0.027232
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p90: 0.039104 -> 0.039107
+      merge_diagnostics.warnings: ["2 stand(s) stayed below min_area_ha (1.0 ha) because every neighbour is already too big to absorb them un... -> ["1 stand(s) stayed below min_area_ha (1.0 ha) because every neighbour is already too big to absorb them un...
+    stand attributes: 99 stands -> 97; pixels 43,863 -> 43,863; area 438.63 -> 438.63 ha; 0 of the 97 stand numbers present in both carry identical attributes
+    not compared, because they differ between any two runs: config, run_dir, drive_exports, git
+  dhenkanal
+    cache fingerprint: committed 6e7046a5ce, re-run 6e7046a5ce: the same, so the re-run used the same cache-relevant settings as the committed run (the fingerprint covers the config, not the version of the code)
+    the re-run's record names git commit nothing (the record has no git entry)
+    70 recorded values compared, 11 differ:
+      pulled_polygon_counts.stands_dissolved: 121 -> 125
+      export_vector_layers.stands_dissolved.n_features: 121 -> 125
+      merge_diagnostics.pass1_merges: 720 -> 721
+      merge_diagnostics.pass2_merges: 82 -> 81
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.percentile_of_threshold: 83.3 -> 83.37
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p25: 0.005567 -> 0.005482
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p50: 0.012303 -> 0.012239
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p75: 0.023215 -> 0.023257
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p90: 0.03892 -> 0.038879
+      merge_diagnostics.threshold_calibration.joint_admit_rate_pct: 60.36 -> 60.4
+      merge_diagnostics.warnings: ["2 stand(s) stayed below min_area_ha (1.0 ha) because every neighbour is already too big to absorb them un... -> ["2 stand(s) stayed below min_area_ha (1.0 ha) because every neighbour is already too big to absorb them un...
+    stand attributes: 215 stands -> 215; pixels 99,380 -> 99,380; area 993.80 -> 993.80 ha; 0 of the 215 stand numbers present in both carry identical attributes
+    not compared, because they differ between any two runs: config, run_dir, drive_exports, git
+  kendujhar
+    cache fingerprint: committed 4c14ee1bce, re-run 4c14ee1bce: the same, so the re-run used the same cache-relevant settings as the committed run (the fingerprint covers the config, not the version of the code)
+    the re-run's record names git commit nothing (the record has no git entry)
+    70 recorded values compared, 15 differ:
+      pulled_polygon_counts.stands_merged: 123 -> 120
+      export_vector_layers.stands_merged.n_features: 123 -> 120
+      export_vector_layers.stands_merged.n_stands: 121 -> 118
+      merge_diagnostics.n_stands: 121 -> 118
+      merge_diagnostics.reduction_factor: 3.405 -> 3.492
+      merge_diagnostics.pass1_merges: 227 -> 231
+      merge_diagnostics.pass2_merges: 64 -> 63
+      merge_diagnostics.pass2_fallback_merges: 23 -> 24
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.percentile_of_threshold: 60.05 -> 60.14
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p25: 0.010415 -> 0.010449
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p50: 0.023327 -> 0.023365
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p75: 0.040847 -> 0.040447
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p90: 0.061282 -> 0.061539
+      merge_diagnostics.threshold_calibration.joint_admit_rate_pct: 29.67 -> 29.76
+      merge_diagnostics.warnings: ["23 of 64 pass-2 merges used the shared-edge fallback, i.e. no relaxed criterion could justify them. These... -> ["24 of 63 pass-2 merges used the shared-edge fallback, i.e. no relaxed criterion could justify them. These...
+    stand attributes: 121 stands -> 118; pixels 40,414 -> 40,414; area 404.14 -> 404.14 ha; 0 of the 118 stand numbers present in both carry identical attributes
+    not compared, because they differ between any two runs: config, run_dir, drive_exports, git
+  koraput
+    cache fingerprint: committed f1a8cc9cfa, re-run f1a8cc9cfa: the same, so the re-run used the same cache-relevant settings as the committed run (the fingerprint covers the config, not the version of the code)
+    the re-run's record names git commit nothing (the record has no git entry)
+    70 recorded values compared, 21 differ:
+      pulled_polygon_counts.stands_merged: 632 -> 630
+      pulled_polygon_counts.stands_dissolved: 221 -> 231
+      export_vector_layers.stands_merged.n_features: 632 -> 630
+      export_vector_layers.stands_merged.n_stands: 626 -> 623
+      export_vector_layers.stands_merged.n_stands_split_into_pieces: 6 -> 7
+      export_vector_layers.stands_dissolved.n_features: 221 -> 231
+      merge_diagnostics.n_stands: 626 -> 623
+      merge_diagnostics.reduction_factor: 3.992 -> 4.011
+      merge_diagnostics.pass1_merges: 1578 -> 1579
+      merge_diagnostics.pass2_merges: 295 -> 297
+      merge_diagnostics.pass2_fallback_merges: 94 -> 96
+      merge_diagnostics.stands_below_min_area: 4 -> 3
+      merge_diagnostics.area_in_undersized_stands_ha: 2.32 -> 1.88
+      merge_diagnostics.orphans_area_blocked: 4 -> 3
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.percentile_of_threshold: 68.2 -> 67.95
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p25: 0.009087 -> 0.009202
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p50: 0.01977 -> 0.019811
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p75: 0.035615 -> 0.035774
+      merge_diagnostics.threshold_calibration.per_band.ndvi_amplitude_annual.p90: 0.054955 -> 0.055408
+      merge_diagnostics.threshold_calibration.joint_admit_rate_pct: 40.66 -> 40.38
+      merge_diagnostics.warnings: ["4 stand(s) stayed below min_area_ha (1.0 ha) because every neighbour is already too big to absorb them un... -> ["3 stand(s) stayed below min_area_ha (1.0 ha) because every neighbour is already too big to absorb them un...
+    stand attributes: 626 stands -> 623; pixels 245,618 -> 245,618; area 2,456.18 -> 2,456.18 ha; 0 of the 623 stand numbers present in both carry identical attributes
+    not compared, because they differ between any two runs: config, run_dir, drive_exports, git
+
+====================================================================================================
+(c) PLOTS JOINED TO THE NEW STANDS -- odisha_script/odisha_phase2_3_join.py --set districts --arms alphaearth
+====================================================================================================
+  the re-run's files were presented to the join under the committed names in a temporary folder;
+  nothing else differs from the committed join.
+  committed plot table: odisha_script/phase2_plots_joined_districts.csv
+  new plot table:       phase2_plots_joined_districts.csv in the output folder
+  the two files are not identical byte for byte (they cannot be: the committed table also holds other arms' columns)
+    plots: 274 committed, 274 new; the same plots in both
+    columns in both: 30; only in the committed table: 24 (the other arms it was joined with; this run joins one arm)
+    columns with at least one differing plot: 10 of 30 (of them field-data columns, which no re-run should change: 0)
+      column                       plots differing  one side empty  largest |difference|
+      alphaearth_merged_id                     201               0                     8
+      alphaearth_merged_cluster                230               0                     5
+      alphaearth_merged_area_ha                155               0               8.52561
+      alphaearth_merged_bdist_m                 14               0               97.9448
+      alphaearth_snic_cluster                  228               0                     5
+      alphaearth_snic_area_ha                  266               0           2.34605e-08
+      alphaearth_dissolved_id                  246               0                    21
+      alphaearth_dissolved_cluster             221               0                     5
+      alphaearth_dissolved_area_ha             191               0               149.238
+      alphaearth_dissolved_bdist_m              73               0               288.793
+      (a stand number is a label: a re-run may give the same stand another number, so a
+       differing _id column alone does not mean a plot changed stand; see the lines below)
+    alphaearth merged: plots with a stand 267 -> 267 (267 in both, 0 lost theirs, 0 gained one); stands holding them 138 -> 138
+      pairs of plots sharing a stand: 302 committed, 302 new, 296 in both; adjusted Rand index of the old grouping of plots against the new 0.9800 (1 = the same grouping)
+    alphaearth snic: plots with a stand 266 -> 266 (266 in both, 0 lost theirs, 0 gained one); stands holding them 219 -> 219
+      pairs of plots sharing a stand: 64 committed, 64 new, 64 in both; adjusted Rand index of the old grouping of plots against the new 1.0000 (1 = the same grouping)
+    alphaearth stand type of the plot's stand: plots with a type 267 -> 267 (267 in both). Type numbers are refitted per run and per district, so they are
+      compared as groupings (adjusted Rand index, 1 = the same grouping), with the count of
+      plots keeping the same number beside it:
+        ANGUL       n=  39   adjusted Rand index 0.6571   same type number 8 of 39
+        DHENKANAL   n=  75   adjusted Rand index 0.8236   same type number 11 of 75
+        KENDUJHAR   n=   8   adjusted Rand index 1.0000   same type number 8 of 8
+        KORAPUT     n= 145   adjusted Rand index 0.6774   same type number 10 of 145
+
+====================================================================================================
+(d), (e) PHASE 3 SCORES FROM THE NEW PLOT TABLE -- odisha_script/odisha_phase3_1_pairwise_score.py
+====================================================================================================
+  NO COMMITTED PHASE 3 SCORE FOR THIS ARM. Phase 3 scored the 10 hectare and the 3 hectare stands
+  only (there is no odisha_script/odisha_phase3_1_score_alphaearth_*.txt), so there is nothing to
+  compare a new score with, and none is computed here: scoring this arm now would be a new
+  analysis, which has to be declared first (PHASE3_PREDECLARED.md).
+
+====================================================================================================
+IN SHORT
+====================================================================================================
+  stands angul stands_merged                 DIFFERS
+  stands angul stands_snic                   identical
+  stands dhenkanal stands_merged             DIFFERS
+  stands dhenkanal stands_snic               identical
+  stands kendujhar stands_merged             DIFFERS
+  stands kendujhar stands_snic               identical
+  stands koraput stands_merged               DIFFERS
+  stands koraput stands_snic                 identical
+  run record angul                           DIFFERS
+  run record dhenkanal                       DIFFERS
+  run record kendujhar                       DIFFERS
+  run record koraput                         DIFFERS
+  plot table (columns in both)               DIFFERS
+
+  The re-run is not identical to the committed outputs; the sections above say by how much.
+  (No Phase 3 score exists for this arm, so none was compared.)
+
+====================================================================================================
+STANDS IN FULL -- one table per district and layer
+====================================================================================================
+
+angul -- stands_merged
+  old: odisha_alphaearth_angul_stands_merged.geojson   (stand id: stand_lbl)
+  new: odisha_alphaearth_angul_repro_stands_merged.geojson   (stand id: stand_lbl)
+  Areas are in hectares, measured in a Lambert azimuthal equal-area projection centred on the data (lat 20.7851, lon 84.6826).
+
+                                                   old           new     new - old
+  polygons                                         102           100            -2
+  stands                                            99            97            -2
+  stands in more than one piece                      3             3             0
+  invalid polygons repaired                          0             0              
+  features left out (no geometry or id)              0             0              
+  total stand area                              439.13        439.13          0.00
+  area covered (footprint)                      439.13        439.13          0.00
+  median stand area                               3.72          3.95         +0.23
+  largest stand                                   9.89          9.89          0.00
+
+  area covered by both: 439.13 ha = 100.0000% of the old footprint, 100.0000% of the new; footprint IoU 1.000000
+  covered by the old only: 0.00 ha; by the new only: 0.00 ha
+
+  SAME OUTLINE (after snapping to 1e-07 degrees, about 1 cm)
+    stands:   85 of 99 old stands have their outline in the new layer (85 of 97 new stands have theirs in the old); 48 of them also carry the same id
+    polygons: 88 outlines in both, of 102 old and 100 new
+    stand ids: 97 in both, 2 only in the old, 0 only in the new (an id is a label: a re-run may number the same stand differently)
+
+  INTERSECTION OVER UNION (IoU), each stand against the stand of the other layer that
+  overlaps it most; means are weighted by stand area. 1 = the same stands, 0 = no overlap.
+                                                      old -> new      new -> old
+    area-weighted mean IoU                              0.923102        0.932418
+    unweighted mean IoU                                 0.925895        0.946448
+    median IoU                                          1.000000        1.000000
+    lowest IoU                                          0.020812        0.308764
+    share of area in stands with IoU >= 0.5             90.6830%        91.6593%
+    share of area in stands with IoU >= 0.9             84.4770%        84.4770%
+    share of area in stands with IoU >= 0.99            84.4770%        84.4770%
+    stands with IoU >= 0.5                              91 of 99        91 of 97
+    stands with IoU >= 0.9                              85 of 99        85 of 97
+    stands with IoU >= 0.99                             85 of 99        85 of 97
+    stands that nothing overlaps                               0               0
+      their area (ha)                                       0.00            0.00
+    stands that are the best match of 2 or more                2               3
+    (last line: old stands that two or more new stands match best, a sign of splitting;
+     new stands that two or more old stands match best, a sign of merging)
+
+  STAND TYPES (cluster_id), over the area where both layers have a typed stand (429.51 of 439.13 ha in common)
+    types in the old layer: [0, 1, 2, 3, 4, 5]; in the new: [0, 2, 3, 4, 5]
+    stands without a type: 6 old, 6 new; stands whose pieces carry different types: 2 old, 2 new
+    share of that area with the same type number:            29.2375%
+    the same after the best one-to-one renumbering of types: 66.7921%   (old -> new: {0: 3, 1: 0, 2: 2, 3: 4, 5: 5})
+    stands with the same outline that also carry the same type number: 32 of 85
+    area in hectares, old type (rows) against new type (columns):
+                       0           2           3           4           5
+           0        0.00        0.00       36.72        0.00        0.00
+           1       48.14        1.32        0.00        3.52        0.00
+           2        9.03       85.32        0.00        0.00       20.06
+           3        6.69        0.00       31.46      107.90        0.00
+           4       12.23       17.76       34.36        0.00        0.00
+           5        1.61        4.60        0.00        0.00        8.79
+
+angul -- stands_snic
+  old: odisha_alphaearth_angul_stands_snic.geojson   (stand id: snic_label)
+  new: odisha_alphaearth_angul_repro_stands_snic.geojson   (stand id: snic_label)
+  Areas are in hectares, measured in a Lambert azimuthal equal-area projection centred on the data (lat 20.7851, lon 84.6826).
+
+                                                   old           new     new - old
+  polygons                                         407           407             0
+  stands                                           405           405             0
+  stands in more than one piece                      2             2             0
+  invalid polygons repaired                          0             0              
+  features left out (no geometry or id)              0             0              
+  total stand area                              400.39        400.39          0.00
+  area covered (footprint)                      400.39        400.39          0.00
+  median stand area                               0.94          0.94          0.00
+  largest stand                                   2.58          2.58          0.00
+
+  area covered by both: 400.39 ha = 100.0000% of the old footprint, 100.0000% of the new; footprint IoU 1.000000
+  covered by the old only: 0.00 ha; by the new only: 0.00 ha
+
+  SAME OUTLINE (after snapping to 1e-07 degrees, about 1 cm)
+    stands:   405 of 405 old stands have their outline in the new layer (405 of 405 new stands have theirs in the old); 405 of them also carry the same id
+    polygons: 407 outlines in both, of 407 old and 407 new
+    stand ids: 405 in both, 0 only in the old, 0 only in the new (an id is a label: a re-run may number the same stand differently)
+
+  INTERSECTION OVER UNION (IoU), each stand against the stand of the other layer that
+  overlaps it most; means are weighted by stand area. 1 = the same stands, 0 = no overlap.
+                                                      old -> new      new -> old
+    area-weighted mean IoU                              1.000000        1.000000
+    unweighted mean IoU                                 1.000000        1.000000
+    median IoU                                          1.000000        1.000000
+    lowest IoU                                          1.000000        1.000000
+    share of area in stands with IoU >= 0.5            100.0000%       100.0000%
+    share of area in stands with IoU >= 0.9            100.0000%       100.0000%
+    share of area in stands with IoU >= 0.99           100.0000%       100.0000%
+    stands with IoU >= 0.5                            405 of 405      405 of 405
+    stands with IoU >= 0.9                            405 of 405      405 of 405
+    stands with IoU >= 0.99                           405 of 405      405 of 405
+    stands that nothing overlaps                               0               0
+      their area (ha)                                       0.00            0.00
+    stands that are the best match of 2 or more                0               0
+    (last line: old stands that two or more new stands match best, a sign of splitting;
+     new stands that two or more old stands match best, a sign of merging)
+
+  STAND TYPES (cluster_id), over the area where both layers have a typed stand (400.39 of 400.39 ha in common)
+    types in the old layer: [0, 1, 2, 3, 4, 5]; in the new: [0, 1, 2, 3, 4, 5]
+    stands without a type: 0 old, 0 new; stands whose pieces carry different types: 0 old, 0 new
+    share of that area with the same type number:            29.5072%
+    the same after the best one-to-one renumbering of types: 63.7628%   (old -> new: {0: 3, 1: 0, 2: 2, 3: 4, 4: 1, 5: 5})
+    stands with the same outline that also carry the same type number: 123 of 405
+    area in hectares, old type (rows) against new type (columns):
+                       0           1           2           3           4           5
+           0        0.00        0.00        0.00       36.72        0.00        0.00
+           1       48.23        0.00        2.10        0.00        8.27        0.00
+           2        4.10        1.56       69.80        0.57        0.00       17.32
+           3        5.32        0.00        2.00       44.50       96.71        0.00
+           4        8.66        0.00       14.16       32.71        0.00        0.92
+           5        0.00        0.00        2.91        0.00        0.00        3.84
+
+dhenkanal -- stands_merged
+  old: odisha_alphaearth_dhenkanal_stands_merged.geojson   (stand id: stand_lbl)
+  new: odisha_alphaearth_dhenkanal_repro_stands_merged.geojson   (stand id: stand_lbl)
+  Areas are in hectares, measured in a Lambert azimuthal equal-area projection centred on the data (lat 21.0441, lon 85.5304).
+
+                                                   old           new     new - old
+  polygons                                         217           217             0
+  stands                                           215           215             0
+  stands in more than one piece                      2             2             0
+  invalid polygons repaired                          0             0              
+  features left out (no geometry or id)              0             0              
+  total stand area                              995.87        995.87          0.00
+  area covered (footprint)                      995.87        995.87          0.00
+  median stand area                               4.09          4.00         -0.09
+  largest stand                                  10.00         10.00          0.00
+
+  area covered by both: 995.87 ha = 100.0000% of the old footprint, 100.0000% of the new; footprint IoU 1.000000
+  covered by the old only: 0.00 ha; by the new only: 0.00 ha
+
+  SAME OUTLINE (after snapping to 1e-07 degrees, about 1 cm)
+    stands:   206 of 215 old stands have their outline in the new layer (206 of 215 new stands have theirs in the old); 38 of them also carry the same id
+    polygons: 208 outlines in both, of 217 old and 217 new
+    stand ids: 215 in both, 0 only in the old, 0 only in the new (an id is a label: a re-run may number the same stand differently)
+
+  INTERSECTION OVER UNION (IoU), each stand against the stand of the other layer that
+  overlaps it most; means are weighted by stand area. 1 = the same stands, 0 = no overlap.
+                                                      old -> new      new -> old
+    area-weighted mean IoU                              0.978883        0.980439
+    unweighted mean IoU                                 0.985345        0.984324
+    median IoU                                          1.000000        1.000000
+    lowest IoU                                          0.369344        0.149813
+    share of area in stands with IoU >= 0.5             98.6813%        99.5190%
+    share of area in stands with IoU >= 0.9             94.6434%        94.6916%
+    share of area in stands with IoU >= 0.99            93.8277%        93.8277%
+    stands with IoU >= 0.5                            213 of 215      213 of 215
+    stands with IoU >= 0.9                            207 of 215      207 of 215
+    stands with IoU >= 0.99                           206 of 215      206 of 215
+    stands that nothing overlaps                               0               0
+      their area (ha)                                       0.00            0.00
+    stands that are the best match of 2 or more                1               1
+    (last line: old stands that two or more new stands match best, a sign of splitting;
+     new stands that two or more old stands match best, a sign of merging)
+
+  STAND TYPES (cluster_id), over the area where both layers have a typed stand (970.59 of 995.87 ha in common)
+    types in the old layer: [0, 1, 2, 3, 4, 5]; in the new: [0, 1, 2, 3, 4, 5]
+    stands without a type: 12 old, 12 new; stands whose pieces carry different types: 0 old, 0 new
+    share of that area with the same type number:            10.3191%
+    the same after the best one-to-one renumbering of types: 79.8292%   (old -> new: {0: 5, 1: 1, 2: 3, 3: 2, 4: 4, 5: 0})
+    stands with the same outline that also carry the same type number: 32 of 206
+    area in hectares, old type (rows) against new type (columns):
+                       0           1           2           3           4           5
+           0        7.18       14.93        0.96       10.65        6.84      186.19
+           1        0.00       92.97        8.21        0.00       65.44       14.39
+           2        0.00       19.49        0.00      137.03        0.00        0.00
+           3        0.00        0.00       58.06        0.00       35.86        3.44
+           4        0.00        0.00        8.36        0.00        0.00        0.00
+           5      300.56        0.00        0.00        0.00        0.00        0.00
+
+dhenkanal -- stands_snic
+  old: odisha_alphaearth_dhenkanal_stands_snic.geojson   (stand id: snic_label)
+  new: odisha_alphaearth_dhenkanal_repro_stands_snic.geojson   (stand id: snic_label)
+  Areas are in hectares, measured in a Lambert azimuthal equal-area projection centred on the data (lat 21.0441, lon 85.5304).
+
+                                                   old           new     new - old
+  polygons                                         959           959             0
+  stands                                           953           953             0
+  stands in more than one piece                      6             6             0
+  invalid polygons repaired                          0             0              
+  features left out (no geometry or id)              0             0              
+  total stand area                              936.66        936.66          0.00
+  area covered (footprint)                      936.66        936.66          0.00
+  median stand area                               0.96          0.96          0.00
+  largest stand                                   2.94          2.94          0.00
+
+  area covered by both: 936.66 ha = 100.0000% of the old footprint, 100.0000% of the new; footprint IoU 1.000000
+  covered by the old only: 0.00 ha; by the new only: 0.00 ha
+
+  SAME OUTLINE (after snapping to 1e-07 degrees, about 1 cm)
+    stands:   953 of 953 old stands have their outline in the new layer (953 of 953 new stands have theirs in the old); 953 of them also carry the same id
+    polygons: 959 outlines in both, of 959 old and 959 new
+    stand ids: 953 in both, 0 only in the old, 0 only in the new (an id is a label: a re-run may number the same stand differently)
+
+  INTERSECTION OVER UNION (IoU), each stand against the stand of the other layer that
+  overlaps it most; means are weighted by stand area. 1 = the same stands, 0 = no overlap.
+                                                      old -> new      new -> old
+    area-weighted mean IoU                              1.000000        1.000000
+    unweighted mean IoU                                 1.000000        1.000000
+    median IoU                                          1.000000        1.000000
+    lowest IoU                                          1.000000        1.000000
+    share of area in stands with IoU >= 0.5            100.0000%       100.0000%
+    share of area in stands with IoU >= 0.9            100.0000%       100.0000%
+    share of area in stands with IoU >= 0.99           100.0000%       100.0000%
+    stands with IoU >= 0.5                            953 of 953      953 of 953
+    stands with IoU >= 0.9                            953 of 953      953 of 953
+    stands with IoU >= 0.99                           953 of 953      953 of 953
+    stands that nothing overlaps                               0               0
+      their area (ha)                                       0.00            0.00
+    stands that are the best match of 2 or more                0               0
+    (last line: old stands that two or more new stands match best, a sign of splitting;
+     new stands that two or more old stands match best, a sign of merging)
+
+  STAND TYPES (cluster_id), over the area where both layers have a typed stand (936.66 of 936.66 ha in common)
+    types in the old layer: [0, 1, 2, 3, 4, 5]; in the new: [0, 1, 2, 3, 4, 5]
+    stands without a type: 0 old, 0 new; stands whose pieces carry different types: 0 old, 0 new
+    share of that area with the same type number:            10.1184%
+    the same after the best one-to-one renumbering of types: 80.0416%   (old -> new: {0: 5, 1: 1, 2: 3, 3: 2, 4: 4, 5: 0})
+    stands with the same outline that also carry the same type number: 97 of 953
+    area in hectares, old type (rows) against new type (columns):
+                       0           1           2           3           4           5
+           0        8.17       14.93        0.96       10.65        6.84      186.07
+           1        0.00       86.60        8.21        0.00       64.23       13.68
+           2        0.00       19.49        0.00      137.03        0.00        0.00
+           3        0.00        0.00       39.45        0.00       27.75        3.65
+           4        0.00        0.00        8.36        0.00        0.00        0.00
+           5      300.56        0.00        0.00        0.00        0.00        0.00
+
+kendujhar -- stands_merged
+  old: odisha_alphaearth_kendujhar_stands_merged.geojson   (stand id: stand_lbl)
+  new: odisha_alphaearth_kendujhar_repro_stands_merged.geojson   (stand id: stand_lbl)
+  Areas are in hectares, measured in a Lambert azimuthal equal-area projection centred on the data (lat 21.5945, lon 85.3976).
+
+                                                   old           new     new - old
+  polygons                                         123           120            -3
+  stands                                           121           118            -3
+  stands in more than one piece                      2             2             0
+  invalid polygons repaired                          0             0              
+  features left out (no geometry or id)              0             0              
+  total stand area                              404.53        404.53          0.00
+  area covered (footprint)                      404.53        404.53          0.00
+  median stand area                               2.31          2.49         +0.18
+  largest stand                                   9.95          9.95          0.00
+
+  area covered by both: 404.53 ha = 100.0000% of the old footprint, 100.0000% of the new; footprint IoU 1.000000
+  covered by the old only: 0.00 ha; by the new only: 0.00 ha
+
+  SAME OUTLINE (after snapping to 1e-07 degrees, about 1 cm)
+    stands:   113 of 121 old stands have their outline in the new layer (113 of 118 new stands have theirs in the old); 22 of them also carry the same id
+    polygons: 115 outlines in both, of 123 old and 120 new
+    stand ids: 118 in both, 3 only in the old, 0 only in the new (an id is a label: a re-run may number the same stand differently)
+
+  INTERSECTION OVER UNION (IoU), each stand against the stand of the other layer that
+  overlaps it most; means are weighted by stand area. 1 = the same stands, 0 = no overlap.
+                                                      old -> new      new -> old
+    area-weighted mean IoU                              0.978013        0.978583
+    unweighted mean IoU                                 0.968386        0.986154
+    median IoU                                          1.000000        1.000000
+    lowest IoU                                          0.210526        0.383158
+    share of area in stands with IoU >= 0.5             98.4177%        98.8257%
+    share of area in stands with IoU >= 0.9             92.8204%        92.8204%
+    share of area in stands with IoU >= 0.99            92.8204%        92.8204%
+    stands with IoU >= 0.5                            117 of 121      117 of 118
+    stands with IoU >= 0.9                            113 of 121      113 of 118
+    stands with IoU >= 0.99                           113 of 121      113 of 118
+    stands that nothing overlaps                               0               0
+      their area (ha)                                       0.00            0.00
+    stands that are the best match of 2 or more                0               2
+    (last line: old stands that two or more new stands match best, a sign of splitting;
+     new stands that two or more old stands match best, a sign of merging)
+
+  STAND TYPES (cluster_id), over the area where both layers have a typed stand (377.53 of 404.53 ha in common)
+    types in the old layer: [0, 1, 2, 3, 4, 5]; in the new: [0, 1, 2, 3, 4, 5]
+    stands without a type: 11 old, 11 new; stands whose pieces carry different types: 1 old, 1 new
+    share of that area with the same type number:            99.3298%
+    the same after the best one-to-one renumbering of types: 99.3298%   (old -> new: {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5})
+    stands with the same outline that also carry the same type number: 113 of 113
+    area in hectares, old type (rows) against new type (columns):
+                       0           1           2           3           4           5
+           0       70.92        0.00        0.00        0.00        0.00        0.00
+           1        0.00       57.13        2.53        0.00        0.00        0.00
+           2        0.00        0.00       69.76        0.00        0.00        0.00
+           3        0.00        0.00        0.00       41.08        0.00        0.00
+           4        0.00        0.00        0.00        0.00       79.78        0.00
+           5        0.00        0.00        0.00        0.00        0.00       56.34
+
+kendujhar -- stands_snic
+  old: odisha_alphaearth_kendujhar_stands_snic.geojson   (stand id: snic_label)
+  new: odisha_alphaearth_kendujhar_repro_stands_snic.geojson   (stand id: snic_label)
+  Areas are in hectares, measured in a Lambert azimuthal equal-area projection centred on the data (lat 21.5945, lon 85.3976).
+
+                                                   old           new     new - old
+  polygons                                         365           365             0
+  stands                                           361           361             0
+  stands in more than one piece                      4             4             0
+  invalid polygons repaired                          0             0              
+  features left out (no geometry or id)              0             0              
+  total stand area                              358.36        358.36          0.00
+  area covered (footprint)                      358.36        358.36          0.00
+  median stand area                               0.98          0.98          0.00
+  largest stand                                   2.29          2.29          0.00
+
+  area covered by both: 358.36 ha = 100.0000% of the old footprint, 100.0000% of the new; footprint IoU 1.000000
+  covered by the old only: 0.00 ha; by the new only: 0.00 ha
+
+  SAME OUTLINE (after snapping to 1e-07 degrees, about 1 cm)
+    stands:   361 of 361 old stands have their outline in the new layer (361 of 361 new stands have theirs in the old); 361 of them also carry the same id
+    polygons: 365 outlines in both, of 365 old and 365 new
+    stand ids: 361 in both, 0 only in the old, 0 only in the new (an id is a label: a re-run may number the same stand differently)
+
+  INTERSECTION OVER UNION (IoU), each stand against the stand of the other layer that
+  overlaps it most; means are weighted by stand area. 1 = the same stands, 0 = no overlap.
+                                                      old -> new      new -> old
+    area-weighted mean IoU                              1.000000        1.000000
+    unweighted mean IoU                                 1.000000        1.000000
+    median IoU                                          1.000000        1.000000
+    lowest IoU                                          1.000000        1.000000
+    share of area in stands with IoU >= 0.5            100.0000%       100.0000%
+    share of area in stands with IoU >= 0.9            100.0000%       100.0000%
+    share of area in stands with IoU >= 0.99           100.0000%       100.0000%
+    stands with IoU >= 0.5                            361 of 361      361 of 361
+    stands with IoU >= 0.9                            361 of 361      361 of 361
+    stands with IoU >= 0.99                           361 of 361      361 of 361
+    stands that nothing overlaps                               0               0
+      their area (ha)                                       0.00            0.00
+    stands that are the best match of 2 or more                0               0
+    (last line: old stands that two or more new stands match best, a sign of splitting;
+     new stands that two or more old stands match best, a sign of merging)
+
+  STAND TYPES (cluster_id), over the area where both layers have a typed stand (358.36 of 358.36 ha in common)
+    types in the old layer: [0, 1, 2, 3, 4, 5]; in the new: [0, 1, 2, 3, 4, 5]
+    stands without a type: 0 old, 0 new; stands whose pieces carry different types: 0 old, 0 new
+    share of that area with the same type number:            100.0000%
+    the same after the best one-to-one renumbering of types: 100.0000%   (old -> new: {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5})
+    stands with the same outline that also carry the same type number: 361 of 361
+    area in hectares, old type (rows) against new type (columns):
+                       0           1           2           3           4           5
+           0       65.42        0.00        0.00        0.00        0.00        0.00
+           1        0.00       60.03        0.00        0.00        0.00        0.00
+           2        0.00        0.00       69.68        0.00        0.00        0.00
+           3        0.00        0.00        0.00       39.79        0.00        0.00
+           4        0.00        0.00        0.00        0.00       75.69        0.00
+           5        0.00        0.00        0.00        0.00        0.00       47.76
+
+koraput -- stands_merged
+  old: odisha_alphaearth_koraput_stands_merged.geojson   (stand id: stand_lbl)
+  new: odisha_alphaearth_koraput_repro_stands_merged.geojson   (stand id: stand_lbl)
+  Areas are in hectares, measured in a Lambert azimuthal equal-area projection centred on the data (lat 18.6334, lon 82.8931).
+
+                                                   old           new     new - old
+  polygons                                         632           630            -2
+  stands                                           626           623            -3
+  stands in more than one piece                      6             7            +1
+  invalid polygons repaired                          0             0              
+  features left out (no geometry or id)              0             0              
+  total stand area                            2,459.07      2,459.07          0.00
+  area covered (footprint)                    2,459.07      2,459.07          0.00
+  median stand area                               3.00          3.04         +0.04
+  largest stand                                  10.03         10.03          0.00
+
+  area covered by both: 2,459.07 ha = 100.0000% of the old footprint, 100.0000% of the new; footprint IoU 1.000000
+  covered by the old only: 0.00 ha; by the new only: 0.00 ha
+
+  SAME OUTLINE (after snapping to 1e-07 degrees, about 1 cm)
+    stands:   560 of 626 old stands have their outline in the new layer (560 of 623 new stands have theirs in the old); 18 of them also carry the same id
+    polygons: 566 outlines in both, of 632 old and 630 new
+    stand ids: 623 in both, 3 only in the old, 0 only in the new (an id is a label: a re-run may number the same stand differently)
+
+  INTERSECTION OVER UNION (IoU), each stand against the stand of the other layer that
+  overlaps it most; means are weighted by stand area. 1 = the same stands, 0 = no overlap.
+                                                      old -> new      new -> old
+    area-weighted mean IoU                              0.949129        0.948651
+    unweighted mean IoU                                 0.954200        0.958082
+    median IoU                                          1.000000        1.000000
+    lowest IoU                                          0.051342        0.083430
+    share of area in stands with IoU >= 0.5             97.3792%        97.4878%
+    share of area in stands with IoU >= 0.9             86.9377%        86.9686%
+    share of area in stands with IoU >= 0.99            86.0054%        86.0054%
+    stands with IoU >= 0.5                            607 of 626      607 of 623
+    stands with IoU >= 0.9                            563 of 626      563 of 623
+    stands with IoU >= 0.99                           560 of 626      560 of 623
+    stands that nothing overlaps                               0               0
+      their area (ha)                                       0.00            0.00
+    stands that are the best match of 2 or more               11              12
+    (last line: old stands that two or more new stands match best, a sign of splitting;
+     new stands that two or more old stands match best, a sign of merging)
+
+  STAND TYPES (cluster_id), over the area where both layers have a typed stand (1,947.95 of 2,459.07 ha in common)
+    types in the old layer: [0, 1, 2, 3, 4, 5]; in the new: [0, 1, 2, 3, 4, 5]
+    stands without a type: 171 old, 168 new; stands whose pieces carry different types: 1 old, 1 new
+    share of that area with the same type number:            17.9354%
+    the same after the best one-to-one renumbering of types: 81.6238%   (old -> new: {0: 4, 1: 1, 2: 2, 3: 5, 4: 0, 5: 3})
+    stands with the same outline that also carry the same type number: 257 of 560
+    area in hectares, old type (rows) against new type (columns):
+                       0           1           2           3           4           5
+           0        0.00        0.00       22.23        7.76       99.01       13.51
+           1        0.00      150.45       98.51        0.00        0.00        0.54
+           2       59.21       53.63      181.99        3.55        0.00        0.00
+           3        1.70        0.00       18.05        0.00        2.77      340.79
+           4      361.29        0.00        1.89       34.10        0.00        7.90
+           5        2.55        8.44        4.69      456.47        0.00       16.94
+
+koraput -- stands_snic
+  old: odisha_alphaearth_koraput_stands_snic.geojson   (stand id: snic_label)
+  new: odisha_alphaearth_koraput_repro_stands_snic.geojson   (stand id: snic_label)
+  Areas are in hectares, measured in a Lambert azimuthal equal-area projection centred on the data (lat 18.6335, lon 82.8931).
+
+                                                   old           new     new - old
+  polygons                                       1,877         1,877             0
+  stands                                         1,870         1,870             0
+  stands in more than one piece                      7             7             0
+  invalid polygons repaired                          0             0              
+  features left out (no geometry or id)              0             0              
+  total stand area                            1,842.94      1,842.94          0.00
+  area covered (footprint)                    1,842.94      1,842.94          0.00
+  median stand area                               0.96          0.96          0.00
+  largest stand                                   2.43          2.43          0.00
+
+  area covered by both: 1,842.94 ha = 100.0000% of the old footprint, 100.0000% of the new; footprint IoU 1.000000
+  covered by the old only: 0.00 ha; by the new only: 0.00 ha
+
+  SAME OUTLINE (after snapping to 1e-07 degrees, about 1 cm)
+    stands:   1870 of 1870 old stands have their outline in the new layer (1870 of 1870 new stands have theirs in the old); 1870 of them also carry the same id
+    polygons: 1877 outlines in both, of 1877 old and 1877 new
+    stand ids: 1870 in both, 0 only in the old, 0 only in the new (an id is a label: a re-run may number the same stand differently)
+
+  INTERSECTION OVER UNION (IoU), each stand against the stand of the other layer that
+  overlaps it most; means are weighted by stand area. 1 = the same stands, 0 = no overlap.
+                                                      old -> new      new -> old
+    area-weighted mean IoU                              1.000000        1.000000
+    unweighted mean IoU                                 1.000000        1.000000
+    median IoU                                          1.000000        1.000000
+    lowest IoU                                          1.000000        1.000000
+    share of area in stands with IoU >= 0.5            100.0000%       100.0000%
+    share of area in stands with IoU >= 0.9            100.0000%       100.0000%
+    share of area in stands with IoU >= 0.99           100.0000%       100.0000%
+    stands with IoU >= 0.5                          1870 of 1870    1870 of 1870
+    stands with IoU >= 0.9                          1870 of 1870    1870 of 1870
+    stands with IoU >= 0.99                         1870 of 1870    1870 of 1870
+    stands that nothing overlaps                               0               0
+      their area (ha)                                       0.00            0.00
+    stands that are the best match of 2 or more                0               0
+    (last line: old stands that two or more new stands match best, a sign of splitting;
+     new stands that two or more old stands match best, a sign of merging)
+
+  STAND TYPES (cluster_id), over the area where both layers have a typed stand (1,842.94 of 1,842.94 ha in common)
+    types in the old layer: [0, 1, 2, 3, 4, 5]; in the new: [0, 1, 2, 3, 4, 5]
+    stands without a type: 0 old, 0 new; stands whose pieces carry different types: 0 old, 0 new
+    share of that area with the same type number:            15.5082%
+    the same after the best one-to-one renumbering of types: 83.6679%   (old -> new: {0: 4, 1: 1, 2: 2, 3: 5, 4: 0, 5: 3})
+    stands with the same outline that also carry the same type number: 290 of 1870
+    area in hectares, old type (rows) against new type (columns):
+                       0           1           2           3           4           5
+           0        0.67        0.00       21.33        4.82      101.44        8.59
+           1        0.00      119.00       84.50        0.00        0.00        0.00
+           2       60.15       41.37      156.47        6.33        0.00        0.00
+           3        0.00        0.00       12.01        0.00        6.18      328.13
+           4      360.79        0.00        0.00       25.35        0.00       11.34
+           5        0.27        7.82        0.62      476.13        0.00        9.67

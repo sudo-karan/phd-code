@@ -43,6 +43,8 @@ pytest                                    # fast tier, no auth needed
 ```
 
 If this passes, the package imports cleanly and the orchestrator works.
+One test in `tests/test_evaluation_unsupervised.py` measures a run time; on a
+loaded machine, `FMU_SKIP_TIMING_TESTS=1 pytest` skips it.
 It does NOT verify GEE. That needs the live tier:
 
 ```bash
@@ -80,6 +82,7 @@ inspect_features_radar.py     # ... + features_radar
 inspect_features_structure.py # ... + features_structure
 inspect_features_static.py    # ... + features_static
 inspect_segmentation.py       # all of the above + segmentation
+inspect_merge.py              # ... + merge; READ-ONLY by default (submits nothing)
 inspect_clustering.py         # everything through clustering (longest)
 inspect_profiling.py          # everything + profiling
 inspect_export.py             # everything + export (submits Drive task)
@@ -88,6 +91,21 @@ inspect_metrics.py            # everything + metrics (needs a reference config)
 
 Run an upstream script before its downstream. They share the cache,
 so each later script benefits from earlier exports.
+
+`inspect_merge.py` differs from the others: it runs
+`Pipeline(..., use_cache=True, submit_exports=False)`, so it reads cached
+assets, computes anything missing live and submits no Earth Engine task. Pass
+`--submit-exports` for the other scripts' behaviour, and never while tasks from
+an earlier run are still queued. It prints the merge summary numbers, the
+threshold calibration, the stand-size distribution, a per-stand provenance table
+(`--sort fallback|area|id`, `--rows N`, 0 for all) and the stands left below the
+minimum size with their cause, and writes the table to the run directory as
+`merge_provenance.csv` and `merge_provenance.json`.
+
+```bash
+python scripts/inspect_merge.py --config configs/sanjay_van_baseline.yaml
+python scripts/inspect_merge.py --config configs/<config>.yaml --sort area --rows 50
+```
 
 ### B. Programmatic (for batch / CI / your own driver)
 
@@ -137,9 +155,9 @@ print(f"Done. Manifest: {run_dir}/manifest.json")
 `Pipeline(stage_names, use_cache=True)` enables it. With cache on:
 
 - **Before each stage:** the orchestrator checks
-  `{GEE_ASSET_ROOT}/{config_name}/{stage_name}/{output_key}` for every
-  cacheable output. If all are present, the live computation is skipped
-  and the cached assets are loaded into the context.
+  `{GEE_ASSET_ROOT}/{config_name}/{stage_name}/{output_key}__{fingerprint}`
+  for every cacheable output. If all are present, the live computation is
+  skipped and the cached assets are loaded into the context.
 - **After each stage:** any cacheable output that missed the cache is
   submitted as an async export task. The current run keeps the live
   computation (so downstream stages don't block); subsequent runs hit
@@ -147,24 +165,29 @@ print(f"Done. Manifest: {run_dir}/manifest.json")
 
 Cache asset path layout:
 ```
-projects/<your-project>/assets/fmu/<config_name>/<stage_name>/<output_key>
+projects/<your-project>/assets/fmu/<config_name>/<stage_name>/<output_key>__<fingerprint>
 ```
 
-Example after running the baseline through clustering:
+`<fingerprint>` is a 10-character hash of the config content
+(`config_fingerprint()` in `src/fmu/utils/caching.py`). Example after running
+the baseline through clustering, with `<fp>` standing for it:
 ```
-.../fmu/sanjay_van_baseline/masking/habitat_mask
-.../fmu/sanjay_van_baseline/masking/water_mask
-.../fmu/sanjay_van_baseline/masking/landcover_summary
-.../fmu/sanjay_van_baseline/data_load/s2_composite
-.../fmu/sanjay_van_baseline/features_optical/optical_features
-.../fmu/sanjay_van_baseline/features_radar/radar_features
-.../fmu/sanjay_van_baseline/features_structure/structure_features
-.../fmu/sanjay_van_baseline/features_static/static_features
-.../fmu/sanjay_van_baseline/segmentation/snic_clusters
-.../fmu/sanjay_van_baseline/segmentation/snic_means
-.../fmu/sanjay_van_baseline/clustering/cluster_labels
-.../fmu/sanjay_van_baseline/clustering/feature_stack
+.../fmu/sanjay_van_baseline/masking/habitat_mask__<fp>
+.../fmu/sanjay_van_baseline/masking/water_mask__<fp>
+.../fmu/sanjay_van_baseline/masking/landcover_summary__<fp>
+.../fmu/sanjay_van_baseline/masking/mask_provenance__<fp>
+.../fmu/sanjay_van_baseline/data_load/s2_composite__<fp>
+.../fmu/sanjay_van_baseline/features_optical/optical_features__<fp>
+.../fmu/sanjay_van_baseline/features_radar/radar_features__<fp>
+.../fmu/sanjay_van_baseline/features_structure/structure_features__<fp>
+.../fmu/sanjay_van_baseline/features_static/static_features__<fp>
+.../fmu/sanjay_van_baseline/segmentation/snic_clusters__<fp>
+.../fmu/sanjay_van_baseline/segmentation/snic_means__<fp>
+.../fmu/sanjay_van_baseline/clustering/cluster_labels__<fp>
+.../fmu/sanjay_van_baseline/clustering/feature_stack__<fp>
 ```
+
+The merge stage caches nothing.
 
 **Tests should leave `use_cache=False`** (the default). The unit tests do.
 
@@ -185,14 +208,185 @@ If a task fails (e.g., GEE quota, malformed image), the task page shows
 an error, the asset never materializes, and the next run will keep
 re-submitting until it succeeds.
 
-### Stable paths, not hashes
+### Paths carry a fingerprint of the config
 
-Cache paths are derived from `(config_name, stage_name, output_key)`,
-not from a hash of the parameters that produced the output. So if you
-change a threshold in the config without changing the config's `name`,
-**the next run will overwrite the cached asset.** This is intentional;
-config names ARE the version. To preserve an old run, give the new
-experiment a new config file with a new `name`.
+Cache paths are derived from `(config_name, stage_name, output_key)` plus a
+fingerprint of the config content. So if you change a threshold in the config
+without changing its `name`, the fingerprint changes and **the next run
+computes and exports new assets beside the old ones; nothing is overwritten
+and the old assets are not read.** Two things follow:
+
+- Editing almost any config block makes every stage of that config recompute.
+  The fingerprint is one hash over the config, not one per stage. The blocks
+  that do not change it are `name`, `description`, `metrics`, and `export`
+  apart from `export.analysis_scale_m`.
+- Running an unchanged config again reads its assets back. To recompute from
+  scratch, see "Re-running a config from scratch" below.
+
+Assets cached before fingerprints existed sit at the name-only path
+(`.../<stage_name>/<output_key>`). The pipeline no longer reads them.
+
+### Reading a cached run without submitting anything
+
+`Pipeline(stage_names, use_cache=True, submit_exports=False)` reads the cache
+without writing to it: cached outputs are read and used, outputs that miss are
+computed live for this run only, no export task is submitted and no asset
+folder is created. Their `cache_status` stays `"miss"` and `export_tasks` is
+empty. Use it for anything that reads an existing run (maps, inspectors,
+checks) and must add nothing to the task queue. It is safe while export tasks
+from another run are queued.
+
+It covers the orchestrator's cache exports only. The `export` stage submits its
+own Drive tasks, so `Pipeline` raises `ValueError` if `export` is in the stage
+list with `submit_exports=False`.
+
+`summaries=False` (default `True`) skips each stage's summary numbers and the
+Earth Engine round trip they can cost; masking's is one reduction over the ROI.
+
+Two scripts run this way: `scripts/inspect_merge.py` (above) and
+`scripts/transparency_masking.py`, which draws the land-cover mask of a config:
+
+```bash
+# any config; reads the cache, submits nothing
+python scripts/transparency_masking.py --config configs/sanjay_van_baseline.yaml
+
+# with points to mark as kept or dropped, and plain words on the map
+python scripts/transparency_masking.py --config configs/<config>.yaml \
+    --points plots.csv --id-col plot_id --lon-col lon --lat-col lat \
+    --point-noun "field plot" --title "<site>: land-cover (habitat) mask"
+
+# the four Odisha districts with the field plots
+python odisha_script/odisha_transparency_masking.py            # or --district kendujhar
+
+# redraw maps and summary.md from the saved rasters, no Earth Engine
+python scripts/transparency_masking.py --config configs/<config>.yaml --redraw
+```
+
+Run from the repo root. The script runs `masking` and `data_load`, downloads the
+mask, its reasons and the true-colour composite one ROI part at a time, and
+writes maps and `summary.md` to `docs/transparency/<config>/` (committed) and
+rasters to `outputs/transparency/<config>/` (git-ignored); the file list is in
+[outputs.md](outputs.md). Unlike `scripts/inspect_masking.py`, it never fills
+the cache. Other options: `--part-name-key` (the ROI file property that names
+each part, default `name`), `--compare-mask-asset` (another cached
+`habitat_mask` to compare with the one in use, repeatable), `--note` (a sentence
+for `summary.md`, repeatable), `--map-note` (a sentence for the map caption,
+repeatable), `--docs-dir`, `--data-dir`. `--redraw` refuses if the config's
+fingerprint is no longer the one the saved rasters were made with, and takes
+its title, notes and points from its own arguments: give it the same `--title`,
+`--note`, `--map-note` and `--points` options as the run it redraws (the Odisha
+wrapper does this itself). Drawing needs matplotlib
+(`pip install -e ".[report]"`).
+
+### Re-running a config from scratch
+
+A second run of the same config is not a reproducibility test: it finds its own
+assets in the cache and reads them back. To recompute every stage, copy the
+config under a new name and change nothing else. The copy has the same
+fingerprint in a fresh asset folder, so nothing is a cache hit.
+`configs/<name>_repro.yaml` are such copies of fourteen configs (see
+[configs.md](configs.md)).
+
+Run the copy like any other config, with the inspect scripts or your own driver
+(sections A and B above, `--config configs/<name>_repro.yaml`). This submits
+Earth Engine export tasks.
+
+For the Odisha configs the passes run through
+`odisha_script/odisha_phase2_2_run_pipeline.py`, three times per config
+(`--through segmentation`, `clustering`, `export`).
+`odisha_script/run_config_passes.sh` loops over them, and a first pass on an
+empty cache often hits Earth Engine's memory limit; the next pass completes
+from cache. The shell script must never be started again while tasks from an
+earlier start are still queued, or it submits a second copy of each, and its
+own pass loop can break that rule on a slow queue: a stage that fails partway
+returns without waiting for the exports it has already submitted. So run it
+through the wrapper:
+
+```bash
+python odisha_script/run_passes_safely.py --label <name> \
+    [--run-tree <clean checkout>] [--log-dir <dir>] [--passes 3] \
+    configs/<config>_repro.yaml [configs/<another>_repro.yaml ...]
+```
+
+The wrapper runs one pass at a time and, before each, waits until Earth Engine
+has no queued or running task whose description starts with the name of a
+config it is about to run. It never re-runs a config that has finished (the
+export stage would submit its Drive exports again), does not retry a config
+whose export stage failed, allows one batch at a time (a lock file in the log
+folder), and refuses a run tree with modified tracked files. Config paths are
+relative to the run tree, which needs its own `.env`. It writes
+`<log-dir>/<label>.log` and `<label>.state.json` (the commit it ran from and
+each pass's per-stage exit codes); `--log-dir` defaults to `<run-tree>/logs`,
+which is git-ignored. It needs live Earth Engine and submits tasks.
+
+Then compare. Two general tools, and an Odisha wrapper:
+
+```bash
+# cached Earth Engine assets, stage by stage, pixel for pixel. Read-only on Earth Engine.
+python scripts/compare_cached_assets.py --old configs/<name>.yaml --new configs/<name>_repro.yaml \
+    [--old-fingerprint <fp>] [--stages masking data_load ...] [--out <file.json>]
+
+# exported stand layers (GeoJSON). Offline.
+python scripts/compare_stand_runs.py OLD.geojson NEW.geojson \
+    [--id-field stand_lbl] [--new-id-field NAME] [--type-field cluster_id] \
+    [--out results.txt] [--per-stand-csv stands.csv]
+
+# one Odisha arm: stands, run records, plot join and Phase 3 scores against the committed ones. Offline.
+python odisha_script/odisha_repro_compare.py --arm odisha_v120_3ha \
+    --rerun-dir <folder with the _repro files> --out-dir <a new folder> [--checks] [--expect-identical]
+```
+
+`compare_cached_assets.py` says at which stage a difference enters. Label
+images (SNIC ids, stand ids, cluster labels) have arbitrary numbering, so for
+them only "0 pixels differ" is conclusive; otherwise use `compare_stand_runs.py`,
+which reports counts, areas, identical outlines and area-weighted intersection
+over union in both directions (definitions at the top of the script).
+`--old-fingerprint` is for assets cached before the config's content changed;
+compare only stages whose settings did not change. `compare_stand_runs.py`
+refuses an `--out` or `--per-stand-csv` in a folder that holds committed files,
+and the Odisha wrapper refuses such an `--out-dir`: name a new folder. The
+wrapper looks for files named `<config>_repro_*` in `--rerun-dir`; `--suffix`
+changes `_repro`.
+
+Results of the re-runs made so far are in
+[reproducibility.md](reproducibility.md) and `docs/reproducibility/`.
+
+### Superpixels depend on whether the features were cached
+
+A cached feature asset sits on a geographic grid, because the cache export is
+given no CRS. Segmentation works on the UTM grid of the ROI. So segmentation
+gives different superpixels when it reads its features from the cache than when
+it draws on features computed live in the same run: by about a quarter of the
+pixels with hand-crafted features, and by one to two per cent with AlphaEarth.
+Which of the two a from-scratch run gets depends on whether its first attempt
+at segmentation succeeds, not on any setting. The measurements are in
+[reproducibility.md](reproducibility.md), "Superpixels depend on whether the
+features were cached when SNIC ran". Nothing in the pipeline has been changed
+for this. Until that is decided, check which route two runs took before
+comparing their stands:
+
+```bash
+# which inputs each run segmented on, read from the run manifests. Offline.
+python scripts/segmentation_route.py --runs-dir runs --config configs/<name>.yaml [configs/<other>.yaml ...]
+
+# SNIC from a config's cached features, against its cached superpixels and another run's.
+# --inputs adds live features, and live features evaluated on the grid of the cache.
+# Reads Earth Engine, submits nothing.
+python scripts/snic_cached_vs_live.py --config configs/<name>_repro.yaml --also configs/<name>.yaml \
+    [--inputs cached live live-on-cache-grid] [--out <file.json>]
+```
+
+Both comparison scripts that take `--out` (`compare_cached_assets.py` and
+`snic_cached_vs_live.py`) write a run record beside the result,
+`<name>_run.json`: the command, the date and the git commit it ran from.
+
+**One more segmentation pass on configs already run.** `mask_provenance` is a
+new cached output of the masking stage. `odisha_phase2_2_run_pipeline.py`
+refuses a `--through clustering` or `--through export` pass while any upstream
+cacheable asset is missing, so a config whose three passes completed before
+`mask_provenance` existed now needs one `--through segmentation --wait` pass
+first. That pass reads everything else from the cache and exports only
+`mask_provenance`.
 
 ## Running a comparison
 
@@ -376,8 +570,12 @@ outputs/runs/<config>_<YYYYMMDD-HHMMSS>/
 ├── manifest.json
 ├── export_manifest_<config>.json     # added by inspect_export
 ├── cluster_profiles.csv              # added by inspect_profiling
-└── metrics_<config>.json             # added by inspect_metrics
+├── metrics_<config>.json             # added by inspect_metrics
+└── merge_provenance.csv, .json       # added by inspect_merge
 ```
+
+`manifest.json` records the git commit the run was made from and whether the
+tree had uncommitted changes.
 
 Plus three raster GeoTIFFs in your Google Drive under `fmu_exports/`:
 `<config>_cluster_labels.tif`, `<config>_features_raw.tif`, and

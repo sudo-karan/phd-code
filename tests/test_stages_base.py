@@ -11,13 +11,17 @@ from __future__ import annotations
 import pytest
 
 from fmu.stages.base import (
+    DisplayLayer,
+    LegendEntry,
     PipelineContext,
     Stage,
     StageResult,
+    SummaryNumber,
     _clear_registry_for_testing,
     get_stage_class,
     list_registered_stages,
     register_stage,
+    transparency_gaps,
 )
 
 # ---------- PipelineContext ----------
@@ -384,3 +388,333 @@ class TestStageContract:
         for k, v in result.outputs.items():
             ctx.set(k, v)
         assert ctx.get("x_doubled") == 42
+
+
+# ---------- Transparency declarations: the pieces ----------
+#
+# What a stage may declare about itself (display layers, summary numbers) and
+# the checks made on a declaration. Which stages must declare something, and
+# what the orchestrator does with it, is in test_transparency_contract.py.
+
+
+def _two_class_legend() -> tuple[LegendEntry, ...]:
+    return (LegendEntry(0, "out", "000000"), LegendEntry(1, "in", "ffffff"))
+
+
+class TestLegendEntry:
+    def test_holds_value_label_colour(self):
+        e = LegendEntry(3, "built-up", "d73027")
+        assert (e.value, e.label, e.color) == (3, "built-up", "d73027")
+
+    @pytest.mark.parametrize("color", ["#d73027", "d7302", "d73027ff", "red", ""])
+    def test_colour_must_be_six_hex_digits(self, color):
+        """Earth Engine takes palettes without the '#'; a typo here would
+        otherwise only show up when someone draws the layer."""
+        with pytest.raises(ValueError, match="six hex digits"):
+            LegendEntry(1, "x", color)
+
+    @pytest.mark.parametrize("value", [1.5, "1", True, None])
+    def test_value_must_be_an_int(self, value):
+        with pytest.raises(TypeError, match="must be an int"):
+            LegendEntry(value, "x", "000000")
+
+
+class TestDisplayLayer:
+    def test_categorical_palette_follows_the_legend_value_by_value(self):
+        layer = DisplayLayer(
+            "k", "b", "T", "d",
+            legend=(LegendEntry(1, "one", "aaaaaa"), LegendEntry(4, "four", "bbbbbb")),
+        )
+        vis = layer.vis_params()
+        assert (vis["min"], vis["max"]) == (1, 4)
+        # Values 2 and 3 have no legend entry and are drawn black, so 4 still
+        # gets its own colour rather than sliding down the palette.
+        assert vis["palette"] == ["aaaaaa", "000000", "000000", "bbbbbb"]
+        assert vis["bands"] == ["b"]
+
+    def test_palette_does_not_depend_on_the_order_entries_are_listed_in(self):
+        a = DisplayLayer("k", "b", "T", "d", legend=_two_class_legend())
+        b = DisplayLayer("k", "b", "T", "d", legend=tuple(reversed(_two_class_legend())))
+        assert a.vis_params() == b.vis_params()
+
+    def test_a_single_class_still_gets_a_range_earth_engine_can_stretch(self):
+        layer = DisplayLayer("k", "b", "T", "d", legend=(LegendEntry(7, "only", "abcdef"),))
+        vis = layer.vis_params()
+        assert vis["min"] < vis["max"]
+        assert vis["palette"][0] == "abcdef"
+        assert len(vis["palette"]) == vis["max"] - vis["min"] + 1
+
+    def test_continuous_layer_uses_its_vis_and_names_its_band(self):
+        layer = DisplayLayer(
+            "k", "height", "T", "d", vis={"min": 0, "max": 30, "palette": ["ffffff", "006400"]}
+        )
+        assert layer.vis_params() == {
+            "bands": ["height"], "min": 0, "max": 30, "palette": ["ffffff", "006400"],
+        }
+
+    def test_a_layer_nobody_can_draw_is_rejected(self):
+        with pytest.raises(ValueError, match="neither a legend nor vis"):
+            DisplayLayer("x", "b", "X", "a layer nobody can draw")
+
+    def test_a_legend_and_vis_together_are_rejected(self):
+        """The legend would win silently and the vis would be ignored."""
+        with pytest.raises(ValueError, match="both a legend and vis"):
+            DisplayLayer(
+                "x", "b", "X", "d", legend=_two_class_legend(), vis={"min": 0, "max": 1}
+            )
+
+    def test_legend_values_must_be_unique(self):
+        with pytest.raises(ValueError, match="must be unique"):
+            DisplayLayer(
+                "x", "b", "X", "d",
+                legend=(LegendEntry(1, "a", "000000"), LegendEntry(1, "b", "ffffff")),
+            )
+
+    def test_a_legend_spanning_too_wide_a_range_is_rejected(self):
+        with pytest.raises(ValueError, match="Remap the band"):
+            DisplayLayer(
+                "x", "b", "X", "d",
+                legend=(LegendEntry(0, "a", "000000"), LegendEntry(5000, "b", "ffffff")),
+            )
+
+    def test_a_legend_given_as_a_list_is_stored_as_a_tuple(self):
+        layer = DisplayLayer("x", "b", "X", "d", legend=list(_two_class_legend()))  # type: ignore[arg-type]
+        assert layer.legend == _two_class_legend()
+
+    def test_to_manifest_carries_everything_needed_to_draw_and_read_it(self):
+        layer = DisplayLayer(
+            "x", "b", "A title", "what it shows",
+            legend=_two_class_legend(), legend_note="read this first",
+        )
+        assert layer.to_manifest() == {
+            "key": "x",
+            "band": "b",
+            "title": "A title",
+            "description": "what it shows",
+            "vis": {"bands": ["b"], "min": 0, "max": 1, "palette": ["000000", "ffffff"]},
+            "legend": [
+                {"value": 0, "label": "out", "color": "000000"},
+                {"value": 1, "label": "in", "color": "ffffff"},
+            ],
+            "legend_note": "read this first",
+        }
+
+
+class TestStageTransparencyDeclaration:
+    """Checks made when a stage class is defined."""
+
+    def setup_method(self):
+        _clear_registry_for_testing()
+
+    def teardown_method(self):
+        _clear_registry_for_testing()
+
+    def test_a_stage_declares_nothing_by_default(self):
+        class Plain(Stage):
+            name = "plain"
+            produces = {"x"}
+
+            def run(self, ctx, config):
+                return StageResult(outputs={"x": 1})
+
+        assert Plain.display_layers == ()
+        assert Plain.summary_numbers == ()
+        assert Plain().summarise(PipelineContext(), None) == {}
+
+    def test_display_layer_must_name_a_produced_key(self):
+        with pytest.raises(TypeError, match="not in `produces`"):
+
+            class Bad(Stage):
+                name = "bad_layer"
+                produces = {"x"}
+                display_layers = (
+                    DisplayLayer("y", "b", "Y", "a key the stage does not produce",
+                                 vis={"min": 0, "max": 1}),
+                )
+
+                def run(self, ctx, config):
+                    return StageResult(outputs={"x": 1})
+
+    def test_the_same_key_and_band_cannot_be_listed_twice(self):
+        with pytest.raises(TypeError, match="same key and band twice"):
+
+            class Bad(Stage):
+                name = "dup_layer"
+                produces = {"x"}
+                display_layers = (
+                    DisplayLayer("x", "b", "One", "d", legend=_two_class_legend()),
+                    DisplayLayer("x", "b", "Two", "d", legend=_two_class_legend()),
+                )
+
+                def run(self, ctx, config):
+                    return StageResult(outputs={"x": 1})
+
+    def test_two_bands_of_one_key_are_two_layers(self):
+        class Good(Stage):
+            name = "two_bands"
+            produces = {"x"}
+            display_layers = (
+                DisplayLayer("x", "b1", "One", "d", legend=_two_class_legend()),
+                DisplayLayer("x", "b2", "Two", "d", legend=_two_class_legend()),
+            )
+
+            def run(self, ctx, config):
+                return StageResult(outputs={"x": 1})
+
+        assert [layer.band for layer in Good.display_layers] == ["b1", "b2"]
+
+    def test_display_layers_must_be_display_layers(self):
+        with pytest.raises(TypeError, match="must hold DisplayLayer"):
+
+            class Bad(Stage):
+                name = "bad_type"
+                produces = {"x"}
+                display_layers = ({"key": "x", "band": "b"},)  # type: ignore[assignment]
+
+                def run(self, ctx, config):
+                    return StageResult(outputs={"x": 1})
+
+    def test_summary_numbers_need_a_summarise(self):
+        with pytest.raises(TypeError, match="does not implement summarise"):
+
+            class Bad(Stage):
+                name = "bad_summary"
+                produces = {"x"}
+                summary_numbers = (SummaryNumber("n", "a number nobody computes"),)
+
+                def run(self, ctx, config):
+                    return StageResult(outputs={"x": 1})
+
+    def test_a_summarise_needs_summary_numbers(self):
+        """Without a declaration the orchestrator never calls it, and the
+        numbers would be missing from the manifest with nothing to say why."""
+        with pytest.raises(TypeError, match="declares no summary_numbers"):
+
+            class Bad(Stage):
+                name = "undeclared_summary"
+                produces = {"x"}
+
+                def run(self, ctx, config):
+                    return StageResult(outputs={"x": 1})
+
+                def summarise(self, ctx, config):
+                    return {"n": 1}
+
+    def test_summary_number_names_must_be_unique(self):
+        with pytest.raises(TypeError, match="must be unique"):
+
+            class Bad(Stage):
+                name = "dup_summary"
+                produces = {"x"}
+                summary_numbers = (SummaryNumber("n", "one"), SummaryNumber("n", "two"))
+
+                def run(self, ctx, config):
+                    return StageResult(outputs={"x": 1})
+
+                def summarise(self, ctx, config):
+                    return {"n": 1}
+
+    def test_summary_numbers_must_be_summary_numbers(self):
+        with pytest.raises(TypeError, match="must hold SummaryNumber"):
+
+            class Bad(Stage):
+                name = "bad_number_type"
+                produces = {"x"}
+                summary_numbers = ("n",)  # type: ignore[assignment]
+
+                def run(self, ctx, config):
+                    return StageResult(outputs={"x": 1})
+
+                def summarise(self, ctx, config):
+                    return {"n": 1}
+
+    def test_a_subclass_inherits_both_halves(self):
+        class Parent(Stage):
+            name = "summary_parent"
+            produces = {"x"}
+            summary_numbers = (SummaryNumber("n", "a number"),)
+
+            def run(self, ctx, config):
+                return StageResult(outputs={"x": 1})
+
+            def summarise(self, ctx, config):
+                return {"n": 1}
+
+        class Child(Parent):
+            name = "summary_child"
+
+        assert Child.summary_numbers == Parent.summary_numbers
+        assert Child().summarise(PipelineContext(), None) == {"n": 1}
+
+
+class TestTransparencyGaps:
+    def setup_method(self):
+        _clear_registry_for_testing()
+
+    def teardown_method(self):
+        _clear_registry_for_testing()
+
+    def test_a_stage_that_declares_neither_has_a_gap(self):
+        class Silent(Stage):
+            name = "silent"
+            produces = {"x"}
+
+            def run(self, ctx, config):
+                return StageResult(outputs={"x": 1})
+
+        gaps = transparency_gaps(Silent)
+        assert len(gaps) == 1
+        assert "neither display_layers nor summary_numbers" in gaps[0]
+        assert gaps[0].startswith("silent:")
+
+    def test_a_layer_alone_is_enough(self):
+        class OnlyLayer(Stage):
+            name = "only_layer"
+            produces = {"x"}
+            display_layers = (
+                DisplayLayer("x", "b", "X", "what it shows", legend=_two_class_legend()),
+            )
+
+            def run(self, ctx, config):
+                return StageResult(outputs={"x": 1})
+
+        assert transparency_gaps(OnlyLayer) == []
+
+    def test_a_number_alone_is_enough(self):
+        class OnlyNumber(Stage):
+            name = "only_number"
+            produces = {"x"}
+            summary_numbers = (SummaryNumber("n", "what it counts", "count"),)
+
+            def run(self, ctx, config):
+                return StageResult(outputs={"x": 1})
+
+            def summarise(self, ctx, config):
+                return {"n": 1}
+
+        assert transparency_gaps(OnlyNumber) == []
+
+    def test_a_declaration_that_does_not_say_what_it_is_has_gaps(self):
+        class Mute(Stage):
+            name = "mute"
+            produces = {"x"}
+            display_layers = (
+                DisplayLayer(
+                    "x", "b", "", " ",
+                    legend=(LegendEntry(0, "", "000000"), LegendEntry(1, "in", "ffffff")),
+                ),
+            )
+            summary_numbers = (SummaryNumber("n", ""),)
+
+            def run(self, ctx, config):
+                return StageResult(outputs={"x": 1})
+
+            def summarise(self, ctx, config):
+                return {"n": 1}
+
+        gaps = transparency_gaps(Mute)
+        assert any("x.b has no title" in g for g in gaps)
+        assert any("x.b has no description" in g for g in gaps)
+        assert any("no label for value 0" in g for g in gaps)
+        assert any("'n' has no description" in g for g in gaps)
+        assert len(gaps) == 4

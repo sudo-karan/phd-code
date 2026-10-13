@@ -9,7 +9,7 @@ import pytest
 
 from fmu.config import load_config
 from fmu.stages.base import PipelineContext
-from fmu.stages.masking import MaskingStage
+from fmu.stages.masking import MaskingStage, summarise_mask_provenance
 from fmu.utils.gee import load_roi_geometry, safe_get_info
 
 pytestmark = pytest.mark.live_gee
@@ -53,12 +53,13 @@ def baseline_config():
 
 
 def test_masking_runs_against_sanjay_van(sanjay_van_ctx, baseline_config):
-    """End to end: stage runs and returns the three declared outputs."""
+    """End to end: stage runs and returns the four declared outputs."""
     result = MaskingStage().run(sanjay_van_ctx, baseline_config)
     assert set(result.outputs.keys()) == {
         "habitat_mask",
         "water_mask",
         "landcover_summary",
+        "mask_provenance",
     }
     for key, img in result.outputs.items():
         assert isinstance(img, ee.Image), f"{key} is not an ee.Image"
@@ -146,3 +147,27 @@ def test_habitat_mask_is_binary(sanjay_van_ctx, baseline_config):
     hmax = minmax.get("habitat_mask_max", 0)
     assert hmin in (0, 1)
     assert hmax in (0, 1)
+
+
+def test_reason_says_kept_exactly_where_habitat_mask_does(sanjay_van_ctx, baseline_config):
+    """`mask_provenance` is derived beside `habitat_mask` and must restate it,
+    not contradict it: reason is "kept" exactly where the mask keeps a pixel,
+    every pixel carries a reason and a source the legend names (the tabulation
+    raises on any other code), and the shares add up."""
+    result = MaskingStage().run(sanjay_van_ctx, baseline_config)
+    numbers = summarise_mask_provenance(
+        result.outputs["mask_provenance"],
+        result.outputs["habitat_mask"],
+        sanjay_van_ctx.get("roi"),
+        baseline_config.export.analysis_scale_m,
+    )
+    assert numbers["area_ha"] > 0
+    assert numbers["area_ha_reason_disagrees_with_habitat_mask"] == 0.0
+    assert sum(numbers["share_by_reason"].values()) == pytest.approx(1.0, abs=1e-4)
+    assert sum(numbers["share_decided_by_source"].values()) == pytest.approx(1.0, abs=1e-4)
+    assert numbers["share_kept"] == pytest.approx(
+        numbers["share_by_reason"]["kept"], abs=1e-6
+    )
+    assert sum(numbers["share_kept_by_source"].values()) == pytest.approx(
+        numbers["share_kept"], abs=1e-5
+    )

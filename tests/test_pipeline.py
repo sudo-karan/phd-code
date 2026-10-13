@@ -16,19 +16,25 @@ These tests use trivial stages (numbers, strings); no GEE. The fast suite.
 from __future__ import annotations
 
 import json
+from contextlib import contextmanager
 from pathlib import Path
 from typing import ClassVar
+from unittest.mock import MagicMock, patch
 
+import ee
 import pytest
 
 from fmu.pipeline import Pipeline, PipelineResult
 from fmu.stages.base import (
+    DisplayLayer,
+    LegendEntry,
     PipelineContext,
     Stage,
     StageResult,
     _clear_registry_for_testing,
     register_stage,
 )
+from fmu.utils.caching import ExportTaskInfo
 
 
 @pytest.fixture(autouse=True)
@@ -168,6 +174,32 @@ class TestPipelineSmokeRun:
         assert manifest["stages"][0]["metadata"] == {"k": "v"}
         # config is embedded so the manifest is self-describing
         assert manifest["config"]["name"] == "manifest_test"
+
+    def test_manifest_records_which_code_ran(self, tmp_path):
+        """Every run manifest names the git commit it ran from and says whether
+        the tree had uncommitted changes (CLAUDE.md, "Results"). The commit
+        itself differs from one checkout to the next, so only the shape is
+        asserted here; tests/test_provenance.py tests the values."""
+
+        @register_stage("noop")
+        class NoOpStage(Stage):
+            name = "noop"
+            required_inputs: set[str] = set()
+            produces: set[str] = set()
+
+            def run(self, ctx, config):
+                return StageResult()
+
+        Pipeline(stage_names=["noop"]).run(
+            config=_make_config(name="git_test"), run_dir=tmp_path
+        )
+        git = json.loads((tmp_path / "manifest.json").read_text())["git"]
+        assert set(git) == {
+            "commit", "dirty", "modified", "modified_truncated",
+            "untracked", "untracked_truncated", "root", "error",
+        }
+        assert git["commit"] is None or len(git["commit"]) == 40
+        assert git["dirty"] in (True, False, None)
 
 
 # ---------- Error paths ----------
@@ -492,3 +524,372 @@ class TestExplicitNoCaching:
             f"asset_exists called {mock_exists.call_count} times; "
             "MRO walk didn't find inherited cacheable_outputs=set()"
         )
+
+
+# ---------- The cache switches: use_cache and submit_exports ----------
+
+
+class _FakeImage(ee.Image):
+    """An ee.Image in type only.
+
+    The orchestrator exports an output only if it is an ee.Image, and building a
+    real one needs an initialised client. This passes that isinstance check and
+    does nothing else: __init__ deliberately does not call ee.Image's.
+    """
+
+    def __init__(self, tag: str) -> None:
+        self.tag = tag
+
+    def __repr__(self) -> str:
+        return f"<fake image: {self.tag}>"
+
+    __str__ = __repr__
+
+
+class _FakeGeometry(ee.Geometry):
+    """An ee.Geometry in type only, for the `roi` the export path insists on."""
+
+    def __init__(self) -> None:
+        pass
+
+    def __repr__(self) -> str:
+        return "<fake roi>"
+
+    __str__ = __repr__
+
+
+def _asset(stage: str, key: str) -> str:
+    return f"projects/p/assets/fmu/cfg/{stage}/{key}"
+
+
+_OLD = _asset("two_images", "old_key")
+_NEW = _asset("two_images", "new_key")
+
+
+@contextmanager
+def _fake_cache(existing: set[str]):
+    """Replace the orchestrator's four cache calls, as the tests above replace
+    two of them. `existing` is the set of asset paths that are "in the cache".
+
+    Yields the mock standing in for `start_export`, so a test can say how many
+    export tasks the run tried to submit and for what.
+    """
+    task_numbers = iter(range(1, 100))
+
+    def fake_start_export(*, image, asset_path, roi, scale, description):
+        return ExportTaskInfo(
+            task_id=f"TASK{next(task_numbers)}",
+            asset_path=asset_path,
+            description=description,
+        )
+
+    with patch(
+        "fmu.pipeline.cached_asset_path",
+        side_effect=lambda config_name, stage, key, fingerprint=None: _asset(stage, key),
+    ), patch(
+        "fmu.pipeline.asset_exists", side_effect=lambda path: path in existing
+    ), patch(
+        "fmu.pipeline.load_cached_image",
+        side_effect=lambda path: _FakeImage(f"cached {path}"),
+    ), patch(
+        "fmu.pipeline.start_export", side_effect=fake_start_export
+    ) as start_export:
+        yield start_export
+
+
+def _register_two_image_stage(run_log: list[str]) -> None:
+    """A stage with two cacheable image outputs, and one that reads them.
+
+    This is the shape of masking after `mask_provenance` was added: `old_key`
+    was cached by earlier runs, `new_key` was not. `new_key` carries a display
+    layer so the manifest's asset record can be checked too.
+    """
+
+    @register_stage("two_images")
+    class TwoImages(Stage):
+        name = "two_images"
+        required_inputs = {"roi"}
+        produces = {"old_key", "new_key"}
+        display_layers = (
+            DisplayLayer(
+                "new_key", "b", "New", "the output added later",
+                legend=(LegendEntry(0, "out", "000000"), LegendEntry(1, "in", "ffffff")),
+            ),
+        )
+
+        def run(self, ctx, config):
+            run_log.append("ran")
+            return StageResult(
+                outputs={
+                    "old_key": _FakeImage("live old_key"),
+                    "new_key": _FakeImage("live new_key"),
+                }
+            )
+
+    @register_stage("downstream")
+    class Downstream(Stage):
+        name = "downstream"
+        required_inputs = {"old_key", "new_key"}
+        produces = {"received"}
+        cacheable_outputs: ClassVar[set[str]] = set()
+
+        def run(self, ctx, config):
+            return StageResult(
+                outputs={
+                    "received": {k: ctx.get(k).tag for k in ("old_key", "new_key")}
+                }
+            )
+
+
+def _run_two_images(tmp_path, existing: set[str], **pipeline_kwargs):
+    """Run two_images -> downstream against a fake cache holding `existing`.
+
+    Returns (result, manifest, start_export mock, run log).
+    """
+    run_log: list[str] = []
+    _register_two_image_stage(run_log)
+    ctx = PipelineContext()
+    ctx.set("roi", _FakeGeometry())
+    with _fake_cache(existing) as start_export:
+        result = Pipeline(
+            stage_names=["two_images", "downstream"], use_cache=True, **pipeline_kwargs
+        ).run(config=_make_config(), run_dir=tmp_path, initial_context=ctx)
+    manifest = json.loads((tmp_path / "manifest.json").read_text())
+    return result, manifest, start_export, run_log
+
+
+class TestSubmitExportsSwitch:
+    """`Pipeline(stage_names, use_cache=True, submit_exports=False)` reads the
+    cache and adds nothing to the Earth Engine task queue. The default
+    (`submit_exports=True`) is the behaviour the cache has always had; each
+    read-only test below has a default-run twin that shows the export it
+    would otherwise have submitted, so "never called" cannot pass by accident.
+    """
+
+    def test_default_exports_everything_that_missed(self, tmp_path):
+        result, manifest, start_export, run_log = _run_two_images(tmp_path, set())
+
+        assert run_log == ["ran"]
+        assert start_export.call_count == 2
+        assert sorted(c.kwargs["asset_path"] for c in start_export.call_args_list) == [
+            _NEW, _OLD,
+        ]
+        record = result.stages[0]
+        assert record.cache_status == {
+            "old_key": "miss-exported", "new_key": "miss-exported",
+        }
+        assert sorted(t["asset_path"] for t in record.export_tasks) == [_NEW, _OLD]
+        assert all(t["task_id"].startswith("TASK") for t in record.export_tasks)
+        assert manifest["use_cache"] is True and manifest["submit_exports"] is True
+
+    def test_read_only_computes_what_missed_and_submits_nothing(self, tmp_path):
+        result, manifest, start_export, run_log = _run_two_images(
+            tmp_path, set(), submit_exports=False
+        )
+
+        # Both outputs missed, so the stage ran live and its outputs are used.
+        assert run_log == ["ran"]
+        assert result.context.get("old_key").tag == "live old_key"
+        assert result.context.get("new_key").tag == "live new_key"
+        assert result.context.get("received") == {
+            "old_key": "live old_key", "new_key": "live new_key",
+        }
+        # Nothing was submitted, and the record says so.
+        assert start_export.call_count == 0
+        record = result.stages[0]
+        assert record.cache_status == {"old_key": "miss", "new_key": "miss"}
+        assert record.export_tasks == []
+        assert manifest["use_cache"] is True and manifest["submit_exports"] is False
+        assert manifest["stages"][0]["cache_status"] == {
+            "old_key": "miss", "new_key": "miss",
+        }
+        assert manifest["stages"][0]["export_tasks"] == []
+
+    def test_read_only_still_reads_and_uses_the_cache(self, tmp_path):
+        result, manifest, start_export, run_log = _run_two_images(
+            tmp_path, {_OLD, _NEW}, submit_exports=False
+        )
+
+        # Every output hit: the stage is skipped and the cached images are used.
+        assert run_log == []
+        assert result.context.get("received") == {
+            "old_key": f"cached {_OLD}", "new_key": f"cached {_NEW}",
+        }
+        record = result.stages[0]
+        assert record.metadata == {"source": "cache"}
+        assert record.cache_status == {"old_key": "hit", "new_key": "hit"}
+        assert record.export_tasks == []
+        assert start_export.call_count == 0
+
+    def test_partial_hit_exports_only_the_output_that_missed(self, tmp_path):
+        """Default run on a config cached before `new_key` existed: the stage
+        runs live, but what goes downstream for `old_key` is the cached asset,
+        and only `new_key` is exported."""
+        result, manifest, start_export, run_log = _run_two_images(tmp_path, {_OLD})
+
+        assert run_log == ["ran"]
+        assert result.context.get("received") == {
+            "old_key": f"cached {_OLD}", "new_key": "live new_key",
+        }
+        assert start_export.call_count == 1
+        exported = start_export.call_args.kwargs
+        assert exported["asset_path"] == _NEW
+        assert exported["image"].tag == "live new_key"
+        record = result.stages[0]
+        assert record.cache_status == {"old_key": "hit", "new_key": "miss-exported"}
+        assert [t["asset_path"] for t in record.export_tasks] == [_NEW]
+
+    def test_partial_hit_read_only_uses_the_cached_output_and_exports_nothing(
+        self, tmp_path
+    ):
+        """The same config read with `submit_exports=False`: downstream still
+        gets the cached `old_key`, `new_key` is computed for this run only."""
+        result, manifest, start_export, run_log = _run_two_images(
+            tmp_path, {_OLD}, submit_exports=False
+        )
+
+        assert run_log == ["ran"]
+        assert result.context.get("old_key").tag == f"cached {_OLD}"
+        assert result.context.get("new_key").tag == "live new_key"
+        assert result.context.get("received") == {
+            "old_key": f"cached {_OLD}", "new_key": "live new_key",
+        }
+        assert start_export.call_count == 0
+        record = result.stages[0]
+        assert record.cache_status == {"old_key": "hit", "new_key": "miss"}
+        assert record.export_tasks == []
+
+    @pytest.mark.parametrize(
+        ("existing", "kwargs", "status"),
+        [
+            (set(), {}, "miss-exported"),
+            (set(), {"submit_exports": False}, "miss"),
+            ({_OLD, _NEW}, {"submit_exports": False}, "hit"),
+        ],
+        ids=["exported", "read_only_miss", "hit"],
+    )
+    def test_manifest_says_whether_a_display_layer_has_an_asset(
+        self, tmp_path, existing, kwargs, status
+    ):
+        """A map script reads this to decide between drawing from the asset and
+        computing the layer live: under "miss" there is nothing at the path."""
+        _, manifest, _, _ = _run_two_images(tmp_path, existing, **kwargs)
+        layer = manifest["stages"][0]["transparency"]["display_layers"][0]
+        assert layer["key"] == "new_key"
+        assert layer["asset"] == _NEW
+        assert layer["asset_status"] == status
+
+    def test_read_only_makes_no_earth_engine_write(self, tmp_path):
+        """One level down: the real `start_export` is left in place, and the
+        two Earth Engine calls it makes (create a folder, start a task) are the
+        things watched. The default run makes both; the read-only run neither.
+        """
+
+        def run(**pipeline_kwargs):
+            _clear_registry_for_testing()
+            _register_two_image_stage([])
+            ctx = PipelineContext()
+            ctx.set("roi", _FakeGeometry())
+            task = MagicMock()
+            task.id = "TASK1"
+            with patch(
+                "fmu.pipeline.cached_asset_path",
+                side_effect=lambda config_name, stage, key, fingerprint=None: _asset(
+                    stage, key
+                ),
+            ), patch("fmu.pipeline.asset_exists", return_value=False), patch(
+                "fmu.utils.caching.asset_exists", return_value=False
+            ), patch("fmu.utils.caching.ee.data.createFolder") as create_folder, patch(
+                "fmu.utils.caching.ee.batch.Export.image.toAsset", return_value=task
+            ) as to_asset:
+                result = Pipeline(
+                    stage_names=["two_images"], use_cache=True, **pipeline_kwargs
+                ).run(config=_make_config(), run_dir=tmp_path, initial_context=ctx)
+            return result, create_folder, to_asset, task
+
+        result, create_folder, to_asset, task = run()
+        assert to_asset.call_count == 2
+        assert task.start.call_count == 2
+        assert create_folder.call_count > 0
+        assert len(result.stages[0].export_tasks) == 2
+
+        result, create_folder, to_asset, task = run(submit_exports=False)
+        assert to_asset.call_count == 0
+        assert task.start.call_count == 0
+        assert create_folder.call_count == 0
+        assert result.stages[0].export_tasks == []
+
+    def test_read_only_refuses_a_stage_that_submits_its_own_tasks(self):
+        """The export stage starts its Drive exports inside run(), where the
+        orchestrator cannot stop them. A run that promised to submit nothing
+        must not include it."""
+
+        @register_stage("export")
+        class FakeExport(Stage):
+            name = "export"
+            required_inputs: set[str] = set()
+            produces: set[str] = set()
+
+            def run(self, ctx, config):
+                return StageResult()
+
+        with pytest.raises(ValueError, match="submit their own"):
+            Pipeline(stage_names=["export"], use_cache=True, submit_exports=False)
+        with pytest.raises(ValueError, match="submit their own"):
+            Pipeline(stage_names=["export"], submit_exports=False)
+        # The default is unchanged: the stage is accepted, cache on or off.
+        Pipeline(stage_names=["export"], use_cache=True)
+        Pipeline(stage_names=["export"])
+
+    def test_submit_exports_is_keyword_only(self):
+        """`Pipeline(names, True, False)` would not say which switch is which."""
+
+        @register_stage("kw_only")
+        class S(Stage):
+            name = "kw_only"
+            required_inputs: set[str] = set()
+            produces: set[str] = set()
+
+            def run(self, ctx, config):
+                return StageResult()
+
+        with pytest.raises(TypeError):
+            Pipeline(["kw_only"], True, False)  # type: ignore[misc]
+        assert Pipeline(["kw_only"], True, submit_exports=False).submit_exports is False
+
+    def test_manifest_records_the_switches_when_left_at_their_defaults(self, tmp_path):
+        @register_stage("defaults")
+        class S(Stage):
+            name = "defaults"
+            required_inputs: set[str] = set()
+            produces: set[str] = set()
+
+            def run(self, ctx, config):
+                return StageResult()
+
+        pipeline = Pipeline(stage_names=["defaults"])
+        assert (pipeline.use_cache, pipeline.submit_exports) == (False, True)
+        pipeline.run(config=_make_config(), run_dir=tmp_path)
+
+        manifest = json.loads((tmp_path / "manifest.json").read_text())
+        assert manifest["use_cache"] is False
+        assert manifest["submit_exports"] is True
+        assert manifest["stages"][0]["cache_status"] == {}
+        assert manifest["stages"][0]["export_tasks"] == []
+
+    def test_read_only_without_the_cache_never_looks_at_it(self, tmp_path):
+        run_log: list[str] = []
+        _register_two_image_stage(run_log)
+        ctx = PipelineContext()
+        ctx.set("roi", _FakeGeometry())
+        with _fake_cache({_OLD, _NEW}) as start_export, patch(
+            "fmu.pipeline.asset_exists"
+        ) as exists:
+            result = Pipeline(
+                stage_names=["two_images"], use_cache=False, submit_exports=False
+            ).run(config=_make_config(), run_dir=tmp_path, initial_context=ctx)
+
+        assert run_log == ["ran"]
+        assert exists.call_count == 0 and start_export.call_count == 0
+        assert result.context.get("old_key").tag == "live old_key"
+        assert result.stages[0].cache_status == {}

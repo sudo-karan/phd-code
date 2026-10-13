@@ -1,0 +1,109 @@
+{
+ "config": "odisha_alphaearth_angul_repro",
+ "fingerprint": "34bffb7611",
+ "upstream_cache_status": {
+  "masking": {
+   "habitat_mask": "hit",
+   "landcover_summary": "hit",
+   "mask_provenance": "miss",
+   "water_mask": "hit"
+  },
+  "data_load": {
+   "s2_composite": "hit"
+  },
+  "features_embedding": {
+   "embedding_features": "hit"
+  }
+ },
+ "cached_asset_grids": {
+  "masking/habitat_mask": {
+   "crs": "EPSG:4326",
+   "transform": [
+    8.983152841195215e-05,
+    0,
+    84.6391762382129,
+    0,
+    -8.983152841195215e-05,
+    20.830943291919173
+   ]
+  },
+  "masking/landcover_summary": {
+   "crs": "EPSG:4326",
+   "transform": [
+    8.983152841195215e-05,
+    0,
+    84.6391762382129,
+    0,
+    -8.983152841195215e-05,
+    20.830943291919173
+   ]
+  },
+  "masking/water_mask": {
+   "crs": "EPSG:4326",
+   "transform": [
+    8.983152841195215e-05,
+    0,
+    84.63917623821291,
+    0,
+    -8.983152841195215e-05,
+    20.830943291919183
+   ]
+  },
+  "data_load/s2_composite": {
+   "crs": "EPSG:4326",
+   "transform": [
+    8.983152841195215e-05,
+    0,
+    84.6391762382129,
+    0,
+    -8.983152841195215e-05,
+    20.830943291919173
+   ]
+  },
+  "features_embedding/embedding_features": {
+   "crs": "EPSG:4326",
+   "transform": [
+    8.983152841195215e-05,
+    0,
+    84.6391762382129,
+    0,
+    -8.983152841195215e-05,
+    20.830943291919173
+   ]
+  }
+ },
+ "inputs": {
+  "cached": {
+   "distance_scale": 2.3053662371209507
+  }
+ },
+ "comparisons": [
+  {
+   "inputs": "cached",
+   "against": "odisha_alphaearth_angul_repro",
+   "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_angul_repro/segmentation/snic_clusters__34bffb7611",
+   "pixels_compared": 47181,
+   "pixels_with_another_label": 825
+  },
+  {
+   "inputs": "cached",
+   "against": "odisha_alphaearth_angul",
+   "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_angul/segmentation/snic_clusters__34bffb7611",
+   "pixels_compared": 47181,
+   "pixels_with_another_label": 825
+  }
+ ],
+ "between_inputs": [],
+ "superpixel_grid": {
+  "crs": "EPSG:32645",
+  "transform": [
+   10,
+   0,
+   254310,
+   0,
+   10,
+   2294980
+  ]
+ },
+ "export_tasks_submitted": 0
+}

@@ -242,12 +242,37 @@ def test_fingerprint_is_short_and_hex():
 
 def test_shipped_configs_have_distinct_fingerprints():
     """Different experiments must not collide, or one would read the other's
-    assets from under the shared stage path."""
+    assets from under the shared stage path.
+
+    A `_repro` copy is the same experiment under a new name, so it shares its
+    original's fingerprint on purpose; it is left out here and checked below.
+    """
     fps = {
         p.stem: config_fingerprint(load_config(p))
         for p in sorted(CONFIG_DIR.glob("sanjay_van_*.yaml"))
+        if not p.stem.endswith("_repro")
     }
     assert len(set(fps.values())) == len(fps), fps
+
+
+@pytest.mark.parametrize(
+    "path", sorted(CONFIG_DIR.glob("*_repro.yaml")), ids=lambda p: p.stem
+)
+def test_repro_copy_differs_from_its_original_in_name_only(path: Path):
+    """A `_repro` copy exists to recompute a config from scratch in a fresh
+    asset namespace (CLAUDE.md, "Earth Engine"). That is a reproducibility test
+    only if nothing but the name differs: same content, so same fingerprint,
+    under a different config name, so a different asset path."""
+    original = load_config(path.with_name(path.name.replace("_repro.yaml", ".yaml")))
+    repro = load_config(path)
+    a, b = original.model_dump(mode="json"), repro.model_dump(mode="json")
+    assert [k for k in a if a[k] != b[k]] == ["name"]
+    assert repro.name == original.name + "_repro"
+    fp = config_fingerprint(original)
+    assert config_fingerprint(repro) == fp
+    assert cached_asset_path(repro.name, "masking", "habitat_mask", fp) != (
+        cached_asset_path(original.name, "masking", "habitat_mask", fp)
+    )
 
 
 def test_reference_config_file_resolves_by_convention():

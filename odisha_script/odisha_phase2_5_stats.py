@@ -183,6 +183,17 @@ def progress(s: str) -> None:
     print(s, flush=True)
 
 
+_timings: list[str] = []
+
+
+def note_time(s: str) -> None:
+    """Run times go to the terminal and to a .log beside the results file, never into the results file.
+    A results file holds results only, so that `git diff` after a re-run shows whether the numbers
+    reproduced (CLAUDE.md, "Results"); a line that changes with the machine's load would hide that."""
+    progress(s)
+    _timings.append(s)
+
+
 def rule(title: str) -> None:
     say("")
     say("=" * 100)
@@ -1014,8 +1025,8 @@ def analyse_partition(C: Ctx, part_obj: Partition, n_rot: int, primary: bool) ->
     if fails:
         # every null-based row of this partition is flagged, not only the arms rows
         _ROW_FLAGS["not_estimable"] = True
-        say(f"  rotation null: NOT BUILT (seed crc32('{arm}/{part_obj.layer_name}'); {n_rot} realisations requested; "
-            f"{time.time() - t0:.0f} s): {len(fails)} AOI part(s) could not place {n_rot} realisations — the draws "
+        say(f"  rotation null: NOT BUILT (seed crc32('{arm}/{part_obj.layer_name}'); {n_rot} realisations requested): "
+            f"{len(fails)} AOI part(s) could not place {n_rot} realisations — the draws "
             "reached the cap, or no angle fits the plot cloud inside the part at all")
         say("    failed parts (accepted realisations; draws made; draws with every plot inside the part; plots, of which "
             "forced onto a stand; sampler; plain geometric acceptance):")
@@ -1054,7 +1065,7 @@ def analyse_partition(C: Ctx, part_obj: Partition, n_rot: int, primary: bool) ->
         n_rot = 0
         rid, rcl, rbd = rid[:0], rcl[:0], rbd[:0]
     else:
-        say(f"  rotation null: {n_rot} realisations (seed crc32('{arm}/{part_obj.layer_name}')); {time.time() - t0:.0f} s; "
+        say(f"  rotation null: {n_rot} realisations (seed crc32('{arm}/{part_obj.layer_name}')); "
             f"mean draws per accepted realisation by part { {k: round(v[0], 1) for k, v in att.items()} }")
         fr = {k: f"{v[2]:.3f}" for k, v in att.items() if v[1] != "plain"}
         say(f"    sampler: plain rejection in every part" if not fr else
@@ -2077,6 +2088,7 @@ def main() -> int:
                 raise RuntimeError(f"partition {k}: {why} right after computing it")
             progress(f"[{k[0]}/{k[1]}] finished in {pl['elapsed_s']:.0f} s; checkpoint {path}")
         # assembly reads the stored result, whichever process computed it
+        note_time(f"[{k[0]}/{k[1]}] partition took {pl['elapsed_s']:.0f} s")
         _lines.extend(pl["lines"])
         _rows.extend(pl["rows"])
         C.first_keys.update(pl["first_keys"])
@@ -2091,12 +2103,13 @@ def main() -> int:
         say("")
         for line in notes:
             say(line)
-    say("")
-    say(f"  total runtime {time.time() - t_start:.0f} s")
+    note_time(f"total runtime {time.time() - t_start:.0f} s")
 
     header = corrections_block(spec, args.rotations, C)
     pd.DataFrame(_rows).to_csv(out_dir / f"odisha_phase2_5_summary{suffix}.csv", index=False)
     (out_dir / f"odisha_phase2_5_results{suffix}.txt").write_text("\n".join(header + _lines) + "\n")
+    with (out_dir / f"odisha_phase2_5_results{suffix}.log").open("a") as f:      # *.log is git-ignored
+        f.write("\n".join(_timings) + "\n")
     print("\n".join(header))
     figures(results, suffix, out_dir)
     return 0

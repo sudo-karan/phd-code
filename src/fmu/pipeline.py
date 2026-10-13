@@ -19,6 +19,7 @@ from fmu.utils.caching import (
     start_export,
 )
 from fmu.utils.logging import get_logger
+from fmu.utils.provenance import git_state
 
 log = get_logger(__name__)
 
@@ -57,6 +58,12 @@ _FEATURE_STAGE_ORDER: list[str] = [
     "features_static",
     "features_embedding",
 ]
+
+# Stages whose run() submits Earth Engine tasks itself, outside the cache exports
+# the orchestrator controls: the export stage starts its Drive exports directly.
+# `Pipeline(..., submit_exports=False)` refuses these, because it could not keep
+# its promise with one of them in the run.
+_SUBMITS_OWN_TASKS: frozenset[str] = frozenset({"export"})
 
 
 def default_stage_names(config: Config, through: str = "metrics") -> list[str]:
@@ -156,8 +163,13 @@ class StageRecord:
     produced: list[str]
     warnings: list[str] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
-    cache_status: dict[str, str] = field(default_factory=dict)  # key -> "hit" / "miss-exported" / "off"
+    # key -> "hit" (read from the cache) / "miss-exported" (computed live, export
+    # submitted) / "miss" (computed live, nothing submitted). Empty with caching off.
+    cache_status: dict[str, str] = field(default_factory=dict)
     export_tasks: list[dict[str, str]] = field(default_factory=list)
+    # The stage's transparency declaration, filled in: its display layers (with
+    # the cache asset each belongs at, when caching is on) and its summary numbers.
+    transparency: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -178,15 +190,47 @@ class Pipeline:
             and submit async export tasks for outputs that aren't cached.
             Off by default; turn on for normal runs that need shareable
             assets / fast visualization. Tests should leave this off.
+        submit_exports: only matters with `use_cache=True`. True (default) is
+            the behaviour described above. False reads the cache without
+            writing to it: cached outputs are still read and used, outputs
+            that miss are computed live and used for this run, and no export
+            task is submitted and no asset folder is created. Their
+            `cache_status` stays "miss" and `export_tasks` is empty. For
+            scripts that read an existing cached run (maps, inspectors,
+            reproducibility checks) and must add nothing to the task queue.
+            It covers the orchestrator's cache exports only, so a stage that
+            submits tasks of its own (see `_SUBMITS_OWN_TASKS`) is refused
+            here rather than run.
+        summaries: if True (default), call each stage's `summarise()` after it
+            has run and write the declared summary numbers into the manifest.
+            Turn off to skip the Earth Engine round trips they can cost
+            (masking's is one reduction over the ROI).
     """
 
-    def __init__(self, stage_names: list[str], use_cache: bool = False) -> None:
+    def __init__(
+        self,
+        stage_names: list[str],
+        use_cache: bool = False,
+        *,
+        submit_exports: bool = True,
+        summaries: bool = True,
+    ) -> None:
         if not stage_names:
             raise ValueError("Pipeline must have at least one stage.")
         self.stage_names = list(stage_names)
         # eager resolution: typos in stage names fail now, not after 10 min of GEE work
         self.stage_classes: list[type[Stage]] = [get_stage_class(n) for n in stage_names]
         self.use_cache = use_cache
+        self.submit_exports = submit_exports
+        self.summaries = summaries
+        if not submit_exports:
+            own = sorted(set(self.stage_names) & _SUBMITS_OWN_TASKS)
+            if own:
+                raise ValueError(
+                    f"submit_exports=False promises a run that submits no Earth "
+                    f"Engine task, but stage(s) {own} submit their own and the "
+                    f"orchestrator cannot stop them. Leave them out of this run."
+                )
 
     def run(
         self,
@@ -267,16 +311,20 @@ class Pipeline:
                     log.info("  [cache] all %d outputs hit; skipping stage run", len(cached_outputs))
                     for key, value in cached_outputs.items():
                         ctx.set(key, value)
+                    transparency, summary_warnings = self._transparency(
+                        stage, ctx, config, cacheable, cache_status
+                    )
                     elapsed = time.perf_counter() - t0
                     log.info("stage %s done in %.2f sec (from cache)", name, elapsed)
                     return StageRecord(
                         name=name,
                         elapsed_sec=elapsed,
                         produced=sorted(cached_outputs.keys()),
-                        warnings=[],
+                        warnings=summary_warnings,
                         metadata={"source": "cache"},
                         cache_status=cache_status,
                         export_tasks=[],
+                        transparency=transparency,
                     )
 
             # Run live
@@ -307,10 +355,23 @@ class Pipeline:
                 ctx.set(key, value)
 
             # Submit exports for any cacheable outputs that missed
-            if self.use_cache:
+            if self.use_cache and self.submit_exports:
                 export_tasks = self._submit_exports(
                     stage, config, ctx, final_outputs, cache_status, cacheable
                 )
+            elif self.use_cache:
+                # Read-only run: the misses were computed live above and stay
+                # "miss". Nothing is submitted and no folder is created.
+                missed = sorted(k for k, v in cache_status.items() if v == "miss")
+                if missed:
+                    log.info(
+                        "  [cache] submit_exports is off: computed live and not "
+                        "exported: %s", missed,
+                    )
+
+            transparency, summary_warnings = self._transparency(
+                stage, ctx, config, cacheable, cache_status
+            )
 
         except Exception as e:
             # Stage failure: log, then re-raise. We intentionally do NOT try
@@ -333,7 +394,7 @@ class Pipeline:
             name=name,
             elapsed_sec=elapsed,
             produced=sorted(stage_result.outputs.keys()),
-            warnings=list(stage_result.warnings),
+            warnings=[*stage_result.warnings, *summary_warnings],
             metadata=dict(stage_result.metadata),
             cache_status=cache_status,
             export_tasks=[
@@ -344,7 +405,91 @@ class Pipeline:
                 }
                 for t in export_tasks
             ],
+            transparency=transparency,
         )
+
+    def _transparency(
+        self,
+        stage: Stage,
+        ctx: PipelineContext,
+        config: Config,
+        cacheable: set[str],
+        cache_status: dict[str, str],
+    ) -> tuple[dict[str, Any], list[str]]:
+        """Fill in a stage's transparency declaration for the manifest.
+
+        Returns the record and any warnings. Runs after the stage's outputs are
+        in the context, so it is the same whether they were computed or read
+        from the cache.
+
+        Each display layer is recorded with the cache asset it belongs at and
+        that asset's status for this run ("hit", "miss-exported" or "miss"), so
+        a reader knows whether there is an asset to draw from: under "miss"
+        there is none, and under "miss-exported" not until the task finishes.
+        Both are None when caching is off or the key is not cacheable.
+
+        A summary that fails is recorded and warned about, never raised. That
+        covers an Earth Engine timeout or memory limit on the reduction, any
+        other exception inside `summarise()`, and a `summarise()` that returns
+        other names than the stage declared. The stage's products are already
+        in the context by now, and when caching is on their exports are already
+        submitted; a run must not lose them, or the record of those tasks, to a
+        failed report about them. The fast tests are where a wrong `summarise()`
+        is made to fail loudly.
+        """
+        layers: list[dict[str, Any]] = []
+        for layer in stage.display_layers:
+            entry = layer.to_manifest()
+            cached = self.use_cache and layer.key in cacheable
+            entry["asset"] = (
+                cached_asset_path(
+                    config.name, stage.name, layer.key, config_fingerprint(config)
+                )
+                if cached
+                else None
+            )
+            entry["asset_status"] = cache_status.get(layer.key) if cached else None
+            layers.append(entry)
+
+        record: dict[str, Any] = {"display_layers": layers, "summary_numbers": []}
+        declared = [s.name for s in stage.summary_numbers]
+        if not declared:
+            return record, []
+        if not self.summaries:
+            record["summary_skipped"] = "Pipeline(summaries=False)"
+            return record, []
+
+        def failed(why: str) -> tuple[dict[str, Any], list[str]]:
+            msg = f"summary numbers not computed: {why}"
+            log.warning("  [%s] %s", stage.name, msg)
+            record["summary_error"] = msg
+            return record, [msg]
+
+        try:
+            values = stage.summarise(ctx, config)
+        except Exception as e:  # noqa: BLE001 - recorded in the manifest, see docstring
+            return failed(f"{type(e).__name__}: {e}")
+        if not isinstance(values, dict) or set(values) != set(declared):
+            returned = (
+                sorted(str(k) for k in values)
+                if isinstance(values, dict)
+                else f"a {type(values).__name__}"
+            )
+            return failed(
+                f"summarise() returned {returned}, but the stage declares "
+                f"{sorted(declared)}"
+            )
+
+        record["summary_numbers"] = [
+            {
+                "name": s.name,
+                "description": s.description,
+                "unit": s.unit,
+                "value": _json_safe(values[s.name]),
+            }
+            for s in stage.summary_numbers
+        ]
+        return record, []
 
     @staticmethod
     def _resolve_cacheable_outputs(stage: Stage) -> set[str]:
@@ -455,6 +600,15 @@ class Pipeline:
             "config_name": result.config_name,
             "run_dir": str(result.run_dir),
             "total_elapsed_sec": round(result.total_elapsed_sec, 3),
+            # How the run was asked to treat the asset cache and the summaries,
+            # as given to Pipeline(). submit_exports has no effect unless
+            # use_cache is on.
+            "use_cache": self.use_cache,
+            "submit_exports": self.submit_exports,
+            "summaries": self.summaries,
+            # Which code ran: the commit of the checkout the fmu package was
+            # imported from, and whether it had uncommitted changes.
+            "git": git_state(),
             "stages": [
                 {
                     "name": s.name,
@@ -464,6 +618,7 @@ class Pipeline:
                     "metadata": _json_safe(s.metadata),
                     "cache_status": s.cache_status,
                     "export_tasks": s.export_tasks,
+                    "transparency": _json_safe(s.transparency),
                 }
                 for s in result.stages
             ],

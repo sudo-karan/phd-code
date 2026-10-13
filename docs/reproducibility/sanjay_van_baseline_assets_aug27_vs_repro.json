@@ -1,0 +1,111 @@
+[
+ {
+  "stage": "masking",
+  "key": "habitat_mask",
+  "old_asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline/masking/habitat_mask__bbc3e3d624",
+  "new_asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline_repro/masking/habitat_mask__7f642cf2ca",
+  "bands": 1,
+  "same_grid": true,
+  "pixel_values_compared": 148630,
+  "pixel_bands_that_differ": 0,
+  "pixels_whose_mask_differs": 0,
+  "largest_abs_difference": 0,
+  "in_band": "habitat_mask"
+ },
+ {
+  "stage": "masking",
+  "key": "landcover_summary",
+  "old_asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline/masking/landcover_summary__bbc3e3d624",
+  "new_asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline_repro/masking/landcover_summary__7f642cf2ca",
+  "bands": 1,
+  "same_grid": true,
+  "pixel_values_compared": 148630,
+  "pixel_bands_that_differ": 0,
+  "pixels_whose_mask_differs": 0,
+  "largest_abs_difference": 0,
+  "in_band": "landcover_summary"
+ },
+ {
+  "stage": "masking",
+  "key": "mask_provenance",
+  "outcome": "not cached for sanjay_van_baseline and sanjay_van_baseline_repro"
+ },
+ {
+  "stage": "masking",
+  "key": "water_mask",
+  "old_asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline/masking/water_mask__bbc3e3d624",
+  "new_asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline_repro/masking/water_mask__7f642cf2ca",
+  "bands": 1,
+  "same_grid": true,
+  "pixel_values_compared": 148630,
+  "pixel_bands_that_differ": 0,
+  "pixels_whose_mask_differs": 0,
+  "largest_abs_difference": 0,
+  "in_band": "water_mask"
+ },
+ {
+  "stage": "data_load",
+  "key": "s2_composite",
+  "old_asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline/data_load/s2_composite__bbc3e3d624",
+  "new_asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline_repro/data_load/s2_composite__7f642cf2ca",
+  "bands": 26,
+  "same_grid": true,
+  "pixel_values_compared": 3864380,
+  "pixel_bands_that_differ": 1678188,
+  "pixels_whose_mask_differs": 0,
+  "largest_abs_difference": 497,
+  "in_band": "B8_median"
+ },
+ {
+  "stage": "features_optical",
+  "key": "optical_features",
+  "old_asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline/features_optical/optical_features__bbc3e3d624",
+  "new_asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline_repro/features_optical/optical_features__7f642cf2ca",
+  "bands": 6,
+  "same_grid": true,
+  "pixel_values_compared": 891780,
+  "pixel_bands_that_differ": 891780,
+  "pixels_whose_mask_differs": 0,
+  "largest_abs_difference": 7,
+  "in_band": "ndvi_obs_count"
+ },
+ {
+  "stage": "features_radar",
+  "key": "radar_features",
+  "old_asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline/features_radar/radar_features__bbc3e3d624",
+  "new_asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline_repro/features_radar/radar_features__7f642cf2ca",
+  "bands": 9,
+  "same_grid": true,
+  "pixel_values_compared": 1337670,
+  "pixel_bands_that_differ": 0,
+  "pixels_whose_mask_differs": 0,
+  "largest_abs_difference": 0,
+  "in_band": "vv_p10"
+ },
+ {
+  "stage": "features_structure",
+  "key": "structure_features",
+  "old_asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline/features_structure/structure_features__bbc3e3d624",
+  "new_asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline_repro/features_structure/structure_features__7f642cf2ca",
+  "bands": 3,
+  "same_grid": true,
+  "pixel_values_compared": 310347,
+  "pixel_bands_that_differ": 0,
+  "pixels_whose_mask_differs": 0,
+  "largest_abs_difference": 0,
+  "in_band": "canopy_height"
+ },
+ {
+  "stage": "features_static",
+  "key": "static_features",
+  "old_asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline/features_static/static_features__bbc3e3d624",
+  "new_asset": "projects/replicating-paper/assets/fmu/sanjay_van_baseline_repro/features_static/static_features__7f642cf2ca",
+  "bands": 5,
+  "same_grid": true,
+  "pixel_values_compared": 743150,
+  "pixel_bands_that_differ": 0,
+  "pixels_whose_mask_differs": 0,
+  "largest_abs_difference": 0,
+  "in_band": "elevation"
+ }
+]

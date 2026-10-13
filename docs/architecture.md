@@ -253,12 +253,15 @@ each `run()` call.
 ### Asset path format
 
 ```
-projects/<gcp-project>/assets/fmu/<config_name>/<stage_name>/<output_key>
+projects/<gcp-project>/assets/fmu/<config_name>/<stage_name>/<output_key>__<fingerprint>
 ```
 
-Stable across runs. Same config name + same output key always maps to
-the same asset. Changing config thresholds without renaming the config
-overwrites the asset. See [running.md](running.md#stable-paths-not-hashes).
+The fingerprint is a short hash of the config content that can change a
+cached raster (`config_fingerprint`). Same config name, same content and
+same output key always map to the same asset. Changing a threshold without
+renaming the config changes the fingerprint, so the run writes new assets
+and the old ones are left as they were. See
+[running.md](running.md#paths-carry-a-fingerprint-of-the-config).
 
 ### What's cacheable
 

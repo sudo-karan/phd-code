@@ -160,6 +160,20 @@ ARI/NMI against a shared tessellation is no longer the comparison. There is no
 ground-truth stand map, so neither can be declared correct; they are compared on
 stability, held-out predictive power at matched stand count, and geometry.
 
+## The `_repro` copies
+
+`configs/<name>_repro.yaml` exists for fourteen configs: `sanjay_van_baseline`,
+`sanjay_van_alphaearth`, and `odisha_v120_3ha_<district>`,
+`odisha_v120_handcrafted_<district>` and `odisha_alphaearth_<district>` for the
+four districts. Each is its original with `name` changed to `<name>_repro` and a
+header note; nothing else differs. They are not experiments. A re-run of a
+config reads its cached assets back, so it does not test reproducibility; a copy
+under a new name has the same cache fingerprint in a fresh asset folder, so
+every stage is recomputed. `tests/test_cache_fingerprint.py` pins this: each
+copy differs from its original in `name` only, has the same fingerprint, and
+resolves to a different asset path. How to run and compare them is in
+[running.md](running.md), "Re-running a config from scratch".
+
 ## Adding a new experiment
 
 1. **Copy** `configs/sanjay_van_baseline.yaml` to `configs/<your_name>.yaml`.

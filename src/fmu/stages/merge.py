@@ -40,11 +40,28 @@ physical units along with their meaning.
 Outputs:
   - stand_clusters:    integer stand ID per pixel, 0..n_stands-1
   - stand_attributes:  per-stand dict of area, criterion means and frac_valid
+  - stand_provenance:  per-stand dict of what each stand is made of: how many
+                       superpixels, how many merges of each kind, and whether
+                       and why it ended below the minimum size. Same stand ids
+                       as stand_attributes. The fields are documented in
+                       `fmu.utils.region_merge`. Kept beside stand_attributes
+                       rather than inside it, so that dict, which is written
+                       whole into run records, is unchanged.
+  - merge_provenance:  one band, `merge_kind`: each stand coded by the weakest
+                       kind of merge it contains (`merge_kind_code`). Like
+                       stand_clusters it is a remap of the SNIC label image.
   - merge_diagnostics: pass counts, orphan causes, threshold calibration. Passed
                        through context (not just stage metadata) so the metrics
                        stage can fold it into metrics_<config>.json -- the
                        orphan split is a result, not a log line, and reading it
                        should not require digging through the manifest.
+
+Transparency. The stage declares summary numbers (how many superpixels went in,
+how many stands came out, how many merges each pass made, and what was left
+below the minimum size and why). `summarise()` reads them from
+`merge_diagnostics` in the context and makes no Earth Engine call. It also
+declares one display layer, `merge_provenance.merge_kind`, which shows where the
+weakly justified merges are.
 """
 
 from __future__ import annotations
@@ -54,7 +71,15 @@ from typing import Any
 import ee
 
 from fmu.config import Config
-from fmu.stages.base import PipelineContext, Stage, StageResult, register_stage
+from fmu.stages.base import (
+    DisplayLayer,
+    LegendEntry,
+    PipelineContext,
+    Stage,
+    StageResult,
+    SummaryNumber,
+    register_stage,
+)
 from fmu.utils.adjacency import (
     extract_superpixel_attributes,
     extract_superpixel_graph,
@@ -73,6 +98,51 @@ log = get_logger(__name__)
 _LON_BAND = "longitude"
 _LAT_BAND = "latitude"
 
+# Codes of the `merge_kind` band: the weakest kind of merge a stand contains.
+# Ordered from best justified to least, so a higher code is a weaker stand.
+MERGE_KIND_SINGLE = 0
+MERGE_KIND_FIRST_PASS = 1
+MERGE_KIND_RELAXED = 2
+MERGE_KIND_FALLBACK = 3
+
+_MERGE_KIND_LEGEND: tuple[LegendEntry, ...] = (
+    LegendEntry(
+        MERGE_KIND_SINGLE, "A single superpixel: it merged with nothing", "bdbdbd"
+    ),
+    LegendEntry(
+        MERGE_KIND_FIRST_PASS,
+        "Built by first-pass merges only: every merge passed every criterion "
+        "at its configured tolerance",
+        "1a9850",
+    ),
+    LegendEntry(
+        MERGE_KIND_RELAXED,
+        "Contains a relaxed second-pass merge: a merge the second pass made "
+        "under tolerances loosened by the relax factor",
+        "fdae61",
+    ),
+    LegendEntry(
+        MERGE_KIND_FALLBACK,
+        "Contains a shared-edge fallback merge: a merge the second pass made "
+        "with the neighbour sharing the longest edge, which no criterion "
+        "justified",
+        "d73027",
+    ),
+)
+
+_MERGE_KIND_NOTE = (
+    "A stand is coloured by the weakest merge inside it, so one fallback merge "
+    "colours the whole stand red however many well-justified merges it also "
+    "contains. A fallback merge is one that no merge criterion justified, even "
+    "relaxed: the second pass, which exists so that no stand stays below the "
+    "minimum size, joined the two on the length of their shared edge only. A "
+    "second-pass merge does not always add a piece that was below the minimum "
+    "size at that moment: each sweep lists the undersized pieces once, and a "
+    "piece that grows past the minimum earlier in a sweep still takes its turn "
+    "in that sweep. The exact counts per stand are in stand_provenance and on "
+    "the exported stands_merged layer (n_pass1, n_relaxed, n_fallback)."
+)
+
 
 @register_stage("merge")
 class MergeStage(Stage):
@@ -80,13 +150,80 @@ class MergeStage(Stage):
     # Invariant subset only; the criteria bands' sources depend on
     # `merge.criteria`, so the real dependency check is in validate().
     required_inputs = {"roi", "snic_clusters"}
-    produces = {"stand_clusters", "stand_attributes", "merge_diagnostics"}
+    produces = {
+        "stand_clusters",
+        "stand_attributes",
+        "merge_diagnostics",
+        "stand_provenance",
+        "merge_provenance",
+    }
     # `stand_clusters` is a remap of a cached image, so it is cheap to rebuild
     # and caching it would need the merge config hashed into the key (the
     # thresholds are the main thing being iterated on, so a stale cache would
     # silently poison exactly that). `stand_attributes` is a Python dict and is
-    # not an ee.Image at all.
+    # not an ee.Image at all. `merge_provenance` is a remap of the same cached
+    # image and `stand_provenance` is a dict, so the same holds for both.
     cacheable_outputs = set()
+
+    display_layers = (
+        DisplayLayer(
+            key="merge_provenance",
+            band="merge_kind",
+            title="How each stand was put together",
+            description=(
+                "Each stand, coloured by the weakest kind of merge it "
+                "contains. It shows where the stand boundaries rest on the "
+                "merge criteria and where they rest only on the rule that no "
+                "stand may stay below the minimum size."
+            ),
+            legend=_MERGE_KIND_LEGEND,
+            legend_note=_MERGE_KIND_NOTE,
+        ),
+    )
+
+    # What the merge did, as counts. Every merge joins two regions into one, so
+    # superpixels_in - stands_out is the three merge counts added together.
+    summary_numbers = (
+        SummaryNumber(
+            "superpixels_in", "SNIC superpixels the merge started from", "count"
+        ),
+        SummaryNumber("stands_out", "Stands left after both passes", "count"),
+        SummaryNumber(
+            "merges_first_pass",
+            "Merges made in the first pass: neighbours that pass every merge "
+            "criterion at its configured tolerance",
+            "count",
+        ),
+        SummaryNumber(
+            "merges_second_pass_relaxed",
+            "Merges made in the second pass, which absorbs regions below the "
+            "minimum size, where a neighbour passed the relaxed tolerances",
+            "count",
+        ),
+        SummaryNumber(
+            "merges_second_pass_shared_edge_fallback",
+            "Merges made in the second pass by the fallback: no neighbour passed "
+            "even the relaxed tolerances, so the region joined the neighbour it "
+            "shares the longest edge with",
+            "count",
+        ),
+        SummaryNumber(
+            "stands_below_min_area",
+            "Stands still below the minimum size after both passes",
+            "count",
+        ),
+        SummaryNumber(
+            "stands_below_min_area_by_cause",
+            "Why those stands stayed small. isolated: it touches no other "
+            "stand. area_blocked: every neighbour is already too big to take it "
+            "under the maximum size. iteration_cap: it still had a neighbour it "
+            "could have joined when the second pass ran out of iterations",
+            "count",
+        ),
+        SummaryNumber(
+            "area_ha_in_stands_below_min_area", "Area in those stands", "ha"
+        ),
+    )
 
     def validate(self, ctx: PipelineContext, config: Config) -> None:
         needed = {"roi", "snic_clusters"} | config.merge.input_sources()
@@ -172,6 +309,19 @@ class MergeStage(Stage):
             .clip(roi)
         )
 
+        # The same relabel, to the code of the stand each superpixel ended up in.
+        kind_by_stand = {
+            sid: merge_kind_code(p) for sid, p in result.stand_provenance.items()
+        }
+        merge_provenance = (
+            snic_clusters.remap(
+                graph.raw_labels, [kind_by_stand[sid] for sid in result.assignment]
+            )
+            .rename("merge_kind")
+            .toUint8()
+            .clip(roi)
+        )
+
         d = result.diagnostics
         log.info(
             "  merged %d superpixels -> %d stands (%.2fx reduction)",
@@ -195,6 +345,8 @@ class MergeStage(Stage):
                 "stand_clusters": stand_clusters,
                 "stand_attributes": result.stand_attributes,
                 "merge_diagnostics": diagnostics,
+                "stand_provenance": result.stand_provenance,
+                "merge_provenance": merge_provenance,
             },
             metadata={
                 "criteria": [
@@ -216,10 +368,65 @@ class MergeStage(Stage):
             warnings=warnings,
         )
 
+    def summarise(self, ctx: PipelineContext, config: Config) -> dict[str, Any]:
+        """The declared summary numbers, read from `merge_diagnostics`.
+
+        No Earth Engine call: the merge ran client-side and already counted
+        everything this reports.
+        """
+        return summarise_merge_diagnostics(ctx.get("merge_diagnostics"))
+
 
 # ---------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------
+
+
+def merge_kind_code(provenance: dict[str, Any]) -> int:
+    """The `merge_kind` code for one stand: the weakest merge it contains.
+
+    `provenance` is one entry of `MergeResult.stand_provenance`.
+    """
+    if provenance["n_fallback"]:
+        return MERGE_KIND_FALLBACK
+    if provenance["n_relaxed"]:
+        return MERGE_KIND_RELAXED
+    if provenance["n_pass1"]:
+        return MERGE_KIND_FIRST_PASS
+    return MERGE_KIND_SINGLE
+
+
+def summarise_merge_diagnostics(d: dict[str, Any]) -> dict[str, Any]:
+    """The merge's summary numbers from its diagnostics dict. Pure Python.
+
+    `d` is `MergeResult.diagnostics` as `fmu.utils.region_merge` builds it. Two
+    things are re-expressed rather than copied:
+
+      - `pass2_merges` counts every second-pass merge, fallback included. It is
+        split here into the merges a relaxed criterion justified and the ones
+        the shared-edge fallback made, so the three merge counts add up to
+        `superpixels_in - stands_out`.
+      - the three `orphans_*` counts are the reasons a stand stayed below
+        `merge.min_area_ha`, and add up to `stands_below_min_area`. The third,
+        `orphans_no_attribute_match`, is reported as `iteration_cap`, which is
+        what it means: the shared-edge fallback ignores attributes, so a stand
+        with a neighbour it could join is only ever left behind when the
+        second pass stops at `merge.max_pass2_iterations`.
+    """
+    return {
+        "superpixels_in": d["n_superpixels"],
+        "stands_out": d["n_stands"],
+        "merges_first_pass": d["pass1_merges"],
+        "merges_second_pass_relaxed": d["pass2_merges"] - d["pass2_fallback_merges"],
+        "merges_second_pass_shared_edge_fallback": d["pass2_fallback_merges"],
+        "stands_below_min_area": d["stands_below_min_area"],
+        "stands_below_min_area_by_cause": {
+            "isolated": d["orphans_isolated"],
+            "area_blocked": d["orphans_area_blocked"],
+            "iteration_cap": d["orphans_no_attribute_match"],
+        },
+        "area_ha_in_stands_below_min_area": d["area_in_undersized_stands_ha"],
+    }
 
 
 def _criteria_image(ctx: PipelineContext, params: Any) -> ee.Image:

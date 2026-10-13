@@ -37,6 +37,52 @@ One criterion is too weak a similarity test to justify a pass-1 merge. Pairs
 that fall short drop to pass 2, which is the right destination -- refusing to
 merge them at all does not avoid a weak merge, it just leaves them to the
 blinder shared-edge rule.
+
+Provenance -- what each stand is made of. It is recorded beside the merge and
+never read back by it: no merge decision depends on anything described here.
+
+`MergeResult.stand_provenance[stand_id]` holds one dict per final stand, under
+the same stand ids as `stand_attributes`, with the fields in
+`PROVENANCE_FIELDS`. Every name is at most 10 characters, because the exported
+`stands_merged` layer has a shapefile twin and a shapefile truncates anything
+longer without saying so:
+
+  n_superpx   int  superpixels the stand is made of (1 = it never merged)
+  n_pass1     int  merges inside it made by pass 1, tolerances as configured
+  n_relaxed   int  merges inside it made by pass 2 under the relaxed tolerances
+  n_fallback  int  merges inside it made by pass 2's shared-edge fallback,
+                   which ignores attributes
+  below_min   int  1 if the stand ended below `min_area_ha`, else 0
+  below_why   str  why, when below_min is 1; "" when it is 0. One of:
+                     "isolated"       it touches no other stand
+                     "area_blocked"   every neighbouring stand is too big to
+                                      take it under `max_area_ha`
+                     "iteration_cap"  it still had a neighbour it could have
+                                      joined when pass 2 stopped at
+                                      `max_pass2_iterations`
+
+`below_min` is 0/1 rather than a bool, and `below_why` is "" rather than None,
+on purpose: a number and a never-null string come through both export formats
+(shapefile, GeoJSON) unchanged, with no reliance on how either one writes a
+boolean or a null.
+
+What ties these to the totals in `diagnostics`:
+
+  - a stand of m superpixels contains exactly m - 1 merges, so
+    n_pass1 + n_relaxed + n_fallback == n_superpx - 1;
+  - over all stands, n_pass1 sums to `pass1_merges`, n_relaxed to
+    `pass2_merges - pass2_fallback_merges`, and n_fallback to
+    `pass2_fallback_merges`;
+  - below_min sums to `stands_below_min_area`, and each below_why value is
+    counted in the total `BELOW_WHY_TOTALS` names for it. "iteration_cap" is
+    `orphans_no_attribute_match`: the comment where that total is counted
+    explains why running out of iterations is the only way to reach it.
+
+It lives beside `stand_attributes`, not inside it. `stand_attributes[sid]`
+mixes two fixed keys with keys named after the criterion bands, and the config
+chooses those names -- so a provenance key in there could collide with a band,
+and would change what every existing reader of that dict receives (it is
+written whole into the run records, which are compared between runs).
 """
 
 from __future__ import annotations
@@ -49,6 +95,25 @@ from fmu.utils.adjacency import SuperpixelGraph
 from fmu.utils.logging import get_logger
 
 log = get_logger(__name__)
+
+# Per-stand provenance fields, in the order they are written into
+# `MergeResult.stand_provenance[stand_id]`. The module docstring says what each
+# one means. Each name is at most 10 characters: the shapefile field-name limit.
+PROVENANCE_FIELDS: tuple[str, ...] = (
+    "n_superpx",
+    "n_pass1",
+    "n_relaxed",
+    "n_fallback",
+    "below_min",
+    "below_why",
+)
+
+# `below_why` value -> the `diagnostics` total that counts the stands with it.
+BELOW_WHY_TOTALS: dict[str, str] = {
+    "isolated": "orphans_isolated",
+    "area_blocked": "orphans_area_blocked",
+    "iteration_cap": "orphans_no_attribute_match",
+}
 
 
 @dataclass
@@ -97,6 +162,11 @@ class MergeResult:
     # stand id -> {n_pixels, area_ha, <band>, frac_valid_<band>}
     stand_attributes: dict[int, dict[str, Any]] = field(default_factory=dict)
     diagnostics: dict[str, Any] = field(default_factory=dict)
+    # stand id -> {n_superpx, n_pass1, n_relaxed, n_fallback, below_min,
+    # below_why}: what each stand is made of. Same stand ids as
+    # `stand_attributes`, and one entry per stand. The fields are documented in
+    # the module docstring.
+    stand_provenance: dict[int, dict[str, Any]] = field(default_factory=dict)
 
 
 class _UnionFind:
@@ -215,6 +285,11 @@ def merge_superpixels(
             return (False, math.inf, n_defined)
         return (True, d, n_defined)
 
+    # Provenance: one (surviving root, counter name) per merge, in the order the
+    # merges happen. Appended to where a merge happens and read only after the
+    # stands are numbered; neither pass looks at it.
+    merges_made: list[tuple[int, str]] = []
+
     # ---- Pass 1: merge homogeneous neighbours, to convergence ----
     pass1_rounds = 0
     pass1_merges = 0
@@ -259,6 +334,7 @@ def merge_superpixels(
             if area(ra) + area(rb) > max_area_ha:
                 continue
             keep, gone = (ra, rb) if order_key(ra) <= order_key(rb) else (rb, ra)
+            merges_made.append((keep, "n_pass1"))  # provenance only
             regions[keep].absorb(regions[gone])
             del regions[gone]
             uf.union(keep, gone)
@@ -371,6 +447,9 @@ def merge_superpixels(
                 if regions[partner].n_pixels >= regions[r].n_pixels
                 else (r, partner)
             )
+            merges_made.append(  # provenance only
+                (keep, "n_fallback" if used_fallback else "n_relaxed")
+            )
             regions[keep].absorb(regions[gone])
             del regions[gone]
             uf.union(keep, gone)
@@ -409,6 +488,9 @@ def merge_superpixels(
     orphans_no_attribute_match = 0
     area_in_undersized_ha = 0.0
     stands_below_min_area = 0
+    # Provenance: root -> which of the three branches below counted it. Written
+    # in the same branch as its total, so the two cannot disagree.
+    why_below_min: dict[int, str] = {}
     for root in roots:
         if area(root) >= min_area_ha:
             continue
@@ -417,16 +499,19 @@ def merge_superpixels(
         nbrs = root_neighbours(root)
         if not nbrs:
             orphans_isolated += 1
+            why_below_min[root] = "isolated"
         elif not any(area(root) + area(nb) <= max_area_ha for nb in nbrs):
             # Every neighbour is already too big to absorb this one. This is the
             # signal that max_area_ha is too tight, and it is what stranded 163
             # of 388 regions in the min-3/max-4 prototype.
             orphans_area_blocked += 1
+            why_below_min[root] = "area_blocked"
         else:
             # Reachable only if pass 2 ran out of iterations: the shared-edge
             # fallback ignores attributes, so a region with a fitting neighbour
             # is never stranded for want of a match.
             orphans_no_attribute_match += 1
+            why_below_min[root] = "iteration_cap"
 
     stand_attributes: dict[int, dict[str, Any]] = {}
     stands_with_incomplete_criteria = 0
@@ -449,6 +534,26 @@ def merge_superpixels(
                 incomplete = True
         stands_with_incomplete_criteria += int(incomplete)
         stand_attributes[sid] = attrs
+
+    # ---- Per-stand provenance: a tally of what happened above ----
+    # Keys in PROVENANCE_FIELDS order. Nothing here feeds back into the merge.
+    stand_provenance: dict[int, dict[str, Any]] = {
+        root_to_stand[root]: {
+            "n_superpx": 0,
+            "n_pass1": 0,
+            "n_relaxed": 0,
+            "n_fallback": 0,
+            "below_min": int(root in why_below_min),
+            "below_why": why_below_min.get(root, ""),
+        }
+        for root in roots
+    }
+    for sid in assignment:
+        stand_provenance[sid]["n_superpx"] += 1
+    # `keep` may itself have been folded into another root later; `assignment`
+    # already follows that, so it names the stand the merge ended up inside.
+    for keep, counter in merges_made:
+        stand_provenance[assignment[keep]][counter] += 1
 
     diagnostics = {
         "n_superpixels": n,
@@ -476,6 +581,7 @@ def merge_superpixels(
         n_stands=len(roots),
         stand_attributes=stand_attributes,
         diagnostics=diagnostics,
+        stand_provenance=stand_provenance,
     )
 
 

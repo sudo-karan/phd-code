@@ -1,0 +1,137 @@
+{
+ "config": "odisha_v120_handcrafted_angul_repro",
+ "fingerprint": "d6096dce2e",
+ "upstream_cache_status": {
+  "masking": {
+   "habitat_mask": "hit",
+   "landcover_summary": "hit",
+   "mask_provenance": "miss",
+   "water_mask": "hit"
+  },
+  "data_load": {
+   "s2_composite": "hit"
+  },
+  "features_optical": {
+   "optical_features": "hit"
+  },
+  "features_radar": {
+   "radar_features": "hit"
+  },
+  "features_structure": {
+   "structure_features": "hit"
+  }
+ },
+ "cached_asset_grids": {
+  "masking/habitat_mask": {
+   "crs": "EPSG:4326",
+   "transform": [
+    8.983152841195215e-05,
+    0,
+    84.6391762382129,
+    0,
+    -8.983152841195215e-05,
+    20.830943291919173
+   ]
+  },
+  "masking/landcover_summary": {
+   "crs": "EPSG:4326",
+   "transform": [
+    8.983152841195215e-05,
+    0,
+    84.6391762382129,
+    0,
+    -8.983152841195215e-05,
+    20.830943291919173
+   ]
+  },
+  "masking/water_mask": {
+   "crs": "EPSG:4326",
+   "transform": [
+    8.983152841195215e-05,
+    0,
+    84.63917623821291,
+    0,
+    -8.983152841195215e-05,
+    20.830943291919183
+   ]
+  },
+  "data_load/s2_composite": {
+   "crs": "EPSG:4326",
+   "transform": [
+    8.983152841195215e-05,
+    0,
+    84.6391762382129,
+    0,
+    -8.983152841195215e-05,
+    20.830943291919173
+   ]
+  },
+  "features_optical/optical_features": {
+   "crs": "EPSG:4326",
+   "transform": [
+    8.983152841195215e-05,
+    0,
+    84.6391762382129,
+    0,
+    -8.983152841195215e-05,
+    20.830943291919173
+   ]
+  },
+  "features_radar/radar_features": {
+   "crs": "EPSG:4326",
+   "transform": [
+    8.983152841195215e-05,
+    0,
+    84.6391762382129,
+    0,
+    -8.983152841195215e-05,
+    20.830943291919173
+   ]
+  },
+  "features_structure/structure_features": {
+   "crs": "EPSG:4326",
+   "transform": [
+    8.983152841195215e-05,
+    0,
+    84.63919112519045,
+    0,
+    -8.983152841195215e-05,
+    20.83091837835731
+   ]
+  }
+ },
+ "inputs": {
+  "cached": {
+   "distance_scale": 1.3337282702777535
+  }
+ },
+ "comparisons": [
+  {
+   "inputs": "cached",
+   "against": "odisha_v120_handcrafted_angul_repro",
+   "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_angul_repro/segmentation/snic_clusters__d6096dce2e",
+   "pixels_compared": 47184,
+   "pixels_with_another_label": 189
+  },
+  {
+   "inputs": "cached",
+   "against": "odisha_v120_handcrafted_angul",
+   "asset": "projects/replicating-paper/assets/fmu/odisha_v120_handcrafted_angul/segmentation/snic_clusters__d6096dce2e",
+   "pixels_compared": 47184,
+   "pixels_with_another_label": 3670
+  }
+ ],
+ "between_inputs": [],
+ "superpixel_grid": {
+  "crs": "EPSG:32645",
+  "transform": [
+   10,
+   0,
+   254310,
+   0,
+   10,
+   2294980
+  ]
+ },
+ "export_tasks_submitted": 0
+}
