@@ -11,6 +11,12 @@ with three differences from the full export: stands are before the merge fix; fe
 stand means, not pixels; the satellite image comes in parts, one per part of the area. Claude
 Code's A3 export replaces this folder entirely.
 
+The box runs of A0 (configs/odisha_v120_3ha_squares_<district>.yaml) are added when their files
+exist: the stand files and run record (searched in BOX_VEC_DIRS) and the output of
+scripts/transparency_masking.py for the box config (searched in BOX_MASK_DIRS). Their plots are
+joined to the stands here, by the Phase 2 join rule (the stand that covers a plot; the lowest
+stand id where several do). A district whose box files are missing is skipped with a note.
+
 Two encoders here are meant for reuse by that export: `polyline6` (Google's encoded polyline
 format at 6 decimals, latitude first) and `superpixel_lines` (each edge between superpixels once,
 as encoded lines, so the outlines stay sharp at any zoom). The land-cover mask is written the same
@@ -38,19 +44,20 @@ REPO = _ARGS[1] if len(_ARGS) > 1 else _ROOT
 OUT = _ARGS[2] if len(_ARGS) > 2 else _ROOT / "ui_data"
 MASK = STAGED / "transparency_repro" / "_mask_data"
 VEC = STAGED / "repro_runs" / "phase2_vectors"
+BOX_VEC_DIRS = [STAGED / "squares_runs" / "phase2_vectors",
+                STAGED / "squares_runs" / "run_tree" / "odisha_script" / "phase2_vectors",
+                REPO / "odisha_script" / "phase2_vectors"]
+BOX_MASK_DIRS = [STAGED / "transparency_squares", STAGED / "transparency",
+                 STAGED / "squares_runs" / "transparency"]
+DISTRICTS = ("angul", "dhenkanal", "kendujhar", "koraput")
 
 AREAS = {
     "sanjay_van": {"title": "Sanjay Van", "site": "Sanjay Van", "roi": "rectangle",
-                   "mask_from": "sanjay_van_baseline_repro"},
-    "angul": {"title": "Angul", "site": "Odisha", "roi": "hulls",
-              "mask_from": "odisha_v120_3ha_angul_repro"},
-    "dhenkanal": {"title": "Dhenkanal", "site": "Odisha", "roi": "hulls",
-                  "mask_from": "odisha_v120_3ha_dhenkanal_repro"},
-    "kendujhar": {"title": "Kendujhar", "site": "Odisha", "roi": "hulls",
-                  "mask_from": "odisha_v120_3ha_kendujhar_repro"},
-    "koraput": {"title": "Koraput", "site": "Odisha", "roi": "hulls",
-                "mask_from": "odisha_v120_3ha_koraput_repro"},
+                   "district": None, "mask_dir": MASK / "sanjay_van_baseline_repro"},
 }
+for _d in DISTRICTS:
+    AREAS[_d] = {"title": _d.title(), "site": "Odisha", "roi": "hulls", "district": _d,
+                 "mask_dir": MASK / f"odisha_v120_3ha_{_d}_repro"}
 SANJAY_NOTE = ("Sanjay Van working area: a 1,300 ha rectangle (77.16 to 77.19 E, 28.51 to 28.55 N) "
                "around the park, not the park boundary.")
 LABEL = ("Demo set, early build: the Earth Engine re-runs of 13 Oct 2026 (commit df45350), before "
@@ -59,15 +66,47 @@ LABEL = ("Demo set, early build: the Earth Engine re-runs of 13 Oct 2026 (commit
          "The final re-run replaces it.")
 SHORT_LABEL = ("Test runs from 13 October 2026, before the merge fix. The final runs will "
                "replace them.")
+SHORT_LABEL_WITH_BOXES = ("Test runs from 13 and 14 October 2026: the village outlines before the "
+                          "merge fix, the boxes with it. The final runs will replace them.")
 
-RUNS = []
-for area in ("sanjay_van",):
-    RUNS += [("sanjay_van_baseline_repro", area, "feature_vector"),
-             ("sanjay_van_alphaearth_repro", area, "alphaearth")]
-for d in ("angul", "dhenkanal", "kendujhar", "koraput"):
-    RUNS += [(f"odisha_v120_3ha_{d}_repro", d, "feature_vector"),
-             (f"odisha_v120_handcrafted_{d}_repro", d, "feature_vector"),
-             (f"odisha_alphaearth_{d}_repro", d, "alphaearth")]
+RUNS: list[dict] = []
+for _arm_id, _arm in (("sanjay_van_baseline_repro", "feature_vector"),
+                      ("sanjay_van_alphaearth_repro", "alphaearth")):
+    RUNS.append({"run_id": _arm_id, "area": "sanjay_van", "arm": _arm, "vec": VEC})
+for _d in DISTRICTS:
+    RUNS += [{"run_id": f"odisha_v120_3ha_{_d}_repro", "area": _d, "arm": "feature_vector",
+              "vec": VEC},
+             {"run_id": f"odisha_v120_handcrafted_{_d}_repro", "area": _d,
+              "arm": "feature_vector", "vec": VEC},
+             {"run_id": f"odisha_alphaearth_{_d}_repro", "area": _d, "arm": "alphaearth",
+              "vec": VEC}]
+
+
+def first_dir_with(dirs: list[Path], names: list[str]) -> Path | None:
+    for d in dirs:
+        if all((d / n).is_file() for n in names):
+            return d
+    return None
+
+
+def add_box_runs() -> list[str]:
+    """Add each box run whose stand files and masking output exist; return notes on the rest."""
+    notes = []
+    for d in DISTRICTS:
+        run_id = f"odisha_v120_3ha_squares_{d}"
+        vec = first_dir_with(BOX_VEC_DIRS, [f"{run_id}_stands_merged.geojson",
+                                            f"{run_id}_stands_snic.geojson", f"{run_id}_run.json"])
+        mask = first_dir_with([b / run_id for b in BOX_MASK_DIRS],
+                              ["masking_transparency.json", "roi_outline.geojson"])
+        if vec is None or mask is None or not parts_of(mask, "true_colour"):
+            notes.append(f"{run_id}: skipped ({'no stand files' if vec is None else 'no masking output'})")
+            continue
+        key = f"{d}_boxes"
+        AREAS[key] = {"title": d.title(), "site": "Odisha", "roi": "boxes", "district": d,
+                      "mask_dir": mask}
+        RUNS.append({"run_id": run_id, "area": key, "arm": "feature_vector", "vec": vec,
+                     "box": True})
+    return notes
 
 JOIN_PREFIX = {"odisha_v120_3ha": ("odisha_v120_3ha", "v120_3ha"),
                "odisha_v120_handcrafted": ("odisha_v120_handcrafted", "v120"),
@@ -219,7 +258,7 @@ def merge_class_shapes(items: list[dict]) -> dict:
 def area_layers(area: str) -> dict:
     """Satellite image and land-cover layers for one area (shared by every run on it)."""
     info = AREAS[area]
-    mdir = MASK / info["mask_from"]
+    mdir = info["mask_dir"]
     tj = json.loads((mdir / "masking_transparency.json").read_text())["transparency"]
     out_dir = OUT / "areas" / area
     # One linear stretch for all three bands, percentiles 1 and 99 of the valid pixels.
@@ -289,7 +328,7 @@ def name_parts(roi: dict, area: str) -> None:
             f["properties"]["n_plots"] = 0
         return
     plots = [r for r in read_csv(REPO / "odisha_script" / "odisha_plots_clean.csv")
-             if r["district"].lower() == area]
+             if r["district"].lower() == AREAS[area]["district"]]
     for f in roi["features"]:
         poly = shape(f["geometry"])
         counts: dict[str, int] = {}
@@ -345,8 +384,19 @@ def utm_area_ha(geom) -> float:
     return projected.area / 10_000.0
 
 
-def run_stands(run_id: str, arm: str) -> tuple[dict, dict]:
-    g = json.loads((VEC / f"{run_id}_stands_merged.geojson").read_text())
+def encode_stands(fc: dict) -> dict:
+    """A stand FeatureCollection with its rings as encoded polylines (the page inflates it)."""
+    feats = []
+    for f in fc["features"]:
+        g = f["geometry"]
+        polys = [g["coordinates"]] if g["type"] == "Polygon" else g["coordinates"]
+        feats.append({"properties": f["properties"],
+                      "polygons": [[polyline6(ring) for ring in poly] for poly in polys]})
+    return {"encoding": "polyline6", "features": feats}
+
+
+def run_stands(run_id: str, arm: str, vec: Path) -> tuple[dict, dict]:
+    g = json.loads((vec / f"{run_id}_stands_merged.geojson").read_text())
     feats = g["features"]
     n_bands = len([k for k in feats[0]["properties"] if k not in ID_FIELDS])
     emb_cols = None
@@ -389,10 +439,10 @@ def run_stands(run_id: str, arm: str) -> tuple[dict, dict]:
                 "share_untyped": round(untyped / total, 4) if total else None}
 
 
-def superpixel_layer(run_id: str) -> tuple[str, float | None]:
+def superpixel_layer(run_id: str, vec: Path) -> tuple[str, float | None]:
     from shapely.geometry import shape
 
-    g = json.loads((VEC / f"{run_id}_stands_snic.geojson").read_text())
+    g = json.loads((vec / f"{run_id}_stands_snic.geojson").read_text())
     polys = [shape(f["geometry"]) for f in g["features"]]
     name = f"by_run/{run_id}/superpixels.json"
     write_json(OUT / name, superpixel_lines(polys))
@@ -400,17 +450,46 @@ def superpixel_layer(run_id: str) -> tuple[str, float | None]:
     return name, round(float(np.median(areas)), 2) if areas else None
 
 
-def plots_for(run_id: str, district: str, area_geom) -> tuple[dict, dict]:
+def join_plots_to_stands(stands_fc: dict, plot_keys: list[str]) -> dict:
+    """plot_key -> {"<col>_merged_id", "<col>_merged_cluster"} by the Phase 2 join rule: the stand
+    whose polygon covers the plot, the lowest stand id where several do."""
+    from shapely import STRtree
+    from shapely.geometry import Point, shape
+
+    geoms, ids, types = [], [], []
+    for f in stands_fc["features"]:
+        geoms.append(shape(f["geometry"]))
+        ids.append(f["properties"]["stand_id"])
+        types.append(f["properties"]["stand_type"])
+    tree = STRtree(geoms)
+    out = {}
+    for key in plot_keys:
+        lat, lon = (float(v) for v in key.split("_"))
+        pt = Point(lon, lat)
+        hits = [i for i in tree.query(pt) if geoms[i].covers(pt)]
+        if hits:
+            best = min(hits, key=lambda i: ids[i])
+            out[key] = {"box_merged_id": str(ids[best]),
+                        "box_merged_cluster": "" if types[best] is None else str(types[best])}
+    return out
+
+
+def plots_for(run_id: str, district: str, area_geom, stands_fc: dict | None = None) -> tuple[dict, dict]:
     plots = read_csv(REPO / "odisha_script" / "odisha_plots_clean.csv")
     ftype = {r["plot_key"]: r["field_type"]
              for r in read_csv(REPO / "odisha_script" / "odisha_phase3_0_field_types.csv")}
     ret = {r["plot_key"]: r["habitat"]
            for r in read_csv(REPO / "odisha_script" / "odisha_phase2_1_mask_retention.csv")}
-    arm_key = next(k for k in JOIN_PREFIX if run_id.startswith(k + "_"))
-    folder, col = JOIN_PREFIX[arm_key]
-    join = {r["plot_key"]: r for r in read_csv(
-        REPO / "docs" / "reproducibility" / "odisha_repro" / folder
-        / "phase2_plots_joined_districts.csv")}
+    if stands_fc is not None:
+        col = "box"
+        join = join_plots_to_stands(stands_fc, [p["plot_key"] for p in plots
+                                                if p["district"].lower() == district])
+    else:
+        arm_key = next(k for k in JOIN_PREFIX if run_id.startswith(k + "_"))
+        folder, col = JOIN_PREFIX[arm_key]
+        join = {r["plot_key"]: r for r in read_csv(
+            REPO / "docs" / "reproducibility" / "odisha_repro" / folder
+            / "phase2_plots_joined_districts.csv")}
     from shapely.geometry import Point
 
     feats = []
@@ -444,7 +523,7 @@ def feature_layers(run_id: str, arm: str, stands_fc: dict) -> list[dict]:
     if arm == "alphaearth":
         return [{
             "layer_id": "embedding_rgb", "title": "AlphaEarth, as colour",
-            "kind": "vector", "file": f"by_run/{run_id}/stands.geojson",
+            "kind": "vector", "file": f"by_run/{run_id}/stands.json",
             "color_by": "emb_rgb", "color_is_value": True,
             "popup_fields": ["stand_id", "area_ha"], "legend": None, "colormap": None,
             "default_on": False,
@@ -466,7 +545,7 @@ def feature_layers(run_id: str, arm: str, stands_fc: dict) -> list[dict]:
         vmin, vmax = (float(v) for v in np.percentile(vals, [2, 98]))
         layers.append({
             "layer_id": f"feature_{prop}", "title": title,
-            "kind": "vector", "file": f"by_run/{run_id}/stands.geojson",
+            "kind": "vector", "file": f"by_run/{run_id}/stands.json",
             "color_by": prop, "popup_fields": ["stand_id", prop, "area_ha"], "legend": None,
             "colormap": {"min": round(vmin, 3), "max": round(vmax, 3), "palette": pal,
                          "units": units},
@@ -479,19 +558,22 @@ def main() -> None:
     if OUT.exists():
         shutil.rmtree(OUT)
     OUT.mkdir(parents=True)
+    notes = add_box_runs()
     area_cache = {a: area_layers(a) for a in AREAS}
     runs_out = []
-    for run_id, area, arm in RUNS:
+    for spec in RUNS:
+        run_id, area, arm, vec = spec["run_id"], spec["area"], spec["arm"], spec["vec"]
+        box = spec.get("box", False)
         cfg = load_config(str(REPO / "configs" / f"{run_id}.yaml"))
         k = cfg.clustering.k
         ceiling = float(cfg.merge.max_area_ha)
-        run = json.loads((VEC / f"{run_id}_run.json").read_text())
+        run = json.loads((vec / f"{run_id}_run.json").read_text())
         md = run["merge_diagnostics"]
         ai = area_cache[area]
         odisha = AREAS[area]["site"] == "Odisha"
-        stands_fc, st = run_stands(run_id, arm)
-        write_json(OUT / "by_run" / run_id / "stands.geojson", stands_fc)
-        sp_file, median_sp = superpixel_layer(run_id)
+        stands_fc, st = run_stands(run_id, arm, vec)
+        write_json(OUT / "by_run" / run_id / "stands.json", encode_stands(stands_fc))
+        sp_file, median_sp = superpixel_layer(run_id, vec)
         seg_bands = [b.band for b in cfg.segmentation.input_bands]
         facts = dict(ai["facts"])
         facts.update({
@@ -546,7 +628,7 @@ def main() -> None:
             "step": "merge", "title": "Stands",
             "decisions": STEP_DECISIONS["merge"],
             "layers": [{"layer_id": "stands", "title": "Stands", "kind": "vector",
-                        "file": f"by_run/{run_id}/stands.geojson", "color_by": None,
+                        "file": f"by_run/{run_id}/stands.json", "color_by": None,
                         "style": "outline",
                         "popup_fields": ["stand_id", "area_ha", "canopy_height",
                                          "ndvi_amplitude_annual", "stand_type"],
@@ -554,7 +636,7 @@ def main() -> None:
             "step": "clustering", "title": "Stand types",
             "decisions": STEP_DECISIONS["clustering"],
             "layers": [{"layer_id": "stand_types", "title": "Stand types", "kind": "vector",
-                        "file": f"by_run/{run_id}/stands.geojson", "color_by": "stand_type",
+                        "file": f"by_run/{run_id}/stands.json", "color_by": "stand_type",
                         "legend": [{"value": int(t), "label": f"Type {t}",
                                     "color": TYPE_COLORS[int(t) % 8]} for t in st["types"]],
                         "popup_fields": ["stand_id", "stand_type", "area_ha"],
@@ -566,7 +648,8 @@ def main() -> None:
                         "description": "Cropland, built-up land, water, other land and pixels "
                                        "with no land-cover data, from the land-cover step."}]}]
         if odisha:
-            pfc, pn = plots_for(run_id, area, ai["geom"])
+            pfc, pn = plots_for(run_id, AREAS[area]["district"], ai["geom"],
+                                stands_fc if box else None)
             write_json(OUT / "by_run" / run_id / "plots.geojson", pfc)
             facts.update({"plots_in_district": pn["in_district"], "plots_inside": pn["inside"],
                           "plots_on_kept_pixels": pn["kept"], "plots_with_stand": pn["with_stand"]})
@@ -584,14 +667,20 @@ def main() -> None:
         runs_out.append({
             "run_id": run_id, "site": AREAS[area]["site"], "area": AREAS[area]["title"],
             "arm": arm, "stand_ceiling_ha": ceiling, "k": k, "roi": AREAS[area]["roi"],
-            "config": f"configs/{run_id}.yaml", "source_commit": "df45350",
-            "merge_rule": "before the merge fix", "bounds": ai["bbox"],
+            "config": f"configs/{run_id}.yaml",
+            "source_commit": "4795358" if box else "df45350",
+            "merge_rule": "spec-merge-pass2-skip-at-minimum" if box else "before the merge fix",
+            "fes_declared": box,
+            "bounds": ai["bbox"],
             "start_bounds": ai["start_bounds"] if odisha else ai["bbox"],
             "note": SANJAY_NOTE if area == "sanjay_van" else "", "facts": facts,
             "steps": steps})
         print("built", run_id, st["n_stands"], "stands")
-    index = {"label": LABEL, "short_label": SHORT_LABEL, "commit": "early build",
-             "fes_comparison": "fes_comparison.json", "runs": runs_out}
+    for note in notes:
+        print("note:", note)
+    has_boxes = any(spec.get("box") for spec in RUNS)
+    index = {"label": LABEL, "short_label": SHORT_LABEL_WITH_BOXES if has_boxes else SHORT_LABEL,
+             "commit": "early build", "fes_comparison": "fes_comparison.json", "runs": runs_out}
     write_json(OUT / "index.json", index)
     write_json(OUT / "fes_comparison.json", fes_rows())
 
