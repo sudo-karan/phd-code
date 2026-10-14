@@ -63,6 +63,12 @@ its neighbours' pixels. A stand with no habitat pixel of its own, which the fit 
 take a neighbour's type that way. The demo keeps the export's types, because they are what a
 run writes; each summary counts the stands this happens to (`stands_typed_by_the_export_only`).
 
+A run already made under the new rule (its config sets merge.pass2_skip_at_min_area: the box runs
+of docs/demo/demo_set_boxes.json, given with --demo-set) is not re-merged. For such a run the tool
+runs the merge once, as the config has it, checks it against the run's own record and stand layer
+in the same two ways, and writes the same files, with the run's own stand layer and the stand
+types the run saved. So a later step finds every run's files in one layout.
+
 Run from the repo root (fmu reads .env from the working directory).
 """
 
@@ -849,6 +855,181 @@ def remerge_run(run: dict[str, Any], out_dir: Path, summary_dir: Path, argv: lis
     return summary
 
 
+def as_run(run: dict[str, Any], out_dir: Path, summary_dir: Path, argv: list[str]) -> dict[str, Any]:
+    """A run already made under the new rule: check its merge and lay its files out, re-merging nothing."""
+    import ee
+    from transparency_masking import roi_parts
+
+    import fmu.stages.merge as merge_module
+    from fmu.config import load_config
+    from fmu.stages.base import PipelineContext
+    from fmu.stages.merge import MergeStage
+    from fmu.utils.gee import load_roi_geometry, safe_get_info
+    from fmu.utils.provenance import git_state
+
+    run_id = run["run_id"]
+    work = out_dir / "remerge" / run_id
+    work.mkdir(parents=True, exist_ok=True)
+    cfg = load_config(REPO / run["config"])
+    if not getattr(cfg.merge, SETTING):
+        raise SystemExit(f"{run_id}: its config has the old rule; this path is for runs made under the new one")
+    scale = cfg.export.analysis_scale_m
+    assets = {a["key"]: a["asset"] for a in run["assets"]}
+
+    # ---- the merge, as the config has it, with its inputs and its table captured
+    captured: dict[str, Any] = {}
+    real_merge = merge_module.merge_superpixels
+
+    def spy(graph: Any, means: Any, valid_counts: Any, **kwargs: Any) -> Any:
+        result = real_merge(graph, means, valid_counts, **kwargs)
+        captured.update(graph=graph, means=means, valid_counts=valid_counts, settings=kwargs, result=result)
+        return result
+
+    ctx = PipelineContext()
+    ctx.set("roi", load_roi_geometry(cfg.roi.roi_file))
+    for key, path in assets.items():
+        if key not in CLUSTERING_KEYS:
+            ctx.set(key, ee.Image(path))
+    merge_module.merge_superpixels = spy
+    try:
+        stage = MergeStage()
+        stage.validate(ctx, cfg)
+        progress(f"{run_id}: merge, as the run's config has it")
+        res = stage.run(ctx, cfg)
+    finally:
+        merge_module.merge_superpixels = real_merge
+    assert captured["settings"][SETTING] is True
+    for key, value in res.outputs.items():
+        ctx.set(key, value)
+    graph = captured["graph"]
+    merged = {
+        "merge_diagnostics": ctx.get("merge_diagnostics"),
+        "stand_attributes": {str(k): v for k, v in ctx.get("stand_attributes").items()},
+        "stand_provenance": {str(k): v for k, v in ctx.get("stand_provenance").items()},
+        "assignment": captured["result"].assignment,
+        SETTING: True,
+    }
+    (work / "merge_new.json").write_text(json.dumps(merged, indent=1) + "\n")
+    (work / "merge_inputs.json").write_text(json.dumps({
+        "raw_labels": graph.raw_labels, "n_pixels": graph.n_pixels,
+        "edges": [[i, j, c] for (i, j), c in sorted(graph.edges.items())], "scale_m": graph.scale_m,
+        "means": {str(k): v for k, v in captured["means"].items()},
+        "valid_counts": {str(k): v for k, v in captured["valid_counts"].items()},
+        "settings": {k: v for k, v in captured["settings"].items() if k not in ("centroids", SETTING)},
+        "centroids": {str(k): list(v) for k, v in (captured["settings"].get("centroids") or {}).items()},
+    }) + "\n")
+
+    # ---- the superpixel raster per part, and the stand raster from it
+    snic = ee.Image(assets["snic_clusters"]).select(0)
+    proj = safe_get_info(snic.projection(), context="superpixel grid")
+    crs = proj["crs"]
+    image = (snic.unmask(0, False).rename("snic")
+             .addBands(snic.mask().gt(0).unmask(0, False).rename("valid")).toInt32())
+    parts = roi_parts(json.loads((REPO / cfg.roi.roi_file).read_text()), name_key="habitations")
+    part_data = []
+    for part in parts:
+        path = work / f"snic_part{part.index + 1:02d}.tif"
+        progress(f"{run_id}: superpixel raster, part {part.index + 1} of {len(parts)} ({part.name})")
+        w, s_, e, n = part.geometry.bounds
+        pad = 3 * scale / 111_320.0
+        download(image, (w - pad, s_ - pad, e + pad, n + pad), crs, scale, path)
+        raster = tools.read_raster(path)
+        labels, valid_band = raster.array[0], raster.array[1]
+        valid = (valid_band == 1) & centre_inside(part.geometry, crs, raster.transform, labels.shape)
+        stands, unseen = stand_raster(labels, valid, graph.raw_labels, merged["assignment"])
+        _write_raster(work / f"stands_new_part{part.index + 1:02d}.tif", stands, raster, stands != NODATA)
+        part_data.append({"part": part, "raster": raster, "stands": stands, "unseen": unseen})
+
+    # ---- against what the run itself wrote (or what was read back for it)
+    local = run["local"]
+    records = compare_records(merged, json.loads((REPO / local["run_record"]).read_text()))
+    layer = json.loads((REPO / local["stands_merged"]).read_text())["features"]
+    reports, uncovered = [], 0
+    for p_ in part_data:
+        mine = p_["stands"]
+        had = mine != NODATA
+        theirs = rasterise_exported(layer, crs, p_["raster"].transform, mine.shape)
+        uncovered += int(np.count_nonzero(had & (theirs == NODATA)))
+        reports.append(tools.partition_report(mine, theirs, had & (theirs != NODATA)))
+    pixels = {
+        "pixels_compared": sum(r["n_pixels"] for r in reports),
+        "pixels_in_another_stand": sum(r["pixels_not_in_matching_sets"] for r in reports),
+        "same_stand_ids_everywhere": all(r["identical_labels"] for r in reports),
+        "same_partition": all(r["same_partition"] for r in reports),
+        "pixels_with_no_exported_polygon": uncovered,
+    }
+    reproduces = bool(records["equal"] and pixels["same_partition"] and pixels["pixels_in_another_stand"] == 0)
+
+    # ---- the run's own stand layer and the types it saved
+    types = exported_types(layer)
+    stand_ids = [int(sid) for sid in merged["stand_attributes"]]
+    saved_meta = json.loads(safe_get_info(ee.Image(assets["cluster_labels"]).get("clustering_metadata"),
+                                          context="the saved fit's metadata"))
+    (work / "clustering_new.json").write_text(json.dumps({
+        "metadata": saved_meta, "bands": saved_meta.get("active_bands"),
+        "stand_type": {str(k): types.get(k) for k in sorted(stand_ids)},
+        "types_from": "the run's own stand layer: the fit the run saved, attached by the export stage",
+    }) + "\n")
+    vec = out_dir / "vectors_new" / f"{run_id}_stands_merged.geojson"
+    vec.parent.mkdir(parents=True, exist_ok=True)
+    vec.write_text(json.dumps({"type": "FeatureCollection", "features": layer}))
+
+    plots_summary = None
+    if run["site"] == "Odisha":
+        from odisha_phase2_0_aois import load_plot_points
+
+        pts = load_plot_points()
+        pts = pts[pts.district.str.lower() == run["district"].lower()]
+        rows_out = []
+        for _, pt in pts.iterrows():
+            row = {"plot_key": pt.plot_key, "stand_old": None, "stand_new": None, "changed": None,
+                   "type_old": None, "type_new": None}
+            for p_ in part_data:
+                got = tools.sample_at_lonlat(p_["stands"], p_["raster"].transform, crs, [pt.lon6], [pt.lat6],
+                                             valid=p_["stands"] != NODATA)[0]
+                if got is not None:
+                    row["stand_new"] = int(got)
+                    row["type_new"] = types.get(int(got))
+            rows_out.append(row)
+        with (work / "plots.csv").open("w", newline="") as fh:
+            writer = csv.DictWriter(fh, fieldnames=["plot_key", "stand_old", "stand_new", "changed", "type_old", "type_new"])
+            writer.writeheader()
+            writer.writerows(rows_out)
+        inside = [r for r in rows_out if r["stand_new"] is not None]
+        plots_summary = {"in_the_district": len(rows_out), "in_a_stand": len(inside),
+                         "with_a_type": {"new": sum(r["type_new"] is not None for r in inside)}}
+
+    summary = {
+        "run_id": run_id, "site": run["site"], "area": run["area"], "arm": run["arm"], "roi": run.get("roi"),
+        "stand_ceiling_ha": run["stand_ceiling_ha"], "k": run["k"],
+        "as_run": "made under the new rule; nothing was re-merged",
+        "merge_rule": {"new": "merge.pass2_skip_at_min_area true (spec-merge-pass2-skip-at-minimum), as the run's config sets it"},
+        "superpixels_in_merge": merged["merge_diagnostics"]["n_superpixels"],
+        "pixels": {"in_the_merge": int(sum(graph.n_pixels)),
+                   "on_the_downloaded_grid": sum(int(np.count_nonzero(p_["stands"] != NODATA)) for p_ in part_data),
+                   "of_superpixels_the_merge_did_not_see": sum(p_["unseen"] for p_ in part_data)},
+        "run_check": {"reproduces": reproduces, "record": records, "pixels": pixels,
+                      "stand_layer": local["stands_merged"], "run_record": local["run_record"],
+                      "read_back": run.get("read_back")},
+        "stands": {"new": merged["merge_diagnostics"]["n_stands"]},
+        "merge_totals": {"new": {k: merged["merge_diagnostics"][k] for k in PINNED_DIAGNOSTICS}},
+        "stands_with_a_type": {"new": sum(types.get(s_) is not None for s_ in stand_ids)},
+        "clustering": {"new": {key: saved_meta.get(key) for key in SAVED_FIT_KEYS}},
+        "plots": plots_summary,
+        "export_tasks_submitted": 0,
+    }
+    summary_dir.mkdir(parents=True, exist_ok=True)
+    (summary_dir / f"{run_id}.json").write_text(json.dumps(summary, indent=1) + "\n")
+    (work / "run_record.json").write_text(json.dumps({
+        "run_id": run_id, "command_line": "python " + " ".join(shlex.quote(a) for a in argv),
+        "date": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
+        "git": {k: v for k, v in git_state().items() if k != "root"},
+        "assets_opened": sorted(v for k, v in assets.items() if k not in CLUSTERING_KEYS) + [assets["cluster_labels"]],
+        "export_tasks_submitted": 0,
+    }, indent=1) + "\n")
+    return summary
+
+
 def read_saved_fit(cluster_labels_asset: str) -> dict[str, Any]:
     """What a run's saved fit says about itself: one property read of its `cluster_labels` asset."""
     import ee
@@ -900,6 +1081,8 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--run", nargs="+", default=[], help="run ids from docs/demo/demo_set.json")
     ap.add_argument("--all", action="store_true", help="every run of the demo set")
+    ap.add_argument("--demo-set", type=Path, default=DEMO_SET,
+                    help="the record the runs are read from (docs/demo/demo_set_boxes.json for the box runs)")
     ap.add_argument("--out-dir", type=Path, default=REPO / "outputs" / "demo")
     ap.add_argument("--summary-dir", type=Path, default=REPO / "docs" / "demo" / "remerge")
     ap.add_argument("--recheck", action="store_true",
@@ -919,7 +1102,7 @@ def main() -> None:
             print(types_table(summaries, json.loads(CLUSTERING_ROUTE.read_text())))
         return
 
-    demo = json.loads(DEMO_SET.read_text())
+    demo = json.loads(args.demo_set.read_text())
     runs = {r["run_id"]: r for r in demo["runs"]}
     if args.recheck:
         for path in sorted(args.summary_dir.glob("*_repro.json")):
@@ -960,13 +1143,27 @@ def main() -> None:
     ee.data.setDeadline(7 * 60 * 1000)
     ee_read_only.forbid_writes()
     failed = []
+    from fmu.config import load_config
+
     for run_id in wanted:
         started = time.time()
+        made_under_the_new_rule = getattr(load_config(REPO / runs[run_id]["config"]).merge, SETTING)
         try:
-            s = remerge_run(runs[run_id], args.out_dir, args.summary_dir, sys.argv)
+            if made_under_the_new_rule:
+                s = as_run(runs[run_id], args.out_dir, args.summary_dir, sys.argv)
+            else:
+                s = remerge_run(runs[run_id], args.out_dir, args.summary_dir, sys.argv)
         except Exception as exc:  # noqa: BLE001 - one run failing must not stop the rest
             failed.append(run_id)
             print(f"{run_id}: FAILED: {' '.join(str(exc).split())[:400]}", flush=True)
+            continue
+        if made_under_the_new_rule:
+            check = s["run_check"]
+            print(f"{run_id}: made under the new rule, not re-merged; the merge gives the run's stands: {check['reproduces']} "
+                  f"(record equal {check['record']['equal']}, pixels in another stand "
+                  f"{check['pixels']['pixels_in_another_stand']} of {check['pixels']['pixels_compared']}); "
+                  f"{s['stands']['new']} stands, {s['stands_with_a_type']['new']} with a type", flush=True)
+            progress(f"{run_id}: {time.time() - started:.0f} s")
             continue
         ch, check = s["change"], s["old_rule_check"]
         print(
