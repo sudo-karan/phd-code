@@ -4,8 +4,11 @@ Each copies an existing config and differs from it only in the keys Jaskaran nam
 the name and description, the Drive folder, and the three settings of D1 to D3
 (segmentation.mask_before_snic, merge.pass2_soft_ceiling,
 clustering.fit_excludes_stands_below_min_area). Sanjay Van keeps its 10 ha settings and Odisha its
-four 3 ha box configs (D4). The fingerprints are pinned, because the reuse of upstream assets and
-the batch run both name assets by them.
+four 3 ha box configs (D4). On 15 Oct 2026 (round 4, his answers to questions 6 and 7 of
+docs/handoff/2026-10-14-round3.md) he added two for Sanjay Van: merge.pass2_skip_at_min_area true
+in both, as the box configs already have it, and, for the AlphaEarth arm,
+metrics.reference_config_name sanjay_van_baseline_keptland. The fingerprints are pinned, because
+the reuse of upstream assets and the batch run both name assets by them.
 """
 
 from __future__ import annotations
@@ -35,17 +38,29 @@ ALLOWED = {
     ("description",),
     ("segmentation", "mask_before_snic"),
     ("merge", "pass2_soft_ceiling"),
+    ("merge", "pass2_skip_at_min_area"),
     ("clustering", "fit_excludes_stands_below_min_area"),
     ("export", "drive_folder"),
+    ("metrics", "reference_config_name"),
 }
-# new config -> its cache fingerprint (pinned after D2 and D3 were committed)
+# What each config changes: all of ALLOWED but the two keys of round 4 (questions 6 and 7), which
+# only the Sanjay Van configs change (the box configs already skip at the minimum).
+_ROUND3 = ALLOWED - {("merge", "pass2_skip_at_min_area"), ("metrics", "reference_config_name")}
+CHANGED = {
+    "sanjay_van_baseline_keptland": _ROUND3 | {("merge", "pass2_skip_at_min_area")},
+    "sanjay_van_alphaearth_keptland": ALLOWED,
+    **{f"odisha_v120_3ha_squares_{d}_keptland": _ROUND3
+       for d in ("angul", "dhenkanal", "kendujhar", "koraput")},
+}
+# new config -> its cache fingerprint (pinned after D2 and D3 were committed; the two Sanjay Van
+# ones again after merge.pass2_skip_at_min_area was set, round 4)
 PINNED: dict[str, str] = {
     "odisha_v120_3ha_squares_angul_keptland": "9ae5f6a1ac",
     "odisha_v120_3ha_squares_dhenkanal_keptland": "ed02415c51",
     "odisha_v120_3ha_squares_kendujhar_keptland": "05257abfb4",
     "odisha_v120_3ha_squares_koraput_keptland": "0341971814",
-    "sanjay_van_alphaearth_keptland": "10f7f6ab55",
-    "sanjay_van_baseline_keptland": "c953e7073a",
+    "sanjay_van_alphaearth_keptland": "bc34e9b8d5",
+    "sanjay_van_baseline_keptland": "883920a4d9",
 }
 
 
@@ -73,11 +88,15 @@ def test_a_keptland_config_changes_only_the_named_keys(name: str):
     a, b = _flat(_yaml(SOURCES[name])), _flat(_yaml(name))
     changed = {k for k in a.keys() | b.keys() if a.get(k) != b.get(k)}
     assert changed <= ALLOWED, sorted(changed - ALLOWED)
+    assert changed == CHANGED[name], sorted(changed ^ CHANGED[name])
     assert b[("name",)] == name
     assert b[("segmentation", "mask_before_snic")] is True
     assert b[("merge", "pass2_soft_ceiling")] is True
+    assert b[("merge", "pass2_skip_at_min_area")] is True
     assert b[("clustering", "fit_excludes_stands_below_min_area")] is True
     assert b[("export", "drive_folder")] == "fmu_exports_kept_land"
+    if name == "sanjay_van_alphaearth_keptland":
+        assert b[("metrics", "reference_config_name")] == "sanjay_van_baseline_keptland"
 
 
 @pytest.mark.parametrize("name", sorted(SOURCES))
@@ -97,8 +116,9 @@ def test_a_keptland_config_loads_with_the_settings_of_d1_to_d4(name: str):
     assert new.merge.max_area_ha == old.merge.max_area_ha == ceiling
     assert new.merge.min_area_ha == old.merge.min_area_ha == 1.0
     assert new.clustering.k == old.clustering.k
-    assert new.merge.pass2_skip_at_min_area == old.merge.pass2_skip_at_min_area
-    assert new.merge.pass2_skip_at_min_area is (not name.startswith("sanjay_van"))
+    # Round 4, question 6: all six skip at the minimum; of the sources, only the box configs do.
+    assert new.merge.pass2_skip_at_min_area is True
+    assert old.merge.pass2_skip_at_min_area is (not name.startswith("sanjay_van"))
     assert new.roi == old.roi
     # The soft ceiling widens the component cap to max + min (plus 20%), as D2 says.
     assert new.max_component_pixels() == math.ceil(math.ceil((ceiling + 1.0) * 10_000 / 100) * 1.2)
@@ -118,6 +138,16 @@ def test_the_fingerprint_is_the_pinned_one(name: str):
     """The reuse plan and the batch name assets by these. If one moves, the plan in
     docs/handoff/2026-10-14-round3.md is out of date: rerun its dry run before anything else."""
     assert config_fingerprint(load_config(REPO / "configs" / f"{name}.yaml")) == PINNED[name]
+
+
+def test_the_metrics_reference_is_not_in_the_fingerprint():
+    """Question 7 of round 3 was answered on the ground that the metrics block is not in the cache
+    fingerprint: pointing the AlphaEarth arm at another reference moves no asset."""
+    config = load_config(REPO / "configs" / "sanjay_van_alphaearth_keptland.yaml")
+    other = config.model_copy(deep=True)
+    other.metrics.reference_config_name = "sanjay_van_baseline"
+    assert config.metrics.reference_config_name == "sanjay_van_baseline_keptland"
+    assert config_fingerprint(other) == config_fingerprint(config)
 
 
 @pytest.mark.parametrize("name", ["sanjay_van_baseline", "sanjay_van_alphaearth"])

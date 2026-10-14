@@ -82,11 +82,19 @@ def test_the_sanjay_van_runs_never_cached_mask_provenance(plans):
 
 
 def test_the_configs_differ_from_their_sources_only_in_safe_keys(plans):
-    for plan in plans.values():
-        assert set(plan.differences) == {
-            "name", "description", "export.drive_folder", "segmentation.mask_before_snic",
-            "merge.pass2_soft_ceiling", "clustering.fit_excludes_stands_below_min_area",
-        }
+    round3 = {
+        "name", "description", "export.drive_folder", "segmentation.mask_before_snic",
+        "merge.pass2_soft_ceiling", "clustering.fit_excludes_stands_below_min_area",
+    }
+    # Round 4 (questions 6 and 7): the Sanjay Van configs also skip at the minimum, as the box
+    # configs already do, and the AlphaEarth arm compares with the baseline on kept land.
+    sanjay_van = round3 | {"merge.pass2_skip_at_min_area"}
+    expect = {
+        "sanjay_van_baseline_keptland": sanjay_van,
+        "sanjay_van_alphaearth_keptland": sanjay_van | {"metrics.reference_config_name"},
+    }
+    for name, plan in plans.items():
+        assert set(plan.differences) == expect.get(name, round3), name
 
 
 def _upstream_modules() -> list[Path]:

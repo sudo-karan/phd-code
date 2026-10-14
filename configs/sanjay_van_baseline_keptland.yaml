@@ -1,22 +1,25 @@
 # KEPT LAND ONLY. SANJAY VAN, hand-crafted feature vector, 10 ha stand ceiling (the existing
 # settings).
 #
-# Copy of configs/sanjay_van_baseline.yaml. FIVE things differ (tests/test_keptland_configs.py);
-# everything else is identical, which keeps Sanjay Van at 10 ha and merge.pass2_skip_at_min_area at
-# its default, false (D4):
+# Copy of configs/sanjay_van_baseline.yaml. SIX things differ (tests/test_keptland_configs.py);
+# everything else is identical, which keeps Sanjay Van at 10 ha (D4):
 #
 # 1. name and description.
 # 2. segmentation.mask_before_snic: true. SNIC sees kept land only (habitat_mask 1: trees or scrub),
 #    so superpixels and stands lie on kept land only. Small kept patches are not dropped:
 #    segmentation.drop_kept_patches_below_min_area stays false, its default. (D1)
 # 3. merge.pass2_soft_ceiling: true, in a merge block of its own: the source has none, so every
-#    other merge setting is the default (stands of 1 to 10 ha). In the second pass a region below
-#    merge.min_area_ha may join a neighbour that takes it over merge.max_area_ha, never over
-#    max_area_ha + min_area_ha (11 ha here). (D2)
+#    other merge setting but item 6 is the default (stands of 1 to 10 ha). In the second pass a
+#    region below merge.min_area_ha may join a neighbour that takes it over merge.max_area_ha,
+#    never over max_area_ha + min_area_ha (11 ha here). (D2)
 # 4. clustering.fit_excludes_stands_below_min_area: true. Stands still below the minimum after the
 #    merge stay on the map, typed by the nearest cluster, but are left out of the k-means training
 #    rows. (D3)
 # 5. export.drive_folder: fmu_exports_kept_land.
+# 6. merge.pass2_skip_at_min_area: true, as the Odisha box configs have it and as the Sanjay Van
+#    demo stands were re-merged (spec-merge-pass2-skip-at-minimum): in the second pass a region
+#    already at merge.min_area_ha is left as it is. The source keeps the default, false. (Jaskaran,
+#    15 Oct 2026, round 4, answer to question 6 of docs/handoff/2026-10-14-round3.md.)
 #
 # D1 to D4 are Jaskaran's decisions of 14 Oct 2026, recorded in docs/decisions.yaml
 # (spec-keptland-configs-mask-before-snic, spec-merge-pass2-soft-ceiling,
@@ -147,9 +150,10 @@ segmentation:
   normalize_distance_scale: true
   mask_before_snic: true
 
-# New here: the source has no merge block (see the header, item 3).
+# New here: the source has no merge block (see the header, items 3 and 6).
 merge:
   pass2_soft_ceiling: true
+  pass2_skip_at_min_area: true
 
 clustering:
   k: 6

@@ -5093,8 +5093,9 @@ decisions:
     false: a patch of kept land smaller than merge.min_area_ha that touches no other kept land is not left out before
     SNIC, and becomes a stand of its own. This answers question 6 of PR #43 with option (b). Each config copies an
     existing one and differs from it only in its name and description, its Drive folder (fmu_exports_kept_land) and
-    the three settings of D1 to D3 (tests/test_keptland_configs.py); which configs they copy is
-    spec-keptland-runs-sites-and-ceilings. The read-only check of task A6 ran first, on Kendujhar's box run with small
+    the three settings of D1 to D3, and, for the two Sanjay Van configs, merge.pass2_skip_at_min_area and, for the
+    AlphaEarth arm, metrics.reference_config_name (round 4; tests/test_keptland_configs.py); which configs they copy
+    is spec-keptland-runs-sites-and-ceilings. The read-only check of task A6 ran first, on Kendujhar's box run with small
     patches kept (docs/reproducibility/snic_on_kept_land_kendujhar.json). One of its lines is not as expected: 3
     superpixels are each in more than one piece. A read-only follow-up found the ROI edge cutting all three
     (docs/reproducibility/snic_split_superpixels_kendujhar.json): SNIC grows them through a strip of kept land one
@@ -5147,8 +5148,12 @@ decisions:
     Round 3 has six kept-land configs. For Sanjay Van, the hand-crafted baseline and the AlphaEarth arm, each with its
     existing settings, so at a 10 ha stand ceiling: they copy configs/sanjay_van_baseline.yaml and
     configs/sanjay_van_alphaearth.yaml, which have no merge block, so the merge keeps its defaults (stands of 1 to 10
-    ha, merge.pass2_skip_at_min_area false). For Odisha, the four 3 ha box configs of task A0
-    (configs/odisha_v120_3ha_squares_<district>.yaml), with their merge rule (pass2_skip_at_min_area true). There is no
+    ha) but for merge.pass2_skip_at_min_area, which both set to true (the default and the sources' setting is false).
+    For Odisha, the four 3 ha box configs of task A0 (configs/odisha_v120_3ha_squares_<district>.yaml), with their
+    merge rule (pass2_skip_at_min_area true), so all six skip at the minimum in the merge's second pass
+    (spec-merge-pass2-skip-at-minimum). The AlphaEarth arm's metrics.reference_config_name is
+    sanjay_van_baseline_keptland, the baseline on kept land, in place of its source's sanjay_van_baseline; the metrics
+    block is not in the cache fingerprint, so this moves no asset. There is no
     kept-land config for Sanjay Van at 3 ha, for the Odisha hull areas, for the Odisha 10 ha arm or for AlphaEarth in
     Odisha. Upstream of segmentation nothing the configs change is read, so their masking, data-load and feature
     assets can be copies of those of the runs they copy; for Sanjay Van that is the _repro run of the same content
@@ -5162,22 +5167,43 @@ decisions:
     docs/handoff/2026-10-13-round2.md): not chosen; Sanjay Van stays at 10 ha
   - >-
     Kept-land copies of the Odisha hull configs, of the Odisha 10 ha arm or of the Odisha AlphaEarth arm: not made
+  - >-
+    Keep the Sanjay Van configs at the earlier pass-2 rule (pass2_skip_at_min_area false, their sources' setting):
+    built so in round 3, as the brief named the only keys to change, and not kept (Jaskaran, 15 Oct 2026). The Sanjay
+    Van stands would then differ from the demo stands, which were re-merged with the rule true, in this rule as well,
+    and the Odisha ones would not
+  - >-
+    Leave the AlphaEarth arm's metrics reference at sanjay_van_baseline: not kept (Jaskaran, 15 Oct 2026). That run has
+    no assets at today's fingerprint, so a metrics run of the arm would fail; the batch itself does not run metrics
   rationale: >-
     Jaskaran's decision D4 of 14 Oct 2026: "Sanjay Van stays at 10 ha (its existing settings). Odisha: the four 3 ha
-    box configs." Because the brief names the only keys that change, the two Sanjay Van configs keep the earlier
-    pass-2 rule (pass2_skip_at_min_area false) where the box configs keep the rule of spec-merge-pass2-skip-at-minimum;
-    the handover file records this. No paper was searched for this decision.
+    box configs." Because the brief named the only keys that change, the two Sanjay Van configs first kept the earlier
+    pass-2 rule (pass2_skip_at_min_area false) where the box configs keep the rule of spec-merge-pass2-skip-at-minimum.
+    Jaskaran's answers of 15 Oct 2026 to questions 6 and 7 of docs/handoff/2026-10-14-round3.md: "(b): set
+    merge.pass2_skip_at_min_area: true in both Sanjay Van kept-land configs", and (b) for the reference, point it at
+    sanjay_van_baseline_keptland. The register entry spec-merge-pass2-skip-at-minimum keeps false for reproducing
+    earlier runs and says configs of the final round set the rule explicitly. No paper was searched for this
+    decision.
   evidence:
   - path: configs/sanjay_van_baseline_keptland.yaml
-    what: Copies configs/sanjay_van_baseline.yaml; no merge settings but pass2_soft_ceiling, so stands of 1 to 10 ha
+    what: >-
+      Copies configs/sanjay_van_baseline.yaml; no merge settings but pass2_soft_ceiling and pass2_skip_at_min_area,
+      so stands of 1 to 10 ha
   - path: configs/sanjay_van_alphaearth_keptland.yaml
-    what: Copies configs/sanjay_van_alphaearth.yaml, the same way
+    what: >-
+      Copies configs/sanjay_van_alphaearth.yaml, the same way, with metrics.reference_config_name
+      sanjay_van_baseline_keptland
   - path: configs/odisha_v120_3ha_squares_koraput_keptland.yaml
     what: Copies configs/odisha_v120_3ha_squares_koraput.yaml (3 ha, boxes); the other three districts the same way
   - path: tests/test_keptland_configs.py
     what: >-
-      The six configs and their sources; max_area_ha 10 for Sanjay Van and 3 for Odisha, k and
-      pass2_skip_at_min_area as in the source; the fingerprints
+      The six configs and their sources, and exactly which keys each changes; max_area_ha 10 for Sanjay Van and 3
+      for Odisha, k as in the source, pass2_skip_at_min_area true in all six; the metrics reference outside the
+      fingerprint; the fingerprints
+  - path: scripts/reuse_upstream_assets.py
+    what: >-
+      REUSE_SAFE_KEYS holds merge.pass2_skip_at_min_area and metrics.reference_config_name, which no stage before
+      segmentation reads (tests/test_reuse_upstream_assets.py)
   - path: docs/demo/demo_set.json
     what: The _repro runs whose upstream assets the Sanjay Van configs reuse
   - path: docs/demo/demo_set_boxes.json
@@ -5187,4 +5213,6 @@ decisions:
   papers: []
   status: adopted
   design_notes_section: null
-  source: Jaskaran, 14 Oct 2026, with Claude (chat)
+  source: >-
+    Jaskaran, 14 Oct 2026, with Claude (chat); his answers to questions 6 and 7 of docs/handoff/2026-10-14-round3.md,
+    15 Oct 2026 (round 4)

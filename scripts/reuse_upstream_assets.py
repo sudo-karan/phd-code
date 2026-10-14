@@ -87,7 +87,9 @@ REUSE_SAFE_KEYS: frozenset[tuple[str, str]] = frozenset({
     ("segmentation", "mask_before_snic"),
     ("segmentation", "drop_kept_patches_below_min_area"),
     ("merge", "pass2_soft_ceiling"),
+    ("merge", "pass2_skip_at_min_area"),
     ("clustering", "fit_excludes_stands_below_min_area"),
+    ("metrics", "reference_config_name"),
 })
 
 # The only stages whose assets are copied. Segmentation and everything after it never are.
