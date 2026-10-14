@@ -4722,8 +4722,13 @@ decisions:
     it, and the clip of its output removed the strip that joined the two parts. The clip of kept land to the ROI
     is the fix (Jaskaran, 15 Oct 2026). It applies with the setting on only and adds no setting: no segmentation
     asset with the setting on existed, so no cached asset describes the path without the clip. With the clip, the
-    masked path has not run on Earth Engine yet: the two checks run again on the fixed code before any batch run. For the field comparison the setting changes two things, declared separately before any run
-    with it on: a plot on land the mask removes is in no stand (14 of the 267 Odisha plots inside the boxes), and
+    two checks ran again read-only on 15 Oct 2026, for the segmentation of odisha_v120_3ha_squares_kendujhar_keptland
+    and of sanjay_van_baseline_keptland, every line as expected: no superpixel in more than one piece (2,744 and
+    1,200 superpixels), none of SNIC's labels outside the ROI (where SNIC on the unmasked stack labels 1,762 and
+    1,686 pixels), every kept pixel labelled, and the largest superpixel 153 and 389 px against the merge's
+    component caps of 480 and 1,320 px (docs/reproducibility/snic_on_kept_land_*_keptland.json,
+    snic_split_superpixels_*_keptland.json). For the field comparison the setting changes two things, declared
+    separately before any run with it on: a plot on land the mask removes is in no stand (14 of the 267 Odisha plots inside the boxes), and
     the rotation null as coded requires every plot that has a stand to land on a stand after the move, which
     stands on kept land only make far rarer.
   alternatives_considered:
@@ -4817,6 +4822,11 @@ decisions:
     what: >-
       The read-only follow-up of 14 Oct 2026 (scripts/check_split_superpixels.py): the three superpixels in two
       pieces, and the ROI edge cutting each
+  - path: docs/reproducibility/snic_on_kept_land_kendujhar_keptland.json
+    what: >-
+      The two checks on the fixed code, 15 Oct 2026, read-only, for Kendujhar's kept-land config; with
+      snic_split_superpixels_kendujhar_keptland.json and the two *_sanjay_van_baseline_keptland.json files for
+      Sanjay Van's
   - path: tests/test_check_snic_on_kept_land.py
     what: What the check script says, and that its requests are valid
   - path: tests/test_repro_fingerprints.py
@@ -4989,8 +4999,12 @@ decisions:
     for three shipped configs); its stage metadata gains the key fit_excludes_stands_below_min_area.
     config_fingerprint leaves the key out of the hashed clustering block while it is false, so no existing
     fingerprint moves, the 14 _repro configs among them, and a config that sets it to true gets a new one. The path
-    with the setting on has not run on Earth Engine yet; its requests are checked offline against the algorithm
-    signatures earthengine-api ships (tests/test_clustering_fit_excludes_ee_graph.py).
+    with the setting on has not run in batch. Its requests are checked offline against the algorithm signatures
+    earthengine-api ships (tests/test_clustering_fit_excludes_ee_graph.py), and it ran read-only on Earth Engine on
+    15 Oct 2026, the clustering stage in memory on Kendujhar's cached box run with the merge live
+    (scripts/check_fit_excludes_stands.py, docs/reproducibility/fit_excludes_stands_kendujhar.json): of 580 rows the
+    fit took 540 and left out the 40 of the stands below the minimum with a row (44 below it), none of them in the
+    fit; each of the 40 got one type; the six summary numbers add up; none of the path's warnings fired.
   alternatives_considered:
   - >-
     Off, the default: every stand a row of its own in the fit, however small (spec-kmeans-one-row-per-unit). Kept as
@@ -5024,7 +5038,7 @@ decisions:
     takes all of them, as its name says. Masks on the label image are used rather than a filter of the sampled rows
     by label, because whether Earth Engine matches a list of integers against the sampled numeric label property is
     not established, and a silent mismatch would leave every such stand in the fit. No paper was searched for this
-    rule. Not run on Earth Engine yet. Jaskaran's answers of 15 Oct 2026 to the three points put to him
+    rule. Not run in batch; checked read-only on Earth Engine (15 Oct 2026, above). Jaskaran's answers of 15 Oct 2026 to the three points put to him
     (docs/handoff/2026-10-14-round3.md, section 5, questions 2 to 4): every stand below the minimum, not only the
     isolated ones (question 2, (a)); the stands left out leave the k-means rows only and still take part in the
     skewness test, the log offsets and the scaling, as built, to be looked at again in the review of the method
@@ -5062,6 +5076,10 @@ decisions:
       metadata recording the setting on without the count left out is a gap, not a zero
   - path: tests/test_clustering_fit_excludes_ee_graph.py
     what: The path with the setting on built with the real Earth Engine client, offline
+  - path: docs/reproducibility/fit_excludes_stands_kendujhar.json
+    what: >-
+      The read-only check of 15 Oct 2026 (scripts/check_fit_excludes_stands.py) on Kendujhar's cached box run: the
+      rows left out, the types, the summary numbers
   - path: tests/test_cache_fingerprint.py
     what: The setting off, left out or written out, hashes as before; on, it changes the fingerprint
   - path: tests/test_repro_fingerprints.py
@@ -5100,8 +5118,9 @@ decisions:
     superpixels are each in more than one piece. A read-only follow-up found the ROI edge cutting all three
     (docs/reproducibility/snic_split_superpixels_kendujhar.json): SNIC grows them through a strip of kept land one
     pixel wide just outside the ROI, and the stage's clip to the ROI cuts that strip off. The fix, Jaskaran's of 15
-    Oct 2026, clips kept land to the ROI before SNIC (spec-segmentation-mask-before-snic); the two checks run again
-    on the fixed code before any batch run. Not run on Earth Engine in batch.
+    Oct 2026, clips kept land to the ROI before SNIC (spec-segmentation-mask-before-snic). On the fixed code the two
+    checks ran again read-only on 15 Oct 2026, for Kendujhar's and Sanjay Van's kept-land configs, every line as
+    expected (docs/reproducibility/snic_on_kept_land_*_keptland.json). Not run on Earth Engine in batch.
   alternatives_considered:
   - >-
     Leave out, before SNIC, the kept patches smaller than merge.min_area_ha that touch no other kept land

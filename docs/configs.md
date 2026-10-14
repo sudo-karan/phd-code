@@ -467,9 +467,10 @@ decks — that number was always 10,000 pixels.
   case it is for is `segmentation.mask_before_snic: true` with the small patches
   kept, where each isolated patch of kept land below the minimum is a stand of
   its own (register entry `spec-clustering-fit-excludes-stands-below-min-area`).
-  `true` has not yet run on Earth Engine:
-  `tests/test_clustering_fit_excludes_ee_graph.py` checks only that its
-  requests are valid. The default is left out of the cache fingerprint, so
+  `true` has not run in batch: `tests/test_clustering_fit_excludes_ee_graph.py`
+  checks offline that its requests are valid, and a read-only check on Earth
+  Engine saw it leave out the rows intended
+  (`docs/reproducibility/fit_excludes_stands_kendujhar.json`, 15 Oct 2026). The default is left out of the cache fingerprint, so
   existing configs keep their cached assets; a config that sets it to `true`
   gets a new fingerprint.
 

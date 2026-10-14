@@ -436,8 +436,10 @@ class ClusteringParams(BaseModel):
     # gives each the type of the nearest fitted cluster. How many were left
     # out, and their area, is recorded in clustering_metadata (docs/decisions.yaml,
     # spec-clustering-fit-excludes-stands-below-min-area). Needs merge.enabled.
-    # True has not yet run on Earth Engine: its requests are only checked offline
-    # (tests/test_clustering_fit_excludes_ee_graph.py).
+    # True has not run in batch. Its requests are checked offline
+    # (tests/test_clustering_fit_excludes_ee_graph.py), and read-only on Earth
+    # Engine it left out the rows intended (scripts/check_fit_excludes_stands.py,
+    # 15 Oct 2026).
     # The default is left out of the cache fingerprint
     # (`fmu.utils.caching._OMITTED_AT_DEFAULT`), so adding this field moved no
     # existing config's cached assets; a config that sets it to true gets a new

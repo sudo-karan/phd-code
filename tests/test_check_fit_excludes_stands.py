@@ -92,6 +92,18 @@ def test_a_warning_of_the_default_path_does_not_count_against_it():
     assert "NOT" not in "\n".join(_load().verdicts(res))
 
 
+def test_with_no_stand_below_the_minimum_it_says_it_tested_nothing():
+    """With the setting on the stage always takes the path, so with nothing below the minimum
+    every other line holds: that must not read as a pass."""
+    mod = _load()
+    res = _result()
+    res["rows"] = mod.compare_rows(EVERY, EVERY, {}, {"n_stands_left_out_of_fit": 0})
+    res["types"] = mod.typed([], [])
+    lines = mod.verdicts(res)
+    assert lines[0] == ("NOT as expected: no stand below the minimum has a training row, so "
+                        "nothing was left out of the fit and the lines below test nothing")
+
+
 def test_an_error_is_reported_as_such():
     text = "\n".join(_load().verdicts({"error": "the stage left nothing out",
                                        "export_tasks_submitted": 0}))

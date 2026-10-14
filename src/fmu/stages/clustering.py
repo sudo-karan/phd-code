@@ -1322,9 +1322,11 @@ def _leave_out_of_fit(
     alone. With no stand below the minimum the fit takes every row, and nothing
     more is asked of Earth Engine.
 
-    Not yet run on Earth Engine: tests/test_clustering_fit_excludes_ee_graph.py
-    checks only that the requests are valid. That the masked samples take the
-    same units as the full sample is what the warnings below check.
+    tests/test_clustering_fit_excludes_ee_graph.py checks offline that the
+    requests are valid. On Earth Engine, read-only, the masked samples took the
+    units intended on Kendujhar's box run (15 Oct 2026,
+    docs/reproducibility/fit_excludes_stands_kendujhar.json); in any run, the
+    warnings below check that they add up.
     """
     ids = sorted(below_min)
     report: dict[str, Any] = {
@@ -1340,8 +1342,8 @@ def _leave_out_of_fit(
     # 1 on every other unit and 0 on the stands below the minimum, then the
     # reverse. A pixel where a mask is 0 is masked, and the sample skips a pixel
     # with a masked band (dropNulls), so it gives no row. That is what the Earth
-    # Engine reference says of updateMask and dropNulls; it has not yet been
-    # seen on Earth Engine for these samples (see the docstring).
+    # Engine reference says of updateMask and dropNulls, and what the read-only
+    # check of 15 Oct 2026 saw for these samples (see the docstring).
     others = unit_labels.remap(ids, [0] * len(ids), 1)
     themselves = unit_labels.remap(ids, [1] * len(ids), 0)
     fit_sample = _sample_one_point_per_unit(

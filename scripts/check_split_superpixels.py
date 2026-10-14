@@ -326,7 +326,8 @@ def verdicts(result: dict[str, Any]) -> list[str]:
     t = result.get("totals", {})
     if t:
         lines.append(f"over the ROI: {t.get('superpixels')} superpixels in {t.get('pieces')} pieces "
-                     f"(A6's count: {t.get('superpixels_as_a6_counts_them')} and "
+                     f"(counted as A6 counted them until 15 Oct 2026: "
+                     f"{t.get('superpixels_as_a6_counts_them')} and "
                      f"{t.get('pieces_as_a6_counts_them')}, a key 'null' included where there is "
                      f"one); {len(result.get('split', []))} superpixels in more than one piece")
         missing = t.get("superpixels_without_a_piece_label") or {}

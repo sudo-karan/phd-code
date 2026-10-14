@@ -79,6 +79,13 @@ def test_a_superpixel_outside_the_roi_or_over_the_cap_is_not_as_expected():
             "of 480 px (box_keptland)") in text
 
 
+def test_a_largest_superpixel_with_no_cap_to_compare_is_not_a_pass():
+    res = _result()
+    del res["merge_component_cap"]
+    assert ("NOT as expected: the largest superpixel, 120 px, has no merge component cap recorded "
+            "to be compared with") in "\n".join(_load().verdicts(res))
+
+
 def test_a_count_outside_the_roi_with_nothing_to_look_at_says_nothing():
     text = "\n".join(_load().verdicts(_result(pixels_outside_roi_looked_at=0)))
     assert ("NOT as expected: no pixel outside the ROI was looked at, so the count of SNIC's "

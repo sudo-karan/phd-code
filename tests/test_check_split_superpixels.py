@@ -130,8 +130,9 @@ def test_verdict_lines():
         "export_tasks_submitted": 0,
     }
     assert mod.verdicts(result) == [
-        "over the ROI: 9 superpixels in 10 pieces (A6's count: 10 and 11, a key 'null' included "
-        "where there is one); 2 superpixels in more than one piece",
+        "over the ROI: 9 superpixels in 10 pieces (counted as A6 counted them until 15 Oct 2026: "
+        "10 and 11, a key 'null' included where there is one); 2 superpixels in more than one "
+        "piece",
         "superpixels with no piece label (not in the grouped count): 42 (3 px)",
         "superpixel 5: 2 pieces as A6 counts them over the ROI, 2 8-connected and 2 4-connected "
         "in its window, of 0.3 ha, 0.02 ha; separated by: tile edge, other superpixels",

@@ -110,6 +110,11 @@ def verdicts(result: dict[str, Any]) -> list[str]:
         return ("as expected: " + yes) if ok else ("NOT as expected: " + no)
 
     r = result["rows"]
+    if not r["stands_below_min_with_a_row"]:
+        # With the setting on the stage always takes the path, so its lines would all hold with
+        # nothing left out: say that this tested nothing (the final review of round 4).
+        lines.append("NOT as expected: no stand below the minimum has a training row, so nothing "
+                     "was left out of the fit and the lines below test nothing")
     lines.append(says(r["rows_add_up"],
                       f"the fit's {r['fit_rows']} rows and the {r['left_out_rows']} left out are "
                       f"the {r['rows']} rows of every unit",
@@ -297,7 +302,7 @@ def main() -> None:
         stage_log.removeHandler(warnings)
 
     if stage_result is not None and "leave_out" not in captured:
-        result["error"] = "the stage left nothing out: no stand is below the minimum"
+        result["error"] = "the stage did not take the path with the setting on"
     elif stage_result is not None:
         given = captured["leave_out_args"]
         fit_sample, n_fit, report = captured["leave_out"]

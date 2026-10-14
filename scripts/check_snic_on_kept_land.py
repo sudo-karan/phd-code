@@ -123,9 +123,12 @@ def verdicts(result: dict[str, Any]) -> list[str]:
                                   f"SNIC labelled none of the {looked} pixels just outside the ROI",
                                   f"SNIC labelled {m['snic_pixels_outside_roi']} of the {looked} "
                                   "pixels just outside the ROI, which the stage's clip removes"))
-        if "largest_superpixel_pixels" in m:
-            cap = result.get("merge_component_cap", {})
-            lines.append(says(m["largest_superpixel_pixels"] <= cap.get("pixels", float("inf")),
+        cap = result.get("merge_component_cap") or {}
+        if "largest_superpixel_pixels" in m and cap.get("pixels") is None:
+            lines.append(f"NOT as expected: the largest superpixel, {m['largest_superpixel_pixels']} "
+                         "px, has no merge component cap recorded to be compared with")
+        elif "largest_superpixel_pixels" in m:
+            lines.append(says(m["largest_superpixel_pixels"] <= cap["pixels"],
                               f"the largest superpixel, {m['largest_superpixel_pixels']} px, is "
                               f"within the merge's component cap of {cap.get('pixels')} px "
                               f"({cap.get('config')})",
