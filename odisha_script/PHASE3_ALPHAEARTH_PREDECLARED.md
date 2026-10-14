@@ -1,6 +1,7 @@
 # AlphaEarth against the field plots: what was fixed in advance
 
 Committed **before any AlphaEarth score was computed**. Its date is the date of its commit.
+Written by Claude Code from the defaults of the round 2 brief (task A4; PR #42, question 3).
 It records the one primary analysis, the three checks that will be reported whatever they show, and
 what happens when a test cannot be made. Nothing here was chosen after seeing an AlphaEarth
 result, and nothing may be added to the "primary" line afterwards.
@@ -21,8 +22,24 @@ is committed, unchanged on disk, and on the remote branch.
   those stands (`odisha_script/phase3_demo/`). The driver's first run makes them, skips the
   AlphaEarth arm and exits with status 3. That run can come before this file is pushed. The
   join says where the plots fall on the AlphaEarth stands. It computes no AlphaEarth score.
-- The AlphaEarth stand files. In Koraput 176 of the 632 polygons of the committed merged
-  layer carry no stand type (173 of 630 in the re-run of 13 Oct 2026).
+- The AlphaEarth stand files that will be scored (they are this analysis's input, so they
+  exist already; `docs/demo/remerge/`). Stands, and stands with a type: Angul 99 and 93,
+  Dhenkanal 220 and 208, Kendujhar 122 and 110, Koraput 642 and 465. All 267 plots inside the
+  mapped areas fall in a stand with a type (39, 75, 8 and 145). The elbow on these stands is
+  5, 5, 6 and 5, against k = 6.
+- Three things about stand types, found while making those files (`docs/demo/remerge/README.md`).
+  They bear on measures 4 and 5 only; measures 1 to 3 do not use stand types.
+  - The types the four runs saved on 13 Oct are not the types a second fit gives, in three of the
+    four districts, because the pass that fitted them had computed the merge criteria live. The
+    types scored here are from a fit made on the stands scored here, with every input read from
+    the cache. That fit repeats exactly when it is run again.
+  - The type map moves a great deal when the stands move a little. Between the fit on the
+    stands as the runs merged them and the fit on the re-merged stands, the agreement over
+    pixels (adjusted Rand index) is 0.41, 0.57, 0.56 and 0.53 in the four districts, although
+    only 2.9% to 6.1% of the stand area changed stand.
+  - The export stage gives some stands with no habitat pixel of their own a neighbour's type
+    (10, 6, 8 and 31 stands in the four districts). They are scored with that type, because it
+    is what a run writes.
 - **No AlphaEarth score.** `odisha_phase3_1_pairwise_score.py` has never been run on the
   AlphaEarth columns, on any stand files, and neither has the chance test.
 
@@ -30,10 +47,14 @@ is committed, unchanged on disk, and on the remote branch.
 
 - The four AlphaEarth runs of the demo set: `odisha_alphaearth_<district>_repro` for Angul,
   Dhenkanal, Kendujhar and Koraput. Earth Engine runs of 13 Oct 2026, commit `df45350`.
+- Their saved superpixels, merged again from their saved features under the merge rule below,
+  and typed again on the result, by `scripts/remerge_demo_set.py` at commit `5c8dcad`. The
+  stand files are `outputs/demo/vectors_new/odisha_alphaearth_<district>_repro_stands_merged.geojson`
+  on the Mac; the manifest the driver writes holds the sha256 of each.
 - Largest stand allowed: 10 hectares. Stand types: k = 6, as the configs set it. The elbow
   on these stands is reported beside the results and changes nothing.
 - The merged layer. A polygon without a stand type stays without one.
-- Merge rule: <MERGE RULE>
+- Merge rule: spec-merge-pass2-skip-at-minimum
 
 The driver is given the merge rule with `--merge-rule`. It compares that text with the line
 "Merge rule:" above. If the two differ it skips the AlphaEarth arm, says why and exits with
@@ -109,7 +130,8 @@ a one-arm run has no arm comparison.
 
 ## The exact commands
 
-From the repo root. `<STANDS DIR>` is the folder holding the stand files named above.
+From the repo root. `<STANDS DIR>` is the folder holding the stand files named above,
+`outputs/demo/vectors_new`.
 `$RULE` is the text of the line "Merge rule:" in "The stands", and nothing else.
 
 Either of two forms is run. Which one depends on what `odisha_script/phase3_demo/` holds
@@ -167,9 +189,11 @@ Result files, in `odisha_script/phase3_demo/`:
 - `odisha_phase3_3_results_alphaearth.txt`, and `odisha_phase3_3_results_excl0_alphaearth.txt`,
   `_ft-k4_alphaearth.txt` and `_ft-allrows_alphaearth.txt` for the checks.
 
-## What I expect, stated so it can be wrong
+## What Claude Code expects, stated so it can be wrong
 
 I expect none of the five tests to survive the correction. The hand-crafted stands did not,
-at either size, and 20 villages give the test little power. I have no expectation for S1, S2
-and S3. If any primary test survives, that is a finding about the AlphaEarth 10 hectare
-stands of this demo set. It will be reported as one and checked again on the final re-run.
+at either size, and 20 villages give the test little power. For the two labelling measures I
+expect, besides, that whatever they show will not be stable: the type map they rest on moved a
+great deal for a small change of the stands. I have no expectation for S1, S2 and S3. If any
+primary test survives, that is a finding about the AlphaEarth 10 hectare stands of this demo
+set. It will be reported as one and checked again on the final re-run.
