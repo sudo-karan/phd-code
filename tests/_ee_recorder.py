@@ -6,7 +6,7 @@ a call was given *that* image (`call.args == (kept,)`), and follow an image back
 that made it (`made_by`) and to the image that call was a method of (`owner_call`).
 
 `call_log` turns a log into plain data (names and argument reprs), which is what the golden
-file of tests/test_segmentation_off_golden.py holds.
+files of tests/test_segmentation_off_golden.py and tests/test_clustering_off_golden.py hold.
 """
 
 from __future__ import annotations
@@ -26,19 +26,24 @@ class Call:
 
 
 class Rec:
-    """Any Earth Engine object. An attribute is another Rec; calling one records the call."""
+    """Any Earth Engine object. An attribute is another Rec; calling one records the call.
+
+    The shared log is kept as `_log`, not `log`, so that `.log()` (Earth Engine's natural
+    logarithm, which the clustering stage takes of skewed bands) is recorded like any other
+    call.
+    """
 
     def __init__(self, name: str, log: list, owner: Rec | None = None, attr: str | None = None):
-        self.name, self.log, self.owner, self.attr = name, log, owner, attr
+        self.name, self._log, self.owner, self.attr = name, log, owner, attr
 
     def __getattr__(self, attr: str) -> Rec:
         if attr.startswith("__"):
             raise AttributeError(attr)
-        return Rec(f"{self.name}.{attr}", self.log, owner=self, attr=attr)
+        return Rec(f"{self.name}.{attr}", self._log, owner=self, attr=attr)
 
     def __call__(self, *args: Any, **kwargs: Any) -> Rec:
-        out = Rec(f"{self.name}()", self.log)
-        self.log.append(Call(self.name, self.owner, self.attr, args, kwargs, out))
+        out = Rec(f"{self.name}()", self._log)
+        self._log.append(Call(self.name, self.owner, self.attr, args, kwargs, out))
         return out
 
     def __repr__(self) -> str:

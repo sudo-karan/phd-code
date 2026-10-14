@@ -382,3 +382,36 @@ def test_switching_the_soft_ceiling_on_changes_the_fingerprint():
 
 def test_the_dump_written_to_manifests_carries_the_soft_ceiling():
     assert Config.model_validate(_raw()).model_dump(mode="json")["merge"]["pass2_soft_ceiling"] is False
+
+
+def test_the_fit_exclusion_setting_leaves_the_fingerprint_alone_while_off():
+    """clustering.fit_excludes_stands_below_min_area off, left out of the YAML or
+    written out as false, hashes as the config did before the setting existed."""
+    assert _fp() == "7f642cf2ca"
+
+    def written_out(raw):
+        raw.setdefault("clustering", {})["fit_excludes_stands_below_min_area"] = False
+
+    assert _fp(written_out) == "7f642cf2ca"
+
+
+def test_switching_the_fit_exclusion_setting_on_changes_the_fingerprint():
+    """On is another fit, so it must not share cached assets with off: the
+    clustering cache would hand back stand types fitted on every stand."""
+
+    def on(raw):
+        raw.setdefault("clustering", {})["fit_excludes_stands_below_min_area"] = True
+
+    assert _fp(on) != _fp()
+    raw = _raw()
+    on(raw)
+    cfg_on = Config.model_validate(raw)
+    assert cfg_on.clustering.fit_excludes_stands_below_min_area is True
+    assert cached_asset_path(cfg_on.name, "clustering", "cluster_labels", config_fingerprint(cfg_on)) != (
+        cached_asset_path(cfg_on.name, "clustering", "cluster_labels", _fp())
+    )
+
+
+def test_the_dump_written_to_manifests_still_carries_the_fit_exclusion_setting():
+    dumped = Config.model_validate(_raw()).model_dump(mode="json")
+    assert dumped["clustering"]["fit_excludes_stands_below_min_area"] is False

@@ -426,6 +426,23 @@ class ClusteringParams(BaseModel):
     # Skewness threshold above which a feature gets log-transformed before scaling.
     # Per DEC-004: a feature with |skew| > 1.0 is log-transformed via log(x - min + 1e-3).
     skewness_threshold: float = Field(default=1.0, ge=0.0)
+    # Whether the stands the merge leaves below merge.min_area_ha are rows of the
+    # k-means fit. False (the default, and the behaviour of every run made before
+    # this setting existed): every stand is a row of its own, however small. True:
+    # the stands the merge marks below the minimum (below_min in stand_provenance)
+    # are left out of the k-means training rows. Only those rows: the skewness, log
+    # offsets and scaling are still taken over every stand. They stay on the map
+    # as stands of their own, and the trained clusterer, applied to every unit,
+    # gives each the type of the nearest fitted cluster. How many were left
+    # out, and their area, is recorded in clustering_metadata (docs/decisions.yaml,
+    # spec-clustering-fit-excludes-stands-below-min-area). Needs merge.enabled.
+    # True has not yet run on Earth Engine: its requests are only checked offline
+    # (tests/test_clustering_fit_excludes_ee_graph.py).
+    # The default is left out of the cache fingerprint
+    # (`fmu.utils.caching._OMITTED_AT_DEFAULT`), so adding this field moved no
+    # existing config's cached assets; a config that sets it to true gets a new
+    # fingerprint.
+    fit_excludes_stands_below_min_area: bool = False
     # NOTE: `superpixel_max_size` used to live here as the `maxSize` argument to
     # reduceConnectedComponents. It is now DERIVED -- see
     # `Config.max_component_pixels()` -- because (a) the name stopped being true
@@ -983,6 +1000,16 @@ class Config(BaseModel):
         offenders(self.segmentation.input_bands, "segmentation.input_bands")
         offenders(self.merge.criteria, "merge.criteria")
         offenders(self.metrics.r2_attributes, "metrics.r2_attributes")
+        return self
+
+    @model_validator(mode="after")
+    def _fit_exclusion_needs_the_merge(self) -> Config:
+        if self.clustering.fit_excludes_stands_below_min_area and not self.merge.enabled:
+            raise ValueError(
+                "clustering.fit_excludes_stands_below_min_area needs merge.enabled: "
+                "without the merge there are no stands, and nothing marks a stand "
+                "as below merge.min_area_ha."
+            )
         return self
 
     @model_validator(mode="after")

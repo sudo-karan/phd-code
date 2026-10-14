@@ -41,7 +41,7 @@ features_static: { include_climate, max_water_distance_pixels }
 features_embedding: { collapse_reducer, band_names }
 segmentation: { size, compactness, connectivity, neighborhood_size, normalize_inputs, normalize_distance_scale, input_bands }
 merge: { enabled, criteria, relax_factor, min_area_ha, max_area_ha, min_defined_criteria, min_frac_valid, tie_break, max_pass2_iterations, max_superpixels }
-clustering: { k, seed, feature_source, skewness_threshold }
+clustering: { k, seed, feature_source, skewness_threshold, fit_excludes_stands_below_min_area }
 normalization: { method }
 features: { optical_harmonic, radar, canopy_height, terrain }
 export: { export_geotiff, export_gee_asset, analysis_scale_m, drive_folder, export_vector_merged, export_vector_snic, export_vector_dissolved, vector_formats, vector_min_stand_pixels }
@@ -432,7 +432,10 @@ not mistyped stands. The stage logs the split and the manifest records it as
 `n_training_units`, `n_units_total`, `n_units_in_habitat`,
 `n_units_outside_habitat` and `n_units_dropped_null_band`, alongside
 `training_unit_key`. Read the shortfall before reading a silhouette: a cluster
-definition rests only on the units that reached the fit.
+definition rests only on the units that reached the fit. With
+`fit_excludes_stands_below_min_area` on (below) there is a third, made on
+purpose: the stands below `merge.min_area_ha` are left out of the fit, though
+not out of the map, and are counted apart from the other two.
 
 This also retires the "10,000 superpixels" figure that appears in older docs and
 decks — that number was always 10,000 pixels.
@@ -446,6 +449,29 @@ decks — that number was always 10,000 pixels.
   directly comparable through the metrics stage.
 - `skewness_threshold`: bands with `|skew|` above this get log-transformed
   (default 1.0 per DEC-004).
+- `fit_excludes_stands_below_min_area`: whether the stands the merge leaves
+  below `merge.min_area_ha` are rows of the k-means fit. `false` (default, and
+  the behaviour of every run made before the setting existed): every stand is a
+  row of its own, however small. `true`: the stands the merge marks below the
+  minimum (`below_min` in `stand_provenance`, whatever its cause) are left out of
+  the k-means training rows, and only out of those. The skewness, the log
+  offsets and the scaling still take a row from every stand: the log offset
+  comes from the minimum of its sample, and a stand left out of that sample
+  could lie further below that minimum than the 0.001 the transform adds, and
+  get the log of a negative number. The stands left out stay on the map as
+  stands of their own, and the trained clusterer, which is applied to every
+  unit, gives each the type of the nearest fitted cluster. How many were left
+  out, and their area, is recorded in `clustering_metadata` (`docs/outputs.md`,
+  under `export_manifest_<config>.json`, where its keys are listed). It needs
+  `merge.enabled`: a config with the merge off and this on fails to load. The
+  case it is for is `segmentation.mask_before_snic: true` with the small patches
+  kept, where each isolated patch of kept land below the minimum is a stand of
+  its own (register entry `spec-clustering-fit-excludes-stands-below-min-area`).
+  `true` has not yet run on Earth Engine:
+  `tests/test_clustering_fit_excludes_ee_graph.py` checks only that its
+  requests are valid. The default is left out of the cache fingerprint, so
+  existing configs keep their cached assets; a config that sets it to `true`
+  gets a new fingerprint.
 
 `superpixel_max_size` **no longer exists** and a config still carrying it will
 fail to load. It was the `maxSize` argument to `reduceConnectedComponents`,

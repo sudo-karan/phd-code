@@ -256,7 +256,11 @@ property of `cluster_labels` (one small request, no reduction): `k`,
 `units_total`, `units_in_habitat`, `units_fitted` and
 `units_dropped_missing_band`. A unit is a stand, or a superpixel in a run
 without merge. On a cached `cluster_labels` made before the fit recorded its
-coverage, the counts are absent and the record carries a `summary_error`.
+coverage, the counts are absent and the record carries a `summary_error`. With
+`clustering.fit_excludes_stands_below_min_area` on, `units_fitted` does not
+count the stands below `merge.min_area_ha` that were left out of the fit; how
+many they were, and their area, is in `clustering_metadata` (under
+`export_manifest_<config>.json` below), not among these five.
 
 These counts are distinct unit labels on the analysis grid, as the fit saw
 them. They are not counts of the polygons in the exported stand layer, and the
@@ -341,6 +345,13 @@ narrow the neighbourhood. That happens with an elongated stand, or a label
 reused across disjoint places, which logs a WARNING. A wide band stack may then
 run out of memory, as it did before the measurement existed. These keys are in
 the stage metadata only, not in `clustering_metadata`.
+
+The stage metadata also holds `fit_excludes_stands_below_min_area`, true or
+false, on every run that computes the clustering stage: whether the stands
+below `merge.min_area_ha` were left out of the k-means fit (`docs/configs.md`,
+`clustering`). A run that reads the stage from the cache records only
+`source: cache` there ("Stage source" above); the setting is still in the
+manifest's `config`, as `clustering.fit_excludes_stands_below_min_area`.
 
 ## `export_manifest_<config>.json` (after export stage)
 
@@ -504,6 +515,28 @@ the assets that exist, so `mask_provenance` is absent until a run has exported
 it. `provenance_attributes` names the merge-provenance properties on
 `stands_merged`; it is empty, and `shp_attributes` has only the first six names,
 when the context held no `stand_provenance`.
+
+`clustering` is the `clustering_metadata` property of `cluster_labels`, as the
+clustering stage wrote it, with `cluster_distribution` added by the export
+stage. With `clustering.fit_excludes_stands_below_min_area` on it has five more
+keys; with the setting off none of them is there, and the property is key for
+key what it was before the setting existed:
+
+| Key | Meaning |
+|---|---|
+| `fit_excludes_stands_below_min_area` | `true`: the stands the merge left below `merge.min_area_ha` were left out of the k-means training rows. They were still typed, by the nearest fitted cluster |
+| `n_stands_below_min_area` | Stands the merge marked below the minimum (`below_min` 1 in `stand_provenance`), whatever the cause |
+| `area_ha_in_stands_below_min_area` | Their area, from `area_ha` in `stand_attributes` |
+| `n_stands_left_out_of_fit` | Those of them that had a training row, and so were left out of the fit. A stand below the minimum that lies outside the habitat mask, or has no data in an active band, had no row to leave out |
+| `area_ha_in_stands_left_out_of_fit` | Their area |
+
+With the setting on, `n_training_units` counts the rows the fit was trained on,
+the stands left out not among them, and `n_units_dropped_null_band` is still
+counted against every row, so the stands left out are not counted as missing
+band data. Normally `n_units_in_habitat` is then `n_training_units` +
+`n_units_dropped_null_band` + `n_stands_left_out_of_fit`; the stage logs a
+warning when the rows of the fit and the rows of the stands left out do not add
+up to the rows of every unit.
 
 ### How to use this
 

@@ -85,6 +85,7 @@ _OMITTED_AT_DEFAULT: dict[tuple[str, str], Any] = {
     ("merge", "pass2_soft_ceiling"): False,
     ("segmentation", "mask_before_snic"): False,
     ("segmentation", "drop_kept_patches_below_min_area"): False,
+    ("clustering", "fit_excludes_stands_below_min_area"): False,
 }
 
 

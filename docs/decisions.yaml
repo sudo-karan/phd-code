@@ -4922,3 +4922,110 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 14 Oct 2026, with Claude (chat)
+- id: spec-clustering-fit-excludes-stands-below-min-area
+  title: >-
+    The stands the merge leaves below the minimum stand size can be left out of the k-means fit; they stay on the
+    map and are typed by the fitted clusters
+  decision: >-
+    A clustering setting, clustering.fit_excludes_stands_below_min_area, off by default. Off, the default and the
+    behaviour of every run made before it existed: every stand in the habitat mask with data in every active band is
+    a row of the k-means fit, however small (spec-kmeans-one-row-per-unit). On: the stands the merge marks below
+    merge.min_area_ha (below_min 1 in stand_provenance, whatever cause below_why gives) stay on the map as stands of
+    their own, but are left out of the k-means training rows. The trained clusterer is still applied to every unit,
+    so each of them gets the type of the nearest fitted cluster. Only the k-means rows: the two earlier samples of one
+    row per unit, for the skewness and log offsets and for the robust scaling, still take every unit. The stage finds
+    the stands by the merge's own flag, by stand id, and leaves them out with masks on the integer stand label image,
+    as the merge relabels with remap, not by filtering the sampled rows by label: the k-means rows are sampled from
+    the training image masked to the other stands, and the stands left out are read, with aggregate_array, from a
+    sample of the training image masked to them alone. With no stand below the minimum the fit takes every row and
+    nothing more is asked of Earth Engine. clustering_metadata then holds the setting, how many stands were left out
+    of the fit and their area in ha (those that had a training row), and how many stands the merge marked below the
+    minimum and their area (more, where a stand below the minimum had no row to leave out: outside the habitat mask,
+    or no data in a band). n_training_units counts the rows the fit was trained on; n_units_dropped_null_band is
+    counted against the rows before the stands are left out, so they are not counted as missing band data; the stage
+    logs a warning when the two masked samples do not add up to the rows of every unit. The setting needs
+    merge.enabled, checked when the config is loaded. Off, the clustering stage makes the same Earth Engine calls,
+    with the same arguments and in the same order, sends the same requests and writes the same clustering_metadata as
+    before the change (tests/test_clustering_off_golden.py holds them as recorded from the stage at commit 12d2a05,
+    for three shipped configs); its stage metadata gains the key fit_excludes_stands_below_min_area.
+    config_fingerprint leaves the key out of the hashed clustering block while it is false, so no existing
+    fingerprint moves, the 14 _repro configs among them, and a config that sets it to true gets a new one. The path
+    with the setting on has not run on Earth Engine yet; its requests are checked offline against the algorithm
+    signatures earthengine-api ships (tests/test_clustering_fit_excludes_ee_graph.py).
+  alternatives_considered:
+  - >-
+    Off, the default: every stand a row of its own in the fit, however small (spec-kmeans-one-row-per-unit). Kept as
+    the default of the setting, so that earlier runs can still be reproduced
+  - >-
+    Drop the small patches of kept land before SNIC (segmentation.drop_kept_patches_below_min_area): available, and
+    not chosen. Jaskaran's decision D1 of 14 Oct 2026 keeps it false, so the small patches stay on the map as stands
+  - >-
+    Leave the stands below the minimum out of all three samples of one row per unit, not only the k-means rows: not
+    done. The log transform is log(x - min + 0.001), with min the minimum of its sample, so a stand left out of that
+    sample with a value more than 0.001 below that minimum would get the log of a negative number, which is
+    undefined, and no type, against the decision that these stands get the type of the nearest fitted cluster. The
+    decision also names the k-means training rows only
+  - >-
+    Weight the rows by stand area: not done. spec-kmeans-one-row-per-unit removed the area weighting a pixel sample
+    gave, under which a 10 ha stand outweighed a 0.1 ha stand 100 to 1: a property of stand size, not of what a
+    stand is
+  rationale: >-
+    With segmentation.mask_before_snic on and the small patches kept (D1), each isolated patch of kept land below
+    merge.min_area_ha is a stand of its own, since the merge can join it to nothing. In the four Odisha box areas
+    kept land forms about 650 patches under 1 ha (the counts are in spec-segmentation-mask-before-snic), and with one
+    row per stand each would be a row of the k-means fit with the weight of a 3 ha stand. Leaving them out of the fit
+    keeps them on the map, typed by the nearest cluster, without letting the fragments shape the clusters. It is the
+    alternative spec-segmentation-mask-before-snic records as not built then: "Keep the small patches as stands but
+    leave them out of the k-means fit, and label them afterwards". Jaskaran's decision D3 of 14 Oct 2026, in his
+    words in docs/handoff/2026-10-14-round3.md (section 1): "stands still below merge.min_area_ha after the merge (the
+    isolated ones) stay on the map as their own stands, but are left out of the k-means training rows; they then get
+    the type of the nearest fitted cluster". The stands are found by the merge's own below_min flag, so the merge and
+    the fit cannot disagree on which they are. That flag marks every stand the merge left below the minimum, whatever
+    the cause (isolated, area_blocked or iteration_cap), not only the isolated ones the decision names; the setting
+    takes all of them, as its name says. Masks on the label image are used rather than a filter of the sampled rows
+    by label, because whether Earth Engine matches a list of integers against the sampled numeric label property is
+    not established, and a silent mismatch would leave every such stand in the fit. No paper was searched for this
+    rule. Not run on Earth Engine yet.
+  evidence:
+  - path: src/fmu/stages/clustering.py
+    what: >-
+      Module docstring, step 8; run(): the stands below the minimum read from stand_provenance and stand_attributes
+      when the setting is on, the key in clustering_metadata and in the stage metadata; _train_and_apply_kmeans,
+      _stands_below_min_area and _leave_out_of_fit; validate() asks for stand_provenance and stand_attributes only
+      with the setting on
+  - path: src/fmu/config.py
+    what: >-
+      ClusteringParams.fit_excludes_stands_below_min_area, default false, with the reason in its comment; the Config
+      validator that it needs merge.enabled
+  - path: src/fmu/utils/caching.py
+    what: _OMITTED_AT_DEFAULT holds the key at false
+  - path: src/fmu/utils/region_merge.py
+    what: below_min in stand_provenance and area_ha in stand_attributes, the two fields the stage reads
+  - path: tests/test_clustering_off_golden.py
+    what: >-
+      The default path's calls and requests, its clustering_metadata and its stage metadata, against those recorded
+      from the stage at commit 12d2a05 (tests/data/clustering_off_calls.json)
+  - path: tests/test_clustering_fit_excludes_stands.py
+    what: >-
+      With the setting on: the k-means rows come from the image masked to the other stands, the preprocessing samples
+      are unmasked, the clusterer types the unmasked image; the counts and areas recorded, with a stand below the
+      minimum that had no training row; missing band data counted against every row; no stand below the minimum
+      gives zeros and the default path's calls; the warnings; the guard on k; validate() and the config validator
+  - path: tests/test_clustering_fit_excludes_ee_graph.py
+    what: The path with the setting on built with the real Earth Engine client, offline
+  - path: tests/test_cache_fingerprint.py
+    what: The setting off, left out or written out, hashes as before; on, it changes the fingerprint
+  - path: tests/test_repro_fingerprints.py
+    what: Pins the fingerprints of the 14 _repro configs to those in the names of their saved assets
+  - path: tests/test_every_config_fingerprint.py
+    what: Pins the fingerprint of every config of commit 12d2a05
+  - path: docs/configs.md
+    what: The clustering setting
+  - path: docs/outputs.md
+    what: The keys the setting adds to clustering_metadata, and the key in the stage metadata
+  - path: docs/handoff/2026-10-14-round3.md
+    what: Jaskaran's decision D3, as he gave it (section 1), and the notes on it (section 6)
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 14 Oct 2026, with Claude (chat)

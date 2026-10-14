@@ -328,7 +328,7 @@ SNIC superpixels to stands, in two passes over the adjacency graph, client-side 
 
 Per-superpixel feature stack to preprocessing to k-means to per-pixel cluster labels. Implements the locked DEC-001 (cluster on superpixel means), DEC-003 (median/IQR robust scaling), DEC-004 (log-transform right-skewed bands).
 
-**Reads from context:** the invariant subset `roi`, `snic_clusters`, `habitat_mask` (the static `required_inputs`), **plus the feature-source inputs**: the four hand images (`optical_features`, `radar_features`, `structure_features`, `static_features`) when `feature_source: handcrafted`, or `embedding_features` when `feature_source: embedding`. A `validate()` override adds the source-specific keys so an embedding run isn't forced to produce the handcrafted stack it never uses.
+**Reads from context:** the invariant subset `roi`, `snic_clusters`, `habitat_mask` (the static `required_inputs`), **plus the feature-source inputs**: the four hand images (`optical_features`, `radar_features`, `structure_features`, `static_features`) when `feature_source: handcrafted`, or `embedding_features` when `feature_source: embedding`, plus `stand_provenance` and `stand_attributes` when `clustering.fit_excludes_stands_below_min_area` is on (which stands the merge left below `merge.min_area_ha`, and their area). A `validate()` override adds the source-specific keys so an embedding run isn't forced to produce the handcrafted stack it never uses, and the two merge outputs only with that setting on.
 **Writes to context:** `cluster_labels` (per-pixel cluster ID 0..k-1, masked outside habitat), `feature_stack` (preprocessed multi-band feature image; kept for profiling stage)
 **Cacheable:** yes, both outputs. Plus preprocessing parameters cached as a `clustering_metadata` property on the `cluster_labels` asset (ENG-022).
 
@@ -348,7 +348,7 @@ Per-superpixel feature stack to preprocessing to k-means to per-pixel cluster la
 
 7. **Robust scaling**; per band: `(x − median) / IQR`. Bands with zero IQR (true constants) are dropped; they contribute nothing to clustering and would cause division-by-zero.
 
-8. **K-means**; one row per unit and *every* unit (`stratifiedSample(numPoints=1, classBand=<unit>)`), train `ee.Clusterer.wekaKMeans(k=6, init=KMeansPlusPlus, seed=42)`, apply to all habitat pixels. No pixel sampling: the stack is constant within a unit, so a pixel sample drew each unit once per pixel and area-weighted every statistic computed from it.
+8. **K-means**; one row per unit and *every* unit (`stratifiedSample(numPoints=1, classBand=<unit>)`), train `ee.Clusterer.wekaKMeans(k=6, init=KMeansPlusPlus, seed=42)`, apply to all habitat pixels. No pixel sampling: the stack is constant within a unit, so a pixel sample drew each unit once per pixel and area-weighted every statistic computed from it. With `clustering.fit_excludes_stands_below_min_area` on, the stands the merge left below `merge.min_area_ha` are left out of the rows the fit is trained on, and typed with every other unit when the clusterer is applied (config knobs below).
 
 9. **Persist preprocessing metadata**; log_transform_bands, log_offsets, per-band scaling params, active bands list, dropped constant bands; all attached as `clustering_metadata` JSON property on the `cluster_labels` asset.
 
@@ -358,6 +358,7 @@ Per-superpixel feature stack to preprocessing to k-means to per-pixel cluster la
 - (no `n_training_samples` knob: k-means fits on every unit, one row each. The old default sampled 10,000 *pixels*, ~37 per superpixel, which area-weighted the fit and every preprocessing statistic. The manifest records `n_training_units` and `training_unit_key`.)
 - `clustering.seed`; random seed (default 42)
 - `clustering.skewness_threshold`; log-transform threshold (default 1.0 per DEC-004)
+- `clustering.fit_excludes_stands_below_min_area`; bool (default `false`; needs `merge.enabled`). On: the stands the merge marks below `merge.min_area_ha` (`below_min` in `stand_provenance`) are left out of the k-means training rows of step 8, and only out of those: the samples of steps 5 to 7 still take a row from every unit. They stay on the map as stands of their own, and the trained clusterer, applied to every unit, gives each the type of the nearest fitted cluster. `clustering_metadata` records how many were left out of the fit and their area (`docs/outputs.md`). Off, the stage makes the Earth Engine calls and writes the `clustering_metadata` it did before (`tests/test_clustering_off_golden.py`). Register entry `spec-clustering-fit-excludes-stands-below-min-area`; not yet run on Earth Engine.
 - (no `superpixel_max_size` knob: the `reduceConnectedComponents` cap is derived as `ceil(merge.max_area_ha * 10000 / analysis_scale_m^2) * 1.2`, with `merge.max_area_ha + merge.min_area_ha` when `merge.pass2_soft_ceiling` is on, and asserted against the actual labels at stage entry. That argument *masks* components larger than it rather than clamping, so a hand-set value silently deletes stands -- which is what happened when the two arms drifted to 1024 and 256. The cap is the upper bound: clustering passes the smaller measured unit extent plus margin (step 3), while metrics still passes the cap itself.)
 - `normalization.method`; `robust` (default, per DEC-003) or `zscore` (notebook baseline)
 
@@ -497,7 +498,7 @@ Each one will get its own section here as it's built.
 | Static config knobs | `configs/*.yaml` to `features_static.{include_climate, max_water_distance_pixels}` |
 | Embedding config knobs | `configs/*.yaml` to `clustering.feature_source` + `features_embedding.{collapse_reducer, band_names}` |
 | Segmentation config knobs | `configs/*.yaml` to `segmentation.{size, compactness, connectivity, neighborhood_size, normalize_inputs}` |
-| Clustering config knobs | `configs/*.yaml` to `clustering.{feature_source, k, seed, skewness_threshold}` + `normalization.method` |
+| Clustering config knobs | `configs/*.yaml` to `clustering.{feature_source, k, seed, skewness_threshold, fit_excludes_stands_below_min_area}` + `normalization.method` |
 | Which unit is labelled | derived: `Config.unit_label_key()` — `stand_clusters` when merge runs, `snic_clusters` when it does not |
 | Merge config knobs | `configs/*.yaml` to `merge.{enabled, criteria, relax_factor, min_area_ha, max_area_ha, min_defined_criteria, min_frac_valid, tie_break, max_pass2_iterations, max_superpixels}` |
 | Component-size cap | derived: `Config.max_component_pixels()` in `src/fmu/config.py`; asserted by `src/fmu/utils/components.py` |
