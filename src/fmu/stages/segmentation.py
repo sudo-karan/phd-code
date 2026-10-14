@@ -72,7 +72,7 @@ from fmu.stages.base import (
 )
 from fmu.utils.gee import safe_call, safe_get_info
 from fmu.utils.grid import analysis_grid
-from fmu.utils.kept_land import kept_land, seeds_on_kept_land
+from fmu.utils.kept_land import kept_land_in_roi, seeds_on_kept_land
 from fmu.utils.logging import get_logger
 
 log = get_logger(__name__)
@@ -150,10 +150,18 @@ class SegmentationStage(Stage):
         # 1 where habitat_mask keeps the pixel (less the patches too small to be
         # a stand, with drop_kept_patches_below_min_area), 0 elsewhere. None when
         # the setting is off, and then nothing below reads the mask.
+        # Kept land stops at the ROI: the mask is put on the analysis grid and
+        # clipped to the ROI as the outputs are below, before anything is made
+        # from it, so SNIC cannot grow a superpixel past the ROI edge that the
+        # clip of its output would then cut (fmu.utils.kept_land.kept_land_in_roi).
         kept: ee.Image | None = None
+        grid: ee.Projection | None = None
         if params.mask_before_snic:
-            kept = kept_land(
+            grid = _analysis_grid(roi, scale)
+            kept = kept_land_in_roi(
                 ctx.get("habitat_mask"),
+                roi,
+                grid,
                 min_patch_pixels=config.kept_patch_min_pixels(),
                 connectivity=params.connectivity,
             )
@@ -196,13 +204,12 @@ class SegmentationStage(Stage):
                 neighborhoodSize=params.neighborhood_size,
             )
         else:
-            # Kept land only. SNIC is expected to grow superpixels through
-            # unmasked pixels only, so a kept patch with no seed would get no
-            # superpixel; the seeds are the grid plus every pixel of each kept
-            # patch that holds no grid point (fmu.utils.kept_land). `size` is
-            # passed as before. With seeds given, the reference says only that
-            # no grid is produced; whether SNIC still scales its spatial term by
-            # `size` is UNVERIFIED (scripts/check_snic_on_kept_land.py tests it).
+            # Kept land only. SNIC grows superpixels through unmasked pixels
+            # only, so a kept patch with no seed would get no superpixel; the
+            # seeds are the grid plus every pixel of each kept patch that holds
+            # no grid point (fmu.utils.kept_land). `size` is passed as before,
+            # although SNIC ignores it once it is given seeds
+            # (scripts/check_snic_on_kept_land.py, 14 Oct 2026).
             min_patch = config.kept_patch_min_pixels()
             log.info(
                 "  kept land only: SNIC sees the pixels habitat_mask keeps, "
@@ -243,7 +250,8 @@ class SegmentationStage(Stage):
         # inherits it: `reduceRegion` defaults its CRS to the first band's
         # projection, and merge, profiling, metrics and export all reduce over
         # images derived from these two.
-        grid = _analysis_grid(roi, scale)
+        if grid is None:
+            grid = _analysis_grid(roi, scale)
         snic_clusters = (
             snic_result.select("clusters")
             .rename("snic_clusters")
@@ -260,9 +268,9 @@ class SegmentationStage(Stage):
         )
 
         if kept is not None:
-            # SNIC is expected to leave masked input pixels unlabelled. This
-            # applies the rule instead of relying on that, so no label lies off
-            # kept land whatever SNIC does there. The merge stage measures, on
+            # SNIC leaves masked input pixels unlabelled (A6, 14 Oct 2026). This
+            # applies the rule as well, rather than relying on that, so no label
+            # lies off kept land whatever SNIC does there. The merge stage measures, on
             # the image it reads, how much kept land is left without a label
             # (merge_diagnostics["kept_land"]); the export stage's count of
             # stands in several pieces would show a superpixel SNIC grew across

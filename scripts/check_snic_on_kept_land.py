@@ -38,6 +38,11 @@ measures:
 The answers go into the brief before any batch run with the setting on. `--out` writes the
 result, which holds results only, and beside it `<name>_run.json` with the command, the date
 and the git commit it ran from.
+
+Kept land, and from it the seeds and the patches of check 4, are made here as the stage makes
+them: on the analysis grid, clipped to the ROI (`fmu.utils.kept_land.kept_land_in_roi`, the fix
+of 15 Oct 2026). The run of 14 Oct 2026 (docs/reproducibility/snic_on_kept_land_kendujhar.json)
+was before the fix, of the stage and of this script.
 """
 
 from __future__ import annotations
@@ -251,7 +256,7 @@ def main() -> None:
     from fmu.stages.base import PipelineContext
     from fmu.utils.gee import init_gee, load_roi_geometry, safe_get_info
     from fmu.utils.grid import utm_epsg_code
-    from fmu.utils.kept_land import kept_land, seeds_on_kept_land
+    from fmu.utils.kept_land import kept_land_in_roi, seeds_on_kept_land
     from fmu.utils.provenance import git_state
 
     cfg = load_config(args.config)
@@ -308,8 +313,10 @@ def main() -> None:
 
     grid = segmentation_module._analysis_grid(roi, scale)
     params = on.segmentation
-    kept = kept_land(context.get("habitat_mask"), min_patch_pixels=on.kept_patch_min_pixels(),
-                     connectivity=params.connectivity)
+    # Kept land as the stage makes it: on the analysis grid, clipped to the ROI.
+    kept = kept_land_in_roi(context.get("habitat_mask"), roi, grid,
+                            min_patch_pixels=on.kept_patch_min_pixels(),
+                            connectivity=params.connectivity)
     on_grid = (ee.Algorithms.Image.Segmentation.seedGrid(params.size).unmask(0).gt(0).And(kept))
     seeds = seeds_on_kept_land(kept, size=params.size, connectivity=params.connectivity,
                                max_extent=params.neighborhood_size)

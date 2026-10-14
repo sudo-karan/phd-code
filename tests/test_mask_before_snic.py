@@ -22,7 +22,7 @@ from pydantic import ValidationError
 import fmu.stages.merge as merge_module
 import fmu.stages.segmentation as segmentation_module
 import fmu.utils.kept_land as kept_land_module
-from _ee_recorder import Rec, calls, made_by, owner_call
+from _ee_recorder import Call, Rec, calls, made_by, owner_call
 from fmu.config import Config, load_config
 from fmu.pipeline import default_stage_names, segmentation_stage_names
 from fmu.stages.base import PipelineContext
@@ -85,8 +85,17 @@ def _run_segmentation(monkeypatch, config: Config, *, with_mask: bool, kept_foun
 
 
 def _kept(log: list) -> Rec:
+    """Kept land as the stage uses it: kept_land's image, written out as 0 outside the clip
+    (kept_land_in_roi)."""
     (call,) = [c for c in log if c.attr == "rename" and c.args == ("kept",)]
-    return call.out
+    (zeros,) = [c for c in log if c.attr == "unmask" and c.owner is call.out]
+    assert zeros.args == (0, False), "0 outside the clip, filled everywhere"
+    return zeros.out
+
+
+def _kept_land_image(log: list) -> Call:
+    """The call that made kept_land's own image (before it is written out as 0 outside)."""
+    return owner_call(log, made_by(log, _kept(log)))
 
 
 # ---------------------------------------------------------------- config and fingerprint
@@ -195,14 +204,19 @@ def test_on_masks_snic_input_to_kept_land_and_seeds_every_patch(monkeypatch):
     config = _config(mask_before_snic=True)
     result, log, habitat = _run_segmentation(monkeypatch, config, with_mask=True)
 
-    # Kept land is habitat_mask's first band, unmasked to 0, equal to 1.
+    # Kept land is habitat_mask on the analysis grid, clipped to the ROI, its first band
+    # unmasked to 0, equal to 1.
     kept = _kept(log)
-    eq = owner_call(log, made_by(log, kept))
+    eq = owner_call(log, _kept_land_image(log))
     unmask = owner_call(log, eq)
     select = owner_call(log, unmask)
     assert (eq.attr, eq.args) == ("eq", (1,))
     assert (unmask.attr, unmask.args) == ("unmask", (0,))
-    assert (select.attr, select.args, select.owner) == ("select", ([0],), habitat)
+    assert (select.attr, select.args) == ("select", ([0],))
+    clip = made_by(log, select.owner)
+    reproject = made_by(log, clip.owner)
+    assert clip.attr == "clip" and reproject.attr == "reproject"
+    assert reproject.owner is habitat
     assert not calls(log, ".connectedPixelCount"), "no patch is left out unless asked"
 
     (snic,) = calls(log, ".SNIC")
@@ -218,6 +232,13 @@ def test_on_masks_snic_input_to_kept_land_and_seeds_every_patch(monkeypatch):
     assert grid.args == (config.segmentation.size,)
     (cc,) = calls(log, ".connectedComponents")
     assert cc.args[1] == config.segmentation.neighborhood_size
+    # Both made from that kept land: the grid points where it is kept, and its patches.
+    unmask0 = next(c for c in log if c.attr == "unmask" and c.owner is grid.out)
+    gt0 = next(c for c in log if c.attr == "gt" and c.owner is unmask0.out)
+    (on_kept,) = [c for c in log if c.attr == "And" and c.owner is gt0.out]
+    assert on_kept.args == (kept,)
+    self_mask = made_by(log, cc.owner)
+    assert self_mask.attr == "selfMask" and self_mask.owner is kept
     assert made_by(log, cc.args[0]).name == "ee.Kernel.square"
     (rcc,) = calls(log, ".reduceConnectedComponents")
     assert rcc.args[1:] == ("labels", config.segmentation.neighborhood_size)
@@ -231,11 +252,73 @@ def test_on_masks_snic_input_to_kept_land_and_seeds_every_patch(monkeypatch):
     assert result.metadata["kept_patch_min_pixels"] == 0
 
 
+def test_on_kept_land_is_clipped_to_the_roi_with_the_outputs_own_clip(monkeypatch):
+    """SNIC must not see kept land outside the ROI: it grew superpixels into a one-pixel
+    strip of it, which the clip of its output then cut in two (A6, 14 Oct 2026). So kept
+    land, and with it SNIC's input, its seeds and the statistics, is the mask put on the
+    analysis grid and clipped to the ROI, with the same grid and the same ROI as the clip
+    of the two outputs: an edge pixel is kept land exactly where it can carry a label. Outside
+    the clip it is 0, written out (`_kept`), so that SNIC's input is masked there by a 0 in
+    its mask."""
+    config = _config(mask_before_snic=True)
+    result, log, habitat = _run_segmentation(monkeypatch, config, with_mask=True)
+    (kept_reproject,) = [c for c in log if c.attr == "reproject" and c.owner is habitat]
+    (kept_clip,) = [c for c in log if c.attr == "clip" and c.owner is kept_reproject.out]
+    for key in ("snic_clusters", "snic_means"):
+        out = made_by(log, result.outputs[key])  # updateMask(kept)
+        out_clip = made_by(log, out.owner)
+        out_reproject = made_by(log, out_clip.owner)
+        assert (out_clip.attr, out_reproject.attr) == ("clip", "reproject"), key
+        assert out_reproject.args == kept_reproject.args, "the same grid"
+        assert out_clip.args == kept_clip.args, "the same ROI"
+    (snic,) = calls(log, ".SNIC")
+    masked = made_by(log, snic.kwargs["image"])
+    assert masked.args == (_kept(log),)
+
+
+def test_one_grid_per_run_made_before_kept_land_when_on_and_after_snic_when_off(monkeypatch):
+    """Off, the analysis grid is made after SNIC, as before the fix; on, it is made first and
+    kept land is put on it before SNIC. One grid per run either way, for the run's ROI at the
+    analysis scale. (The off path's Earth Engine calls are pinned by
+    tests/test_segmentation_off_golden.py, whose stand-in grid records nothing.)"""
+    for on in (False, True):
+        made: list[dict[str, Any]] = []
+        log: list = []
+        ee = Rec("ee", log)
+        config = _config(mask_before_snic=on)
+        bands = [b.band for b in config.segmentation.input_bands]
+        for module in (segmentation_module, kept_land_module):
+            monkeypatch.setattr(module, "ee", ee)
+            monkeypatch.setattr(module, "safe_get_info", _fake_get_info(bands))
+
+        def grid(roi, scale, log=log, made=made):
+            made.append({"at": len(log), "roi": roi, "scale": scale, "grid": Rec("grid", log)})
+            return made[-1]["grid"]
+
+        monkeypatch.setattr(segmentation_module, "_analysis_grid", grid)
+        ctx = PipelineContext()
+        ctx.set("roi", Rec("roi", log))
+        for source in config.segmentation.input_sources():
+            ctx.set(source, Rec(source, log))
+        if on:
+            ctx.set("habitat_mask", Rec("habitat_mask", log))
+        SegmentationStage().run(ctx, config)
+        (g,) = made  # one grid per run
+        assert g["roi"] is ctx.get("roi") and g["scale"] == config.export.analysis_scale_m
+        snic_at = next(i for i, c in enumerate(log) if c.name.endswith(".SNIC"))
+        if on:
+            kept_at = next(i for i, c in enumerate(log)
+                           if c.attr == "reproject" and c.args == (g["grid"],))
+            assert g["at"] <= kept_at < snic_at, "on: kept land is put on the grid before SNIC"
+        else:
+            assert g["at"] > snic_at, "off: the grid is made after SNIC, as before the fix"
+
+
 def test_on_with_small_patches_left_out_counts_patches_as_snic_joins_pixels(monkeypatch):
     config = _config(mask_before_snic=True, drop_kept_patches_below_min_area=True)
     result, log, _ = _run_segmentation(monkeypatch, config, with_mask=True)
     kept = _kept(log)
-    joined = owner_call(log, made_by(log, kept))
+    joined = owner_call(log, _kept_land_image(log))
     assert joined.attr == "And"
     (count,) = calls(log, ".connectedPixelCount")
     assert count.kwargs == {"maxSize": 100, "eightConnected": True}
@@ -334,13 +417,22 @@ def test_coverage_counts_on_the_label_images_own_pixels(monkeypatch):
 
     monkeypatch.setattr(kept_land_module, "safe_get_info", get_info)
     labels = Rec("labels", log)
+    habitat, roi = Rec("habitat", log), Rec("roi", log)
     got = kept_land_module.kept_land_coverage(
-        labels, Rec("habitat", log), Rec("roi", log), 10,
+        labels, habitat, roi, 10,
         min_patch_pixels=100, connectivity=8, context="test",
     )
     (reduce,) = calls(log, ".reduceRegion")
     assert "scale" not in reduce.kwargs
     assert made_by(log, reduce.kwargs["crs"]).name == "labels.projection"
+    # Kept land as segmentation makes it: the mask on the label image's grid, clipped to
+    # the ROI, twice (as is, and less the small patches).
+    reprojects = [c for c in log if c.attr == "reproject" and c.owner is habitat]
+    assert len(reprojects) == 2
+    for r in reprojects:
+        assert made_by(log, r.args[0]).name == "labels.projection"
+        (clip,) = [c for c in log if c.attr == "clip" and c.owner is r.out]
+        assert clip.args == (roi,)
     (cat,) = calls(log, "ee.Image.cat")
     named = [made_by(log, band).args for band in cat.args[0]]
     assert named == [("kept",), ("kept_unlabelled",), ("labelled_not_kept",), ("small_patches",)]

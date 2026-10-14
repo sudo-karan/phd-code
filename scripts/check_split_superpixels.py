@@ -48,6 +48,12 @@ What it does.
 
 `--out` writes the result, which holds results only, and beside it `<name>_run.json` with the
 command, the date and the git commit it ran from.
+
+Since the fix of 15 Oct 2026 (kept land clipped to the ROI before SNIC; register entry
+spec-segmentation-mask-before-snic), kept land here is made as the stage makes it
+(`fmu.utils.kept_land.kept_land_in_roi`), so the window's kept land is the land SNIC is given.
+The result of 14 Oct 2026, before the fix, read kept land unclipped, and its windows show the
+strip of kept land outside the ROI that SNIC then grew into.
 """
 
 from __future__ import annotations
@@ -199,7 +205,9 @@ def classify(
 
     final  the stage's label image (NONE where masked)
     raw    SNIC's own label image, before the clip to the ROI and the mask to kept land
-    kept   1 on kept land, 0 elsewhere inside the land-cover footprint, NONE outside it
+    kept   1 on kept land, 0 elsewhere inside the ROI; outside it NONE or 0, as kept land is
+           clipped to the ROI (before the fix of 15 Oct 2026 it was read unclipped, 1 on kept
+           land outside the ROI too, and NONE outside the land-cover footprint)
     roi    1 inside the ROI, 0 outside
     piece  A6's piece label (connectedComponents on `final`), NONE where masked
     i0, j0 the global pixel column and row of the window's top-left pixel
@@ -407,7 +415,7 @@ def main() -> None:
     from fmu.pipeline import Pipeline, segmentation_stage_names
     from fmu.stages.base import PipelineContext
     from fmu.utils.gee import init_gee, load_roi_geometry, safe_get_info
-    from fmu.utils.kept_land import kept_land
+    from fmu.utils.kept_land import kept_land_in_roi
     from fmu.utils.provenance import git_state
 
     cfg = load_config(args.config)
@@ -457,8 +465,10 @@ def main() -> None:
         ee.Algorithms.Image.Segmentation.SNIC = snic
     final = stage_result.outputs["snic_clusters"]
     raw = captured["result"].select("clusters").reproject(grid)  # no clip, no mask
-    kept = kept_land(context.get("habitat_mask"), min_patch_pixels=on.kept_patch_min_pixels(),
-                     connectivity=params.connectivity)
+    # Kept land as the stage makes it: on the analysis grid, clipped to the ROI.
+    kept = kept_land_in_roi(context.get("habitat_mask"), roi, grid,
+                            min_patch_pixels=on.kept_patch_min_pixels(),
+                            connectivity=params.connectivity)
     kernel = ee.Kernel.square(1) if params.connectivity == 8 else ee.Kernel.plus(1)
     pieces = final.connectedComponents(kernel, PIECES_MAX_SIZE).select("labels")
 

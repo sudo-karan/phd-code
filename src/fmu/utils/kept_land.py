@@ -9,9 +9,8 @@ masked, so superpixels, and the stands the merge builds from them, lie on kept
 land only.
 
 Masking the stack is not enough on its own. SNIC grows each superpixel from a
-seed, and its seeds are a regular grid. A superpixel is expected to grow
-through unmasked pixels only, so a patch of kept land that no grid point falls
-in, cut off from other kept land by masked pixels, would have no seed and
+seed, and its seeds are a regular grid. A superpixel grows through unmasked
+pixels only (see below), so a patch of kept land that no grid point falls in, cut off from other kept land by masked pixels, would have no seed and
 nothing could grow into it: its pixels would get no superpixel at all. Which
 patches that hits would depend on where the grid happens to fall, not on the
 land. So the seeds are given explicitly (`seeds_on_kept_land`): the grid, on
@@ -27,13 +26,25 @@ What the seeds cannot reach is measured rather than assumed:
 how much superpixel area lies off kept land. The merge stage puts both in
 `merge_diagnostics` and warns when either is above zero.
 
-Not yet seen on Earth Engine: whether SNIC really leaves a masked pixel
-unlabelled and grows no superpixel across one (the reference says nothing about
-masks), what `connectedComponents` counts against its `maxSize` (an extent or a
-number of pixels; the reference says "Maximum size of objects to be labeled"),
-and whether SNIC still uses `size` once it is given seeds (the reference says
-only "If 'seeds' image is provided, no grid is produced"). All three are
-UNVERIFIED until `scripts/check_snic_on_kept_land.py` has run.
+Kept land stops at the ROI (`kept_land_in_roi`). The land-cover mask is read on
+the analysis grid and clipped to the ROI with the same `reproject(grid).clip(roi)`
+the segmentation stage gives its outputs, before anything else is made from it,
+so SNIC's input, its seeds and the small-patch rule start from the same land,
+the statistics are taken over it (in the projection of the stack's first band,
+as those reductions always were), and the stage's own clip of its outputs takes
+nothing away. Without
+it, SNIC grew superpixels into a strip of kept land one pixel wide just outside
+the ROI, where the cached mask's pixels reach past the ROI edge, and the clip of
+the outputs then cut three of them in two on Kendujhar's box
+(docs/reproducibility/snic_split_superpixels_kendujhar.json; Jaskaran's decision
+of 15 Oct 2026, register entry spec-segmentation-mask-before-snic).
+
+What `scripts/check_snic_on_kept_land.py` found on Earth Engine (14 Oct 2026,
+docs/reproducibility/snic_on_kept_land_kendujhar.json, before the clip): SNIC
+leaves a masked pixel unlabelled and grew no superpixel across masked land (the
+three in two pieces were cut by the ROI edge); touching seed pixels are one
+seed; `connectedComponents`' `maxSize` is an extent; and SNIC ignores `size`
+once it is given seeds.
 """
 
 from __future__ import annotations
@@ -74,6 +85,37 @@ def kept_land(
     return kept.rename("kept")
 
 
+def kept_land_in_roi(
+    habitat_mask: ee.Image,
+    roi: ee.Geometry,
+    grid: ee.Projection,
+    *,
+    min_patch_pixels: int = 0,
+    connectivity: int = 8,
+) -> ee.Image:
+    """Kept land as segmentation.mask_before_snic uses it: inside the ROI only.
+
+    `habitat_mask` is put on `grid` (the analysis grid) and clipped to `roi`, the
+    same `reproject(grid).clip(roi)` the segmentation stage gives its outputs, so
+    an edge pixel is kept land here exactly where it can carry a label there; then
+    `kept_land`, so a small patch is measured on the land inside the ROI.
+
+    Outside the clip the result is 0, not masked (`unmask(0, False)`). An image
+    masked with it is then masked there by the documented rule that a 0 in a mask
+    image masks; the reference does not say what Earth Engine does with a masked
+    pixel of a mask image, and SNIC's input must not depend on it. `unmask` fills
+    only where the mask is 0, so the partial masks the clip leaves along the ROI
+    edge stay as they are. Reduce it over the ROI only: outside, it is a valid 0,
+    which a count or a mean over a larger region would take in.
+    """
+    kept = kept_land(
+        habitat_mask.reproject(grid).clip(roi),
+        min_patch_pixels=min_patch_pixels,
+        connectivity=connectivity,
+    )
+    return kept.unmask(0, False)
+
+
 def seeds_on_kept_land(
     kept: ee.Image, *, size: int, connectivity: int, max_extent: int
 ) -> ee.Image:
@@ -88,11 +130,10 @@ def seeds_on_kept_land(
     Patches are found with `connectedComponents`, which leaves out any patch
     larger than `max_extent` (the stage passes SNIC's `neighborhood_size`, the
     margin SNIC adds around each tile, so a patch given seeds here fits inside
-    that margin wherever a tile edge cuts it, if `maxSize` is an extent; whether
-    it is an extent or a number of pixels is UNVERIFIED, see the module
-    docstring). A patch too big to be found holds a grid point unless it is a
-    long strip narrower than the grid spacing; if one exists,
-    `kept_land_coverage` reports its area.
+    that margin wherever a tile edge cuts it, `maxSize` being an extent, as the
+    check found; see the module docstring). A patch too big to be found holds a
+    grid point unless it is a long strip narrower than the grid spacing; if one
+    exists, `kept_land_coverage` reports its area.
 
     Returns one 0/1 band, `seeds`, for SNIC's `seeds` argument.
     """
@@ -132,15 +173,17 @@ def kept_land_coverage(
     """How the superpixels cover kept land, in hectares. One Earth Engine call.
 
     `labels` is the superpixel label image. Kept land is made from
-    `habitat_mask` exactly as segmentation makes it (`kept_land`, with the same
-    `min_patch_pixels` and `connectivity`). Counted on the label image's own
-    pixels: the reduction runs in its projection, transform included, so a
-    cached label image is not resampled onto another grid. Areas are pixel
-    counts x scale^2, as the merge counts its areas.
+    `habitat_mask` exactly as segmentation makes it (`kept_land_in_roi`, on the
+    label image's grid, with the same `min_patch_pixels` and `connectivity`).
+    Counted on the label image's own pixels: the reduction runs in its
+    projection, transform included, so a cached label image is not resampled
+    onto another grid. Areas are pixel counts x scale^2, as the merge counts its
+    areas.
     """
-    all_kept = kept_land(habitat_mask)
-    kept = kept_land(
-        habitat_mask, min_patch_pixels=min_patch_pixels, connectivity=connectivity
+    grid = labels.projection()
+    all_kept = kept_land_in_roi(habitat_mask, roi, grid)
+    kept = kept_land_in_roi(
+        habitat_mask, roi, grid, min_patch_pixels=min_patch_pixels, connectivity=connectivity
     )
     labelled = labels.select([0]).mask().gt(0)
     stack = ee.Image.cat(

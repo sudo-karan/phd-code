@@ -4684,9 +4684,12 @@ decisions:
     Two segmentation settings, both off by default. segmentation.mask_before_snic selects where SNIC draws
     superpixels. Off, the default and the behaviour of every run made before it existed: SNIC and the merge cover
     the whole ROI and the land-cover mask (habitat_mask: trees or scrub) is applied at clustering only, so a stand
-    can hold cropland or built-up land and its type is fitted on means over all of it. On: the per-band z-score and
-    the distance normaliser are measured over kept land only (the normaliser over pairs of adjacent kept pixels
-    with every band defined); SNIC runs on the input stack with every other pixel masked; its seeds are the square
+    can hold cropland or built-up land and its type is fitted on means over all of it. On: kept land is habitat_mask
+    1 on the analysis grid, clipped to the ROI with the same reproject(grid).clip(roi) the stage gives its two
+    outputs (fmu.utils.kept_land.kept_land_in_roi), before anything else is made from it, so that SNIC cannot grow a
+    superpixel past the ROI edge and the clip of its outputs takes nothing away; the per-band z-score and the
+    distance normaliser are measured over that land only (the normaliser over pairs of adjacent kept pixels with
+    every band defined); SNIC runs on the input stack with every other pixel masked; its seeds are the square
     grid on kept land plus every pixel of each kept patch that no grid point falls in, so that no patch is left
     without a superpixel because of where the grid falls (fmu.utils.kept_land.seeds_on_kept_land); and both SNIC
     outputs are masked to kept land. segmentation.drop_kept_patches_below_min_area, which needs the first, also
@@ -4704,14 +4707,22 @@ decisions:
     and in the same order, as before the change (tests/test_segmentation_off_golden.py holds them as recorded from
     the stage at commit 983dbe7, for three shipped configs); its metadata gains the key mask_before_snic. Guards:
     with the setting on, segmentation.size must be at least 2 (touching seed pixels are one seed to SNIC), and an
-    ROI with no kept land fails with a plain message. The masked path has not run on Earth Engine yet. Its
-    requests are checked offline against the algorithm signatures earthengine-api ships
-    (tests/test_mask_before_snic_ee_graph.py); what Earth Engine does with them is what
-    scripts/check_snic_on_kept_land.py measures, on one cached box config, before any batch run with the setting
-    on: whether SNIC leaves masked pixels unlabelled and grows no superpixel across them, whether the seeds reach
+    ROI with no kept land fails with a plain message. The masked path has not run in batch. Its requests are
+    checked offline against the algorithm signatures earthengine-api ships (tests/test_mask_before_snic_ee_graph.py);
+    what Earth Engine does with them is what scripts/check_snic_on_kept_land.py measures, read-only on a cached
+    run, before any batch run with the setting on: whether SNIC leaves masked pixels unlabelled and grows no superpixel across them, whether the seeds reach
     every kept pixel, whether touching seed pixels make one superpixel, whether seedGrid is SNIC's own grid,
     whether SNIC still uses size once given seeds, and what connectedComponents and connectedPixelCount count
-    against maxSize. For the field comparison the setting changes two things, declared separately before any run
+    against maxSize. Its first run (14 Oct 2026, Kendujhar's box, before the clip to the ROI;
+    docs/reproducibility/snic_on_kept_land_kendujhar.json) found superpixels in more than one piece: 2,758 pieces
+    for 2,755 superpixels, each count one too high for a histogram key "null". scripts/check_split_superpixels.py
+    then found 3 of 2,754 superpixels each in two pieces, all cut by the ROI edge
+    (docs/reproducibility/snic_split_superpixels_kendujhar.json): kept land was not clipped to the ROI, the cached
+    mask's pixels reach past the ROI edge, so SNIC grew each into a strip of kept land one pixel wide just outside
+    it, and the clip of its output removed the strip that joined the two parts. The clip of kept land to the ROI
+    is the fix (Jaskaran, 15 Oct 2026). It applies with the setting on only and adds no setting: no segmentation
+    asset with the setting on existed, so no cached asset describes the path without the clip. With the clip, the
+    masked path has not run on Earth Engine yet: the two checks run again on the fixed code before any batch run. For the field comparison the setting changes two things, declared separately before any run
     with it on: a plot on land the mask removes is in no stand (14 of the 267 Odisha plots inside the boxes), and
     the rotation null as coded requires every plot that has a stand to land on a stand after the move, which
     stands on kept land only make far rarer.
@@ -4738,6 +4749,17 @@ decisions:
     Keep the small patches as stands but leave them out of the k-means fit, and label them afterwards: not
     built. It needs a change to the clustering stage and still puts some 650 fragments on the stand map
   - >-
+    After the clip of SNIC's outputs to the ROI, number each connected piece of a superpixel as a superpixel of its
+    own: not chosen (Jaskaran, 15 Oct 2026). It removes the pieces, not their cause: SNIC would still draw
+    superpixels partly on land outside the ROI
+  - >-
+    Accept the pieces (on Kendujhar's box, 3 of 2,754 superpixels, each piece cut off 1 or 2 pixels): not chosen
+    (Jaskaran, 15 Oct 2026)
+  - >-
+    Clip SNIC's input to the ROI with the setting off as well: not done (Jaskaran, 15 Oct 2026: only when
+    segmentation.mask_before_snic is on). It would change the superpixels of every whole-area run under an
+    unchanged fingerprint. Whether SNIC cuts superpixels at the ROI edge with the setting off has not been checked
+  - >-
     Change segmentation in place, with no setting: not done. Every existing config's superpixels would change
     under an unchanged cache fingerprint, and the cached assets would no longer be what the config describes
   - >-
@@ -4752,7 +4774,10 @@ decisions:
     behaviour reproducible; the explicit seeds and the measured coverage are there because a stand map that
     silently leaves out kept land, by an accident of the seed grid, is the kind of silent loss this pipeline
     reports rather than hides (spec-component-cap-derived). Whether the box configs leave out small patches is
-    Jaskaran's to decide, with the counts above, before they run.
+    Jaskaran's to decide, with the counts above, before they run. The clip to the ROI is his answer of 15 Oct 2026
+    to question 1 of docs/handoff/2026-10-14-round3.md: "clip kept land (and so SNIC's input and seeds) to the ROI
+    before SNIC, only when segmentation.mask_before_snic is on. Use the same clip as the output clip, so both treat
+    edge pixels the same way. No new setting: no kept-land segmentation asset exists yet."
   evidence:
   - path: src/fmu/stages/segmentation.py
     what: >-
@@ -4762,8 +4787,8 @@ decisions:
       mask_before_snic and kept_patch_min_pixels
   - path: src/fmu/utils/kept_land.py
     what: >-
-      kept_land(), seeds_on_kept_land(), kept_land_coverage(), the reasons for each, and what is UNVERIFIED until
-      the check script has run
+      kept_land(), kept_land_in_roi() (the clip to the ROI), seeds_on_kept_land(), kept_land_coverage(), the
+      reasons for each, and what the check script found
   - path: src/fmu/stages/merge.py
     what: 'kept_land_coverage on the image the merge reads; merge_diagnostics["kept_land"]; _kept_land_warnings'
   - path: src/fmu/config.py
@@ -4776,8 +4801,9 @@ decisions:
     what: >-
       Fingerprints off and on; the guards; the mask is made before segmentation; with the setting off nothing reads
       the mask and nothing is masked; with it on, which image each statistic is taken over, what SNIC is given,
-      that small patches are counted as SNIC joins pixels, and that the outputs are masked; the coverage is counted
-      on the label image's own pixels; the merge on two patches that do not touch makes no merge and reports the
+      that small patches are counted as SNIC joins pixels, and that the outputs are masked; that kept land is
+      clipped to the ROI with the outputs' own clip, and that the stage makes one analysis grid; the coverage is
+      counted on the label image's own pixels, on kept land clipped to the ROI; the merge on two patches that do not touch makes no merge and reports the
       small one as isolated; the coverage warnings
   - path: tests/test_segmentation_off_golden.py
     what: The default path's calls, against those recorded from the stage at commit 983dbe7
@@ -4785,6 +4811,12 @@ decisions:
     what: The masked path and the coverage check built with the real Earth Engine client, offline
   - path: scripts/check_snic_on_kept_land.py
     what: The read-only check on Earth Engine to run before any batch run with the setting on
+  - path: docs/reproducibility/snic_on_kept_land_kendujhar.json
+    what: The read-only check of 14 Oct 2026 on Kendujhar's box run, before the clip
+  - path: docs/reproducibility/snic_split_superpixels_kendujhar.json
+    what: >-
+      The read-only follow-up of 14 Oct 2026 (scripts/check_split_superpixels.py): the three superpixels in two
+      pieces, and the ROI edge cutting each
   - path: tests/test_check_snic_on_kept_land.py
     what: What the check script says, and that its requests are valid
   - path: tests/test_repro_fingerprints.py
@@ -4794,7 +4826,9 @@ decisions:
   papers: []
   status: adopted
   design_notes_section: null
-  source: Jaskaran's decision in conversation with Claude (chat), 14 Oct 2026; PR #43
+  source: >-
+    Jaskaran's decision in conversation with Claude (chat), 14 Oct 2026; the clip to the ROI, Jaskaran, 15 Oct 2026
+    (round 4, answer to question 1 of docs/handoff/2026-10-14-round3.md); PR #43
 - id: spec-merge-pass2-soft-ceiling
   title: >-
     In the second pass, a region still below the minimum stand size may join a neighbour even if the stand is
@@ -5049,8 +5083,9 @@ decisions:
     patches kept (docs/reproducibility/snic_on_kept_land_kendujhar.json). One of its lines is not as expected: 3
     superpixels are each in more than one piece. A read-only follow-up found the ROI edge cutting all three
     (docs/reproducibility/snic_split_superpixels_kendujhar.json): SNIC grows them through a strip of kept land one
-    pixel wide just outside the ROI, and the stage's clip to the ROI cuts that strip off. Jaskaran decides the fix
-    before any run. Not run on Earth Engine in batch.
+    pixel wide just outside the ROI, and the stage's clip to the ROI cuts that strip off. The fix, Jaskaran's of 15
+    Oct 2026, clips kept land to the ROI before SNIC (spec-segmentation-mask-before-snic); the two checks run again
+    on the fixed code before any batch run. Not run on Earth Engine in batch.
   alternatives_considered:
   - >-
     Leave out, before SNIC, the kept patches smaller than merge.min_area_ha that touch no other kept land
