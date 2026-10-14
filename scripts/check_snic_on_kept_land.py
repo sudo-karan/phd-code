@@ -1,10 +1,11 @@
 """Does Earth Engine do what segmentation.mask_before_snic counts on? A small check, run first.
 
     python scripts/check_snic_on_kept_land.py --config configs/<name>.yaml
-        [--keep-small-patches] [--out <file.json>]
+        [--keep-small-patches] [--as-config configs/<name>_keptland.yaml] [--out <file.json>]
 
 READ-ONLY on Earth Engine: it reads the config's cached assets and runs small reductions. It
-submits no task and writes no asset. Run it from the repo root (fmu reads .env from there).
+submits no task and writes no asset (scripts/ee_read_only.py makes any such call raise). Run it
+from the repo root (fmu reads .env from there).
 
 Why this exists. The kept-land path of segmentation (src/fmu/utils/kept_land.py, register
 entry spec-segmentation-mask-before-snic) was written and tested offline. It rests on things
@@ -21,7 +22,15 @@ measures:
      every kept patch.
   3. superpixels_in_pieces: superpixels whose pixels fall in more than one piece (labels
      against connected pieces of the same label). Expected 0: no superpixel grows across
-     masked land.
+     masked land, and none is cut by the clip to the ROI.
+     snic_pixels_outside_roi: pixels SNIC's own label covers outside the ROI (those the
+     stage's clip removes), within OUTSIDE_BUFFER_PX of it. Expected 0: kept land, so SNIC's
+     input, is clipped to the ROI before SNIC (the fix of 15 Oct 2026; before it, SNIC grew
+     three superpixels on Kendujhar's box into a strip of kept land just outside the ROI,
+     docs/reproducibility/snic_split_superpixels_kendujhar.json).
+     largest_superpixel_pixels: the largest superpixel, against the component cap of the
+     merge that would read it (Config.max_component_pixels() of --as-config, else of --config
+     with the setting on). Expected at most the cap: a larger one is deleted downstream.
   4. patches_without_grid_point and their superpixels: kept patches no grid point falls in,
      and the superpixels on them. Expected equal: touching seed pixels are one seed.
   5. seed_grid_is_snics_own_grid: SNIC with its own seeds against SNIC given
@@ -35,6 +44,14 @@ measures:
   8. connected_pixel_count: the same squares counted with maxSize 100: what a pixel of each
      holds.
 
+The counts of checks 3 and 4 are distinct labels of a histogram over the ROI. A histogram can
+also hold a key "null" (pixels the reducer saw with no value): it is not counted as a label, and
+its pixels are given apart (null_key_pixels). The run of 14 Oct 2026 counted it, so its counts
+there are each one too high where the key was present (docs/handoff/2026-10-14-round3.md). Check
+3's count outside the ROI has two controls: how many pixels outside the ROI it looked at, and the
+same count for SNIC on check 5's stack, unclipped, which has nothing masked outside the ROI where
+the cached features reach past it, and so is expected above 0 there.
+
 The answers go into the brief before any batch run with the setting on. `--out` writes the
 result, which holds results only, and beside it `<name>_run.json` with the command, the date
 and the git commit it ran from.
@@ -43,6 +60,12 @@ Kept land, and from it the seeds and the patches of check 4, are made here as th
 them: on the analysis grid, clipped to the ROI (`fmu.utils.kept_land.kept_land_in_roi`, the fix
 of 15 Oct 2026). The run of 14 Oct 2026 (docs/reproducibility/snic_on_kept_land_kendujhar.json)
 was before the fix, of the stage and of this script.
+
+`--as-config` names the kept-land config whose segmentation this stands for (one of the six of
+round 3, which have no cached assets of their own yet): the script refuses unless that config's
+segmentation block, ROI, analysis scale and smallest kept patch are those --config gets with the
+setting on, so that the check is of that config's segmentation, and it takes the merge's
+component cap from it.
 """
 
 from __future__ import annotations
@@ -57,10 +80,13 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO / "src"))  # this checkout's fmu, not an editable install of another
 REQUEST_DEADLINE_MS = 7 * 60 * 1000  # as scripts/snic_cached_vs_live.py
 PIECES_MAX_SIZE = 256  # a superpixel at the shipped seed spacings is far narrower
 SQUARE_BIG_PX, SQUARE_SMALL_PX = 15, 9
 CC_MAX_SIZE, CPC_MAX_SIZE = 128, 100
+OUTSIDE_BUFFER_PX = 20  # how far past the ROI edge SNIC's own label is looked for (check 3)
 
 
 def run_record_path(out: Path) -> Path:
@@ -87,11 +113,37 @@ def verdicts(result: dict[str, Any]) -> list[str]:
                           "no superpixel is in more than one piece",
                           f"{m['superpixels_in_pieces']} superpixels are in more than one piece "
                           f"({m['pieces']} pieces for {m['superpixels']} superpixels)"))
+        if "snic_pixels_outside_roi" in m:
+            looked = m.get("pixels_outside_roi_looked_at")
+            if not looked:
+                lines.append("NOT as expected: no pixel outside the ROI was looked at, so the "
+                             "count of SNIC's label there says nothing")
+            else:
+                lines.append(says(m["snic_pixels_outside_roi"] == 0,
+                                  f"SNIC labelled none of the {looked} pixels just outside the ROI",
+                                  f"SNIC labelled {m['snic_pixels_outside_roi']} of the {looked} "
+                                  "pixels just outside the ROI, which the stage's clip removes"))
+        if "largest_superpixel_pixels" in m:
+            cap = result.get("merge_component_cap", {})
+            lines.append(says(m["largest_superpixel_pixels"] <= cap.get("pixels", float("inf")),
+                              f"the largest superpixel, {m['largest_superpixel_pixels']} px, is "
+                              f"within the merge's component cap of {cap.get('pixels')} px "
+                              f"({cap.get('config')})",
+                              f"the largest superpixel, {m['largest_superpixel_pixels']} px, is "
+                              f"over the merge's component cap of {cap.get('pixels')} px "
+                              f"({cap.get('config')})"))
         lines.append(says(m["patches_without_grid_point"] == m["superpixels_on_those_patches"],
                           f"each of the {m['patches_without_grid_point']} kept patches no grid "
                           "point falls in is one superpixel",
                           f"{m['patches_without_grid_point']} kept patches no grid point falls in "
                           f"hold {m['superpixels_on_those_patches']} superpixels"))
+    ctl = result.get("outside_roi_control")
+    if ctl and "error" in ctl:
+        lines.append(f"check 3's control could not be run: {ctl['error']}")
+    elif ctl:
+        lines.append(f"check 3's control: SNIC on the unmasked stack labels "
+                     f"{ctl['snic_pixels_outside_roi']} of the {ctl['pixels_outside_roi_looked_at']} "
+                     "pixels just outside the ROI (above 0 where the cached features reach past it)")
     for key, text in (
         ("seed_grid_is_snics_own_grid", "SNIC given seedGrid(size) against SNIC with its own seeds"),
         ("size_matters_with_seeds", "SNIC given seeds, at size against twice size"),
@@ -126,10 +178,40 @@ def _err(exc: BaseException) -> dict[str, str]:
     return {"error": " ".join(str(exc).split())[:300]}
 
 
+def check_fmu_is_this_checkouts() -> None:
+    """Refuse if fmu is not imported from this checkout's src/, so the check runs the code of
+    the commit its run record names (as scripts/reuse_upstream_assets.py does)."""
+    import fmu
+
+    here = Path(fmu.__file__).resolve()
+    if (REPO / "src").resolve() not in here.parents:
+        raise SystemExit(f"fmu is imported from {here}, not from {REPO / 'src'}: this would check "
+                         "another checkout's code")
+
+
+def as_config_problems(on: Any, as_cfg: Any) -> list[str]:
+    """Why `as_cfg` (a kept-land config) is not what `on` (--config with the setting on in
+    memory) segments: an empty list when its segmentation is the one checked. Pure Python."""
+    problems = []
+    if on.segmentation != as_cfg.segmentation:
+        a, b = on.segmentation.model_dump(), as_cfg.segmentation.model_dump()
+        problems.append("segmentation differs in " + ", ".join(
+            sorted(k for k in a.keys() | b.keys() if a.get(k) != b.get(k))))
+    if on.roi != as_cfg.roi:
+        problems.append("the ROI differs")
+    if on.export.analysis_scale_m != as_cfg.export.analysis_scale_m:
+        problems.append("export.analysis_scale_m differs")
+    if on.kept_patch_min_pixels() != as_cfg.kept_patch_min_pixels():
+        problems.append("the smallest kept patch (kept_patch_min_pixels) differs")
+    return problems
+
+
 def measure_masked(ee: Any, get_info: Callable[..., Any], *, raw: Any, final: Any,
                    kept: Any, on_grid: Any, seeds: Any, roi: Any, grid: Any,
-                   connectivity: int) -> dict[str, int]:
-    """Checks 1 to 4 on SNIC's own labels (`raw`) and the stage's (`final`)."""
+                   connectivity: int, unclipped: Any | None = None,
+                   scale: int = 10) -> dict[str, Any]:
+    """Checks 1 to 4 on SNIC's own labels (`raw`, clipped to the ROI; `unclipped`, not) and
+    the stage's (`final`). `scale` is the analysis grid's, in metres."""
     kw = {"geometry": roi, "crs": grid, "maxPixels": int(1e10), "tileScale": 4}
     labelled = raw.mask().gt(0)
     sums = get_info(
@@ -139,6 +221,9 @@ def measure_masked(ee: Any, get_info: Callable[..., Any], *, raw: Any, final: An
         ]).reduceRegion(reducer=ee.Reducer.sum().unweighted(), **kw),
         context="checks 1-2: labels against kept land",
     )
+    outside = ({} if unclipped is None else
+               outside_roi(ee, get_info, unclipped, roi=roi, grid=grid, scale=scale,
+                           context="check 3: SNIC's own label outside the ROI"))
     kernel = ee.Kernel.square(1) if connectivity == 8 else ee.Kernel.plus(1)
     pieces = final.connectedComponents(kernel, PIECES_MAX_SIZE).select("labels")
     extra = seeds.And(on_grid.Not())
@@ -154,18 +239,52 @@ def measure_masked(ee: Any, get_info: Callable[..., Any], *, raw: Any, final: An
         context="checks 3-4: superpixels, pieces and seedless patches",
     )
 
-    def n(key: str) -> int:
-        return len(counts.get(key) or {})
+    def labels(key: str) -> dict[str, Any]:
+        return {k: v for k, v in (counts.get(key) or {}).items() if k != "null"}
 
+    def n(key: str) -> int:
+        return len(labels(key))
+
+    sizes = labels("superpixels")
+    largest = max(sizes, key=lambda k: (sizes[k], k)) if sizes else None
     return {
         "masked_pixels_labelled": int(sums.get("masked_labelled") or 0),
         "kept_pixels_unlabelled": int(sums.get("kept_unlabelled") or 0),
         "superpixels": n("superpixels"),
         "pieces": n("pieces"),
         "superpixels_in_pieces": max(0, n("pieces") - n("superpixels")),
+        **outside,
+        "largest_superpixel_pixels": int(sizes[largest]) if largest is not None else 0,
+        "largest_superpixel_label": None if largest is None else int(float(largest)),
         "patches_without_grid_point": n("extra_patches"),
         "superpixels_on_those_patches": n("labels_on_extra"),
+        "null_key_pixels": {k: (counts.get(k) or {}).get("null") for k in
+                            ("superpixels", "pieces", "extra_patches", "labels_on_extra")},
     }
+
+
+
+def outside_roi(ee: Any, get_info: Callable[..., Any], unclipped: Any, *, roi: Any, grid: Any,
+                scale: int, context: str) -> dict[str, int]:
+    """Pixels a label image (before any clip) labels where the stage's clip removes a pixel, within
+    OUTSIDE_BUFFER_PX of the ROI, and how many such pixels were looked at."""
+    # 1 where the clip removes a pixel (its mask is 0 there), 0 where it keeps one, however little
+    # the ROI covers it; both images written out as 0 and 1 everywhere, so that neither is masked
+    # outside the ROI and a 0 cannot come from a masked pixel.
+    outside_clip = ee.Image(1).clip(roi).unmask(0, False).eq(0)
+    labelled_any = unclipped.mask().gt(0).unmask(0, False)
+    got = get_info(
+        ee.Image.cat([
+            labelled_any.And(outside_clip).rename("labelled"),
+            outside_clip.rename("outside"),
+        ]).reduceRegion(
+            reducer=ee.Reducer.sum().unweighted(),
+            geometry=roi.buffer(OUTSIDE_BUFFER_PX * scale),
+            crs=grid, maxPixels=int(1e10), tileScale=4),
+        context=context,
+    )
+    return {"snic_pixels_outside_roi": int(got.get("labelled") or 0),
+            "pixels_outside_roi_looked_at": int(got.get("outside") or 0)}
 
 
 def differing(ee: Any, get_info: Callable[..., Any], a: Any, b: Any, *, roi: Any, grid: Any,
@@ -236,8 +355,11 @@ def main() -> None:
                     help="a config that ran with mask_before_snic off, its upstream cached")
     ap.add_argument("--keep-small-patches", action="store_true",
                     help="do not leave out kept patches below merge.min_area_ha")
+    ap.add_argument("--as-config", type=Path, default=None,
+                    help="the kept-land config whose segmentation this checks (see the docstring)")
     ap.add_argument("--out", type=Path, default=None, help="write the result here as JSON")
     args = ap.parse_args()
+    check_fmu_is_this_checkouts()
 
     import ee
     from pyproj import Transformer
@@ -266,8 +388,18 @@ def main() -> None:
     raw_cfg["segmentation"]["mask_before_snic"] = True
     raw_cfg["segmentation"]["drop_kept_patches_below_min_area"] = not args.keep_small_patches
     on = Config.model_validate(raw_cfg)
+    checked = on
+    if args.as_config:
+        checked = load_config(args.as_config)
+        problems = as_config_problems(on, checked)
+        if problems:
+            raise SystemExit(f"{checked.name} is not what {cfg.name} segments with the setting on: "
+                             + "; ".join(problems))
 
     init_gee()
+    import ee_read_only  # scripts/: every task or asset write raises before it is sent
+
+    ee_read_only.forbid_writes()
     ee.data.setDeadline(REQUEST_DEADLINE_MS)
     roi = load_roi_geometry(cfg.roi.roi_file)
     scale = cfg.export.analysis_scale_m
@@ -300,6 +432,9 @@ def main() -> None:
             "neighborhood_size": on.segmentation.neighborhood_size,
         },
         "upstream_cache_status": status,
+        "checks_the_segmentation_of": checked.name if args.as_config else None,
+        "merge_component_cap": {"config": checked.name if args.as_config else f"{cfg.name}, setting on",
+                                "pixels": checked.max_component_pixels()},
     }
 
     # The stage itself, keeping SNIC's own output before the stage masks it.
@@ -329,14 +464,16 @@ def main() -> None:
     finally:
         ee.Algorithms.Image.Segmentation.SNIC = snic
     if stage_result is not None:
-        raw = captured["result"].select("clusters").reproject(grid).clip(roi)
+        unclipped = captured["result"].select("clusters").reproject(grid)
+        raw = unclipped.clip(roi)
         final = stage_result.outputs["snic_clusters"]
         try:
             result["masked_run"] = {
                 "distance_scale": stage_result.metadata.get("distance_scale"),
                 **measure_masked(ee, get_info, raw=raw, final=final, kept=kept, on_grid=on_grid,
                                  seeds=seeds, roi=roi, grid=grid,
-                                 connectivity=params.connectivity),
+                                 connectivity=params.connectivity, unclipped=unclipped,
+                                 scale=scale),
             }
         except Exception as exc:
             result["masked_run"] = _err(exc)
@@ -354,6 +491,13 @@ def main() -> None:
 
         own = labels(size=params.size)
         given = labels(size=params.size, seeds=grid_seeds)
+        try:
+            control = snic(image=stack, size=params.size, **common).select("clusters").reproject(grid)
+            result["outside_roi_control"] = outside_roi(
+                ee, get_info, control, roi=roi, grid=grid, scale=scale,
+                context="check 3, control: SNIC on the unmasked stack, outside the ROI")
+        except Exception as exc:
+            result["outside_roi_control"] = _err(exc)
         twice = labels(size=2 * params.size, seeds=grid_seeds)
         for key, a, b in (("seed_grid_is_snics_own_grid", own, given),
                           ("size_matters_with_seeds", given, twice)):

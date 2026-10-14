@@ -1,10 +1,11 @@
 """The superpixels A6 found in more than one piece: where they are, and what separates the pieces.
 
     python scripts/check_split_superpixels.py --config configs/<name>.yaml
-        [--keep-small-patches] [--out <file.json>]
+        [--keep-small-patches] [--as-config configs/<name>_keptland.yaml] [--out <file.json>]
 
 READ-ONLY on Earth Engine: it reads the config's cached assets and makes small requests. It
-submits no task and writes no asset. Run it from the repo root (fmu reads .env from there).
+submits no task and writes no asset (scripts/ee_read_only.py makes any such call raise). Run it
+from the repo root (fmu reads .env from there).
 
 Why this exists. scripts/check_snic_on_kept_land.py (task A6 of
 docs/handoff/2026-10-13-round2.md) found, on Kendujhar's box run with
@@ -47,7 +48,9 @@ What it does.
          own label joins them, which tile lines lie between them) are written out with it.
 
 `--out` writes the result, which holds results only, and beside it `<name>_run.json` with the
-command, the date and the git commit it ran from.
+command, the date and the git commit it ran from. `--as-config` is as in
+scripts/check_snic_on_kept_land.py: the kept-land config whose segmentation this checks, refused
+unless it is what --config segments with the setting on.
 
 Since the fix of 15 Oct 2026 (kept land clipped to the ROI before SNIC; register entry
 spec-segmentation-mask-before-snic), kept land here is made as the stage makes it
@@ -71,6 +74,8 @@ from typing import Any
 
 import numpy as np
 
+REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO / "src"))  # this checkout's fmu, not an editable install of another
 REQUEST_DEADLINE_MS = 7 * 60 * 1000  # as scripts/check_snic_on_kept_land.py
 PIECES_MAX_SIZE = 256  # as scripts/check_snic_on_kept_land.py, so the pieces are A6's
 TILE_PX = 256  # Earth Engine's tile size in pixels
@@ -394,10 +399,16 @@ def main() -> None:
                     help="a config that ran with mask_before_snic off, its upstream cached")
     ap.add_argument("--keep-small-patches", action="store_true",
                     help="do not leave out kept patches below merge.min_area_ha")
+    ap.add_argument("--as-config", type=Path, default=None,
+                    help="the kept-land config whose segmentation this checks")
     ap.add_argument("--out", type=Path, default=None, help="write the result here as JSON")
     ap.add_argument("--save-windows", type=Path, default=None,
                     help="also save each window's arrays here, as <label>.npz (for inspection)")
     args = ap.parse_args()
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from check_snic_on_kept_land import as_config_problems, check_fmu_is_this_checkouts
+
+    check_fmu_is_this_checkouts()
 
     import ee
     from pyproj import Transformer
@@ -425,8 +436,16 @@ def main() -> None:
     raw_cfg["segmentation"]["mask_before_snic"] = True
     raw_cfg["segmentation"]["drop_kept_patches_below_min_area"] = not args.keep_small_patches
     on = Config.model_validate(raw_cfg)
+    if args.as_config:
+        problems = as_config_problems(on, load_config(args.as_config))
+        if problems:
+            raise SystemExit(f"{args.as_config} is not what {cfg.name} segments with the setting "
+                             "on: " + "; ".join(problems))
 
     init_gee()
+    import ee_read_only  # scripts/: every task or asset write raises before it is sent
+
+    ee_read_only.forbid_writes()
     ee.data.setDeadline(REQUEST_DEADLINE_MS)
     roi = load_roi_geometry(cfg.roi.roi_file)
     scale = cfg.export.analysis_scale_m
@@ -477,6 +496,7 @@ def main() -> None:
     totals, split = find_split(ee, get_info, final=final, pieces=pieces, roi=roi, grid=grid)
     result: dict[str, Any] = {
         "config": cfg.name,
+        "checks_the_segmentation_of": load_config(args.as_config).name if args.as_config else None,
         "with_the_setting_on": {
             "mask_before_snic": True,
             "drop_kept_patches_below_min_area": not args.keep_small_patches,
