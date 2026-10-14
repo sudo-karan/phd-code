@@ -1,0 +1,81 @@
+{
+ "config": "sanjay_van_baseline_repro",
+ "with_the_setting_on": {
+  "mask_before_snic": true,
+  "drop_kept_patches_below_min_area": false,
+  "kept_patch_min_pixels": 0,
+  "size": 10,
+  "connectivity": 8,
+  "neighborhood_size": 128
+ },
+ "upstream_cache_status": {
+  "masking": {
+   "habitat_mask": "hit",
+   "landcover_summary": "hit",
+   "mask_provenance": "miss",
+   "water_mask": "hit"
+  },
+  "data_load": {
+   "s2_composite": "hit"
+  },
+  "features_optical": {
+   "optical_features": "hit"
+  },
+  "features_radar": {
+   "radar_features": "hit"
+  },
+  "features_structure": {
+   "structure_features": "hit"
+  }
+ },
+ "checks_the_segmentation_of": "sanjay_van_baseline_keptland",
+ "merge_component_cap": {
+  "config": "sanjay_van_baseline_keptland",
+  "pixels": 1320
+ },
+ "masked_run": {
+  "distance_scale": 1.0047647403115454,
+  "masked_pixels_labelled": 0,
+  "kept_pixels_unlabelled": 0,
+  "superpixels": 1200,
+  "pieces": 1200,
+  "superpixels_in_pieces": 0,
+  "snic_pixels_outside_roi": 0,
+  "pixels_outside_roi_looked_at": 30069,
+  "largest_superpixel_pixels": 389,
+  "largest_superpixel_label": -536360362,
+  "patches_without_grid_point": 362,
+  "superpixels_on_those_patches": 362,
+  "null_key_pixels": {
+   "superpixels": 45456,
+   "pieces": 45456,
+   "extra_patches": 127682,
+   "labels_on_extra": 127682
+  }
+ },
+ "outside_roi_control": {
+  "snic_pixels_outside_roi": 1686,
+  "pixels_outside_roi_looked_at": 30069
+ },
+ "seed_grid_is_snics_own_grid": {
+  "pixels": 130235,
+  "pixels_differing": 0
+ },
+ "size_matters_with_seeds": {
+  "pixels": 130235,
+  "pixels_differing": 0
+ },
+ "connected_components_max_size": {
+  "big_square_pixels": 225,
+  "small_square_pixels": 81,
+  "big_square_labelled": 225,
+  "small_square_labelled": 81
+ },
+ "connected_pixel_count": {
+  "big_square_min": 100,
+  "big_square_max": 100,
+  "small_square_min": 81,
+  "small_square_max": 81
+ },
+ "export_tasks_submitted": 0
+}
