@@ -183,7 +183,12 @@ Three design points:
    the load-bearing kind under the merge design: the segmentation IS the
    primary output now, threshold tuning is the main activity, and the
    committed run already shows two arms whose tessellations differ (1249
-   vs 1312 superpixels, 0.2% of centroids matching).
+   vs 1312 superpixels, 0.2% of centroids matching, in the run this was
+   written for; demo set, 13 Oct 2026: 1,298 superpixels in each arm, and
+   1 of the 1,298 hand-crafted centroids lies within 1 m of an AlphaEarth
+   one, the median distance to the nearest being 30 m). The demo set's
+   numbers carry the open cache-grid issue (`docs/reproducibility.md`,
+   "Superpixels depend on whether the features were cached when SNIC ran").
 
    The fingerprint is deliberately coarse -- one hash over most of the
    config rather than a per-stage dependency map. A narrow map is cheaper

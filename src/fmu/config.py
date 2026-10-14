@@ -416,9 +416,13 @@ class MergeCriterion(BaseModel):
 
 
 # Defaults measured from this AOI's own adjacent-superpixel difference
-# distribution (1249 superpixels, 3569 adjacent pairs):
+# distribution (1249 superpixels, 3569 adjacent pairs, in the run the
+# tolerances were set on):
 #   canopy_height          p50 1.81  p75 3.15   -> 2.00 m
 #   ndvi_amplitude_annual  p50 0.016 p75 0.027  -> 0.030
+# Demo set, 13 Oct 2026 (1,298 superpixels, 3,615 adjacent pairs; it carries
+# the open cache-grid issue, docs/reproducibility.md): p50 1.85 p75 3.27, and
+# p50 0.017 p75 0.031. The tolerances were not changed.
 # These are per-band marginals and the gate is conjunctive, so they do NOT
 # describe the joint admit rate -- the calibration helper reports that.
 _DEFAULT_MERGE_CRITERIA: list[MergeCriterion] = [
@@ -472,9 +476,13 @@ class MergeParams(BaseModel):
     # not a quantile. Xiong reports SH1 = 3 m for the same reason.
     #
     # Defaults measured from this AOI's own adjacent-superpixel difference
-    # distribution (1249 superpixels, 3569 adjacent pairs):
+    # distribution (1249 superpixels, 3569 adjacent pairs, in the run the
+    # tolerances were set on):
     #   canopy_height          p50 1.81  p75 3.15   -> 2.00 m
     #   ndvi_amplitude_annual  p50 0.016 p75 0.027  -> 0.030
+    # Demo set, 13 Oct 2026 (1,298 superpixels, 3,615 adjacent pairs; it carries
+    # the open cache-grid issue, docs/reproducibility.md): p50 1.85 p75 3.27, and
+    # p50 0.017 p75 0.031. The tolerances were not changed.
     # These are per-band marginals and the gate is conjunctive, so they do NOT
     # describe the joint admit rate -- the calibration helper reports that.
     # canopy_height at 2.00 m is intentionally the binding criterion: it is the
@@ -517,7 +525,8 @@ class MergeParams(BaseModel):
     # justify, so a pair needs at least this many criteria *defined on both
     # sides*. Pairs that fall short drop to pass 2, which is the right
     # destination. (14 of 1249 superpixels in the committed run have no
-    # canopy_height at all -- ETH no-data.)
+    # canopy_height at all -- ETH no-data. Demo set, 13 Oct 2026: 107 of
+    # 1,298; why it is more has not been looked into.)
     #
     # Read this against `len(criteria)`, because the default list is now two
     # long and 2 == 2: **every criterion is currently mandatory**, where three

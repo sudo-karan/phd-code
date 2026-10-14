@@ -560,14 +560,14 @@ stand-geometry and explained-variance sections are always present.
   "unit_key": "stand_clusters",
   "stand_geometry": {
     "unit_key": "stand_clusters",
-    "n_stands": 269,
-    "total_area_ha": 841.9,
-    "area_ha_min": 0.12, "area_ha_p10": 1.04, "area_ha_median": 2.31,
-    "area_ha_p90": 7.88, "area_ha_max": 9.97, "area_ha_mean": 3.13,
-    "stands_below_min_area": 11,
-    "frac_stands_below_min_area": 0.0409,
-    "area_in_undersized_stands_ha": 6.4,
-    "area_share_largest_decile": 0.271,
+    "n_stands": 299,
+    "total_area_ha": 1301.4,
+    "area_ha_min": 0.25, "area_ha_p10": 1.23, "area_ha_median": 3.39,
+    "area_ha_p90": 9.49, "area_ha_max": 10.0, "area_ha_mean": 4.35,
+    "stands_below_min_area": 9,
+    "frac_stands_below_min_area": 0.0301,
+    "area_in_undersized_stands_ha": 5.08,
+    "area_share_largest_decile": 0.225,
     "polsby_popper_min": 0.08,
     "polsby_popper_median": 0.24,
     "polsby_popper_max": 0.51
@@ -583,15 +583,15 @@ stand-geometry and explained-variance sections are always present.
     }
   },
   "merge": {
-    "n_superpixels": 1249, "n_stands": 269, "reduction_factor": 4.643,
-    "pass1_rounds": 7, "pass1_merges": 941,
-    "pass2_iterations": 3, "pass2_merges": 39, "pass2_fallback_merges": 6,
-    "stands_below_min_area": 11,
-    "orphans_isolated": 0, "orphans_area_blocked": 11,
+    "n_superpixels": 1298, "n_stands": 299, "reduction_factor": 4.341,
+    "pass1_rounds": 6, "pass1_merges": 762,
+    "pass2_iterations": 2, "pass2_merges": 237, "pass2_fallback_merges": 126,
+    "stands_below_min_area": 9,
+    "orphans_isolated": 0, "orphans_area_blocked": 9,
     "orphans_no_attribute_match": 0,
-    "stands_with_incomplete_criteria": 4,
-    "adjacency": { "n_regions": 1249, "n_edges": 3128, "mean_degree": 5.009, "n_isolated": 0 },
-    "threshold_calibration": { "joint_admit_rate_pct": 38.7, "per_band": { "...": "..." } },
+    "stands_with_incomplete_criteria": 97,
+    "adjacency": { "n_regions": 1298, "n_edges": 3615, "mean_degree": 5.57, "n_isolated": 0 },
+    "threshold_calibration": { "joint_admit_rate_pct": 45.2, "per_band": { "...": "..." } },
     "warnings": ["..."]
   },
   "silhouette_current": 0.4127,
@@ -613,6 +613,15 @@ stand-geometry and explained-variance sections are always present.
   }
 }
 ```
+
+The `merge` block and the size numbers of `stand_geometry` in this example are the demo
+set's: Sanjay Van, hand-crafted features, the Earth Engine run of 13 Oct 2026, with the
+stands re-merged under `spec-merge-pass2-skip-at-minimum` (`docs/demo/remerge/`). Before
+the re-merge the same run had 291 stands. The other numbers in the example (shape, explained
+variance, silhouette, the comparison with a reference) are illustrative and from an earlier
+run, so the blocks do not describe one run. The demo set carries the open cache-grid issue
+(`docs/reproducibility.md`, "Superpixels depend on whether the features were cached when
+SNIC ran").
 
 ### Interpreting the numbers
 

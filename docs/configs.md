@@ -472,7 +472,13 @@ a two-tier threshold scheme.
   validation measured that band at R²=0.000 against crown cover, so the axis was
   nominal rather than real. See `docs/datasets.md`. Measured from this AOI's own
   adjacent-superpixel difference distribution (1249 superpixels, 3569 adjacent
-  pairs).
+  pairs, in the run the tolerances were set on). Demo set, 13 Oct 2026: 1,298
+  superpixels and 3,615 adjacent pairs; `canopy_height` differences have a
+  median of 1.85 m and a 75th percentile of 3.27 m, `ndvi_amplitude_annual`
+  0.017 and 0.031, so the two tolerances sit at the 53rd and 74th percentiles.
+  The tolerances were not changed. The demo set carries the open cache-grid
+  issue (`docs/reproducibility.md`, "Superpixels depend on whether the features
+  were cached when SNIC ran").
 
   Note that with two criteria and `min_defined_criteria: 2` the gate is **fully
   conjunctive**: both must be defined for a pair, where with three one could be
