@@ -4834,9 +4834,11 @@ decisions:
     Best match, ceiling ignored (reading A, put to Jaskaran on 14 Oct 2026): the region joins its best neighbour
     among all of them, whether or not the result is over max_area_ha. Not chosen
   - >-
-    Under the ceiling first (reading B): a neighbour that keeps the result at most max_area_ha is taken before one
-    that does not. Chosen: Jaskaran's order is this reading, applied to the relaxed matches and then to the
-    shared-edge fallback
+    Under the ceiling first (reading B, put to him with A): a neighbour that keeps the result at most max_area_ha
+    is taken before one that does not, the soft ceiling only when none fits. Not chosen as written: Jaskaran's
+    order prefers a neighbour under the ceiling within the relaxed matches and within the fallback, but takes a
+    relaxed match over the ceiling before a fallback under it (on the example put to him it gives reading A's
+    answer); docs/handoff/2026-10-14-round3.md, section 1b
   - >-
     An exceedance with no upper bound, as D2 first read ("even if the result exceeds merge.max_area_ha"): not
     done. reduceConnectedComponents deletes any component larger than its maxSize, which
@@ -4985,7 +4987,9 @@ decisions:
     takes all of them, as its name says. Masks on the label image are used rather than a filter of the sampled rows
     by label, because whether Earth Engine matches a list of integers against the sampled numeric label property is
     not established, and a silent mismatch would leave every such stand in the fit. No paper was searched for this
-    rule. Not run on Earth Engine yet.
+    rule. Not run on Earth Engine yet. Two points of reading are put to Jaskaran (docs/handoff/2026-10-14-round3.md, section 5): whether only
+    the isolated stands are meant, and whether the stands left out should also leave the skewness test and the
+    scaling.
   evidence:
   - path: src/fmu/stages/clustering.py
     what: >-
@@ -5098,8 +5102,10 @@ decisions:
     kept-land config for Sanjay Van at 3 ha, for the Odisha hull areas, for the Odisha 10 ha arm or for AlphaEarth in
     Odisha. Upstream of segmentation nothing the configs change is read, so their masking, data-load and feature
     assets can be copies of those of the runs they copy; for Sanjay Van that is the _repro run of the same content
-    (docs/demo/demo_set.json), because the assets under the originals' own names carry an older fingerprint
-    (docs/reproducibility/sanjay_van_baseline_assets_aug27_vs_repro.json). No batch run until Jaskaran says go.
+    (docs/demo/demo_set.json), the only run of it with assets at today's fingerprint: the baseline's assets under
+    its own name carry an older fingerprint (docs/reproducibility/sanjay_van_baseline_assets_aug27_vs_repro.json),
+    and the AlphaEarth arm has none under its own name (docs/reproducibility.md). No batch run until Jaskaran says
+    go.
   alternatives_considered:
   - >-
     A 3 ha stand ceiling for Sanjay Van as well (Prof. Seth's ceiling; part C, item 9 of

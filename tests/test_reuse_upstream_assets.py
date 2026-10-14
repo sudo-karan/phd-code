@@ -58,16 +58,21 @@ def test_each_plan_copies_what_its_source_run_cached_before_segmentation(plans):
         assert {c.source for c in plan.copies} == listed, name
 
 
-def test_destinations_are_where_the_new_run_will_look(plans):
+def test_destinations_are_where_the_new_run_will_look(plans, monkeypatch):
+    """Each destination is the path Pipeline._try_load_cache will look up for that config, built
+    by the pipeline's own cached_asset_path under the records' asset root."""
+    import fmu.utils.gee as gee
     from fmu.config import load_config
-    from fmu.utils.caching import config_fingerprint
+    from fmu.utils.caching import cached_asset_path, config_fingerprint
 
+    monkeypatch.setattr(gee, "get_settings", lambda: _FakeSettings())
     for name, plan in plans.items():
         fp = config_fingerprint(load_config(REPO / plan.config))
         assert plan.fingerprint == fp
         for c in plan.copies:
-            assert c.destination == f"{ROOT}/{name}/{c.stage}/{c.key}__{fp}"
-            assert c.source == f"{ROOT}/{plan.source_name}/{c.stage}/{c.key}__{plan.source_fingerprint}"
+            assert c.destination == cached_asset_path(name, c.stage, c.key, fp)
+            assert c.source == cached_asset_path(plan.source_name, c.stage, c.key,
+                                                 plan.source_fingerprint)
 
 
 def test_the_sanjay_van_runs_never_cached_mask_provenance(plans):
@@ -120,6 +125,10 @@ def test_no_stage_before_segmentation_reads_a_safe_key():
     for s in mod.UPSTREAM_STAGES:
         text = (REPO / "src" / "fmu" / "stages" / f"{s}.py").read_text()
         assert not re.search(r"config\.(segmentation|merge|clustering)\b", text), s
+        # Nor the name or description, nor a Config method (max_component_pixels() reads
+        # merge.pass2_soft_ceiling, kept_patch_min_pixels() reads drop_kept_patches_...).
+        assert not re.search(r"config\.(name|description)\b", text), s
+        assert not re.search(r"config\.\w+\(", text), s
 
 
 def _copy_pair(tmp_path: Path, edit) -> tuple[str, str, str]:
@@ -196,28 +205,72 @@ def _fake_ee(monkeypatch, *, exists):
     return copies, folders
 
 
-def test_execute_copies_every_planned_asset_once(monkeypatch, capsys):
+def test_execute_copies_every_planned_asset_once_and_records_them(monkeypatch, capsys, tmp_path):
     copies, folders = _fake_ee(monkeypatch, exists=lambda p: "_keptland/" not in p)
-    assert mod.main(["--execute"]) == 0
+    record = tmp_path / "keptland_reuse.json"
+    assert mod.main(["--execute", "--record", str(record)]) == 0
     assert len(copies) == 51 == len(folders)
     assert len({d for _, d in copies}) == 51
     assert all("_keptland/" in d and "_keptland/" not in s for s, d in copies)
     assert not any(f"/{stage}/" in d for _, d in copies for stage in NEVER)
-    assert "copied 51 asset(s)" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "copied 51 asset(s); 51 recorded in" in out
+    rec = json.loads(record.read_text())
+    assert [(c["source"], c["destination"]) for c in rec["copies"]] == copies
+    run = json.loads((tmp_path / "keptland_reuse_run.json").read_text())
+    assert run["completed"] is True and run["result_file"] == "keptland_reuse.json"
+    assert set(run["git"]) >= {"commit", "dirty"} and "date" in run
 
 
-def test_execute_copies_nothing_if_any_destination_exists(monkeypatch, capsys):
+def test_a_copy_that_stops_part_way_leaves_a_true_record_and_can_be_resumed(monkeypatch, tmp_path):
+    import ee
+
+    record = tmp_path / "keptland_reuse.json"
+    copied: set[str] = set()
+    copies, _ = _fake_ee(monkeypatch, exists=lambda p: "_keptland/" not in p or p in copied)
+
+    def copy_then_fail(src, dst):
+        if len(copies) == 10:
+            raise RuntimeError("network")
+        copies.append((src, dst))
+        copied.add(dst)
+
+    monkeypatch.setattr(ee.data, "copyAsset", copy_then_fail)
+    with pytest.raises(RuntimeError):
+        mod.main(["--execute", "--record", str(record)])
+    assert len(json.loads(record.read_text())["copies"]) == 10
+    assert json.loads((tmp_path / "keptland_reuse_run.json").read_text())["completed"] is False
+    # Without --resume the record is not overwritten.
+    assert mod.main(["--execute", "--record", str(record)]) == 3
+    monkeypatch.setattr(ee.data, "copyAsset", lambda s, d: (copies.append((s, d)), copied.add(d)))
+    assert mod.main(["--execute", "--resume", "--record", str(record)]) == 0
+    assert len(copies) == 51 and len({d for _, d in copies}) == 51
+    assert len(json.loads(record.read_text())["copies"]) == 51
+    assert json.loads((tmp_path / "keptland_reuse_run.json").read_text())["completed"] is True
+
+
+def test_resume_refuses_a_destination_the_record_does_not_hold(monkeypatch, tmp_path):
+    there = f"{ROOT}/sanjay_van_baseline_keptland/masking/"
+    copies, _ = _fake_ee(monkeypatch, exists=lambda p: "_keptland/" not in p or p.startswith(there))
+    record = tmp_path / "keptland_reuse.json"
+    record.write_text(json.dumps({"what": "", "copies": []}))
+    assert mod.main(["--execute", "--resume", "--record", str(record)]) == 3
+    assert copies == []
+
+
+def test_execute_copies_nothing_if_any_destination_exists(monkeypatch, capsys, tmp_path):
     there = f"{ROOT}/sanjay_van_baseline_keptland/masking/"
     copies, _ = _fake_ee(monkeypatch,
                          exists=lambda p: "_keptland/" not in p or p.startswith(there))
-    assert mod.main(["--execute"]) == 3
+    assert mod.main(["--execute", "--record", str(tmp_path / "r.json")]) == 3
     assert copies == []
     assert "nothing was copied" in capsys.readouterr().out
+    assert not (tmp_path / "r.json").exists()
 
 
-def test_execute_copies_nothing_if_any_source_is_missing(monkeypatch):
+def test_execute_copies_nothing_if_any_source_is_missing(monkeypatch, tmp_path):
     copies, _ = _fake_ee(monkeypatch, exists=lambda p: "_keptland/" not in p and "koraput" not in p)
-    assert mod.main(["--execute"]) == 3
+    assert mod.main(["--execute", "--record", str(tmp_path / "r.json")]) == 3
     assert copies == []
 
 
@@ -230,7 +283,7 @@ def test_check_is_read_only(monkeypatch, capsys):
     assert "[source exists, destination absent]" in out
 
 
-def test_execute_refuses_another_asset_root(monkeypatch):
+def test_execute_refuses_another_asset_root(monkeypatch, tmp_path):
     import fmu.settings as settings
 
     copies, _ = _fake_ee(monkeypatch, exists=lambda p: "_keptland/" not in p)
@@ -240,5 +293,14 @@ def test_execute_refuses_another_asset_root(monkeypatch):
             return "projects/elsewhere/assets/fmu"
 
     monkeypatch.setattr(settings, "get_settings", lambda: _Other())
-    assert mod.main(["--execute"]) == 3
+    assert mod.main(["--execute", "--record", str(tmp_path / "r.json")]) == 3
     assert copies == []
+
+
+def test_it_refuses_another_checkouts_code(monkeypatch, capsys):
+    import fmu
+
+    monkeypatch.setattr(fmu, "__file__", "/somewhere/else/src/fmu/__init__.py")
+    assert mod.main([]) == 3
+    assert "not from" in capsys.readouterr().out
+

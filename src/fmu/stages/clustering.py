@@ -1185,6 +1185,18 @@ def _train_and_apply_kmeans(
 
     # The rows the fit is trained on: every row, or, with the setting on, every
     # row but those of the stands below the minimum.
+    def too_few(n: int, without: str = "") -> ValueError:
+        return ValueError(
+            f"clustering: only {n} {unit_key} unit(s) available to fit "
+            f"k={k} clusters on{without}. Either the merge collapsed the ROI too far "
+            f"(check merge.criteria and the threshold_calibration in the merge "
+            f"stage metadata) or the habitat mask leaves too little standing."
+        )
+
+    # Too few rows before anything is left out: say so before asking Earth Engine for
+    # the two samples of _leave_out_of_fit, and do not blame the stands left out.
+    if n_units < k:
+        raise too_few(n_units)
     fit_sample, n_fit = training_sample, n_units
     fit_report: dict[str, Any] | None = None
     if below_min is not None:
@@ -1199,20 +1211,12 @@ def _train_and_apply_kmeans(
             unit_key=unit_key,
             below_min=below_min,
         )
-
-    if n_fit < k:
-        without = (
-            ""
-            if fit_report is None
-            else f" once the {fit_report['n_stands_left_out_of_fit']} stand(s) below "
-            f"merge.min_area_ha were left out"
-        )
-        raise ValueError(
-            f"clustering: only {n_fit} {unit_key} unit(s) available to fit "
-            f"k={k} clusters on{without}. Either the merge collapsed the ROI too far "
-            f"(check merge.criteria and the threshold_calibration in the merge "
-            f"stage metadata) or the habitat mask leaves too little standing."
-        )
+        if n_fit < k:
+            raise too_few(
+                n_fit,
+                f" once the {fit_report['n_stands_left_out_of_fit']} stand(s) below "
+                f"merge.min_area_ha were left out",
+            )
 
     # wekaKMeans: init=1 is k-means++ (better init than random).
     clusterer = ee.Clusterer.wekaKMeans(

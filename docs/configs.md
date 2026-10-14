@@ -39,8 +39,8 @@ features_radar: { percentiles, include_iqr, include_cross_pol_contrast }
 features_structure: { include_neighborhood_stats, neighborhood_kernel_size }
 features_static: { include_climate, max_water_distance_pixels }
 features_embedding: { collapse_reducer, band_names }
-segmentation: { size, compactness, connectivity, neighborhood_size, normalize_inputs, normalize_distance_scale, input_bands }
-merge: { enabled, criteria, relax_factor, min_area_ha, max_area_ha, min_defined_criteria, min_frac_valid, tie_break, max_pass2_iterations, max_superpixels }
+segmentation: { size, compactness, connectivity, neighborhood_size, normalize_inputs, normalize_distance_scale, input_bands, mask_before_snic, drop_kept_patches_below_min_area }
+merge: { enabled, criteria, relax_factor, min_area_ha, max_area_ha, min_defined_criteria, min_frac_valid, tie_break, max_pass2_iterations, max_superpixels, pass2_skip_at_min_area, pass2_soft_ceiling }
 clustering: { k, seed, feature_source, skewness_threshold, fit_excludes_stands_below_min_area }
 normalization: { method }
 features: { optical_harmonic, radar, canopy_height, terrain }

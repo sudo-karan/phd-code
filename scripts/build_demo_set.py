@@ -54,6 +54,12 @@ ROUTES = REPO / "docs" / "reproducibility" / "segmentation_route.json"
 RUNS = REPO / "outputs" / "repro_runs"
 MASKS = REPO / "outputs" / "transparency_repro"
 # The second set: the four box runs. Same record, other folders.
+def box_config_paths() -> list[Path]:
+    """The four box configs: configs/odisha_v120_3ha_squares_<district>.yaml. The kept-land copies
+    of round 3 (*_keptland.yaml) match the same glob but are configs of their own, not box runs."""
+    return sorted(p for p in (REPO / "configs").glob(BOXES["glob"]) if not p.stem.endswith("_keptland"))
+
+
 BOXES = {
     "glob": "odisha_v120_3ha_squares_*.yaml",
     "out": REPO / "docs" / "demo" / "demo_set_boxes.json",
@@ -206,7 +212,7 @@ def build_boxes(listing: dict[str, list[str]]) -> dict[str, Any]:
     """The record of the four box runs, in the form of the demo set."""
     routes = {r["config"]: r for r in json.loads(BOXES["routes"].read_text())}
     runs = []
-    for path in sorted((REPO / "configs").glob(BOXES["glob"])):
+    for path in box_config_paths():
         entry = describe_config(path)
         run_id = entry["run_id"]
         assets = [parse_asset(run_id, a) for a in listing[run_id]]
@@ -303,7 +309,8 @@ def main() -> None:
     if boxes and args.save_listing == REPO / "outputs" / "demo" / "assets_listing.json":
         args.save_listing = BOXES["listing"]
 
-    run_ids = sorted(p.stem for p in (REPO / "configs").glob(BOXES["glob"] if boxes else f"*{SUFFIX}.yaml"))
+    paths = box_config_paths() if boxes else sorted((REPO / "configs").glob(f"*{SUFFIX}.yaml"))
+    run_ids = sorted(p.stem for p in paths)
     if args.from_listing:
         listing = json.loads(args.from_listing.read_text())
     else:

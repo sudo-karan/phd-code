@@ -284,7 +284,9 @@ def main() -> int:
     else:
         # What the export stage submitted to Drive, from the logs of the run's own folders.
         submitted: dict[str, dict[str, str]] = {}
-        for log in sorted(args.runs_dir.glob(f"{cfg.name}_*/fmu.log")):
+        # Run folders are <config>_<YYYYMMDD_HHMMSS>: "_2*" leaves out the folders of another config
+        # whose name starts with this one (<config>_repro_..., <config>_keptland_...).
+        for log in sorted(args.runs_dir.glob(f"{cfg.name}_2*/fmu.log")):
             submitted.update(drive_exports_in_log(log.read_text(errors="replace")))
         by_name = {s.name: s for s in result.stages}
         record = {

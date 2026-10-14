@@ -308,6 +308,32 @@ def test_the_guard_on_k_counts_the_rows_of_the_fit():
         _run_on(fit_rows=4)
 
 
+def test_too_few_rows_before_any_stand_is_left_out_stops_before_the_two_samples(monkeypatch):
+    """Three rows do not clear k = 5 whatever is left out: the stage says so at once, as with
+    the setting off, without the two samples of the stands left out and without blaming them."""
+    import _clustering_stand_ins as stand_ins
+
+    asked: list[str] = []
+    real = stand_ins.answers
+
+    def recording(config, log, **kwargs):
+        get = real(config, log, **kwargs)
+
+        def wrapped(obj, context=""):
+            asked.append(context)
+            return get(obj, context=context)
+
+        return wrapped
+
+    monkeypatch.setattr(stand_ins, "answers", recording)
+    monkeypatch.setattr(stand_ins, "TRAINING_ROWS", 3)
+    with pytest.raises(ValueError) as err:
+        _run_on(fit_rows=2, left_out_rows=[4])
+    assert "only 3 stand_clusters unit(s) available to fit k=5 clusters on." in str(err.value)
+    assert "once the" not in str(err.value)
+    assert asked and stand_ins.FIT_ROW_COUNT not in asked and stand_ins.LEFT_OUT_ROWS not in asked
+
+
 # ---------------------------------------------------------------- inputs and config
 
 

@@ -3,7 +3,8 @@
     python scripts/reuse_upstream_assets.py                 # dry run: the plan, offline
     python scripts/reuse_upstream_assets.py --check         # and ask Earth Engine, read-only
     python scripts/reuse_upstream_assets.py --execute       # copy (needs Jaskaran's go)
-        [--config configs/<new>.yaml ...] [--json <plan.json>]
+    python scripts/reuse_upstream_assets.py --execute --resume   # finish a copy that stopped
+        [--config configs/<new>.yaml ...] [--json <plan.json>] [--record <copies.json>]
 
 Why. The cache fingerprint is one hash over the whole config, so each round-3 kept-land config
 (Jaskaran's D1 to D4, 14 Oct 2026; docs/handoff/2026-10-14-round3.md) gets a new fingerprint and,
@@ -16,8 +17,9 @@ changing it.
 THE PAIRS (`PAIRS`): each kept-land config, the run whose assets it reuses, and the record that
 lists that run's assets. The source assets are taken from the record, by path, never from a
 fingerprint recomputed from a config (as round 2 ruled for the demo set). For Sanjay Van the run is
-the `_repro` run of the same content: the assets under `sanjay_van_*`'s own names are from 27 Aug
-2026, under another fingerprint.
+the `_repro` run of the same content, the only run of it with assets at today's fingerprint: the
+baseline's assets under its own name are from 27 Aug 2026, under another fingerprint, and the
+AlphaEarth arm has none under its own name (docs/reproducibility.md).
 
 THE GUARD. It refuses, for a pair, unless all of these hold:
   - the new config and the source config differ only in keys of `REUSE_SAFE_KEYS`. Each of them is
@@ -29,6 +31,19 @@ THE GUARD. It refuses, for a pair, unless all of these hold:
   - the asset root of the record is the one the pipeline will read (`--check`, `--execute`).
 With `--execute`, it also refuses unless every source exists and no destination does, for every
 pair given, before it copies anything.
+
+THE RECORD. `--execute` writes what it copied to `--record` (default
+docs/reproducibility/keptland_reuse.json: results only, one entry per copy, rewritten after each
+copy, so a copy that stops part way leaves a true record) and, beside it, `<name>_run.json` with
+the command, the date, the git commit and whether the tree was dirty, and whether the copy
+finished. The kept-land runs' manifests show the copied assets as plain cache hits; this record is
+what ties them to their sources. If a copy stops part way, `--execute --resume` skips each
+destination the record says was copied from the same source, and still refuses any other
+destination that exists.
+
+WHICH CODE. The tool puts its own checkout's src/ first on sys.path and refuses if fmu is imported
+from anywhere else, so the fingerprints, stage lists and outputs it plans with are this checkout's,
+as the batch's are (odisha_script/run_passes_safely.py does the same).
 
 A cacheable output of a copied stage that the source never cached (for example `mask_provenance`
 for the Sanjay Van `_repro` runs) is listed as such: the new run computes it live and caches it.
@@ -47,6 +62,8 @@ from pathlib import Path
 from typing import Any
 
 REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO / "src"))  # this checkout's fmu, not an editable install of another
+RECORD = REPO / "docs" / "reproducibility" / "keptland_reuse.json"
 
 # (new config, the config whose run's assets it reuses, the record listing that run's assets)
 PAIRS: tuple[tuple[str, str, str], ...] = (
@@ -218,6 +235,43 @@ def describe(plan: Plan) -> list[str]:
     return lines
 
 
+def check_fmu_is_this_checkouts() -> None:
+    """Refuse if fmu is not imported from this checkout's src/ (see WHICH CODE above)."""
+    import fmu
+
+    here = Path(fmu.__file__).resolve()
+    if (REPO / "src").resolve() not in here.parents:
+        raise RefusedError(f"fmu is imported from {here}, not from {REPO / 'src'}: the plan would "
+                           f"be made with another checkout's code")
+
+
+def run_record_path(record: Path) -> Path:
+    return record.with_name(record.stem + "_run.json")
+
+
+def write_run_record(record: Path, argv: list[str], *, completed: bool) -> None:
+    import datetime
+    import shlex
+
+    from fmu.utils.provenance import git_state
+
+    run = {
+        "result_file": record.name,
+        "command_line": "python " + " ".join(shlex.quote(a) for a in ["scripts/reuse_upstream_assets.py", *argv]),
+        "date": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
+        "git": {k: v for k, v in git_state().items() if k != "root"},
+        "completed": completed,
+    }
+    run_record_path(record).write_text(json.dumps(run, indent=1) + "\n")
+
+
+def read_record(record: Path) -> dict[str, str]:
+    """{destination: source} of the copies a record says were made; empty if there is none."""
+    if not record.exists():
+        return {}
+    return {c["destination"]: c["source"] for c in json.loads(record.read_text())["copies"]}
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--config", action="append", default=None,
@@ -225,21 +279,31 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--check", action="store_true",
                     help="ask Earth Engine, read-only, whether each source and destination exists")
     ap.add_argument("--execute", action="store_true", help="copy the assets (implies --check)")
-    ap.add_argument("--json", type=Path, default=None, help="write the plan here")
+    ap.add_argument("--resume", action="store_true",
+                    help="with --execute: skip the copies the record says were made")
+    ap.add_argument("--json", type=Path, default=None,
+                    help="write the plan here (after the copies, with --execute)")
+    ap.add_argument("--record", type=Path, default=RECORD,
+                    help="where --execute records the copies it makes")
     args = ap.parse_args(argv)
+    argv = list(sys.argv[1:] if argv is None else argv)
 
+    if args.resume and not args.execute:
+        print("REFUSING: --resume goes with --execute")
+        return 2
     pairs = [p for p in PAIRS if args.config is None or p[0] in args.config]
     unknown = sorted(set(args.config or []) - {p[0] for p in PAIRS})
     if unknown:
         print(f"REFUSING: not a kept-land config of PAIRS: {unknown}")
         return 2
     plans: list[Plan] = []
-    for config, source, record in pairs:
-        try:
+    try:
+        check_fmu_is_this_checkouts()
+        for config, source, record in pairs:
             plans.append(plan_for(config, source, record))
-        except RefusedError as e:
-            print(f"REFUSING: {e}")
-            return 3
+    except RefusedError as e:
+        print(f"REFUSING: {e}")
+        return 3
 
     if args.check or args.execute:
         import ee
@@ -266,26 +330,62 @@ def main(argv: list[str] | None = None) -> int:
     print(f"{len(plans)} config(s), {total} asset(s) to copy"
           + ("" if args.execute else ("; nothing copied (dry run" + (", checked read-only)"
                                                                      if args.check else ")"))))
-    if args.json:
-        args.json.write_text(json.dumps([asdict(p) for p in plans], indent=1) + "\n")
 
-    if args.execute:
-        missing = [c.source for p in plans for c in p.copies if not c.source_exists]
-        present = [c.destination for p in plans for c in p.copies if c.destination_exists]
-        if missing or present:
-            print(f"REFUSING to copy: {len(missing)} source(s) missing, {len(present)} "
-                  f"destination(s) already there; nothing was copied")
-            for x in missing:
-                print(f"  missing: {x}")
-            for x in present:
-                print(f"  already there: {x}")
-            return 3
-        for plan in plans:
-            for c in plan.copies:
-                ensure_parent_folders(c.destination)
-                ee.data.copyAsset(c.source, c.destination)
-                print(f"  copied {plan.name} {c.stage}/{c.key}")
-        print(f"copied {total} asset(s)")
+    def write_plan() -> None:
+        if args.json:
+            args.json.write_text(json.dumps([asdict(p) for p in plans], indent=1) + "\n")
+
+    if not args.execute:
+        write_plan()
+        return 0
+
+    done = read_record(args.record) if args.resume else {}
+    if not args.resume and args.record.exists():
+        print(f"REFUSING: {args.record} already records copies; use --resume to finish them, "
+              f"or another --record")
+        return 3
+    # Copied before (the record says so) and still there: skipped. A recorded copy that is gone
+    # is made again.
+    already = {c.destination for p in plans for c in p.copies
+               if done.get(c.destination) == c.source and c.destination_exists}
+    missing = [c.source for p in plans for c in p.copies
+               if c.destination not in already and not c.source_exists]
+    present = [c.destination for p in plans for c in p.copies
+               if c.destination not in already and c.destination_exists]
+    if missing or present:
+        print(f"REFUSING to copy: {len(missing)} source(s) missing, {len(present)} "
+              f"destination(s) already there and not recorded as copied from their source; "
+              f"nothing was copied")
+        for x in missing:
+            print(f"  missing: {x}")
+        for x in present:
+            print(f"  already there: {x}")
+        return 3
+    copies = [{"config": p.name, "stage": c.stage, "key": c.key, "source": c.source,
+               "destination": c.destination}
+              for p in plans for c in p.copies if c.destination in already]
+    record = {"what": "Assets copied by scripts/reuse_upstream_assets.py, one entry per copy",
+              "copies": copies}
+    args.record.parent.mkdir(parents=True, exist_ok=True)
+    write_run_record(args.record, argv, completed=False)
+    n_new = 0
+    for plan in plans:
+        for c in plan.copies:
+            if c.destination in already:
+                print(f"  already copied {plan.name} {c.stage}/{c.key}")
+                continue
+            ensure_parent_folders(c.destination)
+            ee.data.copyAsset(c.source, c.destination)
+            copies.append({"config": plan.name, "stage": c.stage, "key": c.key,
+                           "source": c.source, "destination": c.destination})
+            args.record.write_text(json.dumps(record, indent=1) + "\n")
+            c.destination_exists = True
+            n_new += 1
+            print(f"  copied {plan.name} {c.stage}/{c.key}")
+    args.record.write_text(json.dumps(record, indent=1) + "\n")
+    write_run_record(args.record, argv, completed=True)
+    write_plan()
+    print(f"copied {n_new} asset(s); {len(copies)} recorded in {args.record}")
     return 0
 
 

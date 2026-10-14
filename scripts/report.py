@@ -154,11 +154,13 @@ def _first(paths: list[str]) -> Path | None:
 
 
 def discover(config: str, runs_root: Path, vectors_dir: Path) -> ConfigRun:
-    prof_p = _first(glob.glob(str(runs_root / f"{config}_*" / "cluster_profiles.csv")))
-    man_p = _first(glob.glob(str(runs_root / f"{config}_*" / f"export_manifest_{config}.json")))
-    met_p = _first(glob.glob(str(runs_root / f"{config}_*" / f"metrics_{config}.json")))
+    # Run folders are <config>_<YYYYMMDD_HHMMSS>. "_2*" leaves out another config whose name starts
+    # with this one (<config>_repro_..., <config>_keptland_...), which "_*" took, and sorted last.
+    prof_p = _first(glob.glob(str(runs_root / f"{config}_2*" / "cluster_profiles.csv")))
+    man_p = _first(glob.glob(str(runs_root / f"{config}_2*" / f"export_manifest_{config}.json")))
+    met_p = _first(glob.glob(str(runs_root / f"{config}_2*" / f"metrics_{config}.json")))
     if prof_p is None:
-        raise SystemExit(f"No cluster_profiles.csv found under {runs_root}/{config}_*/")
+        raise SystemExit(f"No cluster_profiles.csv found under {runs_root}/{config}_2*/")
 
     profiles = pd.read_csv(prof_p).sort_values("cluster_id").reset_index(drop=True)
     manifest = json.loads(man_p.read_text()) if man_p else {}

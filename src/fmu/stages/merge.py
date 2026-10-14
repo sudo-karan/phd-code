@@ -219,7 +219,9 @@ class MergeStage(Stage):
             "stands_below_min_area_by_cause",
             "Why those stands stayed small. isolated: it touches no other "
             "stand. area_blocked: every neighbour is already too big to take it "
-            "under the maximum size. iteration_cap: it still had a neighbour it "
+            "under the ceiling that applies to it: the maximum size, or the "
+            "maximum plus the minimum with merge.pass2_soft_ceiling on. "
+            "iteration_cap: it still had a neighbour it "
             "could have joined when the second pass ran out of iterations",
             "count",
         ),

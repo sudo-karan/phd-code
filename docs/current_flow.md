@@ -500,7 +500,7 @@ Each one will get its own section here as it's built.
 | Segmentation config knobs | `configs/*.yaml` to `segmentation.{size, compactness, connectivity, neighborhood_size, normalize_inputs}` |
 | Clustering config knobs | `configs/*.yaml` to `clustering.{feature_source, k, seed, skewness_threshold, fit_excludes_stands_below_min_area}` + `normalization.method` |
 | Which unit is labelled | derived: `Config.unit_label_key()` — `stand_clusters` when merge runs, `snic_clusters` when it does not |
-| Merge config knobs | `configs/*.yaml` to `merge.{enabled, criteria, relax_factor, min_area_ha, max_area_ha, min_defined_criteria, min_frac_valid, tie_break, max_pass2_iterations, max_superpixels}` |
+| Merge config knobs | `configs/*.yaml` to `merge.{enabled, criteria, relax_factor, min_area_ha, max_area_ha, min_defined_criteria, min_frac_valid, tie_break, max_pass2_iterations, max_superpixels, pass2_skip_at_min_area, pass2_soft_ceiling}` |
 | Component-size cap | derived: `Config.max_component_pixels()` in `src/fmu/config.py`; asserted by `src/fmu/utils/components.py` |
 | Climate dataset + window | `configs/*.yaml` to `datasets.climate`, `dates.climate` |
 | NIRv + dual variant config | `configs/sanjay_van_nirv_dual.yaml` |
