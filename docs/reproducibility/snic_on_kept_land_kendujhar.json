@@ -1,0 +1,62 @@
+{
+ "config": "odisha_v120_3ha_squares_kendujhar",
+ "with_the_setting_on": {
+  "mask_before_snic": true,
+  "drop_kept_patches_below_min_area": false,
+  "kept_patch_min_pixels": 0,
+  "size": 6,
+  "connectivity": 8,
+  "neighborhood_size": 128
+ },
+ "upstream_cache_status": {
+  "masking": {
+   "habitat_mask": "hit",
+   "landcover_summary": "hit",
+   "mask_provenance": "hit",
+   "water_mask": "hit"
+  },
+  "data_load": {
+   "s2_composite": "hit"
+  },
+  "features_optical": {
+   "optical_features": "hit"
+  },
+  "features_radar": {
+   "radar_features": "hit"
+  },
+  "features_structure": {
+   "structure_features": "hit"
+  }
+ },
+ "masked_run": {
+  "distance_scale": 1.2690975535014144,
+  "masked_pixels_labelled": 0,
+  "kept_pixels_unlabelled": 0,
+  "superpixels": 2755,
+  "pieces": 2758,
+  "superpixels_in_pieces": 3,
+  "patches_without_grid_point": 128,
+  "superpixels_on_those_patches": 128
+ },
+ "seed_grid_is_snics_own_grid": {
+  "pixels": 133050,
+  "pixels_differing": 0
+ },
+ "size_matters_with_seeds": {
+  "pixels": 133050,
+  "pixels_differing": 0
+ },
+ "connected_components_max_size": {
+  "big_square_pixels": 225,
+  "small_square_pixels": 81,
+  "big_square_labelled": 225,
+  "small_square_labelled": 81
+ },
+ "connected_pixel_count": {
+  "big_square_min": 100,
+  "big_square_max": 100,
+  "small_square_min": 81,
+  "small_square_max": 81
+ },
+ "export_tasks_submitted": 0
+}
