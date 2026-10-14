@@ -138,3 +138,48 @@ def test_the_local_record_of_a_run_matches_when_it_is_on_this_machine(run_id: st
     # Every input of the pass that wrote the stands was read from the cache, so a re-merge from
     # the saved assets takes the same route as the run did.
     assert {state for keys in record["cache_status"].values() for state in keys.values()} == {"hit"}
+
+
+# ---------------------------------------------------------------------------
+# docs/demo/demo_set_boxes.json: the four box runs of task A0, recorded in the same form
+# ---------------------------------------------------------------------------
+
+BOXES = json.loads((REPO / "docs" / "demo" / "demo_set_boxes.json").read_text())
+BOX_RUNS = {r["run_id"]: r for r in BOXES["runs"]}
+
+
+def test_every_run_of_both_sets_says_what_its_roi_is():
+    assert {r["roi"] for r in BOXES["runs"]} == {"boxes"}
+    for run in DEMO["runs"]:
+        assert run["roi"] == ("hulls" if run["site"] == "Odisha" else "rectangle"), run["run_id"]
+
+
+def test_the_box_runs_are_the_four_box_configs_under_their_own_fingerprints():
+    from fmu.config import load_config
+    from fmu.utils.caching import config_fingerprint
+
+    configs = sorted((REPO / "configs").glob("odisha_v120_3ha_squares_*.yaml"))
+    assert sorted(BOX_RUNS) == [p.stem for p in configs] and len(configs) == 4
+    assert BOXES["n_assets"] == sum(len(r["assets"]) for r in BOXES["runs"])
+    for path in configs:
+        cfg = load_config(path)
+        run = BOX_RUNS[cfg.name]
+        assert run["fingerprint"] == config_fingerprint(cfg), cfg.name
+        assert run["arm"] == "feature_vector" and run["stand_ceiling_ha"] == 3.0 and run["k"] == 5
+        assert cfg.merge.pass2_skip_at_min_area is True
+        for asset in run["assets"]:
+            assert asset["asset"] == (
+                f"{BOXES['asset_root']}/{cfg.name}/{asset['stage']}/{asset['key']}__{run['fingerprint']}")
+
+
+def test_a_box_run_whose_export_pass_ended_early_says_what_was_read_back():
+    assert BOXES["merge_rule"] == DEMO["merge_rule"] and f"`{BOXES['merge_rule']}`" in BOXES["label"]
+    for run_id, run in BOX_RUNS.items():
+        assert "export_pass" in run, run_id
+        if run["export_pass"] == "finished":
+            assert "read_back" not in run, run_id
+        else:
+            # The local files the export pass did not write came from the cached assets.
+            assert run["read_back"]["by"] == "odisha_script/odisha_read_back_export.py", run_id
+            assert set(run["read_back"]["layers_read_back"]) | set(run["read_back"]["layers_the_run_wrote"]) == {
+                "stands_merged", "stands_snic", "stands_dissolved"}, run_id

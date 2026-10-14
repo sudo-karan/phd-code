@@ -2,6 +2,7 @@
 
     python scripts/build_demo_set.py                       # lists the assets on Earth Engine, then writes
     python scripts/build_demo_set.py --from-listing FILE   # offline, from a listing saved earlier
+    python scripts/build_demo_set.py --set boxes           # the four box runs of 14 Oct, to demo_set_boxes.json
 
 Writes docs/demo/demo_set.json. One entry per `configs/*_repro.yaml`: the site, the arm, the
 stand ceiling, k, the commit the run came from, every asset the run saved with the fingerprint
@@ -20,6 +21,11 @@ the git-ignored outputs/repro_runs/ (the run records, the batch state files, the
 and outputs/transparency_repro/. Where a local file is missing the entry says so and the
 script goes on, so the committed file can be checked on a machine without those folders
 (tests/test_demo_set.py).
+
+The box runs (`--set boxes`) are the hand-crafted 3 ha arm run again on a box around each
+village's plots (configs/odisha_v120_3ha_squares_<district>.yaml, brief task A0). They are recorded
+in a second file, docs/demo/demo_set_boxes.json, in the same form, with `"roi": "boxes"` and, per
+run, how its export pass ended. Their local files are under outputs/squares_runs/.
 
 Run from the repo root (fmu reads .env from the working directory).
 """
@@ -47,6 +53,21 @@ LABEL = (
 ROUTES = REPO / "docs" / "reproducibility" / "segmentation_route.json"
 RUNS = REPO / "outputs" / "repro_runs"
 MASKS = REPO / "outputs" / "transparency_repro"
+# The second set: the four box runs. Same record, other folders.
+BOXES = {
+    "glob": "odisha_v120_3ha_squares_*.yaml",
+    "out": REPO / "docs" / "demo" / "demo_set_boxes.json",
+    "routes": REPO / "docs" / "reproducibility" / "segmentation_route_squares.json",
+    "runs": REPO / "outputs" / "squares_runs",
+    "mask_data": REPO / "outputs" / "transparency_squares",
+    "mask_docs": REPO / "outputs" / "transparency_squares_docs",
+    "listing": REPO / "outputs" / "squares_runs" / "assets_listing.json",
+    "label": (
+        "Box runs: Earth Engine runs of 13 and 14 Oct 2026 (commit 4795358), the hand-crafted 3 ha arm on a "
+        f"box around each village's plots, merged under `{MERGE_RULE_ID}`. Upstream of the merge they "
+        "carry the open cache-grid issue (PR #42, question 1). The final re-run replaces them."
+    ),
+}
 # A masking output today's code would cache, added after these runs were made.
 NOT_CACHED = ["masking/mask_provenance"]
 
@@ -93,7 +114,8 @@ def describe_config(path: Path) -> dict[str, Any]:
 
     cfg = load_config(path)
     run_id = cfg.name
-    place = run_id[: -len(SUFFIX)].rsplit("_", 1)[-1]
+    boxes = "_squares_" in run_id
+    place = (run_id if boxes else run_id[: -len(SUFFIX)]).rsplit("_", 1)[-1]
     odisha = run_id.startswith("odisha_")
     embedding = cfg.clustering.feature_source == "embedding"
     return {
@@ -102,6 +124,9 @@ def describe_config(path: Path) -> dict[str, Any]:
         "site": "Odisha" if odisha else "Sanjay Van",
         "district": place.capitalize() if odisha else None,
         "area": place.capitalize() if odisha else "Sanjay Van working area",
+        # What the run's ROI is: a box around each village's plots, the hull of the plots, or the
+        # Sanjay Van working rectangle.
+        "roi": "boxes" if boxes else ("hulls" if odisha else "rectangle"),
         "arm": "alphaearth" if embedding else "feature_vector",
         "feature_source": cfg.clustering.feature_source,
         # The ceiling is the loaded value: the Sanjay Van configs have no merge block and take the default.
@@ -114,9 +139,10 @@ def describe_config(path: Path) -> dict[str, Any]:
     }
 
 
-def local_record(run_id: str) -> dict[str, Any]:
+def local_record(run_id: str, runs: Path = RUNS, mask_data: Path = MASKS / "_mask_data",
+                 mask_docs: Path = MASKS / "_mask_docs") -> dict[str, Any]:
     """What the run left on this Mac. Every path is relative to the repo; a missing one is named."""
-    vectors = RUNS / "phase2_vectors"
+    vectors = runs / "phase2_vectors"
     rel = lambda p: str(p.relative_to(REPO))  # noqa: E731
     files = {
         "run_record": vectors / f"{run_id}_run.json",
@@ -124,11 +150,11 @@ def local_record(run_id: str) -> dict[str, Any]:
         "stands_snic": vectors / f"{run_id}_stands_snic.geojson",
         "stands_dissolved": vectors / f"{run_id}_stands_dissolved.geojson",
         "raster_at_plots": vectors / f"{run_id}_raster_at_plots.csv",
-        "mask_data": MASKS / "_mask_data" / run_id,
-        "mask_docs": MASKS / "_mask_docs" / run_id,
+        "mask_data": mask_data / run_id,
+        "mask_docs": mask_docs / run_id,
     }
     local: dict[str, Any] = {name: rel(path) for name, path in files.items()}
-    local["run_folders"] = sorted(rel(p) for p in (RUNS / "runs").glob(f"{run_id}_2*") if p.is_dir())
+    local["run_folders"] = sorted(rel(p) for p in (runs / "runs").glob(f"{run_id}_2*") if p.is_dir())
     local["missing_here"] = sorted(name for name, path in files.items() if not path.exists())
     out: dict[str, Any] = {"local": local}
 
@@ -139,14 +165,22 @@ def local_record(run_id: str) -> dict[str, Any]:
         folders = sorted({e["folder"] for e in record["drive_exports"].values()})
         if len(folders) != 1:
             raise SystemExit(f"{run_id}: its Drive exports went to more than one folder: {folders}")
+        read_back = record.get("read_back")
         out["drive"] = {
             "folder": folders[0],
             # As the export stage named them. A shapefile export arrives on Drive as its parts
-            # (.shp, .shx, .dbf, .prj, .cpg) under the same stem.
-            "files": sorted(e["filename"] for e in record["drive_exports"].values()),
-            "checked": "every export task succeeded (Earth Engine task list); on Drive the files were "
-            "looked up for one run only, sanjay_van_baseline_repro",
+            # (.shp, .shx, .dbf, .prj, .cpg) under the same stem. A record that was read back
+            # holds them by file name, from the run's log.
+            "files": sorted(record["drive_exports"] if read_back
+                            else (e["filename"] for e in record["drive_exports"].values())),
+            "checked": ("the export tasks the run's log says were submitted; not looked up on Drive" if read_back or runs != RUNS
+                        else "every export task succeeded (Earth Engine task list); on Drive the files were "
+                        "looked up for one run only, sanjay_van_baseline_repro"),
         }
+        if read_back:
+            # The run's export pass ended early; odisha_script/odisha_read_back_export.py wrote
+            # the local files that were missing, from the run's cached assets.
+            out["read_back"] = {k: read_back[k] for k in ("by", "why", "layers_read_back", "layers_the_run_wrote")}
         out["counts"] = {
             "superpixels_in_merge": diag["n_superpixels"],
             "stands": diag["n_stands"],
@@ -154,13 +188,57 @@ def local_record(run_id: str) -> dict[str, Any]:
             "superpixel_polygons_exported": record["export_vector_layers"]["stands_snic"]["n_features"],
         }
         out["run_record_fingerprint"] = record["fingerprint"]
-    for state_path in sorted((RUNS / "logs").glob("*.state.json")):
+    for state_path in sorted((runs / "logs").glob("*.state.json")):
         state = json.loads(state_path.read_text())
-        if run_id in state.get("done", []):
-            out["source_commit"] = state["commit"]
-            out["source_tree_dirty"] = state["tree_dirty"]
+        # Two shapes of state file: the batch script of 13 Oct, and run_passes_safely.py.
+        git = state.get("git") or {"commit": state.get("commit"), "dirty": state.get("tree_dirty")}
+        if run_id in state.get("done", []) or run_id in state.get("needs_attention", {}):
+            out["source_commit"] = git["commit"]
+            out["source_tree_dirty"] = git["dirty"]
             out["batch_state_file"] = rel(state_path)
+            if runs != RUNS:
+                out["export_pass"] = ("finished" if run_id in state.get("done", [])
+                                      else state["needs_attention"][run_id])
     return out
+
+
+def build_boxes(listing: dict[str, list[str]]) -> dict[str, Any]:
+    """The record of the four box runs, in the form of the demo set."""
+    routes = {r["config"]: r for r in json.loads(BOXES["routes"].read_text())}
+    runs = []
+    for path in sorted((REPO / "configs").glob(BOXES["glob"])):
+        entry = describe_config(path)
+        run_id = entry["run_id"]
+        assets = [parse_asset(run_id, a) for a in listing[run_id]]
+        fingerprints = sorted({a["fingerprint"] for a in assets})
+        if len(fingerprints) != 1:
+            raise SystemExit(f"{run_id}: its asset folder holds more than one fingerprint: {fingerprints}")
+        route = routes[run_id]
+        entry.update({
+            "fingerprint": fingerprints[0],
+            "assets": assets,
+            "not_cached": [],
+            "segmentation_route": route["route"],
+            "segmentation_run": route["runs"][-1]["run"] if route["runs"] else None,
+        })
+        entry.update(local_record(run_id, BOXES["runs"], BOXES["mask_data"], BOXES["mask_docs"]))
+        runs.append(entry)
+    commits = sorted({r.get("source_commit") for r in runs if r.get("source_commit")})
+    return {
+        "label": BOXES["label"],
+        "merge_rule": MERGE_RULE_ID,
+        "what": "The four box runs of task A0 (docs/handoff/2026-10-13-round2.md): one batch, started once on "
+        "13 Oct 2026 and ended on 14 Oct. Two finished their export pass; for the other two the local files "
+        "the export pass did not write were read back from the cached assets (each entry says which).",
+        "source_commit": commits[0] if len(commits) == 1 else commits,
+        "source_commit_recorded_in": "outputs/squares_runs/logs/odisha_squares_3ha.state.json (git-ignored)",
+        "asset_root": ASSET_ROOT,
+        "assets_listed": "ee.data.listAssets on each run's asset folder, read-only",
+        "n_assets": sum(len(r["assets"]) for r in runs),
+        "open_issue": "As for the demo set: cached features sit on a geographic grid and segmentation works on "
+        "the UTM grid (PR #42, question 1). The route each run took is in segmentation_route.",
+        "runs": runs,
+    }
 
 
 def build(listing: dict[str, list[str]]) -> dict[str, Any]:
@@ -215,10 +293,17 @@ def main() -> None:
                     help="a JSON file {run_id: [asset id, ...]} saved by an earlier run; no Earth Engine")
     ap.add_argument("--save-listing", type=Path, default=REPO / "outputs" / "demo" / "assets_listing.json",
                     help="where the listing read from Earth Engine is kept (git-ignored)")
-    ap.add_argument("--out", type=Path, default=OUT)
+    ap.add_argument("--out", type=Path, default=None)
+    ap.add_argument("--set", choices=["hulls", "boxes"], default="hulls",
+                    help="hulls: the 14 re-runs of 13 Oct (default). boxes: the four box runs, to demo_set_boxes.json")
     args = ap.parse_args()
+    boxes = args.set == "boxes"
+    if args.out is None:
+        args.out = BOXES["out"] if boxes else OUT
+    if boxes and args.save_listing == REPO / "outputs" / "demo" / "assets_listing.json":
+        args.save_listing = BOXES["listing"]
 
-    run_ids = sorted(p.stem for p in (REPO / "configs").glob(f"*{SUFFIX}.yaml"))
+    run_ids = sorted(p.stem for p in (REPO / "configs").glob(BOXES["glob"] if boxes else f"*{SUFFIX}.yaml"))
     if args.from_listing:
         listing = json.loads(args.from_listing.read_text())
     else:
@@ -229,7 +314,7 @@ def main() -> None:
     if missing:
         raise SystemExit(f"the listing has no entry for {missing}")
 
-    demo = build(listing)
+    demo = build_boxes(listing) if boxes else build(listing)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(demo, indent=1) + "\n")
     print(f"wrote {args.out.relative_to(REPO)}: {len(demo['runs'])} runs, {demo['n_assets']} assets")
