@@ -280,7 +280,7 @@ The *embedding arm's* single feature stage. Runs when `clustering.feature_source
 
 SNIC superpixel segmentation. Draws boundaries that downstream clustering operates on (DEC-001; clustering on superpixel means, not pixels).
 
-**Reads from context:** `roi`, plus whichever context keys `segmentation.input_bands` names. `required_inputs` is therefore only `{roi}` (a static class attribute cannot see the config); the real dependency check is in `validate()`, same pattern as `ClusteringStage`.
+**Reads from context:** `roi`, plus whichever context keys `segmentation.input_bands` names, plus `habitat_mask` when `segmentation.mask_before_snic` is on. `required_inputs` is therefore only `{roi}` (a static class attribute cannot see the config); the real dependency check is in `validate()`, same pattern as `ClusteringStage`.
 **Writes to context:** `snic_clusters` (single band, integer IDs), `snic_means` (one band per input band, per-cluster means)
 **Cacheable:** yes, both outputs.
 
@@ -309,6 +309,8 @@ NASADEM (30 m), CHIRPS (5,500 m), and cyclic features (phase, aspect) remain exc
 - `segmentation.normalize_inputs`; bool (default `true`; z-score per band before SNIC)
 - `segmentation.normalize_distance_scale`; bool (default `true`; divide by the RMS 4-neighbour feature distance)
 - `segmentation.input_bands`; list of `{source, band}`, in order. `band: "*"` takes every band of that source (how the embedding arms segment on all 64/128 dimensions without listing them). Band names must be unique after expansion, since SNIC names its per-cluster means `<band>_mean`.
+- `segmentation.mask_before_snic`; bool (default `false`). On: the z-score and the distance normaliser are measured over kept land (`habitat_mask` 1), SNIC runs on the stack with every other pixel masked, seeded on the grid plus every pixel of each kept patch no grid point falls in, and both outputs are masked to kept land; the merge then joins only superpixels that touch on kept land. Off, the stage computes what it always did (`tests/test_segmentation_off_golden.py`). Register entry `spec-segmentation-mask-before-snic`; not yet run on Earth Engine (`scripts/check_snic_on_kept_land.py` is the check to run first).
+- `segmentation.drop_kept_patches_below_min_area`; bool (default `false`; needs `mask_before_snic`). Leaves out, before SNIC, each kept patch smaller than `merge.min_area_ha` that touches no other kept land (`Config.kept_patch_min_pixels()`).
 
 **Related decisions:** DEC-001 (superpixels not pixels), DEC-014 (compute everywhere, mask at clustering), DEC-016 (cross-pol metric definition).
 
@@ -316,7 +318,7 @@ NASADEM (30 m), CHIRPS (5,500 m), and cyclic features (phase, aspect) remain exc
 
 SNIC superpixels to stands, in two passes over the adjacency graph, client-side (`src/fmu/utils/region_merge.py`). Runs when `merge.enabled`. The rule and its settings are in `docs/configs.md` (`merge`).
 
-**Reads from context:** `roi`, `snic_clusters` (the static `required_inputs`), plus the feature images `merge.criteria` names
+**Reads from context:** `roi`, `snic_clusters` (the static `required_inputs`), plus the feature images `merge.criteria` names, plus `habitat_mask` when `segmentation.mask_before_snic` is on (to measure how the superpixels cover kept land: `merge_diagnostics["kept_land"]`)
 **Writes to context:** `stand_clusters` (stand id per pixel, a remap of `snic_clusters`), `stand_attributes` and `merge_diagnostics` (Python dicts), `stand_provenance` (Python dict: per stand, the fields `n_superpx`, `n_pass1`, `n_relaxed`, `n_fallback`, `below_min`, `below_why`), `merge_provenance` (image, band `merge_kind`: each stand coded by the weakest kind of merge it contains, `0` single superpixel, `1` first-pass merges only, `2` contains a relaxed second-pass merge, `3` contains a shared-edge fallback merge)
 **Cacheable:** no, none of them.
 

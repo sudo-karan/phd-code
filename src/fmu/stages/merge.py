@@ -86,6 +86,7 @@ from fmu.utils.adjacency import (
 )
 from fmu.utils.components import assert_components_fit
 from fmu.utils.gee import safe_call
+from fmu.utils.kept_land import kept_land_coverage
 from fmu.utils.logging import get_logger
 from fmu.utils.region_merge import calibrate_thresholds, merge_superpixels
 
@@ -229,12 +230,15 @@ class MergeStage(Stage):
 
     def validate(self, ctx: PipelineContext, config: Config) -> None:
         needed = {"roi", "snic_clusters"} | config.merge.input_sources()
+        if config.segmentation.mask_before_snic:
+            needed.add("habitat_mask")
         missing = needed - ctx.keys()
         if missing:
             raise KeyError(
                 f"{self.name}: missing required context inputs: {sorted(missing)}. "
                 f"Context has: {sorted(ctx.keys())}. These are required because "
-                f"merge.criteria references them -- either add the producing "
+                f"merge.criteria references them (and, for habitat_mask, because "
+                f"segmentation.mask_before_snic is on) -- either add the producing "
                 f"stage to the run, or change merge.criteria."
             )
 
@@ -266,6 +270,35 @@ class MergeStage(Stage):
                 "merge: the SNIC label image has no labels inside the ROI. "
                 "Check that segmentation ran and that roi matches the one it used."
             )
+
+        # Superpixels on kept land only (segmentation.mask_before_snic): the
+        # merge can then join only superpixels that touch on kept land, and a
+        # patch with no kept neighbour stays a stand of its own. What it cannot
+        # place at all is kept land SNIC left without a superpixel, so that is
+        # measured here, on the image the merge reads, with the area of any
+        # superpixel off kept land (zero against the mask SNIC read; see
+        # _kept_land_warnings for when this pass reads another copy of it).
+        kept_cover: dict[str, float] | None = None
+        if config.segmentation.mask_before_snic:
+            kept_cover = kept_land_coverage(
+                snic_clusters,
+                ctx.get("habitat_mask"),
+                roi,
+                scale,
+                min_patch_pixels=config.kept_patch_min_pixels(),
+                connectivity=config.segmentation.connectivity,
+                context="merge input",
+            )
+            log.info(
+                "  kept land %.2f ha (%.2f ha more in patches too small to be a "
+                "stand, left out), of it without a superpixel %.4f ha; "
+                "superpixel area off kept land %.4f ha",
+                kept_cover["kept_land_ha"],
+                kept_cover["small_patches_ha"],
+                kept_cover["kept_land_ha_without_superpixel"],
+                kept_cover["superpixel_ha_off_kept_land"],
+            )
+            warnings.extend(_kept_land_warnings(kept_cover))
 
         criteria_image = _criteria_image(ctx, params)
         means, valid_counts = extract_superpixel_attributes(
@@ -341,6 +374,9 @@ class MergeStage(Stage):
             "adjacency": graph.summary(),
             "threshold_calibration": calibration,
             "warnings": warnings,
+            # Only when SNIC saw kept land only, so the diagnostics of every
+            # other run keep exactly the keys they had.
+            **({"kept_land": kept_cover} if kept_cover is not None else {}),
         }
 
         return StageResult(
@@ -362,6 +398,7 @@ class MergeStage(Stage):
                 "min_defined_criteria": params.min_defined_criteria,
                 "min_frac_valid": params.min_frac_valid,
                 "pass2_skip_at_min_area": params.pass2_skip_at_min_area,
+                "mask_before_snic": config.segmentation.mask_before_snic,
                 "adjacency": graph.summary(),
                 # Where the configured thresholds actually land in this AOI's
                 # own neighbour-difference distribution, including the joint
@@ -463,6 +500,40 @@ def _log_calibration(calibration: dict[str, Any]) -> None:
         calibration["joint_admit_rate_pct"],
         calibration["n_pairs_with_any_defined_criterion"],
     )
+
+
+def _kept_land_warnings(cover: dict[str, float]) -> list[str]:
+    """Say so when the superpixels do not cover kept land exactly.
+
+    Both numbers compare the superpixels with kept land made from the
+    habitat_mask this pass reads. If SNIC ran on the mask as computed live and
+    this pass reads the cached copy, the two can differ along the edges of kept
+    land, because the copy sits on a different pixel grid (docs/reproducibility.md,
+    "Superpixels depend on whether the features were cached when SNIC ran"). That
+    gives a little of both at once; a large area of either has another cause,
+    which the text names.
+    """
+    edge = (
+        " A little of this, together with the other number, is expected when "
+        "SNIC ran on the mask as computed live and this pass reads the cached copy."
+    )
+    out: list[str] = []
+    if cover["kept_land_ha_without_superpixel"] > 0:
+        out.append(
+            f"{cover['kept_land_ha_without_superpixel']} ha of kept land has no "
+            f"superpixel, so it is in no stand. The seeds of "
+            f"fmu.utils.kept_land should reach every kept patch; one they miss "
+            f"is a strip too long for the patch search and narrower than the "
+            f"seed spacing, or a tile edge SNIC did not see across." + edge
+        )
+    if cover["superpixel_ha_off_kept_land"] > 0:
+        out.append(
+            f"{cover['superpixel_ha_off_kept_land']} ha of superpixels lies off "
+            f"kept land, which segmentation rules out for the mask it read. A "
+            f"large area means the habitat_mask read here is another mask: "
+            f"check the cache." + edge
+        )
+    return out
 
 
 def _warnings_from(d: dict[str, Any], params: Any) -> list[str]:

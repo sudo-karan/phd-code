@@ -568,9 +568,13 @@ def test_the_stage_passes_the_provenance_through_and_builds_the_layer(monkeypatc
     class _Export:
         analysis_scale_m = 10
 
+    class _Segmentation:
+        mask_before_snic = False
+
     class _Config:
         merge = _Params()
         export = _Export()
+        segmentation = _Segmentation()
 
         def max_component_pixels(self):
             return 1000

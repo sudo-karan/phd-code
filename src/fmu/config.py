@@ -321,13 +321,59 @@ class SegmentationParams(BaseModel):
         default_factory=lambda: [b.model_copy() for b in _DEFAULT_SNIC_INPUT_BANDS],
         min_length=1,
     )
+    # Whether SNIC sees only the land the masking stage keeps (habitat_mask 1:
+    # trees or scrub). False (the default, and the behaviour of every run made
+    # before this setting existed): SNIC and the merge cover the whole ROI, and
+    # the mask is applied at clustering only, so a stand can hold cropland or
+    # built-up land and its type is fitted on means over all of it. True: the
+    # z-score and distance statistics are taken over kept land only, SNIC runs
+    # on the stack with every other pixel masked, every patch of kept land gets
+    # at least one seed, and the superpixels, hence the stands, lie on kept land
+    # only. The merge then joins only superpixels that touch on kept land; a
+    # patch with no kept-land neighbour stays a stand of its own, below the
+    # minimum size if it is small (docs/decisions.yaml,
+    # spec-segmentation-mask-before-snic). The default is left out of the cache
+    # fingerprint (`fmu.utils.caching._OMITTED_AT_DEFAULT`), so adding this field
+    # moved no existing config's cached assets; a config that sets it to true
+    # gets a new fingerprint.
+    mask_before_snic: bool = False
+    # With mask_before_snic on: whether a patch of kept land smaller than the
+    # smallest stand the merge allows (merge.min_area_ha), joined to no other
+    # kept land by SNIC's `connectivity`, is left out before SNIC, as removed
+    # land is. Such a patch can merge with nothing, so it could only ever be a
+    # stand below the minimum size; kept in, each one is a stand of its own and
+    # a row of its own in the k-means fit, which fits one row per stand however
+    # small. The standard minimum-mapping-unit step, tied to the stand minimum
+    # rather than to a number of its own. The area left out is reported
+    # (merge_diagnostics["kept_land"]["small_patches_ha"]). Same register entry;
+    # left out of the fingerprint while false, like mask_before_snic.
+    drop_kept_patches_below_min_area: bool = False
+
+    @model_validator(mode="after")
+    def _kept_land_options_fit_together(self) -> SegmentationParams:
+        if self.drop_kept_patches_below_min_area and not self.mask_before_snic:
+            raise ValueError(
+                "segmentation.drop_kept_patches_below_min_area needs "
+                "segmentation.mask_before_snic: without it SNIC does not work on "
+                "kept land, so there are no kept patches to leave out."
+            )
+        if self.mask_before_snic and self.size < 2:
+            raise ValueError(
+                "segmentation.size must be at least 2 with mask_before_snic: the "
+                "seeds are given to SNIC explicitly, and SNIC takes seed pixels "
+                "that touch as one seed, so a grid of spacing 1 would make every "
+                "patch of kept land a single superpixel."
+            )
+        return self
 
     def input_sources(self) -> set[str]:
         """PipelineContext keys the configured SNIC stack reads.
 
         One definition, used by three callers that must agree: the
         orchestrator (to decide which feature stages a run needs), the
-        segmentation stage's validate(), and the tests.
+        segmentation stage's validate(), and the tests. `habitat_mask`, which
+        the stage also reads when `mask_before_snic` is on, is not a source of
+        a band and is not listed: the masking stage runs in every run.
         """
         return {b.source for b in self.input_bands}
 
@@ -860,6 +906,19 @@ class Config(BaseModel):
         scale = self.export.analysis_scale_m
         exact = math.ceil(self.merge.max_area_ha * 10_000 / (scale * scale))
         return int(math.ceil(exact * 1.2))
+
+    def kept_patch_min_pixels(self) -> int:
+        """Smallest patch of kept land SNIC sees, in pixels; 0 when none is left out.
+
+        Nonzero only with segmentation.drop_kept_patches_below_min_area, and then
+        merge.min_area_ha at the analysis scale, rounded up: a patch of fewer
+        pixels is below the smallest stand the merge allows. Segmentation and
+        merge both read it, so they agree on what kept land is.
+        """
+        if not self.segmentation.drop_kept_patches_below_min_area:
+            return 0
+        scale = self.export.analysis_scale_m
+        return int(math.ceil(self.merge.min_area_ha * 10_000 / (scale * scale)))
 
     @model_validator(mode="after")
     def _optical_band_prefixes_match_index(self) -> Config:

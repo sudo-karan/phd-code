@@ -82,6 +82,8 @@ _CACHE_RELEVANT_EXPORT_FIELDS: tuple[str, ...] = ("analysis_scale_m",)
 # fingerprints of the 14 `_repro` configs (tests/test_repro_fingerprints.py).
 _OMITTED_AT_DEFAULT: dict[tuple[str, str], Any] = {
     ("merge", "pass2_skip_at_min_area"): False,
+    ("segmentation", "mask_before_snic"): False,
+    ("segmentation", "drop_kept_patches_below_min_area"): False,
 }
 
 

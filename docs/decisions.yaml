@@ -4676,3 +4676,122 @@ decisions:
   status: adopted
   design_notes_section: null
   source: docs/handoff/2026-10-13-round2.md, task A3
+- id: spec-segmentation-mask-before-snic
+  title: >-
+    SNIC can be run on kept land only, so that superpixels and stands lie on trees or scrub, and the merge joins
+    only superpixels that touch there
+  decision: >-
+    Two segmentation settings, both off by default. segmentation.mask_before_snic selects where SNIC draws
+    superpixels. Off, the default and the behaviour of every run made before it existed: SNIC and the merge cover
+    the whole ROI and the land-cover mask (habitat_mask: trees or scrub) is applied at clustering only, so a stand
+    can hold cropland or built-up land and its type is fitted on means over all of it. On: the per-band z-score and
+    the distance normaliser are measured over kept land only (the normaliser over pairs of adjacent kept pixels
+    with every band defined); SNIC runs on the input stack with every other pixel masked; its seeds are the square
+    grid on kept land plus every pixel of each kept patch that no grid point falls in, so that no patch is left
+    without a superpixel because of where the grid falls (fmu.utils.kept_land.seeds_on_kept_land); and both SNIC
+    outputs are masked to kept land. segmentation.drop_kept_patches_below_min_area, which needs the first, also
+    leaves out before SNIC each patch of kept land smaller than merge.min_area_ha that touches no other kept land
+    (connectedPixelCount at merge.min_area_ha in pixels, Config.kept_patch_min_pixels), the standard minimum
+    mapping unit tied to the stand minimum rather than to a number of its own. The merge itself is unchanged: its
+    adjacency graph then holds only superpixels that touch on kept land, so it joins only those, and a patch with
+    no kept-land neighbour stays a stand of its own, below merge.min_area_ha if it is small, reported as isolated.
+    This is how "merge only where possible" is read; no merge rule is added or dropped. The merge stage measures,
+    on the superpixel image it reads, the kept land left without a superpixel, the superpixel area off kept land and
+    the area left out as small patches, puts them in merge_diagnostics under kept_land, and warns when either
+    shortfall is above zero. config_fingerprint leaves both keys out of the hashed segmentation block while they
+    are false, so no existing fingerprint moves, the 14 _repro configs among them, and a config that sets either
+    to true gets a new one. Off, the segmentation stage makes the same Earth Engine calls, with the same arguments
+    and in the same order, as before the change (tests/test_segmentation_off_golden.py holds them as recorded from
+    the stage at commit 983dbe7, for three shipped configs); its metadata gains the key mask_before_snic. Guards:
+    with the setting on, segmentation.size must be at least 2 (touching seed pixels are one seed to SNIC), and an
+    ROI with no kept land fails with a plain message. The masked path has not run on Earth Engine yet. Its
+    requests are checked offline against the algorithm signatures earthengine-api ships
+    (tests/test_mask_before_snic_ee_graph.py); what Earth Engine does with them is what
+    scripts/check_snic_on_kept_land.py measures, on one cached box config, before any batch run with the setting
+    on: whether SNIC leaves masked pixels unlabelled and grows no superpixel across them, whether the seeds reach
+    every kept pixel, whether touching seed pixels make one superpixel, whether seedGrid is SNIC's own grid,
+    whether SNIC still uses size once given seeds, and what connectedComponents and connectedPixelCount count
+    against maxSize. For the field comparison the setting changes two things, declared separately before any run
+    with it on: a plot on land the mask removes is in no stand (14 of the 267 Odisha plots inside the boxes), and
+    the rotation null as coded requires every plot that has a stand to land on a stand after the move, which
+    stands on kept land only make far rarer.
+  alternatives_considered:
+  - >-
+    Keep SNIC and the merge on the whole area, and type each stand on means over its kept pixels only, with a
+    minimum share of kept land before a stand is typed (Claude (chat)'s recommendation of 14 Oct 2026): not chosen
+  - >-
+    Clip the stands to kept land after the merge: not chosen. The superpixels would still be drawn across the edge
+    between kept and removed land, so stand boundaries inside the forest would follow lines drawn partly on
+    removed land
+  - >-
+    Mask the stack and keep SNIC's own seed grid: not done. A patch of kept land that no grid point falls in and
+    that touches no other kept land would get no superpixel, and which patches that hits would depend on where the
+    grid falls, not on the land
+  - >-
+    Keep every kept patch, however small, as a stand of its own: available (drop_kept_patches_below_min_area
+    false). In the four Odisha box areas, kept land read from the explorer data (the land-cover shapes of the box
+    runs' masking output, 8-connected, on the cached EPSG:4326 grid, so approximate) forms 709 patches, 651 of
+    them under 1 ha, 432 under 0.1 ha; together they hold 50 ha of 5,394 ha of kept land, and none of the 253 plots
+    on kept land. Each would be a stand of its own and a row of its own in the k-means fit, which takes one row
+    per stand however small
+  - >-
+    Keep the small patches as stands but leave them out of the k-means fit, and label them afterwards: not
+    built. It needs a change to the clustering stage and still puts some 650 fragments on the stand map
+  - >-
+    Change segmentation in place, with no setting: not done. Every existing config's superpixels would change
+    under an unchanged cache fingerprint, and the cached assets would no longer be what the config describes
+  - >-
+    Add the settings as ordinary segmentation fields: not done. config_fingerprint hashes the whole
+    segmentation block, defaults included, so all 14 _repro fingerprints would change at once and their saved
+    assets could no longer be found by name
+  rationale: >-
+    Jaskaran asked whether the pipeline masks non-forest pixels before SNIC, as he understood it to. It did not:
+    src/fmu/stages/segmentation.py read no mask in any of its commits, and habitat_mask was used only by clustering
+    and metrics (dn-optical-features-over-whole-roi-mask-at-clustering, DEC-014). His decision, 14 Oct 2026: "we
+    need to change this we need to mask before snic and merge only where possible". The settings keep the earlier
+    behaviour reproducible; the explicit seeds and the measured coverage are there because a stand map that
+    silently leaves out kept land, by an accident of the seed grid, is the kind of silent loss this pipeline
+    reports rather than hides (spec-component-cap-derived). Whether the box configs leave out small patches is
+    Jaskaran's to decide, with the counts above, before they run.
+  evidence:
+  - path: src/fmu/stages/segmentation.py
+    what: >-
+      run(): kept land from habitat_mask when the setting is on, and the plain failure when there is none;
+      _zscore_per_band and _rms_adjacent_distance take `within`; SNIC on the masked stack with explicit seeds;
+      both outputs masked to kept land; validate() asks for habitat_mask only with the setting on; metadata keys
+      mask_before_snic and kept_patch_min_pixels
+  - path: src/fmu/utils/kept_land.py
+    what: >-
+      kept_land(), seeds_on_kept_land(), kept_land_coverage(), the reasons for each, and what is UNVERIFIED until
+      the check script has run
+  - path: src/fmu/stages/merge.py
+    what: 'kept_land_coverage on the image the merge reads; merge_diagnostics["kept_land"]; _kept_land_warnings'
+  - path: src/fmu/config.py
+    what: >-
+      SegmentationParams.mask_before_snic and drop_kept_patches_below_min_area, default false, their validator,
+      and Config.kept_patch_min_pixels()
+  - path: src/fmu/utils/caching.py
+    what: _OMITTED_AT_DEFAULT holds both keys at false
+  - path: tests/test_mask_before_snic.py
+    what: >-
+      Fingerprints off and on; the guards; the mask is made before segmentation; with the setting off nothing reads
+      the mask and nothing is masked; with it on, which image each statistic is taken over, what SNIC is given,
+      that small patches are counted as SNIC joins pixels, and that the outputs are masked; the coverage is counted
+      on the label image's own pixels; the merge on two patches that do not touch makes no merge and reports the
+      small one as isolated; the coverage warnings
+  - path: tests/test_segmentation_off_golden.py
+    what: The default path's calls, against those recorded from the stage at commit 983dbe7
+  - path: tests/test_mask_before_snic_ee_graph.py
+    what: The masked path and the coverage check built with the real Earth Engine client, offline
+  - path: scripts/check_snic_on_kept_land.py
+    what: The read-only check on Earth Engine to run before any batch run with the setting on
+  - path: tests/test_check_snic_on_kept_land.py
+    what: What the check script says, and that its requests are valid
+  - path: tests/test_repro_fingerprints.py
+    what: Pins the fingerprints of the 14 _repro configs to those in the names of their saved assets
+  - path: docs/outputs.md
+    what: The merge.kept_land row of the metrics table
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran's decision in conversation with Claude (chat), 14 Oct 2026; PR #43
