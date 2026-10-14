@@ -5029,3 +5029,106 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 14 Oct 2026, with Claude (chat)
+- id: spec-keptland-configs-mask-before-snic
+  title: >-
+    Every kept-land config of round 3 has SNIC on kept land only, and keeps the small patches of kept land
+  decision: >-
+    The six configs of round 3, configs/sanjay_van_baseline_keptland.yaml, configs/sanjay_van_alphaearth_keptland.yaml
+    and configs/odisha_v120_3ha_squares_<district>_keptland.yaml for Angul, Dhenkanal, Kendujhar and Koraput, set
+    segmentation.mask_before_snic: true, so SNIC sees kept land only and every superpixel and stand lies on it
+    (spec-segmentation-mask-before-snic). They leave segmentation.drop_kept_patches_below_min_area at its default,
+    false: a patch of kept land smaller than merge.min_area_ha that touches no other kept land is not left out before
+    SNIC, and becomes a stand of its own. This answers question 6 of PR #43 with option (b). Each config copies an
+    existing one and differs from it only in its name and description, its Drive folder (fmu_exports_kept_land) and
+    the three settings of D1 to D3 (tests/test_keptland_configs.py); which configs they copy is
+    spec-keptland-runs-sites-and-ceilings. The read-only check of task A6 ran first, on Kendujhar's box run with small
+    patches kept (docs/reproducibility/snic_on_kept_land_kendujhar.json). One of its lines is not as expected: 3
+    superpixels are each in more than one piece. A read-only follow-up found the ROI edge cutting all three
+    (docs/reproducibility/snic_split_superpixels_kendujhar.json): SNIC grows them through a strip of kept land one
+    pixel wide just outside the ROI, and the stage's clip to the ROI cuts that strip off. Jaskaran decides the fix
+    before any run. Not run on Earth Engine in batch.
+  alternatives_considered:
+  - >-
+    Leave out, before SNIC, the kept patches smaller than merge.min_area_ha that touch no other kept land
+    (drop_kept_patches_below_min_area true; option (a) of PR #43 question 6, recommended there by Claude (chat)): not
+    chosen
+  - >-
+    SNIC and the merge on the whole area, the mask applied at clustering only, as in every earlier run: not chosen;
+    Jaskaran decided on 14 Oct 2026 to mask before SNIC (spec-segmentation-mask-before-snic)
+  rationale: >-
+    Jaskaran's decision D1 of 14 Oct 2026: "Land-cover mask before SNIC: segmentation.mask_before_snic: true in every
+    new config. Small kept patches are NOT dropped: drop_kept_patches_below_min_area stays false." The counts behind
+    question 6 are in spec-segmentation-mask-before-snic: in the four Odisha box areas, read approximately from the
+    explorer data, kept land forms 709 patches, 651 of them under 1 ha, together 50 ha of 5,394 ha, with none of the
+    FES plots on kept land in them. D3, decided at the same time (spec-clustering-fit-excludes-stands-below-min-area),
+    leaves the stands still below the minimum after the merge out of the k-means fit, so such patches stay on the map
+    without shaping the stand types. No paper was searched for this decision.
+  evidence:
+  - path: configs/sanjay_van_baseline_keptland.yaml
+    what: segmentation.mask_before_snic true; the header says what differs from configs/sanjay_van_baseline.yaml
+  - path: configs/sanjay_van_alphaearth_keptland.yaml
+    what: segmentation.mask_before_snic true; the header says what differs from configs/sanjay_van_alphaearth.yaml
+  - path: configs/odisha_v120_3ha_squares_kendujhar_keptland.yaml
+    what: >-
+      segmentation.mask_before_snic true; the header says what differs from the box config it copies (the other three
+      districts' configs are built the same way)
+  - path: tests/test_keptland_configs.py
+    what: >-
+      Each config differs from its source only in the named keys; mask_before_snic is true and
+      drop_kept_patches_below_min_area false in all six
+  - path: docs/reproducibility/snic_on_kept_land_kendujhar.json
+    what: The A6 check on Kendujhar's box run with small patches kept
+  - path: docs/reproducibility/snic_split_superpixels_kendujhar.json
+    what: The follow-up on the three superpixels A6 found in more than one piece
+  - path: docs/handoff/2026-10-14-round3.md
+    what: The round-3 brief with D1 to D4, as Jaskaran gave it, and Blocked 1
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 14 Oct 2026, with Claude (chat)
+- id: spec-keptland-runs-sites-and-ceilings
+  title: >-
+    The kept-land runs: Sanjay Van at 10 ha with its existing settings, Odisha on the four 3 ha box configs
+  decision: >-
+    Round 3 has six kept-land configs. For Sanjay Van, the hand-crafted baseline and the AlphaEarth arm, each with its
+    existing settings, so at a 10 ha stand ceiling: they copy configs/sanjay_van_baseline.yaml and
+    configs/sanjay_van_alphaearth.yaml, which have no merge block, so the merge keeps its defaults (stands of 1 to 10
+    ha, merge.pass2_skip_at_min_area false). For Odisha, the four 3 ha box configs of task A0
+    (configs/odisha_v120_3ha_squares_<district>.yaml), with their merge rule (pass2_skip_at_min_area true). There is no
+    kept-land config for Sanjay Van at 3 ha, for the Odisha hull areas, for the Odisha 10 ha arm or for AlphaEarth in
+    Odisha. Upstream of segmentation nothing the configs change is read, so their masking, data-load and feature
+    assets can be copies of those of the runs they copy; for Sanjay Van that is the _repro run of the same content
+    (docs/demo/demo_set.json), because the assets under the originals' own names carry an older fingerprint
+    (docs/reproducibility/sanjay_van_baseline_assets_aug27_vs_repro.json). No batch run until Jaskaran says go.
+  alternatives_considered:
+  - >-
+    A 3 ha stand ceiling for Sanjay Van as well (Prof. Seth's ceiling; part C, item 9 of
+    docs/handoff/2026-10-13-round2.md): not chosen; Sanjay Van stays at 10 ha
+  - >-
+    Kept-land copies of the Odisha hull configs, of the Odisha 10 ha arm or of the Odisha AlphaEarth arm: not made
+  rationale: >-
+    Jaskaran's decision D4 of 14 Oct 2026: "Sanjay Van stays at 10 ha (its existing settings). Odisha: the four 3 ha
+    box configs." Because the brief names the only keys that change, the two Sanjay Van configs keep the earlier
+    pass-2 rule (pass2_skip_at_min_area false) where the box configs keep the rule of spec-merge-pass2-skip-at-minimum;
+    the handover file records this. No paper was searched for this decision.
+  evidence:
+  - path: configs/sanjay_van_baseline_keptland.yaml
+    what: Copies configs/sanjay_van_baseline.yaml; no merge settings but pass2_soft_ceiling, so stands of 1 to 10 ha
+  - path: configs/sanjay_van_alphaearth_keptland.yaml
+    what: Copies configs/sanjay_van_alphaearth.yaml, the same way
+  - path: configs/odisha_v120_3ha_squares_koraput_keptland.yaml
+    what: Copies configs/odisha_v120_3ha_squares_koraput.yaml (3 ha, boxes); the other three districts the same way
+  - path: tests/test_keptland_configs.py
+    what: >-
+      The six configs and their sources; max_area_ha 10 for Sanjay Van and 3 for Odisha, k and
+      pass2_skip_at_min_area as in the source; the fingerprints
+  - path: docs/demo/demo_set.json
+    what: The _repro runs whose upstream assets the Sanjay Van configs reuse
+  - path: docs/demo/demo_set_boxes.json
+    what: The box runs whose upstream assets the Odisha configs reuse
+  - path: docs/handoff/2026-10-14-round3.md
+    what: The round-3 brief with D1 to D4, as Jaskaran gave it
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 14 Oct 2026, with Claude (chat)
