@@ -1034,6 +1034,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       out.body.push(`Last, we sort the stands into ${has(k) ? n0(k) + " " : ""}types with k-means, a standard way of grouping similar things. It groups stands by ${what}. Same colour, same type.`);
       if (has(f.n_untyped_stands, f.share_stand_area_untyped)) out.body.push(`Only stands with some trees or scrub get a type: ${plural(f.n_untyped_stands, "stand")} (${pct(f.share_stand_area_untyped)} of the stand area) have none. The dark shading marks land that isn't trees or scrub; a stand that is mostly field can still get a type from the trees in it, and its averages include the field.`);
       else out.body.push(`Only stands with some trees or scrub get a type. The dark shading marks land that isn't trees or scrub.`);
+      if (state.index && state.index.commit === "early build") out.body.push(`A caution about these types: they are the ones the 13 October run saved, and a second fit of the same stands gives different types in most runs, because that run computed part of its input fresh and read part from storage. The next update uses a fit that repeats.`);
       if (odisha) out.body.push(`The type numbers are only names. The types are worked out for each district separately, so type 2 in ${r.area} has nothing to do with type 2 in another district.`);
       else out.body.push(`The type numbers are only names. Sanjay Van has no field plots, so the check against the ground is done in Odisha.`);
       out.facts = (has(k) ? factBox(n0(k), "stand types") : "") + (has(f.n_stands) ? factBox(n0(f.n_stands), "stands") : "");
@@ -1086,7 +1087,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       }).join("");
       return `<tr><th class="row"><span class="chip" style="background:${esc(legendColor(st, t))}"></span>Type ${t}</th>${cells}</tr>`;
     }).join("");
-    return `<div class="card"><h3>Stand type against field type</h3><p class="small">Plots counted by the type of the stand they fall in (rows) and their field type (columns, 0 = no trees to 4 = tallest; hover a number for its meaning). If stand types matched field types, each row would have one dark cell.</p><table class="xtab">${head}${body}</table>${untyped ? `<p class="small">${plural(untyped, "plot")} fall on stands without a type and are not counted.</p>` : ""}</div>`;
+    return `<div class="card"><h3>Stand type against field type</h3><p class="small">Plots counted by the type of the stand they fall in (rows) and their field type (columns, 0 = no trees to 4 = tallest; hover a number for its meaning). If stand types matched field types, each row would have one dark cell.</p><table class="xtab">${head}${body}</table>${untyped ? `<p class="small">${plural(untyped, "plot")} fall on stands without a type and are not counted.</p>` : ""}${state.index && state.index.commit === "early build" ? `<p class="small">These are the run's saved stand types, which a second fit does not repeat (step 6), so read this table as a picture, not a result.</p>` : ""}</div>`;
   }
 
   function chanceCard(rows) {
