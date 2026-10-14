@@ -343,3 +343,42 @@ def test_the_dump_written_to_manifests_still_carries_the_setting():
     """Only the hash leaves it out. The config dumped into a manifest says
     which rule ran."""
     assert Config.model_validate(_raw()).model_dump(mode="json")["merge"]["pass2_skip_at_min_area"] is False
+
+
+def test_the_soft_ceiling_leaves_the_fingerprint_alone_while_off():
+    """spec-merge-pass2-soft-ceiling. Off, whether left out of the YAML or
+    written out as false, hashes as the config did before the setting existed
+    (tests/test_every_config_fingerprint.py pins every config)."""
+    assert _fp() == "7f642cf2ca"
+
+    def written_out(raw):
+        raw.setdefault("merge", {})["pass2_soft_ceiling"] = False
+
+    assert _fp(written_out) == "7f642cf2ca"
+
+
+def test_switching_the_soft_ceiling_on_changes_the_fingerprint():
+    """On is a different merge, so it must share cached assets neither with off
+    nor with the other second-pass setting: clustering is cached under the same
+    key, and would hand back stand types computed for other stands."""
+
+    def on(raw):
+        raw.setdefault("merge", {})["pass2_soft_ceiling"] = True
+
+    def skip(raw):
+        raw.setdefault("merge", {})["pass2_skip_at_min_area"] = True
+
+    def both(raw):
+        on(raw)
+        skip(raw)
+
+    assert len({_fp(), _fp(on), _fp(skip), _fp(both)}) == 4
+    cfg_on = Config.model_validate({**_raw(), "merge": {"pass2_soft_ceiling": True}})
+    assert cfg_on.merge.pass2_soft_ceiling is True
+    assert cached_asset_path(cfg_on.name, "clustering", "cluster_labels", config_fingerprint(cfg_on)) != (
+        cached_asset_path(cfg_on.name, "clustering", "cluster_labels", _fp())
+    )
+
+
+def test_the_dump_written_to_manifests_carries_the_soft_ceiling():
+    assert Config.model_validate(_raw()).model_dump(mode="json")["merge"]["pass2_soft_ceiling"] is False

@@ -358,7 +358,7 @@ Per-superpixel feature stack to preprocessing to k-means to per-pixel cluster la
 - (no `n_training_samples` knob: k-means fits on every unit, one row each. The old default sampled 10,000 *pixels*, ~37 per superpixel, which area-weighted the fit and every preprocessing statistic. The manifest records `n_training_units` and `training_unit_key`.)
 - `clustering.seed`; random seed (default 42)
 - `clustering.skewness_threshold`; log-transform threshold (default 1.0 per DEC-004)
-- (no `superpixel_max_size` knob: the `reduceConnectedComponents` cap is derived as `ceil(merge.max_area_ha * 10000 / analysis_scale_m^2) * 1.2` and asserted against the actual labels at stage entry. That argument *masks* components larger than it rather than clamping, so a hand-set value silently deletes stands -- which is what happened when the two arms drifted to 1024 and 256. The cap is the upper bound: clustering passes the smaller measured unit extent plus margin (step 3), while metrics still passes the cap itself.)
+- (no `superpixel_max_size` knob: the `reduceConnectedComponents` cap is derived as `ceil(merge.max_area_ha * 10000 / analysis_scale_m^2) * 1.2`, with `merge.max_area_ha + merge.min_area_ha` when `merge.pass2_soft_ceiling` is on, and asserted against the actual labels at stage entry. That argument *masks* components larger than it rather than clamping, so a hand-set value silently deletes stands -- which is what happened when the two arms drifted to 1024 and 256. The cap is the upper bound: clustering passes the smaller measured unit extent plus margin (step 3), while metrics still passes the cap itself.)
 - `normalization.method`; `robust` (default, per DEC-003) or `zscore` (notebook baseline)
 
 **Related decisions:** DEC-001, DEC-003, DEC-004, DEC-014.

@@ -563,7 +563,8 @@ class MergeParams(BaseModel):
 
     # Hard area bounds, in hectares. Xiong uses 20 ha max for plantation, 50 ha
     # for natural forest, 0.5 ha min. Area is a first-class term in the merge
-    # rule, not a post-filter.
+    # rule, not a post-filter. (`pass2_soft_ceiling`, below, lets a region below
+    # the minimum go over max_area_ha in pass 2, by at most min_area_ha.)
     min_area_ha: float = Field(default=1.0, gt=0.0)
     max_area_ha: float = Field(default=10.0, gt=0.0)
 
@@ -615,6 +616,28 @@ class MergeParams(BaseModel):
     # field moved no existing config's cached assets; a config that sets it to
     # true gets a new fingerprint.
     pass2_skip_at_min_area: bool = False
+
+    # Whether pass 2 may take a region over `max_area_ha`. False (the default,
+    # and the behaviour of every run made before this setting existed):
+    # `max_area_ha` binds in both passes, so a region below the minimum whose
+    # neighbours are all close to `max_area_ha` stays below the minimum
+    # (area-blocked).
+    # True: a region whose area is still below `min_area_ha` when its turn
+    # comes may join a neighbour even if the result is over `max_area_ha`. It
+    # takes, in this order: a neighbour that passes the relaxed tolerances and
+    # keeps the result at most `max_area_ha`, the closest; one that passes them
+    # with the result over it, the closest; the neighbour sharing the longest
+    # edge with the result at most `max_area_ha`; the one sharing the longest
+    # edge with the result over it. No merge makes a region larger than
+    # `max_area_ha + min_area_ha`, and `Config.max_component_pixels()` is then
+    # derived from that sum. Pass 1, and a region that has reached the minimum
+    # by its turn, keep `max_area_ha`. The merge diagnostics then count the
+    # stands over `max_area_ha` and by how much (docs/decisions.yaml,
+    # spec-merge-pass2-soft-ceiling). The default is left out of the cache
+    # fingerprint (`fmu.utils.caching._OMITTED_AT_DEFAULT`), so adding this
+    # field moved no existing config's cached assets; a config that sets it to
+    # true gets a new fingerprint.
+    pass2_soft_ceiling: bool = False
 
     # The merge runs client-side over a {snic_label -> stand_id} lookup table
     # and comes back as `snic_clusters.remap(...)`, so the label list has to
@@ -888,23 +911,29 @@ class Config(BaseModel):
         it is too small is a number that should not be hand-set.
 
         The largest component the pipeline can produce is a merged stand, which
-        `merge.max_area_ha` bounds by construction (the pass-2 fallback respects
-        it too -- violating it would break exactly this derivation). Convert to
-        pixels at the analysis scale and add 20% headroom for the boundary
-        pixels a polygon's raster footprint picks up:
+        the merge's ceiling bounds by construction: `merge.max_area_ha`, which
+        the pass-2 fallback respects too, or, with `merge.pass2_soft_ceiling`
+        on, `merge.max_area_ha + merge.min_area_ha`, which no pass-2 merge goes
+        past. Breaking that bound would break exactly this derivation. Convert
+        the ceiling to pixels at the analysis scale and add 20% headroom for the
+        boundary pixels a polygon's raster footprint picks up:
 
-            ceil(max_area_ha * 10_000 / scale^2) * 1.2
+            ceil(ceiling_ha * 10_000 / scale^2) * 1.2
 
         At the defaults (10 ha, 10 m) that is 1200 px, against 1000 px of stand
         -- versus a hand-set 1024, which was razor thin, and 256, which was not
-        thin but wrong.
+        thin but wrong. With the soft ceiling on, the defaults give 11 ha and
+        1320 px.
 
         Callers must still assert that no *actual* component exceeds this;
         `assert_components_fit()` does that, because a derivation is only as
         good as its premise.
         """
         scale = self.export.analysis_scale_m
-        exact = math.ceil(self.merge.max_area_ha * 10_000 / (scale * scale))
+        ceiling_ha = self.merge.max_area_ha
+        if self.merge.pass2_soft_ceiling:
+            ceiling_ha += self.merge.min_area_ha
+        exact = math.ceil(ceiling_ha * 10_000 / (scale * scale))
         return int(math.ceil(exact * 1.2))
 
     def kept_patch_min_pixels(self) -> int:

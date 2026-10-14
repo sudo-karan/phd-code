@@ -364,6 +364,7 @@ def _merge_config(on: bool, min_patch: int = 0):
         min_frac_valid = 0.5
         max_pass2_iterations = 60
         pass2_skip_at_min_area = True
+        pass2_soft_ceiling = False
 
         def tolerances(self):
             return {"ch": 2.0}

@@ -635,8 +635,13 @@ SNIC ran").
 | `explained_variance.attributes.<band>.held_out` | `false` = this attribute helped draw the boundaries, so R² on it is partly circular — reported because it is what the literature quotes, **not as evidence**. `true` = neither segmentation nor merge used it. Checked at config load, not trusted | bool |
 | `explained_variance.n_stands` | **Read every R² against this.** R² rises monotonically with stand count and is 1.0 in the limit of one stand per pixel, so two arms at different stand counts cannot be compared on it | int |
 | `explained_variance.level` | Always `"pixel"`. Scoring at region level makes any partition score 1.000 by construction | string |
-| `merge.orphans_area_blocked` | Undersized stands whose every neighbour is already too big to absorb them. **A signal `max_area_ha` is too tight**, not a fact about the forest | int |
+| `merge.orphans_area_blocked` | Undersized stands whose every neighbour is already too big to absorb them under the ceiling: `merge.max_area_ha`, or `merge.max_area_ha + merge.min_area_ha` with `merge.pass2_soft_ceiling` on. **A signal `max_area_ha` is too tight**, not a fact about the forest | int |
 | `merge.pass2_fallback_merges` | Pass-2 merges no relaxed criterion could justify, decided by shared-edge length alone. The honest count of "surrounded by genuinely different forest"; look here first if stand geometry looks wrong | int |
+| `merge.pass2_relaxed_merges_over_max_area`, `merge.pass2_fallback_merges_over_max_area` | Present only when `merge.pass2_soft_ceiling` is on, like the five keys below. Pass-2 merges that took a region over `merge.max_area_ha`: by a relaxed match (step 2 of the order of choice, part of `pass2_merges - pass2_fallback_merges`) and by the shared-edge fallback (step 4, part of `pass2_fallback_merges`). Whether a merge goes over is decided as the hard ceiling decides it, on the sum of the two areas, so a merge that ends exactly on `merge.max_area_ha` can come out a hair over it through float rounding. It is then ranked at step 2 or 4 and counted here, though `stands_over_max_area` does not count the stand it makes | int |
+| `merge.stands_over_max_area` | Stands whose area as reported in `stand_attributes` (`area_ha`, 6 decimals) is over `merge.max_area_ha` taken to the same 6 decimals, so a stand exactly at `merge.max_area_ha` is not counted. None is over `merge.max_area_ha + merge.min_area_ha` unless it is a single superpixel that came in larger | int |
+| `merge.stands_over_max_area_never_merged` | Of `stands_over_max_area`, those made of a single superpixel (`n_superpx` 1): a superpixel that came in larger than `merge.max_area_ha` and that nothing joined. The setting did not make them, and with it off they are over `merge.max_area_ha` too, unreported. The rest were made by merging, which only the setting allows past `merge.max_area_ha` | int |
+| `merge.excess_over_max_area_total_ha`, `merge.excess_over_max_area_largest_ha` | Those stands' area over `merge.max_area_ha`, added up, and the largest of them (0.0 when no stand is over), rounded to 4 decimals | ha |
+| `merge.excess_over_max_area_each_ha` | Each of those stands' area over `merge.max_area_ha`, largest first, rounded to 4 decimals (so an excess under 0.00005 ha shows as 0.0) | list of ha |
 | `merge.threshold_calibration.joint_admit_rate_pct` | Share of adjacent pairs passing **all** criteria at once. The gate is conjunctive, so the per-band marginals do not describe it. **Not a tuning target** — pass rate is a diagnostic, and pass 1 iterates to convergence so a per-round rate is not the share of total merging | 0 to 100 |
 | `merge.kept_land` | Present only when `segmentation.mask_before_snic` is on, and then SNIC and the merge see only kept land: where `habitat_mask` is 1, less, with `segmentation.drop_kept_patches_below_min_area`, each patch smaller than `merge.min_area_ha` that touches no other kept land. `kept_land_ha`: that land, in the ROI. `small_patches_ha`: land `habitat_mask` keeps but left out as patches below the minimum (0 without the option). `kept_land_ha_without_superpixel`: kept land SNIC left with no superpixel, so in no stand; the seeds of `fmu.utils.kept_land` should make it 0. `superpixel_ha_off_kept_land`: superpixel area off kept land, 0 against the mask SNIC read. Both shortfalls are measured against the mask the merge reads, on the superpixel image's own pixels; if SNIC ran on the mask computed live and the merge reads the cached copy, the two differ a little along the edges of kept land (`docs/reproducibility.md`, "Superpixels depend on whether the features were cached when SNIC ran"), which gives a little of both. Areas are pixel count × scale² | ha; both shortfalls should be 0 |
 | `silhouette_current` | Intrinsic cohesion/separation of current clustering. **Demoted to an internal diagnostic for the labelling step**: it is computed in each arm's own feature space (21-D vs 64-D) and is strongly dimensionality-dependent, so it was never valid across arms, and under two independent segmentations it is doubly invalid | -1 to 1; higher is better |
@@ -799,7 +804,7 @@ SHP attributes (capped at 10-char field-name limit):
 | `n_relaxed` | int | Merges inside the stand made by the second pass under tolerances multiplied by `merge.relax_factor`. |
 | `n_fallback` | int | Merges inside the stand made by the second pass's shared-edge fallback: no criterion justified them, even relaxed. These are the merges to look at first. |
 | `below_min` | int (0/1) | 1 if the stand ended below `merge.min_area_ha`. |
-| `below_why` | string | Empty unless `below_min` is 1; then `isolated` (touches no other stand), `area_blocked` (every neighbour is too big to take it under `merge.max_area_ha`) or `iteration_cap` (it still had a neighbour it could have joined when the second pass stopped at `merge.max_pass2_iterations`). |
+| `below_why` | string | Empty unless `below_min` is 1; then `isolated` (touches no other stand), `area_blocked` (every neighbour is too big to take it under `merge.max_area_ha`, or under `merge.max_area_ha + merge.min_area_ha` with `merge.pass2_soft_ceiling` on) or `iteration_cap` (it still had a neighbour it could have joined when the second pass stopped at `merge.max_pass2_iterations`). |
 
 The last six are the merge provenance (`PROVENANCE_FIELDS` in
 `src/fmu/utils/region_merge.py`). A stand of m superpixels contains exactly
@@ -812,7 +817,13 @@ true, a second-pass merge does not always add a piece that was below the minimum
 size at that moment: each sweep lists the undersized pieces once, and a piece
 that reaches the minimum earlier in a sweep still takes its turn in that
 sweep. With the setting on, such a piece is skipped (register entry
-`spec-merge-pass2-skip-at-minimum`). The layer is written without the six
+`spec-merge-pass2-skip-at-minimum`). With `merge.pass2_soft_ceiling` on, a piece
+still below the minimum when its turn comes may join a neighbour even if the
+stand is then over `merge.max_area_ha`, up to `merge.max_area_ha +
+merge.min_area_ha` (register entry `spec-merge-pass2-soft-ceiling`). Such a
+merge is counted in `n_relaxed` or `n_fallback` like any other second-pass
+merge; `merge_diagnostics` says how many there were, and how many stands ended
+over `merge.max_area_ha` and by how much. The layer is written without the six
 (and the stage logs a warning) only when the context holds no
 `stand_provenance`, which a pipeline run always does.
 

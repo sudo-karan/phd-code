@@ -454,8 +454,10 @@ regions with no error. Hand-set, the shipped configs drifted apart (1024
 baseline vs 256 embedding), and the embedding arm silently lost 15 superpixels
 totalling 43.9 ha — 3.8% of its segmented area — in a two-arm comparison. It is
 now derived as `ceil(merge.max_area_ha × 10000 / analysis_scale_m²) × 1.2`
-(1200 px at the defaults) and asserted against the actual labels at stage entry,
-so an undersized cap raises instead of deleting stands.
+(1200 px at the defaults), with `merge.max_area_ha + merge.min_area_ha` in place
+of `merge.max_area_ha` when `merge.pass2_soft_ceiling` is on (1320 px at the
+defaults), and asserted against the actual labels at stage entry, so an
+undersized cap raises instead of deleting stands.
 
 ### `merge`
 
@@ -506,7 +508,8 @@ a two-tier threshold scheme.
   20 ha max for plantation, 50 ha for natural forest, 0.5 ha min. Area is a
   first-class term in the merge rule, not a post-filter. `max_area_ha` is also
   what the component-size cap above is derived from, so the pass-2 fallback
-  respects it too.
+  respects it too. The one exception is `pass2_soft_ceiling`, below, and the cap
+  then allows for it.
 - `min_defined_criteria`: a pass-1 merge needs at least this many criteria
   defined on both sides (default 2). One criterion is too weak a similarity
   test; pairs that fall short drop to pass 2.
@@ -526,6 +529,27 @@ a two-tier threshold scheme.
   is no longer undersized (register entry `spec-merge-pass2-skip-at-minimum`).
   The default is left out of the cache fingerprint, so existing configs keep
   their cached assets; a config that sets it to `true` gets a new fingerprint.
+- `pass2_soft_ceiling`: whether pass 2 may take a region over `max_area_ha`.
+  `false` (default, and the behaviour of every run made before the setting
+  existed): `max_area_ha` binds in both passes, and a region below the minimum
+  whose neighbours are all close to `max_area_ha` stays below the minimum,
+  area-blocked.
+  `true`: a region whose area is still below `min_area_ha` when its turn comes
+  may join a neighbour even if the result is over `max_area_ha`, but never over
+  `max_area_ha + min_area_ha`. It takes, in this order: (1) a neighbour that
+  passes the relaxed tolerances and keeps the result at most `max_area_ha`, the
+  closest; (2) one that passes them with the result over `max_area_ha`, the
+  closest; (3) the neighbour sharing the longest edge with the result at most
+  `max_area_ha`; (4) the one sharing the longest edge with the result over it.
+  Pass 1, and a region that has reached the minimum by its turn, keep
+  `max_area_ha`. A stand still below the minimum is then area-blocked only if no
+  neighbour could take it under `max_area_ha + min_area_ha`. The merge
+  diagnostics add how many merges went over `max_area_ha` and how many stands
+  end over it, by how much (`docs/outputs.md`), and the component-size cap is
+  derived from `max_area_ha + min_area_ha` (register entry
+  `spec-merge-pass2-soft-ceiling`). The default is left out of the cache
+  fingerprint, so existing configs keep their cached assets; a config that sets
+  it to `true` gets a new fingerprint.
 - `max_superpixels`: fail loudly above this many superpixels (default 50000),
   where the client-side `remap` label list stops being reasonable.
 

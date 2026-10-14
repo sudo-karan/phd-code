@@ -4795,3 +4795,130 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran's decision in conversation with Claude (chat), 14 Oct 2026; PR #43
+- id: spec-merge-pass2-soft-ceiling
+  title: >-
+    In the second pass, a region still below the minimum stand size may join a neighbour even if the stand is
+    then over the maximum, up to the maximum plus the minimum
+  decision: >-
+    A merge setting, merge.pass2_soft_ceiling, off by default. Off, the default and the behaviour of every run
+    made before it existed: merge.max_area_ha binds in both passes. On: in pass 2, a region whose area is still
+    below merge.min_area_ha when its turn comes (its area at that moment, not when the sweep listed it) may join
+    a neighbour even if the result is over max_area_ha, and takes, in this order: (1) a neighbour that passes the
+    relaxed tolerances and keeps the result at most max_area_ha, the closest; (2) if none, one that passes them
+    with the result over max_area_ha but at most max_area_ha + min_area_ha, the closest; (3) if none, the
+    neighbour sharing the longest edge with the result at most max_area_ha; (4) if none fits under max_area_ha,
+    the one sharing the longest edge with the result at most max_area_ha + min_area_ha; (5) if none, no merge.
+    Closest is the distance pass 2 already uses, under the relaxed tolerances, with the same tie-breaks. No merge
+    makes a region larger than max_area_ha + min_area_ha: the bound is checked on the result of each merge, so a
+    neighbour already over max_area_ha after an earlier such merge takes another region only while the result
+    stays within it. Pass 1, and a region that has reached the minimum by its turn, keep max_area_ha. A stand
+    left below the minimum is filed as area_blocked when no neighbour could take it under the ceiling that
+    applied to it, max_area_ha + min_area_ha with the setting on. Steps 1 and 2 count as relaxed merges and steps
+    3 and 4 as fallback merges, in the per-stand provenance and in the totals, as before. With the setting on,
+    the merge diagnostics add seven keys: the pass-2 merges that went over max_area_ha by step 2 and by step 4;
+    the stands that end over max_area_ha, how many of them never merged (a superpixel that came in larger than
+    max_area_ha, which the setting did not make), and the total, the largest and each of their excesses, largest
+    first, in hectares to 4 decimals; and the merge stage warns with the number of such stands and the largest
+    excess, putting down to the setting only the stands made by merging. With it off the diagnostics have
+    exactly the keys and values they had. Config.max_component_pixels() is derived from max_area_ha +
+    min_area_ha when the setting is on, ceil((max_area_ha + min_area_ha) * 10000 / scale^2) plus 20%, because
+    reduceConnectedComponents deletes without a word any component larger than its maxSize. config_fingerprint
+    leaves the key out of the hashed merge block while it is false, so no existing fingerprint moves, and a
+    config that sets it to true gets a new one. The merge stage passes the setting to merge_superpixels and
+    records it in its metadata, beside pass2_skip_at_min_area.
+  alternatives_considered:
+  - >-
+    Keep the hard ceiling in both passes: kept, as the default of the setting, so that every earlier run can
+    still be reproduced
+  - >-
+    Best match, ceiling ignored (reading A, put to Jaskaran on 14 Oct 2026): the region joins its best neighbour
+    among all of them, whether or not the result is over max_area_ha. Not chosen
+  - >-
+    Under the ceiling first (reading B): a neighbour that keeps the result at most max_area_ha is taken before one
+    that does not. Chosen: Jaskaran's order is this reading, applied to the relaxed matches and then to the
+    shared-edge fallback
+  - >-
+    An exceedance with no upper bound, as D2 first read ("even if the result exceeds merge.max_area_ha"): not
+    done. reduceConnectedComponents deletes any component larger than its maxSize, which
+    Config.max_component_pixels() derives from the largest stand the merge can make, so a stand with no bound
+    would leave no cap to derive
+  - >-
+    Raise merge.max_area_ha instead: not done. It changes pass 1 and every stand, not only the regions below the
+    minimum
+  rationale: >-
+    With segmentation.mask_before_snic on (spec-segmentation-mask-before-snic), kept land comes in patches, and a
+    region below the minimum whose neighbours are all close to the ceiling cannot join any of them under
+    max_area_ha: it stays below the minimum, filed as area_blocked. The soft ceiling lets it join instead, at the
+    cost of stands over max_area_ha by at most min_area_ha, which the diagnostics count, as Jaskaran asked:
+    "Record in merge diagnostics how many stands end up over max_area_ha and by how much." Decision D2 is in
+    section 1 of docs/handoff/2026-10-14-round3.md; the question put to him on its two readings and the cap, and
+    his answer of 14 Oct, word for word, are in section 1b of that file. His answer gave the order of choice above
+    and "Cap everything at max + min, as you proposed." The cap keeps the derivation of
+    Config.max_component_pixels() true: no stand the merge makes is larger than the ceiling the cap is derived
+    from. Off by default and left out of the fingerprint, so every saved run and its assets are unchanged. No
+    paper was searched for this rule: it is a choice about this pipeline's second pass, not a claim taken from the
+    literature.
+  evidence:
+  - path: src/fmu/utils/region_merge.py
+    what: >-
+      merge_superpixels(..., pass2_soft_ceiling=False): pass2_partner() takes the neighbour in the order above,
+      with the result checked against max_area_ha + min_area_ha; the area_blocked filing uses the ceiling that
+      applied; the seven diagnostics keys, added only with the setting on; the module docstring's description of
+      pass 2
+  - path: src/fmu/config.py
+    what: >-
+      MergeParams.pass2_soft_ceiling, default false, with the order of choice in its comment;
+      Config.max_component_pixels() derived from max_area_ha + min_area_ha with the setting on
+  - path: src/fmu/utils/caching.py
+    what: _OMITTED_AT_DEFAULT holds the key at false
+  - path: src/fmu/stages/merge.py
+    what: >-
+      run() passes the setting to merge_superpixels and records it in the stage metadata; _warnings_from() names
+      the ceiling that applied in the area_blocked warning and, with the setting on, says how many stands are
+      over max_area_ha and the largest excess, and how many of them never merged
+  - path: src/fmu/utils/components.py
+    what: The module docstring and the error message name the ceiling the cap is derived from
+  - path: tests/test_region_merge_soft_ceiling.py
+    what: >-
+      Hand-built graphs for each step of the order of choice, the cap (a neighbour already over max_area_ha takes
+      a second region only within max_area_ha + min_area_ha), a region that reached the minimum before its turn,
+      one exactly at the minimum at its turn and one a pixel short of it, pass 1, a superpixel that came in over
+      max_area_ha, and the diagnostics on a known case. Seeded random graphs (the generator of
+      tests/test_region_merge_provenance.py on its 200 golden seeds and 100 more, some of the same graphs with a
+      tighter ceiling, and graphs built with many regions below the minimum beside stands close to the ceiling;
+      9000 more in the slow tier) on which no merged stand passes max_area_ha + min_area_ha or
+      Config.max_component_pixels(), every provenance invariant holds and the soft ceiling binds. With the
+      setting off, the merge gives on every one of the fast tier's graphs what the code of commit 363ea6d gave
+  - path: tests/data/region_merge_soft_ceiling_off.json
+    what: >-
+      Digests of what merge_superpixels at commit 363ea6d, before the setting existed, produced on those graphs
+      under both values of pass2_skip_at_min_area, written from that commit with git show
+  - path: tests/test_merge_config.py
+    what: >-
+      max_component_pixels() with the setting on, and that it exceeds the largest stand the merge can make; each
+      shipped Sanjay Van config agrees with the baseline of its own comparison on the cap and on the merge rules,
+      pass2_soft_ceiling among them
+  - path: tests/test_cache_fingerprint.py
+    what: The setting off, left out or written out, hashes as before; on, it changes the fingerprint
+  - path: tests/test_merge_stage.py
+    what: The stage passes the setting through and records it; the warnings with the setting off and on
+  - path: tests/test_region_merge_provenance.py
+    what: The 200 golden graphs still give their committed digests at the default
+  - path: tests/test_repro_fingerprints.py
+    what: Pins the fingerprints of the 14 _repro configs to those in the names of their saved assets
+  - path: tests/test_every_config_fingerprint.py
+    what: Pins the fingerprint of every config under configs/ as computed before the setting existed
+  - path: docs/configs.md
+    what: merge.pass2_soft_ceiling, and the component-size cap with it on
+  - path: docs/outputs.md
+    what: The seven diagnostics keys, and area_blocked under the soft ceiling
+  - path: odisha_script/odisha_phase2_4_noise_null.py
+    what: The noise null merges with each arm's pass2_soft_ceiling, as with its other merge settings
+  - path: docs/handoff/2026-10-14-round3.md
+    what: >-
+      Decision D2 (section 1); the question on its two readings and the cap put to Jaskaran, and his answer, word
+      for word (section 1b)
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 14 Oct 2026, with Claude (chat)

@@ -250,9 +250,11 @@ class MergeStage(Stage):
         scale = config.export.analysis_scale_m
         warnings: list[str] = []
 
-        # The cap is derived from merge.max_area_ha, so checking it against the
-        # *input* superpixels is the weaker half; the output stands are checked
-        # below, after the merge, which is where a violation would actually bite.
+        # The cap is derived from merge.max_area_ha (plus merge.min_area_ha with
+        # merge.pass2_soft_ceiling on), so checking it against the *input*
+        # superpixels is the weaker half; the output stands are checked where
+        # they are reduced over, by clustering and metrics, which is where a
+        # violation would actually bite.
         max_component_px = config.max_component_pixels()
         assert_components_fit(
             snic_clusters, roi, scale, max_component_px, context="merge input"
@@ -334,6 +336,7 @@ class MergeStage(Stage):
             max_pass2_iterations=params.max_pass2_iterations,
             centroids=centroids,
             pass2_skip_at_min_area=params.pass2_skip_at_min_area,
+            pass2_soft_ceiling=params.pass2_soft_ceiling,
         )
 
         # Back up to the server as a relabel of the SNIC image. No export, no
@@ -398,6 +401,7 @@ class MergeStage(Stage):
                 "min_defined_criteria": params.min_defined_criteria,
                 "min_frac_valid": params.min_frac_valid,
                 "pass2_skip_at_min_area": params.pass2_skip_at_min_area,
+                "pass2_soft_ceiling": params.pass2_soft_ceiling,
                 "mask_before_snic": config.segmentation.mask_before_snic,
                 "adjacency": graph.summary(),
                 # Where the configured thresholds actually land in this AOI's
@@ -544,14 +548,46 @@ def _warnings_from(d: dict[str, Any], params: Any) -> list[str]:
     of the numbers.
     """
     out: list[str] = []
+    # The ceiling a stand below the minimum could join a neighbour under.
+    soft_ceiling_ha = round(params.max_area_ha + params.min_area_ha, 6)
+    if params.pass2_soft_ceiling:
+        ceiling = (
+            f"max_area_ha + min_area_ha ({soft_ceiling_ha} ha), the ceiling "
+            f"merge.pass2_soft_ceiling sets for a stand below the minimum"
+        )
+    else:
+        ceiling = f"max_area_ha ({params.max_area_ha} ha)"
     if d["orphans_area_blocked"]:
         out.append(
             f"{d['orphans_area_blocked']} stand(s) stayed below min_area_ha "
             f"({params.min_area_ha} ha) because every neighbour is already too "
-            f"big to absorb them under max_area_ha ({params.max_area_ha} ha). "
+            f"big to absorb them under {ceiling}. "
             f"That is a signal max_area_ha is too tight, not that the forest is "
             f"heterogeneous."
         )
+    if params.pass2_soft_ceiling and d["stands_over_max_area"]:
+        # A superpixel that came in larger than max_area_ha and never merged
+        # is over it whatever the setting, so it is not put down to the setting.
+        n_over = d["stands_over_max_area"]
+        n_never_merged = d["stands_over_max_area_never_merged"]
+        text = (
+            f"{n_over} stand(s) are over max_area_ha ({params.max_area_ha} ha), "
+            f"by up to {d['excess_over_max_area_largest_ha']} ha."
+        )
+        if n_never_merged < n_over:
+            some = f" for {n_over - n_never_merged} of them" if n_never_merged else ""
+            text += (
+                f" merge.pass2_soft_ceiling allows it{some}: in the second pass a "
+                f"stand below min_area_ha may join a neighbour up to max_area_ha + "
+                f"min_area_ha ({soft_ceiling_ha} ha)."
+            )
+        if n_never_merged:
+            text += (
+                f" {n_never_merged} of them never merged: each is a single "
+                f"superpixel that came in larger than max_area_ha, which "
+                f"merge.pass2_soft_ceiling did not cause."
+            )
+        out.append(text)
     if d["orphans_isolated"]:
         out.append(
             f"{d['orphans_isolated']} stand(s) have no 4-connected neighbour at "

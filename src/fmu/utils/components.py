@@ -7,11 +7,12 @@ a silent data-loss mode, and it has already bitten this pipeline once: the
 embedding config set 256 while the baseline set 1024, so 15 superpixels totalling
 43.9 ha (3.8% of segmented area) were deleted in one arm of a two-arm comparison.
 
-`Config.max_component_pixels()` derives the cap from `merge.max_area_ha` instead
-of leaving it to be hand-set. This module checks the derivation actually holds
-against the labels in hand, because a derived bound is only as good as its
-premise -- and the premise (nothing exceeds `max_area_ha`) is exactly what a
-merge bug would break.
+`Config.max_component_pixels()` derives the cap from the merge's ceiling
+(`merge.max_area_ha`, plus `merge.min_area_ha` with `merge.pass2_soft_ceiling`
+on) instead of leaving it to be hand-set. This module checks the derivation
+actually holds against the labels in hand, because a derived bound is only as
+good as its premise -- and the premise (no stand exceeds that ceiling) is
+exactly what a merge bug would break.
 """
 
 from __future__ import annotations
@@ -87,11 +88,12 @@ def assert_components_fit(
             f"{context}: largest component is {largest} px but maxSize is "
             f"{max_size} px, so reduceConnectedComponents would silently DROP "
             f"it (and any other component above the cap) from the output. "
-            f"maxSize is derived as ceil(merge.max_area_ha * 10000 / scale^2) "
-            f"* 1.2, so a component above it means either merge.max_area_ha "
-            f"({largest * scale * scale / 10_000:.2f} ha needed here) is being "
-            f"violated upstream, or export.analysis_scale_m no longer matches "
-            f"the labels."
+            f"maxSize is derived as ceil(ceiling * 10000 / scale^2) * 1.2, the "
+            f"ceiling being merge.max_area_ha (plus merge.min_area_ha with "
+            f"merge.pass2_soft_ceiling on), so a component above it means either "
+            f"that ceiling ({largest * scale * scale / 10_000:.2f} ha needed here) "
+            f"is being violated upstream, or export.analysis_scale_m no longer "
+            f"matches the labels."
         )
     log.info(
         "  %s: %d components, largest %d px, maxSize %d px (%.0f%% headroom)",
