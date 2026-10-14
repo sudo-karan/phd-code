@@ -8,8 +8,17 @@ mask GeoTIFFs and area outlines in outputs/transparency_repro/_mask_data/ and th
 run records in outputs/repro_runs/phase2_vectors/, plus the committed plot tables. It writes the
 ui_data/ contract of docs/handoff/2026-10-13-round2.md (task A3, with "Version 2 of the index"),
 with three differences from the full export: stands are before the merge fix; feature layers are
-stand means, not pixels; the satellite image comes in parts, one per part of the area. Claude
-Code's A3 export replaces this folder entirely.
+stand means, not pixels, except for Sanjay Van; the satellite image comes in parts, one per part
+of the area. Claude Code's A3 export replaces this folder entirely.
+
+Every stand carries the mean of every feature its stand file holds (22 for the hand-crafted runs,
+the 64 embedding numbers for AlphaEarth), not only the ones the map draws. For the two Sanjay Van
+runs (`PIXEL_LAYER_RUNS`) the feature layers are drawn pixel by pixel, from the GeoTIFFs
+scripts/fetch_ui_layers.py saved under outputs/ui_data_full/<run_id>/ (on the grid of the
+satellite image, so the two line up): canopy height, the seasonal swing in greenness and radar VV
+minus VH as colour ramps, and the AlphaEarth embedding as colour, the first three principal
+components of its 64 numbers over the area's pixels. A run whose GeoTIFFs are missing keeps the
+stand means, with a note.
 
 The box runs of A0 (configs/odisha_v120_3ha_squares_<district>.yaml) are added when their files
 exist: the stand files and run record (searched in BOX_VEC_DIRS) and the output of
@@ -50,6 +59,10 @@ BOX_VEC_DIRS = [STAGED / "squares_runs" / "phase2_vectors",
 BOX_MASK_DIRS = [STAGED / "transparency_squares", STAGED / "transparency",
                  STAGED / "squares_runs" / "transparency"]
 DISTRICTS = ("angul", "dhenkanal", "kendujhar", "koraput")
+# Per-pixel feature layers (scripts/fetch_ui_layers.py): Sanjay Van only, as the brief of round 3
+# (docs/handoff/2026-10-14-round3.md, step 3) asks; every other run draws the stand means.
+PIXELS = STAGED / "ui_data_full"
+PIXEL_LAYER_RUNS = ("sanjay_van_baseline_repro", "sanjay_van_alphaearth_repro")
 
 AREAS = {
     "sanjay_van": {"title": "Sanjay Van", "site": "Sanjay Van", "roi": "rectangle",
@@ -168,6 +181,23 @@ FIELD_COLORS = ["#9e9e9e", "#ffe14d", "#ff9f40", "#e0457b", "#7b2cbf"]
 OUTSIDE_REASON = ("Its village has fewer than 5 plots, so no area was mapped around it")
 ID_FIELDS = {"area_ha", "centroid_lat", "centroid_lon", "cluster_id", "n_pixels", "perim_m",
              "stand_id", "stand_lbl"}
+# What the merge says of how each stand was made (stand_provenance, in the box runs' stand files):
+# not a feature.
+PROVENANCE_FIELDS = {"n_superpx", "n_pass1", "n_relaxed", "n_fallback", "below_min", "below_why"}
+# The decimals of the stand means the first build kept, unchanged; every other feature mean keeps
+# four significant figures (`feature_value`).
+DECIMALS = {"canopy_height": 1, "canopy_height_std": 2, "ndvi_amplitude_annual": 3,
+            "vv_minus_vh_median": 2, "ndvi_mean": 3, "elevation": 0, "slope": 1}
+# The three features the map draws for a hand-crafted run: (band, title, palette, units).
+DRAWN_FEATURES = (
+    ("canopy_height", "Canopy height",
+     ["#f7fcf5", "#c7e9c0", "#74c476", "#238b45", "#00441b"], "m"),
+    ("ndvi_amplitude_annual", "Seasonal swing in greenness",
+     ["#fff7ec", "#fdd49e", "#fc8d59", "#d7301f", "#7f0000"], "NDVI"),
+    ("vv_minus_vh_median", "Radar: VV minus VH",
+     ["#f7fbff", "#c6dbef", "#6baed6", "#2171b5", "#08306b"], "dB"),
+)
+EMBEDDING_TITLE = "AlphaEarth, as colour"
 
 
 def r6(x: float) -> float:
@@ -395,17 +425,32 @@ def encode_stands(fc: dict) -> dict:
     return {"encoding": "polyline6", "features": feats}
 
 
+def feature_names(properties: dict) -> list[str]:
+    """The feature means of a stand: every property but the ids and the merge's provenance."""
+    return [k for k in properties if k not in ID_FIELDS and k not in PROVENANCE_FIELDS]
+
+
+def feature_value(name: str, value) -> float | None:
+    """A stand mean as ui_data keeps it: None for no data, else rounded (`DECIMALS`)."""
+    if value is None or (isinstance(value, float) and math.isnan(value)):
+        return None
+    if name in DECIMALS:
+        return round(value, DECIMALS[name])
+    return float(f"{float(value):.4g}")
+
+
 def run_stands(run_id: str, arm: str, vec: Path) -> tuple[dict, dict]:
     g = json.loads((vec / f"{run_id}_stands_merged.geojson").read_text())
     feats = g["features"]
-    n_bands = len([k for k in feats[0]["properties"] if k not in ID_FIELDS])
+    names = feature_names(feats[0]["properties"])
+    n_bands = len(names)
     emb_cols = None
     if arm == "alphaearth":
         keys = [f"A{i:02d}" for i in range(64)]
         rows = [[f["properties"].get(k) or 0.0 for k in keys] for f in feats]
         emb_cols = pca_rgb(rows)
-    keep = {"canopy_height": 1, "canopy_height_std": 2, "ndvi_amplitude_annual": 3,
-            "vv_minus_vh_median": 2, "ndvi_mean": 3, "elevation": 0, "slope": 1}
+    # The seven the first build kept first, in its order, then every other feature mean.
+    keep = [*DECIMALS, *sorted(n for n in names if n not in DECIMALS)]
     out = []
     area_by_stand: dict = {}
     for i, f in enumerate(feats):
@@ -415,9 +460,8 @@ def run_stands(run_id: str, arm: str, vec: Path) -> tuple[dict, dict]:
         q = {"stand_id": sid,
              "stand_type": None if ct is None else int(round(float(ct))),
              "area_ha": round(p["area_ha"], 2) if p.get("area_ha") is not None else None}
-        for k, nd in keep.items():
-            v = p.get(k)
-            q[k] = None if v is None or (isinstance(v, float) and math.isnan(v)) else round(v, nd)
+        for k in keep:
+            q[k] = feature_value(k, p.get(k))
         if emb_cols:
             q["emb_rgb"] = emb_cols[i]
         if q["area_ha"] is not None:
@@ -520,9 +564,10 @@ def plots_for(run_id: str, district: str, area_geom, stands_fc: dict | None = No
 
 
 def feature_layers(run_id: str, arm: str, stands_fc: dict) -> list[dict]:
+    """The feature layers as stand means, drawn on the stand polygons."""
     if arm == "alphaearth":
         return [{
-            "layer_id": "embedding_rgb", "title": "AlphaEarth, as colour",
+            "layer_id": "embedding_rgb", "title": EMBEDDING_TITLE,
             "kind": "vector", "file": f"by_run/{run_id}/stands.json",
             "color_by": "emb_rgb", "color_is_value": True,
             "popup_fields": ["stand_id", "area_ha"], "legend": None, "colormap": None,
@@ -531,13 +576,7 @@ def feature_layers(run_id: str, arm: str, stands_fc: dict) -> list[dict]:
                            "three principal components of the 64 numbers, as red, green and blue. "
                            "Similar colours mean the embedding sees the stands as alike."}]
     layers = []
-    for prop, title, pal, units in (
-            ("canopy_height", "Canopy height", ["#f7fcf5", "#c7e9c0", "#74c476", "#238b45",
-                                                "#00441b"], "m"),
-            ("ndvi_amplitude_annual", "Seasonal swing in greenness",
-             ["#fff7ec", "#fdd49e", "#fc8d59", "#d7301f", "#7f0000"], "NDVI"),
-            ("vv_minus_vh_median", "Radar: VV minus VH",
-             ["#f7fbff", "#c6dbef", "#6baed6", "#2171b5", "#08306b"], "dB")):
+    for prop, title, pal, units in DRAWN_FEATURES:
         vals = [f["properties"][prop] for f in stands_fc["features"]
                 if f["properties"].get(prop) is not None]
         if not vals:
@@ -552,6 +591,90 @@ def feature_layers(run_id: str, arm: str, stands_fc: dict) -> list[dict]:
             "default_on": False,
             "description": "Averaged over each stand in this early version."})
     return layers
+
+
+def ramp_rgb(palette: list[str], t: np.ndarray) -> np.ndarray:
+    """The explorer's colour ramp (`ramp` in ui/explorer.html) on an array of t: clamped to 0 to 1,
+    linear between the palette's colours, evenly spaced. Returns uint8, shape t.shape + (3,)."""
+    stops = np.array([[int(c[i:i + 2], 16) for i in (1, 3, 5)] for c in palette], dtype="float64")
+    x = np.clip(t, 0.0, 1.0) * (len(palette) - 1)
+    i = np.minimum(len(palette) - 2, np.floor(x)).astype(int)
+    rgb = stops[i] + (stops[i + 1] - stops[i]) * (x - i)[..., None]
+    return np.floor(rgb + 0.5).astype("uint8")  # JavaScript's Math.round
+
+
+def pixel_parts(run_id: str, kind: str) -> list[Path]:
+    """The GeoTIFFs scripts/fetch_ui_layers.py saved for a run, one per part, in part order."""
+    return sorted((PIXELS / run_id).glob(f"{kind}_part[0-9][0-9].tif"))
+
+
+def pixel_feature_layers(run_id: str, arm: str) -> list[dict] | None:
+    """The feature layers pixel by pixel, from the run's GeoTIFFs; None if it has none."""
+    files = pixel_parts(run_id, "embedding" if arm == "alphaearth" else "features")
+    if not files:
+        return None
+    if arm == "alphaearth":
+        return [embedding_pixel_layer(run_id, files)]
+    layers = []
+    for band, title, pal, units in DRAWN_FEATURES:
+        data = []
+        for path in files:
+            with rasterio.open(path) as src:
+                data.append((src.read(list(src.descriptions).index(band) + 1).astype("float64"),
+                             bounds_of(src)))
+        vals = np.concatenate([a[np.isfinite(a)] for a, _ in data])
+        if not vals.size:
+            continue
+        # The same stretch as the stand means: percentiles 2 and 98, here of the pixels.
+        vmin, vmax = (round(float(v), 3) for v in np.percentile(vals, [2, 98]))
+        parts = []
+        for i, (a, b) in enumerate(data, 1):
+            valid = np.isfinite(a)
+            t = np.where(valid, (np.where(valid, a, vmin) - vmin) / ((vmax - vmin) or 1.0), 0.0)
+            rgba = np.dstack([ramp_rgb(pal, t), np.where(valid, 255, 0).astype("uint8")])
+            name = f"feature_{band}_part{i:02d}.png"
+            png(OUT / "by_run" / run_id / name, rgba)
+            parts.append({"file": f"by_run/{run_id}/{name}", "bounds": b})
+        layers.append({
+            "layer_id": f"feature_{band}", "title": title, "kind": "raster", "parts": parts,
+            "legend": None,
+            "colormap": {"min": vmin, "max": vmax, "palette": pal, "units": units},
+            "smooth": False, "default_on": False})
+    return layers
+
+
+def embedding_pixel_layer(run_id: str, files: list[Path]) -> dict:
+    """The embedding as colour, pixel by pixel: the first three principal components of the 64
+    numbers, over every pixel of the area with all 64, as red, green and blue."""
+    stacks = []
+    for path in files:
+        with rasterio.open(path) as src:
+            a = src.read().astype("float64")
+            stacks.append((a.reshape(a.shape[0], -1).T, a.shape[1:], bounds_of(src)))
+    valid = [np.isfinite(rows).all(axis=1) for rows, _, _ in stacks]
+    x = np.concatenate([rows[m] for (rows, _, _), m in zip(stacks, valid, strict=True)])
+    mean = x.mean(axis=0)
+    _, _, vt = np.linalg.svd(x - mean, full_matrices=False)
+    # A component's sign is arbitrary. Fixed so that its largest loading is positive, so the
+    # colours do not depend on the linear-algebra library.
+    comps = vt[:3] * np.sign(vt[np.arange(3), np.abs(vt[:3]).argmax(axis=1)])[:, None]
+    lo, hi = np.percentile((x - mean) @ comps.T, [2, 98], axis=0)
+    parts = []
+    for i, ((rows, shape, b), m) in enumerate(zip(stacks, valid, strict=True), 1):
+        rgb = np.zeros((rows.shape[0], 3), dtype="uint8")
+        scaled = np.clip(((rows[m] - mean) @ comps.T - lo) / np.where(hi > lo, hi - lo, 1), 0, 1)
+        rgb[m] = (scaled * 255).astype("uint8")  # as pca_rgb does for the stands
+        rgba = np.dstack([rgb.reshape(*shape, 3), np.where(m, 255, 0).astype("uint8").reshape(shape)])
+        name = f"embedding_rgb_part{i:02d}.png"
+        png(OUT / "by_run" / run_id / name, rgba)
+        parts.append({"file": f"by_run/{run_id}/{name}", "bounds": b})
+    return {"layer_id": "embedding_rgb", "title": EMBEDDING_TITLE, "kind": "raster",
+            "parts": parts, "color_is_value": True, "legend": None, "colormap": None,
+            "smooth": False, "default_on": False,
+            "description": "Each pixel is coloured by its AlphaEarth embedding: the first three "
+                           "principal components of the 64 numbers, over the area's pixels, as "
+                           "red, green and blue. Similar colours mean the embedding sees the "
+                           "pixels as alike."}
 
 
 def main() -> None:
@@ -574,6 +697,12 @@ def main() -> None:
         stands_fc, st = run_stands(run_id, arm, vec)
         write_json(OUT / "by_run" / run_id / "stands.json", encode_stands(stands_fc))
         sp_file, median_sp = superpixel_layer(run_id, vec)
+        layers = pixel_feature_layers(run_id, arm) if run_id in PIXEL_LAYER_RUNS else None
+        if run_id in PIXEL_LAYER_RUNS and layers is None:
+            notes.append(f"{run_id}: no GeoTIFFs under {PIXELS / run_id}, so its feature layers "
+                         "are stand means")
+        if layers is None:
+            layers = feature_layers(run_id, arm, stands_fc)
         seg_bands = [b.band for b in cfg.segmentation.input_bands]
         facts = dict(ai["facts"])
         facts.update({
@@ -618,7 +747,7 @@ def main() -> None:
             "step": "features", "title": "What we measure",
             "decisions": STEP_DECISIONS["features_fv" if arm == "feature_vector"
                                         else "features_ae"],
-            "layers": feature_layers(run_id, arm, stands_fc)}, {
+            "layers": layers}, {
             "step": "segmentation", "title": "Superpixels",
             "decisions": STEP_DECISIONS["segmentation"],
             "layers": [{"layer_id": "superpixels", "title": "Superpixels", "kind": "lines",
