@@ -239,6 +239,19 @@ def test_the_summary_numbers_read_the_metadata_with_the_setting_on():
     numbers = tabulate_clustering_metadata(_clustering_metadata(log))
     assert numbers["units_fitted"] == FIT_ROWS
     assert numbers["units_dropped_missing_band"] == 2
+    assert numbers["units_left_out_of_fit"] == len(WITH_A_ROW)
+    assert numbers["units_in_habitat"] == (
+        numbers["units_fitted"]
+        + numbers["units_dropped_missing_band"]
+        + numbers["units_left_out_of_fit"]
+    )
+
+
+def test_the_summary_numbers_count_none_left_out_with_the_setting_off():
+    _, log, _ = run_stage(clustering, _config(on=False))
+    numbers = tabulate_clustering_metadata(_clustering_metadata(log))
+    assert numbers["units_left_out_of_fit"] == 0
+    assert numbers["units_fitted"] == TRAINING_ROWS
 
 
 def test_the_stage_metadata_records_the_setting_on_and_off():

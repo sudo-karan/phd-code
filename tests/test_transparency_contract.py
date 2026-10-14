@@ -1118,6 +1118,9 @@ _CANNED_COUNTS = {
     "units_in_habitat": 289,
     "units_fitted": 289,
     "units_dropped_missing_band": 0,
+    # Not in the metadata of a run with clustering.fit_excludes_stands_below_min_area
+    # off, as this one was: nothing was left out of its fit.
+    "units_left_out_of_fit": 0,
 }
 
 
@@ -1185,17 +1188,49 @@ def test_the_unit_counts_say_they_are_not_counts_of_exported_stands():
 
 
 def test_clustering_numbers_account_for_every_unit():
-    """Total = outside habitat + in habitat; in habitat = fitted + dropped. The
-    summary gives four of the five, and the fifth follows."""
+    """Total = outside habitat + in habitat; in habitat = fitted + dropped + left
+    out of the fit (none, with the setting off). The summary gives four of the
+    five, and the fifth follows."""
     numbers = clustering_module.tabulate_clustering_metadata(
         {**_CANNED_METADATA, "n_training_units": 287, "n_units_dropped_null_band": 2}
     )
+    assert numbers["units_left_out_of_fit"] == 0
     assert numbers["units_in_habitat"] == (
-        numbers["units_fitted"] + numbers["units_dropped_missing_band"]
+        numbers["units_fitted"]
+        + numbers["units_dropped_missing_band"]
+        + numbers["units_left_out_of_fit"]
     )
     assert numbers["units_total"] - numbers["units_in_habitat"] == (
         _CANNED_METADATA["n_units_outside_habitat"]
     )
+
+
+def test_clustering_numbers_account_for_the_stands_left_out_of_the_fit():
+    """With clustering.fit_excludes_stands_below_min_area on, the stands left out
+    of the fit are the sixth number, and in habitat = fitted + dropped + left out."""
+    metadata = {
+        **_CANNED_METADATA,
+        "n_training_units": 280,
+        "n_units_dropped_null_band": 2,
+        "fit_excludes_stands_below_min_area": True,
+        "n_stands_below_min_area": 9,
+        "n_stands_left_out_of_fit": 7,
+    }
+    numbers = clustering_module.tabulate_clustering_metadata(metadata)
+    assert numbers["units_left_out_of_fit"] == 7
+    assert numbers["units_in_habitat"] == (
+        numbers["units_fitted"]
+        + numbers["units_dropped_missing_band"]
+        + numbers["units_left_out_of_fit"]
+    )
+
+
+def test_clustering_numbers_need_the_count_left_out_when_the_metadata_says_on():
+    """Its absence is a zero only where the setting was off: with the metadata
+    recording it on, a missing count is a gap, not a zero."""
+    metadata = {**_CANNED_METADATA, "fit_excludes_stands_below_min_area": True}
+    with pytest.raises(ValueError, match="n_stands_left_out_of_fit"):
+        clustering_module.tabulate_clustering_metadata(metadata)
 
 
 def test_clustering_summary_reads_k_from_the_image_not_the_config(property_reads):

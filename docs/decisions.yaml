@@ -4979,7 +4979,10 @@ decisions:
     minimum and their area (more, where a stand below the minimum had no row to leave out: outside the habitat mask,
     or no data in a band). n_training_units counts the rows the fit was trained on; n_units_dropped_null_band is
     counted against the rows before the stands are left out, so they are not counted as missing band data; the stage
-    logs a warning when the two masked samples do not add up to the rows of every unit. The setting needs
+    logs a warning when the two masked samples do not add up to the rows of every unit. The clustering summary
+    numbers gain a sixth, units_left_out_of_fit, read from n_stands_left_out_of_fit and 0 when clustering_metadata
+    does not record the setting as on, so that units_in_habitat is units_fitted plus units_dropped_missing_band plus
+    units_left_out_of_fit; every run's transparency record holds it, 0 where the setting is off. The setting needs
     merge.enabled, checked when the config is loaded. Off, the clustering stage makes the same Earth Engine calls,
     with the same arguments and in the same order, sends the same requests and writes the same clustering_metadata as
     before the change (tests/test_clustering_off_golden.py holds them as recorded from the stage at commit 12d2a05,
@@ -5021,9 +5024,12 @@ decisions:
     takes all of them, as its name says. Masks on the label image are used rather than a filter of the sampled rows
     by label, because whether Earth Engine matches a list of integers against the sampled numeric label property is
     not established, and a silent mismatch would leave every such stand in the fit. No paper was searched for this
-    rule. Not run on Earth Engine yet. Two points of reading are put to Jaskaran (docs/handoff/2026-10-14-round3.md, section 5): whether only
-    the isolated stands are meant, and whether the stands left out should also leave the skewness test and the
-    scaling.
+    rule. Not run on Earth Engine yet. Jaskaran's answers of 15 Oct 2026 to the three points put to him
+    (docs/handoff/2026-10-14-round3.md, section 5, questions 2 to 4): every stand below the minimum, not only the
+    isolated ones (question 2, (a)); the stands left out leave the k-means rows only and still take part in the
+    skewness test, the log offsets and the scaling, as built, to be looked at again in the review of the method
+    decisions (question 3); and the sixth summary number (question 4, (b)), because with the setting on the five
+    numbers no longer add up without it.
   evidence:
   - path: src/fmu/stages/clustering.py
     what: >-
@@ -5048,7 +5054,12 @@ decisions:
       With the setting on: the k-means rows come from the image masked to the other stands, the preprocessing samples
       are unmasked, the clusterer types the unmasked image; the counts and areas recorded, with a stand below the
       minimum that had no training row; missing band data counted against every row; no stand below the minimum
-      gives zeros and the default path's calls; the warnings; the guard on k; validate() and the config validator
+      gives zeros and the default path's calls; the warnings; the guard on k; validate() and the config validator;
+      the summary numbers on and off
+  - path: tests/test_transparency_contract.py
+    what: >-
+      The six summary numbers: that they add up to units_in_habitat with the setting off and on, and that a
+      metadata recording the setting on without the count left out is a gap, not a zero
   - path: tests/test_clustering_fit_excludes_ee_graph.py
     what: The path with the setting on built with the real Earth Engine client, offline
   - path: tests/test_cache_fingerprint.py
@@ -5060,13 +5071,17 @@ decisions:
   - path: docs/configs.md
     what: The clustering setting
   - path: docs/outputs.md
-    what: The keys the setting adds to clustering_metadata, and the key in the stage metadata
+    what: >-
+      The keys the setting adds to clustering_metadata, the key in the stage metadata, and the sixth summary
+      number
   - path: docs/handoff/2026-10-14-round3.md
     what: Jaskaran's decision D3, as he gave it (section 1), and the notes on it (section 6)
   papers: []
   status: adopted
   design_notes_section: null
-  source: Jaskaran, 14 Oct 2026, with Claude (chat)
+  source: >-
+    Jaskaran, 14 Oct 2026, with Claude (chat); his answers to questions 2 to 4 of docs/handoff/2026-10-14-round3.md,
+    15 Oct 2026 (round 4)
 - id: spec-keptland-configs-mask-before-snic
   title: >-
     Every kept-land config of round 3 has SNIC on kept land only, and keeps the small patches of kept land

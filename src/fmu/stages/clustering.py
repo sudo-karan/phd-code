@@ -181,6 +181,12 @@ _SUMMARY_FROM_METADATA: dict[str, str] = {
     "units_fitted": "n_training_units",
     "units_dropped_missing_band": "n_units_dropped_null_band",
 }
+# The sixth, the stands left out of the fit (_leave_out_of_fit). Its key is
+# written only with clustering.fit_excludes_stands_below_min_area on, and then
+# always; with the setting off nothing is left out, so there its absence is a
+# zero, not a gap.
+_LEFT_OUT_OF_FIT_NUMBER = "units_left_out_of_fit"
+_LEFT_OUT_OF_FIT_KEY = "n_stands_left_out_of_fit"
 
 
 def read_clustering_metadata(cluster_labels: ee.Image) -> dict[str, Any]:
@@ -212,10 +218,19 @@ def tabulate_clustering_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
     """Clustering's summary numbers, picked out of `clustering_metadata`.
 
     Raises if a count is absent, which it is on an asset made before the fit
-    reported its coverage: a missing count must not be read as zero.
+    reported its coverage: a missing count must not be read as zero. The one
+    exception is the count of stands left out of the fit, which is zero when
+    the metadata does not record clustering.fit_excludes_stands_below_min_area
+    as on: the setting off, or an asset made before it existed.
     """
+    setting_on = bool(metadata.get("fit_excludes_stands_below_min_area"))
     missing = sorted(
-        key for key in _SUMMARY_FROM_METADATA.values() if metadata.get(key) is None
+        key
+        for key in (
+            *_SUMMARY_FROM_METADATA.values(),
+            *((_LEFT_OUT_OF_FIT_KEY,) if setting_on else ()),
+        )
+        if metadata.get(key) is None
     )
     if missing:
         raise ValueError(
@@ -223,9 +238,13 @@ def tabulate_clustering_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
             f"cannot be given. The cached asset was made by an older "
             f"clustering stage."
         )
-    return {
+    numbers = {
         name: int(metadata[key]) for name, key in _SUMMARY_FROM_METADATA.items()
     }
+    numbers[_LEFT_OUT_OF_FIT_NUMBER] = (
+        int(metadata[_LEFT_OUT_OF_FIT_KEY]) if setting_on else 0
+    )
+    return numbers
 
 
 @register_stage("clustering")
@@ -302,6 +321,16 @@ class ClusteringStage(Stage):
             "Units inside the habitat mask that the fit left out because a "
             "feature band has no data over them. They have no type on the "
             "map: holes, not mistyped stands",
+            "count",
+        ),
+        SummaryNumber(
+            _LEFT_OUT_OF_FIT_NUMBER,
+            "Stands below merge.min_area_ha that the fit left out, with "
+            "clustering.fit_excludes_stands_below_min_area on; 0 with it off. "
+            "They are on the map, typed by the nearest fitted cluster. With "
+            "the setting on, units_in_habitat is units_fitted plus "
+            "units_dropped_missing_band plus these, and the stage's log warns "
+            "when its samples do not add up to that",
             "count",
         ),
     )

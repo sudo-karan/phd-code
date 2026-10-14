@@ -251,16 +251,22 @@ default" in a description means the default segmentation bands and merge
 criteria, which a config can replace. The stand-type legend names ten types
 and a run uses the first `clustering.k` of them.
 
-**Clustering** reports five counts, read from the `clustering_metadata`
+**Clustering** reports six counts, read from the `clustering_metadata`
 property of `cluster_labels` (one small request, no reduction): `k`,
-`units_total`, `units_in_habitat`, `units_fitted` and
-`units_dropped_missing_band`. A unit is a stand, or a superpixel in a run
-without merge. On a cached `cluster_labels` made before the fit recorded its
-coverage, the counts are absent and the record carries a `summary_error`. With
-`clustering.fit_excludes_stands_below_min_area` on, `units_fitted` does not
-count the stands below `merge.min_area_ha` that were left out of the fit; how
-many they were, and their area, is in `clustering_metadata` (under
-`export_manifest_<config>.json` below), not among these five.
+`units_total`, `units_in_habitat`, `units_fitted`,
+`units_dropped_missing_band` and `units_left_out_of_fit`. A unit is a stand, or
+a superpixel in a run without merge. On a cached `cluster_labels` made before
+the fit recorded its coverage, the counts are absent and the record carries a
+`summary_error`. `units_left_out_of_fit` is the number of stands below
+`merge.min_area_ha` left out of the fit with
+`clustering.fit_excludes_stands_below_min_area` on (`n_stands_left_out_of_fit`
+in `clustering_metadata`), and 0 when `clustering_metadata` does not record the
+setting as on: the setting off, or an asset made before it existed. So
+`units_in_habitat` is `units_fitted` plus `units_dropped_missing_band` plus
+`units_left_out_of_fit`; with the setting on, the stage's log warns when its
+samples do not add up to that. The area of the stands left out, and how many
+stands the merge marked below the minimum, are in `clustering_metadata` (under
+`export_manifest_<config>.json` below), not among these six.
 
 These counts are distinct unit labels on the analysis grid, as the fit saw
 them. They are not counts of the polygons in the exported stand layer, and the
