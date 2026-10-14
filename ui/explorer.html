@@ -513,9 +513,21 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       state.cache.set(path, fetch(path).then(r => {
         if (!r.ok) throw new Error(path + " (" + r.status + ")");
         return r.json();
-      }));
+      }).then(inflate));
     }
     return state.cache.get(path);
+  }
+  // Stands may come as encoded polylines ({"encoding": "polyline6", "features": [{properties,
+  // polygons: [[outer, hole, ...], ...]}]}) to keep the files small; Leaflet wants GeoJSON.
+  function inflate(j) {
+    if (!j || j.encoding !== "polyline6" || !Array.isArray(j.features)) return j;
+    return {
+      type: "FeatureCollection",
+      features: j.features.map(f => {
+        const polys = (f.polygons || []).map(rings => rings.map(r => decode(r).map(([lat, lng]) => [lng, lat])));
+        return { type: "Feature", properties: f.properties || {}, geometry: polys.length === 1 ? { type: "Polygon", coordinates: polys[0] } : { type: "MultiPolygon", coordinates: polys } };
+      }),
+    };
   }
 
   /* ---------- colour ---------- */
@@ -586,6 +598,9 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     const roi = r.roi || "hulls";
     return (state.fes.rows || []).filter(x => x.arm === r.arm && Number(x.stand_ceiling_ha) === Number(r.stand_ceiling_ha) && (x.roi || "hulls") === roi);
   }
+  // The plots-against-stands views appear only once the comparison is declared: scored rows exist,
+  // or the run says its analysis is written down (fes_declared). AlphaEarth waits for its own.
+  function comparable(r) { return fesRows(r).length > 0 || r.fes_declared === true; }
   function linksLayer(r) {
     return { layer_id: "links", _key: `${r.run_id}|links`, title: "Plots in the same stand", kind: "links" };
   }
@@ -828,7 +843,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
         if (pick) ids.push(pick.layer_id);
       } else ids.push(id);
     });
-    if (w.id === "field" && (r.arm !== "feature_vector" || !fesRows(r).length)) return ids.filter(id => id !== "links");
+    if (w.id === "field" && !comparable(r)) return ids.filter(id => id !== "links");
     return ids;
   }
   async function applyStep() {
@@ -968,7 +983,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       if (odisha && (!has(f.n_parts) || f.n_parts > 1)) out.body.push(`The map opens on the village with the most plots. Use the list at its top right to move between villages.`);
       if (r.note) out.extra = `<p class="small">${esc(r.note)}</p>`;
       out.facts = (has(f.area_ha) ? factBox(ha(f.area_ha), "area we work on") : "") +
-        (odisha && has(f.n_parts) ? factBox(n0(f.n_parts), parts) : "") + (odisha && has(plotsInside) ? factBox(n0(plotsInside), "FES plots inside") : "");
+        (odisha && has(f.n_parts) ? factBox(n0(f.n_parts), f.n_parts === 1 ? (roi === "boxes" ? "box" : "patch") : parts) : "") + (odisha && has(plotsInside) ? factBox(n0(plotsInside), "FES plots inside") : "");
     } else if (w.id === "land") {
       out.title = "Mark the trees and scrub";
       out.body.push(`Stands are about forest, so we mark the pixels that a land-cover map calls trees or scrub. The map is IndiaSAT's LULC v4 from CoRE Stack, for 2017 to 2021. A pixel counts as trees or scrub if it was in most of those years.`);
@@ -1050,7 +1065,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
   function fieldExtras() {
     const r = run();
     const rows = fesRows(r);
-    if (r.arm !== "feature_vector" || !rows.length) {
+    if (!comparable(r)) {
       return `<p class="note">We haven't compared ${r.arm === "alphaearth" ? "AlphaEarth's" : "these"} stands with the plots yet. We write down exactly how we'll test them before we run the test, so the result can't steer the method. That comes with the next update. Until then the map shows where the plots fall, without the comparison.</p>`;
     }
     const feats = state.plots || [];
@@ -1093,7 +1108,8 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
   function chanceCard(rows) {
     const tested = rows.filter(x => x.chance_percentile !== null && x.chance_percentile !== undefined && (!x.analysis || x.analysis === "primary"));
     if (!tested.length) {
-      return `<div class="card"><h3>Is that more than chance?</h3><p class="small">Not tested yet. The test is written down first, then run.</p></div>`;
+      const decl = run().roi === "boxes" ? ` It is written down in <a href="${REPO}odisha_script/PHASE_SQUARES_PREDECLARED.md" target="_blank" rel="noopener">PHASE_SQUARES_PREDECLARED.md</a>, from before these runs: the same five tests and 1,999 random placements as before, on the boxes.` : "";
+      return `<div class="card"><h3>Is that more than chance?</h3><p class="small">Not tested yet; the chance test runs next.${decl}</p></div>`;
     }
     const pass = tested.filter(x => x.p_holm !== null && x.p_holm <= 0.05);
     const rawOnly = tested.filter(x => x.p !== null && x.p <= 0.05 && !(x.p_holm !== null && x.p_holm <= 0.05));
@@ -1177,7 +1193,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     $("#all-list").innerHTML = walkFor(r).map(w => {
       const step = stepOf(r, w.decisions);
       let list = (step && step.layers) || [];
-      if (w.id === "field" && r.arm === "feature_vector" && fesRows(r).length) list = list.concat([linksLayer(r)]);
+      if (w.id === "field" && comparable(r)) list = list.concat([linksLayer(r)]);
       return list.length ? `<div class="group"><h4>${esc(w.label)}</h4>${list.map(togHTML).join("")}</div>` : "";
     }).join("");
   }

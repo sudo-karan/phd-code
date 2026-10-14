@@ -32,7 +32,11 @@ sharp at any zoom; the satellite image is smoothed rather than shown as 10 m blo
   export writes it.
 - `scripts/build_ui_early_data.py`: built the current `ui_data/` from files the 13 October re-runs
   had already saved (stands before the merge fix; features as stand means; only the superpixels
-  that hold some trees or scrub). The A3 export replaces that folder.
+  that hold some trees or scrub). It adds the box runs of brief A0 by itself once their stand
+  files and the output of `scripts/transparency_masking.py` for each box config exist (the
+  folders it searches are `BOX_VEC_DIRS` and `BOX_MASK_DIRS` at its top); the page then offers
+  "Village outlines" and "Boxes" for the 3 ha runs. Stands are written as encoded polylines
+  (`stands.json`), which the page turns back into GeoJSON. The A3 export replaces that folder.
 
 ## See it locally
 
