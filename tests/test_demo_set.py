@@ -158,9 +158,10 @@ def test_the_box_runs_are_the_four_box_configs_under_their_own_fingerprints():
     from fmu.config import load_config
     from fmu.utils.caching import config_fingerprint
 
-    # The kept-land copies of round 3 (*_keptland.yaml) are configs of their own, not box runs.
+    # The kept-land copies of round 3 (*_keptland.yaml) and their descending-orbit copies of
+    # round 7 (*_keptland_s1desc.yaml) are configs of their own, not box runs.
     configs = sorted(p for p in (REPO / "configs").glob("odisha_v120_3ha_squares_*.yaml")
-                     if not p.stem.endswith("_keptland"))
+                     if "_keptland" not in p.stem)
     assert sorted(BOX_RUNS) == [p.stem for p in configs] and len(configs) == 4
     assert BOXES["n_assets"] == sum(len(r["assets"]) for r in BOXES["runs"])
     for path in configs:
