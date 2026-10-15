@@ -158,7 +158,7 @@ select {
   max-width: 120ch;
 }
 .banner button { border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; text-decoration: underline; font-size: 12.5px; }
-.banner .more { display: block; margin-top: 4px; }
+.about { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 8px; }
 
 .main {
   min-height: 0;
@@ -2157,6 +2157,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
         return `<article class="dec"><div class="meta"><span class="chip ${d.status === "adopted" ? "good" : (d.status === "superseded" ? "" : "warn")}">${esc(d.status || "?")}</span><span class="id">${esc(d.id)}</span></div><h4>${esc(d.title)}</h4><p>${esc(d.decision)}</p>${paperHTML}<details><summary>Why, and what else we considered</summary><p>${esc(d.rationale || "")}</p>${alts}</details>${ev}</article>`;
       }).join("") || `<p class="small">This step only describes the results, so no decision sits behind it.</p>`;
     }
+    list.insertAdjacentHTML("beforeend", aboutBuild());
     $("#drawer").hidden = false;
     $("#drawer-close").focus();
   }
@@ -2181,6 +2182,17 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     $("#banner").textContent = "";
     $(".mapwrap").insertAdjacentHTML("beforeend", `<div class="empty" style="position:absolute;inset:0;z-index:1000;background:var(--map-bg)"><div><h2>No pipeline data here yet</h2><p>${msg}</p><p>Claude Code exports it into <code>ui_data/</code> (handoff brief, task A3).</p></div></div>`);
   }
+  // The banner says only what a reader needs: these are test runs, and when. Which runs, commits
+  // and configs are behind them is under "About this build" in the step drawer.
+  function bannerLead(short) {
+    const when = (short || "").split(":")[0].trim();
+    return when ? `${when.replace(/\.$/, "")}. The final runs will replace them.` : "Test runs. The final runs will replace them.";
+  }
+  function aboutBuild() {
+    const ix = state.index || {};
+    const parts = [ix.short_label, ix.label].filter(Boolean);
+    return parts.length ? `<details class="about"><summary>About this build</summary>${parts.map(t => `<p class="small">${esc(t)}</p>`).join("")}</details>` : "";
+  }
   async function boot() {
     initMap();
     try { state.index = await getJSON(DATA + "index.json"); } catch (e) { emptyState("The file <code>ui_data/index.json</code> could not be read."); return; }
@@ -2197,9 +2209,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     const frozen = (location.pathname.match(/\/v\/([^/]+)\/?/) || [])[1];
     const latest = frozen ? location.pathname.replace(/v\/[^/]+\/?[^/]*$/, "") : "";
     $("#banner").innerHTML = (frozen ? `<strong>Frozen copy (${esc(decodeURIComponent(frozen))}).</strong> The site as it was when cited; it does not change. <a href="${esc(latest)}" id="latest-link">Open the latest version</a>.<br>` : "") +
-      `<strong>Early version.</strong> ${esc(short)}` + (state.index.label && state.index.short_label ? ` <button type="button" id="more">More</button><span class="more" id="more-text" hidden>${esc(state.index.label)}</span>` : "");
-    const more = $("#more");
-    if (more) more.addEventListener("click", () => { const t = $("#more-text"); t.hidden = !t.hidden; more.textContent = t.hidden ? "More" : "Less"; });
+      `<strong>Early version.</strong> ${esc(bannerLead(short))}`;
     // A new place opens on its latest runs (kept land, boxes, our features), not on whatever stand
     // size the last place happened to have.
     $("#pick-area").addEventListener("change", e => {
