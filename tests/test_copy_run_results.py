@@ -81,3 +81,19 @@ def test_a_date_left_in_a_result_is_refused(mod, tmp_path):
     (vec / f"{RUN}_run.json").write_text(json.dumps({"made": "2026-10-15T13:41:00"}))
     with pytest.raises(SystemExit, match="date and time"):
         mod.copy(tree, RUN, tmp_path / "dest", tmp_path / "off")
+
+
+def test_a_recorded_drive_copy_survives_a_new_copy_of_the_same_file(mod, tmp_path):
+    dest, off = tmp_path / "dest", tmp_path / "off"
+    tree = _tree(tmp_path, mod.LIMIT + 1)
+    mod.copy(tree, RUN, dest, off)
+    record = dest / f"{RUN}_files_off_git.json"
+    rec = json.loads(record.read_text())
+    rec["files"][0]["drive"] = "phd-code_off_git/x/" + rec["files"][0]["file"]
+    record.write_text(json.dumps(rec))
+    mod.copy(tree, RUN, dest, off)  # the same file again: the Drive copy stays recorded
+    assert json.loads(record.read_text())["files"][0]["drive"].startswith("phd-code_off_git/x/")
+    vec = tree / "odisha_script" / "phase2_vectors"
+    (vec / f"{RUN}_stands_snic.geojson").write_text('{"x":"' + "b" * (mod.LIMIT + 1) + '"}')
+    mod.copy(tree, RUN, dest, off)  # another file: its Drive copy is not that one
+    assert "drive" not in json.loads(record.read_text())["files"][0]

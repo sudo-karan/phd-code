@@ -17,7 +17,8 @@ plots to stands outside the declared field check.
 
 Files over 5 MB (docs/decisions.yaml, spec-files-over-5-mb-off-git) are written to --off-git, never
 into --dest; --dest gets <run>_files_off_git.json instead: for each such file its name, size in
-bytes, SHA-256 and where it is. Results only: the check at the end refuses a key naming a time or a
+bytes, SHA-256 and where it is, and its Drive copy ("drive"), once one is checked and recorded, which
+a later copy of the same file keeps. Results only: the check at the end refuses a key naming a time or a
 value holding a date and time in what it wrote to --dest.
 """
 
@@ -122,6 +123,13 @@ def copy(tree: Path, run_id: str, dest: Path, off_git: Path) -> dict[str, Any]:
         else:
             (dest / name).write_bytes(data)
     record = dest / f"{run_id}_files_off_git.json"
+    # A Drive copy recorded before (round 8) stays recorded while the file is the same one.
+    before = ({f["file"]: f for f in json.loads(record.read_text())["files"]}
+              if record.exists() else {})
+    for f in off:
+        old = before.get(f["file"])
+        if old and old.get("sha256") == f["sha256"] and old.get("drive"):
+            f["drive"] = old["drive"]
     if off:
         record.write_text(json.dumps({
             "what": f"The files of {run_id} over 5 MB, kept off git "
