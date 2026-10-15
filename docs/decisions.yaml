@@ -5303,3 +5303,85 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 15 Oct 2026, with Claude (chat)
+- id: spec-profiling-export-type-areas-later
+  title: >-
+    The per-type areas of the profiling stage and of the export manifest stay counted on the clustering image's own
+    grid until a later round
+  decision: >-
+    Not changed in round 6. The profiling stage (pixel_count and area_ha per type) and the export stage
+    (clustering.cluster_distribution in its manifest) count a type's pixels with scale and no projection, so on the
+    clustering image's own grid, a geographic one, and take each pixel as 0.01 ha. Away from the equator those pixels
+    are narrower than 10 m, so the areas are too large by about 1/cos(latitude): at Sanjay Van the six types of each
+    kept-land run come to 967.3 ha for 847.5 ha of kept land, whose stands sum to 846.9 ha on the analysis grid. The
+    stands, the merge and the clustering count on the analysis grid and are not affected. ui_data's profiles.json of
+    the kept-land runs says so in its area_note.
+  alternatives_considered:
+  - >-
+    Count on the analysis grid in both stages now (option (a) of question 1 of docs/handoff/2026-10-15-round5.md): not
+    in this round; it changes those two Locked stages' numbers in every run
+  rationale: >-
+    Found in round 5. Jaskaran, 15 Oct 2026: "R5 Q1 (profiling/export areas on the geographic grid): later, not this
+    round." No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/profiling.py
+    what: The per-type pixel counts and areas, reduced with scale and no projection
+  - path: src/fmu/stages/export.py
+    what: _compute_cluster_distribution, the same
+  - path: docs/handoff/2026-10-15-round5.md
+    what: The question, with the numbers of both kept-land runs
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 15 Oct 2026, with Claude (chat)
+- id: field-plot-within-30-m-of-a-stand
+  title: >-
+    For the field check of the kept-land runs, the mask stays, and a plot within 30 m of a stand counts as on that stand
+  decision: >-
+    For the FES field check of the kept-land runs, to be declared before any score: the land-cover mask stays as it
+    is, so a plot on land the mask removes is still in no stand's polygon; but in the field check a plot within 30 m
+    of a stand counts as on that stand. This is option (b) of the question of the plots on removed land (14 of the
+    267 Odisha plots lie on it inside the boxes). Recorded now for the declaration; nothing is scored in round 6.
+    What the declaration settles: the distance (30 m, to the stand's polygon), and which stand counts when more than
+    one lies within 30 m.
+  alternatives_considered: []
+  alternatives_note: not recorded in the source
+  rationale: >-
+    With SNIC and the merge on kept land only (spec-segmentation-mask-before-snic), a plot on land the mask removes
+    lies in no stand, and a comparison that takes plots by the stand they fall in would lose them. Jaskaran, 15 Oct
+    2026: "Field plots on removed land: option (b): the mask stays; in the field check a plot within 30 m of a stand
+    counts as on that stand. Record it now as a decision for the FES declaration; no scoring this round." The other
+    options of the question are not in the repo. No paper was searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-15-round6.md
+    what: Jaskaran's words, as he gave them
+  - path: odisha_script/PHASE3_PREDECLARED.md
+    what: The pattern of a declaration made before the analysis runs
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 15 Oct 2026, with Claude (chat)
+- id: spec-export-read-back-tool-when-an-export-pass-stops
+  title: >-
+    If an export pass stops on its read-back, the stand layers are read back with odisha_script/odisha_read_back_export.py
+  decision: >-
+    For the batch runs of the kept-land configs, an export pass that stops at the runner's read-back of a vector layer
+    (more than 5,000 elements for one getInfo, or a count that times out) is finished with
+    odisha_script/odisha_read_back_export.py, as for the box runs of round 2. The export stage and the runner are not
+    changed for it now.
+  alternatives_considered:
+  - >-
+    Fix both limits, the export stage's count and the runner's read-back, before these runs (option (a) of question
+    10 of docs/handoff/2026-10-14-round3.md): not now; the export stage is Locked. Recommended there for the final round
+  rationale: >-
+    Jaskaran's answer (b) to question 10 of docs/handoff/2026-10-14-round3.md, given again for round 6 on 15 Oct 2026:
+    "R3 Q10 (b): if an export pass stops, use odisha_script/odisha_read_back_export.py." No paper was searched for this
+    decision.
+  evidence:
+  - path: odisha_script/odisha_read_back_export.py
+    what: The read-back of an export pass's layers
+  - path: docs/handoff/2026-10-14-round3.md
+    what: The question, with its two options
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 15 Oct 2026, with Claude (chat)
