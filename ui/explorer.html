@@ -258,6 +258,17 @@ details.all .group h4 { margin: 4px 0 0; font-size: 11.5px; font-family: var(--f
 
 /* field check */
 .card { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.dl { display: flex; flex-wrap: wrap; gap: 6px; }
+.dl button { border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 6px 11px; cursor: pointer; font-size: 12.5px; color: var(--ink); }
+.dl button:hover { border-color: var(--accent); }
+button.linkish { border: 0; background: none; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
+.scroll { overflow-x: auto; }
+table.xtab.scores td { font-variant-numeric: tabular-nums; padding: 2px 6px; text-align: right; background: none; }
+table.xtab.scores { font-size: 12px; }
+table.xtab.scores th { font-size: 11px; font-weight: 500; padding: 2px 4px; line-height: 1.25; }
+table.xtab.scores { table-layout: fixed; }
+table.xtab.scores th.row { text-align: left; white-space: normal; width: 34%; }
+table.xtab.scores td { padding: 2px 4px; }
 .card h3 { margin: 0; font-size: 14px; }
 .verdict { display: flex; gap: 10px; align-items: flex-start; }
 .verdict .big { font-size: 15px; font-weight: 600; }
@@ -711,10 +722,14 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
   function featureLayers(r) { return allLayers(r).filter(l => l.layer_id && (l.layer_id.startsWith("feature_") || l.layer_id === "embedding_rgb")); }
   function stepOf(r, name) { return (r.steps || []).find(s => s.step === name); }
   function walkFor(r) { return WALK.filter(w => !w.odisha || isOdisha(r)); }
+  // A score row names the runs whose stands it scored (run_ids). Older rows without that field
+  // are matched by arm, ceiling and area type, and never to a kept-land run, whose stands differ.
   function fesRows(r) {
     if (!state.fes) return [];
     const roi = r.roi || "hulls";
-    return (state.fes.rows || []).filter(x => x.arm === r.arm && Number(x.stand_ceiling_ha) === Number(r.stand_ceiling_ha) && (x.roi || "hulls") === roi);
+    return (state.fes.rows || []).filter(x => Array.isArray(x.run_ids)
+      ? x.run_ids.includes(r.run_id)
+      : !isKept(r) && x.arm === r.arm && Number(x.stand_ceiling_ha) === Number(r.stand_ceiling_ha) && (x.roi || "hulls") === roi);
   }
   // The plots-against-stands views appear only once the comparison is declared: scored rows exist,
   // or the run says its analysis is written down (fes_declared). AlphaEarth waits for its own.
@@ -1084,6 +1099,22 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     const prevStepId = state.run ? walkFor(state.run)[state.step]?.id : null;
     state.run = r;
     state.plots = await plotsOf(r).catch(() => null);
+    // A compared run whose plot file names no stands: join each plot here, by the declared rule
+    // (the stand that covers it, else the nearest within 30 m), so the pairs and the table work.
+    if (state.plots && comparable(r) && state.plots.some(pl => pl.properties && !("stand_id" in pl.properties))) {
+      const sl = standsLayer(r);
+      const data = sl && sl.file ? await getJSON(DATA + sl.file).catch(() => null) : null;
+      if (data) {
+        const j = plotJoin(r, data);
+        state.plots.forEach(pl => {
+          const p = pl.properties || {}, x = j.get(p.plot_key);
+          if (!x || "stand_id" in p) return;
+          p.stand_id = x.id === null ? null : Number(x.id);
+          p.stand_type = x.id && x.props ? x.props.stand_type : null;
+          p.join_m = x.id ? Math.round(x.d * 10) / 10 : null;
+        });
+      }
+    }
     const walk = walkFor(r);
     let i = keepStep && prevStepId ? walk.findIndex(w => w.id === prevStepId) : 0;
     if (i < 0) i = walk.length - 1;
@@ -1274,6 +1305,9 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
   function fieldExtras() {
     const r = run();
     const rows = fesRows(r);
+    if (!comparable(r) && isAscendingRedo(r)) {
+      return `<p class="note">These stands were not compared with the plots. Over these boxes the radar pass we first used has only one to three images, so the comparison was run on the re-run that uses the other pass. <button type="button" class="linkish" data-open-run="${esc(r.run_id)}_s1desc">Open the re-run</button></p>`;
+    }
     if (!comparable(r)) {
       return `<p class="note">We haven't compared ${r.arm === "alphaearth" ? "AlphaEarth's" : "these"} stands with the plots yet. We write down exactly how we'll test them before we run the test, so the result can't steer the method. That comes with the next update. Until then the map shows where the plots fall, without the comparison.</p>`;
     }
@@ -1314,10 +1348,39 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     return `<div class="card"><h3>Stand type against field type</h3><p class="small">Plots counted by the type of the stand they fall in (rows) and their field type (columns, 0 = no trees to 4 = tallest; hover a number for its meaning). If stand types matched field types, each row would have one dark cell.</p><table class="xtab">${head}${body}</table>${untyped ? `<p class="small">${plural(untyped, "plot")} fall on stands without a type and are not counted.</p>` : ""}${state.index && state.index.commit === "early build" ? `<p class="small">These are the run's saved stand types, which a second fit does not repeat (step 6), so read this table as a picture, not a result.</p>` : ""}</div>`;
   }
 
+  // Scores without their chance test: numbers only, no verdict either way.
+  const ANALYSIS_WORDS = {
+    primary: "Main result", S1: "Without the no-tree field type", S2: "With four field types",
+    covered_only: "Only plots a stand covers (no 30 m rule)", box_runs: "The 13 Oct box stands, same plots",
+  };
+  const TEST_SHORT = {
+    drawing_all_plots: "Drawing, all plots", drawing_multi_plot: "Drawing, stands with 2+ plots",
+    pair_precision: "Same-stand pairs alike", labelling_district: "Labelling", far_apart: "Far-apart gap",
+  };
+  const TEST_COL = { drawing_all_plots: "All plots", drawing_multi_plot: "2+ plots", pair_precision: "Pairs alike", labelling_district: "Labels", far_apart: "Far apart" };
+  function scoresCard(rows) {
+    const tests = [...new Set(rows.map(x => x.test))];
+    const analyses = [...new Set(rows.map(x => x.analysis || "primary"))];
+    const cell = (a, t) => { const x = rows.find(y => (y.analysis || "primary") === a && y.test === t); return x && x.score !== null && x.score !== undefined ? fmt(x.score, 3) : "–"; };
+    const main = rows.filter(x => (x.analysis || "primary") === "primary");
+    const n = main.length && main[0].n_plots ? ` (${n0(main[0].n_plots)} plots)` : "";
+    const items = main.map(x => `<li><span class="t">${esc(x.title || TEST_SHORT[x.test] || x.test)}</span><span class="nums">score ${fmt(x.score, 4)}</span></li>`).join("");
+    const decl = rows[0].declaration ? ` The tests were written down before the runs, in <a href="${REPO}${esc(rows[0].declaration)}" target="_blank" rel="noopener">${esc(rows[0].declaration.split("/").pop())}</a>.` : "";
+    const head = `<tr><th></th>${tests.map(t => `<th title="${esc(TEST_SHORT[t] || t)}">${esc(TEST_COL[t] || t)}</th>`).join("")}</tr>`;
+    const body = analyses.map(a => `<tr><th class="row">${esc(ANALYSIS_WORDS[a] || a)}</th>${tests.map(t => `<td>${cell(a, t)}</td>`).join("")}</tr>`).join("");
+    return `<div class="card"><h3>How well the stands match the plots${esc(n)}</h3>` +
+      `<p class="small">The chance test hasn't been run on these stands yet, so these are numbers only: they can't be called better or worse than chance.${decl}</p>` +
+      `<ul class="tests">${items}</ul>` +
+      `<details><summary>The checks, side by side</summary><div class="scroll"><table class="xtab scores">${head}${body}</table></div></details>` +
+      `<details><summary>About the scores</summary><p class="small">Four of the five scores are the adjusted Rand index: 0 means no better than grouping the plots at random, 1 means perfect agreement. The third is the share of same-stand pairs that are the same field type; the fifth is how much more often far-apart plots that are alike share a stand type than far-apart plots that differ.</p></details></div>`;
+  }
+
   function chanceCard(rows) {
     const tested = rows.filter(x => x.chance_percentile !== null && x.chance_percentile !== undefined && (!x.analysis || x.analysis === "primary"));
+    const untested = rows.filter(x => (x.chance_percentile === null || x.chance_percentile === undefined) && Array.isArray(x.run_ids));
+    if (!tested.length && untested.length) return scoresCard(untested);
     if (!tested.length) {
-      const decl = run().roi === "boxes" ? ` It is written down in <a href="${REPO}odisha_script/PHASE_SQUARES_PREDECLARED.md" target="_blank" rel="noopener">PHASE_SQUARES_PREDECLARED.md</a>, from before these runs: the same five tests and 1,999 random placements as before, on the boxes.` : "";
+      const decl =run().roi === "boxes" ? ` It is written down in <a href="${REPO}odisha_script/PHASE_SQUARES_PREDECLARED.md" target="_blank" rel="noopener">PHASE_SQUARES_PREDECLARED.md</a>, from before these runs: the same five tests and 1,999 random placements as before, on the boxes.` : "";
       return `<div class="card"><h3>Is that more than chance?</h3><p class="small">Not tested yet; the chance test runs next.${decl}</p></div>`;
     }
     const pass = tested.filter(x => x.p_holm !== null && x.p_holm <= 0.05);
@@ -1755,9 +1818,17 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     if (state.join && state.join.run === r.run_id) return state.join.map;
     const feats = data.features || [];
     const map = new Map();
+    const byId = new Map(feats.map(f => [String((f.properties || {}).stand_id), f.properties]));
     state.plots.forEach(pl => {
       const p = pl.properties || {};
       if (p.in_mapped_area === false || !pl.geometry) return;
+      // A plot file that carries the declared join (stand_id, and join_m for the 30 m rule) is
+      // used as it is; otherwise the page joins the plot itself, by the same rule.
+      if ("stand_id" in p) {
+        const id = p.stand_id === null || p.stand_id === undefined ? null : String(p.stand_id);
+        map.set(p.plot_key, { id, d: Number(p.join_m) || 0, props: id ? byId.get(id) || null : null });
+        return;
+      }
       const [lng, lat] = pl.geometry.coordinates;
       const hit = feats.find(f => inGeometry(lng, lat, f.geometry));
       if (hit) { map.set(p.plot_key, { id: String(hit.properties.stand_id), d: 0, props: hit.properties }); return; }
@@ -1791,6 +1862,82 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     return `<ul class="plist">${pls.map(plotLine).join("")}</ul>`;
   }
 
+  /* ---------- downloads ---------- */
+  // Built in the browser from the files this page already reads: nothing extra is published.
+  const DL_STEPS = new Set(["stands", "types", "profiles", "field"]);
+  const DL_PLOTS = true;
+  function downloadsHTML(r, w) {
+    if (!DL_STEPS.has(w.id) || !standsLayer(r) || !standsLayer(r).file) return "";
+    const plots = DL_PLOTS && w.id === "field" && isOdisha(r);
+    return `<div class="card"><h3>Download this run's stands</h3>` +
+      `<p class="small">Every stand as drawn here, outlines at full detail (to about 10 cm), with its type, its area and the average of each measurement, rounded as on this page. Longitude and latitude (WGS 84). A stand in several pieces is one feature.</p>` +
+      `<div class="dl"><button type="button" data-dl="stands-geojson">Stands, map (GeoJSON)</button><button type="button" data-dl="stands-csv">Stands, table (CSV)</button>` +
+      (plots ? `<button type="button" data-dl="plots-csv">Plots and their stands (CSV)</button>` : "") + `</div></div>`;
+  }
+  function saveFile(name, text, type) {
+    const url = URL.createObjectURL(new Blob([text], { type }));
+    const a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+  function cleanProps(p) { const o = {}; Object.entries(p).forEach(([k, v]) => { if (!k.startsWith("_")) o[k] = v; }); return o; }
+  // One feature per stand: the pieces' polygons together, the area their total, the rest from the
+  // largest piece (as the page counts them).
+  function standFeatures(data) {
+    const by = new Map();
+    (data.features || []).forEach(f => {
+      const p = f.properties || {};
+      const id = p.stand_id === undefined || p.stand_id === null ? Symbol() : String(p.stand_id);
+      const g = f.geometry; if (!g) return;
+      const polys = g.type === "Polygon" ? [g.coordinates] : g.coordinates;
+      const seen = by.get(id);
+      if (!seen) { by.set(id, { p: { ...p }, big: p.area_ha || 0, total: p.area_ha || 0, polys: polys.slice() }); return; }
+      seen.polys.push(...polys);
+      seen.total += p.area_ha || 0;
+      if ((p.area_ha || 0) > seen.big) { seen.p = { ...p }; seen.big = p.area_ha || 0; }
+    });
+    return [...by.values()].map(s => ({
+      type: "Feature",
+      properties: cleanProps({ ...s.p, area_ha: Math.round(s.total * 100) / 100 }),
+      geometry: s.polys.length === 1 ? { type: "Polygon", coordinates: s.polys[0] } : { type: "MultiPolygon", coordinates: s.polys },
+    }));
+  }
+  function csvCell(v) {
+    if (v === null || v === undefined) return "";
+    const s = typeof v === "object" ? JSON.stringify(v) : String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  }
+  function toCSV(rows, cols) { return [cols.join(",")].concat(rows.map(r => cols.map(c => csvCell(r[c])).join(","))).join("\n") + "\n"; }
+  async function download(kind) {
+    const r = run();
+    const data = await getJSON(DATA + standsLayer(r).file);
+    const feats = standFeatures(data);
+    const about = { run_id: r.run_id, config: r.config || null, source_commit: r.source_commit || null };
+    if (kind === "stands-geojson") {
+      saveFile(`${r.run_id}_stands.geojson`, JSON.stringify({ type: "FeatureCollection", ...about, features: feats }), "application/geo+json");
+    } else if (kind === "stands-csv") {
+      const rows = feats.map(f => f.properties);
+      const first = ["stand_id", "stand_type", "area_ha", "below_min"];
+      const order = MEASURES.map(m => m.key);
+      const keys = new Set(); rows.forEach(p => Object.keys(p).forEach(k => keys.add(k)));
+      const cols = first.filter(k => keys.has(k)).concat(order.filter(k => keys.has(k) && !first.includes(k)), [...keys].filter(k => !first.includes(k) && !order.includes(k)).sort());
+      saveFile(`${r.run_id}_stands.csv`, toCSV(rows, cols), "text/csv");
+    } else if (kind === "plots-csv") {
+      const j = plotJoin(r, data);
+      const rows = (state.plots || []).map(pl => {
+        const p = pl.properties || {};
+        const x = j.get(p.plot_key);
+        const [lon, lat] = pl.geometry ? pl.geometry.coordinates : [null, null];
+        const how = p.in_mapped_area === false ? "outside the mapped area" : !x ? "" : !x.id ? "no stand within 30 m" : x.d > 0 ? "within 30 m" : "on the stand";
+        return { plot_key: p.plot_key, district: p.district, habitation: p.habitation, lon, lat, field_type: p.field_type,
+          stand_id: x && x.id ? x.id : null, stand_type: x && x.id && x.props ? x.props.stand_type : null, joined: how,
+          metres_outside: x && x.id && x.d > 0 ? Math.round(x.d) : null };
+      });
+      saveFile(`${r.run_id}_plots.csv`, toCSV(rows, ["plot_key", "district", "habitation", "lon", "lat", "field_type", "stand_id", "stand_type", "joined", "metres_outside"]), "text/csv");
+    }
+  }
+
   /* ---------- rendering ---------- */
   function renderStepper() {
     const walk = walkFor(run());
@@ -1810,6 +1957,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       t.body.map(p => `<p>${p}</p>`).join("") +
       (t.facts && r.facts ? `<div class="facts">${t.facts}</div>` : "") + (t.extra || "") + summaryHTML(r, w) +
       (["stands", "types", "profiles", "field"].includes(w.id) && state.compare && state.compare.run === r.run_id ? compareHTML() : "") +
+      downloadsHTML(r, w) +
       (toggles.length ? `<div class="toggles"><p class="eyebrow cap">On the map</p>${toggles.map(togHTML).join("")}</div>` : "") +
       `<button type="button" class="why" id="why"><b>i</b>How this step works, and why</button>`;
     if (w.id === "profiles") renderProfiles();
@@ -2021,6 +2169,10 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       const ft = e.target.closest("[data-focus-type]");
       if (ft) { const t = +ft.dataset.focusType; state.focusType = state.focusType === t ? null : t; applyFocus(); document.querySelectorAll("[data-focus-type]").forEach(x => x.setAttribute("aria-pressed", String(+x.dataset.focusType === state.focusType))); return; }
       if (e.target.closest("[data-compare-clear]")) { state.compare = null; renderStory(); highlightCompared(); return; }
+      const or = e.target.closest("[data-open-run]");
+      if (or) { const x = state.index.runs.find(y => y.run_id === or.dataset.openRun); if (x) selectRun(x, { keepStep: true }); return; }
+      const dl = e.target.closest("button[data-dl]");
+      if (dl) { download(dl.dataset.dl).catch(err => { dl.textContent = "Could not build the file"; console.error(err); }); return; }
       const fb = e.target.closest("button[data-feature]");
       if (fb) { state.feature = fb.dataset.feature; await applyStep(); renderStory(); }
     });
