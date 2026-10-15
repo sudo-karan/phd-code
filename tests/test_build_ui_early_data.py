@@ -152,8 +152,10 @@ def test_the_committed_ui_data_draws_sanjay_van_pixel_by_pixel():
 FILL = math.sqrt(2**31 - 1) * 10  # distance_to_water where no water lies within 10 km
 
 
-def test_far_water_is_over_10_km_for_a_kept_land_run_only(builder):
+def test_far_water_is_over_10_km_where_it_is_marked(builder):
     assert builder.feature_value("distance_to_water", FILL, far_water=True) == "over 10 km"
+    # A capped band (features_static.cap_distance_to_water) holds the cap itself there.
+    assert builder.feature_value("distance_to_water", 10_000.0, far_water=True) == "over 10 km"
     assert builder.feature_value("distance_to_water", 9_999.0, far_water=True) == 9999.0
     assert builder.feature_value("distance_to_water", FILL) == float(f"{FILL:.4g}")
     assert builder.feature_value("elevation", FILL, far_water=True) == round(FILL, 0)
@@ -179,7 +181,7 @@ def _stands(tmp_path, run_id: str) -> Path:
 
 def test_a_kept_land_runs_stands_carry_the_below_min_flag_and_far_water(builder, tmp_path):
     vec = _stands(tmp_path, "k_run")
-    fc, st = builder.run_stands("k_run", "feature_vector", vec, keptland=True)
+    fc, st = builder.run_stands("k_run", "feature_vector", vec, keptland=True, far_water=True)
     first, second = (f["properties"] for f in fc["features"])
     assert (first["below_min"], second["below_min"]) == (False, True)
     assert (first["distance_to_water"], second["distance_to_water"]) == (1234.0, "over 10 km")
@@ -189,6 +191,13 @@ def test_a_kept_land_runs_stands_carry_the_below_min_flag_and_far_water(builder,
     fc, _ = builder.run_stands("k_run", "feature_vector", vec)
     other = fc["features"][1]["properties"]
     assert "below_min" not in other and other["distance_to_water"] == float(f"{FILL:.4g}")
+
+
+def test_the_sanjay_van_repro_runs_mark_far_water_and_the_others_do_not_yet(builder):
+    """Round 6 (spec-ui-distance-to-water-over-10-km): the Sanjay Van _repro runs now; the Odisha
+    runs as they are built."""
+    marked = set(builder.FAR_WATER_RUNS)
+    assert marked == {"sanjay_van_baseline_repro", "sanjay_van_alphaearth_repro"}
 
 
 def test_a_kept_land_runs_profiles_diagnostics_and_metadata_are_written(builder, tmp_path):

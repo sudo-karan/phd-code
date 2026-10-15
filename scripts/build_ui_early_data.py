@@ -78,9 +78,12 @@ KEPTLAND = REPO / "docs" / "reproducibility" / "keptland_runs"
 KEPTLAND_RUNS = {"sanjay_van_baseline_keptland": ("feature_vector", "sanjay_van_baseline_repro"),
                  "sanjay_van_alphaearth_keptland": ("alphaearth", "sanjay_van_alphaearth_repro")}
 # Beyond features_static.max_water_distance_pixels (1,000 px = 10 km) fastDistanceTransform gives
-# its fill value, sqrt(2^31 - 1) x 10 m, not a distance: those are written as OVER_10_KM.
+# its fill value, sqrt(2^31 - 1) x 10 m, not a distance, or with features_static.
+# cap_distance_to_water on the cap itself: 10 km or more is written as OVER_10_KM, in the stands of
+# every kept-land run and of FAR_WATER_RUNS (spec-ui-distance-to-water-over-10-km).
 FAR_WATER_M = 10_000.0
 OVER_10_KM = "over 10 km"
+FAR_WATER_RUNS = frozenset({"sanjay_van_baseline_repro", "sanjay_van_alphaearth_repro"})
 
 AREAS = {
     "sanjay_van": {"title": "Sanjay Van", "site": "Sanjay Van", "roi": "rectangle",
@@ -473,16 +476,18 @@ def feature_value(name: str, value, *, far_water: bool = False) -> float | str |
     `far_water`, a distance_to_water above 10 km is OVER_10_KM (see FAR_WATER_M)."""
     if value is None or (isinstance(value, float) and math.isnan(value)):
         return None
-    if far_water and name == "distance_to_water" and float(value) > FAR_WATER_M:
+    if far_water and name == "distance_to_water" and float(value) >= FAR_WATER_M:
         return OVER_10_KM
     if name in DECIMALS:
         return round(value, DECIMALS[name])
     return float(f"{float(value):.4g}")
 
 
-def run_stands(run_id: str, arm: str, vec: Path, *, keptland: bool = False) -> tuple[dict, dict]:
+def run_stands(run_id: str, arm: str, vec: Path, *, keptland: bool = False,
+               far_water: bool = False) -> tuple[dict, dict]:
     """The stands of a run, for stands.json. A kept-land run's stands also say whether the
-    merge left them below the minimum (`below_min`), and mark far water (feature_value)."""
+    merge left them below the minimum (`below_min`); with `far_water`, distance to water of
+    10 km or more is OVER_10_KM (feature_value)."""
     g = json.loads((vec / f"{run_id}_stands_merged.geojson").read_text())
     feats = g["features"]
     names = feature_names(feats[0]["properties"])
@@ -504,7 +509,7 @@ def run_stands(run_id: str, arm: str, vec: Path, *, keptland: bool = False) -> t
              "stand_type": None if ct is None else int(round(float(ct))),
              "area_ha": round(p["area_ha"], 2) if p.get("area_ha") is not None else None}
         for k in keep:
-            q[k] = feature_value(k, p.get(k), far_water=keptland)
+            q[k] = feature_value(k, p.get(k), far_water=far_water)
         if keptland:
             q["below_min"] = bool(p.get("below_min"))
         if emb_cols:
@@ -740,7 +745,7 @@ def profile_value(band: str, value):
     """A profile statistic as ui_data keeps it: four significant figures, far water marked."""
     if value is None or (isinstance(value, float) and math.isnan(value)):
         return None
-    if band == "distance_to_water" and float(value) > FAR_WATER_M:
+    if band == "distance_to_water" and float(value) >= FAR_WATER_M:
         return OVER_10_KM
     return float(f"{float(value):.4g}")
 
@@ -801,7 +806,8 @@ def main() -> None:
         md = run["merge_diagnostics"]
         ai = area_cache[area]
         odisha = AREAS[area]["site"] == "Odisha"
-        stands_fc, st = run_stands(run_id, arm, vec, keptland=keptland)
+        stands_fc, st = run_stands(run_id, arm, vec, keptland=keptland,
+                                   far_water=keptland or run_id in FAR_WATER_RUNS)
         write_json(OUT / "by_run" / run_id / "stands.json", encode_stands(stands_fc))
         sp_file, median_sp = superpixel_layer(run_id, vec)
         layers = pixel_feature_layers(run_id, arm) if run_id in PIXEL_LAYER_RUNS else None
