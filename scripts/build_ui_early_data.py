@@ -12,7 +12,8 @@ stand means, not pixels, except for Sanjay Van; the satellite image comes in par
 of the area. Claude Code's A3 export replaces this folder entirely.
 
 Every stand carries the mean of every feature its stand file holds (22 for the hand-crafted runs,
-the 64 embedding numbers for AlphaEarth), not only the ones the map draws. For the two Sanjay Van
+the 64 embedding numbers for AlphaEarth), not only the ones the map draws, with distance_to_water
+of 10 km or more written as "over 10 km" in every run. For the two Sanjay Van
 runs (`PIXEL_LAYER_RUNS`) the feature layers are drawn pixel by pixel, from the GeoTIFFs
 scripts/fetch_ui_layers.py saved under outputs/ui_data_full/<run_id>/ (on the grid of the
 satellite image, so the two line up): canopy height, the seasonal swing in greenness and radar VV
@@ -91,11 +92,10 @@ KEPTLAND_BOX_RUNS = {f"odisha_v120_3ha_squares_{d}_keptland": d for d in DISTRIC
 # Where fastDistanceTransform finds no water within features_static.max_water_distance_pixels
 # (1,000 px = 10 km) it gives its fill value, sqrt(2^31 - 1) x 10 m, not a distance, or with
 # features_static.cap_distance_to_water on the cap itself: 10 km or more is written as OVER_10_KM
-# (`far`), in the stands of every kept-land run and of FAR_WATER_RUNS
-# (spec-ui-distance-to-water-over-10-km).
+# (`far`), in the stands of every run (spec-ui-distance-to-water-over-10-km; every run from round
+# 7, Jaskaran's answer (b) to question 1 of docs/handoff/2026-10-15-round6.md).
 FAR_WATER_M = 10_000.0
 OVER_10_KM = "over 10 km"
-FAR_WATER_RUNS = frozenset({"sanjay_van_baseline_repro", "sanjay_van_alphaearth_repro"})
 
 AREAS = {
     "sanjay_van": {"title": "Sanjay Van", "site": "Sanjay Van", "roi": "rectangle",
@@ -515,11 +515,10 @@ def feature_value(name: str, value, *, far_water: bool = False) -> float | str |
     return float(f"{float(value):.4g}")
 
 
-def run_stands(run_id: str, arm: str, vec: Path, *, keptland: bool = False,
-               far_water: bool = False) -> tuple[dict, dict]:
-    """The stands of a run, for stands.json. A kept-land run's stands also say whether the
-    merge left them below the minimum (`below_min`); with `far_water`, distance to water of
-    10 km or more is OVER_10_KM (feature_value)."""
+def run_stands(run_id: str, arm: str, vec: Path, *, keptland: bool = False) -> tuple[dict, dict]:
+    """The stands of a run, for stands.json. Distance to water of 10 km or more is OVER_10_KM
+    (feature_value). A kept-land run's stands also say whether the merge left them below the
+    minimum (`below_min`)."""
     g = json.loads((vec / f"{run_id}_stands_merged.geojson").read_text())
     feats = g["features"]
     names = feature_names(feats[0]["properties"])
@@ -541,7 +540,7 @@ def run_stands(run_id: str, arm: str, vec: Path, *, keptland: bool = False,
              "stand_type": None if ct is None else int(round(float(ct))),
              "area_ha": round(p["area_ha"], 2) if p.get("area_ha") is not None else None}
         for k in keep:
-            q[k] = feature_value(k, p.get(k), far_water=far_water)
+            q[k] = feature_value(k, p.get(k), far_water=True)
         if keptland:
             q["below_min"] = bool(p.get("below_min"))
         if emb_cols:
@@ -863,8 +862,7 @@ def main() -> None:
         md = run["merge_diagnostics"]
         ai = area_cache[area]
         odisha = AREAS[area]["site"] == "Odisha"
-        stands_fc, st = run_stands(run_id, arm, vec, keptland=keptland,
-                                   far_water=keptland or run_id in FAR_WATER_RUNS)
+        stands_fc, st = run_stands(run_id, arm, vec, keptland=keptland)
         write_json(OUT / "by_run" / run_id / "stands.json", encode_stands(stands_fc))
         sp_file, median_sp = superpixel_layer(run_id, vec)
         layers = pixel_feature_layers(run_id, arm) if run_id in PIXEL_LAYER_RUNS else None

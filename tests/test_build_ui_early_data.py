@@ -185,23 +185,16 @@ def _stands(tmp_path, run_id: str) -> Path:
 
 def test_a_kept_land_runs_stands_carry_the_below_min_flag_and_far_water(builder, tmp_path):
     vec = _stands(tmp_path, "k_run")
-    fc, st = builder.run_stands("k_run", "feature_vector", vec, keptland=True, far_water=True)
+    fc, st = builder.run_stands("k_run", "feature_vector", vec, keptland=True)
     first, second = (f["properties"] for f in fc["features"])
     assert (first["below_min"], second["below_min"]) == (False, True)
     assert (first["distance_to_water"], second["distance_to_water"]) == (1234.0, "over 10 km")
     assert "n_superpx" not in first and "below_why" not in first
     assert st["n_bands"] == 2
-    # Another run's stands are as before: no flag, the number as it is.
+    # Another run's stands: no flag, and far water marked too (every run, round 7).
     fc, _ = builder.run_stands("k_run", "feature_vector", vec)
     other = fc["features"][1]["properties"]
-    assert "below_min" not in other and other["distance_to_water"] == float(f"{FILL:.4g}")
-
-
-def test_the_sanjay_van_repro_runs_mark_far_water_and_the_others_do_not_yet(builder):
-    """Round 6 (spec-ui-distance-to-water-over-10-km): the Sanjay Van _repro runs now; the Odisha
-    runs as they are built."""
-    marked = set(builder.FAR_WATER_RUNS)
-    assert marked == {"sanjay_van_baseline_repro", "sanjay_van_alphaearth_repro"}
+    assert "below_min" not in other and other["distance_to_water"] == "over 10 km"
 
 
 def test_a_kept_land_runs_profiles_diagnostics_and_metadata_are_written(builder, tmp_path):
