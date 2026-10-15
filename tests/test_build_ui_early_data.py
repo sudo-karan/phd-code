@@ -296,8 +296,9 @@ def test_a_box_kept_land_run_is_added_on_its_box_runs_area(builder, tmp_path, mo
     (added,) = builder.RUNS
     assert added == {"run_id": run_id, "area": "kendujhar_boxes", "arm": "feature_vector",
                      "vec": kept, "keptland": True, "pixels_from": None}
-    # The other three districts and the two Sanjay Van runs have no files here.
-    assert len(notes) == 5 and all("no committed files" in n for n in notes)
+    # The other three districts, the two Sanjay Van runs and the four descending-orbit runs of
+    # round 7 have no files here.
+    assert len(notes) == 9 and all("no committed files" in n for n in notes)
 
 
 def test_the_committed_ui_data_shows_the_box_kept_land_runs_plots_without_a_stand():
@@ -358,3 +359,25 @@ def test_an_alphaearth_runs_stands_carry_the_named_means_of_its_reduction(builde
     assert (second["canopy_height"], second["distance_to_water"]) == (None, 800.0)
     assert first["A05"] == builder.feature_value("A05", feats[0]["properties"]["A05"])
     assert "emb_rgb" in first
+
+
+def test_a_file_kept_off_git_is_found_by_its_record_and_checked(builder, tmp_path):
+    """spec-files-over-5-mb-off-git: the repo holds a run's <run>_files_off_git.json, the file is
+    on the Mac; the builder reads it there once its SHA-256 matches the record."""
+    import hashlib
+
+    vec, off = tmp_path / "vec", tmp_path / "off"
+    vec.mkdir()
+    off.mkdir()
+    (vec / "r_run.json").write_text("{}")
+    big = off / "r_stands_snic.geojson"
+    big.write_text('{"type": "FeatureCollection", "features": []}')
+    record = {"files": [{"file": big.name, "bytes": big.stat().st_size,
+                         "sha256": hashlib.sha256(big.read_bytes()).hexdigest(), "where": str(big)}]}
+    (vec / "r_files_off_git.json").write_text(json.dumps(record))
+    assert builder.vec_file(vec, "r_run.json") == vec / "r_run.json"
+    assert builder.vec_file(vec, big.name) == big
+    assert builder.vec_file(vec, "r_stands_merged.geojson") is None
+    big.write_text("changed")
+    with pytest.raises(SystemExit, match="SHA-256"):
+        builder.vec_file(vec, big.name)
