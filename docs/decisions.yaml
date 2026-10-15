@@ -5235,3 +5235,71 @@ decisions:
   source: >-
     Jaskaran, 14 Oct 2026, with Claude (chat); his answers to questions 6 and 7 of docs/handoff/2026-10-14-round3.md,
     15 Oct 2026 (round 4)
+- id: spec-static-cap-distance-to-water
+  title: >-
+    distance_to_water can be capped at 10 km, where the distance transform otherwise returns a fill value; on in the
+    four Odisha kept-land configs
+  decision: >-
+    A static-features setting, features_static.cap_distance_to_water, off by default. Off, the default and the
+    behaviour of every run made before it existed: distance_to_water is fastDistanceTransform over the water mask
+    within features_static.max_water_distance_pixels (1,000 px, 10 km at 10 m), square-rooted and scaled to metres,
+    and beyond that neighbourhood the transform finds no water and returns its fill value, sqrt(2^31 - 1) pixels,
+    463,409.5 m at 10 m, not a distance. On: the band is capped with min() at max_water_distance_pixels x
+    export.analysis_scale_m (10 km), so a pixel with no water within reach reads as at that distance. Off, the stage
+    makes the same Earth Engine calls, in the same order, as before the change (tests/data/features_static_off_calls.json
+    holds them as recorded from the stage at commit 6ad5055, for three shipped configs); its metadata gains the key
+    cap_distance_to_water. config_fingerprint leaves the key out of the hashed features_static block while it is
+    false, so no existing fingerprint moves, and a config that sets it to true gets a new one. It is on in the four
+    configs configs/odisha_v120_3ha_squares_<district>_keptland.yaml, whose fingerprints move (Angul fd08561492,
+    Dhenkanal 98cc68ddf5, Kendujhar be7ff1cae3, Koraput 87bc8dcaf0). The reuse tool lists the key in RECOMPUTE_KEYS:
+    where a config differs from its source in it, the static features are computed by the new run and not copied;
+    masking, data_load and the optical, radar and structure features still are. No other stage before segmentation
+    reads static_features.
+  alternatives_considered:
+  - >-
+    Leave the band as it is, with its fill value (option (b) of question 2 of docs/handoff/2026-10-15-round4.md): not
+    chosen. In the Koraput and Dhenkanal box runs the fill value and real distances mix, so the band is active in their
+    clustering with values above 10 km that are an artefact (1,514 of 2,401 and 240 of 667 stands at the fill value)
+  - >-
+    Leave the band out of the clustering (option (c)): not chosen; it changes the feature set, a method decision
+  - >-
+    Cap it in place, with no setting: not done. Every earlier run's static features would change under an unchanged
+    fingerprint, and their cached assets would no longer be what their configs describe
+  rationale: >-
+    Found by the final review of round 4 (docs/handoff/2026-10-15-round4.md, section 5, question 2): the docs said the
+    band was capped at 10 km, and it held the fill value. In Sanjay Van, Angul's box and every stand of the Sanjay Van
+    runs the band is constant, and the clustering drops it; in the Koraput and Dhenkanal boxes it is not. Jaskaran's
+    answer (a), 15 Oct 2026: "cap distance_to_water at 10 km behind a new setting (default false, left out of the
+    fingerprint at default), on in the four Odisha kept-land configs. Their fingerprints move: update PINNED,
+    REUSE_SAFE_KEYS/ALLOWED. features_static is then computed fresh for these runs; the reuse tool must NOT copy
+    static_features where the setting differs (masking, data_load, optical, radar, structure only). Off path and every
+    other fingerprint unchanged." The key cannot be one of REUSE_SAFE_KEYS, which are read by no stage before
+    segmentation; it is read by features_static, so it is a key of RECOMPUTE_KEYS, which names that stage. No paper
+    was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/features_static.py
+    what: The cap with the setting on, the module docstring, and the key in the stage metadata
+  - path: src/fmu/config.py
+    what: FeaturesStaticParams.cap_distance_to_water, default false, and the corrected comment on max_water_distance_pixels
+  - path: src/fmu/utils/caching.py
+    what: _OMITTED_AT_DEFAULT holds the key at false
+  - path: tests/test_static_distance_cap.py
+    what: >-
+      Off, the calls recorded before the change, and nothing capped; on, the cap at the neighbourhood's reach, from the
+      neighbourhood and the scale; the fingerprint off, left out or written out, and on
+  - path: tests/data/features_static_off_calls.json
+    what: The off path's calls and metadata, as recorded from the stage at commit 6ad5055
+  - path: configs/odisha_v120_3ha_squares_kendujhar_keptland.yaml
+    what: The setting on, and the header item; the other three districts' kept-land configs the same way
+  - path: scripts/reuse_upstream_assets.py
+    what: RECOMPUTE_KEYS, and the plan that leaves out the assets of the stage a differing key of it names
+  - path: tests/test_reuse_upstream_assets.py
+    what: >-
+      The four box plans copy 8 assets each and compute the static features; the Sanjay Van plans copy theirs; a key of
+      RECOMPUTE_KEYS is read by the stage it names and by no other module before segmentation
+  - path: tests/test_keptland_configs.py
+    what: The key in ALLOWED and CHANGED for the box configs only, and the four fingerprints pinned anew
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 15 Oct 2026, with Claude (chat)

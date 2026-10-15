@@ -31,9 +31,13 @@ NEVER = {"segmentation", "merge", "clustering", "profiling", "export", "metrics"
 EXPECTED_COPIES = {
     "sanjay_van_baseline_keptland": 8,  # masking 3, data_load 1, features 4
     "sanjay_van_alphaearth_keptland": 7,  # masking 3, data_load 1, features 3
-    **{f"odisha_v120_3ha_squares_{d}_keptland": 9  # masking 4, data_load 1, features 4
+    # masking 4, data_load 1, features 3: not static_features, which reads the distance cap
+    # (round 6, RECOMPUTE_KEYS) and is computed by the run
+    **{f"odisha_v120_3ha_squares_{d}_keptland": 8
        for d in ("kendujhar", "angul", "dhenkanal", "koraput")},
 }
+BOXES = {f"odisha_v120_3ha_squares_{d}_keptland" for d in ("kendujhar", "angul", "dhenkanal",
+                                                           "koraput")}
 
 
 @pytest.fixture(scope="module")
@@ -54,8 +58,22 @@ def test_each_plan_copies_what_its_source_run_cached_before_segmentation(plans):
         assert not {c.stage for c in plan.copies} & NEVER
         rec = json.loads((REPO / plan.record).read_text())
         (run,) = [r for r in rec["runs"] if r["config"] == plan.source_config]
-        listed = {a["asset"] for a in run["assets"] if a["stage"] not in NEVER}
+        fresh = {"features_static"} if name in BOXES else set()
+        listed = {a["asset"] for a in run["assets"] if a["stage"] not in NEVER | fresh}
         assert {c.source for c in plan.copies} == listed, name
+
+
+def test_static_features_are_computed_by_the_box_runs_not_copied(plans):
+    """The four box configs cap distance_to_water (round 6) and their sources do not: the static
+    features differ, so they are not copied. The Sanjay Van configs do not cap, and copy theirs."""
+    for name, plan in plans.items():
+        stages = {c.stage for c in plan.copies}
+        if name in BOXES:
+            assert plan.computed_fresh == ["features_static/static_features"], name
+            assert "features_static" not in stages, name
+        else:
+            assert plan.computed_fresh == [], name
+    assert "features_static" in {c.stage for c in plans["sanjay_van_baseline_keptland"].copies}
 
 
 def test_destinations_are_where_the_new_run_will_look(plans, monkeypatch):
@@ -92,6 +110,8 @@ def test_the_configs_differ_from_their_sources_only_in_safe_keys(plans):
     expect = {
         "sanjay_van_baseline_keptland": sanjay_van,
         "sanjay_van_alphaearth_keptland": sanjay_van | {"metrics.reference_config_name"},
+        # Round 6: the box configs cap distance_to_water.
+        **{name: round3 | {"features_static.cap_distance_to_water"} for name in BOXES},
     }
     for name, plan in plans.items():
         assert set(plan.differences) == expect.get(name, round3), name
@@ -130,6 +150,14 @@ def test_no_stage_before_segmentation_reads_a_safe_key():
         text = path.read_text()
         for k in keys:
             assert k not in text, f"{path.relative_to(REPO)} names {k}"
+    # A key of RECOMPUTE_KEYS is read by the stage it names, and by no other module here.
+    for (_, key), stage in mod.RECOMPUTE_KEYS.items():
+        assert stage in mod.UPSTREAM_STAGES
+        own = REPO / "src" / "fmu" / "stages" / f"{stage}.py"
+        assert key in own.read_text(), f"{stage} does not read {key}"
+        for path in modules:
+            if path != own:
+                assert key not in path.read_text(), f"{path.relative_to(REPO)} names {key}"
     for s in mod.UPSTREAM_STAGES:
         text = (REPO / "src" / "fmu" / "stages" / f"{s}.py").read_text()
         assert not re.search(r"config\.(segmentation|merge|clustering)\b", text), s
@@ -187,7 +215,7 @@ def test_the_dry_run_makes_no_earth_engine_call(monkeypatch, capsys):
     monkeypatch.setattr(caching, "asset_exists", boom)
     assert mod.main([]) == 0
     out = capsys.readouterr().out
-    assert "6 config(s), 51 asset(s) to copy; nothing copied (dry run)" in out
+    assert "6 config(s), 47 asset(s) to copy; nothing copied (dry run)" in out
     assert "segmentation/" not in out
 
 
@@ -217,12 +245,12 @@ def test_execute_copies_every_planned_asset_once_and_records_them(monkeypatch, c
     copies, folders = _fake_ee(monkeypatch, exists=lambda p: "_keptland/" not in p)
     record = tmp_path / "keptland_reuse.json"
     assert mod.main(["--execute", "--record", str(record)]) == 0
-    assert len(copies) == 51 == len(folders)
-    assert len({d for _, d in copies}) == 51
+    assert len(copies) == 47 == len(folders)
+    assert len({d for _, d in copies}) == 47
     assert all("_keptland/" in d and "_keptland/" not in s for s, d in copies)
     assert not any(f"/{stage}/" in d for _, d in copies for stage in NEVER)
     out = capsys.readouterr().out
-    assert "copied 51 asset(s); 51 recorded in" in out
+    assert "copied 47 asset(s); 47 recorded in" in out
     rec = json.loads(record.read_text())
     assert [(c["source"], c["destination"]) for c in rec["copies"]] == copies
     run = json.loads((tmp_path / "keptland_reuse_run.json").read_text())
@@ -252,8 +280,8 @@ def test_a_copy_that_stops_part_way_leaves_a_true_record_and_can_be_resumed(monk
     assert mod.main(["--execute", "--record", str(record)]) == 3
     monkeypatch.setattr(ee.data, "copyAsset", lambda s, d: (copies.append((s, d)), copied.add(d)))
     assert mod.main(["--execute", "--resume", "--record", str(record)]) == 0
-    assert len(copies) == 51 and len({d for _, d in copies}) == 51
-    assert len(json.loads(record.read_text())["copies"]) == 51
+    assert len(copies) == 47 and len({d for _, d in copies}) == 47
+    assert len(json.loads(record.read_text())["copies"]) == 47
     assert json.loads((tmp_path / "keptland_reuse_run.json").read_text())["completed"] is True
 
 
