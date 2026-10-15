@@ -24,16 +24,17 @@
 # D1 to D4 are Jaskaran's decisions of 14 Oct 2026, recorded in docs/decisions.yaml
 # (spec-keptland-configs-mask-before-snic, spec-merge-pass2-soft-ceiling,
 # spec-clustering-fit-excludes-stands-below-min-area, spec-keptland-runs-sites-and-ceilings) and in
-# docs/handoff/2026-10-14-round3.md. The four settings give this config its own cache fingerprint.
+# docs/handoff/2026-10-14-round3.md. Settings 2, 3, 4 and 6 give this config its own cache
+# fingerprint.
 # Its masking, data-load, optical, radar and structure assets can be copied from those of the box
 # run it copies (scripts/reuse_upstream_assets.py), because none of those stages reads anything
 # that differs. features_static reads the cap, so its asset is computed afresh, as are segmentation
 # and everything after it.
 #
-# Not run yet: no batch run until Jaskaran says go (round 6). Run it as the box configs were run
-# (odisha_script/run_passes_safely.py; CLAUDE.md, "Earth Engine"). The analysis of these stands
-# against the FES plots has not been declared yet; it is declared before any score (CLAUDE.md,
-# "Results").
+# Run in round 6, 15 Oct 2026 (docs/handoff/2026-10-15-round6.md): one batch of
+# odisha_script/run_passes_safely.py from a run tree pinned to d180cb8; the results are in
+# docs/reproducibility/keptland_runs/. The analysis of these stands against the FES plots is
+# declared in odisha_script/PHASE_KEPTLAND_PREDECLARED.md, before any score; it is not run yet.
 
 name: odisha_v120_3ha_squares_kendujhar_keptland
 description: Odisha KENDUJHAR, v120 hand-crafted method, stands capped at 3 ha, run on boxes around the villages' plots, on kept land only (mask before SNIC).
