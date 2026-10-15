@@ -108,3 +108,28 @@ def test_every_file_the_index_names_is_listed(tmp_path: Path) -> None:
         "runs/r1/mask.png",
         "runs/r1/stands.geojson",
     ]
+
+
+def test_plot_details_pick_and_round_the_field_columns(tmp_path: Path) -> None:
+    csv_path = tmp_path / "plots.csv"
+    csv_path.write_text(
+        "plot_key,n_trees,loreys_h_m,h_top5_m,dbh_mean_cm,crown_cover_pct,n_species,"
+        "gps_acc_m,dominant_sp,lat\n"
+        "18.1_82.2,12,12.8487,8.4,10.0268,33.0,6,4.993,Other,18.1\n"
+        "18.3_82.4,,5.25,,,,,,,18.3\n"
+    )
+    got = site.plot_details(csv_path)
+    assert got["18.1_82.2"] == {
+        "n_trees": 12, "loreys_h_m": 12.8, "h_top5_m": 8.4, "dbh_mean_cm": 10.0,
+        "crown_cover_pct": 33, "n_species": 6, "gps_acc_m": 5, "dominant_sp": "Other",
+    }
+    # Missing values are left out, not written as zero; columns the page doesn't show are dropped.
+    assert got["18.3_82.4"] == {"loreys_h_m": 5.2}
+
+
+def test_the_site_carries_the_plot_details(tmp_path: Path) -> None:
+    out = tmp_path / "site"
+    site.build(out, tmp_path / "no_data", _register(tmp_path))
+    if site.PLOTS_CSV.is_file():
+        plots = json.loads((out / "plot_details.json").read_text())["plots"]
+        assert len(plots) > 0

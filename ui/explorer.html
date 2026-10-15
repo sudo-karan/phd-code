@@ -417,6 +417,11 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
 .dbar::after { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--muted); }
 .dbar i { position: absolute; top: 0; bottom: 0; background: var(--accent); border-radius: 4px; }
 .linkish { align-self: flex-start; border: 0; background: none; color: var(--accent); padding: 0; cursor: pointer; text-decoration: underline; font-size: 12.5px; }
+.gh2 { margin: 8px 0 2px; font-family: var(--font-label); font-size: 11.5px; font-weight: 600; color: var(--ink); }
+.plist { margin: 2px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+.plist .dotk { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 5px; border: 1px solid var(--line); }
+.cmpplots { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cmpplots > div { min-width: 0; }
 .popbtn { margin-top: 8px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); border-radius: 6px; padding: 4px 9px; cursor: pointer; font-size: 12px; }
 .pop details { margin-top: 6px; }
 .pop summary { cursor: pointer; color: var(--accent); font-size: 12px; }
@@ -815,9 +820,12 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     }
     if (layer.kind === "links") return makeLinks();
     const data = await getJSON(DATA + layer.file);
+    layer._data = data;
     const pts = isPoints(data);
     const outline = !pts && (layer.style === "outline" || !layer.color_by);
-    const pane = pts ? "points" : (outline ? "lines" : "fills");
+    // Plots share the stand outlines' canvas: a canvas on top would catch every click, and in
+    // the field check both the plots and the stands under them are clickable.
+    const pane = pts ? "lines" : (outline ? "lines" : "fills");
     const renderer = R[pane];
     const pointStyle = p => ({
       renderer, pane, radius: 6.5, weight: 2.2, opacity: 1,
@@ -884,7 +892,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     const feats = await plotsOf(run());
     const g = L.layerGroup();
     if (!feats) return g;
-    const opts = { renderer: state.renderers.links, pane: "links", interactive: false, lineCap: "round" };
+    const opts = { renderer: state.renderers.lines, pane: "lines", interactive: false, lineCap: "round" };
     pairStats(feats).lines.forEach(x => {
       const ll = [[x.a[1], x.a[0]], [x.b[1], x.b[0]]];
       const casing = L.polyline(ll, { ...opts, color: "#111111", weight: linkWeight() + 3, opacity: 0.55 });
@@ -903,7 +911,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
   }
   function popupHTML(layer, f) {
     const p = f.properties || {};
-    if ((layer.layer_id === "stands" || layer.layer_id === "stand_types") && p.stand_id !== undefined) return standPopup(layer, p);
+    if ((layer.layer_id === "stands" || layer.layer_id === "stand_types") && p.stand_id !== undefined) return standPopup(layer, p, f);
     const keys = (layer.popup_fields && layer.popup_fields.length) ? layer.popup_fields : Object.keys(p).slice(0, 8);
     const rows = keys.filter(k => p[k] !== undefined && p[k] !== null && p[k] !== "").map(k => {
       const [label, show] = FIELDS[k] || [k, v => String(v)];
@@ -917,6 +925,36 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
         extra = `<p>Shares its stand with ${plural(mates.length, "other plot")}: ${same} the same field type, ${mates.length - same} different.</p>`;
       } else {
         extra = `<p>No other plot falls in its stand.</p>`;
+      }
+    }
+    if (layer.layer_id === "plots") {
+      // The field record, and the stand the plot falls in (drawn from the stand outlines here,
+      // when the run's own file doesn't name one).
+      const d = (state.plotDetails || {})[p.plot_key];
+      if (d) {
+        const recs = [["Lorey's height", d.loreys_h_m, v => fmt(v, 1) + " m"], ["Top 5 trees, height", d.h_top5_m, v => fmt(v, 1) + " m"], ["Trees", d.n_trees, n0], ["Trunk diameter, mean", d.dbh_mean_cm, v => fmt(v, 1) + " cm"], ["Crown cover", d.crown_cover_pct, v => n0(v) + "%"], ["Species", d.n_species, n0], ["Most common", d.dominant_sp, v => (v === "Other" ? "other species" : v)], ["GPS accuracy", d.gps_acc_m, v => "about " + n0(v) + " m"]]
+          .filter(x => x[1] !== undefined && x[1] !== null && x[1] !== "").map(([k, v, fm]) => `<tr><td>${esc(k)}</td><td>${esc(fm(v))}</td></tr>`).join("");
+        extra += `<p class="gh2">What FES measured</p><table>${recs}</table>`;
+      }
+      if ((p.stand_id === null || p.stand_id === undefined) && p.in_mapped_area !== false) {
+        const sl = standsLayer(run());
+        const data = sl && sl._data;
+        if (data && f.geometry) {
+          const j = plotJoin(run(), data).get(p.plot_key) || {};
+          if (j.id && j.d === 0) {
+            const hp = j.props || {};
+            const mates = plotsOfStand(run(), data, hp.stand_id).filter(x => x !== f);
+            extra += `<p>In stand ${esc(hp.stand_id)}${hp.stand_type !== null && hp.stand_type !== undefined ? ` (type ${Math.round(hp.stand_type)})` : ""}, ${ha(hp.area_ha)}. ${mates.length ? `It shares the stand with ${plural(mates.length, "other plot")}: ${mates.filter(x => x.properties.field_type === p.field_type).length} the same field type.` : "No other plot falls in that stand."}</p><button type="button" class="popbtn" data-compare="${esc(hp.stand_id)}">Compare its stand with another</button>`;
+          } else {
+            const np = j.props || null;
+            const offLand = p.mask === "dropped";
+            if (j.id) {
+              extra += `<p>No stand covers the exact point${offLand ? ", which the land-cover map counts as fields or buildings" : ""}, but stand ${esc(np.stand_id)} is ${n0(Math.max(1, Math.round(j.d)))} m away. The field check counts a plot within 30 m of a stand as in that stand.</p><button type="button" class="popbtn" data-compare="${esc(np.stand_id)}">Compare stand ${esc(np.stand_id)} with another</button>`;
+            } else {
+              extra += `<p>No stand covers this plot${offLand ? ": the land-cover map counts this spot as fields or buildings" : ""}.${np && Number.isFinite(j.d) ? ` The nearest stand is ${n0(Math.round(j.d))} m away, too far for the field check's 30 m rule.` : ""}</p>`;
+            }
+          }
+        }
       }
     }
     const title = layer.layer_id === "plots" ? "FES plot" : layer.title;
@@ -1032,6 +1070,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     if (state.hl) { state.map.removeLayer(state.hl); state.hl = null; }
     state.compare = null;
     state.focusType = null;
+    state.join = null;
     const prevStepId = state.run ? walkFor(state.run)[state.step]?.id : null;
     state.run = r;
     state.plots = await plotsOf(r).catch(() => null);
@@ -1216,6 +1255,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       out.title = "Do the stands follow the field plots?";
       out.body.push(`FES measured the trees on ${has(plotsInside) ? n0(plotsInside) + " plots" : "the plots"} inside these ${parts}, and every Odisha plot was sorted into one of five field types by its trees: height, trunk size, crown cover and how many there are.`);
       out.body.push(`If our stands follow the forest, plots that fall in the same stand should be the same field type, and plots of the same field type should get the same stand type.`);
+      out.body.push(`Click a plot to see what FES measured there and which stand it falls in, or click a stand to see its plots. Any two stands can be compared side by side, plots included.`);
       out.extra = fieldExtras();
     }
     return out;
@@ -1367,7 +1407,10 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
   }
 
   /* ---------- stands of the current run ---------- */
-  function standsLayer(r) { return layerById(r, "stand_types") || layerById(r, "stands"); }
+  function standsLayer(r) {
+    const a = layerById(r, "stand_types"), b = layerById(r, "stands");
+    return (a && a._data) ? a : (b && b._data) ? b : (a || b);
+  }
   async function standsOf(r) {
     const layer = standsLayer(r);
     if (!layer || !layer.file) return null;
@@ -1589,6 +1632,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       `<table class="cmp">${head}${top.map(line).join("")}</table>` +
       (ranked.length > top.length || circ ? `<details><summary>All ${rows.length + ms.filter(m => CIRCULAR.has(m.key)).length} measurements</summary><table class="cmp">${head}${ranked.slice(top.length).map(line).join("")}${rows.filter(x => x.z === null).map(line).join("")}${circ}</table></details>` : "") +
       `<p class="small">The bars show how far apart the two are, against the typical spread of that measurement across all stands here; a full bar is three typical spreads or more.</p>` +
+      (c.plotsA && c.plotsB ? `<div class="cmpplots"><div><p class="gh2">FES plots in stand ${esc(a.stand_id)}</p>${plotsHTML(c.plotsA, "None.")}</div><div><p class="gh2">FES plots in stand ${esc(b.stand_id)}</p>${plotsHTML(c.plotsB, "None.")}</div></div>` : "") +
       `<button type="button" class="linkish" data-compare-clear>Clear</button></div>`;
   }
   // "Radar, VV minus VH" -> "radar, VV minus VH": lower-case the first letter only, and not in an acronym.
@@ -1618,6 +1662,12 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     c.ms = measuresIn(stands);
     const typed = stands.filter(x => x.stand_type !== null && x.stand_type !== undefined);
     c.model = new Map(c.ms.map(m => [m.key, spreadOf((typed.length ? typed : stands).map(x => valueOf(m.key, x)))]));
+    if (isOdisha(r) && state.plots) {
+      const data = await getJSON(DATA + standsLayer(r).file).catch(() => null);
+      const feats = async s => plotsOfStand(r, data, s.stand_id);
+      c.plotsA = await feats(c.a);
+      c.plotsB = c.b ? await feats(c.b) : null;
+    }
     state.compare = c;
     state.map.closePopup();
     renderStory();
@@ -1625,7 +1675,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     const card = $("#compare-card");
     if (card) card.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
-  function standPopup(layer, p) {
+  function standPopup(layer, p, f) {
     const r = run();
     const ms = MEASURES.filter(m => valueOf(m.key, p) !== null);
     const type = p.stand_type === null || p.stand_type === undefined ? "No type" : "Type " + Math.round(p.stand_type);
@@ -1642,8 +1692,93 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       : `<button type="button" class="popbtn" data-compare="${esc(p.stand_id)}">Compare with another stand</button>`;
     const avg = r.arm === "alphaearth" ? `<p class="small">Averages over the stand. AlphaEarth's own 64 numbers have no names, so the stand is described with our measurements.</p>` : `<p class="small">Averages over the stand's pixels.</p>`;
     const speck = p.below_min === true ? `<p class="small">A small patch of trees or scrub, cut off from the rest, so it stays a stand of its own. It has the type it is closest to, but didn't help decide the types.</p>` : "";
-    return `<div class="pop"><h4>${p.below_min === true ? "Small patch" : "Stand"} ${esc(p.stand_id)}</h4><table>${rows}</table>${speck}` +
+    const sl = standsLayer(r);
+    const fesHere = isOdisha(r) && state.plots && sl && sl._data ? plotsOfStand(r, sl._data, p.stand_id) : null;
+    const fesHTML = fesHere ? `<p class="gh2">FES plots in this stand: ${n0(fesHere.length)}</p>${fesHere.length ? plotsHTML(fesHere, "") : ""}` : "";
+    return `<div class="pop"><h4>${p.below_min === true ? "Small patch" : "Stand"} ${esc(p.stand_id)}</h4><table>${rows}</table>${speck}${fesHTML}` +
       (rest ? `<details><summary>All measurements</summary><table>${rest}</table></details>` : "") + avg + btn + `</div>`;
+  }
+
+  /* ---------- FES plots inside stands ---------- */
+  // Ray casting on [lng, lat] rings; a point inside the outer ring and in no hole is inside.
+  function inRing(x, y, ring) {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [xi, yi] = ring[i], [xj, yj] = ring[j];
+      if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  }
+  function inGeometry(lng, lat, g) {
+    if (!g) return false;
+    const polys = g.type === "Polygon" ? [g.coordinates] : g.type === "MultiPolygon" ? g.coordinates : [];
+    return polys.some(rings => rings.length && inRing(lng, lat, rings[0]) && !rings.slice(1).some(h => inRing(lng, lat, h)));
+  }
+  // Distance in metres from a point to the nearest edge of any of the features, and that feature.
+  function nearestStand(lng, lat, features) {
+    const kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540;
+    let best = { d: Infinity, f: null };
+    const seg = (a, b) => {
+      const ax = (a[0] - lng) * kx, ay = (a[1] - lat) * ky, bx = (b[0] - lng) * kx, by = (b[1] - lat) * ky;
+      const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
+      const t = L ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / L)) : 0;
+      return Math.hypot(ax + t * dx, ay + t * dy);
+    };
+    features.forEach(f => {
+      const g = f.geometry;
+      if (!g) return;
+      const polys = g.type === "Polygon" ? [g.coordinates] : g.type === "MultiPolygon" ? g.coordinates : [];
+      polys.forEach(rings => rings.forEach(ring => {
+        for (let i = 1; i < ring.length; i++) {
+          if (Math.abs(ring[i][1] - lat) > 0.01 || Math.abs(ring[i][0] - lng) > 0.01) continue;
+          const d = seg(ring[i - 1], ring[i]);
+          if (d < best.d) best = { d, f };
+        }
+      }));
+    });
+    return best;
+  }
+  // Each plot's stand, by the field check's declared rule: the stand that covers it, else the
+  // nearest stand whose edge is within 30 m. Built once per run from the stand outlines.
+  function plotJoin(r, data) {
+    if (!state.plots || !data) return new Map();
+    if (state.join && state.join.run === r.run_id) return state.join.map;
+    const feats = data.features || [];
+    const map = new Map();
+    state.plots.forEach(pl => {
+      const p = pl.properties || {};
+      if (p.in_mapped_area === false || !pl.geometry) return;
+      const [lng, lat] = pl.geometry.coordinates;
+      const hit = feats.find(f => inGeometry(lng, lat, f.geometry));
+      if (hit) { map.set(p.plot_key, { id: String(hit.properties.stand_id), d: 0, props: hit.properties }); return; }
+      const near = nearestStand(lng, lat, feats);
+      map.set(p.plot_key, near.f && near.d <= 30 ? { id: String(near.f.properties.stand_id), d: near.d, props: near.f.properties } : { id: null, d: near.d, props: near.f ? near.f.properties : null });
+    });
+    state.join = { run: r.run_id, map };
+    return map;
+  }
+  function plotsOfStand(r, data, id) {
+    const j = plotJoin(r, data);
+    return (state.plots || []).filter(pl => { const x = j.get((pl.properties || {}).plot_key); return x && x.id === String(id); });
+  }
+  function plotLine(pl) {
+    const p = pl.properties || {};
+    const d = (state.plotDetails || {})[p.plot_key] || {};
+    const bits = [
+      d.loreys_h_m !== undefined ? `Lorey's height ${fmt(d.loreys_h_m, 1)} m` : null,
+      d.n_trees !== undefined ? plural(d.n_trees, "tree") : null,
+      d.crown_cover_pct !== undefined ? `crown cover ${n0(d.crown_cover_pct)}%` : null,
+      d.dbh_mean_cm !== undefined ? `trunks ${fmt(d.dbh_mean_cm, 1)} cm across on average` : null,
+      d.dominant_sp ? `mostly ${d.dominant_sp === "Other" ? "other species" : d.dominant_sp}` : null,
+    ].filter(Boolean);
+    const ft = p.field_type === null || p.field_type === undefined ? "no field type" : fieldTypeLabel(p.field_type);
+    const j = state.join && state.join.map.get(p.plot_key);
+    const off = j && j.id && j.d > 0 ? ` <span class="small">(${n0(Math.max(1, Math.round(j.d)))} m outside the stand, counted by the 30 m rule)</span>` : "";
+    return `<li><span class="dotk" style="background:${esc(legendColor(layerById(run(), "plots") || {}, p.field_type) || "#888")}"></span><b>${esc(cap(String(p.habitation || "Plot").toLowerCase()))}</b> · ${esc(ft)}${off}${bits.length ? `<br><span class="small">${esc(bits.join(", "))}</span>` : ""}</li>`;
+  }
+  function plotsHTML(pls, empty) {
+    if (!pls.length) return `<p class="small">${esc(empty)}</p>`;
+    return `<ul class="plist">${pls.map(plotLine).join("")}</ul>`;
   }
 
   /* ---------- rendering ---------- */
@@ -1664,7 +1799,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       `<div><p class="eyebrow kicker">Step ${state.step + 1} of ${walk.length} · ${esc(r.area)} · ${r.arm === "alphaearth" ? "AlphaEarth" : "our features"} · stands up to ${fmt(r.stand_ceiling_ha, 0)} ha</p><h2>${esc(t.title)}</h2></div>` +
       t.body.map(p => `<p>${p}</p>`).join("") +
       (t.facts && r.facts ? `<div class="facts">${t.facts}</div>` : "") + (t.extra || "") + summaryHTML(r, w) +
-      (["stands", "types", "profiles"].includes(w.id) && state.compare && state.compare.run === r.run_id ? compareHTML() : "") +
+      (["stands", "types", "profiles", "field"].includes(w.id) && state.compare && state.compare.run === r.run_id ? compareHTML() : "") +
       (toggles.length ? `<div class="toggles"><p class="eyebrow cap">On the map</p>${toggles.map(togHTML).join("")}</div>` : "") +
       `<button type="button" class="why" id="why"><b>i</b>How this step works, and why</button>`;
     if (w.id === "profiles") renderProfiles();
@@ -1835,6 +1970,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     initMap();
     try { state.index = await getJSON(DATA + "index.json"); } catch (e) { emptyState("The file <code>ui_data/index.json</code> could not be read."); return; }
     if (!state.index.runs || !state.index.runs.length) { emptyState("The index lists no runs."); return; }
+    try { state.plotDetails = (await getJSON("plot_details.json")).plots || null; } catch (e) { state.plotDetails = null; }
     try {
       const reg = await getJSON("decisions.json");
       state.decisions = Object.fromEntries((reg.decisions || []).map(d => [d.id, d]));

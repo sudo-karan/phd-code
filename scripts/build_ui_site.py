@@ -16,6 +16,7 @@ http://localhost:8000 (opening the file directly does not work: browsers block t
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import shutil
 import sys
@@ -77,6 +78,42 @@ def check_data(data: Path) -> list[str]:
     return problems
 
 
+PLOTS_CSV = ROOT / "odisha_script" / "odisha_plots_clean.csv"
+
+# What the page shows of each FES plot, from the cleaned field records: column -> (key, decimals).
+PLOT_FIELDS = {
+    "n_trees": ("n_trees", 0),
+    "loreys_h_m": ("loreys_h_m", 1),
+    "h_top5_m": ("h_top5_m", 1),
+    "dbh_mean_cm": ("dbh_mean_cm", 1),
+    "crown_cover_pct": ("crown_cover_pct", 0),
+    "n_species": ("n_species", 0),
+    "gps_acc_m": ("gps_acc_m", 0),
+}
+
+
+def plot_details(csv_path: Path) -> dict:
+    """Per FES plot, the field measurements the page shows beside its stand, keyed by plot_key.
+
+    The plots' positions and these values are already in the repository
+    (odisha_script/odisha_plots_clean.csv); this only picks columns and rounds them.
+    """
+    out: dict = {}
+    with csv_path.open(newline="") as fh:
+        for row in csv.DictReader(fh):
+            rec: dict = {}
+            for col, (key, nd) in PLOT_FIELDS.items():
+                try:
+                    v = float(row[col])
+                except (KeyError, TypeError, ValueError):
+                    continue
+                rec[key] = int(round(v)) if nd == 0 else round(v, nd)
+            if row.get("dominant_sp"):
+                rec["dominant_sp"] = row["dominant_sp"]
+            out[row["plot_key"]] = rec
+    return out
+
+
 def build(out: Path, data: Path, decisions: Path) -> dict:
     if out.exists():
         shutil.rmtree(out)
@@ -85,6 +122,10 @@ def build(out: Path, data: Path, decisions: Path) -> dict:
     (out / ".nojekyll").write_text("")
     register = yaml.safe_load(decisions.read_text())
     (out / "decisions.json").write_text(json.dumps(register, default=str, ensure_ascii=False))
+    if PLOTS_CSV.is_file():
+        (out / "plot_details.json").write_text(
+            json.dumps({"plots": plot_details(PLOTS_CSV)}, ensure_ascii=False, separators=(",", ":"))
+        )
     report: dict = {"data": "missing", "files": 0, "bytes": 0, "large_files": []}
     if data.is_dir():
         problems = check_data(data)
