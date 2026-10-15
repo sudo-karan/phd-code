@@ -310,7 +310,10 @@ def test_the_committed_ui_data_shows_the_box_kept_land_runs_plots_without_a_stan
         f"odisha_v120_3ha_squares_{d}_keptland{s}" for d in ("angul", "dhenkanal", "kendujhar", "koraput")
         for s in ("", "_s1desc"))
     for r in runs:
-        assert r["fes_declared"] is False and "plots_with_stand" not in r["facts"]
+        # Round 8: the descending-orbit runs' field check is run (numbers only), so they are
+        # declared; their plot files still name no stand (the page joins them itself).
+        assert r["fes_declared"] is r["run_id"].endswith("_s1desc")
+        assert "plots_with_stand" not in r["facts"]
         (step,) = [s for s in r["steps"] if s["step"] == "fes_plots"]
         assert not {"stand_id", "stand_type"} & set(step["layers"][0]["popup_fields"])
         plots = json.loads((data / "by_run" / r["run_id"] / "plots.geojson").read_text())["features"]
@@ -409,3 +412,24 @@ def test_the_kept_land_score_rows_follow_the_scores_file(builder):
         assert r["stands"] == "15 Oct 2026 kept-land runs (descending radar)"
         assert r["declaration"] == "odisha_script/PHASE_KEPTLAND_PREDECLARED.md"
         assert r["run_ids"] == sorted(builder.KEPTLAND_S1DESC_RUNS)
+
+
+def test_every_score_row_names_runs_in_the_index_and_no_run_has_a_row_twice():
+    """Round 8: the page matches score rows to runs by run_ids. Each id is a run of the index,
+    and no run gets two rows of the same analysis and test."""
+    data = SCRIPTS.parent / "ui_data"
+    ids = {r["run_id"] for r in json.loads((data / "index.json").read_text())["runs"]}
+    rows = json.loads((data / "fes_comparison.json").read_text())["rows"]
+    seen: set[tuple[str, str, str]] = set()
+    for r in rows:
+        assert isinstance(r["run_ids"], list), r
+        for run in r["run_ids"]:
+            assert run in ids, run
+            key = (run, r.get("analysis") or "primary", r["test"])
+            assert key not in seen, key
+            seen.add(key)
+    # The four descending-orbit runs are declared and scored; round 6's ascending ones are not.
+    index = {r["run_id"]: r for r in json.loads((data / "index.json").read_text())["runs"]}
+    for d in ("angul", "dhenkanal", "kendujhar", "koraput"):
+        assert index[f"odisha_v120_3ha_squares_{d}_keptland_s1desc"]["fes_declared"] is True
+        assert index[f"odisha_v120_3ha_squares_{d}_keptland"]["fes_declared"] is False
