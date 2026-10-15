@@ -156,7 +156,9 @@ for _d in DISTRICTS:
 
 def vec_file(vec: Path, name: str) -> Path | None:
     """A run's file: in `vec`, or where a <run>_files_off_git.json there says, once its SHA-256
-    is checked (spec-files-over-5-mb-off-git); None if it is in neither."""
+    is checked (spec-files-over-5-mb-off-git); None if it is in neither. A file the record names
+    but that is not on this machine stops the build, so that a build elsewhere cannot drop the
+    run without saying so."""
     import hashlib
 
     if (vec / name).is_file():
@@ -166,7 +168,8 @@ def vec_file(vec: Path, name: str) -> Path | None:
             if f["file"] == name:
                 where = Path(f["where"])
                 if not where.is_file():
-                    return None
+                    raise SystemExit(f"{name} is kept off git at {where} ({record.name}), which is "
+                                     "not on this machine: build ui_data where it is")
                 if hashlib.sha256(where.read_bytes()).hexdigest() != f["sha256"]:
                     raise SystemExit(f"{where} is not the file {record.name} names (SHA-256)")
                 return where

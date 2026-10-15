@@ -383,3 +383,7 @@ def test_a_file_kept_off_git_is_found_by_its_record_and_checked(builder, tmp_pat
     big.write_text("changed")
     with pytest.raises(SystemExit, match="SHA-256"):
         builder.vec_file(vec, big.name)
+    # Named by the record but not on this machine: the build stops, it does not skip the run.
+    big.unlink()
+    with pytest.raises(SystemExit, match="not on this machine"):
+        builder.vec_file(vec, big.name)
