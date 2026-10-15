@@ -305,8 +305,10 @@ def test_the_committed_ui_data_shows_the_box_kept_land_runs_plots_without_a_stan
     data = SCRIPTS.parent / "ui_data"
     index = json.loads((data / "index.json").read_text())
     runs = [r for r in index["runs"] if r.get("kept_land") and r["roi"] == "boxes"]
+    # Round 6's four, and round 7's four on the descending radar orbit.
     assert sorted(r["run_id"] for r in runs) == sorted(
-        f"odisha_v120_3ha_squares_{d}_keptland" for d in ("angul", "dhenkanal", "kendujhar", "koraput"))
+        f"odisha_v120_3ha_squares_{d}_keptland{s}" for d in ("angul", "dhenkanal", "kendujhar", "koraput")
+        for s in ("", "_s1desc"))
     for r in runs:
         assert r["fes_declared"] is False and "plots_with_stand" not in r["facts"]
         (step,) = [s for s in r["steps"] if s["step"] == "fes_plots"]
