@@ -14,6 +14,18 @@ Koraput, SNIC and the merge on kept land only, and distance to water capped at 1
 upstream assets except the static features, which each run computed
 (`docs/reproducibility/keptland_reuse_odisha.json`).
 
+The four descending-orbit kept-land runs of 15 Oct 2026 (round 7,
+`docs/handoff/2026-10-15-round7.md`): `configs/odisha_v120_3ha_squares_<district>_keptland_s1desc.yaml`,
+the round-6 configs with the radar from the descending Sentinel-1 orbit
+(`spec-odisha-keptland-s1-orbit-descending`), the runs the declared field check scores. They were run
+in one batch from a run tree pinned to `da7ab30`, after the copy of their upstream assets except the
+radar features, which each run computed (`docs/reproducibility/keptland_reuse_s1desc.json`). Their
+files were copied by `scripts/copy_run_results.py`. **Files over 5 MB are not in the repo**
+(`spec-files-over-5-mb-off-git`, from round 7): `<run>_files_off_git.json` gives each such file's
+name, size in bytes, SHA-256 and where it is (on the Mac, under `outputs/keptland_runs_s1desc/results/`).
+`scripts/build_ui_early_data.py` and `odisha_script/odisha_keptland_score.py` read such a file there,
+after checking its SHA-256.
+
 Per run `<run>`:
 
 - `<run>_stands_merged.geojson`, `<run>_stands_snic.geojson`, `<run>_stands_dissolved.geojson`:
