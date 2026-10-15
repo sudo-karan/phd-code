@@ -149,7 +149,7 @@ def test_the_committed_ui_data_draws_sanjay_van_pixel_by_pixel():
 
 # ---------------------------------------------------------------- the kept-land runs (round 5)
 
-FILL = math.sqrt(2**31 - 1) * 10  # distance_to_water where no water lies within 10 km
+FILL = math.sqrt(2**31 - 1) * 10  # distance_to_water where the transform finds no water
 
 
 def test_far_water_is_over_10_km_where_it_is_marked(builder):

@@ -16,8 +16,8 @@
 #    rows. (D3)
 # 5. export.drive_folder: fmu_exports_kept_land, so these files do not mix with the box runs'
 #    exports.
-# 6. features_static.cap_distance_to_water: true. distance_to_water is capped at 10 km, where the
-#    distance transform otherwise returns a fill value of 463,409.5 m
+# 6. features_static.cap_distance_to_water: true. distance_to_water is capped at 10 km, in place of
+#    the distance transform's fill value of 463,409.5 m where it finds no water
 #    (spec-static-cap-distance-to-water; Jaskaran, 15 Oct 2026, round 6, his answer (a) to round
 #    4's question 2).
 #

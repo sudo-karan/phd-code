@@ -340,9 +340,10 @@ for the full inventory.
 
 - `include_climate`: bool (default `true`). False omits `annual_rainfall`.
 - `max_water_distance_pixels`: int 100-10000 (default 1000, 10 km at 10 m
-  scale): how far the distance transform looks for water. Beyond it the band
-  holds the transform's fill value, 463,409.5 m at 10 m, not a distance, unless
-  `cap_distance_to_water` is on.
+  scale): how far the distance transform looks for water, and off the axes a
+  little further (real distances up to 12.3 km in the Odisha box runs). Where it
+  finds none, the band holds the transform's fill value, 463,409.5 m at 10 m, not
+  a distance, unless `cap_distance_to_water` is on.
 - `cap_distance_to_water`: bool (default `false`, the behaviour of every earlier
   run). True caps `distance_to_water` at `max_water_distance_pixels` x
   `export.analysis_scale_m`. Left out of the cache fingerprint while false, so

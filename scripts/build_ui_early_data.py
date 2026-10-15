@@ -27,8 +27,8 @@ upstream assets are copies of the `_repro` runs' (docs/reproducibility/keptland_
 they share those runs' satellite image, land cover and per-pixel feature layers. Each also gets:
 the kept-land mask layer (habitat_mask 1, from the masking output of its source run); a below-min
 flag on each stand; its profiles, merge diagnostics and clustering metadata as files of their
-own; and distance_to_water above 10 km written as "over 10 km", since beyond
-features_static.max_water_distance_pixels the band holds a fill value, not a distance.
+own; and distance_to_water of 10 km or more written as "over 10 km", since where the distance
+transform finds no water the band holds a fill value, not a distance.
 
 The four box kept-land runs of round 6 (`KEPTLAND_BOX_RUNS`:
 configs/odisha_v120_3ha_squares_<district>_keptland.yaml) are added the same way, each on the area
@@ -88,10 +88,11 @@ KEPTLAND_RUNS = {"sanjay_van_baseline_keptland": ("feature_vector", "sanjay_van_
                  "sanjay_van_alphaearth_keptland": ("alphaearth", "sanjay_van_alphaearth_repro")}
 # The box kept-land runs of round 6: run id -> the district whose box run's assets it reuses.
 KEPTLAND_BOX_RUNS = {f"odisha_v120_3ha_squares_{d}_keptland": d for d in DISTRICTS}
-# Beyond features_static.max_water_distance_pixels (1,000 px = 10 km) fastDistanceTransform gives
-# its fill value, sqrt(2^31 - 1) x 10 m, not a distance, or with features_static.
-# cap_distance_to_water on the cap itself: 10 km or more is written as OVER_10_KM, in the stands of
-# every kept-land run and of FAR_WATER_RUNS (spec-ui-distance-to-water-over-10-km).
+# Where fastDistanceTransform finds no water within features_static.max_water_distance_pixels
+# (1,000 px = 10 km) it gives its fill value, sqrt(2^31 - 1) x 10 m, not a distance, or with
+# features_static.cap_distance_to_water on the cap itself: 10 km or more is written as OVER_10_KM
+# (`far`), in the stands of every kept-land run and of FAR_WATER_RUNS
+# (spec-ui-distance-to-water-over-10-km).
 FAR_WATER_M = 10_000.0
 OVER_10_KM = "over 10 km"
 FAR_WATER_RUNS = frozenset({"sanjay_van_baseline_repro", "sanjay_van_alphaearth_repro"})

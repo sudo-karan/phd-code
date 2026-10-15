@@ -5237,15 +5237,17 @@ decisions:
     15 Oct 2026 (round 4)
 - id: spec-static-cap-distance-to-water
   title: >-
-    distance_to_water can be capped at 10 km, where the distance transform otherwise returns a fill value; on in the
-    four Odisha kept-land configs
+    distance_to_water can be capped at 10 km, in place of the distance transform's fill value; on in the four Odisha
+    kept-land configs
   decision: >-
     A static-features setting, features_static.cap_distance_to_water, off by default. Off, the default and the
     behaviour of every run made before it existed: distance_to_water is fastDistanceTransform over the water mask
-    within features_static.max_water_distance_pixels (1,000 px, 10 km at 10 m), square-rooted and scaled to metres,
-    and beyond that neighbourhood the transform finds no water and returns its fill value, sqrt(2^31 - 1) pixels,
-    463,409.5 m at 10 m, not a distance. On: the band is capped with min() at max_water_distance_pixels x
-    export.analysis_scale_m (10 km), so a pixel with no water within reach reads as at that distance. Off, the stage
+    within features_static.max_water_distance_pixels (1,000 px, 10 km at 10 m), square-rooted and scaled to metres.
+    Off the axes that neighbourhood reaches a little past 10 km (round 6 measured real distances up to 11.3 km in the
+    Koraput boxes and 12.3 km in Dhenkanal's, some 20,000 pixels each); where it holds no water the transform returns
+    its fill value, sqrt(2^31 - 1) pixels, 463,409.5 m at 10 m, not a distance. On: the band is capped with min() at
+    max_water_distance_pixels x export.analysis_scale_m (10 km), so every distance past 10 km reads as 10 km, the
+    fill value and those real distances alike. Off, the stage
     makes the same Earth Engine calls, in the same order, as before the change (tests/data/features_static_off_calls.json
     holds them as recorded from the stage at commit 6ad5055, for three shipped configs); its metadata gains the key
     cap_distance_to_water. config_fingerprint leaves the key out of the hashed features_static block while it is
@@ -5309,9 +5311,10 @@ decisions:
     Odisha runs as they are built
   decision: >-
     scripts/build_ui_early_data.py writes a stand's (or a type profile's) distance_to_water of 10 km or more as the
-    string "over 10 km". Past features_static.max_water_distance_pixels the band holds a fill value of 463,409.5 m,
-    or, with features_static.cap_distance_to_water on, the cap itself (spec-static-cap-distance-to-water), and neither
-    is a distance to print. It applies to the Sanjay Van _repro runs and the kept-land runs from round 6 on, and to
+    string "over 10 km". Where the distance transform finds no water the band holds a fill value of 463,409.5 m, or,
+    with features_static.cap_distance_to_water on, the cap itself (spec-static-cap-distance-to-water), and neither is
+    a distance to print. The value is compared at the four significant figures it is written with, so the cap read
+    back as 9,999.98 m counts. It applies to the Sanjay Van _repro runs and the kept-land runs from round 6 on, and to
     the Odisha runs when their data is built in the round that runs them.
   alternatives_considered:
   - >-

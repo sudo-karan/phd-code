@@ -1,9 +1,9 @@
 """Offline checks of `features_static.cap_distance_to_water`: distance to water capped at 10 km.
 
-docs/decisions.yaml, spec-static-cap-distance-to-water. Beyond
-features_static.max_water_distance_pixels the distance transform finds no water and returns its
-fill value, sqrt(2^31 - 1) pixels (463,409.5 m at 10 m), not a distance. With the setting on, the
-band is capped at the neighbourhood's reach. Off, the stage makes the calls it made before the
+docs/decisions.yaml, spec-static-cap-distance-to-water. Where the distance transform finds no
+water within features_static.max_water_distance_pixels it returns its fill value, sqrt(2^31 - 1)
+pixels (463,409.5 m at 10 m), not a distance. With the setting on, the band is capped at that
+reach, 10 km. Off, the stage makes the calls it made before the
 setting existed: tests/data/features_static_off_calls.json holds them as recorded from the stage
 at commit 6ad5055 (main at 3a51763), for three shipped configs. Earth Engine is replaced by the
 recorder of tests/_ee_recorder.py.
