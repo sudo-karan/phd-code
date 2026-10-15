@@ -125,6 +125,10 @@ SHORT_LABEL_WITH_BOX_KEPTLAND = ("Test runs from 13 to 15 October 2026: the vill
 KEPTLAND_BOX_LABEL = (" {n} Odisha box runs of 15 Oct 2026 (commit {commit}) segment kept land only "
                       "in the boxes (configs/odisha_v120_3ha_squares_*_keptland.yaml).")
 NUMBER_WORDS = {1: "One", 2: "Two", 3: "Three", 4: "Four"}
+MEANS_NOTE = (" Its stands' named measurements come from one read-only reduction "
+              "(docs/reproducibility/keptland_runs/{run}_stand_means.json): the optical and "
+              "structure ones from this run's own images, the radar and static ones from the "
+              "baseline kept-land run's, since the AlphaEarth arm computes neither.")
 
 RUNS: list[dict] = []
 for _arm_id, _arm in (("sanjay_van_baseline_repro", "feature_vector"),
@@ -515,12 +519,28 @@ def feature_value(name: str, value, *, far_water: bool = False) -> float | str |
     return float(f"{float(value):.4g}")
 
 
+def stand_means(run_id: str, vec: Path) -> dict:
+    """{polygon stand_id: {band: mean}} from a run's <run>_stand_means.json, the named means of
+    an AlphaEarth run's stands by one read-only reduction (scripts/alphaearth_stand_means.py,
+    spec-ui-alphaearth-stands-named-means-by-reduction); empty if the run has none."""
+    path = vec / f"{run_id}_stand_means.json"
+    if not path.exists():
+        return {}
+    data = json.loads(path.read_text())
+    return {s["stand_id"]: {b: s.get(b) for b in data["bands"]} for s in data["stands"]}
+
+
 def run_stands(run_id: str, arm: str, vec: Path, *, keptland: bool = False) -> tuple[dict, dict]:
     """The stands of a run, for stands.json. Distance to water of 10 km or more is OVER_10_KM
     (feature_value). A kept-land run's stands also say whether the merge left them below the
-    minimum (`below_min`)."""
+    minimum (`below_min`). Where the run has named means by reduction (`stand_means`), its
+    stands carry them beside their own means."""
     g = json.loads((vec / f"{run_id}_stands_merged.geojson").read_text())
     feats = g["features"]
+    extra = stand_means(run_id, vec)
+    if extra:
+        feats = [{**f, "properties": {**f["properties"], **extra[f["properties"]["stand_id"]]}}
+                 for f in feats]
     names = feature_names(feats[0]["properties"])
     n_bands = len(names)
     emb_cols = None
@@ -1005,7 +1025,8 @@ def main() -> None:
                 "merge_rule": "spec-merge-pass2-skip-at-minimum, spec-merge-pass2-soft-ceiling",
                 "note": (SANJAY_NOTE + " " if sanjay else "") + "SNIC and the merge saw kept "
                         "land only (trees or scrub): the rest of the "
-                        + ("rectangle" if sanjay else "boxes") + " is in no stand.",
+                        + ("rectangle" if sanjay else "boxes") + " is in no stand."
+                        + (MEANS_NOTE.format(run=run_id) if stand_means(run_id, vec) else ""),
                 "files": files})
         runs_out.append(entry)
         print("built", run_id, st["n_stands"], "stands")

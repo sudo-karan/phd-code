@@ -329,3 +329,32 @@ def test_the_committed_ui_data_holds_no_distance_to_water_of_10_km_as_a_number()
         values = [x["properties"].get("distance_to_water")
                   for x in json.loads(f.read_text())["features"]]
         assert all(v is None or v == "over 10 km" or v < 10_000 for v in values), f.parent.name
+
+
+def test_an_alphaearth_runs_stands_carry_the_named_means_of_its_reduction(builder, tmp_path):
+    """Round 7 (spec-ui-alphaearth-stands-named-means-by-reduction): beside the embedding, the
+    means of <run>_stand_means.json, by polygon."""
+    square = [[[77.0, 28.0], [77.001, 28.0], [77.001, 28.001], [77.0, 28.001], [77.0, 28.0]]]
+    feats = [{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": square},
+              "properties": {"stand_id": sid, "stand_lbl": sid, "area_ha": 1.0, "cluster_id": 0,
+                             "n_pixels": 100,
+                             **{f"A{i:02d}": 0.01 * i + 0.1 * ((sid * (i + 1)) % 7) for i in range(64)}}}
+             for sid in (1, 2, 3, 4)]
+    (tmp_path / "ae_run_stands_merged.geojson").write_text(
+        json.dumps({"type": "FeatureCollection", "features": feats}))
+    fc, _ = builder.run_stands("ae_run", "alphaearth", tmp_path)
+    assert fc["features"][0]["properties"]["canopy_height"] is None  # no reduction: null, as before
+    means = {"bands": {"canopy_height": {}, "distance_to_water": {}},
+             "stands": [{"stand_id": 1, "stand_lbl": 1, "canopy_height": 7.25,
+                         "distance_to_water": FILL},
+                        {"stand_id": 2, "stand_lbl": 2, "canopy_height": None,
+                         "distance_to_water": 800.0},
+                        *({"stand_id": s, "stand_lbl": s, "canopy_height": 5.0,
+                           "distance_to_water": 50.0} for s in (3, 4))]}
+    (tmp_path / "ae_run_stand_means.json").write_text(json.dumps(means))
+    fc, st = builder.run_stands("ae_run", "alphaearth", tmp_path)
+    first, second = (f["properties"] for f in fc["features"][:2])
+    assert (first["canopy_height"], first["distance_to_water"]) == (7.2, "over 10 km")
+    assert (second["canopy_height"], second["distance_to_water"]) == (None, 800.0)
+    assert first["A05"] == builder.feature_value("A05", feats[0]["properties"]["A05"])
+    assert "emb_rgb" in first
