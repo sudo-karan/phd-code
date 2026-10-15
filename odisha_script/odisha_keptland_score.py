@@ -38,7 +38,9 @@ on the same plots as the primary analysis, with no test of the difference.
 
 WRITES, in --out-dir, results only (no dates): keptland_s1desc_joined.csv (per plot: its stand by
 each rule, how it joined, its distance), keptland_s1desc_scores.json and keptland_s1desc_scores.txt.
-The inputs' SHA-256 are in the JSON, so a re-run on other files cannot pass for this one.
+The inputs' SHA-256 are in the JSON, so a re-run on other files cannot pass for this one. Beside
+them, keptland_s1desc_scores_run.json, the run's record: the command, the date, the git commit and
+whether the tree was dirty.
 """
 
 from __future__ import annotations
@@ -275,6 +277,22 @@ def text(result: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def write_run_record(out_dir: Path, argv: list[str]) -> None:
+    import datetime
+    import shlex
+
+    sys.path.insert(0, str(REPO / "src"))
+    from fmu.utils.provenance import git_state
+
+    run = {"result_files": ["keptland_s1desc_joined.csv", "keptland_s1desc_scores.json",
+                            "keptland_s1desc_scores.txt"],
+           "command_line": "python " + " ".join(shlex.quote(a) for a in
+                                                ["odisha_script/odisha_keptland_score.py", *argv]),
+           "date": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
+           "git": {k: v for k, v in git_state(HERE).items() if k != "root"}}
+    (out_dir / "keptland_s1desc_scores_run.json").write_text(json.dumps(run, indent=1) + "\n")
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--stands-dir", type=Path, default=STANDS_DIR)
@@ -308,6 +326,7 @@ def main(argv: list[str] | None = None) -> int:
     table.drop(columns=["epsg"]).to_csv(args.out_dir / "keptland_s1desc_joined.csv", index=False)
     (args.out_dir / "keptland_s1desc_scores.json").write_text(json.dumps(result, indent=1) + "\n")
     (args.out_dir / "keptland_s1desc_scores.txt").write_text(text(result))
+    write_run_record(args.out_dir, list(sys.argv[1:] if argv is None else argv))
     print(text(result))
     return 0
 
