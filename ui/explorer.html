@@ -96,12 +96,12 @@ a { color: var(--accent); }
   padding-inline: 16px;
   padding-block: 12px;
 }
+/* The title, then the pickers on a row of their own, so the bar keeps one shape for every place. */
 .top {
   display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  justify-content: space-between;
-  gap: 10px 24px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
 }
 .brand { min-width: 0; max-width: 62ch; }
 .brand h1 {
@@ -1044,13 +1044,23 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       const ok = runsWhere(x => x.area === r.area && x.arm === r.arm && x.stand_ceiling_ha === c).length > 0;
       return `<button type="button" role="radio" data-ceiling="${c}" aria-checked="${c === r.stand_ceiling_ha}"${ok ? "" : " disabled"}>up to ${fmt(c, 0)} ha</button>`;
     }).join("");
-    const rois = [...new Set(runsWhere(x => x.area === r.area && x.arm === r.arm && x.stand_ceiling_ha === r.stand_ceiling_ha).map(x => x.roi || "hulls"))];
-    $("#pick-roi-wrap").hidden = rois.length < 2;
-    const same = runsWhere(x => x.area === r.area && x.arm === r.arm && x.stand_ceiling_ha === r.stand_ceiling_ha && (x.roi || "hulls") === (r.roi || "hulls"));
-    const keptChoices = [...new Set(same.map(isKept))];
-    $("#pick-kept-wrap").hidden = keptChoices.length < 2;
-    $("#pick-kept").innerHTML = [true, false].filter(v => keptChoices.includes(v)).map(v => `<button type="button" role="radio" data-kept="${v}" aria-checked="${v === isKept(r)}" title="${v ? "Superpixels and stands drawn on trees and scrub only" : "Superpixels and stands drawn over the whole area"}">${v ? "Trees and scrub" : "All land"}</button>`).join("");
-    $("#pick-roi").innerHTML = rois.map(v => `<button type="button" role="radio" data-roi="${v}" aria-checked="${v === (r.roi || "hulls")}">${esc(ROI_LABEL[v] || v)}</button>`).join("");
+    // Every picker stays on screen for every run, so the bar never jumps; a choice that has no run
+    // for the rest of the selection is shown greyed out.
+    const roiOf = x => x.roi || "hulls";
+    const ORDER = ["boxes", "hulls", "rectangle"];
+    const rois = [...new Set(runsWhere(x => x.area === r.area).map(roiOf))].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
+    $("#pick-roi-wrap").hidden = false;
+    $("#pick-roi").innerHTML = rois.map(v => {
+      const ok = runsWhere(x => x.area === r.area && x.arm === r.arm && x.stand_ceiling_ha === r.stand_ceiling_ha && roiOf(x) === v).length > 0;
+      return `<button type="button" role="radio" data-roi="${v}" aria-checked="${v === roiOf(r)}"${ok ? "" : ' disabled title="No run for this choice yet"'}>${esc(ROI_LABEL[v] || v)}</button>`;
+    }).join("");
+    const same = runsWhere(x => x.area === r.area && x.arm === r.arm && x.stand_ceiling_ha === r.stand_ceiling_ha && roiOf(x) === roiOf(r));
+    $("#pick-kept-wrap").hidden = false;
+    $("#pick-kept").innerHTML = [true, false].map(v => {
+      const ok = same.some(x => isKept(x) === v);
+      const tip = ok ? (v ? "Superpixels and stands drawn on trees and scrub only" : "Superpixels and stands drawn over the whole area") : "No run for this choice yet";
+      return `<button type="button" role="radio" data-kept="${v}" aria-checked="${v === isKept(r)}" title="${tip}"${ok ? "" : " disabled"}>${v ? "Trees and scrub" : "All land"}</button>`;
+    }).join("");
   }
   function chooseRun({ area, arm, ceiling, roi, kept }) {
     const pool = state.index.runs;
