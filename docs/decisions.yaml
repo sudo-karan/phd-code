@@ -5538,6 +5538,12 @@ decisions:
     what: Why the measurements are null, and the three ways (step 5 a), and the question
   - path: src/fmu/stages/export.py
     what: The embedding alone for an AlphaEarth run, in _feature_source_image
+  - path: scripts/alphaearth_stand_means.py
+    what: The read-only reduction
+  - path: docs/reproducibility/keptland_runs/sanjay_van_alphaearth_keptland_stand_means.json
+    what: Its result, with the note on whose means the radar and static ones are
+  - path: scripts/build_ui_early_data.py
+    what: stand_means and run_stands put the means on the AlphaEarth stands in ui_data
   papers: []
   status: adopted
   design_notes_section: null
