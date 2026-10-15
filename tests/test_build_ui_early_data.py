@@ -301,3 +301,22 @@ def test_a_box_kept_land_run_is_added_on_its_box_runs_area(builder, tmp_path, mo
                      "vec": kept, "keptland": True, "pixels_from": None}
     # The other three districts and the two Sanjay Van runs have no files here.
     assert len(notes) == 5 and all("no committed files" in n for n in notes)
+
+
+def test_the_committed_ui_data_shows_the_box_kept_land_runs_plots_without_a_stand():
+    data = SCRIPTS.parent / "ui_data"
+    index = json.loads((data / "index.json").read_text())
+    runs = [r for r in index["runs"] if r.get("kept_land") and r["roi"] == "boxes"]
+    assert sorted(r["run_id"] for r in runs) == sorted(
+        f"odisha_v120_3ha_squares_{d}_keptland" for d in ("angul", "dhenkanal", "kendujhar", "koraput"))
+    for r in runs:
+        assert r["fes_declared"] is False and "plots_with_stand" not in r["facts"]
+        (step,) = [s for s in r["steps"] if s["step"] == "fes_plots"]
+        assert not {"stand_id", "stand_type"} & set(step["layers"][0]["popup_fields"])
+        plots = json.loads((data / "by_run" / r["run_id"] / "plots.geojson").read_text())["features"]
+        assert plots and not any({"stand_id", "stand_type"} & f["properties"].keys() for f in plots)
+        stands = json.loads((data / "by_run" / r["run_id"] / "stands.json").read_text())["features"]
+        assert all(isinstance(f["properties"]["below_min"], bool) for f in stands)
+        # Capped at 10 km: a mean of 10 km reads "over 10 km"; one just under may round to 10000.
+        far = [f["properties"]["distance_to_water"] for f in stands]
+        assert all(v == "over 10 km" or v <= 10_000 for v in far)
