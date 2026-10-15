@@ -86,6 +86,7 @@ _OMITTED_AT_DEFAULT: dict[tuple[str, str], Any] = {
     ("segmentation", "mask_before_snic"): False,
     ("segmentation", "drop_kept_patches_below_min_area"): False,
     ("clustering", "fit_excludes_stands_below_min_area"): False,
+    ("features_static", "cap_distance_to_water"): False,
 }
 
 

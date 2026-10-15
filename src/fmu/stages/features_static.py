@@ -8,7 +8,13 @@ Bands (with default config):
 - elevation: meters above sea level (NASADEM)
 - slope: degrees (derived from elevation)
 - aspect: degrees 0-360, cyclic (derived from elevation)
-- distance_to_water: meters to nearest water pixel from masking's water_mask
+- distance_to_water: meters to nearest water pixel from masking's water_mask,
+  looked for within features_static.max_water_distance_pixels (10 km by
+  default). Off the axes the search reaches a little past 10 km (real
+  distances up to 12.3 km in the Odisha box runs); where it finds no water,
+  the transform returns a fill value (463,409.5 m at 10 m). With
+  features_static.cap_distance_to_water on, every distance past the cap, the
+  fill value and those real ones, reads as the cap.
 - annual_rainfall: mm/year, 30-year mean from CHIRPS climatology
 
 Per DEC-014, computed over the full ROI; the habitat mask applies at
@@ -97,8 +103,16 @@ class FeaturesStaticStage(Stage):
             water_mask.fastDistanceTransform(max_dist_pix, "pixels", "squared_euclidean")
             .sqrt()
             .multiply(config.export.analysis_scale_m)
-            .rename("distance_to_water")
         )
+        if params.cap_distance_to_water:
+            # Where the neighbourhood holds no water the transform returns its
+            # fill value, sqrt(2^31 - 1) pixels, not a distance, and off the
+            # axes it reaches a little past max_dist_pix: cap at max_dist_pix
+            # (spec-static-cap-distance-to-water).
+            distance_to_water = distance_to_water.min(
+                max_dist_pix * config.export.analysis_scale_m
+            )
+        distance_to_water = distance_to_water.rename("distance_to_water")
 
         output_bands: list[ee.Image] = [elevation, slope, aspect, distance_to_water]
 
@@ -136,6 +150,10 @@ class FeaturesStaticStage(Stage):
                 ),
                 "include_climate": params.include_climate,
                 "max_water_distance_pixels": params.max_water_distance_pixels,
+                # Whether distance_to_water is capped there (on) or holds what
+                # the transform returns, its fill value included (off, every
+                # earlier run).
+                "cap_distance_to_water": params.cap_distance_to_water,
                 "output_bands": band_names,
             },
         )

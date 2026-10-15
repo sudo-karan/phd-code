@@ -1,0 +1,2339 @@
+{
+ "config_name": "odisha_v120_3ha_squares_angul_keptland",
+ "use_cache": true,
+ "submit_exports": true,
+ "summaries": true,
+ "git": {
+  "commit": "d180cb82f3fb0280eb9a55934d0daa46a27815a9",
+  "dirty": false,
+  "modified": [],
+  "modified_truncated": false,
+  "untracked": [
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_kendujhar_keptland_raster_at_plots.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_kendujhar_keptland_run.json",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_kendujhar_keptland_stands_dissolved.geojson",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_kendujhar_keptland_stands_merged.geojson",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_kendujhar_keptland_stands_snic.geojson"
+  ],
+  "untracked_truncated": false,
+  "root": "/Users/karan/Desktop/phd-code/outputs/keptland_runs_odisha/run_tree",
+  "error": null
+ },
+ "stages": [
+  {
+   "name": "masking",
+   "produced": [
+    "habitat_mask",
+    "landcover_summary",
+    "mask_provenance",
+    "water_mask"
+   ],
+   "warnings": [],
+   "metadata": {
+    "source": "cache"
+   },
+   "cache_status": {
+    "habitat_mask": "hit",
+    "landcover_summary": "hit",
+    "mask_provenance": "hit",
+    "water_mask": "hit"
+   },
+   "export_tasks": [],
+   "transparency": {
+    "display_layers": [
+     {
+      "key": "mask_provenance",
+      "band": "reason",
+      "title": "Habitat mask, by reason",
+      "description": "What the mask kept, and why it removed the rest: cropland, built-up, water or other non-habitat. Under IndiaSAT a pixel is kept or removed by a majority vote over its usable years, and a removed pixel is given the reason of its most recent non-habitat year. Other non-habitat is every remaining class: in IndiaSAT, barren land and orchard/plantation; in WorldCover, bare or sparse vegetation, snow and ice, herbaceous wetland, mangroves, and moss and lichen.",
+      "vis": {
+       "bands": [
+        "reason"
+       ],
+       "min": 0,
+       "max": 5,
+       "palette": [
+        "000000",
+        "1a9850",
+        "fdae61",
+        "d73027",
+        "4575b4",
+        "9e9e9e"
+       ]
+      },
+      "legend": [
+       {
+        "value": 0,
+        "label": "No land-cover data in either map (not habitat)",
+        "color": "000000"
+       },
+       {
+        "value": 1,
+        "label": "Kept as habitat (not only forest)",
+        "color": "1a9850"
+       },
+       {
+        "value": 2,
+        "label": "Removed: cropland",
+        "color": "fdae61"
+       },
+       {
+        "value": 3,
+        "label": "Removed: built-up",
+        "color": "d73027"
+       },
+       {
+        "value": 4,
+        "label": "Removed: water",
+        "color": "4575b4"
+       },
+       {
+        "value": 5,
+        "label": "Removed: other non-habitat",
+        "color": "9e9e9e"
+       }
+      ],
+      "legend_note": "This is a habitat mask, not a strict forest mask. By default it keeps IndiaSAT Trees and Shrubs/Scrub, and WorldCover tree cover, shrubland and grassland where IndiaSAT has no data; the classes a run kept are listed in its masking summary (kept_classes). The definition and the reasoning behind it are in docs/design_notes.md, section \"Masking: IndiaSAT-primary, single-phase habitat\".",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland/masking/mask_provenance__fd08561492",
+      "asset_status": "hit"
+     },
+     {
+      "key": "mask_provenance",
+      "band": "source",
+      "title": "Which map decided each pixel",
+      "description": "IndiaSAT decides wherever it has at least one usable year; WorldCover decides only where IndiaSAT has no data.",
+      "vis": {
+       "bands": [
+        "source"
+       ],
+       "min": 0,
+       "max": 2,
+       "palette": [
+        "000000",
+        "7570b3",
+        "e7298a"
+       ]
+      },
+      "legend": [
+       {
+        "value": 0,
+        "label": "Neither map has data",
+        "color": "000000"
+       },
+       {
+        "value": 1,
+        "label": "IndiaSAT decided",
+        "color": "7570b3"
+       },
+       {
+        "value": 2,
+        "label": "WorldCover decided (IndiaSAT has no data)",
+        "color": "e7298a"
+       }
+      ],
+      "legend_note": "",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland/masking/mask_provenance__fd08561492",
+      "asset_status": "hit"
+     }
+    ],
+    "summary_numbers": [
+     {
+      "name": "area_ha",
+      "description": "Area of the ROI the mask was tabulated over",
+      "unit": "ha",
+      "value": 601.9709
+     },
+     {
+      "name": "share_kept",
+      "description": "Share of that area kept as habitat",
+      "unit": "fraction",
+      "value": 0.67371
+     },
+     {
+      "name": "share_by_reason",
+      "description": "Share of the area under each reason: kept, removed as cropland, as built-up, as water, as other non-habitat, or no land-cover data. Adds up to 1",
+      "unit": "fraction",
+      "value": {
+       "no_data": 0.0,
+       "kept": 0.67371,
+       "cropland": 0.320242,
+       "built_up": 0.004244,
+       "water": 0.000464,
+       "other_non_habitat": 0.00134
+      }
+     },
+     {
+      "name": "share_kept_by_source",
+      "description": "Share of the whole area that was kept as habitat, split by the map that decided it. Adds up to share_kept",
+      "unit": "fraction",
+      "value": {
+       "none": 0.0,
+       "indiasat": 0.67371,
+       "worldcover": 0.0
+      }
+     },
+     {
+      "name": "share_decided_by_source",
+      "description": "Share of the area each map decided, kept or removed. Adds up to 1",
+      "unit": "fraction",
+      "value": {
+       "none": 0.0,
+       "indiasat": 1.0,
+       "worldcover": 0.0
+      }
+     },
+     {
+      "name": "area_ha_by_reason_and_source",
+      "description": "Area under each reason, split by the map that decided it",
+      "unit": "ha",
+      "value": {
+       "no_data": {
+        "none": 0.0,
+        "indiasat": 0.0,
+        "worldcover": 0.0
+       },
+       "kept": {
+        "none": 0.0,
+        "indiasat": 405.5536,
+        "worldcover": 0.0
+       },
+       "cropland": {
+        "none": 0.0,
+        "indiasat": 192.7764,
+        "worldcover": 0.0
+       },
+       "built_up": {
+        "none": 0.0,
+        "indiasat": 2.555,
+        "worldcover": 0.0
+       },
+       "water": {
+        "none": 0.0,
+        "indiasat": 0.279,
+        "worldcover": 0.0
+       },
+       "other_non_habitat": {
+        "none": 0.0,
+        "indiasat": 0.8068,
+        "worldcover": 0.0
+       }
+      }
+     },
+     {
+      "name": "area_ha_reason_disagrees_with_habitat_mask",
+      "description": "Area where the reason layer says kept and habitat_mask does not, or the reverse. Zero when both come from the same inputs; anything else means the cached habitat_mask predates a change in a land-cover input",
+      "unit": "ha",
+      "value": 0.0
+     },
+     {
+      "name": "kept_classes",
+      "description": "Land-cover classes this run kept as habitat, from the config: IndiaSAT classes, and the WorldCover classes used where IndiaSAT has no data",
+      "unit": "class code",
+      "value": {
+       "indiasat": [
+        6,
+        12
+       ],
+       "worldcover": [
+        10,
+        20,
+        30
+       ]
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "data_load",
+   "produced": [
+    "s1_collection",
+    "s2_collection",
+    "s2_composite"
+   ],
+   "warnings": [],
+   "metadata": {
+    "s2_dataset": "COPERNICUS/S2_SR_HARMONIZED",
+    "s1_dataset": "COPERNICUS/S1_GRD",
+    "s2_phenology_window": "2017-01-01 to 2022-12-31",
+    "s1_radar_window": "2017-01-01 to 2022-12-31",
+    "s2_composite_window": "2017-01-01 to 2022-12-31",
+    "s1_orbit": "ASCENDING",
+    "s1_polarizations": [
+     "VV",
+     "VH"
+    ],
+    "s1_instrument_mode": "IW",
+    "s2_composite_reducer": "median",
+    "cloud_max_pct": 20.0,
+    "scl_drop_classes": [
+     3,
+     8,
+     9,
+     10
+    ]
+   },
+   "cache_status": {
+    "s2_composite": "hit"
+   },
+   "export_tasks": [],
+   "transparency": {
+    "display_layers": [
+     {
+      "key": "s2_composite",
+      "band": "B4_median",
+      "title": "True colour (Sentinel-2 composite)",
+      "description": "The cloud-masked Sentinel-2 composite over the optical_composite window, drawn as red, green and blue: the ground as a camera would show it. With the default hand-crafted bands, segmentation reads its red and near-infrared bands from this same image, so this is then part of what the superpixels were drawn on, not a separate picture; a run that segments on the embedding does not read it. The band names are those of the default median composite; a config with another s2_composite_reducer writes other names.",
+      "vis": {
+       "bands": [
+        "B4_median",
+        "B3_median",
+        "B2_median"
+       ],
+       "min": 0,
+       "max": 3000
+      },
+      "legend": [],
+      "legend_note": "",
+      "bands": [
+       "B4_median",
+       "B3_median",
+       "B2_median"
+      ],
+      "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland/data_load/s2_composite__fd08561492",
+      "asset_status": "hit"
+     }
+    ],
+    "summary_numbers": []
+   }
+  },
+  {
+   "name": "features_optical",
+   "produced": [
+    "optical_features"
+   ],
+   "warnings": [],
+   "metadata": {
+    "source": "cache"
+   },
+   "cache_status": {
+    "optical_features": "hit"
+   },
+   "export_tasks": [],
+   "transparency": {
+    "display_layers": [
+     {
+      "key": "optical_features",
+      "band": "ndvi_amplitude_annual",
+      "title": "Seasonal swing in greenness (NDVI annual amplitude)",
+      "description": "How far greenness rises and falls over a year: the amplitude of the annual cycle fitted to every cloud-free Sentinel-2 NDVI observation in the phenology window. It has no unit. Low values are vegetation that stays the same all year (evergreen cover, or bare ground); high values are vegetation that greens up and dries out (deciduous trees, grass, crops). It is one of the bands the superpixels are drawn on by default and one of the two the merge compares by default; a config can name other merge criteria. The band name is that of the default NDVI index; a config on the NIRv index writes nirv_amplitude_annual in its place.",
+      "vis": {
+       "bands": [
+        "ndvi_amplitude_annual"
+       ],
+       "min": 0,
+       "max": 0.4,
+       "palette": [
+        "fff7ec",
+        "fdd49e",
+        "fc8d59",
+        "d7301f",
+        "7f0000"
+       ]
+      },
+      "legend": [],
+      "legend_note": "",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland/features_optical/optical_features__fd08561492",
+      "asset_status": "hit"
+     }
+    ],
+    "summary_numbers": []
+   }
+  },
+  {
+   "name": "features_radar",
+   "produced": [
+    "radar_features"
+   ],
+   "warnings": [],
+   "metadata": {
+    "source": "cache"
+   },
+   "cache_status": {
+    "radar_features": "hit"
+   },
+   "export_tasks": [],
+   "transparency": {
+    "display_layers": [
+     {
+      "key": "radar_features",
+      "band": "vv_minus_vh_median",
+      "title": "Radar contrast between polarisations (VV minus VH), dB",
+      "description": "The median Sentinel-1 backscatter in VV minus the median in VH, in decibels, over the radar window. A difference in decibels is the ratio of the two signals. It comes from radar alone, so it does not depend on cloud or on the optical bands, and it is one of the bands the superpixels are drawn on by default. Read it as a second, independent view of surface structure, not as a measure of any one forest property.",
+      "vis": {
+       "bands": [
+        "vv_minus_vh_median"
+       ],
+       "min": 3,
+       "max": 12,
+       "palette": [
+        "f7fbff",
+        "c6dbef",
+        "6baed6",
+        "2171b5",
+        "08306b"
+       ]
+      },
+      "legend": [],
+      "legend_note": "",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland/features_radar/radar_features__fd08561492",
+      "asset_status": "hit"
+     }
+    ],
+    "summary_numbers": []
+   }
+  },
+  {
+   "name": "features_structure",
+   "produced": [
+    "structure_features"
+   ],
+   "warnings": [],
+   "metadata": {
+    "source": "cache"
+   },
+   "cache_status": {
+    "structure_features": "hit"
+   },
+   "export_tasks": [],
+   "transparency": {
+    "display_layers": [
+     {
+      "key": "structure_features",
+      "band": "canopy_height",
+      "title": "Canopy height (ETH 2020), m",
+      "description": "Height of the top of the canopy in metres, from the ETH Global Canopy Height map for 2020 at 10 m. It is a single snapshot, the same in every run. It is one of the bands the superpixels are drawn on by default and one of the two the merge compares by default; a config can name other merge criteria.",
+      "vis": {
+       "bands": [
+        "canopy_height"
+       ],
+       "min": 0,
+       "max": 30,
+       "palette": [
+        "f7fcf5",
+        "c7e9c0",
+        "74c476",
+        "238b45",
+        "00441b"
+       ]
+      },
+      "legend": [],
+      "legend_note": "This is a modelled map, not a field measurement. docs/datasets.md, section 'ETH Global Canopy Height 2020', records a field validation of this product; read differences of a few metres with that in mind.",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland/features_structure/structure_features__fd08561492",
+      "asset_status": "hit"
+     },
+     {
+      "key": "structure_features",
+      "band": "canopy_height_std",
+      "title": "Local spread of canopy height, m",
+      "description": "The standard deviation of ETH 2020 canopy height in a small window around each pixel (3 by 3 pixels by default), in metres. Low where neighbouring pixels have the same height, high at edges and gaps. It is shown because some configurations segment on it and some use it as a merge criterion; it is in neither the default segmentation bands nor the default merge criteria.",
+      "vis": {
+       "bands": [
+        "canopy_height_std"
+       ],
+       "min": 0,
+       "max": 3,
+       "palette": [
+        "fcfbfd",
+        "dadaeb",
+        "9e9ac8",
+        "6a51a3",
+        "3f007d"
+       ]
+      },
+      "legend": [],
+      "legend_note": "",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland/features_structure/structure_features__fd08561492",
+      "asset_status": "hit"
+     }
+    ],
+    "summary_numbers": []
+   }
+  },
+  {
+   "name": "features_static",
+   "produced": [
+    "static_features"
+   ],
+   "warnings": [],
+   "metadata": {
+    "source": "cache"
+   },
+   "cache_status": {
+    "static_features": "hit"
+   },
+   "export_tasks": [],
+   "transparency": {
+    "display_layers": [
+     {
+      "key": "static_features",
+      "band": "elevation",
+      "title": "Elevation (NASADEM), m",
+      "description": "Height of the ground above sea level in metres, from NASADEM at 30 m. It does not change between runs. It is one of the features the stands are typed on in the hand-crafted arm, and by default it is not used to draw the superpixels. The colour scale is wide enough for lowland and plateau sites at once, so a small area can look almost flat on it; that is the scale, not the ground.",
+      "vis": {
+       "bands": [
+        "elevation"
+       ],
+       "min": 0,
+       "max": 1500,
+       "palette": [
+        "440154",
+        "3b528b",
+        "21918c",
+        "5ec962",
+        "fde725"
+       ]
+      },
+      "legend": [],
+      "legend_note": "",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland/features_static/static_features__fd08561492",
+      "asset_status": "hit"
+     }
+    ],
+    "summary_numbers": []
+   }
+  },
+  {
+   "name": "segmentation",
+   "produced": [
+    "snic_clusters",
+    "snic_means"
+   ],
+   "warnings": [],
+   "metadata": {
+    "source": "cache"
+   },
+   "cache_status": {
+    "snic_clusters": "hit",
+    "snic_means": "hit"
+   },
+   "export_tasks": [],
+   "transparency": {
+    "display_layers": [
+     {
+      "key": "snic_clusters",
+      "band": "snic_clusters",
+      "title": "Superpixels (outlines)",
+      "description": "The boundaries of the SNIC superpixels: small patches of similar pixels, grown from a regular grid of seeds on the bands named in segmentation.input_bands. By default they cover the whole area. With segmentation.mask_before_snic on they cover only the land the masking step keeps, and a patch of kept land that no seed of the grid falls in is one superpixel. They are the pieces the merge step joins into stands, so every stand boundary runs along one of these lines. The superpixels are not stands, and their numbers mean nothing.",
+      "vis": {
+       "bands": [
+        "snic_clusters"
+       ],
+       "style": "outline",
+       "palette": [
+        "ffd400"
+       ]
+      },
+      "legend": [],
+      "legend_note": "",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland/segmentation/snic_clusters__fd08561492",
+      "asset_status": "hit"
+     }
+    ],
+    "summary_numbers": []
+   }
+  },
+  {
+   "name": "merge",
+   "produced": [
+    "merge_diagnostics",
+    "merge_provenance",
+    "stand_attributes",
+    "stand_clusters",
+    "stand_provenance"
+   ],
+   "warnings": [
+    "0.0224 ha of kept land has no superpixel, so it is in no stand. The seeds of fmu.utils.kept_land should reach every kept patch; one they miss is a strip too long for the patch search and narrower than the seed spacing, or a tile edge SNIC did not see across. A little of this, together with the other number, is expected when SNIC ran on the mask as computed live and this pass reads the cached copy.",
+    "2 stand(s) stayed below min_area_ha (1.0 ha) because every neighbour is already too big to absorb them under max_area_ha + min_area_ha (4.0 ha), the ceiling merge.pass2_soft_ceiling sets for a stand below the minimum. That is a signal max_area_ha is too tight, not that the forest is heterogeneous.",
+    "26 stand(s) are over max_area_ha (3.0 ha), by up to 1.0 ha. merge.pass2_soft_ceiling allows it: in the second pass a stand below min_area_ha may join a neighbour up to max_area_ha + min_area_ha (4.0 ha).",
+    "54 stand(s) have no 4-connected neighbour at all and cannot be merged with anything.",
+    "2 stand(s) have at least one criterion valid on under 50% of their pixels; those bands are reported as null rather than as a mean over territory that has no data.",
+    "38 of 182 pass-2 merges used the shared-edge fallback, i.e. no relaxed criterion could justify them. These are the merges to look at first if stand geometry looks wrong."
+   ],
+   "metadata": {
+    "criteria": [
+     {
+      "source": "structure_features",
+      "band": "canopy_height",
+      "tolerance": 2.0
+     },
+     {
+      "source": "structure_features",
+      "band": "canopy_height_std",
+      "tolerance": 0.45
+     },
+     {
+      "source": "optical_features",
+      "band": "ndvi_amplitude_annual",
+      "tolerance": 0.03
+     }
+    ],
+    "relax_factor": 1.75,
+    "min_area_ha": 1.0,
+    "max_area_ha": 3.0,
+    "min_defined_criteria": 2,
+    "min_frac_valid": 0.5,
+    "pass2_skip_at_min_area": true,
+    "pass2_soft_ceiling": true,
+    "mask_before_snic": true,
+    "adjacency": {
+     "n_regions": 1202,
+     "n_edges": 2763,
+     "mean_degree": 4.597,
+     "n_isolated": 51
+    },
+    "threshold_calibration": {
+     "n_pairs": 2763,
+     "per_band": {
+      "canopy_height": {
+       "threshold": 2.0,
+       "n_pairs_defined": 2763,
+       "percentile_of_threshold": 88.85,
+       "p25": 0.340792,
+       "p50": 0.741667,
+       "p75": 1.375817,
+       "p90": 2.086957
+      },
+      "canopy_height_std": {
+       "threshold": 0.45,
+       "n_pairs_defined": 2763,
+       "percentile_of_threshold": 88.53,
+       "p25": 0.079017,
+       "p50": 0.177389,
+       "p75": 0.326533,
+       "p90": 0.464228
+      },
+      "ndvi_amplitude_annual": {
+       "threshold": 0.03,
+       "n_pairs_defined": 2761,
+       "percentile_of_threshold": 75.59,
+       "p25": 0.007923,
+       "p50": 0.01692,
+       "p75": 0.02956,
+       "p90": 0.043174
+      }
+     },
+     "joint_admit_rate_pct": 60.19,
+     "n_pairs_with_any_defined_criterion": 2763
+    },
+    "n_superpixels": 1202,
+    "n_stands": 224,
+    "reduction_factor": 5.366,
+    "pass1_rounds": 6,
+    "pass1_merges": 796,
+    "pass1_pairs_blocked_by_area_round1": 0,
+    "pass1_pairs_blocked_by_undefined_criteria_round1": 0,
+    "pass2_iterations": 3,
+    "pass2_merges": 182,
+    "pass2_fallback_merges": 38,
+    "stands_below_min_area": 56,
+    "area_in_undersized_stands_ha": 6.49,
+    "orphans_isolated": 54,
+    "orphans_area_blocked": 2,
+    "orphans_no_attribute_match": 0,
+    "stands_with_incomplete_criteria": 2,
+    "pass2_relaxed_merges_over_max_area": 32,
+    "pass2_fallback_merges_over_max_area": 2,
+    "stands_over_max_area": 26,
+    "stands_over_max_area_never_merged": 0,
+    "excess_over_max_area_total_ha": 9.29,
+    "excess_over_max_area_largest_ha": 1.0,
+    "excess_over_max_area_each_ha": [
+     1.0,
+     0.81,
+     0.77,
+     0.72,
+     0.7,
+     0.67,
+     0.61,
+     0.6,
+     0.58,
+     0.41,
+     0.32,
+     0.25,
+     0.24,
+     0.24,
+     0.22,
+     0.2,
+     0.18,
+     0.17,
+     0.17,
+     0.12,
+     0.11,
+     0.06,
+     0.05,
+     0.04,
+     0.03,
+     0.02
+    ]
+   },
+   "cache_status": {},
+   "export_tasks": [],
+   "transparency": {
+    "display_layers": [
+     {
+      "key": "merge_provenance",
+      "band": "merge_kind",
+      "title": "How each stand was put together",
+      "description": "Each stand, coloured by the weakest kind of merge it contains. It shows where the stand boundaries rest on the merge criteria and where they rest only on the rule that no stand may stay below the minimum size.",
+      "vis": {
+       "bands": [
+        "merge_kind"
+       ],
+       "min": 0,
+       "max": 3,
+       "palette": [
+        "bdbdbd",
+        "1a9850",
+        "fdae61",
+        "d73027"
+       ]
+      },
+      "legend": [
+       {
+        "value": 0,
+        "label": "A single superpixel: it merged with nothing",
+        "color": "bdbdbd"
+       },
+       {
+        "value": 1,
+        "label": "Built by first-pass merges only: every merge passed every criterion at its configured tolerance",
+        "color": "1a9850"
+       },
+       {
+        "value": 2,
+        "label": "Contains a relaxed second-pass merge: a merge the second pass made under tolerances loosened by the relax factor",
+        "color": "fdae61"
+       },
+       {
+        "value": 3,
+        "label": "Contains a shared-edge fallback merge: a merge the second pass made with the neighbour sharing the longest edge, which no criterion justified",
+        "color": "d73027"
+       }
+      ],
+      "legend_note": "A stand is coloured by the weakest merge inside it, so one fallback merge colours the whole stand red however many well-justified merges it also contains. A fallback merge is one that no merge criterion justified, even relaxed: the second pass, which exists so that no stand stays below the minimum size, joined the two on the length of their shared edge only. Unless merge.pass2_skip_at_min_area is true, a second-pass merge does not always add a piece that was below the minimum size at that moment: each sweep lists the undersized pieces once, and a piece that reaches the minimum earlier in a sweep still takes its turn in that sweep. With the setting on, such a piece is skipped. The exact counts per stand are in stand_provenance and on the exported stands_merged layer (n_pass1, n_relaxed, n_fallback).",
+      "asset": null,
+      "asset_status": null
+     }
+    ],
+    "summary_numbers": [
+     {
+      "name": "superpixels_in",
+      "description": "SNIC superpixels the merge started from",
+      "unit": "count",
+      "value": 1202
+     },
+     {
+      "name": "stands_out",
+      "description": "Stands left after both passes",
+      "unit": "count",
+      "value": 224
+     },
+     {
+      "name": "merges_first_pass",
+      "description": "Merges made in the first pass: neighbours that pass every merge criterion at its configured tolerance",
+      "unit": "count",
+      "value": 796
+     },
+     {
+      "name": "merges_second_pass_relaxed",
+      "description": "Merges made in the second pass, which absorbs regions below the minimum size, where a neighbour passed the relaxed tolerances",
+      "unit": "count",
+      "value": 144
+     },
+     {
+      "name": "merges_second_pass_shared_edge_fallback",
+      "description": "Merges made in the second pass by the fallback: no neighbour passed even the relaxed tolerances, so the region joined the neighbour it shares the longest edge with",
+      "unit": "count",
+      "value": 38
+     },
+     {
+      "name": "stands_below_min_area",
+      "description": "Stands still below the minimum size after both passes",
+      "unit": "count",
+      "value": 56
+     },
+     {
+      "name": "stands_below_min_area_by_cause",
+      "description": "Why those stands stayed small. isolated: it touches no other stand. area_blocked: every neighbour is already too big to take it under the ceiling that applies to it: the maximum size, or the maximum plus the minimum with merge.pass2_soft_ceiling on. iteration_cap: it still had a neighbour it could have joined when the second pass ran out of iterations",
+      "unit": "count",
+      "value": {
+       "isolated": 54,
+       "area_blocked": 2,
+       "iteration_cap": 0
+      }
+     },
+     {
+      "name": "area_ha_in_stands_below_min_area",
+      "description": "Area in those stands",
+      "unit": "ha",
+      "value": 6.49
+     }
+    ]
+   }
+  },
+  {
+   "name": "clustering",
+   "produced": [
+    "cluster_labels",
+    "feature_stack"
+   ],
+   "warnings": [],
+   "metadata": {
+    "source": "cache"
+   },
+   "cache_status": {
+    "cluster_labels": "hit",
+    "feature_stack": "hit"
+   },
+   "export_tasks": [],
+   "transparency": {
+    "display_layers": [
+     {
+      "key": "cluster_labels",
+      "band": "cluster_id",
+      "title": "Stand types",
+      "description": "Each stand, coloured by the type k-means gave it. The stands are grouped by their mean features (the hand-crafted bands, or the embedding) into k types, so stands of one colour are similar in those features. A type is a group the data fell into, not a forest class anyone named: what a type is has to be read from its profile, and whether it matches the field from the comparison with the field plots.",
+      "vis": {
+       "bands": [
+        "cluster_id"
+       ],
+       "min": 0,
+       "max": 9,
+       "palette": [
+        "E69F00",
+        "56B4E9",
+        "009E73",
+        "F0E442",
+        "0072B2",
+        "D55E00",
+        "CC79A7",
+        "999999",
+        "882255",
+        "44AA99"
+       ]
+      },
+      "legend": [
+       {
+        "value": 0,
+        "label": "Stand type 0",
+        "color": "E69F00"
+       },
+       {
+        "value": 1,
+        "label": "Stand type 1",
+        "color": "56B4E9"
+       },
+       {
+        "value": 2,
+        "label": "Stand type 2",
+        "color": "009E73"
+       },
+       {
+        "value": 3,
+        "label": "Stand type 3",
+        "color": "F0E442"
+       },
+       {
+        "value": 4,
+        "label": "Stand type 4",
+        "color": "0072B2"
+       },
+       {
+        "value": 5,
+        "label": "Stand type 5",
+        "color": "D55E00"
+       },
+       {
+        "value": 6,
+        "label": "Stand type 6",
+        "color": "CC79A7"
+       },
+       {
+        "value": 7,
+        "label": "Stand type 7",
+        "color": "999999"
+       },
+       {
+        "value": 8,
+        "label": "Stand type 8",
+        "color": "882255"
+       },
+       {
+        "value": 9,
+        "label": "Stand type 9",
+        "color": "44AA99"
+       }
+      ],
+      "legend_note": "A run uses the first k of these types, where k is clustering.k in its config; the rest do not occur. Type numbers are fitted afresh in every run and mean nothing across runs: type 2 of one run is not type 2 of another, and the same colour in two runs is a coincidence. Pixels outside the habitat mask are left blank, so a stand wholly outside it has no type; nor has a stand with no data in one of the feature bands.",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland/clustering/cluster_labels__fd08561492",
+      "asset_status": "hit"
+     }
+    ],
+    "summary_numbers": [
+     {
+      "name": "k",
+      "description": "Number of stand types the run fitted",
+      "unit": "count",
+      "value": 5
+     },
+     {
+      "name": "units_total",
+      "description": "Distinct unit labels in the ROI on the analysis grid, as the fit saw them. A unit is a stand, or a superpixel in a run without merge. This is not the number of polygons in the exported stand layer, which can differ from it by a few",
+      "unit": "count",
+      "value": 224
+     },
+     {
+      "name": "units_in_habitat",
+      "description": "Distinct unit labels with at least one pixel inside the habitat mask on the analysis grid; the fit takes no row from the rest. The exported stand layer can hold more stands with a type than this count",
+      "unit": "count",
+      "value": 224
+     },
+     {
+      "name": "units_fitted",
+      "description": "Units the k-means fit was trained on, one row each",
+      "unit": "count",
+      "value": 168
+     },
+     {
+      "name": "units_dropped_missing_band",
+      "description": "Units inside the habitat mask that the fit left out because a feature band has no data over them. They have no type on the map: holes, not mistyped stands",
+      "unit": "count",
+      "value": 1
+     },
+     {
+      "name": "units_left_out_of_fit",
+      "description": "Stands below merge.min_area_ha that the fit left out, with clustering.fit_excludes_stands_below_min_area on; 0 with it off. They are on the map, typed by the nearest fitted cluster. With the setting on, units_in_habitat is units_fitted plus units_dropped_missing_band plus these, and the stage's log warns when its samples do not add up to that",
+      "unit": "count",
+      "value": 55
+     }
+    ]
+   }
+  },
+  {
+   "name": "profiling",
+   "produced": [
+    "cluster_profiles"
+   ],
+   "warnings": [],
+   "metadata": {
+    "k": 5,
+    "n_feature_bands": 24,
+    "feature_bands": [
+     "ndvi_mean",
+     "ndvi_amplitude_annual",
+     "ndvi_trend",
+     "ndvi_residual_variance",
+     "vv_p10",
+     "vh_p10",
+     "vv_p50",
+     "vh_p50",
+     "vv_p90",
+     "vh_p90",
+     "vv_iqr",
+     "vh_iqr",
+     "vv_minus_vh_median",
+     "canopy_height",
+     "canopy_height_std",
+     "canopy_height_max",
+     "elevation",
+     "slope",
+     "distance_to_water",
+     "annual_rainfall",
+     "ndvi_phase_annual_sin",
+     "ndvi_phase_annual_cos",
+     "aspect_sin",
+     "aspect_cos"
+    ],
+    "cyclic_decomposed": [
+     "ndvi_phase_annual",
+     "aspect"
+    ],
+    "profiles": [
+     {
+      "cluster_id": 0,
+      "pixel_count": 5892,
+      "area_ha": 58.92,
+      "annual_rainfall_mean": 1356.7963556920024,
+      "annual_rainfall_p25": 1349.2374738878182,
+      "annual_rainfall_p50": 1349.2374738878182,
+      "annual_rainfall_p75": 1349.2374738878182,
+      "aspect_cos_mean": 0.6029293302838373,
+      "aspect_cos_p25": 0.46947156278589086,
+      "aspect_cos_p50": 0.7705322909577403,
+      "aspect_cos_p75": 0.9135153719193893,
+      "aspect_sin_mean": 0.4419556903736182,
+      "aspect_sin_p25": 0.22495105434386517,
+      "aspect_sin_p50": 0.5591929034707466,
+      "aspect_sin_p75": 0.8023658556999624,
+      "canopy_height_max_mean": 22.264547041592845,
+      "canopy_height_max_p25": 21,
+      "canopy_height_max_p50": 21.99999999999999,
+      "canopy_height_max_p75": 24,
+      "canopy_height_mean": 21.673300033736954,
+      "canopy_height_p25": 20,
+      "canopy_height_p50": 21.999999999999986,
+      "canopy_height_p75": 22.999999999999996,
+      "canopy_height_std_mean": 0.46963435399355363,
+      "canopy_height_std_p25": 0.3142696805273207,
+      "canopy_height_std_p50": 0.47140452079103906,
+      "canopy_height_std_p75": 0.566557723732514,
+      "distance_to_water_mean": 10000,
+      "distance_to_water_p25": 10000,
+      "distance_to_water_p50": 10000,
+      "distance_to_water_p75": 10000,
+      "elevation_mean": 342.75234685845004,
+      "elevation_p25": 314.5713356108671,
+      "elevation_p50": 336.50694444444446,
+      "elevation_p75": 366.3898305084746,
+      "ndvi_amplitude_annual_mean": 0.13716993519438242,
+      "ndvi_amplitude_annual_p25": 0.11571793413157937,
+      "ndvi_amplitude_annual_p50": 0.13624895797304742,
+      "ndvi_amplitude_annual_p75": 0.15862168647900607,
+      "ndvi_mean_mean": 0.6944584094032316,
+      "ndvi_mean_p25": 0.674843435804533,
+      "ndvi_mean_p50": 0.696279230968975,
+      "ndvi_mean_p75": 0.7178343290586193,
+      "ndvi_phase_annual_cos_mean": -0.93064646237484,
+      "ndvi_phase_annual_cos_p25": -0.9807207099519493,
+      "ndvi_phase_annual_cos_p50": -0.9491475995310029,
+      "ndvi_phase_annual_cos_p75": -0.8944284129083868,
+      "ndvi_phase_annual_sin_mean": 0.2966616956553186,
+      "ndvi_phase_annual_sin_p25": 0.16810414351552028,
+      "ndvi_phase_annual_sin_p50": 0.3167272805632392,
+      "ndvi_phase_annual_sin_p75": 0.44154702943057283,
+      "ndvi_residual_variance_mean": 0.010907730047357098,
+      "ndvi_residual_variance_p25": 0.00958199661285734,
+      "ndvi_residual_variance_p50": 0.010922858429880293,
+      "ndvi_residual_variance_p75": 0.012266078726772383,
+      "ndvi_trend_mean": -0.00012450435119285225,
+      "ndvi_trend_p25": -0.0026829231058983624,
+      "ndvi_trend_p50": 0.0007420739888039282,
+      "ndvi_trend_p75": 0.003650926333891972,
+      "slope_mean": 16.68578537423896,
+      "slope_p25": 11,
+      "slope_p50": 16,
+      "slope_p75": 22,
+      "vh_iqr_mean": 3.481975590014411,
+      "vh_iqr_p25": 2.0312153853894794,
+      "vh_iqr_p50": 3.2824058136891683,
+      "vh_iqr_p75": 4.654339105124681,
+      "vh_p10_mean": -17.402088801133264,
+      "vh_p10_p25": -18.938562250495817,
+      "vh_p10_p50": -17.31257539195936,
+      "vh_p10_p75": -15.815638237769955,
+      "vh_p50_mean": -15.528856362175048,
+      "vh_p50_p25": -16.936049558470327,
+      "vh_p50_p50": -15.562490616815701,
+      "vh_p50_p75": -14.183679382175614,
+      "vh_p90_mean": -13.920113211118908,
+      "vh_p90_p25": -15.317947821973604,
+      "vh_p90_p50": -13.938428512913164,
+      "vh_p90_p75": -12.563784621800627,
+      "vv_iqr_mean": 3.1472319458843874,
+      "vv_iqr_p25": 1.9077287050179943,
+      "vv_iqr_p50": 2.969664414272286,
+      "vv_iqr_p75": 4.215906517043477,
+      "vv_minus_vh_median_mean": 5.9691844003545524,
+      "vv_minus_vh_median_p25": 4.783643864262344,
+      "vv_minus_vh_median_p50": 5.968470199919778,
+      "vv_minus_vh_median_p75": 7.158706395240012,
+      "vv_p10_mean": -11.170021765123952,
+      "vv_p10_p25": -12.695080308563012,
+      "vv_p10_p50": -11.184199297502035,
+      "vv_p10_p75": -9.812521690812183,
+      "vv_p50_mean": -9.559671961820532,
+      "vv_p50_p25": -10.939818779864655,
+      "vv_p50_p50": -9.682937452010712,
+      "vv_p50_p75": -8.314147795764214,
+      "vv_p90_mean": -8.022789819239579,
+      "vv_p90_p25": -9.432831814876478,
+      "vv_p90_p50": -8.188672755367225,
+      "vv_p90_p75": -6.686593020312692
+     },
+     {
+      "cluster_id": 1,
+      "pixel_count": 11277,
+      "area_ha": 112.77,
+      "annual_rainfall_mean": 1440.349764825535,
+      "annual_rainfall_p25": 1440.3388063929974,
+      "annual_rainfall_p50": 1440.3388063929974,
+      "annual_rainfall_p75": 1440.3388063929974,
+      "aspect_cos_mean": 0.5479586019888326,
+      "aspect_cos_p25": 0.35836794954530043,
+      "aspect_cos_p50": 0.8191520442889899,
+      "aspect_cos_p75": 0.9624428014899884,
+      "aspect_sin_mean": -0.210675585827967,
+      "aspect_sin_p25": -0.7313537016191805,
+      "aspect_sin_p50": -0.25881904510252,
+      "aspect_sin_p75": 0.25881904510252,
+      "canopy_height_max_mean": 23.329989199242707,
+      "canopy_height_max_p25": 21.999999999999982,
+      "canopy_height_max_p50": 24,
+      "canopy_height_max_p75": 25.000000000000004,
+      "canopy_height_mean": 22.83740377317576,
+      "canopy_height_p25": 20.99999999999999,
+      "canopy_height_p50": 22.999999999999996,
+      "canopy_height_p75": 24,
+      "canopy_height_std_mean": 0.411566049532834,
+      "canopy_height_std_p25": 0.31426968052732573,
+      "canopy_height_std_p50": 0.47920878007504386,
+      "canopy_height_std_p75": 0.47920878007504386,
+      "distance_to_water_mean": 10000,
+      "distance_to_water_p25": 10000,
+      "distance_to_water_p50": 10000,
+      "distance_to_water_p75": 10000,
+      "elevation_mean": 278.6114071553146,
+      "elevation_p25": 265,
+      "elevation_p50": 288,
+      "elevation_p75": 307,
+      "ndvi_amplitude_annual_mean": 0.18297649536884356,
+      "ndvi_amplitude_annual_p25": 0.16308835792949453,
+      "ndvi_amplitude_annual_p50": 0.18465223235311676,
+      "ndvi_amplitude_annual_p75": 0.2060267487842675,
+      "ndvi_mean_mean": 0.6993002185215748,
+      "ndvi_mean_p25": 0.684609693089085,
+      "ndvi_mean_p50": 0.7060703571997908,
+      "ndvi_mean_p75": 0.7236434514246206,
+      "ndvi_phase_annual_cos_mean": -0.9878584384461134,
+      "ndvi_phase_annual_cos_p25": -0.9993507990238641,
+      "ndvi_phase_annual_cos_p50": -0.9951715287071823,
+      "ndvi_phase_annual_cos_p75": -0.9853924014415043,
+      "ndvi_phase_annual_sin_mean": 0.06665913919801887,
+      "ndvi_phase_annual_sin_p25": -0.011703804872022215,
+      "ndvi_phase_annual_sin_p50": 0.0743016527160591,
+      "ndvi_phase_annual_sin_p75": 0.160202533333367,
+      "ndvi_residual_variance_mean": 0.012139407332100205,
+      "ndvi_residual_variance_p25": 0.010438431428289294,
+      "ndvi_residual_variance_p50": 0.012268352715114964,
+      "ndvi_residual_variance_p75": 0.01398011707905609,
+      "ndvi_trend_mean": -0.00847409009379915,
+      "ndvi_trend_p25": -0.010978601701270808,
+      "ndvi_trend_p50": -0.008546849027292793,
+      "ndvi_trend_p75": -0.006115245504671779,
+      "slope_mean": 8.149536937879162,
+      "slope_p25": 4,
+      "slope_p50": 7.000000000000001,
+      "slope_p75": 11,
+      "vh_iqr_mean": 3.29549786858499,
+      "vh_iqr_p25": 1.9691960388469445,
+      "vh_iqr_p50": 3.0321790811837737,
+      "vh_iqr_p75": 4.344671042299578,
+      "vh_p10_mean": -15.895707617218498,
+      "vh_p10_p25": -17.189755579314433,
+      "vh_p10_p50": -15.811404213781678,
+      "vh_p10_p75": -14.440185985649695,
+      "vh_p50_mean": -14.18285227430149,
+      "vh_p50_p25": -15.311514102034167,
+      "vh_p50_p50": -14.184891488182755,
+      "vh_p50_p75": -12.938160570849137,
+      "vh_p90_mean": -12.600209748633565,
+      "vh_p90_p25": -13.813346007100133,
+      "vh_p90_p50": -12.56332039239562,
+      "vh_p90_p75": -11.43191608563227,
+      "vv_iqr_mean": 3.1931734222103465,
+      "vv_iqr_p25": 1.9096749087510396,
+      "vv_iqr_p50": 2.9689529262494565,
+      "vv_iqr_p75": 4.218480125803958,
+      "vv_minus_vh_median_mean": 6.356723549445741,
+      "vv_minus_vh_median_p25": 5.158230656833132,
+      "vv_minus_vh_median_p50": 6.345738411101795,
+      "vv_minus_vh_median_p75": 7.532716640224532,
+      "vv_p10_mean": -9.485060640904628,
+      "vv_p10_p25": -10.811202540602363,
+      "vv_p10_p50": -9.437702752953424,
+      "vv_p10_p75": -8.18393647870735,
+      "vv_p50_mean": -7.826128724855813,
+      "vv_p50_p25": -9.030720602802855,
+      "vv_p50_p50": -7.782713201211073,
+      "vv_p50_p75": -6.589640006932759,
+      "vv_p90_mean": -6.291887218694307,
+      "vv_p90_p25": -7.530904042988467,
+      "vv_p90_p50": -6.283964520168802,
+      "vv_p90_p75": -5.095155269934723
+     },
+     {
+      "cluster_id": 2,
+      "pixel_count": 7556,
+      "area_ha": 75.56,
+      "annual_rainfall_mean": 1487.3123355994712,
+      "annual_rainfall_p25": 1489.2637966702166,
+      "annual_rainfall_p50": 1505.9420581648212,
+      "annual_rainfall_p75": 1505.9420581648212,
+      "aspect_cos_mean": -0.11570821201522229,
+      "aspect_cos_p25": -0.8829475928589342,
+      "aspect_cos_p50": -0.22495105434386525,
+      "aspect_cos_p75": 0.681998360062495,
+      "aspect_sin_mean": -0.06761935075112972,
+      "aspect_sin_p25": -0.73135370161918,
+      "aspect_sin_p50": 7.128378494402134e-17,
+      "aspect_sin_p75": 0.5150380749100543,
+      "canopy_height_max_mean": 18.18605719121997,
+      "canopy_height_max_p25": 17.00000000000001,
+      "canopy_height_max_p50": 17.999999999999996,
+      "canopy_height_max_p75": 19.999999999999975,
+      "canopy_height_mean": 17.53569109322637,
+      "canopy_height_p25": 16,
+      "canopy_height_p50": 17.999999999999986,
+      "canopy_height_p75": 18.999999999999996,
+      "canopy_height_std_mean": 0.5606656666461524,
+      "canopy_height_std_p25": 0.4157397096415671,
+      "canopy_height_std_p50": 0.4795859609766397,
+      "canopy_height_std_p75": 0.6718677418311699,
+      "distance_to_water_mean": 10000,
+      "distance_to_water_p25": 10000,
+      "distance_to_water_p50": 10000,
+      "distance_to_water_p75": 10000,
+      "elevation_mean": 198.69510353393093,
+      "elevation_p25": 167.00000000000003,
+      "elevation_p50": 174,
+      "elevation_p75": 198,
+      "ndvi_amplitude_annual_mean": 0.1790709466126708,
+      "ndvi_amplitude_annual_p25": 0.16112415611784664,
+      "ndvi_amplitude_annual_p50": 0.18267657853668115,
+      "ndvi_amplitude_annual_p75": 0.20024062441027232,
+      "ndvi_mean_mean": 0.6317643152421945,
+      "ndvi_mean_p25": 0.5880304838830582,
+      "ndvi_mean_p50": 0.6464321119740198,
+      "ndvi_mean_p75": 0.6895339962802348,
+      "ndvi_phase_annual_cos_mean": -0.9847832865505776,
+      "ndvi_phase_annual_cos_p25": -0.9976416526581412,
+      "ndvi_phase_annual_cos_p50": -0.9976416526581412,
+      "ndvi_phase_annual_cos_p75": -0.9808211079939906,
+      "ndvi_phase_annual_sin_mean": 0.049372573018391555,
+      "ndvi_phase_annual_sin_p25": -0.035105894238850736,
+      "ndvi_phase_annual_sin_p50": 0.05826853908316076,
+      "ndvi_phase_annual_sin_p75": 0.15230261040327284,
+      "ndvi_residual_variance_mean": 0.009132938836074456,
+      "ndvi_residual_variance_p25": 0.007023073819835382,
+      "ndvi_residual_variance_p50": 0.008971021236458071,
+      "ndvi_residual_variance_p75": 0.011169153174051587,
+      "ndvi_trend_mean": -0.004706072440134883,
+      "ndvi_trend_p25": -0.009039940847146289,
+      "ndvi_trend_p50": -0.005123561958036743,
+      "ndvi_trend_p75": -0.0007593396165705785,
+      "slope_mean": 4.241726156929058,
+      "slope_p25": 2,
+      "slope_p50": 4,
+      "slope_p75": 6.000000000000002,
+      "vh_iqr_mean": 3.587096351419343,
+      "vh_iqr_p25": 2.187547910232897,
+      "vh_iqr_p50": 3.3153612578311566,
+      "vh_iqr_p75": 4.813676659597791,
+      "vh_p10_mean": -16.932876178404005,
+      "vh_p10_p25": -18.187236311048572,
+      "vh_p10_p50": -16.817003316193453,
+      "vh_p10_p75": -15.567729949727632,
+      "vh_p50_mean": -15.114470789751202,
+      "vh_p50_p25": -16.305447824879824,
+      "vh_p50_p50": -15.065202503296772,
+      "vh_p50_p75": -13.812639232752804,
+      "vh_p90_mean": -13.345779826984637,
+      "vh_p90_p25": -14.436047697516875,
+      "vh_p90_p50": -13.313781329242326,
+      "vh_p90_p75": -12.185863868014271,
+      "vv_iqr_mean": 3.3012252051993496,
+      "vv_iqr_p25": 1.967391480665832,
+      "vv_iqr_p50": 3.0922429270774363,
+      "vv_iqr_p75": 4.342534851035745,
+      "vv_minus_vh_median_mean": 6.574417938941335,
+      "vv_minus_vh_median_p25": 5.343885692038301,
+      "vv_minus_vh_median_p50": 6.5325145783804786,
+      "vv_minus_vh_median_p75": 7.778199455223469,
+      "vv_p10_mean": -10.221270623721024,
+      "vv_p10_p25": -11.440449619634462,
+      "vv_p10_p50": -10.182878704494152,
+      "vv_p10_p75": -8.939689051532834,
+      "vv_p50_mean": -8.540052850809921,
+      "vv_p50_p25": -9.654180244144568,
+      "vv_p50_p50": -8.531343504859013,
+      "vv_p50_p75": -7.404853768881209,
+      "vv_p90_mean": -6.920045418521697,
+      "vv_p90_p25": -8.09312792281552,
+      "vv_p90_p50": -6.905376798947717,
+      "vv_p90_p75": -5.716613639517519
+     },
+     {
+      "cluster_id": 3,
+      "pixel_count": 7663,
+      "area_ha": 76.63,
+      "annual_rainfall_mean": 1385.2161022911182,
+      "annual_rainfall_p25": 1349.2374738878182,
+      "annual_rainfall_p50": 1349.2374738878182,
+      "annual_rainfall_p75": 1440.3388063929974,
+      "aspect_cos_mean": 0.003847347767687298,
+      "aspect_cos_p25": -0.5066646013805923,
+      "aspect_cos_p50": -1.8369701987210275e-16,
+      "aspect_cos_p75": 0.559192903470747,
+      "aspect_sin_mean": -0.6710537495702106,
+      "aspect_sin_p25": -0.9604204885746491,
+      "aspect_sin_p50": -0.8509767612539572,
+      "aspect_sin_p75": -0.5446390350150269,
+      "canopy_height_max_mean": 23.422459945407148,
+      "canopy_height_max_p25": 23.00000000000001,
+      "canopy_height_max_p50": 23.99999999999995,
+      "canopy_height_max_p75": 24.999999999999996,
+      "canopy_height_mean": 22.932613567673943,
+      "canopy_height_p25": 22,
+      "canopy_height_p50": 23,
+      "canopy_height_p75": 23.999999999999954,
+      "canopy_height_std_mean": 0.4049329739095452,
+      "canopy_height_std_p25": 0.31426968052732335,
+      "canopy_height_std_p50": 0.4714045207910275,
+      "canopy_height_std_p75": 0.496903994999999,
+      "distance_to_water_mean": 10000,
+      "distance_to_water_p25": 10000,
+      "distance_to_water_p50": 10000,
+      "distance_to_water_p75": 10000,
+      "elevation_mean": 335.20911411927784,
+      "elevation_p25": 300.25,
+      "elevation_p50": 336.55882352941177,
+      "elevation_p75": 370.40726149914826,
+      "ndvi_amplitude_annual_mean": 0.1830125815407808,
+      "ndvi_amplitude_annual_p25": 0.16066723305194225,
+      "ndvi_amplitude_annual_p50": 0.18407913806060586,
+      "ndvi_amplitude_annual_p75": 0.20848822215806076,
+      "ndvi_mean_mean": 0.6801095546284891,
+      "ndvi_mean_p25": 0.6630662598099036,
+      "ndvi_mean_p50": 0.6806247963864149,
+      "ndvi_mean_p75": 0.7021266166617685,
+      "ndvi_phase_annual_cos_mean": -0.969113935333553,
+      "ndvi_phase_annual_cos_p25": -0.9951406745532988,
+      "ndvi_phase_annual_cos_p50": -0.9794799607592687,
+      "ndvi_phase_annual_cos_p75": -0.9521456587814546,
+      "ndvi_phase_annual_sin_mean": 0.19029130089804538,
+      "ndvi_phase_annual_sin_p25": 0.08195457085025369,
+      "ndvi_phase_annual_sin_p50": 0.1989473828741841,
+      "ndvi_phase_annual_sin_p75": 0.3006066891846423,
+      "ndvi_residual_variance_mean": 0.013201539121488906,
+      "ndvi_residual_variance_p25": 0.011904048617515907,
+      "ndvi_residual_variance_p50": 0.01348994641725317,
+      "ndvi_residual_variance_p75": 0.014828753320343422,
+      "ndvi_trend_mean": -0.001036119360175143,
+      "ndvi_trend_p25": -0.005246671128661846,
+      "ndvi_trend_p50": -0.0008640584797648271,
+      "ndvi_trend_p75": 0.00305981587748437,
+      "slope_mean": 15.253247071231286,
+      "slope_p25": 10,
+      "slope_p50": 14.99999999999999,
+      "slope_p75": 20,
+      "vh_iqr_mean": 3.23847659389422,
+      "vh_iqr_p25": 1.907431790530557,
+      "vh_iqr_p50": 2.9674460208663973,
+      "vh_iqr_p75": 4.344078071102786,
+      "vh_p10_mean": -13.624072237571637,
+      "vh_p10_p25": -15.184058163354564,
+      "vh_p10_p50": -13.555079816399866,
+      "vh_p10_p75": -11.944340194838315,
+      "vh_p50_mean": -11.91099006028258,
+      "vh_p50_p25": -13.437394484527818,
+      "vh_p50_p50": -11.940243750723683,
+      "vh_p50_p75": -10.439982162440344,
+      "vh_p90_mean": -10.38559564367745,
+      "vh_p90_p25": -11.939597151561149,
+      "vh_p90_p50": -10.434165378303009,
+      "vh_p90_p75": -8.814709848185144,
+      "vv_iqr_mean": 3.0579524390043797,
+      "vv_iqr_p25": 1.843948114670782,
+      "vv_iqr_p50": 2.844392768964629,
+      "vv_iqr_p75": 4.031616674059974,
+      "vv_minus_vh_median_mean": 6.387729384949503,
+      "vv_minus_vh_median_p25": 5.152840456396436,
+      "vv_minus_vh_median_p50": 6.4098042093016545,
+      "vv_minus_vh_median_p75": 7.590166953751435,
+      "vv_p10_mean": -7.073785287029701,
+      "vv_p10_p25": -8.817838293088919,
+      "vv_p10_p50": -7.0620685053301875,
+      "vv_p10_p75": -5.3135124340656565,
+      "vv_p50_mean": -5.523260675333146,
+      "vv_p50_p25": -7.188811011705112,
+      "vv_p50_p50": -5.566163963586358,
+      "vv_p50_p75": -3.9358900753725767,
+      "vv_p90_mean": -4.015832848025335,
+      "vv_p90_p25": -5.684174213777758,
+      "vv_p90_p50": -4.0576671838937575,
+      "vv_p90_p75": -2.311572417904963
+     },
+     {
+      "cluster_id": 4,
+      "pixel_count": 11328,
+      "area_ha": 113.28,
+      "annual_rainfall_mean": 1431.0651952744065,
+      "annual_rainfall_p25": 1440.3388063929974,
+      "annual_rainfall_p50": 1440.3388063929974,
+      "annual_rainfall_p75": 1440.3388063929974,
+      "aspect_cos_mean": -0.5338655045683419,
+      "aspect_cos_p25": -0.9636694587298972,
+      "aspect_cos_p50": -0.8000161262685045,
+      "aspect_cos_p75": -0.3583679495453005,
+      "aspect_sin_mean": -0.004710642329357786,
+      "aspect_sin_p25": -0.5124167591000446,
+      "aspect_sin_p50": 9.807376653433025e-17,
+      "aspect_sin_p75": 0.5145368057463856,
+      "canopy_height_max_mean": 22.782874668757646,
+      "canopy_height_max_p25": 21.000000000000018,
+      "canopy_height_max_p50": 23.000000000000004,
+      "canopy_height_max_p75": 23.999999999999982,
+      "canopy_height_mean": 22.200465894208193,
+      "canopy_height_p25": 21.000000000000014,
+      "canopy_height_p50": 22.000000000000007,
+      "canopy_height_p75": 23,
+      "canopy_height_std_mean": 0.49206146057264594,
+      "canopy_height_std_p25": 0.31426968052732523,
+      "canopy_height_std_p50": 0.4714045207910265,
+      "canopy_height_std_p75": 0.6666666666666722,
+      "distance_to_water_mean": 10000,
+      "distance_to_water_p25": 10000,
+      "distance_to_water_p50": 10000,
+      "distance_to_water_p75": 10000,
+      "elevation_mean": 303.57976862827906,
+      "elevation_p25": 278.5622641509434,
+      "elevation_p50": 310.6041333139282,
+      "elevation_p75": 326.48084073538536,
+      "ndvi_amplitude_annual_mean": 0.19214022597642616,
+      "ndvi_amplitude_annual_p25": 0.17234072966086741,
+      "ndvi_amplitude_annual_p50": 0.1948161966783142,
+      "ndvi_amplitude_annual_p75": 0.21438468135004932,
+      "ndvi_mean_mean": 0.6754679615658582,
+      "ndvi_mean_p25": 0.6591599632402564,
+      "ndvi_mean_p50": 0.6865216755156888,
+      "ndvi_mean_p75": 0.7079953345220844,
+      "ndvi_phase_annual_cos_mean": -0.9819910847961992,
+      "ndvi_phase_annual_cos_p25": -0.9971276700006539,
+      "ndvi_phase_annual_cos_p50": -0.9912197524641474,
+      "ndvi_phase_annual_cos_p75": -0.9755836863537939,
+      "ndvi_phase_annual_sin_mean": 0.11629583968031475,
+      "ndvi_phase_annual_sin_p25": 0.019466413252509338,
+      "ndvi_phase_annual_sin_p50": 0.12130874536756861,
+      "ndvi_phase_annual_sin_p75": 0.214941097139301,
+      "ndvi_residual_variance_mean": 0.01139552766084994,
+      "ndvi_residual_variance_p25": 0.009093906509984867,
+      "ndvi_residual_variance_p50": 0.011659235994002407,
+      "ndvi_residual_variance_p75": 0.013732679555943659,
+      "ndvi_trend_mean": -0.004926577055951113,
+      "ndvi_trend_p25": -0.009027932014134219,
+      "ndvi_trend_p50": -0.006100032474037129,
+      "ndvi_trend_p75": -0.001230563181258053,
+      "slope_mean": 7.9376235098905,
+      "slope_p25": 4,
+      "slope_p50": 6.999999999999999,
+      "slope_p75": 10,
+      "vh_iqr_mean": 3.3747137285840227,
+      "vh_iqr_p25": 1.9381679122559303,
+      "vh_iqr_p50": 3.0658591201537986,
+      "vh_iqr_p75": 4.438069835362594,
+      "vh_p10_mean": -15.881781965740126,
+      "vh_p10_p25": -17.18941024003245,
+      "vh_p10_p50": -15.814087251592678,
+      "vh_p10_p75": -14.561177109407993,
+      "vh_p50_mean": -14.101223703124129,
+      "vh_p50_p25": -15.21758781633743,
+      "vh_p50_p50": -14.095226701906935,
+      "vh_p50_p75": -12.969425298152087,
+      "vh_p90_mean": -12.507068237156105,
+      "vh_p90_p25": -13.713944198031562,
+      "vh_p90_p50": -12.530976917014314,
+      "vh_p90_p75": -11.346987810952141,
+      "vv_iqr_mean": 3.083939776862467,
+      "vv_iqr_p25": 1.8432892800123204,
+      "vv_iqr_p50": 2.842745959453486,
+      "vv_iqr_p75": 4.091012355558961,
+      "vv_minus_vh_median_mean": 6.294390426805977,
+      "vv_minus_vh_median_p25": 5.091430403693157,
+      "vv_minus_vh_median_p50": 6.28373348725272,
+      "vv_minus_vh_median_p75": 7.4685090740194555,
+      "vv_p10_mean": -9.412050292764011,
+      "vv_p10_p25": -10.69258913301816,
+      "vv_p10_p50": -9.440486903391234,
+      "vv_p10_p75": -8.061961262305468,
+      "vv_p50_mean": -7.806833276318143,
+      "vv_p50_p25": -8.968230479145411,
+      "vv_p50_p50": -7.841008809637682,
+      "vv_p50_p75": -6.718945189731569,
+      "vv_p90_mean": -6.328110515901473,
+      "vv_p90_p25": -7.530217084205136,
+      "vv_p90_p50": -6.406603451625544,
+      "vv_p90_p75": -5.157439129624253
+     }
+    ]
+   },
+   "cache_status": {},
+   "export_tasks": [],
+   "transparency": {
+    "display_layers": [],
+    "summary_numbers": []
+   }
+  },
+  {
+   "name": "export",
+   "produced": [
+    "export_manifest"
+   ],
+   "warnings": [],
+   "metadata": {
+    "n_drive_tasks": 9,
+    "drive_task_ids": [
+     "SZYEBJ2EL4KHVG6IY4BB77XK",
+     "MU3XA4MWJNEU6BBCMG2UY6PD",
+     "NAHCL2E4EB3ASPR5L7YRX22W",
+     "CR6T6AB7GJVFVX6E5SO3VD5C",
+     "ELAUCVZJGFVRYGJEJ6MKQVT5",
+     "ZXCS2IKYZJNE4NYKN7OH2HW5",
+     "VG2QC5IITSXLLNZDNXM7VR5F",
+     "UREXBYDXDJWPEOECZANF6BGE",
+     "HDESPFGSVA63RFLBNFB5SZBA"
+    ],
+    "n_vector_layers": 3,
+    "n_clusters": 5,
+    "n_cached_assets": 13,
+    "drive_folder": "fmu_exports_kept_land",
+    "manifest": {
+     "config_name": "odisha_v120_3ha_squares_angul_keptland",
+     "pipeline_version": "1.2.0",
+     "git": {
+      "commit": "d180cb82f3fb0280eb9a55934d0daa46a27815a9",
+      "dirty": false,
+      "modified": [],
+      "modified_truncated": false,
+      "untracked": [
+       "odisha_script/phase2_vectors/odisha_v120_3ha_squares_kendujhar_keptland_raster_at_plots.csv",
+       "odisha_script/phase2_vectors/odisha_v120_3ha_squares_kendujhar_keptland_run.json",
+       "odisha_script/phase2_vectors/odisha_v120_3ha_squares_kendujhar_keptland_stands_dissolved.geojson",
+       "odisha_script/phase2_vectors/odisha_v120_3ha_squares_kendujhar_keptland_stands_merged.geojson",
+       "odisha_script/phase2_vectors/odisha_v120_3ha_squares_kendujhar_keptland_stands_snic.geojson"
+      ],
+      "untracked_truncated": false,
+      "root": "/Users/karan/Desktop/phd-code/outputs/keptland_runs_odisha/run_tree",
+      "error": null
+     },
+     "roi": {
+      "name": "odisha_squares_angul",
+      "area_km2": 6.039,
+      "geojson_path": "aois/odisha_squares_angul.geojson"
+     },
+     "config_snapshot": {
+      "name": "odisha_v120_3ha_squares_angul_keptland",
+      "description": "Odisha ANGUL, v120 hand-crafted method, stands capped at 3 ha, run on boxes around the villages' plots, on kept land only (mask before SNIC).",
+      "roi": {
+       "name": "odisha_squares_angul",
+       "roi_file": "aois/odisha_squares_angul.geojson",
+       "roi_asset": null
+      },
+      "dates": {
+       "phenology": {
+        "start": "2017-01-01",
+        "end": "2022-12-31"
+       },
+       "radar": {
+        "start": "2017-01-01",
+        "end": "2022-12-31"
+       },
+       "optical_composite": {
+        "start": "2017-01-01",
+        "end": "2022-12-31"
+       },
+       "climate": {
+        "start": "1991-01-01",
+        "end": "2020-12-31"
+       }
+      },
+      "datasets": {
+       "phenology_collection": "COPERNICUS/S2_SR_HARMONIZED",
+       "optical_composite_collection": "COPERNICUS/S2_SR_HARMONIZED",
+       "radar_collection": "COPERNICUS/S1_GRD",
+       "canopy_height": "users/nlang/ETH_GlobalCanopyHeight_2020_10m_v1",
+       "dem": "NASA/NASADEM_HGT/001",
+       "indiasat": "projects/corestack-trees/assets/LULC_v4",
+       "worldcover": "ESA/WorldCover/v200",
+       "water": "JRC/GSW1_4/GlobalSurfaceWater",
+       "climate": "UCSB-CHG/CHIRPS/PENTAD",
+       "embedding": "GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL"
+      },
+      "cloud_mask": {
+       "max_cloud_pct": 20.0,
+       "drop_scl_classes": [
+        3,
+        8,
+        9,
+        10
+       ]
+      },
+      "data_load": {
+       "s1_orbit": "ASCENDING",
+       "s1_polarizations": [
+        "VV",
+        "VH"
+       ],
+       "s1_instrument_mode": "IW",
+       "s2_composite_reducer": "median"
+      },
+      "masking": {
+       "indiasat_habitat_classes": [
+        6,
+        12
+       ],
+       "indiasat_class_band": "predicted_label",
+       "indiasat_year_min": 2017,
+       "indiasat_year_max": 2021,
+       "keep_worldcover_classes": [
+        10,
+        20,
+        30
+       ],
+       "jrc_water_occurrence_threshold": 50.0
+      },
+      "features_optical": {
+       "index": "ndvi",
+       "harmonic_mode": "single",
+       "include_trend": true,
+       "time_reference": "2017-01-01"
+      },
+      "features_radar": {
+       "percentiles": [
+        10,
+        50,
+        90
+       ],
+       "include_iqr": true,
+       "include_cross_pol_contrast": true
+      },
+      "features_structure": {
+       "include_neighborhood_stats": true,
+       "neighborhood_kernel_size": 3
+      },
+      "features_static": {
+       "include_climate": true,
+       "max_water_distance_pixels": 1000,
+       "cap_distance_to_water": true
+      },
+      "features_embedding": {
+       "collapse_reducer": "mean",
+       "band_names": null
+      },
+      "segmentation": {
+       "size": 6,
+       "compactness": 0.5,
+       "connectivity": 8,
+       "neighborhood_size": 128,
+       "normalize_inputs": true,
+       "normalize_distance_scale": true,
+       "input_bands": [
+        {
+         "source": "s2_composite",
+         "band": "B4_median"
+        },
+        {
+         "source": "s2_composite",
+         "band": "B8_median"
+        },
+        {
+         "source": "structure_features",
+         "band": "canopy_height"
+        },
+        {
+         "source": "structure_features",
+         "band": "canopy_height_std"
+        },
+        {
+         "source": "optical_features",
+         "band": "ndvi_amplitude_annual"
+        },
+        {
+         "source": "radar_features",
+         "band": "vv_minus_vh_median"
+        }
+       ],
+       "mask_before_snic": true,
+       "drop_kept_patches_below_min_area": false
+      },
+      "merge": {
+       "enabled": true,
+       "criteria": [
+        {
+         "source": "structure_features",
+         "band": "canopy_height",
+         "tolerance": 2.0
+        },
+        {
+         "source": "structure_features",
+         "band": "canopy_height_std",
+         "tolerance": 0.45
+        },
+        {
+         "source": "optical_features",
+         "band": "ndvi_amplitude_annual",
+         "tolerance": 0.03
+        }
+       ],
+       "relax_factor": 1.75,
+       "min_area_ha": 1.0,
+       "max_area_ha": 3.0,
+       "min_defined_criteria": 2,
+       "min_frac_valid": 0.5,
+       "tie_break": "shared_edge_length",
+       "max_pass2_iterations": 60,
+       "pass2_skip_at_min_area": true,
+       "pass2_soft_ceiling": true,
+       "max_superpixels": 50000
+      },
+      "clustering": {
+       "k": 5,
+       "seed": 42,
+       "feature_source": "handcrafted",
+       "skewness_threshold": 1.0,
+       "fit_excludes_stands_below_min_area": true
+      },
+      "normalization": {
+       "method": "robust"
+      },
+      "features": {
+       "optical_harmonic": true,
+       "radar": true,
+       "canopy_height": true,
+       "terrain": true
+      },
+      "export": {
+       "export_geotiff": true,
+       "export_gee_asset": false,
+       "analysis_scale_m": 10,
+       "drive_folder": "fmu_exports_kept_land",
+       "export_vector_merged": true,
+       "export_vector_snic": true,
+       "export_vector_dissolved": true,
+       "vector_formats": [
+        "shp",
+        "geojson"
+       ],
+       "vector_min_stand_pixels": 4
+      },
+      "metrics": {
+       "reference_config_name": null,
+       "reference_config_file": null,
+       "n_comparison_samples": 10000,
+       "n_silhouette_samples_per_cluster": 833,
+       "r2_attributes": [
+        {
+         "source": "structure_features",
+         "band": "canopy_height",
+         "held_out": false
+        },
+        {
+         "source": "optical_features",
+         "band": "ndvi_trend",
+         "held_out": true
+        },
+        {
+         "source": "structure_features",
+         "band": "canopy_height_max",
+         "held_out": true
+        }
+       ]
+      }
+     },
+     "asset_paths": {
+      "cluster_labels": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland/clustering/cluster_labels__fd08561492",
+      "feature_stack": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland/clustering/feature_stack__fd08561492",
+      "s2_composite": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland/data_load/s2_composite__fd08561492",
+      "optical_features": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland/features_optical/optical_features__fd08561492",
+      "radar_features": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland/features_radar/radar_features__fd08561492",
+      "static_features": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland/features_static/static_features__fd08561492",
+      "structure_features": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland/features_structure/structure_features__fd08561492",
+      "habitat_mask": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland/masking/habitat_mask__fd08561492",
+      "landcover_summary": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland/masking/landcover_summary__fd08561492",
+      "mask_provenance": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland/masking/mask_provenance__fd08561492",
+      "water_mask": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland/masking/water_mask__fd08561492",
+      "snic_clusters": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland/segmentation/snic_clusters__fd08561492",
+      "snic_means": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland/segmentation/snic_means__fd08561492"
+     },
+     "clustering": {
+      "active_bands": [
+       "ndvi_mean",
+       "ndvi_amplitude_annual",
+       "ndvi_trend",
+       "vv_p10",
+       "vh_p10",
+       "vv_p50",
+       "vh_p50",
+       "vv_p90",
+       "vh_p90",
+       "vv_iqr",
+       "vh_iqr",
+       "vv_minus_vh_median",
+       "canopy_height",
+       "canopy_height_std",
+       "canopy_height_max",
+       "elevation",
+       "slope",
+       "ndvi_phase_annual_sin",
+       "ndvi_phase_annual_cos",
+       "aspect_sin",
+       "aspect_cos"
+      ],
+      "area_ha_in_stands_below_min_area": 6.49,
+      "area_ha_in_stands_left_out_of_fit": 6.47,
+      "cyclic_decomposition_log": [
+       "ndvi_phase_annual",
+       "aspect"
+      ],
+      "dropped_constant_bands": [
+       "distance_to_water"
+      ],
+      "feature_source": "handcrafted",
+      "fit_excludes_stands_below_min_area": true,
+      "k": 5,
+      "log_offsets": {
+       "canopy_height": -3.999,
+       "canopy_height_std": 0.001,
+       "ndvi_amplitude_annual": -0.0087899762572121,
+       "ndvi_mean": -0.07817566532005707,
+       "ndvi_phase_annual_cos": 1.0006941551323814,
+       "ndvi_phase_annual_sin": 0.8980562861578008,
+       "slope": -0.999,
+       "vh_iqr": -1.059989861135159,
+       "vh_p10": 25.80699770885725,
+       "vv_iqr": -0.7208949488204682,
+       "vv_minus_vh_median": -3.654448812831539
+      },
+      "log_transformed_bands": [
+       "ndvi_mean",
+       "ndvi_amplitude_annual",
+       "vh_p10",
+       "vv_iqr",
+       "vh_iqr",
+       "vv_minus_vh_median",
+       "canopy_height",
+       "canopy_height_std",
+       "slope",
+       "ndvi_phase_annual_sin",
+       "ndvi_phase_annual_cos"
+      ],
+      "n_stands_below_min_area": 56,
+      "n_stands_left_out_of_fit": 55,
+      "n_training_units": 168,
+      "n_units_dropped_null_band": 1,
+      "n_units_in_habitat": 224,
+      "n_units_outside_habitat": 0,
+      "n_units_total": 224,
+      "normalization_method": "robust",
+      "raw_band_names": [
+       "ndvi_mean",
+       "ndvi_amplitude_annual",
+       "ndvi_phase_annual",
+       "ndvi_trend",
+       "vv_p10",
+       "vh_p10",
+       "vv_p50",
+       "vh_p50",
+       "vv_p90",
+       "vh_p90",
+       "vv_iqr",
+       "vh_iqr",
+       "vv_minus_vh_median",
+       "canopy_height",
+       "canopy_height_std",
+       "canopy_height_max",
+       "elevation",
+       "slope",
+       "aspect",
+       "distance_to_water"
+      ],
+      "scaling": {
+       "aspect_cos": {
+        "center": 0.010182341737688103,
+        "spread": 1.072232810467352
+       },
+       "aspect_sin": {
+        "center": -0.17781062793725977,
+        "spread": 0.7785722508781532
+       },
+       "canopy_height": {
+        "center": 2.841657729954119,
+        "spread": 0.37686837386341576
+       },
+       "canopy_height_max": {
+        "center": 21.69741815142542,
+        "spread": 5.38853995143209
+       },
+       "canopy_height_std": {
+        "center": -0.7660477505672362,
+        "spread": 0.4987812400930015
+       },
+       "distance_to_water": {
+        "center": 10000.0,
+        "spread": 0.0
+       },
+       "elevation": {
+        "center": 287.2246989736192,
+        "spread": 138.18401683967963
+       },
+       "ndvi_amplitude_annual": {
+        "center": -1.765940992218422,
+        "spread": 0.21707885537662075
+       },
+       "ndvi_mean": {
+        "center": -0.5132761651682287,
+        "spread": 0.0983503201434009
+       },
+       "ndvi_phase_annual_cos": {
+        "center": -4.196039483211544,
+        "spread": 1.3140686966295823
+       },
+       "ndvi_phase_annual_sin": {
+        "center": -0.016347067099730543,
+        "spread": 0.15348373077388133
+       },
+       "ndvi_trend": {
+        "center": -0.004754811931397413,
+        "spread": 0.007555137981981637
+       },
+       "slope": {
+        "center": 1.5807933235249596,
+        "spread": 1.2601498424825557
+       },
+       "vh_iqr": {
+        "center": 0.8409222035318694,
+        "spread": 0.181451555648953
+       },
+       "vh_p10": {
+        "center": 2.278400107533635,
+        "spread": 0.1802798937353436
+       },
+       "vh_p50": {
+        "center": -14.46310680895828,
+        "spread": 1.5374128445086885
+       },
+       "vh_p90": {
+        "center": -12.849728581498042,
+        "spread": 1.4696823612801744
+       },
+       "vv_iqr": {
+        "center": 0.8461762733466244,
+        "spread": 0.17470660952115635
+       },
+       "vv_minus_vh_median": {
+        "center": 0.9678502191874819,
+        "spread": 0.3091975765770536
+       },
+       "vv_p10": {
+        "center": -9.733446947114638,
+        "spread": 1.5068536316515395
+       },
+       "vv_p50": {
+        "center": -8.091994599848425,
+        "spread": 1.5091481683948693
+       },
+       "vv_p90": {
+        "center": -6.596900038779699,
+        "spread": 1.4432233128171346
+       }
+      },
+      "seed": 42,
+      "skewness_threshold": 1.0,
+      "training_unit_key": "stand_clusters",
+      "cluster_distribution": [
+       {
+        "cluster_id": 0,
+        "pixel_count": 5858,
+        "area_ha": 58.58,
+        "percent_of_habitat": 13.45
+       },
+       {
+        "cluster_id": 1,
+        "pixel_count": 11287,
+        "area_ha": 112.87,
+        "percent_of_habitat": 25.91
+       },
+       {
+        "cluster_id": 2,
+        "pixel_count": 7516,
+        "area_ha": 75.16,
+        "percent_of_habitat": 17.25
+       },
+       {
+        "cluster_id": 3,
+        "pixel_count": 7614,
+        "area_ha": 76.14,
+        "percent_of_habitat": 17.48
+       },
+       {
+        "cluster_id": 4,
+        "pixel_count": 11291,
+        "area_ha": 112.91,
+        "percent_of_habitat": 25.92
+       }
+      ]
+     },
+     "drive_exports": {
+      "raster_cluster_labels": {
+       "folder": "fmu_exports_kept_land",
+       "filename": "odisha_v120_3ha_squares_angul_keptland_cluster_labels.tif",
+       "format": "GeoTIFF",
+       "task_id": "SZYEBJ2EL4KHVG6IY4BB77XK",
+       "task_submitted": true
+      },
+      "raster_features_raw": {
+       "folder": "fmu_exports_kept_land",
+       "filename": "odisha_v120_3ha_squares_angul_keptland_features_raw.tif",
+       "format": "GeoTIFF",
+       "task_id": "MU3XA4MWJNEU6BBCMG2UY6PD",
+       "task_submitted": true
+      },
+      "raster_features_scaled": {
+       "folder": "fmu_exports_kept_land",
+       "filename": "odisha_v120_3ha_squares_angul_keptland_features_scaled.tif",
+       "format": "GeoTIFF",
+       "task_id": "NAHCL2E4EB3ASPR5L7YRX22W",
+       "task_submitted": true
+      },
+      "vector_stands_merged_shp": {
+       "folder": "fmu_exports_kept_land",
+       "filename": "odisha_v120_3ha_squares_angul_keptland_stands_merged.zip",
+       "format": "SHP",
+       "task_id": "CR6T6AB7GJVFVX6E5SO3VD5C",
+       "task_submitted": true
+      },
+      "vector_stands_merged_geojson": {
+       "folder": "fmu_exports_kept_land",
+       "filename": "odisha_v120_3ha_squares_angul_keptland_stands_merged.geojson",
+       "format": "GEOJSON",
+       "task_id": "ELAUCVZJGFVRYGJEJ6MKQVT5",
+       "task_submitted": true
+      },
+      "vector_stands_snic_shp": {
+       "folder": "fmu_exports_kept_land",
+       "filename": "odisha_v120_3ha_squares_angul_keptland_stands_snic.zip",
+       "format": "SHP",
+       "task_id": "ZXCS2IKYZJNE4NYKN7OH2HW5",
+       "task_submitted": true
+      },
+      "vector_stands_snic_geojson": {
+       "folder": "fmu_exports_kept_land",
+       "filename": "odisha_v120_3ha_squares_angul_keptland_stands_snic.geojson",
+       "format": "GEOJSON",
+       "task_id": "VG2QC5IITSXLLNZDNXM7VR5F",
+       "task_submitted": true
+      },
+      "vector_stands_dissolved_shp": {
+       "folder": "fmu_exports_kept_land",
+       "filename": "odisha_v120_3ha_squares_angul_keptland_stands_dissolved.zip",
+       "format": "SHP",
+       "task_id": "UREXBYDXDJWPEOECZANF6BGE",
+       "task_submitted": true
+      },
+      "vector_stands_dissolved_geojson": {
+       "folder": "fmu_exports_kept_land",
+       "filename": "odisha_v120_3ha_squares_angul_keptland_stands_dissolved.geojson",
+       "format": "GEOJSON",
+       "task_id": "HDESPFGSVA63RFLBNFB5SZBA",
+       "task_submitted": true
+      }
+     },
+     "vector_layers": {
+      "stands_merged": {
+       "description": "One polygon per merged stand -- the unit SNIC + merge delineate, and the pipeline's primary deliverable. Attributes include the raw merge label (stand_lbl), the assigned cluster_id, and per-stand means of every features_* band. Stands clustering could not type carry a null cluster_id and are KEPT: the stand exists whether or not a type label could be attached to it.",
+       "n_features": 224,
+       "n_stands": 223,
+       "n_stands_split_into_pieces": 1,
+       "max_pieces_per_stand": 2,
+       "geometry_type": "Polygon",
+       "id_field": "stand_id",
+       "id_renumbering": "1..N, sorted by centroid latitude descending then longitude ascending. Deterministic pure function of the merged geometry.",
+       "unclustered_stands_retained": true,
+       "shp_attributes": [
+        "stand_id",
+        "stand_lbl",
+        "cluster_id",
+        "area_ha",
+        "perim_m",
+        "n_pixels",
+        "n_superpx",
+        "n_pass1",
+        "n_relaxed",
+        "n_fallback",
+        "below_min",
+        "below_why"
+       ],
+       "geojson_attributes": "all SHP attributes plus per-stand means of every features_* band",
+       "provenance_attributes": [
+        "n_superpx",
+        "n_pass1",
+        "n_relaxed",
+        "n_fallback",
+        "below_min",
+        "below_why"
+       ]
+      },
+      "stands_snic": {
+       "description": "One polygon per SNIC superpixel. Attributes include the raw SNIC label (snic_label), the assigned cluster_id, and per-superpixel means of every features_* band fed to clustering. Use for methodology / debugging.",
+       "n_features": 1207,
+       "geometry_type": "Polygon",
+       "id_field": "stand_id",
+       "id_renumbering": "1..N, sorted by centroid latitude descending then longitude ascending. Deterministic pure function of the SNIC geometry; same inputs always produce the same numbering.",
+       "shp_attributes": [
+        "stand_id",
+        "snic_label",
+        "cluster_id",
+        "area_ha",
+        "perim_m",
+        "n_pixels"
+       ],
+       "geojson_attributes": "all SHP attributes plus per-superpixel means of every features_* band"
+      },
+      "stands_dissolved": {
+       "description": "One polygon per connected same-cluster region. Forester-facing management units. Filtered by vector_min_stand_pixels=4 to drop speckle from misclassification.",
+       "n_features": 62,
+       "geometry_type": "Polygon",
+       "id_field": "unit_id",
+       "id_renumbering": "1..M, sorted by centroid latitude descending then longitude ascending, AFTER min-pixel filtering. Deterministic pure function of the cluster geometry.",
+       "min_stand_pixels": 4,
+       "shp_attributes": [
+        "unit_id",
+        "cluster_id",
+        "area_ha",
+        "perim_m",
+        "n_pixels"
+       ],
+       "geojson_attributes": "all SHP attributes plus profile_<band>_p50 columns from cluster_profiles.csv (median of each feature band over the unit's cluster, in original units)"
+      }
+     },
+     "decisions_source": "phd-notebook/decisions.md"
+    }
+   },
+   "cache_status": {},
+   "export_tasks": [],
+   "transparency": {
+    "display_layers": [],
+    "summary_numbers": []
+   }
+  }
+ ],
+ "config": {
+  "name": "odisha_v120_3ha_squares_angul_keptland",
+  "description": "Odisha ANGUL, v120 hand-crafted method, stands capped at 3 ha, run on boxes around the villages' plots, on kept land only (mask before SNIC).",
+  "roi": {
+   "name": "odisha_squares_angul",
+   "roi_file": "aois/odisha_squares_angul.geojson",
+   "roi_asset": null
+  },
+  "dates": {
+   "phenology": {
+    "start": "2017-01-01",
+    "end": "2022-12-31"
+   },
+   "radar": {
+    "start": "2017-01-01",
+    "end": "2022-12-31"
+   },
+   "optical_composite": {
+    "start": "2017-01-01",
+    "end": "2022-12-31"
+   },
+   "climate": {
+    "start": "1991-01-01",
+    "end": "2020-12-31"
+   }
+  },
+  "datasets": {
+   "phenology_collection": "COPERNICUS/S2_SR_HARMONIZED",
+   "optical_composite_collection": "COPERNICUS/S2_SR_HARMONIZED",
+   "radar_collection": "COPERNICUS/S1_GRD",
+   "canopy_height": "users/nlang/ETH_GlobalCanopyHeight_2020_10m_v1",
+   "dem": "NASA/NASADEM_HGT/001",
+   "indiasat": "projects/corestack-trees/assets/LULC_v4",
+   "worldcover": "ESA/WorldCover/v200",
+   "water": "JRC/GSW1_4/GlobalSurfaceWater",
+   "climate": "UCSB-CHG/CHIRPS/PENTAD",
+   "embedding": "GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL"
+  },
+  "cloud_mask": {
+   "max_cloud_pct": 20.0,
+   "drop_scl_classes": [
+    3,
+    8,
+    9,
+    10
+   ]
+  },
+  "data_load": {
+   "s1_orbit": "ASCENDING",
+   "s1_polarizations": [
+    "VV",
+    "VH"
+   ],
+   "s1_instrument_mode": "IW",
+   "s2_composite_reducer": "median"
+  },
+  "masking": {
+   "indiasat_habitat_classes": [
+    6,
+    12
+   ],
+   "indiasat_class_band": "predicted_label",
+   "indiasat_year_min": 2017,
+   "indiasat_year_max": 2021,
+   "keep_worldcover_classes": [
+    10,
+    20,
+    30
+   ],
+   "jrc_water_occurrence_threshold": 50.0
+  },
+  "features_optical": {
+   "index": "ndvi",
+   "harmonic_mode": "single",
+   "include_trend": true,
+   "time_reference": "2017-01-01"
+  },
+  "features_radar": {
+   "percentiles": [
+    10,
+    50,
+    90
+   ],
+   "include_iqr": true,
+   "include_cross_pol_contrast": true
+  },
+  "features_structure": {
+   "include_neighborhood_stats": true,
+   "neighborhood_kernel_size": 3
+  },
+  "features_static": {
+   "include_climate": true,
+   "max_water_distance_pixels": 1000,
+   "cap_distance_to_water": true
+  },
+  "features_embedding": {
+   "collapse_reducer": "mean",
+   "band_names": null
+  },
+  "segmentation": {
+   "size": 6,
+   "compactness": 0.5,
+   "connectivity": 8,
+   "neighborhood_size": 128,
+   "normalize_inputs": true,
+   "normalize_distance_scale": true,
+   "input_bands": [
+    {
+     "source": "s2_composite",
+     "band": "B4_median"
+    },
+    {
+     "source": "s2_composite",
+     "band": "B8_median"
+    },
+    {
+     "source": "structure_features",
+     "band": "canopy_height"
+    },
+    {
+     "source": "structure_features",
+     "band": "canopy_height_std"
+    },
+    {
+     "source": "optical_features",
+     "band": "ndvi_amplitude_annual"
+    },
+    {
+     "source": "radar_features",
+     "band": "vv_minus_vh_median"
+    }
+   ],
+   "mask_before_snic": true,
+   "drop_kept_patches_below_min_area": false
+  },
+  "merge": {
+   "enabled": true,
+   "criteria": [
+    {
+     "source": "structure_features",
+     "band": "canopy_height",
+     "tolerance": 2.0
+    },
+    {
+     "source": "structure_features",
+     "band": "canopy_height_std",
+     "tolerance": 0.45
+    },
+    {
+     "source": "optical_features",
+     "band": "ndvi_amplitude_annual",
+     "tolerance": 0.03
+    }
+   ],
+   "relax_factor": 1.75,
+   "min_area_ha": 1.0,
+   "max_area_ha": 3.0,
+   "min_defined_criteria": 2,
+   "min_frac_valid": 0.5,
+   "tie_break": "shared_edge_length",
+   "max_pass2_iterations": 60,
+   "pass2_skip_at_min_area": true,
+   "pass2_soft_ceiling": true,
+   "max_superpixels": 50000
+  },
+  "clustering": {
+   "k": 5,
+   "seed": 42,
+   "feature_source": "handcrafted",
+   "skewness_threshold": 1.0,
+   "fit_excludes_stands_below_min_area": true
+  },
+  "normalization": {
+   "method": "robust"
+  },
+  "features": {
+   "optical_harmonic": true,
+   "radar": true,
+   "canopy_height": true,
+   "terrain": true
+  },
+  "export": {
+   "export_geotiff": true,
+   "export_gee_asset": false,
+   "analysis_scale_m": 10,
+   "drive_folder": "fmu_exports_kept_land",
+   "export_vector_merged": true,
+   "export_vector_snic": true,
+   "export_vector_dissolved": true,
+   "vector_formats": [
+    "shp",
+    "geojson"
+   ],
+   "vector_min_stand_pixels": 4
+  },
+  "metrics": {
+   "reference_config_name": null,
+   "reference_config_file": null,
+   "n_comparison_samples": 10000,
+   "n_silhouette_samples_per_cluster": 833,
+   "r2_attributes": [
+    {
+     "source": "structure_features",
+     "band": "canopy_height",
+     "held_out": false
+    },
+    {
+     "source": "optical_features",
+     "band": "ndvi_trend",
+     "held_out": true
+    },
+    {
+     "source": "structure_features",
+     "band": "canopy_height_max",
+     "held_out": true
+    }
+   ]
+  }
+ }
+}

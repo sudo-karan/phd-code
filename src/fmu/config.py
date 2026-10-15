@@ -173,10 +173,23 @@ class FeaturesStaticParams(BaseModel):
     # Sanjay Van it'll be nearly constant; kept for cross-AOI generality.
     include_climate: bool = True
     # Max distance (in pixels at the analysis scale) for the distance-to-water
-    # transform. Pixels farther than this are capped at this value.
-    # 1000 pixels at 10m = 10 km cap. Tradeoff: larger = more compute, but
-    # captures wider-ranging "near water" gradients.
+    # transform: 1000 pixels at 10 m is 10 km. Tradeoff: larger = more compute,
+    # but captures wider-ranging "near water" gradients. Off the axes the search
+    # reaches a little past it (real distances up to 12.3 km in the Odisha box
+    # runs); where it finds no water the transform returns its fill value,
+    # sqrt(2^31 - 1) pixels (463,409.5 m at 10 m), unless cap_distance_to_water
+    # is on.
     max_water_distance_pixels: int = Field(default=1000, ge=100, le=10000)
+    # On: distance_to_water is capped at max_water_distance_pixels x
+    # export.analysis_scale_m (10 km by default), so that every distance past it
+    # reads as that distance: the fill value of a pixel with no water within
+    # reach, and the real distances just past it (docs/decisions.yaml,
+    # spec-static-cap-distance-to-water). Off by default,
+    # the behaviour of every run made before it existed. The default is left out
+    # of the cache fingerprint (`fmu.utils.caching._OMITTED_AT_DEFAULT`), so adding
+    # this field moved no existing config's cached assets; a config that sets it
+    # to true gets a new fingerprint.
+    cap_distance_to_water: bool = False
 
 
 class FeaturesEmbeddingParams(BaseModel):

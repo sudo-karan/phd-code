@@ -1,6 +1,6 @@
 # KEPT LAND ONLY. ODISHA ON BOXES, KORAPUT district, 3 ha stand ceiling, feature vector (v120).
 #
-# Copy of configs/odisha_v120_3ha_squares_koraput.yaml. FIVE things differ
+# Copy of configs/odisha_v120_3ha_squares_koraput.yaml. SIX things differ
 # (tests/test_keptland_configs.py); everything else is identical, the box ROI, the 3 ha ceiling, k
 # (5) and merge.pass2_skip_at_min_area included:
 #
@@ -16,19 +16,25 @@
 #    rows. (D3)
 # 5. export.drive_folder: fmu_exports_kept_land, so these files do not mix with the box runs'
 #    exports.
+# 6. features_static.cap_distance_to_water: true. distance_to_water is capped at 10 km, in place of
+#    the distance transform's fill value of 463,409.5 m where it finds no water
+#    (spec-static-cap-distance-to-water; Jaskaran, 15 Oct 2026, round 6, his answer (a) to round
+#    4's question 2).
 #
 # D1 to D4 are Jaskaran's decisions of 14 Oct 2026, recorded in docs/decisions.yaml
 # (spec-keptland-configs-mask-before-snic, spec-merge-pass2-soft-ceiling,
 # spec-clustering-fit-excludes-stands-below-min-area, spec-keptland-runs-sites-and-ceilings) and in
-# docs/handoff/2026-10-14-round3.md. The three settings give this config its own cache fingerprint.
-# Its masking, data-load and feature assets can be copied from those of the box run it copies
-# (scripts/reuse_upstream_assets.py), because no stage before segmentation reads anything that
-# differs; segmentation and everything after it are computed afresh.
+# docs/handoff/2026-10-14-round3.md. Settings 2, 3, 4 and 6 give this config its own cache
+# fingerprint.
+# Its masking, data-load, optical, radar and structure assets can be copied from those of the box
+# run it copies (scripts/reuse_upstream_assets.py), because none of those stages reads anything
+# that differs. features_static reads the cap, so its asset is computed afresh, as are segmentation
+# and everything after it.
 #
-# Not run yet: no batch run until Jaskaran says go (round 3). Run it as the box configs were run
-# (odisha_script/run_passes_safely.py; CLAUDE.md, "Earth Engine"). The analysis of these stands
-# against the FES plots has not been declared yet; it is declared before any score (CLAUDE.md,
-# "Results").
+# Run in round 6, 15 Oct 2026 (docs/handoff/2026-10-15-round6.md): one batch of
+# odisha_script/run_passes_safely.py from a run tree pinned to d180cb8; the results are in
+# docs/reproducibility/keptland_runs/. The analysis of these stands against the FES plots is
+# declared in odisha_script/PHASE_KEPTLAND_PREDECLARED.md, before any score; it is not run yet.
 
 name: odisha_v120_3ha_squares_koraput_keptland
 description: Odisha KORAPUT, v120 hand-crafted method, stands capped at 3 ha, run on boxes around the villages' plots, on kept land only (mask before SNIC).
@@ -98,6 +104,7 @@ features_structure:
 features_static:
   include_climate: true
   max_water_distance_pixels: 1000
+  cap_distance_to_water: true
 
 # The pre-Odisha six-band stack.
 segmentation:

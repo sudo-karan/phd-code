@@ -22,9 +22,12 @@ baseline's assets under its own name are from 27 Aug 2026, under another fingerp
 AlphaEarth arm has none under its own name (docs/reproducibility.md).
 
 THE GUARD. It refuses, for a pair, unless all of these hold:
-  - the new config and the source config differ only in keys of `REUSE_SAFE_KEYS`. Each of them is
-    read by no stage before segmentation: `tests/test_reuse_upstream_assets.py` checks that none of
-    their names appears in those stages' modules or in the fmu.utils modules they import;
+  - the new config and the source config differ only in keys of `REUSE_SAFE_KEYS` and of
+    `RECOMPUTE_KEYS`. Each key of `REUSE_SAFE_KEYS` is read by no stage before segmentation:
+    `tests/test_reuse_upstream_assets.py` checks that none of their names appears in those stages'
+    modules or in the fmu.utils modules they import. Each key of `RECOMPUTE_KEYS` is read by one
+    stage before segmentation, the one it names, and by no other (the same test): where the
+    configs differ in it, that stage's assets are not copied, and the new run computes them;
   - both run the same stages before segmentation, and only stages of `UPSTREAM_STAGES` are copied;
   - the record's run is the source config's (same config path), with the fingerprint the source
     config hashes to today, and every asset it lists sits at the path the cache layout gives;
@@ -92,6 +95,14 @@ REUSE_SAFE_KEYS: frozenset[tuple[str, str]] = frozenset({
     ("metrics", "reference_config_name"),
 })
 
+# (block, key) pairs that one stage before segmentation reads, and which stage. A config may
+# differ from its source in one of them; that stage's assets are then left out of the copies, and
+# the new run computes them. features_static.cap_distance_to_water: Jaskaran, 15 Oct 2026 (round 6),
+# spec-static-cap-distance-to-water. No other stage before segmentation reads static_features.
+RECOMPUTE_KEYS: dict[tuple[str, str], str] = {
+    ("features_static", "cap_distance_to_water"): "features_static",
+}
+
 # The only stages whose assets are copied. Segmentation and everything after it never are.
 UPSTREAM_STAGES: tuple[str, ...] = (
     "masking",
@@ -131,6 +142,8 @@ class Plan:
     differences: list[str]
     copies: list[Copy] = field(default_factory=list)
     not_cached_in_source: list[str] = field(default_factory=list)
+    # Assets of a stage that reads a key of RECOMPUTE_KEYS the configs differ in: not copied.
+    computed_fresh: list[str] = field(default_factory=list)
 
 
 def differences(old: dict[str, Any], new: dict[str, Any]) -> set[tuple[str, str]]:
@@ -180,11 +193,12 @@ def plan_for(config: str, source_config: str, record: str, repo: Path = REPO) ->
 
     new, src = load_config(repo / config), load_config(repo / source_config)
     diff = differences(src.model_dump(mode="json"), new.model_dump(mode="json"))
-    unsafe = sorted(diff - REUSE_SAFE_KEYS)
+    unsafe = sorted(diff - REUSE_SAFE_KEYS - set(RECOMPUTE_KEYS))
     if unsafe:
         raise RefusedError(f"{new.name}: differs from {src.name} in {unsafe}, which is not in "
                       f"REUSE_SAFE_KEYS: a stage before segmentation may read it, so its assets "
                       f"must be computed, not copied")
+    fresh = {RECOMPUTE_KEYS[d] for d in diff if d in RECOMPUTE_KEYS}
     if new.name == src.name:
         raise RefusedError(f"{new.name}: same name as its source; nothing to copy to")
     stages = _upstream(new)
@@ -207,6 +221,9 @@ def plan_for(config: str, source_config: str, record: str, repo: Path = REPO) ->
     listed = {(a["stage"], a["key"]): a["asset"] for a in run["assets"]}
     for stage in stages:
         for key in _cacheable_outputs(stage):
+            if stage in fresh:
+                plan.computed_fresh.append(f"{stage}/{key}")
+                continue
             source = listed.get((stage, key))
             if source is None:
                 plan.not_cached_in_source.append(f"{stage}/{key}")
@@ -218,6 +235,7 @@ def plan_for(config: str, source_config: str, record: str, repo: Path = REPO) ->
             plan.copies.append(Copy(stage, key, source, f"{root}/{new.name}/{stage}/{key}__{fp_new}"))
     copied = {c.stage for c in plan.copies}
     assert copied <= set(UPSTREAM_STAGES), copied  # never segmentation or later
+    assert not copied & fresh, copied & fresh  # never a stage that reads what differs
     return plan
 
 
@@ -233,6 +251,8 @@ def describe(plan: Plan) -> list[str]:
         lines.append(f"  copy {c.stage}/{c.key}: {c.source} -> {c.destination}{state}")
     for k in plan.not_cached_in_source:
         lines.append(f"  not cached in the source, computed live by the new run: {k}")
+    for k in plan.computed_fresh:
+        lines.append(f"  not copied, computed by the new run (it reads a key the configs differ in): {k}")
     lines.append(f"  {len(plan.copies)} asset(s) to copy")
     return lines
 

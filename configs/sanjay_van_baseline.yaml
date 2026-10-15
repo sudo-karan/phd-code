@@ -105,7 +105,7 @@ features_structure:
 # mean annual rainfall (CHIRPS climatology).
 features_static:
   include_climate: true
-  max_water_distance_pixels: 1000  # 10 km cap at 10m scale
+  max_water_distance_pixels: 1000  # looks for water within 10 km at 10m scale (no cap: where it finds none, a fill value)
 
 # input_bands is left at the code default (see _DEFAULT_SNIC_INPUT_BANDS in
 # src/fmu/config.py): B4_median, B8_median, canopy_height,

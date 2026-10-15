@@ -149,12 +149,18 @@ def test_the_committed_ui_data_draws_sanjay_van_pixel_by_pixel():
 
 # ---------------------------------------------------------------- the kept-land runs (round 5)
 
-FILL = math.sqrt(2**31 - 1) * 10  # distance_to_water where no water lies within 10 km
+FILL = math.sqrt(2**31 - 1) * 10  # distance_to_water where the transform finds no water
 
 
-def test_far_water_is_over_10_km_for_a_kept_land_run_only(builder):
+def test_far_water_is_over_10_km_where_it_is_marked(builder):
     assert builder.feature_value("distance_to_water", FILL, far_water=True) == "over 10 km"
+    # A capped band (features_static.cap_distance_to_water) holds the cap itself there.
+    assert builder.feature_value("distance_to_water", 10_000.0, far_water=True) == "over 10 km"
     assert builder.feature_value("distance_to_water", 9_999.0, far_water=True) == 9999.0
+    # The cap as Earth Engine reads it back, just under 10 km: "over 10 km", never 10000.0.
+    assert builder.feature_value("distance_to_water", 9_999.98, far_water=True) == "over 10 km"
+    assert builder.profile_value("distance_to_water", 9_999.5646) == "over 10 km"
+    assert builder.feature_value("distance_to_water", 9_994.9, far_water=True) == 9995.0
     assert builder.feature_value("distance_to_water", FILL) == float(f"{FILL:.4g}")
     assert builder.feature_value("elevation", FILL, far_water=True) == round(FILL, 0)
     assert builder.profile_value("distance_to_water", FILL) == "over 10 km"
@@ -179,7 +185,7 @@ def _stands(tmp_path, run_id: str) -> Path:
 
 def test_a_kept_land_runs_stands_carry_the_below_min_flag_and_far_water(builder, tmp_path):
     vec = _stands(tmp_path, "k_run")
-    fc, st = builder.run_stands("k_run", "feature_vector", vec, keptland=True)
+    fc, st = builder.run_stands("k_run", "feature_vector", vec, keptland=True, far_water=True)
     first, second = (f["properties"] for f in fc["features"])
     assert (first["below_min"], second["below_min"]) == (False, True)
     assert (first["distance_to_water"], second["distance_to_water"]) == (1234.0, "over 10 km")
@@ -189,6 +195,13 @@ def test_a_kept_land_runs_stands_carry_the_below_min_flag_and_far_water(builder,
     fc, _ = builder.run_stands("k_run", "feature_vector", vec)
     other = fc["features"][1]["properties"]
     assert "below_min" not in other and other["distance_to_water"] == float(f"{FILL:.4g}")
+
+
+def test_the_sanjay_van_repro_runs_mark_far_water_and_the_others_do_not_yet(builder):
+    """Round 6 (spec-ui-distance-to-water-over-10-km): the Sanjay Van _repro runs now; the Odisha
+    runs as they are built."""
+    marked = set(builder.FAR_WATER_RUNS)
+    assert marked == {"sanjay_van_baseline_repro", "sanjay_van_alphaearth_repro"}
 
 
 def test_a_kept_land_runs_profiles_diagnostics_and_metadata_are_written(builder, tmp_path):
@@ -203,12 +216,13 @@ def test_a_kept_land_runs_profiles_diagnostics_and_metadata_are_written(builder,
         {"name": "export", "metadata": {"manifest": {"clustering": {
             "k": 2, "n_stands_left_out_of_fit": 3, "area_ha_in_stands_left_out_of_fit": 0.9}}}}]}
     (tmp_path / "k_run_manifest_export.json").write_text(json.dumps(manifest))
-    run = {"merge_diagnostics": {"n_stands": 5, "kept_land": {"kept_land_ha": 12.3}}}
-    names, clustering = builder.keptland_files("k_run", tmp_path, run)
+    # The one type's 0.1 ha against 0.0877 ha of kept land: 14% more.
+    run = {"merge_diagnostics": {"n_stands": 5, "kept_land": {"kept_land_ha": 0.0877}}}
+    names, clustering = builder.keptland_files("k_run", tmp_path, run, "at Sanjay Van", 28.53)
     assert clustering["n_stands_left_out_of_fit"] == 3
     out = tmp_path / "ui_data"
     prof = json.loads((out / names["profiles"]).read_text())
-    assert "1/cos(latitude)" in prof["area_note"]
+    assert prof["area_note"] == builder.area_note("at Sanjay Van", 14)
     (t0,) = prof["types"]
     assert t0["bands"]["canopy_height"] == {"mean": 6.123, "p25": 5.0, "p50": 6.0, "p75": 7.0}
     assert t0["bands"]["distance_to_water"] == {"mean": "over 10 km", "p25": 800.0,
@@ -226,3 +240,90 @@ def test_the_kept_land_layer_holds_kept_land_only(builder, tmp_path, monkeypatch
     data = json.loads((tmp_path / "ui_data" / name).read_text())
     assert [c["value"] for c in data["classes"]] == [1]
     assert len(data["classes"][0]["polygons"]) == 2  # the two patches
+
+
+# ------------------------------------------------------- the box kept-land runs (round 6)
+
+def test_the_area_note_gives_how_much_larger_the_type_areas_come_to(builder):
+    # Sanjay Van's note as round 5 wrote it, word for word: its six types came to 967.3 ha on
+    # 847.47 ha of kept land.
+    assert builder.type_area_excess(967.3, 847.47, 28.53) == 14
+    assert builder.area_note("at Sanjay Van", 14) == (
+        "pixel_count and area_ha are the profiling stage's: pixels counted on the clustering "
+        "image's own grid, a geographic one, each taken as 0.01 ha. Away from the equator its "
+        "pixels are narrower than 10 m, so area_ha is too large by about 1/cos(latitude), some "
+        "14% at Sanjay Van. The stands' areas (stands.json) are on the analysis grid.")
+    # Measured where the kept land's area is known: a little more than the grid's share alone
+    # (Angul's boxes, 20.8 N: 437.2 ha of types on 405.6 ha, against 1/cos 1.0696).
+    assert builder.type_area_excess(437.2, 405.6, 20.79) == 8
+    # Without it, the grid's share at the area's latitude.
+    assert builder.type_area_excess(437.2, None, 20.79) == 7
+    assert builder.type_area_excess(1.0, None, 18.8) == 6
+
+
+def test_without_stands_the_plots_carry_no_stand(builder):
+    """A box kept-land run's plots: shown, but joined to no stand (its field check is not run)."""
+    from shapely.geometry import box
+
+    everywhere = box(-180, -90, 180, 90)
+    fc, n = builder.plots_for("k_run", "kendujhar", everywhere, with_stands=False)
+    assert fc["features"] and n["in_district"] == len(fc["features"]) == n["inside"]
+    assert "with_stand" not in n
+    for f in fc["features"]:
+        p = f["properties"]
+        assert "stand_id" not in p and "stand_type" not in p
+        assert p["district"] == "Kendujhar" and p["mask"] in ("kept", "dropped")
+    # With stands (a box run), each plot carries the stand that covers it, or none.
+    stands = {"type": "FeatureCollection", "features": [
+        {"type": "Feature", "properties": {"stand_id": 7, "stand_type": 2},
+         "geometry": {"type": "Polygon", "coordinates": [[[-180, -90], [180, -90], [180, 90],
+                                                          [-180, 90], [-180, -90]]]}}]}
+    fc, n = builder.plots_for("k_run", "kendujhar", everywhere, stands)
+    assert n["with_stand"] == len(fc["features"])
+    assert {(f["properties"]["stand_id"], f["properties"]["stand_type"])
+            for f in fc["features"]} == {(7, 2)}
+
+
+def test_a_box_kept_land_run_is_added_on_its_box_runs_area(builder, tmp_path, monkeypatch):
+    kept = tmp_path / "keptland_runs"
+    kept.mkdir()
+    run_id = "odisha_v120_3ha_squares_kendujhar_keptland"
+    for name in ("stands_merged.geojson", "stands_snic.geojson", "run.json",
+                 "manifest_export.json"):
+        (kept / f"{run_id}_{name}").write_text("{}")
+    monkeypatch.setattr(builder, "KEPTLAND", kept)
+    monkeypatch.setattr(builder, "RUNS", [])
+    areas = {k: v for k, v in builder.AREAS.items() if not k.endswith("_boxes")}
+    monkeypatch.setattr(builder, "AREAS", areas)
+    notes = builder.add_keptland_runs()
+    assert not builder.RUNS
+    assert f"{run_id}: skipped (no area kendujhar_boxes: its box run was skipped)" in notes
+    areas["kendujhar_boxes"] = {"title": "Kendujhar", "site": "Odisha", "roi": "boxes"}
+    notes = builder.add_keptland_runs()
+    (added,) = builder.RUNS
+    assert added == {"run_id": run_id, "area": "kendujhar_boxes", "arm": "feature_vector",
+                     "vec": kept, "keptland": True, "pixels_from": None}
+    # The other three districts and the two Sanjay Van runs have no files here.
+    assert len(notes) == 5 and all("no committed files" in n for n in notes)
+
+
+def test_the_committed_ui_data_shows_the_box_kept_land_runs_plots_without_a_stand():
+    data = SCRIPTS.parent / "ui_data"
+    index = json.loads((data / "index.json").read_text())
+    runs = [r for r in index["runs"] if r.get("kept_land") and r["roi"] == "boxes"]
+    assert sorted(r["run_id"] for r in runs) == sorted(
+        f"odisha_v120_3ha_squares_{d}_keptland" for d in ("angul", "dhenkanal", "kendujhar", "koraput"))
+    for r in runs:
+        assert r["fes_declared"] is False and "plots_with_stand" not in r["facts"]
+        (step,) = [s for s in r["steps"] if s["step"] == "fes_plots"]
+        assert not {"stand_id", "stand_type"} & set(step["layers"][0]["popup_fields"])
+        plots = json.loads((data / "by_run" / r["run_id"] / "plots.geojson").read_text())["features"]
+        assert plots and not any({"stand_id", "stand_type"} & f["properties"].keys() for f in plots)
+        stands = json.loads((data / "by_run" / r["run_id"] / "stands.json").read_text())["features"]
+        assert all(isinstance(f["properties"]["below_min"], bool) for f in stands)
+        # Capped at 10 km: 10 km reads "over 10 km", the cap read back just under it too.
+        far = [f["properties"]["distance_to_water"] for f in stands]
+        assert all(v == "over 10 km" or v < 10_000 for v in far)
+        profiles = json.loads((data / "by_run" / r["run_id"] / "profiles.json").read_text())
+        stats = [v for t in profiles["types"] for v in t["bands"]["distance_to_water"].values()]
+        assert all(v == "over 10 km" or v < 10_000 for v in stats)

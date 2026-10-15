@@ -235,13 +235,14 @@ When `include_climate` is false, only the first 4 bands are emitted.
 
 **On aspect:** emitted as raw degrees (0-360). Cyclic, so 0° and 359° look maximally different to a Euclidean clusterer despite being identical. Future improvement: emit `aspect_sin`, `aspect_cos` instead. Left as raw to match notebook approach (ENG-006).
 
-**On distance to water:** uses `water_mask` from masking, not a fresh JRC pull, so the water source is consistent between exclusion (masking) and feature (here). Cap at `max_water_distance_pixels` × analysis scale (default 10 km).
+**On distance to water:** uses `water_mask` from masking, not a fresh JRC pull, so the water source is consistent between exclusion (masking) and feature (here). The transform looks for water within `max_water_distance_pixels` × analysis scale (default 10 km), and off the axes a little further (real distances up to 12.3 km in the Odisha box runs). Where it finds none, it returns its fill value, sqrt(2^31 − 1) pixels (463,409.5 m at 10 m), not a distance, unless `features_static.cap_distance_to_water` is on, which caps the band there (register entry `spec-static-cap-distance-to-water`; on in the four Odisha kept-land configs of round 6).
 
 **On rainfall:** 30-year standard climatology (1991-2020). Long enough to smooth out year-to-year variation. For a small AOI like Sanjay Van, this band will be nearly constant; included for cross-AOI generality.
 
 **Config knobs:**
 - `features_static.include_climate`; bool (default `true`)
 - `features_static.max_water_distance_pixels`; int 100-10000 (default 1000)
+- `features_static.cap_distance_to_water`; bool (default `false`, every earlier run; left out of the fingerprint while false). On: `distance_to_water` is capped at `max_water_distance_pixels` × analysis scale. Off, the stage makes the calls it made before (`tests/test_static_distance_cap.py`).
 - `datasets.climate`; CHIRPS pentad path (default `UCSB-CHG/CHIRPS/PENTAD`)
 - `dates.climate`; climatology window (default 1991-01-01 to 2020-12-31)
 

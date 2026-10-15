@@ -5235,3 +5235,185 @@ decisions:
   source: >-
     Jaskaran, 14 Oct 2026, with Claude (chat); his answers to questions 6 and 7 of docs/handoff/2026-10-14-round3.md,
     15 Oct 2026 (round 4)
+- id: spec-static-cap-distance-to-water
+  title: >-
+    distance_to_water can be capped at 10 km, in place of the distance transform's fill value; on in the four Odisha
+    kept-land configs
+  decision: >-
+    A static-features setting, features_static.cap_distance_to_water, off by default. Off, the default and the
+    behaviour of every run made before it existed: distance_to_water is fastDistanceTransform over the water mask
+    within features_static.max_water_distance_pixels (1,000 px, 10 km at 10 m), square-rooted and scaled to metres.
+    Off the axes that neighbourhood reaches a little past 10 km (round 6 measured real distances up to 11.3 km in the
+    Koraput boxes and 12.3 km in Dhenkanal's, some 20,000 pixels each); where it holds no water the transform returns
+    its fill value, sqrt(2^31 - 1) pixels, 463,409.5 m at 10 m, not a distance. On: the band is capped with min() at
+    max_water_distance_pixels x export.analysis_scale_m (10 km), so every distance past 10 km reads as 10 km, the
+    fill value and those real distances alike. Off, the stage
+    makes the same Earth Engine calls, in the same order, as before the change (tests/data/features_static_off_calls.json
+    holds them as recorded from the stage at commit 6ad5055, for three shipped configs); its metadata gains the key
+    cap_distance_to_water. config_fingerprint leaves the key out of the hashed features_static block while it is
+    false, so no existing fingerprint moves, and a config that sets it to true gets a new one. It is on in the four
+    configs configs/odisha_v120_3ha_squares_<district>_keptland.yaml, whose fingerprints move (Angul fd08561492,
+    Dhenkanal 98cc68ddf5, Kendujhar be7ff1cae3, Koraput 87bc8dcaf0). The reuse tool lists the key in RECOMPUTE_KEYS:
+    where a config differs from its source in it, the static features are computed by the new run and not copied;
+    masking, data_load and the optical, radar and structure features still are. No other stage before segmentation
+    reads static_features.
+  alternatives_considered:
+  - >-
+    Leave the band as it is, with its fill value (option (b) of question 2 of docs/handoff/2026-10-15-round4.md): not
+    chosen. In the Koraput and Dhenkanal box runs the fill value and real distances mix, so the band is active in their
+    clustering with values above 10 km that are an artefact (1,514 of 2,401 and 240 of 667 stands at the fill value)
+  - >-
+    Leave the band out of the clustering (option (c)): not chosen; it changes the feature set, a method decision
+  - >-
+    Cap it in place, with no setting: not done. Every earlier run's static features would change under an unchanged
+    fingerprint, and their cached assets would no longer be what their configs describe
+  rationale: >-
+    Found by the final review of round 4 (docs/handoff/2026-10-15-round4.md, section 5, question 2): the docs said the
+    band was capped at 10 km, and it held the fill value. In Sanjay Van, Angul's box and every stand of the Sanjay Van
+    runs the band is constant, and the clustering drops it; in the Koraput and Dhenkanal boxes it is not. Jaskaran's
+    answer (a), 15 Oct 2026: "cap distance_to_water at 10 km behind a new setting (default false, left out of the
+    fingerprint at default), on in the four Odisha kept-land configs. Their fingerprints move: update PINNED,
+    REUSE_SAFE_KEYS/ALLOWED. features_static is then computed fresh for these runs; the reuse tool must NOT copy
+    static_features where the setting differs (masking, data_load, optical, radar, structure only). Off path and every
+    other fingerprint unchanged." The key cannot be one of REUSE_SAFE_KEYS, which are read by no stage before
+    segmentation; it is read by features_static, so it is a key of RECOMPUTE_KEYS, which names that stage. No paper
+    was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/features_static.py
+    what: The cap with the setting on, the module docstring, and the key in the stage metadata
+  - path: src/fmu/config.py
+    what: FeaturesStaticParams.cap_distance_to_water, default false, and the corrected comment on max_water_distance_pixels
+  - path: src/fmu/utils/caching.py
+    what: _OMITTED_AT_DEFAULT holds the key at false
+  - path: tests/test_static_distance_cap.py
+    what: >-
+      Off, the calls recorded before the change, and nothing capped; on, the cap at the neighbourhood's reach, from the
+      neighbourhood and the scale; the fingerprint off, left out or written out, and on
+  - path: tests/data/features_static_off_calls.json
+    what: The off path's calls and metadata, as recorded from the stage at commit 6ad5055
+  - path: configs/odisha_v120_3ha_squares_kendujhar_keptland.yaml
+    what: The setting on, and the header item; the other three districts' kept-land configs the same way
+  - path: scripts/reuse_upstream_assets.py
+    what: RECOMPUTE_KEYS, and the plan that leaves out the assets of the stage a differing key of it names
+  - path: tests/test_reuse_upstream_assets.py
+    what: >-
+      The four box plans copy 8 assets each and compute the static features; the Sanjay Van plans copy theirs; a key of
+      RECOMPUTE_KEYS is read by the stage it names and by no other module before segmentation
+  - path: tests/test_keptland_configs.py
+    what: The key in ALLOWED and CHANGED for the box configs only, and the four fingerprints pinned anew
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 15 Oct 2026, with Claude (chat)
+- id: spec-ui-distance-to-water-over-10-km
+  title: >-
+    In ui_data, distance_to_water at or past 10 km reads "over 10 km", not a number: the Sanjay Van runs now, the
+    Odisha runs as they are built
+  decision: >-
+    scripts/build_ui_early_data.py writes a stand's (or a type profile's) distance_to_water of 10 km or more as the
+    string "over 10 km". Where the distance transform finds no water the band holds a fill value of 463,409.5 m, or,
+    with features_static.cap_distance_to_water on, the cap itself (spec-static-cap-distance-to-water), and neither is
+    a distance to print. The value is compared at the four significant figures it is written with, so the cap read
+    back as 9,999.98 m counts. It applies to the Sanjay Van _repro runs and the kept-land runs from round 6 on, and to
+    the Odisha runs when their data is built in the round that runs them.
+  alternatives_considered:
+  - >-
+    Leave the other runs' number, as the page reads a value past 10 km as "over 10 km" anyway (option (a) of
+    question 2 of docs/handoff/2026-10-15-round5.md): not chosen
+  rationale: >-
+    Jaskaran's answer (b) to question 2 of docs/handoff/2026-10-15-round5.md, 15 Oct 2026: "'over 10 km' in ui_data for
+    the Sanjay Van _repro runs now, the Odisha runs as they are built". The data should not hold a number that is not
+    a distance, whatever the page does with it. No paper was searched for this decision.
+  evidence:
+  - path: scripts/build_ui_early_data.py
+    what: feature_value and profile_value, and which runs mark far water
+  - path: tests/test_build_ui_early_data.py
+    what: Far water marked in the runs that mark it, and the number left in the others
+  - path: docs/handoff/2026-10-15-round5.md
+    what: The question, with its two options
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 15 Oct 2026, with Claude (chat)
+- id: spec-profiling-export-type-areas-later
+  title: >-
+    The per-type areas of the profiling stage and of the export manifest stay counted on the clustering image's own
+    grid until a later round
+  decision: >-
+    Not changed in round 6. The profiling stage (pixel_count and area_ha per type) and the export stage
+    (clustering.cluster_distribution in its manifest) count a type's pixels with scale and no projection, so on the
+    clustering image's own grid, a geographic one, and take each pixel as 0.01 ha. Away from the equator those pixels
+    are narrower than 10 m, so the areas are too large by about 1/cos(latitude): at Sanjay Van the six types of each
+    kept-land run come to 967.3 ha for 847.5 ha of kept land, whose stands sum to 846.9 ha on the analysis grid. The
+    stands, the merge and the clustering count on the analysis grid and are not affected. ui_data's profiles.json of
+    the kept-land runs says so in its area_note.
+  alternatives_considered:
+  - >-
+    Count on the analysis grid in both stages now (option (a) of question 1 of docs/handoff/2026-10-15-round5.md): not
+    in this round; it changes those two Locked stages' numbers in every run
+  rationale: >-
+    Found in round 5. Jaskaran, 15 Oct 2026: "R5 Q1 (profiling/export areas on the geographic grid): later, not this
+    round." No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/profiling.py
+    what: The per-type pixel counts and areas, reduced with scale and no projection
+  - path: src/fmu/stages/export.py
+    what: _compute_cluster_distribution, the same
+  - path: docs/handoff/2026-10-15-round5.md
+    what: The question, with the numbers of both kept-land runs
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 15 Oct 2026, with Claude (chat)
+- id: field-plot-within-30-m-of-a-stand
+  title: >-
+    For the field check of the kept-land runs, the mask stays, and a plot within 30 m of a stand counts as on that stand
+  decision: >-
+    For the FES field check of the kept-land runs, to be declared before any score: the land-cover mask stays as it
+    is, so a plot on land the mask removes is still in no stand's polygon; but in the field check a plot within 30 m
+    of a stand counts as on that stand. This is option (b) of the question of the plots on removed land (14 of the
+    267 Odisha plots lie on it inside the boxes). Recorded now for the declaration; nothing is scored in round 6.
+    What the declaration settles: the distance (30 m, to the stand's polygon), and which stand counts when more than
+    one lies within 30 m.
+  alternatives_considered: []
+  alternatives_note: not recorded in the source
+  rationale: >-
+    With SNIC and the merge on kept land only (spec-segmentation-mask-before-snic), a plot on land the mask removes
+    lies in no stand, and a comparison that takes plots by the stand they fall in would lose them. Jaskaran, 15 Oct
+    2026: "Field plots on removed land: option (b): the mask stays; in the field check a plot within 30 m of a stand
+    counts as on that stand. Record it now as a decision for the FES declaration; no scoring this round." The other
+    options of the question are not in the repo. No paper was searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-15-round6.md
+    what: Jaskaran's words, as he gave them
+  - path: odisha_script/PHASE3_PREDECLARED.md
+    what: The pattern of a declaration made before the analysis runs
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 15 Oct 2026, with Claude (chat)
+- id: spec-export-read-back-tool-when-an-export-pass-stops
+  title: >-
+    If an export pass stops on its read-back, the stand layers are read back with odisha_script/odisha_read_back_export.py
+  decision: >-
+    For the batch runs of the kept-land configs, an export pass that stops at the runner's read-back of a vector layer
+    (more than 5,000 elements for one getInfo, or a count that times out) is finished with
+    odisha_script/odisha_read_back_export.py, as for the box runs of round 2. The export stage and the runner are not
+    changed for it now.
+  alternatives_considered:
+  - >-
+    Fix both limits, the export stage's count and the runner's read-back, before these runs (option (a) of question
+    10 of docs/handoff/2026-10-14-round3.md): not now; the export stage is Locked. Recommended there for the final round
+  rationale: >-
+    Jaskaran's answer (b) to question 10 of docs/handoff/2026-10-14-round3.md, given again for round 6 on 15 Oct 2026:
+    "R3 Q10 (b): if an export pass stops, use odisha_script/odisha_read_back_export.py." No paper was searched for this
+    decision.
+  evidence:
+  - path: odisha_script/odisha_read_back_export.py
+    what: The read-back of an export pass's layers
+  - path: docs/handoff/2026-10-14-round3.md
+    what: The question, with its two options
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 15 Oct 2026, with Claude (chat)

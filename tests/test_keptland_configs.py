@@ -7,8 +7,10 @@ clustering.fit_excludes_stands_below_min_area). Sanjay Van keeps its 10 ha setti
 four 3 ha box configs (D4). On 15 Oct 2026 (round 4, his answers to questions 6 and 7 of
 docs/handoff/2026-10-14-round3.md) he added two for Sanjay Van: merge.pass2_skip_at_min_area true
 in both, as the box configs already have it, and, for the AlphaEarth arm,
-metrics.reference_config_name sanjay_van_baseline_keptland. The fingerprints are pinned, because
-the reuse of upstream assets and the batch run both name assets by them.
+metrics.reference_config_name sanjay_van_baseline_keptland. On 15 Oct 2026 (round 6, his answer
+(a) to round 4's question 2) the four box configs gained features_static.cap_distance_to_water:
+true. The fingerprints are pinned, because the reuse of upstream assets and the batch run both
+name assets by them.
 """
 
 from __future__ import annotations
@@ -42,23 +44,25 @@ ALLOWED = {
     ("clustering", "fit_excludes_stands_below_min_area"),
     ("export", "drive_folder"),
     ("metrics", "reference_config_name"),
+    ("features_static", "cap_distance_to_water"),
 }
 # What each config changes: all of ALLOWED but the two keys of round 4 (questions 6 and 7), which
 # only the Sanjay Van configs change (the box configs already skip at the minimum).
-_ROUND3 = ALLOWED - {("merge", "pass2_skip_at_min_area"), ("metrics", "reference_config_name")}
+_CAP = ("features_static", "cap_distance_to_water")
+_ROUND3 = ALLOWED - {("merge", "pass2_skip_at_min_area"), ("metrics", "reference_config_name"), _CAP}
 CHANGED = {
     "sanjay_van_baseline_keptland": _ROUND3 | {("merge", "pass2_skip_at_min_area")},
-    "sanjay_van_alphaearth_keptland": ALLOWED,
-    **{f"odisha_v120_3ha_squares_{d}_keptland": _ROUND3
+    "sanjay_van_alphaearth_keptland": ALLOWED - {_CAP},
+    **{f"odisha_v120_3ha_squares_{d}_keptland": _ROUND3 | {_CAP}
        for d in ("angul", "dhenkanal", "kendujhar", "koraput")},
 }
 # new config -> its cache fingerprint (pinned after D2 and D3 were committed; the two Sanjay Van
 # ones again after merge.pass2_skip_at_min_area was set, round 4)
 PINNED: dict[str, str] = {
-    "odisha_v120_3ha_squares_angul_keptland": "9ae5f6a1ac",
-    "odisha_v120_3ha_squares_dhenkanal_keptland": "ed02415c51",
-    "odisha_v120_3ha_squares_kendujhar_keptland": "05257abfb4",
-    "odisha_v120_3ha_squares_koraput_keptland": "0341971814",
+    "odisha_v120_3ha_squares_angul_keptland": "fd08561492",
+    "odisha_v120_3ha_squares_dhenkanal_keptland": "98cc68ddf5",
+    "odisha_v120_3ha_squares_kendujhar_keptland": "be7ff1cae3",
+    "odisha_v120_3ha_squares_koraput_keptland": "87bc8dcaf0",
     "sanjay_van_alphaearth_keptland": "bc34e9b8d5",
     "sanjay_van_baseline_keptland": "883920a4d9",
 }
@@ -97,6 +101,8 @@ def test_a_keptland_config_changes_only_the_named_keys(name: str):
     assert b[("export", "drive_folder")] == "fmu_exports_kept_land"
     if name == "sanjay_van_alphaearth_keptland":
         assert b[("metrics", "reference_config_name")] == "sanjay_van_baseline_keptland"
+    # Round 6: the box configs cap distance_to_water; the Sanjay Van ones do not.
+    assert b.get(_CAP, False) is (not name.startswith("sanjay_van"))
 
 
 @pytest.mark.parametrize("name", sorted(SOURCES))

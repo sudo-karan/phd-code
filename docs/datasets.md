@@ -169,8 +169,12 @@ use.
 - **In features_static:** `water_mask` from masking is reused as the
   source for `distance_to_water`. `fastDistanceTransform` returns
   squared-euclidean distance in pixels; we sqrt and multiply by scale
-  to get meters. Capped at `max_water_distance_pixels * analysis_scale_m`
-  (default 10 km).
+  to get meters. It looks within `max_water_distance_pixels *
+  analysis_scale_m` (default 10 km), and off the axes a little further (real
+  distances up to 12.3 km in the Odisha box runs); where it finds no water it
+  returns its fill value, sqrt(2^31 - 1) pixels (463,409.5 m at 10 m), unless
+  `features_static.cap_distance_to_water` caps the band at 10 km
+  (`spec-static-cap-distance-to-water`).
 
 **Why JRC for the water layer:** a different sensor from S2 (Landsat), a
 long baseline (1984-2021), and a confidence dimension (`occurrence` is

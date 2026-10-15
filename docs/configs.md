@@ -37,7 +37,7 @@ masking: { indiasat_habitat_classes, indiasat_class_band, keep_worldcover_classe
 features_optical: { index, harmonic_mode, include_trend, time_reference }
 features_radar: { percentiles, include_iqr, include_cross_pol_contrast }
 features_structure: { include_neighborhood_stats, neighborhood_kernel_size }
-features_static: { include_climate, max_water_distance_pixels }
+features_static: { include_climate, max_water_distance_pixels, cap_distance_to_water }
 features_embedding: { collapse_reducer, band_names }
 segmentation: { size, compactness, connectivity, neighborhood_size, normalize_inputs, normalize_distance_scale, input_bands, mask_before_snic, drop_kept_patches_below_min_area }
 merge: { enabled, criteria, relax_factor, min_area_ha, max_area_ha, min_defined_criteria, min_frac_valid, tie_break, max_pass2_iterations, max_superpixels, pass2_skip_at_min_area, pass2_soft_ceiling }
@@ -339,8 +339,17 @@ for the full inventory.
 ### `features_static`
 
 - `include_climate`: bool (default `true`). False omits `annual_rainfall`.
-- `max_water_distance_pixels`: int 100-10000 (default 1000, a 10 km
-  cap at 10 m scale).
+- `max_water_distance_pixels`: int 100-10000 (default 1000, 10 km at 10 m
+  scale): how far the distance transform looks for water, and off the axes a
+  little further (real distances up to 12.3 km in the Odisha box runs). Where it
+  finds none, the band holds the transform's fill value, 463,409.5 m at 10 m, not
+  a distance, unless `cap_distance_to_water` is on.
+- `cap_distance_to_water`: bool (default `false`, the behaviour of every earlier
+  run). True caps `distance_to_water` at `max_water_distance_pixels` x
+  `export.analysis_scale_m`. Left out of the cache fingerprint while false, so
+  existing configs keep their cached assets; a config that sets it to `true`
+  gets a new fingerprint, and the reuse tool computes its static features rather
+  than copying them (register entry `spec-static-cap-distance-to-water`).
 
 ### `features_embedding`
 
