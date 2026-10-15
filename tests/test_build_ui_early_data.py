@@ -145,3 +145,83 @@ def test_the_committed_ui_data_draws_sanjay_van_pixel_by_pixel():
         for layer in step["layers"]:
             for part in layer["parts"]:
                 assert (SCRIPTS.parent / "ui_data" / part["file"]).is_file()
+
+
+# ---------------------------------------------------------------- the kept-land runs (round 5)
+
+FILL = math.sqrt(2**31 - 1) * 10  # distance_to_water where no water lies within 10 km
+
+
+def test_far_water_is_over_10_km_for_a_kept_land_run_only(builder):
+    assert builder.feature_value("distance_to_water", FILL, far_water=True) == "over 10 km"
+    assert builder.feature_value("distance_to_water", 9_999.0, far_water=True) == 9999.0
+    assert builder.feature_value("distance_to_water", FILL) == float(f"{FILL:.4g}")
+    assert builder.feature_value("elevation", FILL, far_water=True) == round(FILL, 0)
+    assert builder.profile_value("distance_to_water", FILL) == "over 10 km"
+    assert builder.profile_value("canopy_height", 7.123456) == 7.123
+
+
+def _stands(tmp_path, run_id: str) -> Path:
+    square = [[[77.0, 28.0], [77.001, 28.0], [77.001, 28.001], [77.0, 28.001], [77.0, 28.0]]]
+    feats = []
+    for sid, (below, dist) in enumerate([(0, 1234.5), (1, FILL)]):
+        props = {"stand_id": sid, "stand_lbl": sid, "area_ha": 1.5 + sid, "cluster_id": sid,
+                 "n_pixels": 150, "centroid_lat": 28.0, "centroid_lon": 77.0, "perim_m": 400.0,
+                 "n_superpx": 2, "n_pass1": 1, "n_relaxed": 0, "n_fallback": 0,
+                 "below_min": below, "below_why": "isolated" if below else "",
+                 "canopy_height": 6.0, "distance_to_water": dist}
+        feats.append({"type": "Feature", "properties": props,
+                      "geometry": {"type": "Polygon", "coordinates": square}})
+    path = tmp_path / f"{run_id}_stands_merged.geojson"
+    path.write_text(json.dumps({"type": "FeatureCollection", "features": feats}))
+    return tmp_path
+
+
+def test_a_kept_land_runs_stands_carry_the_below_min_flag_and_far_water(builder, tmp_path):
+    vec = _stands(tmp_path, "k_run")
+    fc, st = builder.run_stands("k_run", "feature_vector", vec, keptland=True)
+    first, second = (f["properties"] for f in fc["features"])
+    assert (first["below_min"], second["below_min"]) == (False, True)
+    assert (first["distance_to_water"], second["distance_to_water"]) == (1234.0, "over 10 km")
+    assert "n_superpx" not in first and "below_why" not in first
+    assert st["n_bands"] == 2
+    # Another run's stands are as before: no flag, the number as it is.
+    fc, _ = builder.run_stands("k_run", "feature_vector", vec)
+    other = fc["features"][1]["properties"]
+    assert "below_min" not in other and other["distance_to_water"] == float(f"{FILL:.4g}")
+
+
+def test_a_kept_land_runs_profiles_diagnostics_and_metadata_are_written(builder, tmp_path):
+    manifest = {"stages": [
+        {"name": "profiling", "metadata": {"k": 2, "feature_bands": ["canopy_height",
+                                                                     "distance_to_water"],
+         "profiles": [{"cluster_id": 0, "pixel_count": 10, "area_ha": 0.1,
+                       "canopy_height_mean": 6.123456, "canopy_height_p25": 5.0,
+                       "canopy_height_p50": 6.0, "canopy_height_p75": 7.0,
+                       "distance_to_water_mean": FILL, "distance_to_water_p25": 800.0,
+                       "distance_to_water_p50": FILL, "distance_to_water_p75": FILL}]}},
+        {"name": "export", "metadata": {"manifest": {"clustering": {
+            "k": 2, "n_stands_left_out_of_fit": 3, "area_ha_in_stands_left_out_of_fit": 0.9}}}}]}
+    (tmp_path / "k_run_manifest_export.json").write_text(json.dumps(manifest))
+    run = {"merge_diagnostics": {"n_stands": 5, "kept_land": {"kept_land_ha": 12.3}}}
+    names, clustering = builder.keptland_files("k_run", tmp_path, run)
+    assert clustering["n_stands_left_out_of_fit"] == 3
+    out = tmp_path / "ui_data"
+    prof = json.loads((out / names["profiles"]).read_text())
+    (t0,) = prof["types"]
+    assert t0["bands"]["canopy_height"] == {"mean": 6.123, "p25": 5.0, "p50": 6.0, "p75": 7.0}
+    assert t0["bands"]["distance_to_water"] == {"mean": "over 10 km", "p25": 800.0,
+                                                "p50": "over 10 km", "p75": "over 10 km"}
+    assert json.loads((out / names["merge_diagnostics"]).read_text()) == run["merge_diagnostics"]
+    assert json.loads((out / names["clustering_metadata"]).read_text())["k"] == 2
+
+
+def test_the_kept_land_layer_holds_kept_land_only(builder, tmp_path, monkeypatch):
+    mask_dir = tmp_path / "mask"
+    band = np.array([[1, 1, 0, 0], [1, 1, 0, 0], [0, 0, 0, 1], [0, 0, 0, 1]], dtype="float64")
+    _geotiff(mask_dir / "part01_x_habitat_mask.tif", {"habitat_mask": band})
+    monkeypatch.setitem(builder.AREAS, "test_area", {"mask_dir": mask_dir})
+    name = builder.kept_land_layer("test_area")
+    data = json.loads((tmp_path / "ui_data" / name).read_text())
+    assert [c["value"] for c in data["classes"]] == [1]
+    assert len(data["classes"][0]["polygons"]) == 2  # the two patches
