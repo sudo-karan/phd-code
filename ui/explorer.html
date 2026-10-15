@@ -727,7 +727,9 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
   function fesRows(r) {
     if (!state.fes) return [];
     const roi = r.roi || "hulls";
-    return (state.fes.rows || []).filter(x => Array.isArray(x.run_ids)
+    // An empty run_ids means stands no run here holds (September's): those rows are shown as
+    // the earlier test beside the same arm, ceiling and area type, as before.
+    return (state.fes.rows || []).filter(x => Array.isArray(x.run_ids) && x.run_ids.length
       ? x.run_ids.includes(r.run_id)
       : !isKept(r) && x.arm === r.arm && Number(x.stand_ceiling_ha) === Number(r.stand_ceiling_ha) && (x.roi || "hulls") === roi);
   }
