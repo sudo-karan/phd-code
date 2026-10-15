@@ -19,8 +19,11 @@ open work PR. The PR description is the running handoff note.
 - `git pull --rebase` before every push. Never force-push, never rewrite pushed history, never
   merge a PR, never delete a branch.
 - After each task, update the checklist in the PR description (task, commit, status) and push.
-- Never commit secrets (`.env`, credentials, keys) or large binaries (decks, zips, rasters over
-  about 5 MB). Keep those in ignored folders and say in the PR where they are.
+- Never commit secrets (`.env`, credentials, keys). Files over 5 MB of any kind, results included,
+  stay off git: keep them in an ignored folder, commit their size and SHA-256, and say in the PR
+  where they are.
+- Never copy a run tree, or any folder holding `.env`, to Drive or anywhere shared. Copy only the
+  files a record names.
 
 ## Results
 
