@@ -90,3 +90,23 @@ small cut-off patches the stand count rises. I expect the five scores to stay sm
 under 0.1), much as on the hulls and the boxes, and the plots joined by the 30 m rule to be about
 11 of the 14 off kept land. A clear rise in any score would be a change of conclusion and is
 reported as one, but without the chance test it cannot be called more than chance.
+
+## Change of 15 Oct 2026 (round 7): the runs that are scored
+
+Made by Claude Code on Jaskaran's instruction of 15 Oct 2026 (round 7,
+`docs/handoff/2026-10-15-round7.md`).
+
+- **The scored runs are the four descending-orbit kept-land runs,**
+  `configs/odisha_v120_3ha_squares_<district>_keptland_s1desc.yaml`: the kept-land configs above
+  with `data_load.s1_orbit: DESCENDING` (Jaskaran's answer (b) to question 4 of
+  `docs/handoff/2026-10-15-round6.md`; register entry `spec-odisha-keptland-s1-orbit-descending`).
+  Over the boxes the ascending orbit has 1 to 3 Sentinel-1 images in 2017 to 2022 in Koraput,
+  Kendujhar and Angul, against 188 to 204 descending, so the radar statistics of the round-6 runs
+  rest on one to three dates. The orbit was chosen by these image counts, not by any score.
+- Everything else above is unchanged: the field types, the plots, the join with the 30 m rule,
+  the five scores, the chance test not run now, and the checks. "Beside the box runs" still means
+  each district's box run of 13 Oct.
+- **No kept-land score existed when this was changed.** The four round-6 kept-land runs
+  (`configs/odisha_v120_3ha_squares_<district>_keptland.yaml`,
+  `docs/reproducibility/keptland_runs/`) were never scored, and `ui_data/` showed their plots
+  without a stand. The `_s1desc` runs are not run yet.
