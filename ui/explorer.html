@@ -486,7 +486,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
   const REPO = "https://github.com/sudo-karan/phd-code/blob/main/";
   const ARM_LABEL = { feature_vector: "Ours", alphaearth: "AlphaEarth" };
   const ARM_TITLE = { feature_vector: "Our 22 measurements per pixel", alphaearth: "Google's AlphaEarth embedding (64 numbers per pixel)" };
-  const ROI_LABEL = { boxes: "Boxes", hulls: "Village outlines", rectangle: "Rectangle" };
+  const ROI_LABEL = { boxes: "Boxes", hulls: "Village outlines (old, 13 Oct)", rectangle: "Rectangle" };
   const STAND_LINE = "#ff4fa3";   // stand outlines sit on imagery; this magenta reads in both themes
   const EDGE_LINE = "#ffd400";    // superpixel edges
   const AREA_LINE = "#ffffff";
@@ -498,12 +498,12 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
   const WALK = [
     { id: "area", label: "Area", decisions: "data_load", layers: ["true_colour", "roi_outline"] },
     { id: "land", label: "Land cover", decisions: "masking", layers: ["true_colour", "habitat_reason", "roi_outline"] },
-    { id: "measure", label: "Measures", decisions: "features", layers: ["true_colour", "@feature"] },
-    { id: "superpixels", label: "Super\u00ADpixels", decisions: "segmentation", layers: ["true_colour", "superpixels"] },
-    { id: "stands", label: "Stands", decisions: "merge", layers: ["true_colour", "stands"] },
-    { id: "types", label: "Types", decisions: "clustering", layers: ["true_colour", "stand_types", "removed_land"] },
-    { id: "profiles", label: "Profiles", decisions: "clustering", layers: ["true_colour", "stand_types"] },
-    { id: "field", label: "Field check", decisions: "fes_plots", layers: ["true_colour", "stands", "links", "plots"], odisha: true },
+    { id: "measure", label: "Measures", decisions: "features", layers: ["true_colour", "@feature", "roi_outline"] },
+    { id: "superpixels", label: "Super\u00ADpixels", decisions: "segmentation", layers: ["true_colour", "superpixels", "roi_outline"] },
+    { id: "stands", label: "Stands", decisions: "merge", layers: ["true_colour", "stands", "roi_outline"] },
+    { id: "types", label: "Types", decisions: "clustering", layers: ["true_colour", "stand_types", "removed_land", "roi_outline"] },
+    { id: "profiles", label: "Profiles", decisions: "clustering", layers: ["true_colour", "stand_types", "roi_outline"] },
+    { id: "field", label: "Field check", decisions: "fes_plots", layers: ["true_colour", "stands", "roi_outline", "links", "plots"], odisha: true },
   ];
   // What each step does and how, for the "How this step works" drawer. Plain words; the numbers
   // for the chosen run are in the step's own text.
@@ -690,7 +690,9 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
   const run = () => state.run;
   const isOdisha = r => r.site === "Odisha";
   // Runs whose superpixels and stands were drawn on trees and scrub only (mask before SNIC).
-  const isKept = r => r.kept_land === true || r.mask_before_snic === true || /_keptland$/.test(r.run_id || "");
+  const isKept = r => r.kept_land === true || r.mask_before_snic === true || /_keptland(_s1desc)?$/.test(r.run_id || "");
+  // An Odisha kept-land run on the ascending radar orbit, once its descending re-run exists.
+  const isAscendingRedo = r => /_keptland$/.test(r.run_id || "") && (state.index.runs || []).some(x => x.run_id === r.run_id + "_s1desc");
   function allLayers(r) {
     const out = [];
     (r.steps || []).forEach(step => (step.layers || []).forEach((layer, j) => {
@@ -1016,7 +1018,8 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     const pool = state.index.runs;
     const want = kept === undefined ? (state.run ? isKept(state.run) : true) : kept;
     // Prefer the same choice of land (kept land or all), then boxes over village outlines.
-    const rank = x => (isKept(x) === want ? 0 : 2) + (x.roi === "boxes" ? 0 : 1);
+    // Odisha's radar is re-run on the descending orbit (round 7); where both exist, show that one.
+    const rank = x => (isKept(x) === want ? 0 : 4) + (x.roi === "boxes" ? 0 : 2) + (isAscendingRedo(x) ? 1 : 0);
     const pick = list => list.slice().sort((a, b) => rank(a) - rank(b))[0];
     const exact = pool.filter(x => x.area === area && x.arm === arm && x.stand_ceiling_ha === ceiling);
     const chosen = (roi && pick(exact.filter(x => (x.roi || "hulls") === roi))) || pick(exact) ||
