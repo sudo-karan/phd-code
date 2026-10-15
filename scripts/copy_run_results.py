@@ -32,7 +32,9 @@ from pathlib import Path
 from typing import Any
 
 REPO = Path(__file__).resolve().parent.parent
-LIMIT = 5 * 1024 * 1024   # bytes: over this, a file stays off git
+# Bytes: over this, a file stays off git. 5 MB read strictly, 5,000,000 bytes (not 5 MiB), so a
+# file over 5 MB on any reading is kept off.
+LIMIT = 5_000_000
 DROP = {"run_dir", "total_elapsed_sec", "elapsed_sec", "run_timestamp", "submitted_at"}
 TIME_WORDS = ("time", "elapsed", "date", "duration", "started", "finished", "_sec")
 SETTINGS = ("dates", "time_reference")  # config keys that are settings, not timings
