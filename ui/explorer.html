@@ -2192,7 +2192,12 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     } catch (e) { state.decisions = null; }
     if (state.index.fes_comparison) { try { state.fes = await getJSON(DATA + state.index.fes_comparison); } catch (e) { state.fes = null; } }
     const short = state.index.short_label || state.index.label || "";
-    $("#banner").innerHTML = `<strong>Early version.</strong> ${esc(short)}` + (state.index.label && state.index.short_label ? ` <button type="button" id="more">More</button><span class="more" id="more-text" hidden>${esc(state.index.label)}</span>` : "");
+    // A frozen copy (…/v/<tag>/, built from a tagged commit for citing) says so and links to the
+    // latest version of the same view.
+    const frozen = (location.pathname.match(/\/v\/([^/]+)\/?/) || [])[1];
+    const latest = frozen ? location.pathname.replace(/v\/[^/]+\/?[^/]*$/, "") : "";
+    $("#banner").innerHTML = (frozen ? `<strong>Frozen copy (${esc(decodeURIComponent(frozen))}).</strong> The site as it was when cited; it does not change. <a href="${esc(latest)}" id="latest-link">Open the latest version</a>.<br>` : "") +
+      `<strong>Early version.</strong> ${esc(short)}` + (state.index.label && state.index.short_label ? ` <button type="button" id="more">More</button><span class="more" id="more-text" hidden>${esc(state.index.label)}</span>` : "");
     const more = $("#more");
     if (more) more.addEventListener("click", () => { const t = $("#more-text"); t.hidden = !t.hidden; more.textContent = t.hidden ? "More" : "Less"; });
     // A new place opens on its latest runs (kept land, boxes, our features), not on whatever stand
@@ -2269,6 +2274,8 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     state.mapReady = true;
     setHash();
     state.map.on("moveend", setHash);
+    const ll = $("#latest-link");
+    if (ll) ll.addEventListener("click", e => { e.preventDefault(); location.href = ll.getAttribute("href") + linkState(); });
     // A link pasted into this tab, or followed from the page, opens as a fresh load.
     window.addEventListener("hashchange", () => { if (location.hash !== linkState()) location.reload(); });
   }
