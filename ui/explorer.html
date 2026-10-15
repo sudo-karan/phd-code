@@ -163,7 +163,7 @@ select {
 .main {
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(320px, 430px) minmax(0, 1fr);
+  grid-template-columns: minmax(320px, 460px) minmax(0, 1fr);
   gap: 12px;
 }
 
@@ -210,7 +210,7 @@ select {
   border: 1.5px solid var(--line);
   background: var(--surface);
 }
-.stepper .lbl { font-family: var(--font-label); font-size: 11px; line-height: 1.15; text-align: center; text-wrap: balance; }
+.stepper .lbl { font-family: var(--font-label); font-size: 10.5px; line-height: 1.15; text-align: center; text-wrap: balance; hyphens: manual; }
 .stepper button[aria-current="step"] { color: var(--ink); }
 .stepper button[aria-current="step"] .dot { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .stepper button.done .dot { border-color: var(--accent); color: var(--accent); }
@@ -301,7 +301,7 @@ table.xtab .chip { display: inline-block; width: 10px; height: 10px; border-radi
 .pop table { border-collapse: collapse; }
 .pop td { padding: 1px 0; vertical-align: top; }
 .pop td:first-child { color: var(--muted); padding-right: 12px; }
-.pop td:last-child { font-family: var(--font-data); font-size: 11.5px; }
+.pop td:last-child { font-family: var(--font-data); font-size: 11.5px; white-space: nowrap; }
 .pop p { margin: 6px 0 0; font-size: 12px; }
 
 .legend {
@@ -369,9 +369,66 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
   .story { overflow: visible; }
   .stepper .lbl { display: none; }
   .stepper button[aria-current="step"] .lbl { display: block; }
+  .stepper button[aria-current="step"] { flex: 0 0 auto; min-width: 66px; }
   .drawer { position: fixed; inset: 0; width: 100%; padding-top: env(safe-area-inset-top, 0px); }
   select { min-width: 0; }
 }
+
+/* What each type looks like, and two stands side by side */
+.profiles { display: flex; flex-direction: column; gap: 12px; }
+.groups summary { cursor: pointer; }
+.groups > div { margin-top: 6px; }
+.groups .gname { font-weight: 600; font-size: 13px; }
+.groups ul { margin: 2px 0 0; padding-left: 18px; font-size: 12.5px; }
+.chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.chart svg text { font-family: var(--font-data); font-size: 10.5px; fill: var(--muted); }
+.chart svg text.lab { font-family: var(--font-label); font-size: 10.5px; fill: var(--ink); }
+.chart select { font-size: 12.5px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); padding: 3px 6px; max-width: 100%; }
+.arows { display: flex; flex-direction: column; gap: 5px; }
+.arow { display: grid; grid-template-columns: 62px minmax(0, 1fr) 118px; gap: 8px; align-items: center; font-size: 12.5px; cursor: pointer; border-radius: 6px; padding: 1px 4px; margin: 0 -4px; }
+.arow:hover { background: var(--bg); }
+.arow[aria-pressed="true"] { background: var(--accent-soft); }
+.arow .tname { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.arow .tname i, .tdesc .chip { width: 11px; height: 11px; border-radius: 3px; display: inline-block; flex: none; }
+.arow .abar { height: 10px; background: var(--neutral-soft); border-radius: 5px; overflow: hidden; }
+.arow .abar i { display: block; height: 100%; border-radius: 5px; }
+.arow .aval { font-family: var(--font-data); font-size: 12px; font-variant-numeric: tabular-nums; }
+.arow .aval .small { font-family: var(--font-ui); }
+.hscroll { overflow-x: auto; }
+.heat { border-collapse: separate; border-spacing: 2px; font-size: 11px; table-layout: fixed; }
+.heat th.grp { font-family: var(--font-label); font-weight: 500; font-size: 10.5px; color: var(--muted); text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; max-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.heat th.mh { height: 74px; vertical-align: bottom; padding: 0; font-weight: 400; color: var(--muted); }
+.heat th.mh span { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; font-size: 10.5px; }
+.heat th.row { white-space: nowrap; font-weight: 500; text-align: left; padding-right: 4px; font-family: var(--font-data); }
+.heat th.row .chip { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 4px; vertical-align: -1px; }
+.heat td { width: 14px; min-width: 14px; height: 20px; border-radius: 3px; text-align: center; color: var(--muted); }
+.zkey { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--muted); }
+.zkey i { flex: 0 0 120px; height: 9px; border-radius: 4px; display: block; border: 1px solid var(--line); }
+.tdesc { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.tdesc li { display: block; padding-left: 18px; text-indent: -18px; }
+.tdesc .chip { margin-right: 7px; vertical-align: -1px; }
+.compare { border-color: var(--accent); }
+.cmp { border-collapse: collapse; width: 100%; font-size: 12px; }
+.cmp th { text-align: left; font-weight: 500; font-size: 11.5px; padding: 2px 4px; border-bottom: 1px solid var(--line); }
+.cmp td { padding: 3px 4px; border-bottom: 1px solid color-mix(in srgb, var(--line) 50%, transparent); vertical-align: middle; }
+.cmp td:nth-child(2), .cmp td:nth-child(3) { font-family: var(--font-data); font-size: 11.5px; white-space: nowrap; }
+.cmp td:last-child { width: 30%; }
+.dbar { position: relative; display: block; height: 9px; background: var(--neutral-soft); border-radius: 4px; }
+.dbar::after { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--muted); }
+.dbar i { position: absolute; top: 0; bottom: 0; background: var(--accent); border-radius: 4px; }
+.linkish { align-self: flex-start; border: 0; background: none; color: var(--accent); padding: 0; cursor: pointer; text-decoration: underline; font-size: 12.5px; }
+.popbtn { margin-top: 8px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); border-radius: 6px; padding: 4px 9px; cursor: pointer; font-size: 12px; }
+.pop details { margin-top: 6px; }
+.pop summary { cursor: pointer; color: var(--accent); font-size: 12px; }
+.pop tr.gh td { padding-top: 6px; font-family: var(--font-label); font-size: 11px; color: var(--ink); font-weight: 600; }
+.stepper button.off { opacity: .5; cursor: not-allowed; }
+.stepper .offnote { font-size: 10px; color: var(--muted); }
+.drawer .dscroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.drawer .dscroll .list { overflow: visible; }
+.drawer .info { display: flex; flex-direction: column; gap: 6px; font-size: 13px; padding: 12px 14px 4px; }
+.drawer .info p { margin: 0; }
+.drawer .info ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.drawer .dechead { margin: 8px 14px 0; font-size: 13.5px; border-top: 1px solid var(--line); padding-top: 10px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
 </style>
 
@@ -386,6 +443,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       <div class="field"><span>Features</span><div class="seg" role="radiogroup" aria-label="Features" id="pick-arm"></div></div>
       <div class="field"><span>Stand size</span><div class="seg" role="radiogroup" aria-label="Stand size" id="pick-ceiling"></div></div>
       <div class="field" id="pick-roi-wrap" hidden><span>Area</span><div class="seg" role="radiogroup" aria-label="Area" id="pick-roi"></div></div>
+      <div class="field" id="pick-kept-wrap" hidden><span>Stands drawn on</span><div class="seg" role="radiogroup" aria-label="Stands drawn on" id="pick-kept"></div></div>
     </div>
   </header>
   <p class="banner" id="banner">Loading.</p>
@@ -404,13 +462,17 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       <div class="legend" id="legend" hidden></div>
       <label class="zoomto" id="zoomto-wrap" hidden><span class="sr">Go to</span><select id="zoomto" aria-label="Go to a village"></select></label>
       <label class="basemap" id="basemap-toggle"><input type="checkbox" id="basemap"> <span id="basemap-label">Street map underneath</span></label>
-      <aside class="drawer" id="drawer" hidden aria-label="Why we did it this way">
+      <aside class="drawer" id="drawer" hidden aria-label="How this step works">
         <header>
-          <div><span class="eyebrow">Why we did it this way</span><h3 id="drawer-title"></h3></div>
+          <div><span class="eyebrow">How this step works</span><h3 id="drawer-title"></h3></div>
           <button class="close" id="drawer-close" type="button">Close</button>
         </header>
+        <div class="dscroll">
+        <div class="info" id="drawer-info"></div>
+        <h4 class="dechead" id="drawer-dec-head">The decisions behind it, and the papers</h4>
         <p class="key"><strong>How strong is each paper's support?</strong> <span class="chip accent">used</span> others use the method; <span class="chip accent">recommended</span> a review recommends it; <span class="chip good">shown better</span> a comparison shows it beats the alternatives.</p>
         <div class="list" id="drawer-list"></div>
+        </div>
       </aside>
     </section>
   </main>
@@ -437,11 +499,58 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     { id: "area", label: "Area", decisions: "data_load", layers: ["true_colour", "roi_outline"] },
     { id: "land", label: "Land cover", decisions: "masking", layers: ["true_colour", "habitat_reason", "roi_outline"] },
     { id: "measure", label: "Measures", decisions: "features", layers: ["true_colour", "@feature"] },
-    { id: "superpixels", label: "Superpixels", decisions: "segmentation", layers: ["true_colour", "superpixels"] },
+    { id: "superpixels", label: "Super\u00ADpixels", decisions: "segmentation", layers: ["true_colour", "superpixels"] },
     { id: "stands", label: "Stands", decisions: "merge", layers: ["true_colour", "stands"] },
     { id: "types", label: "Types", decisions: "clustering", layers: ["true_colour", "stand_types", "removed_land"] },
+    { id: "profiles", label: "Profiles", decisions: "clustering", layers: ["true_colour", "stand_types"] },
     { id: "field", label: "Field check", decisions: "fes_plots", layers: ["true_colour", "stands", "links", "plots"], odisha: true },
   ];
+  // What each step does and how, for the "How this step works" drawer. Plain words; the numbers
+  // for the chosen run are in the step's own text.
+  const STEP_INFO = {
+    area: {
+      what: "Choose the land to map and fetch a clear satellite picture of it.",
+      how: ["For Sanjay Van, a rectangle drawn around the park. In Odisha, a box around each village's FES plots, 300 m wider than the plots on every side, so no plot sits on the edge.",
+        "The picture is Sentinel-2: for every 10 m pixel, the middle value of all the clear views from 2017 to 2022. Taking the middle value hides clouds and odd days."],
+    },
+    land: {
+      what: "Find the pixels that are trees or scrub, so stands are only drawn where there is forest to describe.",
+      how: ["We read IndiaSAT's land-cover map (LULC v4, from CoRE Stack) for 2017 to 2021 and keep a pixel if it was trees or scrub in most of those years.",
+        "Where IndiaSAT has no data we fall back on ESA WorldCover. Water from the JRC map is used only to measure distance to water."],
+    },
+    measure: {
+      what: "Describe every pixel with numbers that a forester would care about.",
+      how: ["Our arm: 22 measurements in four groups. Greenness through the year from Sentinel-2 (a smooth yearly curve fitted to six years of images), radar from Sentinel-1 (how strongly the canopy scatters the signal, and how much that changes), canopy height from ETH's 2020 map, and the ground: elevation, slope, which way it faces, distance to water and rainfall.",
+        "AlphaEarth arm: Google's satellite embedding, 64 numbers per pixel per year that a model learned from many satellites at once. We average the years 2017 to 2022."],
+    },
+    superpixels: {
+      what: "Cut the land into small patches of pixels that look alike.",
+      how: ["SNIC plants seeds on a regular grid and grows a patch around each seed, adding neighbouring pixels that are close to it in both measurements and distance.",
+        r => (r.facts && r.facts.segmentation_bands && r.facts.segmentation_bands.length
+          ? `In this run it looks at ${r.facts.segmentation_bands.length} of the measurements: ${listWords(r.facts.segmentation_bands.map(b => BAND_WORDS[b] || b))}. Each is scaled so that none dominates.`
+          : r.arm === "alphaearth" ? "In this run it looks at all 64 AlphaEarth numbers, scaled so that none dominates." : "Each measurement it uses is scaled so that none dominates.")],
+    },
+    stands: {
+      what: "Join neighbouring superpixels into stands of a workable size.",
+      how: [r => `First pass: two neighbours join if they match on ${(r.facts && r.facts.merge_criteria || []).length ? listWords(r.facts.merge_criteria.map(c => (CRITERION_WORDS[c.band] || (t => `${c.band} within ${t}`))(c.tolerance))) : "the measurements set for joining"}, and only while the joined stand stays under ${fmt(r.stand_ceiling_ha, 0)} ha.`,
+        "Second pass: pieces still under the smallest allowed size join their most similar neighbour, with the limits loosened, or else the neighbour they share the longest border with."],
+    },
+    types: {
+      what: "Sort the stands into a few types, so that stands of the same type can be managed alike.",
+      how: ["k-means groups stands whose averages are close. Each measurement is scaled by its typical spread first, so that one with big numbers, like elevation, doesn't drown out the rest.",
+        r => `The number of types is set in the run's settings beforehand: ${n0(r.k || (r.facts || {}).k)} for this run.`],
+    },
+    profiles: {
+      what: "Show what makes each type different from the others.",
+      how: ["For every type we take its middle stand on each measurement and compare it with the middle of all stands, in units of the typical spread. This only describes the types; it doesn't change them.",
+        "The comparison of two stands works the same way: it lists the measurements on which they are furthest apart."],
+    },
+    field: {
+      what: "Check the stands against what FES found on the ground.",
+      how: ["If the stands follow the forest, plots in the same stand should be the same field type, and plots of the same field type should get the same stand type.",
+        "To tell a real match from luck, the plots are slid and turned to random spots over the same stand map, and the real placement has to beat 95 of every 100 random ones. The tests were written down before they were run."],
+    },
+  };
   const BAND_WORDS = {
     B4_median: "red light",
     B8_median: "near-infrared light",
@@ -475,7 +584,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     outside_reason: ["Why not mapped", v => String(v)],
   };
 
-  const state = { index: null, decisions: null, fes: null, run: null, step: 0, layers: new Map(), on: new Set(), opacity: new Map(), feature: null, cache: new Map(), map: null, renderers: {}, plots: null };
+  const state = { focusType: null, compare: null, boxKey: null, profile: null, index: null, decisions: null, fes: null, run: null, step: 0, layers: new Map(), on: new Set(), opacity: new Map(), feature: null, cache: new Map(), map: null, renderers: {}, plots: null };
   const $ = (s, el = document) => el.querySelector(s);
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
@@ -580,6 +689,8 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
   /* ---------- run lookups ---------- */
   const run = () => state.run;
   const isOdisha = r => r.site === "Odisha";
+  // Runs whose superpixels and stands were drawn on trees and scrub only (mask before SNIC).
+  const isKept = r => r.kept_land === true || r.mask_before_snic === true || /_keptland$/.test(r.run_id || "");
   function allLayers(r) {
     const out = [];
     (r.steps || []).forEach(step => (step.layers || []).forEach((layer, j) => {
@@ -723,7 +834,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       },
       pointToLayer: (f, latlng) => L.circleMarker(latlng, pointStyle(f.properties || {})),
       interactive: layer.layer_id !== "roi_outline",
-      onEachFeature: (f, l) => { if (layer.layer_id !== "roi_outline") l.bindPopup(() => popupHTML(layer, f), { maxWidth: 330 }); },
+      onEachFeature: (f, l) => { if (layer.layer_id !== "roi_outline") l.bindPopup(() => popupHTML(layer, f), { maxWidth: 330, maxHeight: 380 }); },
     });
   }
   function isPoints(data) {
@@ -790,6 +901,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
   }
   function popupHTML(layer, f) {
     const p = f.properties || {};
+    if ((layer.layer_id === "stands" || layer.layer_id === "stand_types") && p.stand_id !== undefined) return standPopup(layer, p);
     const keys = (layer.popup_fields && layer.popup_fields.length) ? layer.popup_fields : Object.keys(p).slice(0, 8);
     const rows = keys.filter(k => p[k] !== undefined && p[k] !== null && p[k] !== "").map(k => {
       const [label, show] = FIELDS[k] || [k, v => String(v)];
@@ -850,6 +962,11 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     const r = run();
     const w = walkFor(r)[state.step];
     state.stepId = w.id;
+    // A canvas pane catches every click over the whole map, even where it draws nothing. Panes
+    // that draw nothing clickable step aside so the stands underneath can be clicked.
+    ["veil", "links"].forEach(n => { state.map.getPane(n).style.pointerEvents = "none"; });
+    state.map.getPane("lines").style.pointerEvents = ["types", "profiles"].includes(w.id) ? "none" : "";
+    if (w.id !== "profiles" && state.focusType !== null && state.focusType !== undefined) { state.focusType = null; applyFocus(); }
     const ids = wanted(r, w);
     const defs = allLayers(r).concat([linksLayer(r)]);
     const want = new Set(ids.map(id => (defs.find(l => l.layer_id === id) || {})._key).filter(Boolean));
@@ -889,20 +1006,29 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     }).join("");
     const rois = [...new Set(runsWhere(x => x.area === r.area && x.arm === r.arm && x.stand_ceiling_ha === r.stand_ceiling_ha).map(x => x.roi || "hulls"))];
     $("#pick-roi-wrap").hidden = rois.length < 2;
+    const same = runsWhere(x => x.area === r.area && x.arm === r.arm && x.stand_ceiling_ha === r.stand_ceiling_ha && (x.roi || "hulls") === (r.roi || "hulls"));
+    const keptChoices = [...new Set(same.map(isKept))];
+    $("#pick-kept-wrap").hidden = keptChoices.length < 2;
+    $("#pick-kept").innerHTML = [true, false].filter(v => keptChoices.includes(v)).map(v => `<button type="button" role="radio" data-kept="${v}" aria-checked="${v === isKept(r)}" title="${v ? "Superpixels and stands drawn on trees and scrub only" : "Superpixels and stands drawn over the whole area"}">${v ? "Trees and scrub" : "All land"}</button>`).join("");
     $("#pick-roi").innerHTML = rois.map(v => `<button type="button" role="radio" data-roi="${v}" aria-checked="${v === (r.roi || "hulls")}">${esc(ROI_LABEL[v] || v)}</button>`).join("");
   }
-  function chooseRun({ area, arm, ceiling, roi }) {
+  function chooseRun({ area, arm, ceiling, roi, kept }) {
     const pool = state.index.runs;
-    const rank = x => (x.roi === "boxes" ? 0 : 1);
+    const want = kept === undefined ? (state.run ? isKept(state.run) : true) : kept;
+    // Prefer the same choice of land (kept land or all), then boxes over village outlines.
+    const rank = x => (isKept(x) === want ? 0 : 2) + (x.roi === "boxes" ? 0 : 1);
     const pick = list => list.slice().sort((a, b) => rank(a) - rank(b))[0];
     const exact = pool.filter(x => x.area === area && x.arm === arm && x.stand_ceiling_ha === ceiling);
-    const chosen = (roi && exact.find(x => (x.roi || "hulls") === roi)) || pick(exact) ||
+    const chosen = (roi && pick(exact.filter(x => (x.roi || "hulls") === roi))) || pick(exact) ||
       pick(pool.filter(x => x.area === area && x.arm === arm)) || pick(pool.filter(x => x.area === area)) || pool[0];
     selectRun(chosen, { keepStep: true });
   }
   async function selectRun(r, { keepStep = false } = {}) {
     for (const l of state.layers.values()) if (l) state.map.removeLayer(l);
     state.layers.clear(); state.on.clear();
+    if (state.hl) { state.map.removeLayer(state.hl); state.hl = null; }
+    state.compare = null;
+    state.focusType = null;
     const prevStepId = state.run ? walkFor(state.run)[state.step]?.id : null;
     state.run = r;
     state.plots = await plotsOf(r).catch(() => null);
@@ -995,12 +1121,17 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
         out.extra = landBar(f);
       }
       if ((f.share_decided_by_worldcover || 0) > 0) out.body.push(`Where IndiaSAT has no data (${pct(f.share_decided_by_worldcover)} of the area) we use ESA WorldCover instead.`);
-      out.body.push(`We don't cut the rest out yet. The superpixels and stands in the next steps cover the whole area; the mark comes back when we sort the stands into types, and only stands with some trees or scrub get a type.`);
+      out.body.push(isKept(r)
+        ? `Everything else is cut out here. From now on the superpixels, the stands and the types are drawn on trees and scrub only, so a field or a village never ends up inside a stand.`
+        : `We don't cut the rest out in this run. The superpixels and stands in the next steps cover the whole area; the mark comes back when we sort the stands into types, and only stands with some trees or scrub get a type.`);
     } else if (w.id === "measure") {
       if (r.arm === "alphaearth") {
         out.title = "What the satellite tells us: AlphaEarth";
         out.body.push(`Here we don't compute our own measurements. We take Google's AlphaEarth embedding instead: 64 numbers for every 10 m pixel, which the AlphaEarth model computes from each year's satellite data. We average the yearly embeddings for 2017 to 2022.`);
-        out.body.push(`No one decided what each of the 64 numbers means, so the map turns them into colour. Each stand gets its average embedding, squeezed into red, green and blue (the first three principal components). Stands with similar colours look alike to AlphaEarth.`);
+        const perPixel = featureLayers(r).some(l => l.kind === "raster");
+        out.body.push(perPixel
+          ? `No one decided what each of the 64 numbers means, so the map turns them into colour: every pixel's 64 numbers squeezed into red, green and blue (the first three principal components). Pixels with similar colours look alike to AlphaEarth.`
+          : `No one decided what each of the 64 numbers means, so the map turns them into colour. Each stand gets its average embedding, squeezed into red, green and blue (the first three principal components). Stands with similar colours look alike to AlphaEarth.`);
         out.facts = factBox("64", "numbers per pixel") + factBox("10 m", "pixel size");
       } else {
         out.title = "What the satellite tells us";
@@ -1008,10 +1139,16 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
         const fl = featureLayers(r);
         const perStand = fl.some(l => l.kind === "vector");
         if (fl.length) out.body.push(`The map shows ${fl.length === 1 ? "one of them" : fl.length === 2 ? "two of them" : fl.length === 3 ? "three of them" : n0(fl.length) + " of them"}.` + (perStand ? ` In this version each is averaged over a stand; the next version shows them pixel by pixel.` : ""));
+        out.body.push(`Every measurement is also averaged over each stand. From the Stands step on, click a stand to see all of them.`);
         out.facts = (has(f.n_feature_bands) ? factBox(n0(f.n_feature_bands), "measurements per pixel") : "") + factBox("10 m", "pixel size");
+        const groupsHTML = `<details class="card groups"><summary><b>The measurements, in four groups</b></summary>${GROUPS.map(g => {
+          const gm = MEASURES.filter(m => m.group === g.id);
+          return `<div><p class="gname">${esc(g.label)} <span class="small">(${esc(g.source)})</span></p><ul>${gm.map(m => `<li>${esc(m.label)}${m.note ? ` <span class="small">(${esc(m.note.replace(/\.$/, "").toLowerCase())})</span>` : ""}</li>`).join("")}</ul></div>`;
+        }).join("")}</details>`;
+        out.extra = groupsHTML;
         if (fl.length > 1) {
           const cur = (fl.find(l => l.layer_id === state.feature) || fl[0]).layer_id;
-          out.extra = `<div class="chips" role="group" aria-label="Which measurement">${fl.map(l => `<button type="button" data-feature="${esc(l.layer_id)}" aria-pressed="${l.layer_id === cur}">${esc(l.title)}</button>`).join("")}</div>`;
+          out.extra = `<div class="chips" role="group" aria-label="Which measurement">${fl.map(l => `<button type="button" data-feature="${esc(l.layer_id)}" aria-pressed="${l.layer_id === cur}">${esc(l.title)}</button>`).join("")}</div>` + groupsHTML;
         }
       }
     } else if (w.id === "superpixels") {
@@ -1033,7 +1170,8 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       const minHa = has(f.min_stand_ha) ? ha(f.min_stand_ha) : "the minimum size";
       out.body.push(`Pieces still under ${minHa} then join their most similar neighbour, with the limits loosened${loosen ? ` by ${loosen}%` : ""}${has(f.merges_relaxed) ? ` (${plural(f.merges_relaxed, "join")})` : ""}, or, when no neighbour is close enough, the neighbour they share the longest border with${has(f.merges_fallback) ? ` (${plural(f.merges_fallback, "join")})` : ""}.`);
       let tail = has(f.n_superpixels, f.n_stands) ? `In the end ${n0(f.n_superpixels)} superpixels become ${n0(f.n_stands)} stands` + (has(f.median_stand_ha) ? `; a typical stand is ${ha(f.median_stand_ha)}.` : ".") : "";
-      tail += `${tail ? " " : ""}The stands cover the whole area, fields and villages included, for now.`;
+      tail += `${tail ? " " : ""}` + (isKept(r) ? `The stands cover trees and scrub only.` : `The stands cover the whole area, fields and villages included, in this run.`);
+      if (isKept(r) && has(f.min_stand_ha, f.max_stand_ha)) tail += ` In that second step a piece still under ${minHa} may join a neighbour even if the stand then goes past ${ha(f.max_stand_ha)}, up to ${ha(f.max_stand_ha + f.min_stand_ha)}, rather than be left on its own.`;
       if (has(f.stands_below_min) && f.stands_below_min > 0) {
         const why = f.below_min_blocked === f.stands_below_min ? "because every neighbour was already too big to take them" : f.below_min_isolated === f.stands_below_min ? "because they touch no other stand" : "because no neighbour could take them";
         tail += ` ${plural(f.stands_below_min, "stand")} stay under ${minHa}, ${why}.`;
@@ -1047,12 +1185,21 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       const k = has(f.k) ? f.k : r.k;
       const what = r.arm === "alphaearth" ? "their 64 AlphaEarth numbers, averaged over each stand" : `their ${has(f.n_feature_bands) ? n0(f.n_feature_bands) + " " : ""}measurements, averaged over each stand and scaled so that no single one dominates`;
       out.body.push(`Last, we sort the stands into ${has(k) ? n0(k) + " " : ""}types with k-means, a standard way of grouping similar things. It groups stands by ${what}. Same colour, same type.`);
-      if (has(f.n_untyped_stands, f.share_stand_area_untyped)) out.body.push(`Only stands with some trees or scrub get a type: ${plural(f.n_untyped_stands, "stand")} (${pct(f.share_stand_area_untyped)} of the stand area) have none. The dark shading marks land that isn't trees or scrub; a stand that is mostly field can still get a type from the trees in it, and its averages include the field.`);
+      if (isKept(r)) out.body.push(`Every stand here is trees or scrub, so every stand gets a type. Stands still under ${has(f.min_stand_ha) ? ha(f.min_stand_ha) : "the smallest allowed size"} after joining get the type they are closest to, but they don't help decide what the types are.`);
+      else if (has(f.n_untyped_stands, f.share_stand_area_untyped)) out.body.push(`Only stands with some trees or scrub get a type: ${plural(f.n_untyped_stands, "stand")} (${pct(f.share_stand_area_untyped)} of the stand area) have none. The dark shading marks land that isn't trees or scrub; a stand that is mostly field can still get a type from the trees in it, and its averages include the field.`);
       else out.body.push(`Only stands with some trees or scrub get a type. The dark shading marks land that isn't trees or scrub.`);
       if (state.index && state.index.commit === "early build") out.body.push(`A caution about these types: they are the ones the 13 October run saved, and a second fit of the same stands gives different types in most runs, because that run computed part of its input fresh and read part from storage. The next update uses a fit that repeats.`);
       if (odisha) out.body.push(`The type numbers are only names. The types are worked out for each district separately, so type 2 in ${r.area} has nothing to do with type 2 in another district.`);
       else out.body.push(`The type numbers are only names. Sanjay Van has no field plots, so the check against the ground is done in Odisha.`);
+      out.body.push(`Click any stand to see its measurements, or to compare it with another stand. The next step shows what each type looks like.`);
       out.facts = (has(k) ? factBox(n0(k), "stand types") : "") + (has(f.n_stands) ? factBox(n0(f.n_stands), "stands") : "");
+    } else if (w.id === "profiles") {
+      out.title = "What each type looks like";
+      out.body.push(r.arm === "alphaearth"
+        ? `AlphaEarth sorted these stands by its 64 numbers, which have no names. To see what sets the types apart, we describe them with our own measurements instead.`
+        : `Here are the types side by side: how much land each covers, how each differs from the rest on every measurement, and how big the stands are.`);
+      out.body.push(`Click a stand on the map to see all its measurements, or pick two stands to compare them.`);
+      out.extra = `<div id="profiles-host" class="profiles"><p class="small">Loading the stands.</p></div>`;
     } else if (w.id === "field") {
       out.title = "Do the stands follow the field plots?";
       out.body.push(`FES measured the trees on ${has(plotsInside) ? n0(plotsInside) + " plots" : "the plots"} inside these ${parts}, and every Odisha plot was sorted into one of five field types by its trees: height, trunk size, crown cover and how many there are.`);
@@ -1137,10 +1284,354 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       mismatch + reading + `</div>`;
   }
 
+  /* ---------- the measurements, in words ---------- */
+  // Every stand carries the average of each measurement over its pixels. These are their names
+  // in plain words, the group each belongs to, and how to show a value.
+  const GROUPS = [
+    { id: "optical", label: "Greenness through the year", short: "Greenness", source: "Sentinel-2" },
+    { id: "radar", label: "Radar", short: "Radar", source: "Sentinel-1" },
+    { id: "structure", label: "Canopy", short: "Canopy", source: "ETH canopy height, 2020" },
+    { id: "static", label: "Ground and climate", short: "Ground", source: "NASADEM, JRC water, CHIRPS" },
+  ];
+  const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  function peakMonth(rad) {
+    // phase = atan2(c, b) of the yearly cycle, with t in years from 1 January: the peak falls at
+    // phase / 2π of the way through the year.
+    const frac = (((rad / (2 * Math.PI)) % 1) + 1) % 1;
+    return MONTHS[Math.min(11, Math.floor(frac * 12))];
+  }
+  function compass(deg) {
+    const names = ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"];
+    return names[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
+  }
+  function waterWords(v) {
+    // distance_to_water stops counting at 10 km and then holds a fill value (about 463 km), so
+    // anything past 10 km is "over 10 km", never a number.
+    if (v >= 10000) return "over 10 km";
+    return v >= 1000 ? fmt(v / 1000, 1) + " km" : fmt(v, 0) + " m";
+  }
+  const dB = d => v => fmt(v, d) + " dB";
+  // [key, short name, full name, group, show, words for higher, words for lower, note]
+  const MEASURES = [
+    ["ndvi_mean", "Greenness", "Average greenness (NDVI)", "optical", v => fmt(v, 3), "greener", "less green"],
+    ["ndvi_amplitude_annual", "Seasonal swing", "How much the greenness rises and falls over the year", "optical", v => fmt(v, 3), "bigger seasonal swing", "steadier through the year"],
+    ["ndvi_phase_annual", "Peak month", "When in the year it is greenest", "optical", v => peakMonth(v), null, null],
+    ["ndvi_trend", "Trend", "Change in greenness per year, 2017 to 2022", "optical", v => (v > 0 ? "+" : "") + fmt(v, 4), "greening over the years", "browning over the years"],
+    ["ndvi_residual_variance", "Irregularity", "Change in greenness the yearly cycle doesn't explain", "optical", v => fmt(v, 4), "more irregular greenness", "more regular greenness", "Not used to sort stands into types."],
+    ["vv_p50", "VV typical", "Radar VV, typical value", "radar", dB(1), "stronger radar return", "weaker radar return"],
+    ["vv_p10", "VV low", "Radar VV, low value (10th percentile)", "radar", dB(1), null, null],
+    ["vv_p90", "VV high", "Radar VV, high value (90th percentile)", "radar", dB(1), null, null],
+    ["vv_iqr", "VV spread", "Radar VV, how much it changes over time", "radar", dB(1), "radar changes more over time", "radar steadier over time"],
+    ["vh_p50", "VH typical", "Radar VH, typical value", "radar", dB(1), "stronger cross-polarised return", "weaker cross-polarised return"],
+    ["vh_p10", "VH low", "Radar VH, low value (10th percentile)", "radar", dB(1), null, null],
+    ["vh_p90", "VH high", "Radar VH, high value (90th percentile)", "radar", dB(1), null, null],
+    ["vh_iqr", "VH spread", "Radar VH, how much it changes over time", "radar", dB(1), null, null],
+    ["vv_minus_vh_median", "VV − VH", "Radar, VV minus VH", "radar", dB(2), null, null],
+    ["canopy_height", "Height", "Canopy height", "structure", v => fmt(v, 1) + " m", "taller canopy", "shorter canopy"],
+    ["canopy_height_max", "Tallest nearby", "Tallest canopy within 30 m", "structure", v => fmt(v, 1) + " m", null, null],
+    ["canopy_height_std", "Height varies", "How much canopy height varies within 30 m", "structure", v => fmt(v, 2) + " m", "more uneven canopy", "more even canopy"],
+    ["elevation", "Elevation", "Elevation", "static", v => fmt(v, 0) + " m", "higher ground", "lower ground"],
+    ["slope", "Slope", "Slope", "static", v => fmt(v, 1) + "°", "steeper", "flatter"],
+    ["aspect", "Faces", "Which way the slope faces", "static", v => compass(v), null, null],
+    ["distance_to_water", "To water", "Distance to water", "static", waterWords, "farther from water", "nearer water"],
+    ["annual_rainfall", "Rainfall", "Rain per year (1991 to 2020 average)", "static", v => fmt(v, 0) + " mm", null, null, "Not used to sort stands into types."],
+  ].map(([key, short, label, group, show, up, down, note]) => ({ key, short, label, group, show, up, down, note }));
+  const measureOf = key => MEASURES.find(m => m.key === key);
+  // A measurement whose average over a stand is not a simple number to compare: a month or a
+  // compass direction, averaged as plain numbers, would mislead in a chart.
+  const CIRCULAR = new Set(["ndvi_phase_annual", "aspect"]);
+
+  /* ---------- small statistics ---------- */
+  function quantile(sorted, q) {
+    if (!sorted.length) return NaN;
+    const x = (sorted.length - 1) * q, i = Math.floor(x), f = x - i;
+    return i + 1 < sorted.length ? sorted[i] + (sorted[i + 1] - sorted[i]) * f : sorted[i];
+  }
+  const nums = xs => xs.filter(v => typeof v === "number" && Number.isFinite(v)).sort((a, b) => a - b);
+  function spreadOf(values) {
+    const s = nums(values);
+    const med = quantile(s, 0.5), iqr = quantile(s, 0.75) - quantile(s, 0.25);
+    return { med, iqr, n: s.length, constant: s.length > 0 && s[0] === s[s.length - 1], sorted: s };
+  }
+
+  /* ---------- stands of the current run ---------- */
+  function standsLayer(r) { return layerById(r, "stand_types") || layerById(r, "stands"); }
+  async function standsOf(r) {
+    const layer = standsLayer(r);
+    if (!layer || !layer.file) return null;
+    const data = await getJSON(DATA + layer.file);
+    // A stand drawn in several pieces is one stand: its area is the pieces' total, and the rest
+    // comes from its largest piece.
+    const byId = new Map();
+    (data.features || []).forEach(f => {
+      const p = f.properties || {};
+      const id = p.stand_id === undefined ? Symbol() : String(p.stand_id);
+      const seen = byId.get(id);
+      if (!seen) { byId.set(id, { ...p }); return; }
+      const total = (seen.area_ha || 0) + (p.area_ha || 0);
+      byId.set(id, (p.area_ha || 0) > (seen._largest || seen.area_ha || 0) ? { ...p, _largest: p.area_ha, area_ha: total } : { ...seen, _largest: seen._largest || seen.area_ha, area_ha: total });
+    });
+    return [...byId.values()];
+  }
+  function measuresIn(stands) {
+    // The measurements this run's stands carry a value for, in the order above.
+    const present = new Set();
+    stands.forEach(p => Object.keys(p).forEach(k => { if (typeof p[k] === "number" && Number.isFinite(p[k])) present.add(k); }));
+    return MEASURES.filter(m => present.has(m.key));
+  }
+  // The value used in charts and comparisons. Distance to water stops at 10 km (past that the
+  // file holds a fill value), so it is counted as 10 km there, as "over 10 km" reads.
+  function valueOf(key, p) {
+    const v = p[key];
+    if (typeof v !== "number" || !Number.isFinite(v)) return null;
+    return key === "distance_to_water" ? Math.min(v, 10000) : v;
+  }
+  function profileModel(r, stands) {
+    const typeLayer = layerById(r, "stand_types");
+    const typed = stands.filter(p => p.stand_type !== null && p.stand_type !== undefined);
+    const types = [...new Set(typed.map(p => Math.round(p.stand_type)))].sort((a, b) => a - b);
+    const ms = measuresIn(stands);
+    const overall = new Map(ms.map(m => [m.key, spreadOf(typed.map(p => valueOf(m.key, p)))]));
+    const byType = types.map(t => {
+      const mine = typed.filter(p => Math.round(p.stand_type) === t);
+      const area = mine.reduce((s, p) => s + (p.area_ha || 0), 0);
+      const med = new Map(ms.map(m => [m.key, spreadOf(mine.map(p => valueOf(m.key, p)))]));
+      return { t, color: legendColor(typeLayer || {}, t), n: mine.length, area, med };
+    });
+    return { typed, types, ms, overall, byType, untyped: stands.length - typed.length, typeLayer };
+  }
+  // How far a type's middle stand sits from the middle of all stands, in "typical spreads" (the
+  // spread of the middle half of all stands). Robust to a few odd stands, and the same scale for
+  // every measurement.
+  function shiftOf(model, typeRow, key) {
+    const o = model.overall.get(key), m = typeRow.med.get(key);
+    if (!o || !m || !o.n || !m.n || o.constant || !(o.iqr > 0)) return null;
+    return (m.med - o.med) / o.iqr;
+  }
+  function typeWords(model, row) {
+    const picks = model.ms
+      .filter(m => m.up && m.down && !m.note)
+      .map(m => ({ m, z: shiftOf(model, row, m.key) }))
+      .filter(x => x.z !== null && Math.abs(x.z) >= 0.75)
+      .sort((a, b) => Math.abs(b.z) - Math.abs(a.z))
+      .slice(0, 3)
+      .map(x => (x.z > 0 ? x.m.up : x.m.down));
+    return picks.length ? cap(listWords(picks)) : "Close to the middle on every measurement";
+  }
+
+  /* ---------- charts (inline SVG, sized by the panel) ---------- */
+  const SVG_NS = 'xmlns="http://www.w3.org/2000/svg"';
+  function sizeHistogram(r, stands) {
+    const areas = nums(stands.map(p => p.area_ha));
+    if (!areas.length) return "";
+    const f = r.facts || {};
+    const ceil = Number(f.max_stand_ha || r.stand_ceiling_ha || areas[areas.length - 1]);
+    const minHa = Number(f.min_stand_ha || 0);
+    const top = Math.max(ceil, areas[areas.length - 1]);
+    const step = top <= 4 ? 0.25 : top <= 12 ? 0.5 : 1;
+    const nb = Math.ceil(top / step) || 1;
+    const bins = new Array(nb).fill(0);
+    areas.forEach(a => { bins[Math.min(nb - 1, Math.floor(a / step))] += 1; });
+    const W = 380, H = 140, L = 30, B = 22, T = 18, max = Math.max(...bins);
+    const bw = (W - L - 6) / nb;
+    const x = v => L + (v / step) * bw;
+    const y = c => T + (H - T - B) * (1 - c / max);
+    const bars = bins.map((c, i) => c ? `<rect x="${(L + i * bw + 0.5).toFixed(1)}" y="${y(c).toFixed(1)}" width="${Math.max(1, bw - 1).toFixed(1)}" height="${(H - B - y(c)).toFixed(1)}" fill="var(--accent)" opacity=".8"><title>${fmt(i * step, 2)} to ${fmt((i + 1) * step, 2)} ha: ${plural(c, "stand")}</title></rect>` : "").join("");
+    const ticks = [0, ceil / 2, ceil].concat(top > ceil * 1.05 ? [top] : []).map(v => `<text x="${x(v).toFixed(1)}" y="${H - 6}" text-anchor="middle">${fmt(v, v % 1 ? 1 : 0)}</text>`).join("");
+    const line = (v, label, end) => `<line x1="${x(v)}" x2="${x(v)}" y1="${T - 4}" y2="${H - B}" stroke="var(--ink)" stroke-dasharray="3 3" opacity=".7"/><text x="${x(v) + (end ? -3 : 3)}" y="${T - 7}" class="lab"${end ? ' text-anchor="end"' : ""}>${label}</text>`;
+    // Areas in the file are measured from the outlines and rounded, so a stand within 1% of a limit counts as at it.
+    const over = areas.filter(a => a > ceil * 1.01).length;
+    const below = minHa ? areas.filter(a => a < minHa * 0.99).length : 0;
+    return `<div class="card chart"><h3>How big the stands are</h3>` +
+      `<svg ${SVG_NS} viewBox="0 0 ${W} ${H}" role="img" aria-label="Histogram of stand sizes">` +
+      `<text x="${L - 4}" y="${T + 4}" text-anchor="end">${max}</text><text x="${L - 4}" y="${H - B}" text-anchor="end">0</text>` +
+      bars + (minHa ? line(minHa, "smallest allowed", false) : "") + line(ceil, "largest allowed", true) + `<g class="ticks">${ticks}</g></svg>` +
+      `<p class="small">Each bar counts the stands of that size, in hectares. ${plural(areas.length, "stand")} in all; the middle one is ${ha(quantile(areas, 0.5))}.` +
+      (below ? ` ${plural(below, "stand")} ${below === 1 ? "is" : "are"} still under ${ha(minHa)}.` : "") +
+      (over ? ` ${plural(over, "stand")} ${over === 1 ? "goes" : "go"} past ${ha(ceil)}, the most is ${ha(areas[areas.length - 1])}.` : "") + `</p></div>`;
+  }
+  function areaByType(model) {
+    const total = model.byType.reduce((s, x) => s + x.area, 0) || 1;
+    const max = Math.max(...model.byType.map(x => x.area), 1e-9);
+    const rows = model.byType.map(x => `<div class="arow" role="button" tabindex="0" data-focus-type="${x.t}" aria-pressed="${state.focusType === x.t}" title="Show only type ${x.t} on the map"><span class="tname"><i style="background:${esc(x.color)}"></i>Type ${x.t}</span>` +
+      `<span class="abar"><i style="width:${(100 * x.area / max).toFixed(1)}%;background:${esc(x.color)}"></i></span>` +
+      `<span class="aval">${pct(x.area / total)} <span class="small">${plural(x.n, "stand")}</span></span></div>`).join("");
+    return `<div class="card chart"><h3>How much land each type covers</h3><div class="arows">${rows}</div>` +
+      `<p class="small">Share of the area of the stands that have a type. Click a type to see only its stands on the map.${model.untyped ? ` ${plural(model.untyped, "stand")} ${model.untyped === 1 ? "has" : "have"} no type and ${model.untyped === 1 ? "is" : "are"} left out.` : ""}</p></div>`;
+  }
+  function shiftColor(z) {
+    if (z === null) return "var(--neutral-soft)";
+    const c = Math.max(-2, Math.min(2, z)) / 2;
+    const hue = c >= 0 ? "#c2611f" : "#2c6fb0";
+    return `color-mix(in srgb, ${hue} ${Math.round(Math.abs(c) * 85)}%, var(--surface))`;
+  }
+  function profileTable(model) {
+    const groups = GROUPS.map(g => ({ g, ms: model.ms.filter(m => m.group === g.id && !CIRCULAR.has(m.key)) })).filter(x => x.ms.length);
+    const head1 = `<tr><th></th>${groups.map(x => `<th colspan="${x.ms.length}" class="grp" title="${esc(x.g.label)} (${esc(x.g.source)})"><span>${esc(x.g.short)}</span></th>`).join("")}</tr>`;
+    const head2 = `<tr><th></th>${groups.map(x => x.ms.map(m => `<th class="mh" title="${esc(m.label)}"><span>${esc(m.short)}</span></th>`).join("")).join("")}</tr>`;
+    const body = model.byType.map(row => `<tr><th class="row"><span class="chip" style="background:${esc(row.color)}"></span>${row.t}</th>` +
+      groups.map(x => x.ms.map(m => {
+        const z = shiftOf(model, row, m.key), med = row.med.get(m.key);
+        const o = model.overall.get(m.key);
+        const tip = o && o.constant ? `${m.label}: the same in every stand here (${m.show(o.med)}), so it can't tell types apart`
+          : `${m.label}, type ${row.t}: middle stand ${med && med.n ? m.show(med.med) : "–"}; all stands ${m.show(o.med)}`;
+        return `<td style="background:${shiftColor(z)}" title="${esc(tip)}">${o && o.constant ? "=" : ""}</td>`;
+      }).join("")).join("") + `</tr>`).join("");
+    const key = `<div class="zkey"><span>lower</span><i style="background:linear-gradient(90deg, ${shiftColor(-2)}, ${shiftColor(0)}, ${shiftColor(2)})"></i><span>higher than most stands</span></div>`;
+    return `<div class="card chart"><h3>What each type looks like</h3>` +
+      `<p class="small">One row per type, one column per measurement. Orange means the type's middle stand is higher than the middle of all stands, blue means lower; the stronger the colour, the bigger the gap. Hover a cell for the values.</p>` +
+      `<div class="hscroll"><table class="heat">${head1}${head2}${body}</table></div>${key}` +
+      (model.ms.some(m => model.overall.get(m.key)?.constant) ? `<p class="small">“=” marks a measurement that is the same in every stand here, so it can't tell types apart.${model.ms.some(m => m.key === "distance_to_water" && model.overall.get(m.key)?.constant) ? " At Sanjay Van no stand is within 10 km of the water our map uses, so distance to water is the same everywhere." : ""}</p>` : "") +
+      `<ul class="tdesc">${model.byType.map(row => `<li><span class="chip" style="background:${esc(row.color)}"></span><b>Type ${row.t}.</b> ${esc(typeWords(model, row))}.</li>`).join("")}</ul>` +
+      `<p class="small">These descriptions compare each type with the other stands at this place only.</p></div>`;
+  }
+  function boxPlot(model, key) {
+    const m = measureOf(key);
+    const o = model.overall.get(key);
+    if (!m || !o || !o.n) return "";
+    const rows = model.byType.map(row => ({ row, s: row.med.get(key) })).filter(x => x.s && x.s.n);
+    const lo = quantile(o.sorted, 0.02), hi = quantile(o.sorted, 0.98);
+    const span = (hi - lo) || 1;
+    const W = 380, rowH = 22, L = 56, R = 10, T = 6, H = T + rows.length * rowH + 20;
+    const x = v => L + (W - L - R) * Math.max(0, Math.min(1, (v - lo) / span));
+    const marks = rows.map(({ row, s }, i) => {
+      const y = T + i * rowH + rowH / 2;
+      const q = p => quantile(s.sorted, p);
+      return `<g><text x="${L - 8}" y="${y + 4}" text-anchor="end">Type ${row.t}</text>` +
+        `<line x1="${x(q(0.1))}" x2="${x(q(0.9))}" y1="${y}" y2="${y}" stroke="var(--muted)"/>` +
+        `<rect x="${x(q(0.25))}" y="${y - 7}" width="${Math.max(1.5, x(q(0.75)) - x(q(0.25)))}" height="14" rx="3" fill="${esc(row.color)}" stroke="var(--ink)" stroke-opacity=".35"/>` +
+        `<line x1="${x(q(0.5))}" x2="${x(q(0.5))}" y1="${y - 7}" y2="${y + 7}" stroke="var(--ink)" stroke-width="2"/>` +
+        `<title>Type ${row.t}: middle stand ${m.show(q(0.5))}; middle half ${m.show(q(0.25))} to ${m.show(q(0.75))}</title></g>`;
+    }).join("");
+    const axis = `<text x="${L}" y="${H - 4}">${esc(m.show(lo))}</text><text x="${W - R}" y="${H - 4}" text-anchor="end">${esc(m.show(hi))}</text>`;
+    const choices = model.ms.filter(x => !CIRCULAR.has(x.key) && !model.overall.get(x.key)?.constant);
+    const select = `<select data-boxkey aria-label="Measurement to compare across types">${choices.map(x => `<option value="${x.key}"${x.key === key ? " selected" : ""}>${esc(x.label)}</option>`).join("")}</select>`;
+    return `<div class="card chart"><h3>One measurement, type by type</h3>${select}` +
+      `<svg ${SVG_NS} viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(m.label)} by stand type">${marks}${axis}</svg>` +
+      `<p class="small">Each box holds the middle half of the type's stands, with a line at the middle one; the thin line runs from the 10th to the 90th percentile. Boxes that don't overlap mean the types differ on this measurement.</p></div>`;
+  }
+
+  function applyFocus() {
+    const r = run(), layer = layerById(r, "stand_types");
+    const l = layer && state.layers.get(layer._key);
+    if (!l || !l.setStyle) return;
+    const t = state.focusType;
+    l.setStyle(f => {
+      const p = f.properties || {}, c = featureColor(layer, p);
+      const R = state.renderers.fills;
+      if (!c) return { renderer: R, pane: "fills", color: "#9aa39d", weight: 0.6, fillColor: "#9aa39d", fillOpacity: t === null || t === undefined ? 0.18 : 0.05, dashArray: "3 3" };
+      const mine = t === null || t === undefined || Math.round(p.stand_type) === t;
+      return { renderer: R, pane: "fills", color: c, weight: mine ? 0.8 : 0.3, opacity: mine ? 0.95 : 0.15, fillColor: c, fillOpacity: mine ? 0.66 * opacityOf(layer) : 0.06 };
+    });
+  }
+  async function renderProfiles() {
+    const host = $("#profiles-host");
+    if (!host) return;
+    const r = run();
+    let stands;
+    try { stands = await standsOf(r); } catch (e) { stands = null; }
+    if (run() !== r || !$("#profiles-host")) return;
+    if (!stands || !stands.length) { host.innerHTML = `<p class="small">The stand file for this run did not load.</p>`; return; }
+    const model = profileModel(r, stands);
+    state.profile = model;
+    const pick = state.boxKey && model.ms.some(m => m.key === state.boxKey) ? state.boxKey : (model.ms.find(m => m.key === "canopy_height") || model.ms[0] || {}).key;
+    const noMeasures = `<div class="card"><h3>What each type looks like</h3><p class="small">This run's stand file carries no measurements by name yet, only ${r.arm === "alphaearth" ? "AlphaEarth's 64 unnamed numbers" : "the stand types"}. The next data update adds our measurements to every stand, so the types can be described here.</p></div>`;
+    host.innerHTML = (model.types.length ? areaByType(model) + (model.ms.length ? profileTable(model) + (pick ? boxPlot(model, pick) : "") : noMeasures) : `<p class="small">No stand in this run has a type.</p>`) + sizeHistogram(r, stands);
+  }
+
+  /* ---------- two stands, side by side ---------- */
+  function compareHTML() {
+    const c = state.compare;
+    if (!c || !c.a) return "";
+    const ms = c.ms || [];
+    if (!c.b) {
+      return `<div class="card compare" id="compare-card"><h3>Compare two stands</h3><p>Stand ${esc(c.a.stand_id)} is picked. Click another stand on the map and choose <b>Compare</b>.</p><button type="button" class="linkish" data-compare-clear>Cancel</button></div>`;
+    }
+    const a = c.a, b = c.b, model = c.model;
+    const rows = ms.filter(m => !CIRCULAR.has(m.key) && valueOf(m.key, a) !== null && valueOf(m.key, b) !== null).map(m => {
+      const o = model && model.get(m.key);
+      const d = valueOf(m.key, b) - valueOf(m.key, a);
+      const z = o && o.iqr > 0 && !o.constant && Number.isFinite(d) ? d / o.iqr : null;
+      return { m, z };
+    });
+    const ranked = rows.filter(x => x.z !== null).sort((x, y) => Math.abs(y.z) - Math.abs(x.z));
+    const bar = z => {
+      const w = Math.min(1, Math.abs(z) / 3) * 50;
+      return `<span class="dbar"><i style="${z >= 0 ? "left:50%" : `left:${50 - w}%`};width:${w}%"></i></span>`;
+    };
+    const line = ({ m, z }) => `<tr><td>${esc(m.label)}${m.note ? ` <span class="small">(${esc(m.note.replace(/\.$/, "").toLowerCase())})</span>` : ""}</td><td>${esc(m.show(a[m.key]))}</td><td>${esc(m.show(b[m.key]))}</td><td>${z === null ? "" : bar(z)}</td></tr>`;
+    const top = ranked.slice(0, 6);
+    const circ = ms.filter(m => CIRCULAR.has(m.key)).map(m => `<tr><td>${esc(m.label)}</td><td>${esc(m.show(a[m.key]))}</td><td>${esc(m.show(b[m.key]))}</td><td></td></tr>`).join("");
+    const head = `<tr><th></th><th>Stand ${esc(a.stand_id)}</th><th>Stand ${esc(b.stand_id)}</th><th class="small">${esc(b.stand_id)} vs ${esc(a.stand_id)}</th></tr>`;
+    const typeOf = p => (p.stand_type === null || p.stand_type === undefined ? "no type" : "type " + Math.round(p.stand_type));
+    const verdict = (a.stand_type !== null && a.stand_type !== undefined && a.stand_type === b.stand_type) ? "Both are " + typeOf(a) + "." : `Stand ${esc(a.stand_id)} is ${typeOf(a)}, stand ${esc(b.stand_id)} is ${typeOf(b)}.`;
+    return `<div class="card compare" id="compare-card"><h3>Stand ${esc(a.stand_id)} and stand ${esc(b.stand_id)}</h3>` +
+      `<p>${verdict} ${ha(a.area_ha)} and ${ha(b.area_ha)}.${ranked.length ? ` They differ most in ${listWords(ranked.slice(0, 2).map(x => lowerFirst(x.m.label)))}.` : ""}</p>` +
+      `<table class="cmp">${head}${top.map(line).join("")}</table>` +
+      (ranked.length > top.length || circ ? `<details><summary>All ${rows.length + ms.filter(m => CIRCULAR.has(m.key)).length} measurements</summary><table class="cmp">${head}${ranked.slice(top.length).map(line).join("")}${rows.filter(x => x.z === null).map(line).join("")}${circ}</table></details>` : "") +
+      `<p class="small">The bars show how far apart the two are, against the typical spread of that measurement across all stands here; a full bar is three typical spreads or more.</p>` +
+      `<button type="button" class="linkish" data-compare-clear>Clear</button></div>`;
+  }
+  // "Radar, VV minus VH" -> "radar, VV minus VH": lower-case the first letter only, and not in an acronym.
+  function lowerFirst(t) { return /^[A-Z][a-z]/.test(t) ? t[0].toLowerCase() + t.slice(1) : t; }
+  async function highlightCompared() {
+    if (state.hl) { state.map.removeLayer(state.hl); state.hl = null; }
+    const c = state.compare, r = run();
+    if (!c || c.run !== r.run_id || !c.a) return;
+    const layer = standsLayer(r);
+    const data = await getJSON(DATA + layer.file).catch(() => null);
+    if (!data || run() !== r) return;
+    const ids = [c.a, c.b].filter(Boolean).map(p => String(p.stand_id));
+    const feats = (data.features || []).filter(f => ids.includes(String((f.properties || {}).stand_id)));
+    state.hl = L.geoJSON({ type: "FeatureCollection", features: feats }, {
+      pane: "links", interactive: false,
+      style: () => ({ color: "#ffffff", weight: 3.5, opacity: 1, fill: false, dashArray: null }),
+    }).addTo(state.map);
+  }
+  async function pickForCompare(id) {
+    const r = run();
+    const stands = await standsOf(r).catch(() => null);
+    if (!stands) return;
+    const p = stands.find(x => String(x.stand_id) === String(id));
+    if (!p) return;
+    const c = state.compare && state.compare.run === r.run_id ? state.compare : { run: r.run_id };
+    if (!c.a || c.b) { c.a = p; c.b = null; } else if (String(c.a.stand_id) !== String(id)) c.b = p;
+    c.ms = measuresIn(stands);
+    const typed = stands.filter(x => x.stand_type !== null && x.stand_type !== undefined);
+    c.model = new Map(c.ms.map(m => [m.key, spreadOf((typed.length ? typed : stands).map(x => valueOf(m.key, x)))]));
+    state.compare = c;
+    state.map.closePopup();
+    renderStory();
+    highlightCompared();
+    const card = $("#compare-card");
+    if (card) card.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+  function standPopup(layer, p) {
+    const r = run();
+    const ms = MEASURES.filter(m => valueOf(m.key, p) !== null);
+    const type = p.stand_type === null || p.stand_type === undefined ? "No type" : "Type " + Math.round(p.stand_type);
+    const key = ["canopy_height", "ndvi_mean", "ndvi_amplitude_annual", "vv_p50"].map(measureOf).filter(m => m && valueOf(m.key, p) !== null);
+    const rows = [`<tr><td>Type</td><td>${esc(type)}</td></tr>`, `<tr><td>Size</td><td>${esc(ha(p.area_ha))}</td></tr>`]
+      .concat(key.map(m => `<tr><td>${esc(m.label)}</td><td>${esc(m.show(p[m.key]))}</td></tr>`)).join("");
+    const rest = GROUPS.map(g => {
+      const gm = ms.filter(m => m.group === g.id && !key.includes(m));
+      return gm.length ? `<tr class="gh"><td colspan="2">${esc(g.label)}</td></tr>` + gm.map(m => `<tr><td>${esc(m.label)}</td><td>${esc(m.show(p[m.key]))}</td></tr>`).join("") : "";
+    }).join("");
+    const c = state.compare && state.compare.run === r.run_id ? state.compare : null;
+    const btn = c && c.a && !c.b && String(c.a.stand_id) !== String(p.stand_id)
+      ? `<button type="button" class="popbtn" data-compare="${esc(p.stand_id)}">Compare with stand ${esc(c.a.stand_id)}</button>`
+      : `<button type="button" class="popbtn" data-compare="${esc(p.stand_id)}">Compare with another stand</button>`;
+    const avg = r.arm === "alphaearth" ? `<p class="small">Averages over the stand. AlphaEarth's own 64 numbers have no names, so the stand is described with our measurements.</p>` : `<p class="small">Averages over the stand's pixels.</p>`;
+    return `<div class="pop"><h4>Stand ${esc(p.stand_id)}</h4><table>${rows}</table>` +
+      (rest ? `<details><summary>All measurements</summary><table>${rest}</table></details>` : "") + avg + btn + `</div>`;
+  }
+
   /* ---------- rendering ---------- */
   function renderStepper() {
     const walk = walkFor(run());
     $("#stepper").innerHTML = walk.map((w, i) => `<button type="button" data-go="${i}" ${i === state.step ? 'aria-current="step"' : ""} class="${i < state.step ? "done" : ""}"><span class="dot">${i + 1}</span><span class="lbl">${esc(w.label)}</span></button>`).join("");
+    const off = WALK.filter(w => w.odisha && !isOdisha(run()));
+    $("#stepper").insertAdjacentHTML("beforeend", off.map((w, j) => `<button type="button" class="off" disabled title="There are no field plots at ${esc(run().area)}. The field check runs in Odisha."><span class="dot">${walk.length + j + 1}</span><span class="lbl">${esc(w.label)}<br><span class="offnote">not here</span></span></button>`).join(""));
   }
   function renderStory() {
     const r = run();
@@ -1153,8 +1644,10 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       `<div><p class="eyebrow kicker">Step ${state.step + 1} of ${walk.length} · ${esc(r.area)} · ${r.arm === "alphaearth" ? "AlphaEarth" : "our features"} · stands up to ${fmt(r.stand_ceiling_ha, 0)} ha</p><h2>${esc(t.title)}</h2></div>` +
       t.body.map(p => `<p>${p}</p>`).join("") +
       (t.facts && r.facts ? `<div class="facts">${t.facts}</div>` : "") + (t.extra || "") + summaryHTML(r, w) +
+      (["stands", "types", "profiles"].includes(w.id) && state.compare && state.compare.run === r.run_id ? compareHTML() : "") +
       (toggles.length ? `<div class="toggles"><p class="eyebrow cap">On the map</p>${toggles.map(togHTML).join("")}</div>` : "") +
-      (decisions.length ? `<button type="button" class="why" id="why"><b>i</b>Why we did it this way (${decisions.length})</button>` : "");
+      `<button type="button" class="why" id="why"><b>i</b>How this step works, and why</button>`;
+    if (w.id === "profiles") renderProfiles();
     const prev = $("#prev"), next = $("#next");
     prev.disabled = state.step === 0;
     if (state.step < walk.length - 1) { next.disabled = false; next.innerHTML = `Next: ${esc(walk[state.step + 1].label)} &rarr;`; }
@@ -1275,6 +1768,9 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     const w = walkFor(r)[state.step];
     const ids = (stepOf(r, w.decisions) || {}).decisions || [];
     $("#drawer-title").textContent = w.label;
+    const info = STEP_INFO[w.id];
+    $("#drawer-info").innerHTML = info ? `<p><strong>What it does.</strong> ${esc(info.what)}</p><p><strong>How.</strong></p><ul>${info.how.map(x => `<li>${esc(typeof x === "function" ? x(r) : x)}</li>`).join("")}</ul>` : "";
+    $("#drawer-dec-head").hidden = !ids.length;
     const list = $("#drawer-list");
     if (!state.decisions) {
       list.innerHTML = `<p>The list of decisions did not load. It lives in <a href="${REPO}docs/decisions.yaml" target="_blank" rel="noopener">docs/decisions.yaml</a>.</p>`;
@@ -1289,7 +1785,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
         const alts = (d.alternatives_considered || []).length ? `<p><strong>Other options we considered</strong></p><ul>${d.alternatives_considered.map(a => `<li>${esc(a)}</li>`).join("")}</ul>` : "";
         const ev = (d.evidence || []).length ? `<details><summary>Where this is in the code</summary><ul>${d.evidence.map(e => `<li><a href="${REPO}${esc(e.path)}" target="_blank" rel="noopener">${esc(e.path)}</a>${e.what ? ": " + esc(e.what) : ""}</li>`).join("")}</ul></details>` : "";
         return `<article class="dec"><div class="meta"><span class="chip ${d.status === "adopted" ? "good" : (d.status === "superseded" ? "" : "warn")}">${esc(d.status || "?")}</span><span class="id">${esc(d.id)}</span></div><h4>${esc(d.title)}</h4><p>${esc(d.decision)}</p>${paperHTML}<details><summary>Why, and what else we considered</summary><p>${esc(d.rationale || "")}</p>${alts}</details>${ev}</article>`;
-      }).join("") || `<p>No decisions are linked to this step yet.</p>`;
+      }).join("") || `<p class="small">This step only describes the results, so no decision sits behind it.</p>`;
     }
     $("#drawer").hidden = false;
     $("#drawer-close").focus();
@@ -1331,15 +1827,26 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     $("#pick-area").addEventListener("change", e => chooseRun({ area: e.target.value, arm: run().arm, ceiling: run().stand_ceiling_ha }));
     $("#pick-arm").addEventListener("click", e => { const b = e.target.closest("button[data-arm]"); if (b && !b.disabled) chooseRun({ area: run().area, arm: b.dataset.arm, ceiling: run().stand_ceiling_ha }); });
     $("#pick-ceiling").addEventListener("click", e => { const b = e.target.closest("button[data-ceiling]"); if (b && !b.disabled) chooseRun({ area: run().area, arm: run().arm, ceiling: Number(b.dataset.ceiling) }); });
+    $("#pick-kept").addEventListener("click", e => { const b = e.target.closest("button[data-kept]"); if (b) chooseRun({ area: run().area, arm: run().arm, ceiling: run().stand_ceiling_ha, roi: run().roi, kept: b.dataset.kept === "true" }); });
     $("#pick-roi").addEventListener("click", e => { const b = e.target.closest("button[data-roi]"); if (b) chooseRun({ area: run().area, arm: run().arm, ceiling: run().stand_ceiling_ha, roi: b.dataset.roi }); });
     $("#stepper").addEventListener("click", e => { const b = e.target.closest("button[data-go]"); if (b) go(+b.dataset.go); });
     $("#prev").addEventListener("click", () => go(state.step - 1));
     $("#next").addEventListener("click", () => go(state.step + 1));
     const panel = document.querySelector(".panel");
-    panel.addEventListener("change", onToggle);
+    panel.addEventListener("change", e => {
+      if (e.target.matches("select[data-boxkey]")) { state.boxKey = e.target.value; renderProfiles(); return; }
+      onToggle(e);
+    });
+    state.map.on("popupopen", ev => {
+      const el = ev.popup.getElement();
+      if (el) el.querySelectorAll("button[data-compare]").forEach(b => b.addEventListener("click", () => pickForCompare(b.dataset.compare)));
+    });
     panel.addEventListener("input", e => { if (e.target.matches('input[type="range"]')) onToggle(e); });
     panel.addEventListener("click", async e => {
       if (e.target.closest("#why")) { openDrawer(); return; }
+      const ft = e.target.closest("[data-focus-type]");
+      if (ft) { const t = +ft.dataset.focusType; state.focusType = state.focusType === t ? null : t; applyFocus(); document.querySelectorAll("[data-focus-type]").forEach(x => x.setAttribute("aria-pressed", String(+x.dataset.focusType === state.focusType))); return; }
+      if (e.target.closest("[data-compare-clear]")) { state.compare = null; renderStory(); highlightCompared(); return; }
       const fb = e.target.closest("button[data-feature]");
       if (fb) { state.feature = fb.dataset.feature; await applyStep(); renderStory(); }
     });
@@ -1356,13 +1863,16 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       else if (state.zoomParts && state.zoomParts[i]) state.map.fitBounds(state.zoomParts[i].bounds, { padding: [24, 24] });
     });
     document.addEventListener("keydown", e => {
+      if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches("[data-focus-type]")) { e.preventDefault(); e.target.click(); return; }
       if (e.key === "Escape") { closeDrawer(); return; }
       if (e.target.closest("input, select, textarea, .leaflet-container") || e.altKey || e.ctrlKey || e.metaKey) return;
       if (e.key === "ArrowRight") go(state.step + 1);
       else if (e.key === "ArrowLeft") go(state.step - 1);
     });
     const [wantRun, wantStep] = ((location.hash || "").replace(/^#/, "") || recall("fmu-run") || "").split("/");
-    const first = state.index.runs.find(r => r.run_id === wantRun) || (state.index.runs.find(r => r.area === "Koraput" && r.arm === "feature_vector" && r.stand_ceiling_ha === 3) || state.index.runs.find(r => r.site === "Odisha" && r.arm === "feature_vector" && r.stand_ceiling_ha === 3)) || state.index.runs[0];
+    // Opens on Sanjay Van, our features, on the kept-land run when there is one.
+    const sv = state.index.runs.filter(r => r.area === "Sanjay Van" && r.arm === "feature_vector").sort((a, b) => Number(isKept(b)) - Number(isKept(a)));
+    const first = state.index.runs.find(r => r.run_id === wantRun) || sv[0] || state.index.runs[0];
     await selectRun(first);
     if (wantStep) { const i = walkFor(first).findIndex(w => w.id === wantStep); if (i > 0) go(i); }
   }
