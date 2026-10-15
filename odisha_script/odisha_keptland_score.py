@@ -151,15 +151,19 @@ def join(plots: pd.DataFrame, layer_path: Path, reach_m: float | None) -> pd.Dat
                 i = min(hits, key=lambda h: layer.sid.iat[h])
                 how, dist = "covered", 0.0
             else:
-                near: dict[int, float] = {}
+                # Per stand, its nearest polygon and that polygon's distance: a stand in pieces
+                # is as near as its nearest piece, and the plot takes that piece's type, as a
+                # covered plot takes the type of the polygon that covers it.
+                near: dict[int, tuple[float, int]] = {}
                 for j in tree.query(pt, predicate="dwithin", distance=1000.0):
-                    s = int(layer.sid.iat[j])
-                    near[s] = min(near.get(s, np.inf), geoms[j].distance(pt))
-                dist = min(near.values()) if near else np.inf
-                best = min(near, key=lambda s: (near[s], s)) if near else None
-                if reach_m is not None and best is not None and near[best] <= reach_m:
+                    s, dj = int(layer.sid.iat[j]), geoms[j].distance(pt)
+                    if s not in near or dj < near[s][0]:
+                        near[s] = (dj, j)
+                dist = min(d for d, _ in near.values()) if near else np.inf
+                best = min(near, key=lambda s: (near[s][0], s)) if near else None
+                if reach_m is not None and best is not None and near[best][0] <= reach_m:
                     how = "within"
-                    i = next(j for j in range(len(layer)) if int(layer.sid.iat[j]) == best)
+                    i = near[best][1]
                 else:
                     out.append({"plot_key": r.plot_key, "sid": np.nan, "cluster": np.nan,
                                 "how": "none", "dist_m": dist})

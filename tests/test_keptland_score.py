@@ -88,3 +88,17 @@ def test_a_tie_within_30_m_goes_to_the_lowest_stand_id(tmp_path):
     mid = (85.002 + 85.00219) / 2
     j = K.join(_plots({"tie": (mid, 21.0005)}), layer, K.REACH_M).set_index("plot_key")
     assert (j.loc["tie", "sid"], j.loc["tie", "how"]) == (1, "within")
+
+
+def test_a_plot_near_a_stand_in_pieces_takes_the_nearest_pieces_type(tmp_path):
+    """A stand in two pieces whose types differ (the stand layer's cluster_id is a mode per
+    polygon): a plot within 30 m of the second piece takes that piece's type, as a covered plot
+    takes the type of the polygon covering it."""
+    def sq(x0, x1):
+        return {"type": "Polygon", "coordinates": [[[x0, 21.0], [x1, 21.0], [x1, 21.001], [x0, 21.001], [x0, 21.0]]]}
+    feats = [{"type": "Feature", "geometry": sq(85.0, 85.001), "properties": {"stand_lbl": 5, "cluster_id": 1.0, "area_ha": 1.0}},
+             {"type": "Feature", "geometry": sq(85.003, 85.004), "properties": {"stand_lbl": 5, "cluster_id": 3.0, "area_ha": 0.5}}]
+    layer = tmp_path / "pieces.geojson"
+    layer.write_text(json.dumps({"type": "FeatureCollection", "features": feats}))
+    j = K.join(_plots({"near_second": (85.0041, 21.0005)}), layer, K.REACH_M).set_index("plot_key")
+    assert (j.loc["near_second", "sid"], j.loc["near_second", "how"], j.loc["near_second", "cluster"]) == (5, "within", 3.0)
