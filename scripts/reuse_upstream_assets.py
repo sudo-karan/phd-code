@@ -15,7 +15,10 @@ and what follows. `ee.data.copyAsset` is immediate, not a queued task, and copie
 changing it.
 
 THE PAIRS (`PAIRS`): each kept-land config, the run whose assets it reuses, and the record that
-lists that run's assets. The source assets are taken from the record, by path, never from a
+lists that run's assets. Round 7 adds the four descending-orbit configs
+(configs/odisha_v120_3ha_squares_<district>_keptland_s1desc.yaml), whose source is the round-6
+kept-land run of the same district, listed in docs/reproducibility/keptland_boxes_assets.json
+(written from the committed run files by scripts/record_keptland_assets.py). The source assets are taken from the record, by path, never from a
 fingerprint recomputed from a config (as round 2 ruled for the demo set). For Sanjay Van the run is
 the `_repro` run of the same content, the only run of it with assets at today's fingerprint: the
 baseline's assets under its own name are from 27 Aug 2026, under another fingerprint, and the
@@ -27,7 +30,11 @@ THE GUARD. It refuses, for a pair, unless all of these hold:
     `tests/test_reuse_upstream_assets.py` checks that none of their names appears in those stages'
     modules or in the fmu.utils modules they import. Each key of `RECOMPUTE_KEYS` is read by one
     stage before segmentation, the one it names, and by no other (the same test): where the
-    configs differ in it, that stage's assets are not copied, and the new run computes them;
+    configs differ in it, that stage's assets are not copied, and the new run computes them.
+    Each key of `RECOMPUTE_VIA_CONTEXT` is read by one stage only to build a value it puts in
+    the context and does not cache, which one other stage before segmentation reads (the same
+    test, from the code): where the configs differ in it, the reading stage's assets are copied,
+    since they do not depend on it, and the other stage's assets are computed by the new run;
   - both run the same stages before segmentation, and only stages of `UPSTREAM_STAGES` are copied;
   - the record's run is the source config's (same config path), with the fingerprint the source
     config hashes to today, and every asset it lists sits at the path the cache layout gives;
@@ -79,6 +86,13 @@ PAIRS: tuple[tuple[str, str, str], ...] = (
          f"configs/odisha_v120_3ha_squares_{d}.yaml", "docs/demo/demo_set_boxes.json")
         for d in ("kendujhar", "angul", "dhenkanal", "koraput")
     ),
+    # Round 7: the descending radar orbit, from the round-6 kept-land runs.
+    *(
+        (f"configs/odisha_v120_3ha_squares_{d}_keptland_s1desc.yaml",
+         f"configs/odisha_v120_3ha_squares_{d}_keptland.yaml",
+         "docs/reproducibility/keptland_boxes_assets.json")
+        for d in ("kendujhar", "angul", "dhenkanal", "koraput")
+    ),
 )
 
 # (block, key) pairs that no stage before segmentation reads. `("name", "")` is the config name,
@@ -101,6 +115,18 @@ REUSE_SAFE_KEYS: frozenset[tuple[str, str]] = frozenset({
 # spec-static-cap-distance-to-water. No other stage before segmentation reads static_features.
 RECOMPUTE_KEYS: dict[tuple[str, str], str] = {
     ("features_static", "cap_distance_to_water"): "features_static",
+}
+
+# (block, key) pairs that one stage before segmentation reads only to build a value it puts in
+# the context and does not cache, which one other stage before segmentation reads: (the reading
+# stage, the context value, the stage that reads it). Where a config differs from its source in
+# one, the reading stage's cached assets are copied (they do not depend on the key) and the
+# other stage's assets are computed by the new run. data_load.s1_orbit: Jaskaran, 15 Oct 2026
+# (round 7), spec-odisha-keptland-s1-orbit-descending. data_load reads it only to load the radar
+# collection, s1_collection, which it does not cache; its cached S2 composite is built without it;
+# features_radar is the only stage that reads s1_collection.
+RECOMPUTE_VIA_CONTEXT: dict[tuple[str, str], tuple[str, str, str]] = {
+    ("data_load", "s1_orbit"): ("data_load", "s1_collection", "features_radar"),
 }
 
 # The only stages whose assets are copied. Segmentation and everything after it never are.
@@ -193,12 +219,13 @@ def plan_for(config: str, source_config: str, record: str, repo: Path = REPO) ->
 
     new, src = load_config(repo / config), load_config(repo / source_config)
     diff = differences(src.model_dump(mode="json"), new.model_dump(mode="json"))
-    unsafe = sorted(diff - REUSE_SAFE_KEYS - set(RECOMPUTE_KEYS))
+    unsafe = sorted(diff - REUSE_SAFE_KEYS - set(RECOMPUTE_KEYS) - set(RECOMPUTE_VIA_CONTEXT))
     if unsafe:
         raise RefusedError(f"{new.name}: differs from {src.name} in {unsafe}, which is not in "
                       f"REUSE_SAFE_KEYS: a stage before segmentation may read it, so its assets "
                       f"must be computed, not copied")
-    fresh = {RECOMPUTE_KEYS[d] for d in diff if d in RECOMPUTE_KEYS}
+    fresh = ({RECOMPUTE_KEYS[d] for d in diff if d in RECOMPUTE_KEYS}
+             | {RECOMPUTE_VIA_CONTEXT[d][2] for d in diff if d in RECOMPUTE_VIA_CONTEXT})
     if new.name == src.name:
         raise RefusedError(f"{new.name}: same name as its source; nothing to copy to")
     stages = _upstream(new)
@@ -252,7 +279,7 @@ def describe(plan: Plan) -> list[str]:
     for k in plan.not_cached_in_source:
         lines.append(f"  not cached in the source, computed live by the new run: {k}")
     for k in plan.computed_fresh:
-        lines.append(f"  not copied, computed by the new run (it reads a key the configs differ in): {k}")
+        lines.append(f"  not copied, computed by the new run (it depends on a key the configs differ in): {k}")
     lines.append(f"  {len(plan.copies)} asset(s) to copy")
     return lines
 

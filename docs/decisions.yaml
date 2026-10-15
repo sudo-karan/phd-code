@@ -5307,34 +5307,40 @@ decisions:
   source: Jaskaran, 15 Oct 2026, with Claude (chat)
 - id: spec-ui-distance-to-water-over-10-km
   title: >-
-    In ui_data, distance_to_water at or past 10 km reads "over 10 km", not a number: the Sanjay Van runs now, the
-    Odisha runs as they are built
+    In ui_data, distance_to_water at or past 10 km reads "over 10 km", not a number, in every run
   decision: >-
     scripts/build_ui_early_data.py writes a stand's (or a type profile's) distance_to_water of 10 km or more as the
     string "over 10 km". Where the distance transform finds no water the band holds a fill value of 463,409.5 m, or,
     with features_static.cap_distance_to_water on, the cap itself (spec-static-cap-distance-to-water), and neither is
     a distance to print. The value is compared at the four significant figures it is written with, so the cap read
-    back as 9,999.98 m counts. It applies to the Sanjay Van _repro runs and the kept-land runs from round 6 on, and to
-    the Odisha runs when their data is built in the round that runs them.
+    back as 9,999.98 m counts. It applies to every run in ui_data: from round 6 to the Sanjay Van _repro runs and the
+    kept-land runs, and from round 7 to the earlier Odisha runs as well, eleven of which held the fill value as a
+    number.
   alternatives_considered:
   - >-
     Leave the other runs' number, as the page reads a value past 10 km as "over 10 km" anyway (option (a) of
     question 2 of docs/handoff/2026-10-15-round5.md): not chosen
+  - >-
+    Mark the earlier Odisha runs only when they are run again (option (a) of question 1 of
+    docs/handoff/2026-10-15-round6.md): not chosen
   rationale: >-
     Jaskaran's answer (b) to question 2 of docs/handoff/2026-10-15-round5.md, 15 Oct 2026: "'over 10 km' in ui_data for
-    the Sanjay Van _repro runs now, the Odisha runs as they are built". The data should not hold a number that is not
-    a distance, whatever the page does with it. No paper was searched for this decision.
+    the Sanjay Van _repro runs now, the Odisha runs as they are built"; and his answer (b) to question 1 of
+    docs/handoff/2026-10-15-round6.md, 15 Oct 2026 (round 7): the earlier Odisha runs now. The data should not hold
+    a number that is not a distance, whatever the page does with it. No paper was searched for this decision.
   evidence:
   - path: scripts/build_ui_early_data.py
-    what: feature_value and profile_value, and which runs mark far water
+    what: feature_value and profile_value; run_stands marks far water in every run
   - path: tests/test_build_ui_early_data.py
-    what: Far water marked in the runs that mark it, and the number left in the others
+    what: Far water marked in every run's stands, and none left as a number in the committed data
   - path: docs/handoff/2026-10-15-round5.md
     what: The question, with its two options
+  - path: docs/handoff/2026-10-15-round6.md
+    what: Question 1, for the earlier Odisha runs, with its two options
   papers: []
   status: adopted
   design_notes_section: null
-  source: Jaskaran, 15 Oct 2026, with Claude (chat)
+  source: Jaskaran, 15 Oct 2026, with Claude (chat); and Jaskaran, 15 Oct 2026 (round 7)
 - id: spec-profiling-export-type-areas-later
   title: >-
     The per-type areas of the profiling stage and of the export manifest stay counted on the clustering image's own
@@ -5417,3 +5423,128 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 15 Oct 2026, with Claude (chat)
+- id: spec-odisha-keptland-s1-orbit-descending
+  title: >-
+    The four Odisha box kept-land runs are made again on the descending Sentinel-1 orbit
+    (configs/odisha_v120_3ha_squares_<district>_keptland_s1desc.yaml), and these are the scored runs
+  decision: >-
+    data_load.s1_orbit is DESCENDING in four configs, copies of the round-6 kept-land configs that differ from
+    them only in it and in their names and Drive folder. Over the boxes, in the radar window (2017-01-01 to
+    2022-12-31, IW, VV and VH), the ascending orbit has 1 image in Koraput, 2 in Kendujhar, 3 in Angul and 174 in
+    Dhenkanal; the descending one 204, 188, 188 and 188. The radar statistics of the round-6 runs therefore rest
+    on one to three dates in three of the districts; in Koraput vv_iqr and vh_iqr are 0 on every stand. The orbit
+    was chosen by image count, not by any score: no kept-land score existed. These runs compute their radar
+    features and everything after them; masking, the S2 composite and the optical, structure and static features
+    are copied from the round-6 runs (scripts/reuse_upstream_assets.py, RECOMPUTE_VIA_CONTEXT). They are the runs
+    the field check of odisha_script/PHASE_KEPTLAND_PREDECLARED.md scores. The other Odisha configs keep
+    ASCENDING, as does Sanjay Van, with 178 ascending images; their runs are not made again this round.
+  alternatives_considered:
+  - >-
+    Leave the ascending orbit (option (a) of question 4 of docs/handoff/2026-10-15-round6.md): not chosen
+  - >-
+    Choose the orbit per area by its image count (option (c)): not chosen
+  rationale: >-
+    Jaskaran's answer (b) to question 4 of docs/handoff/2026-10-15-round6.md, 15 Oct 2026: "Q4 (b): DESCENDING
+    orbit for the four Odisha districts." The radar stage takes percentiles over the window's images and counts on
+    many of them (src/fmu/stages/features_radar.py: "100+ S1 images"); with one image the percentiles coincide and
+    the spread is 0. The image counts are Earth Engine's, asked read-only in round 6. No paper was searched for
+    this decision.
+  evidence:
+  - path: configs/odisha_v120_3ha_squares_koraput_keptland_s1desc.yaml
+    what: One of the four configs; its header says what differs
+  - path: tests/test_s1desc_configs.py
+    what: Only the orbit and the names differ from the round-6 configs
+  - path: scripts/reuse_upstream_assets.py
+    what: What is copied and what is computed for these runs
+  - path: docs/handoff/2026-10-15-round6.md
+    what: The image counts (step 5 b) and the question, with its three options
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 15 Oct 2026 (round 7)
+- id: spec-distance-to-water-left-to-drop-where-it-has-no-spread
+  title: >-
+    Where most stands are 10 km or more from water, distance_to_water is left to drop out of the clustering;
+    listed for the weekend review of the settings
+  decision: >-
+    With features_static.cap_distance_to_water on, a stand 10 km or more from water reads 10 km. Where three
+    quarters or more of the fitted stands do (in round 6, all 168 of Angul's and 997 of Koraput's 1,319), the
+    band's 25th and 75th percentiles are both 10 km, its spread is 0, and the clustering drops it as constant
+    (dn-drop-constant-bands). That is left as it is. It is listed for the weekend review of the settings
+    (docs/handoff/2026-10-15-round7.md, section 6).
+  alternatives_considered:
+  - >-
+    Change it now, with a larger reach for the distance or no cap (option (b) of question 2 of
+    docs/handoff/2026-10-15-round6.md): not now; listed for the weekend review
+  rationale: >-
+    Jaskaran's answer to question 2 of docs/handoff/2026-10-15-round6.md, 15 Oct 2026: "Q2 (a), and list it for
+    the weekend review." Where most stands lie at the cap, the band does not tell them apart. No paper was
+    searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-15-round6.md
+    what: The numbers (section 2) and the question, with its two options
+  - path: docs/handoff/2026-10-15-round7.md
+    what: The weekend review's list (section 6)
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 15 Oct 2026 (round 7)
+- id: spec-files-over-5-mb-off-git
+  title: >-
+    Files over 5 MB stay off git, on the Mac or Drive; their size and SHA-256 are committed instead
+  decision: >-
+    From round 7 on, a file over 5 MB, a run's superpixel or stand layer for instance, is not committed. It stays
+    on the Mac or on Drive, and the commit holds its name, its size in bytes, its SHA-256 and where it is. Files
+    committed before round 7 stay as they are.
+  alternatives_considered:
+  - >-
+    Keep committing the runs' own files whatever their size (option (a) of question 3 of
+    docs/handoff/2026-10-15-round6.md): not chosen
+  rationale: >-
+    Jaskaran's answer (b) to question 3 of docs/handoff/2026-10-15-round6.md and his round-7 message, 15 Oct 2026:
+    "Files over 5 MB: keep them off git from now (Mac or Drive), commit their size and SHA-256 instead." Koraput's
+    round-6 superpixel layer was 17.71 MB of text GeoJSON, and district-wide runs will be larger. No paper was
+    searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-15-round6.md
+    what: The question, with its two options (section 5, question 3)
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 15 Oct 2026 (round 7)
+- id: spec-ui-alphaearth-stands-named-means-by-reduction
+  title: >-
+    The AlphaEarth Sanjay Van kept-land stands get their named means from one read-only reduction over cached
+    feature images; the radar and static ones are the baseline run's
+  decision: >-
+    For sanjay_van_alphaearth_keptland, the means of the hand-crafted features over each stand polygon are
+    computed once, read-only, with no task: the run's own cached optical and structure images, and the baseline
+    kept-land run's radar and static images of the same rectangle, reduced with the mean at 10 m over the
+    committed stand polygons. They go in a file beside the stand layer, which says that the radar and static means
+    are the baseline run's, and scripts/build_ui_early_data.py fills the AlphaEarth stands' named measurements
+    from it. The AlphaEarth run's own stand file and clustering are not changed.
+  alternatives_considered:
+  - >-
+    Leave them null (option (a) of question 5 of docs/handoff/2026-10-15-round6.md): not chosen
+  - >-
+    Only the two the merge already has, from the run record (option (c)): not chosen
+  rationale: >-
+    Jaskaran's answer to question 5 of docs/handoff/2026-10-15-round6.md, 15 Oct 2026: "Q5 (b), the file saying
+    the radar and static means are the baseline run's." The AlphaEarth arm computes no radar or static features,
+    and the export stage averages only the embedding over an AlphaEarth run's stands (round 6, step 5 a). No paper
+    was searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-15-round6.md
+    what: Why the measurements are null, and the three ways (step 5 a), and the question
+  - path: src/fmu/stages/export.py
+    what: The embedding alone for an AlphaEarth run, in _feature_source_image
+  - path: scripts/alphaearth_stand_means.py
+    what: The read-only reduction
+  - path: docs/reproducibility/keptland_runs/sanjay_van_alphaearth_keptland_stand_means.json
+    what: Its result, with the note on whose means the radar and static ones are
+  - path: scripts/build_ui_early_data.py
+    what: stand_means and run_stands put the means on the AlphaEarth stands in ui_data
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 15 Oct 2026 (round 7)

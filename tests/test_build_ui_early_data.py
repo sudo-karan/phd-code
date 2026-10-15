@@ -185,23 +185,16 @@ def _stands(tmp_path, run_id: str) -> Path:
 
 def test_a_kept_land_runs_stands_carry_the_below_min_flag_and_far_water(builder, tmp_path):
     vec = _stands(tmp_path, "k_run")
-    fc, st = builder.run_stands("k_run", "feature_vector", vec, keptland=True, far_water=True)
+    fc, st = builder.run_stands("k_run", "feature_vector", vec, keptland=True)
     first, second = (f["properties"] for f in fc["features"])
     assert (first["below_min"], second["below_min"]) == (False, True)
     assert (first["distance_to_water"], second["distance_to_water"]) == (1234.0, "over 10 km")
     assert "n_superpx" not in first and "below_why" not in first
     assert st["n_bands"] == 2
-    # Another run's stands are as before: no flag, the number as it is.
+    # Another run's stands: no flag, and far water marked too (every run, round 7).
     fc, _ = builder.run_stands("k_run", "feature_vector", vec)
     other = fc["features"][1]["properties"]
-    assert "below_min" not in other and other["distance_to_water"] == float(f"{FILL:.4g}")
-
-
-def test_the_sanjay_van_repro_runs_mark_far_water_and_the_others_do_not_yet(builder):
-    """Round 6 (spec-ui-distance-to-water-over-10-km): the Sanjay Van _repro runs now; the Odisha
-    runs as they are built."""
-    marked = set(builder.FAR_WATER_RUNS)
-    assert marked == {"sanjay_van_baseline_repro", "sanjay_van_alphaearth_repro"}
+    assert "below_min" not in other and other["distance_to_water"] == "over 10 km"
 
 
 def test_a_kept_land_runs_profiles_diagnostics_and_metadata_are_written(builder, tmp_path):
@@ -303,16 +296,19 @@ def test_a_box_kept_land_run_is_added_on_its_box_runs_area(builder, tmp_path, mo
     (added,) = builder.RUNS
     assert added == {"run_id": run_id, "area": "kendujhar_boxes", "arm": "feature_vector",
                      "vec": kept, "keptland": True, "pixels_from": None}
-    # The other three districts and the two Sanjay Van runs have no files here.
-    assert len(notes) == 5 and all("no committed files" in n for n in notes)
+    # The other three districts, the two Sanjay Van runs and the four descending-orbit runs of
+    # round 7 have no files here.
+    assert len(notes) == 9 and all("no committed files" in n for n in notes)
 
 
 def test_the_committed_ui_data_shows_the_box_kept_land_runs_plots_without_a_stand():
     data = SCRIPTS.parent / "ui_data"
     index = json.loads((data / "index.json").read_text())
     runs = [r for r in index["runs"] if r.get("kept_land") and r["roi"] == "boxes"]
+    # Round 6's four, and round 7's four on the descending radar orbit.
     assert sorted(r["run_id"] for r in runs) == sorted(
-        f"odisha_v120_3ha_squares_{d}_keptland" for d in ("angul", "dhenkanal", "kendujhar", "koraput"))
+        f"odisha_v120_3ha_squares_{d}_keptland{s}" for d in ("angul", "dhenkanal", "kendujhar", "koraput")
+        for s in ("", "_s1desc"))
     for r in runs:
         assert r["fes_declared"] is False and "plots_with_stand" not in r["facts"]
         (step,) = [s for s in r["steps"] if s["step"] == "fes_plots"]
@@ -327,3 +323,67 @@ def test_the_committed_ui_data_shows_the_box_kept_land_runs_plots_without_a_stan
         profiles = json.loads((data / "by_run" / r["run_id"] / "profiles.json").read_text())
         stats = [v for t in profiles["types"] for v in t["bands"]["distance_to_water"].values()]
         assert all(v == "over 10 km" or v < 10_000 for v in stats)
+
+
+def test_the_committed_ui_data_holds_no_distance_to_water_of_10_km_as_a_number():
+    """Every run, from round 7 (spec-ui-distance-to-water-over-10-km): 10 km or more reads
+    "over 10 km"."""
+    for f in sorted((SCRIPTS.parent / "ui_data" / "by_run").glob("*/stands.json")):
+        values = [x["properties"].get("distance_to_water")
+                  for x in json.loads(f.read_text())["features"]]
+        assert all(v is None or v == "over 10 km" or v < 10_000 for v in values), f.parent.name
+
+
+def test_an_alphaearth_runs_stands_carry_the_named_means_of_its_reduction(builder, tmp_path):
+    """Round 7 (spec-ui-alphaearth-stands-named-means-by-reduction): beside the embedding, the
+    means of <run>_stand_means.json, by polygon."""
+    square = [[[77.0, 28.0], [77.001, 28.0], [77.001, 28.001], [77.0, 28.001], [77.0, 28.0]]]
+    feats = [{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": square},
+              "properties": {"stand_id": sid, "stand_lbl": sid, "area_ha": 1.0, "cluster_id": 0,
+                             "n_pixels": 100,
+                             **{f"A{i:02d}": 0.01 * i + 0.1 * ((sid * (i + 1)) % 7) for i in range(64)}}}
+             for sid in (1, 2, 3, 4)]
+    (tmp_path / "ae_run_stands_merged.geojson").write_text(
+        json.dumps({"type": "FeatureCollection", "features": feats}))
+    fc, _ = builder.run_stands("ae_run", "alphaearth", tmp_path)
+    assert fc["features"][0]["properties"]["canopy_height"] is None  # no reduction: null, as before
+    means = {"bands": {"canopy_height": {}, "distance_to_water": {}},
+             "stands": [{"stand_id": 1, "stand_lbl": 1, "canopy_height": 7.25,
+                         "distance_to_water": FILL},
+                        {"stand_id": 2, "stand_lbl": 2, "canopy_height": None,
+                         "distance_to_water": 800.0},
+                        *({"stand_id": s, "stand_lbl": s, "canopy_height": 5.0,
+                           "distance_to_water": 50.0} for s in (3, 4))]}
+    (tmp_path / "ae_run_stand_means.json").write_text(json.dumps(means))
+    fc, st = builder.run_stands("ae_run", "alphaearth", tmp_path)
+    first, second = (f["properties"] for f in fc["features"][:2])
+    assert (first["canopy_height"], first["distance_to_water"]) == (7.2, "over 10 km")
+    assert (second["canopy_height"], second["distance_to_water"]) == (None, 800.0)
+    assert first["A05"] == builder.feature_value("A05", feats[0]["properties"]["A05"])
+    assert "emb_rgb" in first
+
+
+def test_a_file_kept_off_git_is_found_by_its_record_and_checked(builder, tmp_path):
+    """spec-files-over-5-mb-off-git: the repo holds a run's <run>_files_off_git.json, the file is
+    on the Mac; the builder reads it there once its SHA-256 matches the record."""
+    import hashlib
+
+    vec, off = tmp_path / "vec", tmp_path / "off"
+    vec.mkdir()
+    off.mkdir()
+    (vec / "r_run.json").write_text("{}")
+    big = off / "r_stands_snic.geojson"
+    big.write_text('{"type": "FeatureCollection", "features": []}')
+    record = {"files": [{"file": big.name, "bytes": big.stat().st_size,
+                         "sha256": hashlib.sha256(big.read_bytes()).hexdigest(), "where": str(big)}]}
+    (vec / "r_files_off_git.json").write_text(json.dumps(record))
+    assert builder.vec_file(vec, "r_run.json") == vec / "r_run.json"
+    assert builder.vec_file(vec, big.name) == big
+    assert builder.vec_file(vec, "r_stands_merged.geojson") is None
+    big.write_text("changed")
+    with pytest.raises(SystemExit, match="SHA-256"):
+        builder.vec_file(vec, big.name)
+    # Named by the record but not on this machine: the build stops, it does not skip the run.
+    big.unlink()
+    with pytest.raises(SystemExit, match="not on this machine"):
+        builder.vec_file(vec, big.name)
