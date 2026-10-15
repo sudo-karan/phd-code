@@ -321,6 +321,9 @@ def test_the_committed_ui_data_shows_the_box_kept_land_runs_plots_without_a_stan
         assert plots and not any({"stand_id", "stand_type"} & f["properties"].keys() for f in plots)
         stands = json.loads((data / "by_run" / r["run_id"] / "stands.json").read_text())["features"]
         assert all(isinstance(f["properties"]["below_min"], bool) for f in stands)
-        # Capped at 10 km: a mean of 10 km reads "over 10 km"; one just under may round to 10000.
+        # Capped at 10 km: 10 km reads "over 10 km", the cap read back just under it too.
         far = [f["properties"]["distance_to_water"] for f in stands]
-        assert all(v == "over 10 km" or v <= 10_000 for v in far)
+        assert all(v == "over 10 km" or v < 10_000 for v in far)
+        profiles = json.loads((data / "by_run" / r["run_id"] / "profiles.json").read_text())
+        stats = [v for t in profiles["types"] for v in t["bands"]["distance_to_water"].values()]
+        assert all(v == "over 10 km" or v < 10_000 for v in stats)
