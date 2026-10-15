@@ -208,6 +208,7 @@ def test_a_kept_land_runs_profiles_diagnostics_and_metadata_are_written(builder,
     assert clustering["n_stands_left_out_of_fit"] == 3
     out = tmp_path / "ui_data"
     prof = json.loads((out / names["profiles"]).read_text())
+    assert "1/cos(latitude)" in prof["area_note"]
     (t0,) = prof["types"]
     assert t0["bands"]["canopy_height"] == {"mean": 6.123, "p25": 5.0, "p50": 6.0, "p75": 7.0}
     assert t0["bands"]["distance_to_water"] == {"mean": "over 10 km", "p25": 800.0,

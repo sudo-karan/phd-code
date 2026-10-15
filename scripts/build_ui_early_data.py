@@ -765,6 +765,12 @@ def keptland_files(run_id: str, vec: Path, run: dict) -> tuple[dict, dict]:
                 "what": "Per stand type, over the pixels of that type in the area: each "
                         "feature's mean and its 25th, 50th and 75th percentiles, in the "
                         "feature's own units (the profiling stage).",
+                "area_note": "pixel_count and area_ha are the profiling stage's: pixels counted "
+                             "on the clustering image's own grid, a geographic one, each taken "
+                             "as 0.01 ha. Away from the equator its pixels are narrower than "
+                             "10 m, so area_ha is too large by about 1/cos(latitude), some 14% "
+                             "at Sanjay Van. The stands' areas (stands.json) are on the "
+                             "analysis grid.",
                 "types": types}
     clustering = stages["export"]["metadata"]["manifest"]["clustering"]
     names = {"profiles": f"by_run/{run_id}/profiles.json",
