@@ -1,7 +1,8 @@
 """scripts/reuse_upstream_assets.py, offline: what it would copy, and what it refuses.
 
-The plan for the six kept-land configs of round 3 is built from the committed configs and the demo
-records alone, so it is checked here exactly as the dry run prints it. Earth Engine is replaced by
+The plan for the six kept-land configs of round 3, and for round 7's four descending-orbit
+configs, is built from the committed configs and the asset records alone, so it is checked here
+exactly as the dry run prints it. Earth Engine is replaced by
 stand-ins for --check and --execute; nothing here talks to it.
 """
 
@@ -35,9 +36,19 @@ EXPECTED_COPIES = {
     # (round 6, RECOMPUTE_KEYS) and is computed by the run
     **{f"odisha_v120_3ha_squares_{d}_keptland": 8
        for d in ("kendujhar", "angul", "dhenkanal", "koraput")},
+    # Round 7: masking 4, data_load 1, features 3 (optical, structure, static): not radar, which
+    # depends on the orbit (RECOMPUTE_VIA_CONTEXT) and is computed by the run.
+    **{f"odisha_v120_3ha_squares_{d}_keptland_s1desc": 8
+       for d in ("kendujhar", "angul", "dhenkanal", "koraput")},
 }
 BOXES = {f"odisha_v120_3ha_squares_{d}_keptland" for d in ("kendujhar", "angul", "dhenkanal",
                                                            "koraput")}
+S1DESC = {f"{name}_s1desc" for name in BOXES}
+# --config arguments for the six configs of rounds 3 to 6 (their sources are the box and _repro
+# runs), and for the four of round 7 (their sources are the round-6 kept-land runs). The two sets
+# are copied at different times: the round-7 sources are the round-6 destinations.
+ROUND3 = [a for new, _, _ in mod.PAIRS if Path(new).stem not in S1DESC for a in ("--config", new)]
+ROUND7 = [a for new, _, _ in mod.PAIRS if Path(new).stem in S1DESC for a in ("--config", new)]
 
 
 @pytest.fixture(scope="module")
@@ -45,10 +56,15 @@ def plans():
     return {p.name: p for p in (mod.plan_for(*pair) for pair in mod.PAIRS)}
 
 
-def test_the_pairs_are_the_six_keptland_configs():
+def test_the_pairs_are_the_kept_land_configs():
     names = {Path(new).stem for new, _, _ in mod.PAIRS}
     assert names == set(EXPECTED_COPIES)
-    assert names == {p.stem for p in (REPO / "configs").glob("*_keptland.yaml")}
+    assert names == {p.stem for p in (REPO / "configs").glob("*_keptland*.yaml")}
+    # Round 7: each descending-orbit config reuses its district's round-6 kept-land run.
+    for new, source, record in mod.PAIRS:
+        if Path(new).stem in S1DESC:
+            assert Path(source).stem == Path(new).stem.removesuffix("_s1desc")
+            assert record == "docs/reproducibility/keptland_boxes_assets.json"
 
 
 def test_each_plan_copies_what_its_source_run_cached_before_segmentation(plans):
@@ -58,7 +74,8 @@ def test_each_plan_copies_what_its_source_run_cached_before_segmentation(plans):
         assert not {c.stage for c in plan.copies} & NEVER
         rec = json.loads((REPO / plan.record).read_text())
         (run,) = [r for r in rec["runs"] if r["config"] == plan.source_config]
-        fresh = {"features_static"} if name in BOXES else set()
+        fresh = ({"features_static"} if name in BOXES
+                 else {"features_radar"} if name in S1DESC else set())
         listed = {a["asset"] for a in run["assets"] if a["stage"] not in NEVER | fresh}
         assert {c.source for c in plan.copies} == listed, name
 
@@ -71,9 +88,24 @@ def test_static_features_are_computed_by_the_box_runs_not_copied(plans):
         if name in BOXES:
             assert plan.computed_fresh == ["features_static/static_features"], name
             assert "features_static" not in stages, name
+        elif name in S1DESC:
+            assert plan.computed_fresh == ["features_radar/radar_features"], name
         else:
             assert plan.computed_fresh == [], name
     assert "features_static" in {c.stage for c in plans["sanjay_van_baseline_keptland"].copies}
+
+
+def test_the_descending_orbit_runs_compute_their_radar_and_copy_the_rest(plans):
+    """Round 7: the _s1desc configs differ from the round-6 kept-land configs in the orbit, which
+    only the radar features depend on. Everything else before segmentation is copied, the
+    capped static features of round 6 among it, and the S2 composite of data_load, which reads
+    the orbit but caches nothing built from it."""
+    for name in S1DESC:
+        plan = plans[name]
+        assert {c.stage for c in plan.copies} == {"masking", "data_load", "features_optical",
+                                                 "features_structure", "features_static"}, name
+        assert ("data_load", "s2_composite") in {(c.stage, c.key) for c in plan.copies}
+        assert all(f"/{plan.source_name}/" in c.source for c in plan.copies)
 
 
 def test_destinations_are_where_the_new_run_will_look(plans, monkeypatch):
@@ -112,6 +144,9 @@ def test_the_configs_differ_from_their_sources_only_in_safe_keys(plans):
         "sanjay_van_alphaearth_keptland": sanjay_van | {"metrics.reference_config_name"},
         # Round 6: the box configs cap distance_to_water.
         **{name: round3 | {"features_static.cap_distance_to_water"} for name in BOXES},
+        # Round 7: from the round-6 kept-land configs, the orbit and the names only.
+        **{name: {"name", "description", "export.drive_folder", "data_load.s1_orbit"}
+           for name in S1DESC},
     }
     for name, plan in plans.items():
         assert set(plan.differences) == expect.get(name, round3), name
@@ -167,6 +202,65 @@ def test_no_stage_before_segmentation_reads_a_safe_key():
         assert not re.search(r"config\.\w+\(", text), s
 
 
+def _reads_of(tree: ast.AST, attr: str) -> list[tuple[str, ast.AST]]:
+    """(enclosing function, node) of each read of `.attr` in a module."""
+    out = []
+    for fn in ast.walk(tree):
+        if isinstance(fn, ast.FunctionDef):
+            for node in ast.walk(fn):
+                if isinstance(node, ast.Attribute) and node.attr == attr:
+                    out.append((fn.name, node))
+    return out
+
+
+def test_a_context_key_reaches_only_the_stage_that_reads_its_value():
+    """RECOMPUTE_VIA_CONTEXT, checked from the code rather than trusted. For each key: its name
+    appears in no upstream module but the reading stage's; there it is read only in methods whose
+    one use in run() is to make the context value, and in the stage's metadata; the stage makes
+    the value but does not cache it, and builds its cached outputs without it; among the upstream
+    stages only the one named reads the value."""
+    import fmu.stages  # noqa: F401
+    from fmu.stages.base import get_stage_class
+
+    modules = _upstream_modules()
+    for (_, key), (reader, value, dependent) in mod.RECOMPUTE_VIA_CONTEXT.items():
+        assert reader in mod.UPSTREAM_STAGES and dependent in mod.UPSTREAM_STAGES
+        own = REPO / "src" / "fmu" / "stages" / f"{reader}.py"
+        for path in modules:
+            if path != own:
+                assert key not in path.read_text(), f"{path.relative_to(REPO)} names {key}"
+        tree = ast.parse(own.read_text())
+        (run,) = [f for f in ast.walk(tree) if isinstance(f, ast.FunctionDef) and f.name == "run"]
+        # The StageResult run() returns: its outputs dict and its metadata.
+        (result,) = [n for n in ast.walk(run) if isinstance(n, ast.Call)
+                     and getattr(n.func, "id", None) == "StageResult"]
+        kw = {k.arg: k.value for k in result.keywords}
+        outputs = {k.value: v for k, v in zip(kw["outputs"].keys, kw["outputs"].values, strict=True)}
+        metadata_nodes = set(map(id, ast.walk(kw["metadata"])))
+        methods = set()
+        for fn_name, node in _reads_of(tree, key):
+            if fn_name == "run":
+                assert id(node) in metadata_nodes, f"run() reads {key} outside its metadata"
+            else:
+                methods.add(fn_name)
+        assert methods, f"{reader} does not read {key}"
+        # Each such method is called once in run(), into a name that is the value's output and
+        # is used nowhere else in run().
+        for m in methods:
+            calls = [n for n in ast.walk(run) if isinstance(n, ast.Assign)
+                     and isinstance(n.value, ast.Call)
+                     and getattr(n.value.func, "attr", None) == m]
+            assert len(calls) == 1, m
+            (target,) = calls[0].targets
+            uses = [n for n in ast.walk(run) if isinstance(n, ast.Name) and n.id == target.id]
+            assert len(uses) == 2, f"{target.id} is used elsewhere in run()"  # assigned, output
+            assert isinstance(outputs[value], ast.Name) and outputs[value].id == target.id
+        cls = get_stage_class(reader)
+        assert value in cls.produces and value not in cls.cacheable_outputs
+        readers = {s for s in mod.UPSTREAM_STAGES if value in get_stage_class(s).required_inputs}
+        assert readers == {dependent}, readers
+
+
 def _copy_pair(tmp_path: Path, edit) -> tuple[str, str, str]:
     """A pair under tmp_path: Kendujhar's box config, its kept-land copy with `edit` applied to
     the YAML text, and the boxes record."""
@@ -215,8 +309,13 @@ def test_the_dry_run_makes_no_earth_engine_call(monkeypatch, capsys):
     monkeypatch.setattr(caching, "asset_exists", boom)
     assert mod.main([]) == 0
     out = capsys.readouterr().out
-    assert "6 config(s), 47 asset(s) to copy; nothing copied (dry run)" in out
+    assert "10 config(s), 79 asset(s) to copy; nothing copied (dry run)" in out
     assert "segmentation/" not in out
+    assert mod.main(ROUND7) == 0
+    out = capsys.readouterr().out
+    assert "4 config(s), 32 asset(s) to copy; nothing copied (dry run)" in out
+    assert out.count("computed by the new run (it depends on a key the configs differ in): "
+                     "features_radar/radar_features") == 4
 
 
 class _FakeSettings:
@@ -244,7 +343,7 @@ def _fake_ee(monkeypatch, *, exists):
 def test_execute_copies_every_planned_asset_once_and_records_them(monkeypatch, capsys, tmp_path):
     copies, folders = _fake_ee(monkeypatch, exists=lambda p: "_keptland/" not in p)
     record = tmp_path / "keptland_reuse.json"
-    assert mod.main(["--execute", "--record", str(record)]) == 0
+    assert mod.main(["--execute", "--record", str(record), *ROUND3]) == 0
     assert len(copies) == 47 == len(folders)
     assert len({d for _, d in copies}) == 47
     assert all("_keptland/" in d and "_keptland/" not in s for s, d in copies)
@@ -273,16 +372,27 @@ def test_a_copy_that_stops_part_way_leaves_a_true_record_and_can_be_resumed(monk
 
     monkeypatch.setattr(ee.data, "copyAsset", copy_then_fail)
     with pytest.raises(RuntimeError):
-        mod.main(["--execute", "--record", str(record)])
+        mod.main(["--execute", "--record", str(record), *ROUND3])
     assert len(json.loads(record.read_text())["copies"]) == 10
     assert json.loads((tmp_path / "keptland_reuse_run.json").read_text())["completed"] is False
     # Without --resume the record is not overwritten.
-    assert mod.main(["--execute", "--record", str(record)]) == 3
+    assert mod.main(["--execute", "--record", str(record), *ROUND3]) == 3
     monkeypatch.setattr(ee.data, "copyAsset", lambda s, d: (copies.append((s, d)), copied.add(d)))
-    assert mod.main(["--execute", "--resume", "--record", str(record)]) == 0
+    assert mod.main(["--execute", "--resume", "--record", str(record), *ROUND3]) == 0
     assert len(copies) == 47 and len({d for _, d in copies}) == 47
     assert len(json.loads(record.read_text())["copies"]) == 47
     assert json.loads((tmp_path / "keptland_reuse_run.json").read_text())["completed"] is True
+
+
+def test_execute_copies_the_round_7_assets_from_the_round_6_runs(monkeypatch, capsys, tmp_path):
+    """Round 7: the round-6 kept-land assets exist (they are the sources), the _s1desc ones do not."""
+    copies, folders = _fake_ee(monkeypatch, exists=lambda p: "_s1desc/" not in p)
+    record = tmp_path / "keptland_reuse_s1desc.json"
+    assert mod.main(["--execute", "--record", str(record), *ROUND7]) == 0
+    assert len(copies) == 32 == len({d for _, d in copies})
+    assert all("_keptland_s1desc/" in d and "_keptland/" in s for s, d in copies)
+    assert not any("/features_radar/" in d for _, d in copies)
+    assert "copied 32 asset(s); 32 recorded in" in capsys.readouterr().out
 
 
 def test_resume_refuses_a_destination_the_record_does_not_hold(monkeypatch, tmp_path):
