@@ -320,3 +320,12 @@ def test_the_committed_ui_data_shows_the_box_kept_land_runs_plots_without_a_stan
         profiles = json.loads((data / "by_run" / r["run_id"] / "profiles.json").read_text())
         stats = [v for t in profiles["types"] for v in t["bands"]["distance_to_water"].values()]
         assert all(v == "over 10 km" or v < 10_000 for v in stats)
+
+
+def test_the_committed_ui_data_holds_no_distance_to_water_of_10_km_as_a_number():
+    """Every run, from round 7 (spec-ui-distance-to-water-over-10-km): 10 km or more reads
+    "over 10 km"."""
+    for f in sorted((SCRIPTS.parent / "ui_data" / "by_run").glob("*/stands.json")):
+        values = [x["properties"].get("distance_to_water")
+                  for x in json.loads(f.read_text())["features"]]
+        assert all(v is None or v == "over 10 km" or v < 10_000 for v in values), f.parent.name

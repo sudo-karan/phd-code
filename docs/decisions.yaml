@@ -5307,34 +5307,40 @@ decisions:
   source: Jaskaran, 15 Oct 2026, with Claude (chat)
 - id: spec-ui-distance-to-water-over-10-km
   title: >-
-    In ui_data, distance_to_water at or past 10 km reads "over 10 km", not a number: the Sanjay Van runs now, the
-    Odisha runs as they are built
+    In ui_data, distance_to_water at or past 10 km reads "over 10 km", not a number, in every run
   decision: >-
     scripts/build_ui_early_data.py writes a stand's (or a type profile's) distance_to_water of 10 km or more as the
     string "over 10 km". Where the distance transform finds no water the band holds a fill value of 463,409.5 m, or,
     with features_static.cap_distance_to_water on, the cap itself (spec-static-cap-distance-to-water), and neither is
     a distance to print. The value is compared at the four significant figures it is written with, so the cap read
-    back as 9,999.98 m counts. It applies to the Sanjay Van _repro runs and the kept-land runs from round 6 on, and to
-    the Odisha runs when their data is built in the round that runs them.
+    back as 9,999.98 m counts. It applies to every run in ui_data: from round 6 to the Sanjay Van _repro runs and the
+    kept-land runs, and from round 7 to the earlier Odisha runs as well, eleven of which held the fill value as a
+    number.
   alternatives_considered:
   - >-
     Leave the other runs' number, as the page reads a value past 10 km as "over 10 km" anyway (option (a) of
     question 2 of docs/handoff/2026-10-15-round5.md): not chosen
+  - >-
+    Mark the earlier Odisha runs only when they are run again (option (a) of question 1 of
+    docs/handoff/2026-10-15-round6.md): not chosen
   rationale: >-
     Jaskaran's answer (b) to question 2 of docs/handoff/2026-10-15-round5.md, 15 Oct 2026: "'over 10 km' in ui_data for
-    the Sanjay Van _repro runs now, the Odisha runs as they are built". The data should not hold a number that is not
-    a distance, whatever the page does with it. No paper was searched for this decision.
+    the Sanjay Van _repro runs now, the Odisha runs as they are built"; and his answer (b) to question 1 of
+    docs/handoff/2026-10-15-round6.md, 15 Oct 2026 (round 7): the earlier Odisha runs now. The data should not hold
+    a number that is not a distance, whatever the page does with it. No paper was searched for this decision.
   evidence:
   - path: scripts/build_ui_early_data.py
-    what: feature_value and profile_value, and which runs mark far water
+    what: feature_value and profile_value; run_stands marks far water in every run
   - path: tests/test_build_ui_early_data.py
-    what: Far water marked in the runs that mark it, and the number left in the others
+    what: Far water marked in every run's stands, and none left as a number in the committed data
   - path: docs/handoff/2026-10-15-round5.md
     what: The question, with its two options
+  - path: docs/handoff/2026-10-15-round6.md
+    what: Question 1, for the earlier Odisha runs, with its two options
   papers: []
   status: adopted
   design_notes_section: null
-  source: Jaskaran, 15 Oct 2026, with Claude (chat)
+  source: Jaskaran, 15 Oct 2026, with Claude (chat); and Jaskaran, 15 Oct 2026 (round 7)
 - id: spec-profiling-export-type-areas-later
   title: >-
     The per-type areas of the profiling stage and of the export manifest stay counted on the clustering image's own
