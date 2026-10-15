@@ -1,0 +1,79 @@
+"""scripts/copy_run_results.py, offline, on a stand-in run tree."""
+
+from __future__ import annotations
+
+import hashlib
+import importlib.util
+import json
+from pathlib import Path
+
+import pytest
+
+SCRIPT = Path(__file__).resolve().parent.parent / "scripts" / "copy_run_results.py"
+RUN = "odisha_v120_3ha_squares_x_keptland_s1desc"
+
+
+@pytest.fixture
+def mod():
+    spec = importlib.util.spec_from_file_location("copy_run_results", SCRIPT)
+    assert spec is not None and spec.loader is not None
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+
+def _tree(tmp_path: Path, big: int) -> Path:
+    tree = tmp_path / "tree"
+    vec = tree / "odisha_script" / "phase2_vectors"
+    vec.mkdir(parents=True)
+    (vec / f"{RUN}_stands_merged.geojson").write_text('{"type":"FeatureCollection","features":[]}')
+    (vec / f"{RUN}_stands_snic.geojson").write_text('{"x":"' + "a" * big + '"}')
+    (vec / f"{RUN}_stands_dissolved.geojson").write_text('{"type":"FeatureCollection","features":[]}')
+    (vec / f"{RUN}_raster_at_plots.csv").write_text("plot_key,stand_clusters\n1_2,3\n")
+    (vec / f"{RUN}_run.json").write_text(json.dumps({"run_dir": "runs/x_20261015_134106", "fingerprint": "f"}))
+    for i, last in enumerate(["segmentation", "clustering", "export", "profiling"]):
+        d = tree / "runs" / f"{RUN}_20261015_1341{i:02d}"
+        d.mkdir(parents=True)
+        stages = [{"name": last, "elapsed_sec": 1.5, "metadata": {"n": i}}]
+        if last == "export":
+            stages[0]["export_tasks"] = [{"task_id": "T", "submitted_at": "2026-10-15T13:41:00"}]
+        (d / "manifest.json").write_text(json.dumps({"run_dir": str(d), "total_elapsed_sec": 9,
+                                                     "run_timestamp": "x", "stages": stages,
+                                                     "config": {"dates": {"radar": "2017"}}}))
+    return tree
+
+
+def test_small_files_go_in_the_repo_without_timings(mod, tmp_path):
+    dest, off = tmp_path / "dest", tmp_path / "off"
+    done = mod.copy(_tree(tmp_path, 10), RUN, dest, off)
+    assert done["off_git"] == [] and not (dest / f"{RUN}_files_off_git.json").exists()
+    names = {p.name for p in dest.iterdir()}
+    assert names == {f"{RUN}_{n}" for n in ("stands_merged.geojson", "stands_snic.geojson",
+                                            "stands_dissolved.geojson", "run.json",
+                                            "manifest_segmentation.json", "manifest_clustering.json",
+                                            "manifest_export.json")}
+    assert "run_dir" not in json.loads((dest / f"{RUN}_run.json").read_text())
+    exp = json.loads((dest / f"{RUN}_manifest_export.json").read_text())
+    assert "submitted_at" not in json.dumps(exp) and "elapsed_sec" not in json.dumps(exp)
+    assert exp["config"]["dates"] == {"radar": "2017"}  # a setting, kept
+    # The read-back's own folder (ending at profiling) is not a pass.
+    assert json.loads((dest / f"{RUN}_manifest_export.json").read_text())["stages"][0]["metadata"]["n"] == 2
+
+
+def test_a_file_over_5_mb_stays_off_git_with_its_size_and_sha256(mod, tmp_path):
+    dest, off = tmp_path / "dest", tmp_path / "off"
+    done = mod.copy(_tree(tmp_path, mod.LIMIT + 1), RUN, dest, off)
+    (f,) = done["off_git"]
+    assert f["file"] == f"{RUN}_stands_snic.geojson" and not (dest / f["file"]).exists()
+    data = (off / f["file"]).read_bytes()
+    assert f["bytes"] == len(data) > mod.LIMIT and f["sha256"] == hashlib.sha256(data).hexdigest()
+    record = json.loads((dest / f"{RUN}_files_off_git.json").read_text())
+    assert record["files"] == [f] and Path(f["where"]) == (off / f["file"]).resolve()
+
+
+def test_a_date_left_in_a_result_is_refused(mod, tmp_path):
+    tree = _tree(tmp_path, 10)
+    vec = tree / "odisha_script" / "phase2_vectors"
+    (vec / f"{RUN}_run.json").write_text(json.dumps({"made": "2026-10-15T13:41:00"}))
+    with pytest.raises(SystemExit, match="date and time"):
+        mod.copy(tree, RUN, tmp_path / "dest", tmp_path / "off")
