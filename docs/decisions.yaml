@@ -4516,3 +4516,722 @@ decisions:
   status: pending
   design_notes_section: null
   source: 'PR #42 and commit 4d7f0d5'
+- id: spec-merge-pass2-skip-at-minimum
+  title: >-
+    In the relaxed second pass, a region that has already reached the minimum stand size when its turn comes
+    is skipped
+  decision: >-
+    Pass 2 of the merge lists the regions below merge.min_area_ha once at the start of each sweep, smallest
+    first, and then takes them in turn. Under this rule a listed region that has since reached min_area_ha
+    (because a smaller region joined it earlier in the same sweep) is skipped when its turn comes: it is no
+    longer undersized, so it does not start a merge of its own. The rule stops only that: an undersized
+    neighbour whose turn comes later, in the same sweep or a later one, can still merge into it. The committed
+    code did not skip it. Such a region still took its turn in that sweep and, where a neighbour could take it
+    under merge.max_area_ha, was merged once more, under the relaxed tolerances or, where no neighbour passed
+    them, by the shared-edge fallback. The rule is selected by a merge setting,
+    merge.pass2_skip_at_min_area. Its default, false, keeps the committed behaviour, so that earlier runs
+    can still be reproduced; true applies this rule. config_fingerprint leaves the key out of the hashed merge
+    block while it is at its default, so the fingerprint of every existing config is unchanged, the 14 _repro
+    configs among them, and a config that sets it to true gets a new fingerprint. The demo set (the Earth
+    Engine runs of 13 Oct 2026) is re-merged with the rule on, from the saved superpixel and feature assets.
+    Configs of the final round set it explicitly.
+  alternatives_considered:
+  - >-
+    Leave the merge as committed, so that no stand moves (option (a) of question 5 in PR #42, and that PR's
+    recommendation): kept as the default of the setting, not as the rule for new runs
+  - >-
+    Change the rule in place, with no setting: not done. The stands of every existing config would change under
+    an unchanged cache fingerprint, and the clustering cache, which is keyed by that fingerprint, would return
+    stand types computed for the old stands
+  - >-
+    Add the setting as an ordinary merge field: not done. config_fingerprint hashes the whole merge block,
+    defaults included, so all 14 _repro fingerprints would change at once and their saved assets could no
+    longer be found by name
+  rationale: >-
+    The stated purpose of pass 2 is to remove undersized regions: 'Pass 2 -- eliminate undersized regions,
+    smallest first' (module docstring of src/fmu/utils/region_merge.py), 'Pass 2 takes regions still below
+    the minimum area, smallest first' (register entry spec-merge-two-pass-hard-gate), and 'Regions below
+    min_area_ha (default 1) are what pass 2 tries to absorb' (spec-merge-hard-area-bounds). A region that has
+    reached the minimum is not undersized, so a further merge of it is one the stated rule does not ask for,
+    and it is made under the weaker tests of pass 2, sometimes by the fallback, which no criterion supports.
+    PR #42 described the committed behaviour when it added merge provenance (the note under the merge_kind
+    legend) and asked about it as question 5. Jaskaran chose option (b), as its own declared decision, applied
+    now to the demo set (docs/handoff/2026-10-13-round2.md, decision table and task A2). This entry was
+    committed before any run under the rule. How many stands and how much stand area it changes in each of the
+    14 runs is measured by task A2 and recorded with its results, not here.
+  evidence:
+  - path: src/fmu/utils/region_merge.py
+    what: >-
+      Module docstring, 'Pass 2 -- eliminate undersized regions, smallest first'. In merge_superpixels() the
+      pass 2 loop builds the list `undersized` once per sweep. Before commit 9fa2a05 it then gave every listed
+      region that was still present its turn, with no second check of its area. Since that commit the argument
+      pass2_skip_at_min_area decides: false, the loop is as it was; true, a listed region whose area is at or
+      above min_area_ha when its turn comes is skipped
+  - path: src/fmu/stages/merge.py
+    what: >-
+      The note under the merge_kind legend (_MERGE_KIND_NOTE): 'each sweep lists the undersized pieces once,
+      and a piece that reaches the minimum earlier in a sweep still takes its turn in that sweep'
+  - path: docs/outputs.md
+    what: The same sentence, in the description of the merge provenance
+  - path: src/fmu/config.py
+    what: 'MergeParams.pass2_skip_at_min_area, default false, with the reason in its comment'
+  - path: src/fmu/utils/caching.py
+    what: >-
+      _OMITTED_AT_DEFAULT and config_fingerprint(): the setting is left out of the hash while it holds its
+      default and hashed otherwise
+  - path: tests/test_repro_fingerprints.py
+    what: Pins the fingerprints of the 14 _repro configs to those in the names of their saved assets
+  - path: tests/test_cache_fingerprint.py
+    what: >-
+      The setting off, left out or written out, hashes as before; on, it changes the fingerprint; the default
+      in the table is the model's default
+  - path: tests/test_region_merge_provenance.py
+    what: >-
+      Hand-built chains where a region reaches the minimum before its turn, under both rules; the 200 golden
+      graphs give their committed digests at the default, keep every invariant with the rule on, and move on
+      some of them
+  - path: docs/handoff/2026-10-13-round2.md
+    what: 'The decision on question 5, (b), and task A2'
+  papers:
+  - doi: 10.14214/sf.23014
+    title: Forest stand delineation using airborne LiDAR and hyperspectral data
+    first_author: Xiong
+    year: 2024
+    verified: true
+    supports: used
+    supports_what: >-
+      The source of the two-pass merge (see spec-merge-two-pass-hard-gate for what was confirmed in the paper).
+      It is cited here only for the purpose of the second pass, removing undersized segments. Whether the paper
+      says in which order undersized segments are taken, or what happens to one that grows during the pass, was
+      NOT checked for this entry.
+    cited_in: src/fmu/utils/region_merge.py:3; src/fmu/config.py:435-437
+  status: adopted
+  design_notes_section: null
+  source: 'docs/handoff/2026-10-13-round2.md (decision on question 5; task A2); PR #42, question 5'
+- id: spec-transparency-contract-eight-more-stages
+  title: >-
+    Eight more stages declare what they show: data load, the five feature stages, segmentation and clustering
+  decision: >-
+    The transparency contract of night-transparency-contract now binds ten stages. data_load declares the
+    Sentinel-2 composite in true colour; features_optical, features_radar, features_structure and features_static
+    each declare the band or bands a reader most needs (NDVI annual amplitude, VV minus VH, ETH 2020 canopy
+    height and its local spread, elevation); features_embedding declares three of AlphaEarth's 64 bands as a
+    colour composite; segmentation declares the superpixels as outlines; clustering declares the stand types
+    with a legend for types 0 to 9 and reports five counts read from the clustering_metadata property of
+    cluster_labels. DisplayLayer gains an optional bands field for a colour composite (exactly three distinct
+    bands, band being the first); the manifest gets a "bands" key only for a composite, so the record of every
+    earlier layer is unchanged. The declarations are class attributes: no config field, no change to any cache
+    fingerprint, and no new Earth Engine request on a run except one property read for clustering. PENDING is
+    now profiling, export and metrics.
+  alternatives_considered:
+  - >-
+    Summary numbers for the seven other stages: not done. The orchestrator calls summarise() on every run,
+    and a whole-ROI reduction on these images is a new request each time
+  - >-
+    Band names taken from the config at run time: not done. A declaration is a class attribute; the names
+    declared are those of the defaults, and tests fail for a config under configs/ that they do not fit,
+    with two named exceptions (sanjay_van_nirv_dual, sanjay_van_tessera)
+  - >-
+    A principal-component view of the embedding: not declared. It depends on the area it is fitted over, so
+    it is left to the exporter
+  rationale: >-
+    docs/handoff/2026-10-13-round2.md, task A3: the explorer shows a step for each of these stages and reads
+    what to draw from the manifest. The minimum and maximum of each continuous layer are starting stretches
+    and not measured ranges; those of elevation, the embedding and canopy_height_std have no measured basis.
+    The clustering counts are distinct unit labels on the analysis grid and do not agree with the number of
+    polygons in the exported stand layer (all 14 re-runs of 13 Oct 2026); the descriptions and docs/outputs.md
+    say so. Two causes are known (scripts/remerge_demo_set.py): a stand in several pieces is several polygons,
+    and the export stage types a stand by the typed pixels its polygon touches, which gives some stands with
+    no habitat pixel of their own a neighbour's type.
+  evidence:
+  - path: src/fmu/stages/base.py
+    what: DisplayLayer.bands, its validation, and the "bands" key in to_manifest() for a composite only
+  - path: src/fmu/stages/data_load.py
+    what: The true-colour layer on s2_composite
+  - path: src/fmu/stages/features_optical.py
+    what: The ndvi_amplitude_annual layer
+  - path: src/fmu/stages/features_radar.py
+    what: The vv_minus_vh_median layer
+  - path: src/fmu/stages/features_structure.py
+    what: The canopy_height and canopy_height_std layers
+  - path: src/fmu/stages/features_static.py
+    what: The elevation layer
+  - path: src/fmu/stages/features_embedding.py
+    what: The A00, A01, A02 composite
+  - path: src/fmu/stages/segmentation.py
+    what: The superpixel outline layer
+  - path: src/fmu/stages/clustering.py
+    what: The stand-type layer and legend, the five summary numbers and summarise()
+  - path: tests/test_transparency_contract.py
+    what: >-
+      ENFORCED and PENDING; what each stage declares; that declared bands are bands the stage writes; the two
+      configs the declarations do not fit
+  - path: tests/test_stages_base.py
+    what: The bands tests of DisplayLayer, including that a single-band layer's record has no "bands" key
+  - path: tests/test_repro_fingerprints.py
+    what: The 14 _repro fingerprints are unchanged
+  - path: docs/outputs.md
+    what: 'Section "The transparency record": the table of layers, the exceptions, and the note on the counts'
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: docs/handoff/2026-10-13-round2.md, task A3
+- id: spec-segmentation-mask-before-snic
+  title: >-
+    SNIC can be run on kept land only, so that superpixels and stands lie on trees or scrub, and the merge joins
+    only superpixels that touch there
+  decision: >-
+    Two segmentation settings, both off by default. segmentation.mask_before_snic selects where SNIC draws
+    superpixels. Off, the default and the behaviour of every run made before it existed: SNIC and the merge cover
+    the whole ROI and the land-cover mask (habitat_mask: trees or scrub) is applied at clustering only, so a stand
+    can hold cropland or built-up land and its type is fitted on means over all of it. On: kept land is habitat_mask
+    1 on the analysis grid, clipped to the ROI with the same reproject(grid).clip(roi) the stage gives its two
+    outputs (fmu.utils.kept_land.kept_land_in_roi), before anything else is made from it, so that SNIC cannot grow a
+    superpixel past the ROI edge and the clip of its outputs takes nothing away; the per-band z-score and the
+    distance normaliser are measured over that land only (the normaliser over pairs of adjacent kept pixels with
+    every band defined); SNIC runs on the input stack with every other pixel masked; its seeds are the square
+    grid on kept land plus every pixel of each kept patch that no grid point falls in, so that no patch is left
+    without a superpixel because of where the grid falls (fmu.utils.kept_land.seeds_on_kept_land); and both SNIC
+    outputs are masked to kept land. segmentation.drop_kept_patches_below_min_area, which needs the first, also
+    leaves out before SNIC each patch of kept land smaller than merge.min_area_ha that touches no other kept land
+    (connectedPixelCount at merge.min_area_ha in pixels, Config.kept_patch_min_pixels), the standard minimum
+    mapping unit tied to the stand minimum rather than to a number of its own. The merge itself is unchanged: its
+    adjacency graph then holds only superpixels that touch on kept land, so it joins only those, and a patch with
+    no kept-land neighbour stays a stand of its own, below merge.min_area_ha if it is small, reported as isolated.
+    This is how "merge only where possible" is read; no merge rule is added or dropped. The merge stage measures,
+    on the superpixel image it reads, the kept land left without a superpixel, the superpixel area off kept land and
+    the area left out as small patches, puts them in merge_diagnostics under kept_land, and warns when either
+    shortfall is above zero. config_fingerprint leaves both keys out of the hashed segmentation block while they
+    are false, so no existing fingerprint moves, the 14 _repro configs among them, and a config that sets either
+    to true gets a new one. Off, the segmentation stage makes the same Earth Engine calls, with the same arguments
+    and in the same order, as before the change (tests/test_segmentation_off_golden.py holds them as recorded from
+    the stage at commit 983dbe7, for three shipped configs); its metadata gains the key mask_before_snic. Guards:
+    with the setting on, segmentation.size must be at least 2 (touching seed pixels are one seed to SNIC), and an
+    ROI with no kept land fails with a plain message. The masked path has not run in batch. Its requests are
+    checked offline against the algorithm signatures earthengine-api ships (tests/test_mask_before_snic_ee_graph.py);
+    what Earth Engine does with them is what scripts/check_snic_on_kept_land.py measures, read-only on a cached
+    run, before any batch run with the setting on: whether SNIC leaves masked pixels unlabelled and grows no superpixel across them, whether the seeds reach
+    every kept pixel, whether touching seed pixels make one superpixel, whether seedGrid is SNIC's own grid,
+    whether SNIC still uses size once given seeds, and what connectedComponents and connectedPixelCount count
+    against maxSize. Its first run (14 Oct 2026, Kendujhar's box, before the clip to the ROI;
+    docs/reproducibility/snic_on_kept_land_kendujhar.json) found superpixels in more than one piece: 2,758 pieces
+    for 2,755 superpixels, each count one too high for a histogram key "null". scripts/check_split_superpixels.py
+    then found 3 of 2,754 superpixels each in two pieces, all cut by the ROI edge
+    (docs/reproducibility/snic_split_superpixels_kendujhar.json): kept land was not clipped to the ROI, the cached
+    mask's pixels reach past the ROI edge, so SNIC grew each into a strip of kept land one pixel wide just outside
+    it, and the clip of its output removed the strip that joined the two parts. The clip of kept land to the ROI
+    is the fix (Jaskaran, 15 Oct 2026). It applies with the setting on only and adds no setting: no segmentation
+    asset with the setting on existed, so no cached asset describes the path without the clip. With the clip, the
+    two checks ran again read-only on 15 Oct 2026, for the segmentation of odisha_v120_3ha_squares_kendujhar_keptland
+    and of sanjay_van_baseline_keptland, every line as expected: no superpixel in more than one piece (2,744 and
+    1,200 superpixels), none of SNIC's labels outside the ROI (where SNIC on the unmasked stack labels 1,762 and
+    1,686 pixels), every kept pixel labelled, and the largest superpixel 153 and 389 px against the merge's
+    component caps of 480 and 1,320 px (docs/reproducibility/snic_on_kept_land_*_keptland.json,
+    snic_split_superpixels_*_keptland.json). For the field comparison the setting changes two things, declared
+    separately before any run with it on: a plot on land the mask removes is in no stand (14 of the 267 Odisha plots inside the boxes), and
+    the rotation null as coded requires every plot that has a stand to land on a stand after the move, which
+    stands on kept land only make far rarer.
+  alternatives_considered:
+  - >-
+    Keep SNIC and the merge on the whole area, and type each stand on means over its kept pixels only, with a
+    minimum share of kept land before a stand is typed (Claude (chat)'s recommendation of 14 Oct 2026): not chosen
+  - >-
+    Clip the stands to kept land after the merge: not chosen. The superpixels would still be drawn across the edge
+    between kept and removed land, so stand boundaries inside the forest would follow lines drawn partly on
+    removed land
+  - >-
+    Mask the stack and keep SNIC's own seed grid: not done. A patch of kept land that no grid point falls in and
+    that touches no other kept land would get no superpixel, and which patches that hits would depend on where the
+    grid falls, not on the land
+  - >-
+    Keep every kept patch, however small, as a stand of its own: available (drop_kept_patches_below_min_area
+    false). In the four Odisha box areas, kept land read from the explorer data (the land-cover shapes of the box
+    runs' masking output, 8-connected, on the cached EPSG:4326 grid, so approximate) forms 709 patches, 651 of
+    them under 1 ha, 432 under 0.1 ha; together they hold 50 ha of 5,394 ha of kept land, and none of the 253 plots
+    on kept land. Each would be a stand of its own and a row of its own in the k-means fit, which takes one row
+    per stand however small
+  - >-
+    Keep the small patches as stands but leave them out of the k-means fit, and label them afterwards: not
+    built. It needs a change to the clustering stage and still puts some 650 fragments on the stand map
+  - >-
+    After the clip of SNIC's outputs to the ROI, number each connected piece of a superpixel as a superpixel of its
+    own: not chosen (Jaskaran, 15 Oct 2026). It removes the pieces, not their cause: SNIC would still draw
+    superpixels partly on land outside the ROI
+  - >-
+    Accept the pieces (on Kendujhar's box, 3 of 2,754 superpixels, each piece cut off 1 or 2 pixels): not chosen
+    (Jaskaran, 15 Oct 2026)
+  - >-
+    Clip SNIC's input to the ROI with the setting off as well: not done (Jaskaran, 15 Oct 2026: only when
+    segmentation.mask_before_snic is on). It would change the superpixels of every whole-area run under an
+    unchanged fingerprint. Whether SNIC cuts superpixels at the ROI edge with the setting off has not been checked
+  - >-
+    Change segmentation in place, with no setting: not done. Every existing config's superpixels would change
+    under an unchanged cache fingerprint, and the cached assets would no longer be what the config describes
+  - >-
+    Add the settings as ordinary segmentation fields: not done. config_fingerprint hashes the whole
+    segmentation block, defaults included, so all 14 _repro fingerprints would change at once and their saved
+    assets could no longer be found by name
+  rationale: >-
+    Jaskaran asked whether the pipeline masks non-forest pixels before SNIC, as he understood it to. It did not:
+    src/fmu/stages/segmentation.py read no mask in any of its commits, and habitat_mask was used only by clustering
+    and metrics (dn-optical-features-over-whole-roi-mask-at-clustering, DEC-014). His decision, 14 Oct 2026: "we
+    need to change this we need to mask before snic and merge only where possible". The settings keep the earlier
+    behaviour reproducible; the explicit seeds and the measured coverage are there because a stand map that
+    silently leaves out kept land, by an accident of the seed grid, is the kind of silent loss this pipeline
+    reports rather than hides (spec-component-cap-derived). Whether the box configs leave out small patches is
+    Jaskaran's to decide, with the counts above, before they run. The clip to the ROI is his answer of 15 Oct 2026
+    to question 1 of docs/handoff/2026-10-14-round3.md: "clip kept land (and so SNIC's input and seeds) to the ROI
+    before SNIC, only when segmentation.mask_before_snic is on. Use the same clip as the output clip, so both treat
+    edge pixels the same way. No new setting: no kept-land segmentation asset exists yet."
+  evidence:
+  - path: src/fmu/stages/segmentation.py
+    what: >-
+      run(): kept land from habitat_mask when the setting is on, and the plain failure when there is none;
+      _zscore_per_band and _rms_adjacent_distance take `within`; SNIC on the masked stack with explicit seeds;
+      both outputs masked to kept land; validate() asks for habitat_mask only with the setting on; metadata keys
+      mask_before_snic and kept_patch_min_pixels
+  - path: src/fmu/utils/kept_land.py
+    what: >-
+      kept_land(), kept_land_in_roi() (the clip to the ROI), seeds_on_kept_land(), kept_land_coverage(), the
+      reasons for each, and what the check script found
+  - path: src/fmu/stages/merge.py
+    what: 'kept_land_coverage on the image the merge reads; merge_diagnostics["kept_land"]; _kept_land_warnings'
+  - path: src/fmu/config.py
+    what: >-
+      SegmentationParams.mask_before_snic and drop_kept_patches_below_min_area, default false, their validator,
+      and Config.kept_patch_min_pixels()
+  - path: src/fmu/utils/caching.py
+    what: _OMITTED_AT_DEFAULT holds both keys at false
+  - path: tests/test_mask_before_snic.py
+    what: >-
+      Fingerprints off and on; the guards; the mask is made before segmentation; with the setting off nothing reads
+      the mask and nothing is masked; with it on, which image each statistic is taken over, what SNIC is given,
+      that small patches are counted as SNIC joins pixels, and that the outputs are masked; that kept land is
+      clipped to the ROI with the outputs' own clip, and that the stage makes one analysis grid; the coverage is
+      counted on the label image's own pixels, on kept land clipped to the ROI; the merge on two patches that do not touch makes no merge and reports the
+      small one as isolated; the coverage warnings
+  - path: tests/test_segmentation_off_golden.py
+    what: The default path's calls, against those recorded from the stage at commit 983dbe7
+  - path: tests/test_mask_before_snic_ee_graph.py
+    what: The masked path and the coverage check built with the real Earth Engine client, offline
+  - path: scripts/check_snic_on_kept_land.py
+    what: The read-only check on Earth Engine to run before any batch run with the setting on
+  - path: docs/reproducibility/snic_on_kept_land_kendujhar.json
+    what: The read-only check of 14 Oct 2026 on Kendujhar's box run, before the clip
+  - path: docs/reproducibility/snic_split_superpixels_kendujhar.json
+    what: >-
+      The read-only follow-up of 14 Oct 2026 (scripts/check_split_superpixels.py): the three superpixels in two
+      pieces, and the ROI edge cutting each
+  - path: docs/reproducibility/snic_on_kept_land_kendujhar_keptland.json
+    what: >-
+      The two checks on the fixed code, 15 Oct 2026, read-only, for Kendujhar's kept-land config; with
+      snic_split_superpixels_kendujhar_keptland.json and the two *_sanjay_van_baseline_keptland.json files for
+      Sanjay Van's
+  - path: tests/test_check_snic_on_kept_land.py
+    what: What the check script says, and that its requests are valid
+  - path: tests/test_repro_fingerprints.py
+    what: Pins the fingerprints of the 14 _repro configs to those in the names of their saved assets
+  - path: docs/outputs.md
+    what: The merge.kept_land row of the metrics table
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran's decision in conversation with Claude (chat), 14 Oct 2026; the clip to the ROI, Jaskaran, 15 Oct 2026
+    (round 4, answer to question 1 of docs/handoff/2026-10-14-round3.md); PR #43
+- id: spec-merge-pass2-soft-ceiling
+  title: >-
+    In the second pass, a region still below the minimum stand size may join a neighbour even if the stand is
+    then over the maximum, up to the maximum plus the minimum
+  decision: >-
+    A merge setting, merge.pass2_soft_ceiling, off by default. Off, the default and the behaviour of every run
+    made before it existed: merge.max_area_ha binds in both passes. On: in pass 2, a region whose area is still
+    below merge.min_area_ha when its turn comes (its area at that moment, not when the sweep listed it) may join
+    a neighbour even if the result is over max_area_ha, and takes, in this order: (1) a neighbour that passes the
+    relaxed tolerances and keeps the result at most max_area_ha, the closest; (2) if none, one that passes them
+    with the result over max_area_ha but at most max_area_ha + min_area_ha, the closest; (3) if none, the
+    neighbour sharing the longest edge with the result at most max_area_ha; (4) if none fits under max_area_ha,
+    the one sharing the longest edge with the result at most max_area_ha + min_area_ha; (5) if none, no merge.
+    Closest is the distance pass 2 already uses, under the relaxed tolerances, with the same tie-breaks. No merge
+    makes a region larger than max_area_ha + min_area_ha: the bound is checked on the result of each merge, so a
+    neighbour already over max_area_ha after an earlier such merge takes another region only while the result
+    stays within it. Pass 1, and a region that has reached the minimum by its turn, keep max_area_ha. A stand
+    left below the minimum is filed as area_blocked when no neighbour could take it under the ceiling that
+    applied to it, max_area_ha + min_area_ha with the setting on. Steps 1 and 2 count as relaxed merges and steps
+    3 and 4 as fallback merges, in the per-stand provenance and in the totals, as before. With the setting on,
+    the merge diagnostics add seven keys: the pass-2 merges that went over max_area_ha by step 2 and by step 4;
+    the stands that end over max_area_ha, how many of them never merged (a superpixel that came in larger than
+    max_area_ha, which the setting did not make), and the total, the largest and each of their excesses, largest
+    first, in hectares to 4 decimals; and the merge stage warns with the number of such stands and the largest
+    excess, putting down to the setting only the stands made by merging. With it off the diagnostics have
+    exactly the keys and values they had. Config.max_component_pixels() is derived from max_area_ha +
+    min_area_ha when the setting is on, ceil((max_area_ha + min_area_ha) * 10000 / scale^2) plus 20%, because
+    reduceConnectedComponents deletes without a word any component larger than its maxSize. config_fingerprint
+    leaves the key out of the hashed merge block while it is false, so no existing fingerprint moves, and a
+    config that sets it to true gets a new one. The merge stage passes the setting to merge_superpixels and
+    records it in its metadata, beside pass2_skip_at_min_area.
+  alternatives_considered:
+  - >-
+    Keep the hard ceiling in both passes: kept, as the default of the setting, so that every earlier run can
+    still be reproduced
+  - >-
+    Best match, ceiling ignored (reading A, put to Jaskaran on 14 Oct 2026): the region joins its best neighbour
+    among all of them, whether or not the result is over max_area_ha. Not chosen
+  - >-
+    Under the ceiling first (reading B, put to him with A): a neighbour that keeps the result at most max_area_ha
+    is taken before one that does not, the soft ceiling only when none fits. Not chosen as written: Jaskaran's
+    order prefers a neighbour under the ceiling within the relaxed matches and within the fallback, but takes a
+    relaxed match over the ceiling before a fallback under it (on the example put to him it gives reading A's
+    answer); docs/handoff/2026-10-14-round3.md, section 1b
+  - >-
+    An exceedance with no upper bound, as D2 first read ("even if the result exceeds merge.max_area_ha"): not
+    done. reduceConnectedComponents deletes any component larger than its maxSize, which
+    Config.max_component_pixels() derives from the largest stand the merge can make, so a stand with no bound
+    would leave no cap to derive
+  - >-
+    Raise merge.max_area_ha instead: not done. It changes pass 1 and every stand, not only the regions below the
+    minimum
+  rationale: >-
+    With segmentation.mask_before_snic on (spec-segmentation-mask-before-snic), kept land comes in patches, and a
+    region below the minimum whose neighbours are all close to the ceiling cannot join any of them under
+    max_area_ha: it stays below the minimum, filed as area_blocked. The soft ceiling lets it join instead, at the
+    cost of stands over max_area_ha by at most min_area_ha, which the diagnostics count, as Jaskaran asked:
+    "Record in merge diagnostics how many stands end up over max_area_ha and by how much." Decision D2 is in
+    section 1 of docs/handoff/2026-10-14-round3.md; the question put to him on its two readings and the cap, and
+    his answer of 14 Oct, word for word, are in section 1b of that file. His answer gave the order of choice above
+    and "Cap everything at max + min, as you proposed." The cap keeps the derivation of
+    Config.max_component_pixels() true: no stand the merge makes is larger than the ceiling the cap is derived
+    from. Off by default and left out of the fingerprint, so every saved run and its assets are unchanged. No
+    paper was searched for this rule: it is a choice about this pipeline's second pass, not a claim taken from the
+    literature.
+  evidence:
+  - path: src/fmu/utils/region_merge.py
+    what: >-
+      merge_superpixels(..., pass2_soft_ceiling=False): pass2_partner() takes the neighbour in the order above,
+      with the result checked against max_area_ha + min_area_ha; the area_blocked filing uses the ceiling that
+      applied; the seven diagnostics keys, added only with the setting on; the module docstring's description of
+      pass 2
+  - path: src/fmu/config.py
+    what: >-
+      MergeParams.pass2_soft_ceiling, default false, with the order of choice in its comment;
+      Config.max_component_pixels() derived from max_area_ha + min_area_ha with the setting on
+  - path: src/fmu/utils/caching.py
+    what: _OMITTED_AT_DEFAULT holds the key at false
+  - path: src/fmu/stages/merge.py
+    what: >-
+      run() passes the setting to merge_superpixels and records it in the stage metadata; _warnings_from() names
+      the ceiling that applied in the area_blocked warning and, with the setting on, says how many stands are
+      over max_area_ha and the largest excess, and how many of them never merged
+  - path: src/fmu/utils/components.py
+    what: The module docstring and the error message name the ceiling the cap is derived from
+  - path: tests/test_region_merge_soft_ceiling.py
+    what: >-
+      Hand-built graphs for each step of the order of choice, the cap (a neighbour already over max_area_ha takes
+      a second region only within max_area_ha + min_area_ha), a region that reached the minimum before its turn,
+      one exactly at the minimum at its turn and one a pixel short of it, pass 1, a superpixel that came in over
+      max_area_ha, and the diagnostics on a known case. Seeded random graphs (the generator of
+      tests/test_region_merge_provenance.py on its 200 golden seeds and 100 more, some of the same graphs with a
+      tighter ceiling, and graphs built with many regions below the minimum beside stands close to the ceiling;
+      9000 more in the slow tier) on which no merged stand passes max_area_ha + min_area_ha or
+      Config.max_component_pixels(), every provenance invariant holds and the soft ceiling binds. With the
+      setting off, the merge gives on every one of the fast tier's graphs what the code of commit 363ea6d gave
+  - path: tests/data/region_merge_soft_ceiling_off.json
+    what: >-
+      Digests of what merge_superpixels at commit 363ea6d, before the setting existed, produced on those graphs
+      under both values of pass2_skip_at_min_area, written from that commit with git show
+  - path: tests/test_merge_config.py
+    what: >-
+      max_component_pixels() with the setting on, and that it exceeds the largest stand the merge can make; each
+      shipped Sanjay Van config agrees with the baseline of its own comparison on the cap and on the merge rules,
+      pass2_soft_ceiling among them
+  - path: tests/test_cache_fingerprint.py
+    what: The setting off, left out or written out, hashes as before; on, it changes the fingerprint
+  - path: tests/test_merge_stage.py
+    what: The stage passes the setting through and records it; the warnings with the setting off and on
+  - path: tests/test_region_merge_provenance.py
+    what: The 200 golden graphs still give their committed digests at the default
+  - path: tests/test_repro_fingerprints.py
+    what: Pins the fingerprints of the 14 _repro configs to those in the names of their saved assets
+  - path: tests/test_every_config_fingerprint.py
+    what: Pins the fingerprint of every config under configs/ as computed before the setting existed
+  - path: docs/configs.md
+    what: merge.pass2_soft_ceiling, and the component-size cap with it on
+  - path: docs/outputs.md
+    what: The seven diagnostics keys, and area_blocked under the soft ceiling
+  - path: odisha_script/odisha_phase2_4_noise_null.py
+    what: The noise null merges with each arm's pass2_soft_ceiling, as with its other merge settings
+  - path: docs/handoff/2026-10-14-round3.md
+    what: >-
+      Decision D2 (section 1); the question on its two readings and the cap put to Jaskaran, and his answer, word
+      for word (section 1b)
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 14 Oct 2026, with Claude (chat)
+- id: spec-clustering-fit-excludes-stands-below-min-area
+  title: >-
+    The stands the merge leaves below the minimum stand size can be left out of the k-means fit; they stay on the
+    map and are typed by the fitted clusters
+  decision: >-
+    A clustering setting, clustering.fit_excludes_stands_below_min_area, off by default. Off, the default and the
+    behaviour of every run made before it existed: every stand in the habitat mask with data in every active band is
+    a row of the k-means fit, however small (spec-kmeans-one-row-per-unit). On: the stands the merge marks below
+    merge.min_area_ha (below_min 1 in stand_provenance, whatever cause below_why gives) stay on the map as stands of
+    their own, but are left out of the k-means training rows. The trained clusterer is still applied to every unit,
+    so each of them gets the type of the nearest fitted cluster. Only the k-means rows: the two earlier samples of one
+    row per unit, for the skewness and log offsets and for the robust scaling, still take every unit. The stage finds
+    the stands by the merge's own flag, by stand id, and leaves them out with masks on the integer stand label image,
+    as the merge relabels with remap, not by filtering the sampled rows by label: the k-means rows are sampled from
+    the training image masked to the other stands, and the stands left out are read, with aggregate_array, from a
+    sample of the training image masked to them alone. With no stand below the minimum the fit takes every row and
+    nothing more is asked of Earth Engine. clustering_metadata then holds the setting, how many stands were left out
+    of the fit and their area in ha (those that had a training row), and how many stands the merge marked below the
+    minimum and their area (more, where a stand below the minimum had no row to leave out: outside the habitat mask,
+    or no data in a band). n_training_units counts the rows the fit was trained on; n_units_dropped_null_band is
+    counted against the rows before the stands are left out, so they are not counted as missing band data; the stage
+    logs a warning when the two masked samples do not add up to the rows of every unit. The clustering summary
+    numbers gain a sixth, units_left_out_of_fit, read from n_stands_left_out_of_fit and 0 when clustering_metadata
+    does not record the setting as on, so that units_in_habitat is units_fitted plus units_dropped_missing_band plus
+    units_left_out_of_fit; every run's transparency record holds it, 0 where the setting is off. The setting needs
+    merge.enabled, checked when the config is loaded. Off, the clustering stage makes the same Earth Engine calls,
+    with the same arguments and in the same order, sends the same requests and writes the same clustering_metadata as
+    before the change (tests/test_clustering_off_golden.py holds them as recorded from the stage at commit 12d2a05,
+    for three shipped configs); its stage metadata gains the key fit_excludes_stands_below_min_area.
+    config_fingerprint leaves the key out of the hashed clustering block while it is false, so no existing
+    fingerprint moves, the 14 _repro configs among them, and a config that sets it to true gets a new one. The path
+    with the setting on has not run in batch. Its requests are checked offline against the algorithm signatures
+    earthengine-api ships (tests/test_clustering_fit_excludes_ee_graph.py), and it ran read-only on Earth Engine on
+    15 Oct 2026, the clustering stage in memory on Kendujhar's cached box run with the merge live
+    (scripts/check_fit_excludes_stands.py, docs/reproducibility/fit_excludes_stands_kendujhar.json): of 580 rows the
+    fit took 540 and left out the 40 of the stands below the minimum with a row (44 below it), none of them in the
+    fit; each of the 40 got one type; the six summary numbers add up; none of the path's warnings fired.
+  alternatives_considered:
+  - >-
+    Off, the default: every stand a row of its own in the fit, however small (spec-kmeans-one-row-per-unit). Kept as
+    the default of the setting, so that earlier runs can still be reproduced
+  - >-
+    Drop the small patches of kept land before SNIC (segmentation.drop_kept_patches_below_min_area): available, and
+    not chosen. Jaskaran's decision D1 of 14 Oct 2026 keeps it false, so the small patches stay on the map as stands
+  - >-
+    Leave the stands below the minimum out of all three samples of one row per unit, not only the k-means rows: not
+    done. The log transform is log(x - min + 0.001), with min the minimum of its sample, so a stand left out of that
+    sample with a value more than 0.001 below that minimum would get the log of a negative number, which is
+    undefined, and no type, against the decision that these stands get the type of the nearest fitted cluster. The
+    decision also names the k-means training rows only
+  - >-
+    Weight the rows by stand area: not done. spec-kmeans-one-row-per-unit removed the area weighting a pixel sample
+    gave, under which a 10 ha stand outweighed a 0.1 ha stand 100 to 1: a property of stand size, not of what a
+    stand is
+  rationale: >-
+    With segmentation.mask_before_snic on and the small patches kept (D1), each isolated patch of kept land below
+    merge.min_area_ha is a stand of its own, since the merge can join it to nothing. In the four Odisha box areas
+    kept land forms about 650 patches under 1 ha (the counts are in spec-segmentation-mask-before-snic), and with one
+    row per stand each would be a row of the k-means fit with the weight of a 3 ha stand. Leaving them out of the fit
+    keeps them on the map, typed by the nearest cluster, without letting the fragments shape the clusters. It is the
+    alternative spec-segmentation-mask-before-snic records as not built then: "Keep the small patches as stands but
+    leave them out of the k-means fit, and label them afterwards". Jaskaran's decision D3 of 14 Oct 2026, in his
+    words in docs/handoff/2026-10-14-round3.md (section 1): "stands still below merge.min_area_ha after the merge (the
+    isolated ones) stay on the map as their own stands, but are left out of the k-means training rows; they then get
+    the type of the nearest fitted cluster". The stands are found by the merge's own below_min flag, so the merge and
+    the fit cannot disagree on which they are. That flag marks every stand the merge left below the minimum, whatever
+    the cause (isolated, area_blocked or iteration_cap), not only the isolated ones the decision names; the setting
+    takes all of them, as its name says. Masks on the label image are used rather than a filter of the sampled rows
+    by label, because whether Earth Engine matches a list of integers against the sampled numeric label property is
+    not established, and a silent mismatch would leave every such stand in the fit. No paper was searched for this
+    rule. Not run in batch; checked read-only on Earth Engine (15 Oct 2026, above). Jaskaran's answers of 15 Oct 2026 to the three points put to him
+    (docs/handoff/2026-10-14-round3.md, section 5, questions 2 to 4): every stand below the minimum, not only the
+    isolated ones (question 2, (a)); the stands left out leave the k-means rows only and still take part in the
+    skewness test, the log offsets and the scaling, as built, to be looked at again in the review of the method
+    decisions (question 3); and the sixth summary number (question 4, (b)), because with the setting on the five
+    numbers no longer add up without it.
+  evidence:
+  - path: src/fmu/stages/clustering.py
+    what: >-
+      Module docstring, step 8; run(): the stands below the minimum read from stand_provenance and stand_attributes
+      when the setting is on, the key in clustering_metadata and in the stage metadata; _train_and_apply_kmeans,
+      _stands_below_min_area and _leave_out_of_fit; validate() asks for stand_provenance and stand_attributes only
+      with the setting on
+  - path: src/fmu/config.py
+    what: >-
+      ClusteringParams.fit_excludes_stands_below_min_area, default false, with the reason in its comment; the Config
+      validator that it needs merge.enabled
+  - path: src/fmu/utils/caching.py
+    what: _OMITTED_AT_DEFAULT holds the key at false
+  - path: src/fmu/utils/region_merge.py
+    what: below_min in stand_provenance and area_ha in stand_attributes, the two fields the stage reads
+  - path: tests/test_clustering_off_golden.py
+    what: >-
+      The default path's calls and requests, its clustering_metadata and its stage metadata, against those recorded
+      from the stage at commit 12d2a05 (tests/data/clustering_off_calls.json)
+  - path: tests/test_clustering_fit_excludes_stands.py
+    what: >-
+      With the setting on: the k-means rows come from the image masked to the other stands, the preprocessing samples
+      are unmasked, the clusterer types the unmasked image; the counts and areas recorded, with a stand below the
+      minimum that had no training row; missing band data counted against every row; no stand below the minimum
+      gives zeros and the default path's calls; the warnings; the guard on k; validate() and the config validator;
+      the summary numbers on and off
+  - path: tests/test_transparency_contract.py
+    what: >-
+      The six summary numbers: that they add up to units_in_habitat with the setting off and on, and that a
+      metadata recording the setting on without the count left out is a gap, not a zero
+  - path: tests/test_clustering_fit_excludes_ee_graph.py
+    what: The path with the setting on built with the real Earth Engine client, offline
+  - path: docs/reproducibility/fit_excludes_stands_kendujhar.json
+    what: >-
+      The read-only check of 15 Oct 2026 (scripts/check_fit_excludes_stands.py) on Kendujhar's cached box run: the
+      rows left out, the types, the summary numbers
+  - path: tests/test_cache_fingerprint.py
+    what: The setting off, left out or written out, hashes as before; on, it changes the fingerprint
+  - path: tests/test_repro_fingerprints.py
+    what: Pins the fingerprints of the 14 _repro configs to those in the names of their saved assets
+  - path: tests/test_every_config_fingerprint.py
+    what: Pins the fingerprint of every config of commit 12d2a05
+  - path: docs/configs.md
+    what: The clustering setting
+  - path: docs/outputs.md
+    what: >-
+      The keys the setting adds to clustering_metadata, the key in the stage metadata, and the sixth summary
+      number
+  - path: docs/handoff/2026-10-14-round3.md
+    what: Jaskaran's decision D3, as he gave it (section 1), and the notes on it (section 6)
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 14 Oct 2026, with Claude (chat); his answers to questions 2 to 4 of docs/handoff/2026-10-14-round3.md,
+    15 Oct 2026 (round 4)
+- id: spec-keptland-configs-mask-before-snic
+  title: >-
+    Every kept-land config of round 3 has SNIC on kept land only, and keeps the small patches of kept land
+  decision: >-
+    The six configs of round 3, configs/sanjay_van_baseline_keptland.yaml, configs/sanjay_van_alphaearth_keptland.yaml
+    and configs/odisha_v120_3ha_squares_<district>_keptland.yaml for Angul, Dhenkanal, Kendujhar and Koraput, set
+    segmentation.mask_before_snic: true, so SNIC sees kept land only and every superpixel and stand lies on it
+    (spec-segmentation-mask-before-snic). They leave segmentation.drop_kept_patches_below_min_area at its default,
+    false: a patch of kept land smaller than merge.min_area_ha that touches no other kept land is not left out before
+    SNIC, and becomes a stand of its own. This answers question 6 of PR #43 with option (b). Each config copies an
+    existing one and differs from it only in its name and description, its Drive folder (fmu_exports_kept_land) and
+    the three settings of D1 to D3, and, for the two Sanjay Van configs, merge.pass2_skip_at_min_area and, for the
+    AlphaEarth arm, metrics.reference_config_name (round 4; tests/test_keptland_configs.py); which configs they copy
+    is spec-keptland-runs-sites-and-ceilings. The read-only check of task A6 ran first, on Kendujhar's box run with small
+    patches kept (docs/reproducibility/snic_on_kept_land_kendujhar.json). One of its lines is not as expected: 3
+    superpixels are each in more than one piece. A read-only follow-up found the ROI edge cutting all three
+    (docs/reproducibility/snic_split_superpixels_kendujhar.json): SNIC grows them through a strip of kept land one
+    pixel wide just outside the ROI, and the stage's clip to the ROI cuts that strip off. The fix, Jaskaran's of 15
+    Oct 2026, clips kept land to the ROI before SNIC (spec-segmentation-mask-before-snic). On the fixed code the two
+    checks ran again read-only on 15 Oct 2026, for Kendujhar's and Sanjay Van's kept-land configs, every line as
+    expected (docs/reproducibility/snic_on_kept_land_*_keptland.json). Not run on Earth Engine in batch.
+  alternatives_considered:
+  - >-
+    Leave out, before SNIC, the kept patches smaller than merge.min_area_ha that touch no other kept land
+    (drop_kept_patches_below_min_area true; option (a) of PR #43 question 6, recommended there by Claude (chat)): not
+    chosen
+  - >-
+    SNIC and the merge on the whole area, the mask applied at clustering only, as in every earlier run: not chosen;
+    Jaskaran decided on 14 Oct 2026 to mask before SNIC (spec-segmentation-mask-before-snic)
+  rationale: >-
+    Jaskaran's decision D1 of 14 Oct 2026: "Land-cover mask before SNIC: segmentation.mask_before_snic: true in every
+    new config. Small kept patches are NOT dropped: drop_kept_patches_below_min_area stays false." The counts behind
+    question 6 are in spec-segmentation-mask-before-snic: in the four Odisha box areas, read approximately from the
+    explorer data, kept land forms 709 patches, 651 of them under 1 ha, together 50 ha of 5,394 ha, with none of the
+    FES plots on kept land in them. D3, decided at the same time (spec-clustering-fit-excludes-stands-below-min-area),
+    leaves the stands still below the minimum after the merge out of the k-means fit, so such patches stay on the map
+    without shaping the stand types. No paper was searched for this decision.
+  evidence:
+  - path: configs/sanjay_van_baseline_keptland.yaml
+    what: segmentation.mask_before_snic true; the header says what differs from configs/sanjay_van_baseline.yaml
+  - path: configs/sanjay_van_alphaearth_keptland.yaml
+    what: segmentation.mask_before_snic true; the header says what differs from configs/sanjay_van_alphaearth.yaml
+  - path: configs/odisha_v120_3ha_squares_kendujhar_keptland.yaml
+    what: >-
+      segmentation.mask_before_snic true; the header says what differs from the box config it copies (the other three
+      districts' configs are built the same way)
+  - path: tests/test_keptland_configs.py
+    what: >-
+      Each config differs from its source only in the named keys; mask_before_snic is true and
+      drop_kept_patches_below_min_area false in all six
+  - path: docs/reproducibility/snic_on_kept_land_kendujhar.json
+    what: The A6 check on Kendujhar's box run with small patches kept
+  - path: docs/reproducibility/snic_split_superpixels_kendujhar.json
+    what: The follow-up on the three superpixels A6 found in more than one piece
+  - path: docs/handoff/2026-10-14-round3.md
+    what: The round-3 brief with D1 to D4, as Jaskaran gave it, and Blocked 1
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 14 Oct 2026, with Claude (chat)
+- id: spec-keptland-runs-sites-and-ceilings
+  title: >-
+    The kept-land runs: Sanjay Van at 10 ha with its existing settings, Odisha on the four 3 ha box configs
+  decision: >-
+    Round 3 has six kept-land configs. For Sanjay Van, the hand-crafted baseline and the AlphaEarth arm, each with its
+    existing settings, so at a 10 ha stand ceiling: they copy configs/sanjay_van_baseline.yaml and
+    configs/sanjay_van_alphaearth.yaml, which have no merge block, so the merge keeps its defaults (stands of 1 to 10
+    ha) but for merge.pass2_skip_at_min_area, which both set to true (the default and the sources' setting is false).
+    For Odisha, the four 3 ha box configs of task A0 (configs/odisha_v120_3ha_squares_<district>.yaml), with their
+    merge rule (pass2_skip_at_min_area true), so all six skip at the minimum in the merge's second pass
+    (spec-merge-pass2-skip-at-minimum). The AlphaEarth arm's metrics.reference_config_name is
+    sanjay_van_baseline_keptland, the baseline on kept land, in place of its source's sanjay_van_baseline; the metrics
+    block is not in the cache fingerprint, so this moves no asset. There is no
+    kept-land config for Sanjay Van at 3 ha, for the Odisha hull areas, for the Odisha 10 ha arm or for AlphaEarth in
+    Odisha. Upstream of segmentation nothing the configs change is read, so their masking, data-load and feature
+    assets can be copies of those of the runs they copy; for Sanjay Van that is the _repro run of the same content
+    (docs/demo/demo_set.json), the only run of it with assets at today's fingerprint: the baseline's assets under
+    its own name carry an older fingerprint (docs/reproducibility/sanjay_van_baseline_assets_aug27_vs_repro.json),
+    and the AlphaEarth arm has none under its own name (docs/reproducibility.md). No batch run until Jaskaran says
+    go.
+  alternatives_considered:
+  - >-
+    A 3 ha stand ceiling for Sanjay Van as well (Prof. Seth's ceiling; part C, item 9 of
+    docs/handoff/2026-10-13-round2.md): not chosen; Sanjay Van stays at 10 ha
+  - >-
+    Kept-land copies of the Odisha hull configs, of the Odisha 10 ha arm or of the Odisha AlphaEarth arm: not made
+  - >-
+    Keep the Sanjay Van configs at the earlier pass-2 rule (pass2_skip_at_min_area false, their sources' setting):
+    built so in round 3, as the brief named the only keys to change, and not kept (Jaskaran, 15 Oct 2026). The Sanjay
+    Van stands would then differ from the demo stands, which were re-merged with the rule true, in this rule as well,
+    and the Odisha ones would not
+  - >-
+    Leave the AlphaEarth arm's metrics reference at sanjay_van_baseline: not kept (Jaskaran, 15 Oct 2026). That run has
+    no assets at today's fingerprint, so a metrics run of the arm would fail; the batch itself does not run metrics
+  rationale: >-
+    Jaskaran's decision D4 of 14 Oct 2026: "Sanjay Van stays at 10 ha (its existing settings). Odisha: the four 3 ha
+    box configs." Because the brief named the only keys that change, the two Sanjay Van configs first kept the earlier
+    pass-2 rule (pass2_skip_at_min_area false) where the box configs keep the rule of spec-merge-pass2-skip-at-minimum.
+    Jaskaran's answers of 15 Oct 2026 to questions 6 and 7 of docs/handoff/2026-10-14-round3.md: "(b): set
+    merge.pass2_skip_at_min_area: true in both Sanjay Van kept-land configs", and (b) for the reference, point it at
+    sanjay_van_baseline_keptland. The register entry spec-merge-pass2-skip-at-minimum keeps false for reproducing
+    earlier runs and says configs of the final round set the rule explicitly. No paper was searched for this
+    decision.
+  evidence:
+  - path: configs/sanjay_van_baseline_keptland.yaml
+    what: >-
+      Copies configs/sanjay_van_baseline.yaml; no merge settings but pass2_soft_ceiling and pass2_skip_at_min_area,
+      so stands of 1 to 10 ha
+  - path: configs/sanjay_van_alphaearth_keptland.yaml
+    what: >-
+      Copies configs/sanjay_van_alphaearth.yaml, the same way, with metrics.reference_config_name
+      sanjay_van_baseline_keptland
+  - path: configs/odisha_v120_3ha_squares_koraput_keptland.yaml
+    what: Copies configs/odisha_v120_3ha_squares_koraput.yaml (3 ha, boxes); the other three districts the same way
+  - path: tests/test_keptland_configs.py
+    what: >-
+      The six configs and their sources, and exactly which keys each changes; max_area_ha 10 for Sanjay Van and 3
+      for Odisha, k as in the source, pass2_skip_at_min_area true in all six; the metrics reference outside the
+      fingerprint; the fingerprints
+  - path: scripts/reuse_upstream_assets.py
+    what: >-
+      REUSE_SAFE_KEYS holds merge.pass2_skip_at_min_area and metrics.reference_config_name, which no stage before
+      segmentation reads (tests/test_reuse_upstream_assets.py)
+  - path: docs/demo/demo_set.json
+    what: The _repro runs whose upstream assets the Sanjay Van configs reuse
+  - path: docs/demo/demo_set_boxes.json
+    what: The box runs whose upstream assets the Odisha configs reuse
+  - path: docs/handoff/2026-10-14-round3.md
+    what: The round-3 brief with D1 to D4, as Jaskaran gave it
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 14 Oct 2026, with Claude (chat); his answers to questions 6 and 7 of docs/handoff/2026-10-14-round3.md,
+    15 Oct 2026 (round 4)

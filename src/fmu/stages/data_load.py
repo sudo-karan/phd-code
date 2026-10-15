@@ -19,7 +19,13 @@ from __future__ import annotations
 import ee
 
 from fmu.config import Config
-from fmu.stages.base import PipelineContext, Stage, StageResult, register_stage
+from fmu.stages.base import (
+    DisplayLayer,
+    PipelineContext,
+    Stage,
+    StageResult,
+    register_stage,
+)
 from fmu.utils.gee import safe_call, safe_get_info
 from fmu.utils.logging import get_logger
 
@@ -41,6 +47,39 @@ class DataLoadStage(Stage):
     required_inputs = {"roi"}
     produces = {"s2_collection", "s1_collection", "s2_composite"}
     cacheable_outputs = {"s2_composite"}  # collections aren't cacheable as assets
+
+    # Transparency: the composite in true colour, so a reader sees the ground
+    # the later layers are drawn over. A declaration is static and the band
+    # names are not: the composite's bands carry the reducer's suffix
+    # (`B4_median`, or `B4_p25` under `s2_composite_reducer: p25`). The names
+    # below are those of the default, and tests/test_transparency_contract.py
+    # fails for a config under configs/ that sets another reducer.
+    #
+    # Stretch 0 to 3000: Sentinel-2 SR stores reflectance x 10000 (see
+    # features_optical._add_index), and the segmentation stage and
+    # SegmentationParams both give 0-3000 as the range of these bands. It is a
+    # starting stretch for a reader, not a property of the data.
+    display_layers = (
+        DisplayLayer(
+            key="s2_composite",
+            band="B4_median",
+            bands=("B4_median", "B3_median", "B2_median"),
+            title="True colour (Sentinel-2 composite)",
+            description=(
+                "The cloud-masked Sentinel-2 composite over the "
+                "optical_composite window, drawn as red, green and blue: the "
+                "ground as a camera would show it. With the default "
+                "hand-crafted bands, segmentation reads its red and "
+                "near-infrared bands from this same image, so this is then "
+                "part of what the superpixels were drawn on, not a separate "
+                "picture; a run that segments on the embedding does not read "
+                "it. The "
+                "band names are those of the default median composite; a "
+                "config with another s2_composite_reducer writes other names."
+            ),
+            vis={"min": 0, "max": 3000},
+        ),
+    )
 
     @safe_call("loading S2 + S1 data")
     def run(self, ctx: PipelineContext, config: Config) -> StageResult:

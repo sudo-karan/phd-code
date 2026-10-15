@@ -39,9 +39,9 @@ features_radar: { percentiles, include_iqr, include_cross_pol_contrast }
 features_structure: { include_neighborhood_stats, neighborhood_kernel_size }
 features_static: { include_climate, max_water_distance_pixels }
 features_embedding: { collapse_reducer, band_names }
-segmentation: { size, compactness, connectivity, neighborhood_size, normalize_inputs, normalize_distance_scale, input_bands }
-merge: { enabled, criteria, relax_factor, min_area_ha, max_area_ha, min_defined_criteria, min_frac_valid, tie_break, max_pass2_iterations, max_superpixels }
-clustering: { k, seed, feature_source, skewness_threshold }
+segmentation: { size, compactness, connectivity, neighborhood_size, normalize_inputs, normalize_distance_scale, input_bands, mask_before_snic, drop_kept_patches_below_min_area }
+merge: { enabled, criteria, relax_factor, min_area_ha, max_area_ha, min_defined_criteria, min_frac_valid, tie_break, max_pass2_iterations, max_superpixels, pass2_skip_at_min_area, pass2_soft_ceiling }
+clustering: { k, seed, feature_source, skewness_threshold, fit_excludes_stands_below_min_area }
 normalization: { method }
 features: { optical_harmonic, radar, canopy_height, terrain }
 export: { export_geotiff, export_gee_asset, analysis_scale_m, drive_folder, export_vector_merged, export_vector_snic, export_vector_dissolved, vector_formats, vector_min_stand_pixels }
@@ -432,7 +432,10 @@ not mistyped stands. The stage logs the split and the manifest records it as
 `n_training_units`, `n_units_total`, `n_units_in_habitat`,
 `n_units_outside_habitat` and `n_units_dropped_null_band`, alongside
 `training_unit_key`. Read the shortfall before reading a silhouette: a cluster
-definition rests only on the units that reached the fit.
+definition rests only on the units that reached the fit. With
+`fit_excludes_stands_below_min_area` on (below) there is a third, made on
+purpose: the stands below `merge.min_area_ha` are left out of the fit, though
+not out of the map, and are counted apart from the other two.
 
 This also retires the "10,000 superpixels" figure that appears in older docs and
 decks — that number was always 10,000 pixels.
@@ -446,6 +449,30 @@ decks — that number was always 10,000 pixels.
   directly comparable through the metrics stage.
 - `skewness_threshold`: bands with `|skew|` above this get log-transformed
   (default 1.0 per DEC-004).
+- `fit_excludes_stands_below_min_area`: whether the stands the merge leaves
+  below `merge.min_area_ha` are rows of the k-means fit. `false` (default, and
+  the behaviour of every run made before the setting existed): every stand is a
+  row of its own, however small. `true`: the stands the merge marks below the
+  minimum (`below_min` in `stand_provenance`, whatever its cause) are left out of
+  the k-means training rows, and only out of those. The skewness, the log
+  offsets and the scaling still take a row from every stand: the log offset
+  comes from the minimum of its sample, and a stand left out of that sample
+  could lie further below that minimum than the 0.001 the transform adds, and
+  get the log of a negative number. The stands left out stay on the map as
+  stands of their own, and the trained clusterer, which is applied to every
+  unit, gives each the type of the nearest fitted cluster. How many were left
+  out, and their area, is recorded in `clustering_metadata` (`docs/outputs.md`,
+  under `export_manifest_<config>.json`, where its keys are listed). It needs
+  `merge.enabled`: a config with the merge off and this on fails to load. The
+  case it is for is `segmentation.mask_before_snic: true` with the small patches
+  kept, where each isolated patch of kept land below the minimum is a stand of
+  its own (register entry `spec-clustering-fit-excludes-stands-below-min-area`).
+  `true` has not run in batch: `tests/test_clustering_fit_excludes_ee_graph.py`
+  checks offline that its requests are valid, and a read-only check on Earth
+  Engine saw it leave out the rows intended
+  (`docs/reproducibility/fit_excludes_stands_kendujhar.json`, 15 Oct 2026). The default is left out of the cache fingerprint, so
+  existing configs keep their cached assets; a config that sets it to `true`
+  gets a new fingerprint.
 
 `superpixel_max_size` **no longer exists** and a config still carrying it will
 fail to load. It was the `maxSize` argument to `reduceConnectedComponents`,
@@ -454,8 +481,10 @@ regions with no error. Hand-set, the shipped configs drifted apart (1024
 baseline vs 256 embedding), and the embedding arm silently lost 15 superpixels
 totalling 43.9 ha — 3.8% of its segmented area — in a two-arm comparison. It is
 now derived as `ceil(merge.max_area_ha × 10000 / analysis_scale_m²) × 1.2`
-(1200 px at the defaults) and asserted against the actual labels at stage entry,
-so an undersized cap raises instead of deleting stands.
+(1200 px at the defaults), with `merge.max_area_ha + merge.min_area_ha` in place
+of `merge.max_area_ha` when `merge.pass2_soft_ceiling` is on (1320 px at the
+defaults), and asserted against the actual labels at stage entry, so an
+undersized cap raises instead of deleting stands.
 
 ### `merge`
 
@@ -472,7 +501,13 @@ a two-tier threshold scheme.
   validation measured that band at R²=0.000 against crown cover, so the axis was
   nominal rather than real. See `docs/datasets.md`. Measured from this AOI's own
   adjacent-superpixel difference distribution (1249 superpixels, 3569 adjacent
-  pairs).
+  pairs, in the run the tolerances were set on). Demo set, 13 Oct 2026: 1,298
+  superpixels and 3,615 adjacent pairs; `canopy_height` differences have a
+  median of 1.85 m and a 75th percentile of 3.27 m, `ndvi_amplitude_annual`
+  0.017 and 0.031, so the two tolerances sit at the 53rd and 74th percentiles.
+  The tolerances were not changed. The demo set carries the open cache-grid
+  issue (`docs/reproducibility.md`, "Superpixels depend on whether the features
+  were cached when SNIC ran").
 
   Note that with two criteria and `min_defined_criteria: 2` the gate is **fully
   conjunctive**: both must be defined for a pair, where with three one could be
@@ -500,7 +535,8 @@ a two-tier threshold scheme.
   20 ha max for plantation, 50 ha for natural forest, 0.5 ha min. Area is a
   first-class term in the merge rule, not a post-filter. `max_area_ha` is also
   what the component-size cap above is derived from, so the pass-2 fallback
-  respects it too.
+  respects it too. The one exception is `pass2_soft_ceiling`, below, and the cap
+  then allows for it.
 - `min_defined_criteria`: a pass-1 merge needs at least this many criteria
   defined on both sides (default 2). One criterion is too weak a similarity
   test; pairs that fall short drop to pass 2.
@@ -513,6 +549,34 @@ a two-tier threshold scheme.
   has zero shared boundary length.
 - `max_pass2_iterations`: cap so a pathological AOI logs its stragglers instead
   of looping (default 60).
+- `pass2_skip_at_min_area`: what pass 2 does with a region that was undersized
+  when the sweep listed it and has reached `min_area_ha` by the time its turn
+  comes. `false` (default, and the behaviour of every run made before the
+  setting existed): it can be merged once more. `true`: it is skipped, since it
+  is no longer undersized (register entry `spec-merge-pass2-skip-at-minimum`).
+  The default is left out of the cache fingerprint, so existing configs keep
+  their cached assets; a config that sets it to `true` gets a new fingerprint.
+- `pass2_soft_ceiling`: whether pass 2 may take a region over `max_area_ha`.
+  `false` (default, and the behaviour of every run made before the setting
+  existed): `max_area_ha` binds in both passes, and a region below the minimum
+  whose neighbours are all close to `max_area_ha` stays below the minimum,
+  area-blocked.
+  `true`: a region whose area is still below `min_area_ha` when its turn comes
+  may join a neighbour even if the result is over `max_area_ha`, but never over
+  `max_area_ha + min_area_ha`. It takes, in this order: (1) a neighbour that
+  passes the relaxed tolerances and keeps the result at most `max_area_ha`, the
+  closest; (2) one that passes them with the result over `max_area_ha`, the
+  closest; (3) the neighbour sharing the longest edge with the result at most
+  `max_area_ha`; (4) the one sharing the longest edge with the result over it.
+  Pass 1, and a region that has reached the minimum by its turn, keep
+  `max_area_ha`. A stand still below the minimum is then area-blocked only if no
+  neighbour could take it under `max_area_ha + min_area_ha`. The merge
+  diagnostics add how many merges went over `max_area_ha` and how many stands
+  end over it, by how much (`docs/outputs.md`), and the component-size cap is
+  derived from `max_area_ha + min_area_ha` (register entry
+  `spec-merge-pass2-soft-ceiling`). The default is left out of the cache
+  fingerprint, so existing configs keep their cached assets; a config that sets
+  it to `true` gets a new fingerprint.
 - `max_superpixels`: fail loudly above this many superpixels (default 50000),
   where the client-side `remap` label list stops being reasonable.
 

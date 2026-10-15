@@ -52,7 +52,11 @@ h_bin
 (12, 16]  1.0  15.29  21.30  6.01
 (16, 20]  1.0  17.60  16.02 -1.58
 
-GEDI coverage: plots with >=1 shot within 50 m = 0 / 274   (sparse is expected)
+GEDI coverage: plots with >=1 unmasked GEDI cell within 50 m = 0 / 274   (sparse is expected)
+               plots with an rh98 value (the regression's n)  = 10 / 274
+  *** THESE MUST AGREE AND DO NOT (0 vs 10). gedi_n_50m is not counting
+      what it claims -- see odisha_phase1_9_gedi_recount.py. Treat the GEDI row above
+      as WITHDRAWN until it is re-sampled.
 
 Read: a product 'works' if R2 > 0.5 AND slope near 1 AND bias does not flip sign across bins.
       If GEDI itself tracks height but the models don't, the models are the problem.

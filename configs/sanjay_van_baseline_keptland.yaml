@@ -1,0 +1,193 @@
+# KEPT LAND ONLY. SANJAY VAN, hand-crafted feature vector, 10 ha stand ceiling (the existing
+# settings).
+#
+# Copy of configs/sanjay_van_baseline.yaml. SIX things differ (tests/test_keptland_configs.py);
+# everything else is identical, which keeps Sanjay Van at 10 ha (D4):
+#
+# 1. name and description.
+# 2. segmentation.mask_before_snic: true. SNIC sees kept land only (habitat_mask 1: trees or scrub),
+#    so superpixels and stands lie on kept land only. Small kept patches are not dropped:
+#    segmentation.drop_kept_patches_below_min_area stays false, its default. (D1)
+# 3. merge.pass2_soft_ceiling: true, in a merge block of its own: the source has none, so every
+#    other merge setting but item 6 is the default (stands of 1 to 10 ha). In the second pass a
+#    region below merge.min_area_ha may join a neighbour that takes it over merge.max_area_ha,
+#    never over max_area_ha + min_area_ha (11 ha here). (D2)
+# 4. clustering.fit_excludes_stands_below_min_area: true. Stands still below the minimum after the
+#    merge stay on the map, typed by the nearest cluster, but are left out of the k-means training
+#    rows. (D3)
+# 5. export.drive_folder: fmu_exports_kept_land.
+# 6. merge.pass2_skip_at_min_area: true, as the Odisha box configs have it and as the Sanjay Van
+#    demo stands were re-merged (spec-merge-pass2-skip-at-minimum): in the second pass a region
+#    already at merge.min_area_ha is left as it is. The source keeps the default, false. (Jaskaran,
+#    15 Oct 2026, round 4, answer to question 6 of docs/handoff/2026-10-14-round3.md.)
+#
+# D1 to D4 are Jaskaran's decisions of 14 Oct 2026, recorded in docs/decisions.yaml
+# (spec-keptland-configs-mask-before-snic, spec-merge-pass2-soft-ceiling,
+# spec-clustering-fit-excludes-stands-below-min-area, spec-keptland-runs-sites-and-ceilings) and in
+# docs/handoff/2026-10-14-round3.md. The three settings give this config its own cache fingerprint.
+# Its masking, data-load and feature assets can be copied from those of
+# configs/sanjay_van_baseline_repro.yaml, the demo set's run of the same content
+# (scripts/reuse_upstream_assets.py): no stage before segmentation reads anything that differs.
+# sanjay_van_baseline's own assets are from 27 Aug 2026 under another fingerprint. Segmentation and
+# everything after it are computed afresh.
+#
+# Not run yet: no batch run until Jaskaran says go (round 3).
+
+name: sanjay_van_baseline_keptland
+description: Sanjay Van, hand-crafted baseline, on kept land only (mask before SNIC).
+
+roi:
+  name: sanjay_van
+  roi_file: aois/sanjay_van.geojson
+
+# Single shared 2017-2022 window for every time-series feature, so they all
+# rest on the same temporal support (deck v3.0, Stage 2). Phenology, radar,
+# and the static composite SNIC sees all span 2017-2022.
+# - climate: a 30-year standard normal for rainfall climatology, deliberately
+#   NOT the 6-year feature window (a climatology needs a long baseline).
+dates:
+  phenology:
+    start: 2017-01-01
+    end: 2022-12-31
+  radar:
+    start: 2017-01-01
+    end: 2022-12-31
+  optical_composite:
+    start: 2017-01-01
+    end: 2022-12-31
+  climate:
+    start: 1991-01-01
+    end: 2020-12-31
+
+datasets:
+  phenology_collection: COPERNICUS/S2_SR_HARMONIZED
+  optical_composite_collection: COPERNICUS/S2_SR_HARMONIZED
+  radar_collection: COPERNICUS/S1_GRD
+  canopy_height: users/nlang/ETH_GlobalCanopyHeight_2020_10m_v1
+  dem: NASA/NASADEM_HGT/001
+  # CoRE Stack LULC_v4: a FOLDER of per-year single-band images
+  # (lulc_v4_2017_2018 ... lulc_v4_2023_2024), band 'predicted_label'.
+  # Same legend as IndiaSAT (6 = Trees, 12 = Shrubs/Scrubs). masking.py builds
+  # the annual collection from these images. (The original
+  # projects/ee-indiasat/... asset is private; this one is the accessible mirror.)
+  indiasat: "projects/corestack-trees/assets/LULC_v4"
+  worldcover: ESA/WorldCover/v200          # habitat fallback where IndiaSAT is unavailable
+  water: JRC/GSW1_4/GlobalSurfaceWater
+  climate: UCSB-CHG/CHIRPS/PENTAD
+
+cloud_mask:
+  max_cloud_pct: 20.0
+  drop_scl_classes: [3, 8, 9, 10]  # cloud_shadow, cloud_med, cloud_high, thin_cirrus
+
+data_load:
+  s1_orbit: ASCENDING
+  s1_polarizations: [VV, VH]
+  s1_instrument_mode: IW
+  s2_composite_reducer: median  # single static image for SNIC
+
+masking:
+  # Habitat = IndiaSAT Trees (6) + Shrubs/Scrubs (12), single-phase (deck Stage 1).
+  # Water/crops/built-up are excluded by not being in this set.
+  indiasat_habitat_classes: [6, 12]
+  indiasat_class_band: predicted_label    # CoRE Stack LULC_v4 class band name
+  # Deck's "2017-2022 hydrological years" = start years 2017..2021 (the five
+  # maps lulc_v4_2017_2018 .. lulc_v4_2021_2022). Widen indiasat_year_max to
+  # 2023 to also fold in the newer 2022_2023 / 2023_2024 maps.
+  indiasat_year_min: 2017
+  indiasat_year_max: 2021
+  keep_worldcover_classes: [10, 20, 30]   # WorldCover fallback where IndiaSAT is unavailable
+  jrc_water_occurrence_threshold: 50.0    # JRC water for distance-to-water only (>= % = permanent)
+
+# Phenology features from the S2 collection. The baseline mirrors the
+# locked notebook approach: NDVI + single annual harmonic. The variant
+# config sanjay_van_nirv_dual.yaml uses NIRv + dual harmonic for comparison
+# (see DEC-013).
+features_optical:
+  index: ndvi
+  harmonic_mode: single
+  include_trend: true
+  # Reference epoch for the harmonic regression's time variable t. Shifts
+  # the numeric value of phase_annual by a constant; does NOT affect amplitude,
+  # trend, or any clustering outcome. Keep identical across configs that you
+  # want to compare phases between (the metrics stage relies on this).
+  time_reference: 2017-01-01
+
+# Radar features from the S1 collection. Statistical reducers over the
+# 2017-2022 window (no harmonic). VV-VH dB difference replaces notebook's
+# VV/VH (which was a literal division of dB values, not mathematically
+# meaningful; see DEC-016).
+features_radar:
+  percentiles: [10, 50, 90]
+  include_iqr: true
+  include_cross_pol_contrast: true
+
+# Structure features from ETH Global Canopy Height. Adds neighborhood
+# stats (std + max in 3x3 window) for local heterogeneity.
+features_structure:
+  include_neighborhood_stats: true
+  neighborhood_kernel_size: 3
+
+# Static features: terrain (elevation, slope, aspect), distance to water,
+# mean annual rainfall (CHIRPS climatology).
+features_static:
+  include_climate: true
+  max_water_distance_pixels: 1000  # 10 km cap at 10m scale
+
+# input_bands is left at the code default (see _DEFAULT_SNIC_INPUT_BANDS in
+# src/fmu/config.py): B4_median, B8_median, canopy_height,
+# ndvi_amplitude_annual, vv_minus_vh_median. Five bands over ~four independent
+# axes — optical colour, vertical structure, phenology, radar.
+# canopy_height_std was a sixth until the Odisha field validation measured it at
+# R2=0.000 against field crown cover; see docs/datasets.md.
+# It is not repeated here so the default cannot drift from the shipped arm; set
+# input_bands explicitly only when running a segmentation-feature experiment.
+segmentation:
+  size: 10
+  compactness: 0.5
+  connectivity: 8
+  neighborhood_size: 128
+  normalize_inputs: true
+  normalize_distance_scale: true
+  mask_before_snic: true
+
+# New here: the source has no merge block (see the header, items 3 and 6).
+merge:
+  pass2_soft_ceiling: true
+  pass2_skip_at_min_area: true
+
+clustering:
+  k: 6
+  seed: 42
+  skewness_threshold: 1.0   # log-transform features with |skew| > this (DEC-004)
+  fit_excludes_stands_below_min_area: true
+
+normalization:
+  method: robust  # DEC-003: median/IQR scaling. This is also the schema default.
+
+features:
+  optical_harmonic: true
+  radar: true
+  canopy_height: true
+  terrain: true
+
+export:
+  export_geotiff: true
+  export_gee_asset: false
+  analysis_scale_m: 10
+  drive_folder: fmu_exports_kept_land        # all Drive exports land here
+  # Vector outputs (v1.1.0). One polygon-per-SNIC-superpixel layer (debugging /
+  # methodology) and one dissolved-cluster layer (forester-facing management
+  # units). Each layer exported in every listed format. See docs/outputs.md.
+  # The merged-stand layer: the unit SNIC + merge delineate.
+  # Written only when merge.enabled; without merge it would duplicate
+  # stands_snic exactly.
+  export_vector_merged: true
+  export_vector_snic: true
+  export_vector_dissolved: true
+  vector_formats: [shp, geojson]    # SHP gets minimal schema, GeoJSON gets full
+  vector_min_stand_pixels: 4        # drop dissolved stands smaller than this
+
+metrics:
+  reference_config_name: null  # baseline has no reference; intrinsic silhouette only
+  n_comparison_samples: 10000
+  n_silhouette_samples_per_cluster: 833

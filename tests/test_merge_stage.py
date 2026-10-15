@@ -215,6 +215,7 @@ class _Params:
     max_area_ha = 10.0
     min_frac_valid = 0.5
     max_pass2_iterations = 60
+    pass2_soft_ceiling = False
 
 
 _CLEAN = {
@@ -270,6 +271,122 @@ def test_no_merging_at_all_is_loud():
     working run: every stand map looks plausible at 1249 units."""
     w = _warnings_from({**_CLEAN, "n_stands": 1000, "n_superpixels": 1000}, _Params())
     assert any("No superpixels merged" in x for x in w)
+
+
+def test_area_blocked_says_what_it_said_before_the_soft_ceiling_while_it_is_off():
+    """The warning lands in the run manifest, so off it is word for word the
+    one every earlier run recorded."""
+    assert _warnings_from({**_CLEAN, "orphans_area_blocked": 163}, _Params()) == [
+        "163 stand(s) stayed below min_area_ha (1.0 ha) because every neighbour is "
+        "already too big to absorb them under max_area_ha (10.0 ha). That is a signal "
+        "max_area_ha is too tight, not that the forest is heterogeneous."
+    ]
+
+
+class _SoftCeilingParams(_Params):
+    pass2_soft_ceiling = True
+
+
+# What the merge adds to its diagnostics with merge.pass2_soft_ceiling on.
+_SOFT_CEILING_KEYS = {
+    "pass2_relaxed_merges_over_max_area",
+    "pass2_fallback_merges_over_max_area",
+    "stands_over_max_area",
+    "stands_over_max_area_never_merged",
+    "excess_over_max_area_total_ha",
+    "excess_over_max_area_largest_ha",
+    "excess_over_max_area_each_ha",
+}
+_SOFT_CLEAN = {
+    **_CLEAN,
+    "stands_over_max_area": 0,
+    "stands_over_max_area_never_merged": 0,
+    "excess_over_max_area_largest_ha": 0.0,
+}
+
+
+def test_with_the_soft_ceiling_area_blocked_names_the_ceiling_that_applied():
+    """spec-merge-pass2-soft-ceiling: a stand below the minimum is area-blocked
+    only if no neighbour could take it under max_area_ha + min_area_ha."""
+    w = _warnings_from({**_SOFT_CLEAN, "orphans_area_blocked": 2}, _SoftCeilingParams())
+    assert w == [
+        "2 stand(s) stayed below min_area_ha (1.0 ha) because every neighbour is "
+        "already too big to absorb them under max_area_ha + min_area_ha (11.0 ha), the "
+        "ceiling merge.pass2_soft_ceiling sets for a stand below the minimum. That is a "
+        "signal max_area_ha is too tight, not that the forest is heterogeneous."
+    ]
+
+
+def test_with_the_soft_ceiling_the_stands_over_max_area_are_said_out_loud():
+    """How many stands the setting took over max_area_ha, and by how much at
+    most, with the setting named; nothing when none is over."""
+    over = {**_SOFT_CLEAN, "stands_over_max_area": 2, "excess_over_max_area_largest_ha": 0.4}
+    assert _warnings_from(over, _SoftCeilingParams()) == [
+        "2 stand(s) are over max_area_ha (10.0 ha), by up to 0.4 ha. "
+        "merge.pass2_soft_ceiling allows it: in the second pass a stand below "
+        "min_area_ha may join a neighbour up to max_area_ha + min_area_ha (11.0 ha)."
+    ]
+    assert _warnings_from(dict(_SOFT_CLEAN), _SoftCeilingParams()) == []
+
+
+def test_with_the_soft_ceiling_a_superpixel_that_came_in_over_max_area_is_not_put_down_to_it():
+    """A superpixel larger than max_area_ha that never merged is over it with
+    the setting off as well, so the warning counts it apart and does not say
+    the setting allows it."""
+    some = {
+        **_SOFT_CLEAN,
+        "stands_over_max_area": 3,
+        "stands_over_max_area_never_merged": 1,
+        "excess_over_max_area_largest_ha": 0.8,
+    }
+    assert _warnings_from(some, _SoftCeilingParams()) == [
+        "3 stand(s) are over max_area_ha (10.0 ha), by up to 0.8 ha. "
+        "merge.pass2_soft_ceiling allows it for 2 of them: in the second pass a stand "
+        "below min_area_ha may join a neighbour up to max_area_ha + min_area_ha (11.0 ha). "
+        "1 of them never merged: each is a single superpixel that came in larger than "
+        "max_area_ha, which merge.pass2_soft_ceiling did not cause."
+    ]
+    only = {**some, "stands_over_max_area": 1, "excess_over_max_area_largest_ha": 0.5}
+    assert _warnings_from(only, _SoftCeilingParams()) == [
+        "1 stand(s) are over max_area_ha (10.0 ha), by up to 0.5 ha. "
+        "1 of them never merged: each is a single superpixel that came in larger than "
+        "max_area_ha, which merge.pass2_soft_ceiling did not cause."
+    ]
+
+
+def test_the_warning_for_a_superpixel_that_came_in_over_max_area_from_the_merge_itself():
+    """From merge_superpixels to the warning: a 10.5 ha superpixel beside a
+    2 ha one it cannot take (12.5 ha, past the 11 ha cap). Nothing merges,
+    with the setting on or off, and nothing in the warnings says
+    merge.pass2_soft_ceiling allows the stand over max_area_ha."""
+    graph = SuperpixelGraph(
+        raw_labels=[100, 101], n_pixels=[1050, 200], edges={(0, 1): 5}, scale_m=10
+    )
+    means = {0: {"ch": 10.0, "std": 0.5}, 1: {"ch": 30.0, "std": 0.5}}
+    counts = {0: {"ch": 1050, "std": 1050}, 1: {"ch": 200, "std": 200}}
+    result = merge_superpixels(
+        graph,
+        means,
+        counts,
+        criteria={"ch": 2.0, "std": 0.45},
+        relax_factor=1.75,
+        min_area_ha=1.0,
+        max_area_ha=10.0,
+        min_defined_criteria=2,
+        min_frac_valid=0.5,
+        max_pass2_iterations=60,
+        pass2_soft_ceiling=True,
+    )
+    d = result.diagnostics
+    assert d["pass2_merges"] == 0 and d["stands_over_max_area"] == 1
+    assert d["stands_over_max_area_never_merged"] == 1
+    w = _warnings_from(d, _SoftCeilingParams())
+    assert [x for x in w if "over max_area_ha" in x] == [
+        "1 stand(s) are over max_area_ha (10.0 ha), by up to 0.5 ha. "
+        "1 of them never merged: each is a single superpixel that came in larger than "
+        "max_area_ha, which merge.pass2_soft_ceiling did not cause."
+    ]
+    assert not any("allows it" in x for x in w)
 
 
 # ---------- summary numbers (the transparency contract) ----------
@@ -560,6 +677,8 @@ def test_the_stage_passes_the_provenance_through_and_builds_the_layer(monkeypatc
         min_defined_criteria = 2
         min_frac_valid = 0.5
         max_pass2_iterations = 60
+        pass2_skip_at_min_area = False
+        pass2_soft_ceiling = False
 
         def tolerances(self):
             return {"ch": 2.0, "std": 0.45}
@@ -567,9 +686,13 @@ def test_the_stage_passes_the_provenance_through_and_builds_the_layer(monkeypatc
     class _Export:
         analysis_scale_m = 10
 
+    class _Segmentation:
+        mask_before_snic = False
+
     class _Config:
         merge = _Params()
         export = _Export()
+        segmentation = _Segmentation()
 
         def max_component_pixels(self):
             return 1000
@@ -594,7 +717,26 @@ def test_the_stage_passes_the_provenance_through_and_builds_the_layer(monkeypatc
     ctx.set("roi", "<roi>")
     ctx.set("snic_clusters", _FakeImage(relabels))
 
-    out = MergeStage().run(ctx, _Config()).outputs
+    # The second-pass setting must reach the merge as configured, and the stage
+    # must say in its metadata which rule ran.
+    seen: list[bool] = []
+    real_merge = merge_module.merge_superpixels
+
+    def spy(*args, **kwargs):
+        seen.append(kwargs["pass2_skip_at_min_area"])
+        return real_merge(*args, **kwargs)
+
+    monkeypatch.setattr(merge_module, "merge_superpixels", spy)
+    result = MergeStage().run(ctx, _Config())
+    out = result.outputs
+    assert seen == [False] and result.metadata["pass2_skip_at_min_area"] is False
+
+    _Params.pass2_skip_at_min_area = True
+    ctx_on = PipelineContext()
+    ctx_on.set("roi", "<roi>")
+    ctx_on.set("snic_clusters", _FakeImage([]))
+    assert MergeStage().run(ctx_on, _Config()).metadata["pass2_skip_at_min_area"] is True
+    assert seen == [False, True]
 
     assert set(out) == MergeStage.produces
     # Same stand ids as stand_attributes, the documented fields, and totals that
@@ -628,6 +770,102 @@ def test_the_stage_passes_the_provenance_through_and_builds_the_layer(monkeypatc
         ("toUint8",),
         ("clip", "<roi>"),
     )
+
+
+def _run_stage_on_a_wedged_region(monkeypatch, *, soft_ceiling: bool):
+    """run() with Earth Engine stubbed out, as above, on a 0.1 ha region wedged
+    between two 9.95 ha ones and unlike both. Returns the stage result and the
+    pass2_soft_ceiling value(s) the merge was called with."""
+    n_pixels = [995, 10, 995]
+    rows = [{"ch": 10.0, "std": 0.5}, {"ch": 30.0, "std": 3.0}, {"ch": 10.0, "std": 0.5}]
+    graph = SuperpixelGraph(
+        raw_labels=[100, 101, 102], n_pixels=n_pixels, edges={(0, 1): 5, (1, 2): 5}, scale_m=10
+    )
+    means = {
+        i: {**r, "longitude": 77.0 + i * 0.001, "latitude": 28.5} for i, r in enumerate(rows)
+    }
+    counts = {i: {b: n_pixels[i] for b in means[i]} for i in means}
+
+    class _Params:
+        criteria = ()
+        max_superpixels = 50_000
+        relax_factor = 1.75
+        min_area_ha = 1.0
+        max_area_ha = 10.0
+        min_defined_criteria = 2
+        min_frac_valid = 0.5
+        max_pass2_iterations = 60
+        pass2_skip_at_min_area = False
+        pass2_soft_ceiling = soft_ceiling
+
+        def tolerances(self):
+            return {"ch": 2.0, "std": 0.45}
+
+    class _Export:
+        analysis_scale_m = 10
+
+    class _Segmentation:
+        mask_before_snic = False
+
+    class _Config:
+        merge = _Params()
+        export = _Export()
+        segmentation = _Segmentation()
+
+        def max_component_pixels(self):
+            return 1320
+
+    class _EE:
+        class Image:
+            @staticmethod
+            def pixelLonLat():  # noqa: N802 - mirrors the ee API
+                return "<lonlat>"
+
+    seen: list[bool] = []
+    real_merge = merge_superpixels
+
+    def spy(*args, **kwargs):
+        seen.append(kwargs["pass2_soft_ceiling"])
+        return real_merge(*args, **kwargs)
+
+    monkeypatch.setattr(merge_module, "ee", _EE)
+    monkeypatch.setattr(merge_module, "assert_components_fit", lambda *a, **k: None)
+    monkeypatch.setattr(merge_module, "extract_superpixel_graph", lambda *a, **k: graph)
+    monkeypatch.setattr(
+        merge_module, "extract_superpixel_attributes", lambda *a, **k: (means, counts)
+    )
+    monkeypatch.setattr(merge_module, "_criteria_image", lambda ctx, params: _FakeImage([]))
+    monkeypatch.setattr(merge_module, "merge_superpixels", spy)
+    ctx = PipelineContext()
+    ctx.set("roi", "<roi>")
+    ctx.set("snic_clusters", _FakeImage([]))
+    return MergeStage().run(ctx, _Config()), seen
+
+
+def test_the_stage_passes_the_soft_ceiling_through_and_records_it(monkeypatch):
+    """The setting must reach the merge as configured, and the stage must say in
+    its metadata which rule ran. Off, the wedged region stays below the minimum,
+    area-blocked, and the diagnostics have exactly the keys they had; on, it
+    joins a neighbour at 10.05 ha, and the diagnostics and a warning say so."""
+    off, seen = _run_stage_on_a_wedged_region(monkeypatch, soft_ceiling=False)
+    assert seen == [False] and off.metadata["pass2_soft_ceiling"] is False
+    d = off.outputs["merge_diagnostics"]
+    assert not _SOFT_CEILING_KEYS & set(d) and not _SOFT_CEILING_KEYS & set(off.metadata)
+    assert d["orphans_area_blocked"] == 1
+    assert any("under max_area_ha (10.0 ha)" in w for w in off.warnings)
+    assert not any("are over max_area_ha" in w for w in off.warnings)
+
+    on, seen = _run_stage_on_a_wedged_region(monkeypatch, soft_ceiling=True)
+    assert seen == [True] and on.metadata["pass2_soft_ceiling"] is True
+    d = on.outputs["merge_diagnostics"]
+    assert set(d) >= _SOFT_CEILING_KEYS and set(on.metadata) >= _SOFT_CEILING_KEYS
+    assert d["orphans_area_blocked"] == 0 and d["stands_over_max_area"] == 1
+    assert d["stands_over_max_area_never_merged"] == 0
+    assert d["excess_over_max_area_each_ha"] == [0.05]
+    assert d["warnings"] == on.warnings
+    assert any("1 stand(s) are over max_area_ha (10.0 ha), by up to 0.05 ha" in w for w in on.warnings)
+    # The declared summary numbers are the same eight, read the same way.
+    assert set(summarise_merge_diagnostics(d)) == {s.name for s in MergeStage.summary_numbers}
 
 
 # ---------- k-means fits on units, not pixels ----------

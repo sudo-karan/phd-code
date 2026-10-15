@@ -1,0 +1,84 @@
+{
+ "config": "odisha_v120_3ha_squares_kendujhar",
+ "with_the_setting_on": {
+  "fit_excludes_stands_below_min_area": true
+ },
+ "upstream_cache_status": {
+  "masking": {
+   "habitat_mask": "hit",
+   "landcover_summary": "hit",
+   "mask_provenance": "hit",
+   "water_mask": "hit"
+  },
+  "data_load": {
+   "s2_composite": "hit"
+  },
+  "features_optical": {
+   "optical_features": "hit"
+  },
+  "features_radar": {
+   "radar_features": "hit"
+  },
+  "features_structure": {
+   "structure_features": "hit"
+  },
+  "features_static": {
+   "static_features": "hit"
+  },
+  "segmentation": {
+   "snic_clusters": "hit",
+   "snic_means": "hit"
+  },
+  "merge": {}
+ },
+ "merge": {
+  "n_superpixels": 3722,
+  "n_stands": 635,
+  "stands_below_min_area": 44,
+  "orphans_isolated": 0,
+  "orphans_area_blocked": 44
+ },
+ "rows": {
+  "rows": 580,
+  "distinct_units_in_rows": 580,
+  "fit_rows": 540,
+  "left_out_rows": 40,
+  "stands_below_min": 44,
+  "stands_below_min_with_a_row": 40,
+  "stage_counts_left_out": 40,
+  "rows_add_up": true,
+  "fit_holds_no_stand_below_min": true,
+  "fit_rows_of_stands_below_min": [],
+  "left_out_are_the_stands_below_min_with_a_row": true,
+  "left_out_not_below_min": [],
+  "fit_rows_not_in_every_row": [],
+  "stage_n_rows": 580,
+  "stage_n_fit": 540
+ },
+ "fit_report": {
+  "n_stands_below_min_area": 44,
+  "area_ha_in_stands_below_min_area": 20.68,
+  "n_stands_left_out_of_fit": 40,
+  "area_ha_in_stands_left_out_of_fit": 18.73
+ },
+ "types": {
+  "left_out": 40,
+  "untyped": [],
+  "n_untyped": 0,
+  "with_more_than_one_type": [],
+  "n_with_more_than_one_type": 0,
+  "left_out_typed": true
+ },
+ "summary_numbers": {
+  "k": 5,
+  "units_total": 635,
+  "units_in_habitat": 581,
+  "units_fitted": 540,
+  "units_dropped_missing_band": 1,
+  "units_left_out_of_fit": 40
+ },
+ "stage_warnings": [
+  "1 stand_clusters unit(s) sit inside the habitat mask but contributed no training row: at least one of the 22 active bands has no data over them, so dropNulls removed them. This exclusion follows input coverage rather than forest character, and the same masking leaves them unlabelled in cluster_labels -- they are holes in the map, not mistyped units."
+ ],
+ "export_tasks_submitted": 0
+}

@@ -118,3 +118,52 @@ def test_describe_names_the_run_and_the_route(tmp_path: Path):
     _write(runs, "site_20260102_000001", _stages("hit"))
     (line,) = mod.describe(mod.routes("site", FP, [runs]))
     assert "cached" in line and "site_20260102_000001" in line and FP in line
+
+
+# ---------------------------------------------------------------------------
+# The same question for the stage that made the stand types
+# ---------------------------------------------------------------------------
+
+
+def _clustering_stages(static: str, labels: str = "miss-exported", fingerprint: str = FP, name: str = "site"):
+    tasks = []
+    if labels == "miss-exported":
+        tasks = [{"task_id": "T", "description": f"{name}_clustering_cluster_labels",
+                  "asset_path": f"projects/p/assets/fmu/{name}/clustering/cluster_labels__{fingerprint}"}]
+    return [
+        {"name": "masking", "cache_status": {"habitat_mask": "hit"}},
+        {"name": "features_optical", "cache_status": {"optical_features": "hit"}},
+        {"name": "features_static", "cache_status": {"static_features": static}},
+        {"name": "segmentation", "cache_status": {"snic_clusters": "hit"},
+         "export_tasks": [{"asset_path": f"projects/p/assets/fmu/{name}/segmentation/snic_clusters__{fingerprint}"}]},
+        # The merge is not cached: it has no status and is no input of its own.
+        {"name": "merge"},
+        {"name": "clustering", "cache_status": {"cluster_labels": labels, "feature_stack": labels},
+         "export_tasks": tasks},
+    ]
+
+
+def test_the_clustering_route_says_which_feature_stage_was_computed_live():
+    mod = _load()
+    route, inputs = mod.route_of(_clustering_stages("miss-exported"), "clustering", "cluster_labels")
+    assert route == "mixed"
+    assert inputs["features_static/static_features"] == "miss-exported"
+    assert inputs["segmentation/snic_clusters"] == "hit"
+    assert mod.route_of(_clustering_stages("hit"), "clustering", "cluster_labels")[0] == "cached"
+    # Asked about segmentation, this run made no superpixel asset: it read it back.
+    assert mod.route_of(_clustering_stages("hit")) is None
+
+
+def test_the_clustering_route_reads_the_fingerprint_of_the_labels_asset(tmp_path: Path):
+    mod = _load()
+    runs = tmp_path / "runs"
+    _write(runs, "site_20260102_000001", _clustering_stages("miss-exported"))
+    _write(runs, "site_20260102_000002", _clustering_stages("hit", labels="hit"))       # read the labels back
+    _write(runs, "site_20260102_000003", _clustering_stages("hit", fingerprint="0000000000"))
+    result = mod.routes("site", FP, [runs], "clustering", "cluster_labels")
+    assert [r["run"] for r in result["runs"]] == ["site_20260102_000001"]
+    assert result["route"] == "mixed" and result["stage"] == "clustering" and result["output"] == "cluster_labels"
+    # The default question gives a record without the two extra keys, as before.
+    assert "stage" not in mod.routes("site", FP, [runs])
+    (line,) = mod.describe(mod.routes("other", FP, [runs], "clustering", "cluster_labels"))
+    assert "not recorded" in line and "`cluster_labels`" in line

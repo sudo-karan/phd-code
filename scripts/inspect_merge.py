@@ -185,8 +185,9 @@ def format_table(rows: list[dict[str, Any]], limit: int | None = None) -> list[s
 _CAUSE_ADVICE = {
     "isolated": "touches no other stand, so nothing can be merged into it",
     "area_blocked": (
-        "every neighbour is already too big to take it under merge.max_area_ha; "
-        "this points at the area bounds, not at the forest"
+        "every neighbour is already too big to take it under merge.max_area_ha "
+        "(plus merge.min_area_ha with merge.pass2_soft_ceiling on); this points "
+        "at the area bounds, not at the forest"
     ),
     "iteration_cap": (
         "still had a neighbour it could have joined when the second pass "
@@ -337,7 +338,9 @@ def main() -> None:
     print(
         f"Settings: min_area_ha {params.min_area_ha}, max_area_ha {params.max_area_ha}, "
         f"relax_factor {params.relax_factor}, min_defined_criteria "
-        f"{params.min_defined_criteria}, max_pass2_iterations {params.max_pass2_iterations}"
+        f"{params.min_defined_criteria}, max_pass2_iterations {params.max_pass2_iterations}, "
+        f"pass2_skip_at_min_area {params.pass2_skip_at_min_area}, "
+        f"pass2_soft_ceiling {params.pass2_soft_ceiling}"
     )
 
     _heading("Summary numbers")

@@ -14,13 +14,24 @@ Pass 1 -- merge homogeneous neighbours, iterating to convergence:
     region already merged this round.
 
 Pass 2 -- eliminate undersized regions, smallest first:
+  - each sweep lists the undersized regions once and takes them in turn. A
+    listed region that has reached `min_area_ha` by its turn can be merged once
+    more all the same, unless `pass2_skip_at_min_area` is true, which skips it;
   - same rule with tolerances multiplied by `relax_factor`;
   - if no neighbour passes even relaxed, absorb into the neighbour sharing the
     longest boundary. This fallback is what prevents orphans;
-  - **the fallback still respects `max_area_ha`.** Violating it would break the
-    derived `max_component_pixels` and silently delete the largest stands, which
-    is the exact failure that cap exists to prevent. Regions that cannot be
-    placed stay undersized and get reported.
+  - **the fallback still respects the ceiling.** By default that is
+    `max_area_ha`, as in pass 1. With `pass2_soft_ceiling` on, a region still
+    below `min_area_ha` when its turn comes may go over `max_area_ha`, up to
+    `max_area_ha + min_area_ha` and never further. It then takes, in this
+    order: a neighbour that passes the relaxed tolerances and keeps the result
+    at most `max_area_ha`, the closest; one that passes them with the result
+    over it, the closest; the neighbour sharing the longest boundary with the
+    result at most `max_area_ha`; the one sharing the longest boundary with the
+    result over it. Going past the ceiling would break the derived
+    `max_component_pixels` and silently delete the largest stands, which is the
+    exact failure that cap exists to prevent. Regions that cannot be placed
+    under the ceiling stay undersized and get reported.
 
 Two properties this file is careful about:
 
@@ -56,7 +67,9 @@ longer without saying so:
   below_why   str  why, when below_min is 1; "" when it is 0. One of:
                      "isolated"       it touches no other stand
                      "area_blocked"   every neighbouring stand is too big to
-                                      take it under `max_area_ha`
+                                      take it under the ceiling: `max_area_ha`,
+                                      or `max_area_ha + min_area_ha` with
+                                      `pass2_soft_ceiling` on
                      "iteration_cap"  it still had a neighbour it could have
                                       joined when pass 2 stopped at
                                       `max_pass2_iterations`
@@ -200,8 +213,29 @@ def merge_superpixels(
     min_frac_valid: float,
     max_pass2_iterations: int,
     centroids: dict[int, tuple[float, float]] | None = None,
+    pass2_skip_at_min_area: bool = False,
+    pass2_soft_ceiling: bool = False,
 ) -> MergeResult:
-    """Run both passes and return the stand assignment plus diagnostics."""
+    """Run both passes and return the stand assignment plus diagnostics.
+
+    `pass2_skip_at_min_area` chooses what pass 2 does with a region that was
+    undersized when the sweep listed it and has reached `min_area_ha` by the
+    time its turn comes (a smaller region joined it earlier in the sweep).
+    False, the default and the behaviour of every earlier run: it still takes
+    its turn and can be merged once more. True: it is skipped, since it is no
+    longer undersized. See docs/decisions.yaml, spec-merge-pass2-skip-at-minimum.
+
+    `pass2_soft_ceiling` chooses the ceiling pass 2 works under. False, the
+    default and the behaviour of every earlier run: `max_area_ha`, as in pass 1.
+    True: a region whose area is still below `min_area_ha` when its turn comes
+    may join a neighbour even if the result is over `max_area_ha`, up to
+    `max_area_ha + min_area_ha` (`pass2_partner` below gives the order of
+    choice). The diagnostics then also say how many merges went over
+    `max_area_ha`, how many stands ended over it and by how much, and how many
+    of those stands never merged. Pass 1, and a region that has reached the
+    minimum by its turn, keep `max_area_ha`. See docs/decisions.yaml,
+    spec-merge-pass2-soft-ceiling.
+    """
     n = graph.n_regions
     if n == 0:
         return MergeResult(assignment=[], n_stands=0, diagnostics={"n_superpixels": 0})
@@ -354,8 +388,23 @@ def merge_superpixels(
 
     # ---- Pass 2: eliminate undersized regions ----
     relaxed = {b: t * relax_factor for b, t in criteria.items()}
+    # With pass2_soft_ceiling on: the most a pass-2 merge of a region below
+    # min_area_ha may make, and what Config.max_component_pixels() is derived
+    # from. It is checked on the result of each merge, not assumed from "below
+    # the minimum plus at most max_area_ha": a neighbour already over
+    # max_area_ha after an earlier such merge could otherwise take a second
+    # region and pass it.
+    soft_ceiling_ha = max_area_ha + min_area_ha
     pass2_merges = 0
     pass2_fallback_merges = 0
+    # With pass2_soft_ceiling on: the merges that took a region over
+    # max_area_ha, by a relaxed match and by the shared-edge fallback. "Over"
+    # is decided as the hard ceiling decides it, on the sum of the two areas,
+    # so a merge that ends exactly on max_area_ha can come out a hair over it
+    # and is then ranked and counted as over; stands_over_max_area, which
+    # compares to 6 decimals, does not count the stand it makes.
+    pass2_relaxed_over_max = 0
+    pass2_fallback_over_max = 0
     pass2_iterations = 0
 
     # Both of these used to scan the whole edge dict on every call, and shared_edge
@@ -403,6 +452,51 @@ def merge_superpixels(
             adjacency.setdefault(keep, set()).add(nb)
         adjacency.setdefault(keep, set()).discard(gone)
 
+    def pass2_partner(r: int) -> tuple[int, bool, bool] | None:
+        """The neighbour `r` joins in pass 2, or None if none can take it.
+
+        Returns (partner, by the shared-edge fallback, result over max_area_ha).
+        Neighbours that keep the result at most max_area_ha are `fitting`. With
+        pass2_soft_ceiling on and `r` still below min_area_ha, those that take
+        it over max_area_ha but not over soft_ceiling_ha are `over`, and the
+        order of choice is (spec-merge-pass2-soft-ceiling):
+
+          1. a fitting neighbour that passes the relaxed tolerances, the closest;
+          2. else an over one that passes them, the closest;
+          3. else the fitting neighbour sharing the longest boundary;
+          4. else the over one sharing the longest boundary;
+          5. else none (area-blocked).
+
+        Otherwise `over` is empty and this is the rule of every earlier run:
+        steps 1 and 3 over the fitting neighbours. Closest is `d` under the
+        relaxed tolerances, ties broken by order_key; the longest boundary is
+        Xiong's eliminate-pass fallback, ties broken by the lower root index.
+        """
+        soft = pass2_soft_ceiling and area(r) < min_area_ha
+        fitting: list[int] = []
+        over: list[int] = []
+        for nb in sorted(root_neighbours(r), key=order_key):
+            if area(r) + area(nb) <= max_area_ha:
+                fitting.append(nb)
+            elif soft and area(r) + area(nb) <= soft_ceiling_ha:
+                over.append(nb)
+        for candidates, over_max in ((fitting, False), (over, True)):
+            scored = []
+            for nb in candidates:
+                ok, d, _ = compare(r, nb, relaxed)
+                if ok:
+                    scored.append((d, order_key(nb), nb))
+            if scored:
+                scored.sort()
+                return scored[0][2], False, over_max
+        for candidates, over_max in ((fitting, False), (over, True)):
+            if candidates:
+                partner = max(
+                    candidates, key=lambda nb: (shared_edge(r, nb), -order_key(nb)[2])
+                )
+                return partner, True, over_max
+        return None
+
     for _ in range(max_pass2_iterations):
         undersized = sorted(
             (r for r in regions if area(r) < min_area_ha),
@@ -415,31 +509,12 @@ def merge_superpixels(
         for r in undersized:
             if r not in regions:
                 continue  # absorbed earlier in this same sweep
-            fitting = sorted(
-                (
-                    nb
-                    for nb in root_neighbours(r)
-                    if area(r) + area(nb) <= max_area_ha
-                ),
-                key=order_key,
-            )
-            if not fitting:
+            if pass2_skip_at_min_area and area(r) >= min_area_ha:
+                continue  # grew to the minimum earlier in this sweep: not undersized
+            chosen = pass2_partner(r)
+            if chosen is None:
                 continue  # area-blocked; reported below
-            scored = []
-            for nb in fitting:
-                ok, d, _ = compare(r, nb, relaxed)
-                if ok:
-                    scored.append((d, order_key(nb), nb))
-            if scored:
-                scored.sort()
-                partner = scored[0][2]
-                used_fallback = False
-            else:
-                # Xiong's eliminate-pass fallback: longest shared boundary.
-                partner = max(
-                    fitting, key=lambda nb: (shared_edge(r, nb), -order_key(nb)[2])
-                )
-                used_fallback = True
+            partner, used_fallback, over_max = chosen
             # Merge the smaller region into the larger, so the surviving root is
             # the one with more evidence behind its attributes.
             keep, gone = (
@@ -456,6 +531,11 @@ def merge_superpixels(
             _fuse(keep, gone)
             pass2_merges += 1
             pass2_fallback_merges += int(used_fallback)
+            if over_max:
+                if used_fallback:
+                    pass2_fallback_over_max += 1
+                else:
+                    pass2_relaxed_over_max += 1
             progress = True
         if not progress:
             break
@@ -477,12 +557,24 @@ def merge_superpixels(
         pass2_iterations,
         len(regions),
     )
+    if pass2_soft_ceiling:
+        log.info(
+            "  merge pass 2 soft ceiling: %d merges went over max_area_ha "
+            "(%d relaxed, %d via the shared-edge fallback), none past %.4f ha",
+            pass2_relaxed_over_max + pass2_fallback_over_max,
+            pass2_relaxed_over_max,
+            pass2_fallback_over_max,
+            soft_ceiling_ha,
+        )
 
     # ---- Number the stands and classify what did not merge ----
     roots = sorted(regions, key=order_key)
     root_to_stand = {root: sid for sid, root in enumerate(roots)}
     assignment = [root_to_stand[uf.find(i)] for i in range(n)]
 
+    # The ceiling a stand below the minimum had to join a neighbour under:
+    # max_area_ha, or with pass2_soft_ceiling on, soft_ceiling_ha.
+    ceiling_below_min = soft_ceiling_ha if pass2_soft_ceiling else max_area_ha
     orphans_isolated = 0
     orphans_area_blocked = 0
     orphans_no_attribute_match = 0
@@ -500,10 +592,10 @@ def merge_superpixels(
         if not nbrs:
             orphans_isolated += 1
             why_below_min[root] = "isolated"
-        elif not any(area(root) + area(nb) <= max_area_ha for nb in nbrs):
-            # Every neighbour is already too big to absorb this one. This is the
-            # signal that max_area_ha is too tight, and it is what stranded 163
-            # of 388 regions in the min-3/max-4 prototype.
+        elif not any(area(root) + area(nb) <= ceiling_below_min for nb in nbrs):
+            # Every neighbour is already too big to absorb this one under the
+            # ceiling. This is the signal that max_area_ha is too tight, and it
+            # is what stranded 163 of 388 regions in the min-3/max-4 prototype.
             orphans_area_blocked += 1
             why_below_min[root] = "area_blocked"
         else:
@@ -555,7 +647,7 @@ def merge_superpixels(
     for keep, counter in merges_made:
         stand_provenance[assignment[keep]][counter] += 1
 
-    diagnostics = {
+    diagnostics: dict[str, Any] = {
         "n_superpixels": n,
         "n_stands": len(roots),
         "reduction_factor": round(n / len(roots), 3) if roots else 0.0,
@@ -576,6 +668,35 @@ def merge_superpixels(
         "orphans_no_attribute_match": orphans_no_attribute_match,
         "stands_with_incomplete_criteria": stands_with_incomplete_criteria,
     }
+    if pass2_soft_ceiling:
+        # Only with the setting on, so the diagnostics of every other run keep
+        # exactly the keys they had. A stand is over max_area_ha when its area
+        # as reported in stand_attributes is over max_area_ha taken to the same
+        # 6 decimals, so a stand exactly at max_area_ha, which float arithmetic
+        # can put a hair to either side of it, is not counted. A single
+        # superpixel larger than max_area_ha counts too, and is counted again
+        # as never merged: it came in that size, so the setting did not make it.
+        reported_max_ha = round(max_area_ha, 6)
+        stands_over = [
+            sid for sid, a in stand_attributes.items() if a["area_ha"] > reported_max_ha
+        ]
+        excess = sorted(
+            (stand_attributes[sid]["area_ha"] - max_area_ha for sid in stands_over),
+            reverse=True,
+        )
+        diagnostics.update(
+            {
+                "pass2_relaxed_merges_over_max_area": pass2_relaxed_over_max,
+                "pass2_fallback_merges_over_max_area": pass2_fallback_over_max,
+                "stands_over_max_area": len(stands_over),
+                "stands_over_max_area_never_merged": sum(
+                    1 for sid in stands_over if stand_provenance[sid]["n_superpx"] == 1
+                ),
+                "excess_over_max_area_total_ha": round(sum(excess, 0.0), 4),
+                "excess_over_max_area_largest_ha": round(excess[0], 4) if excess else 0.0,
+                "excess_over_max_area_each_ha": [round(e, 4) for e in excess],
+            }
+        )
     return MergeResult(
         assignment=assignment,
         n_stands=len(roots),

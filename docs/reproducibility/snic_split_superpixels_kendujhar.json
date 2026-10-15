@@ -1,0 +1,319 @@
+{
+ "config": "odisha_v120_3ha_squares_kendujhar",
+ "with_the_setting_on": {
+  "mask_before_snic": true,
+  "drop_kept_patches_below_min_area": false,
+  "size": 6,
+  "connectivity": 8,
+  "neighborhood_size": 128
+ },
+ "upstream_cache_status": {
+  "masking": {
+   "habitat_mask": "hit",
+   "landcover_summary": "hit",
+   "mask_provenance": "hit",
+   "water_mask": "hit"
+  },
+  "data_load": {
+   "s2_composite": "hit"
+  },
+  "features_optical": {
+   "optical_features": "hit"
+  },
+  "features_radar": {
+   "radar_features": "hit"
+  },
+  "features_structure": {
+   "structure_features": "hit"
+  }
+ },
+ "analysis_grid": {
+  "crs": "EPSG:32645",
+  "transform": [
+   10,
+   0,
+   0,
+   0,
+   10,
+   0
+  ]
+ },
+ "tile_lattice_assumed": "256 px, starting at the grid's pixel origin",
+ "totals": {
+  "superpixels_as_a6_counts_them": 2755,
+  "pieces_as_a6_counts_them": 2758,
+  "null_key_pixels": {
+   "superpixels": 39503,
+   "pieces": 39503
+  },
+  "superpixels": 2754,
+  "pieces": 2757,
+  "superpixels_with_a_piece_label": 2754,
+  "pieces_of_those": 2757,
+  "superpixels_without_a_piece_label": {}
+ },
+ "split": [
+  {
+   "label": -1906998716,
+   "kept_pixels_outside_roi_in_window": 38,
+   "snic_label_pixels_outside_roi": 10,
+   "pieces_in_window_as_a6_counts_them": 2,
+   "pieces_8_connected": 2,
+   "pieces_4_connected": 2,
+   "pieces": [
+    {
+     "pixels": 18,
+     "area_ha": 0.18,
+     "columns": [
+      33283,
+      33285
+     ],
+     "rows": [
+      239114,
+      239120
+     ],
+     "a6_piece_labels": [
+      103079215128
+     ],
+     "box_centre_lon_lat": [
+      85.385079,
+      21.615842
+     ],
+     "roi_part": 0
+    },
+    {
+     "pixels": 2,
+     "area_ha": 0.02,
+     "columns": [
+      33283,
+      33283
+     ],
+     "rows": [
+      239122,
+      239123
+     ],
+     "a6_piece_labels": [
+      103079215136
+     ],
+     "box_centre_lon_lat": [
+      85.384977,
+      21.616338
+     ],
+     "roi_part": 0
+    }
+   ],
+   "split_by_the_count": [],
+   "between_pieces": [
+    {
+     "between": "the largest piece (18 px) and one of 2 px",
+     "separated_by": [
+      "ROI edge"
+     ],
+     "snics_own_label_joins_them": true,
+     "joined_through_pixels_outside_roi": 10,
+     "joined_through_pixels_not_kept": 0,
+     "gap_pixels_on_a_shortest_path": 1,
+     "gap_crosses": {
+      "outside_roi": 1,
+      "not_kept": 0,
+      "other_superpixels": 0,
+      "unlabelled_kept": 0
+     },
+     "fewest_pixels_between_through_not_kept_land_only": null,
+     "fewest_pixels_between_through_not_kept_or_outside_roi_only": 1,
+     "tile_lines_between": []
+    }
+   ],
+   "pieces_over_the_roi_as_a6_counts_them": 2,
+   "piece_pixels_over_the_roi": {
+    "142949396751882": 18,
+    "142949396751890": 2
+   },
+   "window": {
+    "columns": [
+     33259,
+     33309
+    ],
+    "rows": [
+     239090,
+     239147
+    ]
+   }
+  },
+  {
+   "label": -1248698218,
+   "kept_pixels_outside_roi_in_window": 36,
+   "snic_label_pixels_outside_roi": 15,
+   "pieces_in_window_as_a6_counts_them": 2,
+   "pieces_8_connected": 2,
+   "pieces_4_connected": 2,
+   "pieces": [
+    {
+     "pixels": 46,
+     "area_ha": 0.46,
+     "columns": [
+      33280,
+      33286
+     ],
+     "rows": [
+      238835,
+      238847
+     ],
+     "a6_piece_labels": [
+      115964117017
+     ],
+     "box_centre_lon_lat": [
+      85.385259,
+      21.590914
+     ],
+     "roi_part": 0
+    },
+    {
+     "pixels": 1,
+     "area_ha": 0.01,
+     "columns": [
+      33280,
+      33280
+     ],
+     "rows": [
+      238834,
+      238834
+     ],
+     "a6_piece_labels": [
+      103079215128
+     ],
+     "box_centre_lon_lat": [
+      85.384976,
+      21.590279
+     ],
+     "roi_part": 0
+    }
+   ],
+   "split_by_the_count": [],
+   "between_pieces": [
+    {
+     "between": "the largest piece (46 px) and one of 1 px",
+     "separated_by": [
+      "ROI edge"
+     ],
+     "snics_own_label_joins_them": true,
+     "joined_through_pixels_outside_roi": 15,
+     "joined_through_pixels_not_kept": 0,
+     "gap_pixels_on_a_shortest_path": 2,
+     "gap_crosses": {
+      "outside_roi": 0,
+      "not_kept": 0,
+      "other_superpixels": 2,
+      "unlabelled_kept": 0
+     },
+     "fewest_pixels_between_through_not_kept_land_only": null,
+     "fewest_pixels_between_through_not_kept_or_outside_roi_only": 5,
+     "tile_lines_between": []
+    }
+   ],
+   "pieces_over_the_roi_as_a6_counts_them": 2,
+   "piece_pixels_over_the_roi": {
+    "142936511849714": 1,
+    "142949396751603": 46
+   },
+   "window": {
+    "columns": [
+     33256,
+     33310
+    ],
+    "rows": [
+     238810,
+     238871
+    ]
+   }
+  },
+  {
+   "label": 620284836,
+   "kept_pixels_outside_roi_in_window": 28,
+   "snic_label_pixels_outside_roi": 3,
+   "pieces_in_window_as_a6_counts_them": 2,
+   "pieces_8_connected": 2,
+   "pieces_4_connected": 2,
+   "pieces": [
+    {
+     "pixels": 62,
+     "area_ha": 0.62,
+     "columns": [
+      33279,
+      33288
+     ],
+     "rows": [
+      238798,
+      238811
+     ],
+     "a6_piece_labels": [
+      111669149720
+     ],
+     "box_centre_lon_lat": [
+      85.385344,
+      21.587618
+     ],
+     "roi_part": 0
+    },
+    {
+     "pixels": 1,
+     "area_ha": 0.01,
+     "columns": [
+      33280,
+      33280
+     ],
+     "rows": [
+      238811,
+      238811
+     ],
+     "a6_piece_labels": [
+      103079215141
+     ],
+     "box_centre_lon_lat": [
+      85.384999,
+      21.588202
+     ],
+     "roi_part": 0
+    }
+   ],
+   "split_by_the_count": [],
+   "between_pieces": [
+    {
+     "between": "the largest piece (62 px) and one of 1 px",
+     "separated_by": [
+      "ROI edge"
+     ],
+     "snics_own_label_joins_them": true,
+     "joined_through_pixels_outside_roi": 3,
+     "joined_through_pixels_not_kept": 0,
+     "gap_pixels_on_a_shortest_path": 1,
+     "gap_crosses": {
+      "outside_roi": 1,
+      "not_kept": 0,
+      "other_superpixels": 0,
+      "unlabelled_kept": 0
+     },
+     "fewest_pixels_between_through_not_kept_land_only": null,
+     "fewest_pixels_between_through_not_kept_or_outside_roi_only": 1,
+     "tile_lines_between": []
+    }
+   ],
+   "pieces_over_the_roi_as_a6_counts_them": 2,
+   "piece_pixels_over_the_roi": {
+    "142936511849691": 1,
+    "142945101784270": 56
+   },
+   "window": {
+    "columns": [
+     33256,
+     33312
+    ],
+    "rows": [
+     238774,
+     238835
+    ]
+   }
+  }
+ ],
+ "export_tasks_submitted": 0
+}

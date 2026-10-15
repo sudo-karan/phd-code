@@ -481,6 +481,137 @@ class TestDisplayLayer:
         layer = DisplayLayer("x", "b", "X", "d", legend=list(_two_class_legend()))  # type: ignore[arg-type]
         assert layer.legend == _two_class_legend()
 
+    # ---- colour composites: three bands drawn as red, green, blue ----
+
+    def test_a_composite_names_its_three_bands_to_earth_engine(self):
+        layer = DisplayLayer(
+            "k", "r", "T", "d", vis={"min": 0, "max": 3000}, bands=("r", "g", "b")
+        )
+        assert layer.vis_params() == {"bands": ["r", "g", "b"], "min": 0, "max": 3000}
+
+    def test_a_composite_adds_its_bands_to_the_manifest(self):
+        layer = DisplayLayer(
+            "k", "r", "True colour", "d", vis={"min": 0, "max": 3000}, bands=("r", "g", "b")
+        )
+        assert layer.to_manifest() == {
+            "key": "k",
+            "band": "r",
+            "title": "True colour",
+            "description": "d",
+            "vis": {"bands": ["r", "g", "b"], "min": 0, "max": 3000},
+            "legend": [],
+            "legend_note": "",
+            "bands": ["r", "g", "b"],
+        }
+
+    def test_a_single_band_layer_has_no_bands_key_in_the_manifest(self):
+        """The record of every layer declared before composites existed is
+        unchanged, key for key."""
+        categorical = DisplayLayer("x", "b", "T", "d", legend=_two_class_legend())
+        continuous = DisplayLayer("x", "b", "T", "d", vis={"min": 0, "max": 1})
+        for layer in (categorical, continuous):
+            assert layer.bands == ()
+            assert "bands" not in layer.to_manifest()
+            assert layer.vis_params()["bands"] == ["b"]
+
+    @pytest.mark.parametrize(
+        "bands", [("r",), ("r", "g"), ("r", "g", "b", "a")], ids=["one", "two", "four"]
+    )
+    def test_a_composite_is_exactly_three_bands(self, bands):
+        with pytest.raises(ValueError, match="exactly 3 bands"):
+            DisplayLayer("k", "r", "T", "d", vis={"min": 0, "max": 1}, bands=bands)
+
+    def test_band_must_be_the_first_of_bands(self):
+        """A reader that only knows single-band layers reads `band`; it has to
+        be a band of the composite, and which one must not be a guess."""
+        with pytest.raises(ValueError, match="first of bands"):
+            DisplayLayer(
+                "k", "g", "T", "d", vis={"min": 0, "max": 1}, bands=("r", "g", "b")
+            )
+
+    def test_a_composite_cannot_carry_a_legend(self):
+        with pytest.raises(ValueError, match="cannot carry a legend"):
+            DisplayLayer(
+                "k", "r", "T", "d", legend=_two_class_legend(), bands=("r", "g", "b")
+            )
+
+    def test_a_composite_cannot_carry_a_palette(self):
+        """A palette colours one band; Earth Engine refuses it on three."""
+        with pytest.raises(ValueError, match="cannot carry a palette"):
+            DisplayLayer(
+                "k", "r", "T", "d",
+                vis={"min": 0, "max": 1, "palette": ["000000", "ffffff"]},
+                bands=("r", "g", "b"),
+            )
+
+    def test_a_composite_still_needs_vis(self):
+        with pytest.raises(ValueError, match="neither a legend nor vis"):
+            DisplayLayer("k", "r", "T", "d", bands=("r", "g", "b"))
+
+    def test_bands_given_as_a_list_are_stored_as_a_tuple(self):
+        layer = DisplayLayer(
+            "k", "r", "T", "d", vis={"min": 0, "max": 1}, bands=["r", "g", "b"]  # type: ignore[arg-type]
+        )
+        assert layer.bands == ("r", "g", "b")
+
+    def test_a_string_is_not_three_bands(self):
+        """tuple("abc") is three one-letter names; a string for `bands` is a
+        slip, not a composite."""
+        with pytest.raises(ValueError, match="single string 'abc'"):
+            DisplayLayer("k", "a", "T", "d", vis={"min": 0, "max": 1}, bands="abc")  # type: ignore[arg-type]
+
+    def test_the_three_bands_of_a_composite_are_different(self):
+        with pytest.raises(ValueError, match="three different bands"):
+            DisplayLayer(
+                "k", "r", "T", "d", vis={"min": 0, "max": 1}, bands=("r", "r", "g")
+            )
+
+    @pytest.mark.parametrize(
+        "bands",
+        [("r", "", "b"), ("r", 1, "b"), ("r", "g", None)],
+        ids=["empty", "number", "none"],
+    )
+    def test_every_band_of_a_composite_is_a_non_empty_name(self, bands):
+        with pytest.raises(ValueError, match="non-empty band name"):
+            DisplayLayer("k", "r", "T", "d", vis={"min": 0, "max": 1}, bands=bands)
+
+    @pytest.mark.parametrize(
+        "bands", [(), ("r", "g", "b")], ids=["single band", "composite"]
+    )
+    def test_vis_cannot_name_bands_of_its_own(self, bands):
+        """`vis` is spread over the declared bands in vis_params(), so a
+        "bands" key in it would be drawn while the manifest named the declared
+        ones."""
+        with pytest.raises(ValueError, match="vis cannot carry 'bands'"):
+            DisplayLayer(
+                "k", "r", "T", "d",
+                vis={"bands": ["x"], "min": 0, "max": 1},
+                bands=bands,
+            )
+
+    def test_a_composite_cannot_be_drawn_as_outlines(self):
+        with pytest.raises(ValueError, match="cannot carry a style"):
+            DisplayLayer(
+                "k", "r", "T", "d", vis={"style": "outline"}, bands=("r", "g", "b")
+            )
+
+    def test_what_is_drawn_and_what_is_recorded_name_the_same_bands(self):
+        layer = DisplayLayer(
+            "k", "r", "T", "d", vis={"min": 0, "max": 1}, bands=("r", "g", "b")
+        )
+        record = layer.to_manifest()
+        assert record["vis"]["bands"] == record["bands"] == ["r", "g", "b"]
+
+    def test_an_outline_layer_passes_its_style_through(self):
+        """`style: outline` is for the reader, not for Earth Engine (see the
+        DisplayLayer docstring); the contract carries it as it stands."""
+        layer = DisplayLayer(
+            "k", "labels", "T", "d", vis={"style": "outline", "palette": ["ffd400"]}
+        )
+        assert layer.vis_params() == {
+            "bands": ["labels"], "style": "outline", "palette": ["ffd400"],
+        }
+
     def test_to_manifest_carries_everything_needed_to_draw_and_read_it(self):
         layer = DisplayLayer(
             "x", "b", "A title", "what it shows",

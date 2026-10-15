@@ -196,17 +196,19 @@ Each stage can declare display layers and summary numbers
 (`Stage.display_layers`, `Stage.summary_numbers` and `Stage.summarise()` in
 `src/fmu/stages/base.py`). The orchestrator writes them into
 `stages[].transparency`, the same whether the stage ran live or was read from
-the cache. Masking and merge declare something today; the other stages have an
-empty record (`tests/test_transparency_contract.py` lists which stages must
-declare and which are still pending).
+the cache. Ten stages declare something today: masking, data load, the five
+feature stages, segmentation, merge and clustering. Profiling, export and
+metrics have an empty record (`tests/test_transparency_contract.py` lists which
+stages must declare and which are still pending).
 
 `display_layers` has one entry per declared layer:
 
 | Key | Meaning |
 |---|---|
 | `key`, `band` | The context key holding the image, and the band on it |
+| `bands` | Only on a colour composite (true colour, the embedding view): its three bands, as red, green and blue. `band` is the first of them. A single-band layer has no such key |
 | `title`, `description` | What the layer shows |
-| `vis` | Earth Engine visualisation parameters (`bands`, `min`, `max`, `palette`). For a categorical layer the palette covers every integer from the lowest legend value to the highest |
+| `vis` | Earth Engine visualisation parameters (`bands`, `min`, `max`, `palette`). `bands` is filled in from `band` or `bands` above; a declaration cannot set it. For a categorical layer the palette covers every integer from the lowest legend value to the highest. A composite has `min` and `max` and no palette. One value is not Earth Engine's: `"style": "outline"` (the superpixels) asks the reader to draw the boundaries between labels in the palette's one colour, because a label's value means nothing as a colour. `min` and `max` of a continuous layer are a starting stretch, not the range of the data |
 | `legend` | For a categorical layer, one `{value, label, color}` per class; empty for a continuous layer |
 | `legend_note` | What a reader must be told in order not to misread the layer. Show it wherever the legend is drawn |
 | `asset` | The cache asset the layer belongs at; `null` when caching is off or the stage does not cache that key (the merge layer) |
@@ -217,6 +219,72 @@ number. It is empty, with a reason beside it, in two cases: `summary_skipped`
 when the run was made with `Pipeline(summaries=False)`, and `summary_error`
 when the numbers could not be computed (the error is also in the stage's
 `warnings`; the run carries on, because the stage's products are already made).
+
+The layers each stage declares. Only masking, merge and clustering also report
+numbers: a declaration costs nothing on a run, and a summary is a request to
+Earth Engine on every run.
+
+| Stage | Key | Band or bands | Drawn as |
+|---|---|---|---|
+| masking | `mask_provenance` | `reason`; `source` | Two categorical layers |
+| data_load | `s2_composite` | `B4_median`, `B3_median`, `B2_median` | True colour, 0 to 3000 |
+| features_optical | `optical_features` | `ndvi_amplitude_annual` | Continuous, 0 to 0.4 |
+| features_radar | `radar_features` | `vv_minus_vh_median` | Continuous, 3 to 12 dB |
+| features_structure | `structure_features` | `canopy_height`; `canopy_height_std` | Continuous, 0 to 30 m and 0 to 3 m |
+| features_static | `static_features` | `elevation` | Continuous, 0 to 1500 m |
+| features_embedding | `embedding_features` | `A00`, `A01`, `A02` | Colour composite of three of the 64 bands, -0.3 to 0.3 |
+| segmentation | `snic_clusters` | `snic_clusters` | Outlines |
+| merge | `merge_provenance` | `merge_kind` | Categorical |
+| clustering | `cluster_labels` | `cluster_id` | Categorical, stand types 0 to 9 |
+
+A declaration is fixed in the code, and three band names are not: the true
+colour bands carry the compositing reducer (`median` by default), the optical
+band carries the index (`ndvi` by default), and the embedding bands are
+AlphaEarth's. Every config under `configs/` writes the declared bands except
+two: `sanjay_van_nirv_dual`, whose optical band is `nirv_amplitude_annual`,
+and `sanjay_van_tessera`, whose embedding is an uploaded Tessera image (128
+channels, not AlphaEarth's 64), so the embedding layer's title, bands and
+description are not those of its runs. Tests in
+`tests/test_transparency_contract.py` hold both lists and fail for a third
+config. The layer descriptions speak of the defaults in the same way: "by
+default" in a description means the default segmentation bands and merge
+criteria, which a config can replace. The stand-type legend names ten types
+and a run uses the first `clustering.k` of them.
+
+**Clustering** reports six counts, read from the `clustering_metadata`
+property of `cluster_labels` (one small request, no reduction): `k`,
+`units_total`, `units_in_habitat`, `units_fitted`,
+`units_dropped_missing_band` and `units_left_out_of_fit`. A unit is a stand, or
+a superpixel in a run without merge. On a cached `cluster_labels` made before
+the fit recorded its coverage, the counts are absent and the record carries a
+`summary_error`. `units_left_out_of_fit` is the number of stands below
+`merge.min_area_ha` left out of the fit with
+`clustering.fit_excludes_stands_below_min_area` on (`n_stands_left_out_of_fit`
+in `clustering_metadata`), and 0 when `clustering_metadata` does not record the
+setting as on: the setting off, or an asset made before it existed. So
+`units_in_habitat` is `units_fitted` plus `units_dropped_missing_band` plus
+`units_left_out_of_fit`; with the setting on, the stage's log warns when its
+samples do not add up to that. The area of the stands left out, and how many
+stands the merge marked below the minimum, are in `clustering_metadata` (under
+`export_manifest_<config>.json` below), not among these six.
+
+These counts are distinct unit labels on the analysis grid, as the fit saw
+them. They are not counts of the polygons in the exported stand layer, and the
+two do not agree: in the 14 re-runs of 13 Oct 2026 the exported
+`stands_merged` layer holds between 4 fewer and 20 more stands than
+`units_total`, and in every one of the 14 more stands with a `cluster_id` than
+`units_in_habitat`
+(`sanjay_van_baseline_repro`: 291 units and 257 in habitat, against 295 stands
+of which 269 carry a type; `odisha_alphaearth_angul_repro`: 102 and 86, against
+100 and 92). Three causes are known (`docs/demo/remerge/README.md`): a stand in
+several pieces is several polygons; the export stage types a stand from the
+typed pixels its polygon touches, weighted by the share of each pixel inside
+it, so a stand with no habitat pixel of its own can take a neighbour's type;
+and the merge is not cached, so the pass that fits the types and the pass that
+exports the stands each merge again, and where one of them computed a merge
+criterion live they did not get the same stands (`odisha_alphaearth_angul_repro`:
+the fit counted 102 stands, the run exported 97). Do not show these counts
+beside a count of stands without saying so.
 
 **Masking** declares two layers on `mask_provenance` (bands `reason` and
 `source`; the codes are under "Cached GEE assets") and these numbers, from one
@@ -283,6 +351,13 @@ narrow the neighbourhood. That happens with an elongated stand, or a label
 reused across disjoint places, which logs a WARNING. A wide band stack may then
 run out of memory, as it did before the measurement existed. These keys are in
 the stage metadata only, not in `clustering_metadata`.
+
+The stage metadata also holds `fit_excludes_stands_below_min_area`, true or
+false, on every run that computes the clustering stage: whether the stands
+below `merge.min_area_ha` were left out of the k-means fit (`docs/configs.md`,
+`clustering`). A run that reads the stage from the cache records only
+`source: cache` there ("Stage source" above); the setting is still in the
+manifest's `config`, as `clustering.fit_excludes_stands_below_min_area`.
 
 ## `export_manifest_<config>.json` (after export stage)
 
@@ -447,6 +522,28 @@ it. `provenance_attributes` names the merge-provenance properties on
 `stands_merged`; it is empty, and `shp_attributes` has only the first six names,
 when the context held no `stand_provenance`.
 
+`clustering` is the `clustering_metadata` property of `cluster_labels`, as the
+clustering stage wrote it, with `cluster_distribution` added by the export
+stage. With `clustering.fit_excludes_stands_below_min_area` on it has five more
+keys; with the setting off none of them is there, and the property is key for
+key what it was before the setting existed:
+
+| Key | Meaning |
+|---|---|
+| `fit_excludes_stands_below_min_area` | `true`: the stands the merge left below `merge.min_area_ha` were left out of the k-means training rows. They were still typed, by the nearest fitted cluster |
+| `n_stands_below_min_area` | Stands the merge marked below the minimum (`below_min` 1 in `stand_provenance`), whatever the cause |
+| `area_ha_in_stands_below_min_area` | Their area, from `area_ha` in `stand_attributes` |
+| `n_stands_left_out_of_fit` | Those of them that had a training row, and so were left out of the fit. A stand below the minimum that lies outside the habitat mask, or has no data in an active band, had no row to leave out |
+| `area_ha_in_stands_left_out_of_fit` | Their area |
+
+With the setting on, `n_training_units` counts the rows the fit was trained on,
+the stands left out not among them, and `n_units_dropped_null_band` is still
+counted against every row, so the stands left out are not counted as missing
+band data. Normally `n_units_in_habitat` is then `n_training_units` +
+`n_units_dropped_null_band` + `n_stands_left_out_of_fit`; the stage logs a
+warning when the rows of the fit and the rows of the stands left out do not add
+up to the rows of every unit.
+
 ### How to use this
 
 - **Reproduce a past run.** The `config_snapshot` is verbatim what was
@@ -502,14 +599,14 @@ stand-geometry and explained-variance sections are always present.
   "unit_key": "stand_clusters",
   "stand_geometry": {
     "unit_key": "stand_clusters",
-    "n_stands": 269,
-    "total_area_ha": 841.9,
-    "area_ha_min": 0.12, "area_ha_p10": 1.04, "area_ha_median": 2.31,
-    "area_ha_p90": 7.88, "area_ha_max": 9.97, "area_ha_mean": 3.13,
-    "stands_below_min_area": 11,
-    "frac_stands_below_min_area": 0.0409,
-    "area_in_undersized_stands_ha": 6.4,
-    "area_share_largest_decile": 0.271,
+    "n_stands": 299,
+    "total_area_ha": 1301.4,
+    "area_ha_min": 0.25, "area_ha_p10": 1.23, "area_ha_median": 3.39,
+    "area_ha_p90": 9.49, "area_ha_max": 10.0, "area_ha_mean": 4.35,
+    "stands_below_min_area": 9,
+    "frac_stands_below_min_area": 0.0301,
+    "area_in_undersized_stands_ha": 5.08,
+    "area_share_largest_decile": 0.225,
     "polsby_popper_min": 0.08,
     "polsby_popper_median": 0.24,
     "polsby_popper_max": 0.51
@@ -525,15 +622,15 @@ stand-geometry and explained-variance sections are always present.
     }
   },
   "merge": {
-    "n_superpixels": 1249, "n_stands": 269, "reduction_factor": 4.643,
-    "pass1_rounds": 7, "pass1_merges": 941,
-    "pass2_iterations": 3, "pass2_merges": 39, "pass2_fallback_merges": 6,
-    "stands_below_min_area": 11,
-    "orphans_isolated": 0, "orphans_area_blocked": 11,
+    "n_superpixels": 1298, "n_stands": 299, "reduction_factor": 4.341,
+    "pass1_rounds": 6, "pass1_merges": 762,
+    "pass2_iterations": 2, "pass2_merges": 237, "pass2_fallback_merges": 126,
+    "stands_below_min_area": 9,
+    "orphans_isolated": 0, "orphans_area_blocked": 9,
     "orphans_no_attribute_match": 0,
-    "stands_with_incomplete_criteria": 4,
-    "adjacency": { "n_regions": 1249, "n_edges": 3128, "mean_degree": 5.009, "n_isolated": 0 },
-    "threshold_calibration": { "joint_admit_rate_pct": 38.7, "per_band": { "...": "..." } },
+    "stands_with_incomplete_criteria": 97,
+    "adjacency": { "n_regions": 1298, "n_edges": 3615, "mean_degree": 5.57, "n_isolated": 0 },
+    "threshold_calibration": { "joint_admit_rate_pct": 45.2, "per_band": { "...": "..." } },
     "warnings": ["..."]
   },
   "silhouette_current": 0.4127,
@@ -556,6 +653,15 @@ stand-geometry and explained-variance sections are always present.
 }
 ```
 
+The `merge` block and the size numbers of `stand_geometry` in this example are the demo
+set's: Sanjay Van, hand-crafted features, the Earth Engine run of 13 Oct 2026, with the
+stands re-merged under `spec-merge-pass2-skip-at-minimum` (`docs/demo/remerge/`). Before
+the re-merge the same run had 291 stands. The other numbers in the example (shape, explained
+variance, silhouette, the comparison with a reference) are illustrative and from an earlier
+run, so the blocks do not describe one run. The demo set carries the open cache-grid issue
+(`docs/reproducibility.md`, "Superpixels depend on whether the features were cached when
+SNIC ran").
+
 ### Interpreting the numbers
 
 | Field | Meaning | Range / direction |
@@ -568,9 +674,15 @@ stand-geometry and explained-variance sections are always present.
 | `explained_variance.attributes.<band>.held_out` | `false` = this attribute helped draw the boundaries, so R² on it is partly circular — reported because it is what the literature quotes, **not as evidence**. `true` = neither segmentation nor merge used it. Checked at config load, not trusted | bool |
 | `explained_variance.n_stands` | **Read every R² against this.** R² rises monotonically with stand count and is 1.0 in the limit of one stand per pixel, so two arms at different stand counts cannot be compared on it | int |
 | `explained_variance.level` | Always `"pixel"`. Scoring at region level makes any partition score 1.000 by construction | string |
-| `merge.orphans_area_blocked` | Undersized stands whose every neighbour is already too big to absorb them. **A signal `max_area_ha` is too tight**, not a fact about the forest | int |
+| `merge.orphans_area_blocked` | Undersized stands whose every neighbour is already too big to absorb them under the ceiling: `merge.max_area_ha`, or `merge.max_area_ha + merge.min_area_ha` with `merge.pass2_soft_ceiling` on. **A signal `max_area_ha` is too tight**, not a fact about the forest | int |
 | `merge.pass2_fallback_merges` | Pass-2 merges no relaxed criterion could justify, decided by shared-edge length alone. The honest count of "surrounded by genuinely different forest"; look here first if stand geometry looks wrong | int |
+| `merge.pass2_relaxed_merges_over_max_area`, `merge.pass2_fallback_merges_over_max_area` | Present only when `merge.pass2_soft_ceiling` is on, like the five keys below. Pass-2 merges that took a region over `merge.max_area_ha`: by a relaxed match (step 2 of the order of choice, part of `pass2_merges - pass2_fallback_merges`) and by the shared-edge fallback (step 4, part of `pass2_fallback_merges`). Whether a merge goes over is decided as the hard ceiling decides it, on the sum of the two areas, so a merge that ends exactly on `merge.max_area_ha` can come out a hair over it through float rounding. It is then ranked at step 2 or 4 and counted here, though `stands_over_max_area` does not count the stand it makes | int |
+| `merge.stands_over_max_area` | Stands whose area as reported in `stand_attributes` (`area_ha`, 6 decimals) is over `merge.max_area_ha` taken to the same 6 decimals, so a stand exactly at `merge.max_area_ha` is not counted. None is over `merge.max_area_ha + merge.min_area_ha` unless it is a single superpixel that came in larger | int |
+| `merge.stands_over_max_area_never_merged` | Of `stands_over_max_area`, those made of a single superpixel (`n_superpx` 1): a superpixel that came in larger than `merge.max_area_ha` and that nothing joined. The setting did not make them, and with it off they are over `merge.max_area_ha` too, unreported. The rest were made by merging, which only the setting allows past `merge.max_area_ha` | int |
+| `merge.excess_over_max_area_total_ha`, `merge.excess_over_max_area_largest_ha` | Those stands' area over `merge.max_area_ha`, added up, and the largest of them (0.0 when no stand is over), rounded to 4 decimals | ha |
+| `merge.excess_over_max_area_each_ha` | Each of those stands' area over `merge.max_area_ha`, largest first, rounded to 4 decimals (so an excess under 0.00005 ha shows as 0.0) | list of ha |
 | `merge.threshold_calibration.joint_admit_rate_pct` | Share of adjacent pairs passing **all** criteria at once. The gate is conjunctive, so the per-band marginals do not describe it. **Not a tuning target** — pass rate is a diagnostic, and pass 1 iterates to convergence so a per-round rate is not the share of total merging | 0 to 100 |
+| `merge.kept_land` | Present only when `segmentation.mask_before_snic` is on, and then SNIC and the merge see only kept land: where `habitat_mask` is 1, inside the ROI (the mask on the analysis grid clipped to the ROI as the stage's outputs are), less, with `segmentation.drop_kept_patches_below_min_area`, each patch smaller than `merge.min_area_ha` that touches no other kept land. `kept_land_ha`: that land, in the ROI. `small_patches_ha`: land `habitat_mask` keeps but left out as patches below the minimum (0 without the option). `kept_land_ha_without_superpixel`: kept land SNIC left with no superpixel, so in no stand; the seeds of `fmu.utils.kept_land` should make it 0. `superpixel_ha_off_kept_land`: superpixel area off kept land, 0 against the mask SNIC read. Both shortfalls are measured against the mask the merge reads, on the superpixel image's own pixels; if SNIC ran on the mask computed live and the merge reads the cached copy, the two differ a little along the edges of kept land (`docs/reproducibility.md`, "Superpixels depend on whether the features were cached when SNIC ran"), which gives a little of both. Areas are pixel count × scale² | ha; both shortfalls should be 0 |
 | `silhouette_current` | Intrinsic cohesion/separation of current clustering. **Demoted to an internal diagnostic for the labelling step**: it is computed in each arm's own feature space (21-D vs 64-D) and is strongly dimensionality-dependent, so it was never valid across arms, and under two independent segmentations it is doubly invalid | -1 to 1; higher is better |
 | `silhouette_reference` | Same for the reference (only if reference's `feature_stack` is cached) | -1 to 1; higher is better |
 | `ari` | Adjusted Rand Index between current and reference partitions | -1 to 1; 0 = random, 1 = identical |
@@ -731,7 +843,7 @@ SHP attributes (capped at 10-char field-name limit):
 | `n_relaxed` | int | Merges inside the stand made by the second pass under tolerances multiplied by `merge.relax_factor`. |
 | `n_fallback` | int | Merges inside the stand made by the second pass's shared-edge fallback: no criterion justified them, even relaxed. These are the merges to look at first. |
 | `below_min` | int (0/1) | 1 if the stand ended below `merge.min_area_ha`. |
-| `below_why` | string | Empty unless `below_min` is 1; then `isolated` (touches no other stand), `area_blocked` (every neighbour is too big to take it under `merge.max_area_ha`) or `iteration_cap` (it still had a neighbour it could have joined when the second pass stopped at `merge.max_pass2_iterations`). |
+| `below_why` | string | Empty unless `below_min` is 1; then `isolated` (touches no other stand), `area_blocked` (every neighbour is too big to take it under `merge.max_area_ha`, or under `merge.max_area_ha + merge.min_area_ha` with `merge.pass2_soft_ceiling` on) or `iteration_cap` (it still had a neighbour it could have joined when the second pass stopped at `merge.max_pass2_iterations`). |
 
 The last six are the merge provenance (`PROVENANCE_FIELDS` in
 `src/fmu/utils/region_merge.py`). A stand of m superpixels contains exactly
@@ -739,10 +851,18 @@ m - 1 merges, so `n_pass1 + n_relaxed + n_fallback = n_superpx - 1`. Over all
 stands the counts add up to the totals in `merge_diagnostics`. The values are
 looked up by `stand_lbl`, so every polygon of a stand that was split into
 pieces carries the same values. Both formats carry all six; in the shapefile
-they follow the six columns above. A second-pass merge does not always add a
-piece that was below the minimum size at that moment: each sweep lists the
-undersized pieces once, and a piece that grows past the minimum earlier in a
-sweep still takes its turn in that sweep. The layer is written without the six
+they follow the six columns above. Unless `merge.pass2_skip_at_min_area` is
+true, a second-pass merge does not always add a piece that was below the minimum
+size at that moment: each sweep lists the undersized pieces once, and a piece
+that reaches the minimum earlier in a sweep still takes its turn in that
+sweep. With the setting on, such a piece is skipped (register entry
+`spec-merge-pass2-skip-at-minimum`). With `merge.pass2_soft_ceiling` on, a piece
+still below the minimum when its turn comes may join a neighbour even if the
+stand is then over `merge.max_area_ha`, up to `merge.max_area_ha +
+merge.min_area_ha` (register entry `spec-merge-pass2-soft-ceiling`). Such a
+merge is counted in `n_relaxed` or `n_fallback` like any other second-pass
+merge; `merge_diagnostics` says how many there were, and how many stands ended
+over `merge.max_area_ha` and by how much. The layer is written without the six
 (and the stage logs a warning) only when the context holds no
 `stand_provenance`, which a pipeline run always does.
 

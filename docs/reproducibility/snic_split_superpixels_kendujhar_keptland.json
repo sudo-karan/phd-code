@@ -1,0 +1,58 @@
+{
+ "config": "odisha_v120_3ha_squares_kendujhar",
+ "checks_the_segmentation_of": "odisha_v120_3ha_squares_kendujhar_keptland",
+ "with_the_setting_on": {
+  "mask_before_snic": true,
+  "drop_kept_patches_below_min_area": false,
+  "size": 6,
+  "connectivity": 8,
+  "neighborhood_size": 128
+ },
+ "upstream_cache_status": {
+  "masking": {
+   "habitat_mask": "hit",
+   "landcover_summary": "hit",
+   "mask_provenance": "hit",
+   "water_mask": "hit"
+  },
+  "data_load": {
+   "s2_composite": "hit"
+  },
+  "features_optical": {
+   "optical_features": "hit"
+  },
+  "features_radar": {
+   "radar_features": "hit"
+  },
+  "features_structure": {
+   "structure_features": "hit"
+  }
+ },
+ "analysis_grid": {
+  "crs": "EPSG:32645",
+  "transform": [
+   10,
+   0,
+   0,
+   0,
+   10,
+   0
+  ]
+ },
+ "tile_lattice_assumed": "256 px, starting at the grid's pixel origin",
+ "totals": {
+  "superpixels_as_a6_counts_them": 2745,
+  "pieces_as_a6_counts_them": 2745,
+  "null_key_pixels": {
+   "superpixels": 39503,
+   "pieces": 39503
+  },
+  "superpixels": 2744,
+  "pieces": 2744,
+  "superpixels_with_a_piece_label": 2744,
+  "pieces_of_those": 2744,
+  "superpixels_without_a_piece_label": {}
+ },
+ "split": [],
+ "export_tasks_submitted": 0
+}

@@ -221,6 +221,54 @@ def test_derived_cap_always_exceeds_the_max_stand_it_must_hold():
         assert cfg.max_component_pixels() > stand_px, (max_area_ha, scale)
 
 
+def test_with_the_soft_ceiling_the_cap_allows_max_plus_min():
+    """spec-merge-pass2-soft-ceiling: with merge.pass2_soft_ceiling on, a
+    second-pass merge can make a stand of up to max_area_ha + min_area_ha, so
+    the cap is derived from that sum, with the same 20% headroom, and must be
+    strictly larger than the largest such stand in pixels. Off, it is the cap
+    it always was."""
+    raw = yaml.safe_load((CONFIG_DIR / "sanjay_van_baseline.yaml").read_text())
+    for min_area_ha, max_area_ha, scale in [
+        (1.0, 10.0, 10),
+        (1.0, 20.0, 10),
+        (0.5, 50.0, 10),
+        (0.1, 0.5, 10),
+        (1.0, 10.0, 20),
+        (1.0, 10.0, 30),
+        (0.5, 3.0, 5),
+        (1.0, 3.0, 10),  # the Odisha box configs' bounds
+    ]:
+        cfg_raw = copy.deepcopy(raw)
+        cfg_raw["merge"] = {
+            "min_area_ha": min_area_ha,
+            "max_area_ha": max_area_ha,
+            "pass2_soft_ceiling": True,
+        }
+        cfg_raw["export"]["analysis_scale_m"] = scale
+        on = Config.model_validate(cfg_raw)
+        ceiling_px = (max_area_ha + min_area_ha) * 10_000 / (scale * scale)
+        assert on.max_component_pixels() == math.ceil(math.ceil(ceiling_px) * 1.2)
+        assert on.max_component_pixels() > ceiling_px, (min_area_ha, max_area_ha, scale)
+
+        cfg_raw["merge"]["pass2_soft_ceiling"] = False
+        off = Config.model_validate(cfg_raw)
+        assert off.max_component_pixels() == math.ceil(
+            math.ceil(max_area_ha * 10_000 / (scale * scale)) * 1.2
+        )
+        assert off.max_component_pixels() < on.max_component_pixels()
+
+
+def test_the_soft_ceiling_cap_at_the_defaults():
+    """11 ha at 10 m is 1100 px of stand, x1.2 = 1320. Off, left out of the
+    config or written out as false, it is 1200 as before."""
+    raw = yaml.safe_load((CONFIG_DIR / "sanjay_van_baseline.yaml").read_text())
+    assert "merge" not in raw  # the defaults apply
+    for value, cap in ((True, 1320), (False, 1200)):
+        cfg = Config.model_validate({**raw, "merge": {"pass2_soft_ceiling": value}})
+        assert cfg.max_component_pixels() == cap
+    assert Config.model_validate(raw).max_component_pixels() == 1200
+
+
 def test_derived_cap_scales_with_area_and_resolution():
     raw = yaml.safe_load((CONFIG_DIR / "sanjay_van_baseline.yaml").read_text())
 
@@ -243,11 +291,41 @@ def test_derived_cap_is_a_positive_int():
 # ---------- shipped configs ----------
 
 
+def _baseline_of(path: Path) -> Path:
+    """The baseline arm of the comparison a shipped config belongs to.
+
+    A config copied under a new name with a suffix (`sanjay_van_alphaearth_repro`)
+    is compared with the baseline copied with the same suffix
+    (`sanjay_van_baseline_repro`), when there is one, so that a setting both
+    copies change together, as kept-land copies would turn on
+    `merge.pass2_soft_ceiling`, is still held equal between the two arms. Any
+    other config is compared with sanjay_van_baseline.yaml.
+    """
+    words = path.stem.split("_")  # sanjay, van, then the arm and any suffix
+    for i in range(3, len(words)):
+        paired = CONFIG_DIR / ("_".join(["sanjay_van_baseline", *words[i:]]) + ".yaml")
+        if paired.exists():
+            return paired
+    return CONFIG_DIR / "sanjay_van_baseline.yaml"
+
+
+def test_each_shipped_config_is_paired_with_a_baseline():
+    """What `_baseline_of` gives for the configs there are today."""
+    pairs = {path.stem: _baseline_of(path).stem for path in SHIPPED_CONFIGS}
+    assert pairs["sanjay_van_alphaearth"] == "sanjay_van_baseline"
+    assert pairs["sanjay_van_nirv_dual"] == "sanjay_van_baseline"
+    assert pairs["sanjay_van_alphaearth_repro"] == "sanjay_van_baseline_repro"
+    assert pairs["sanjay_van_baseline_repro"] == "sanjay_van_baseline_repro"
+
+
 @pytest.mark.parametrize("path", SHIPPED_CONFIGS, ids=lambda p: p.stem)
 def test_shipped_configs_agree_on_the_cap(path: Path):
     """The regression this whole change exists for: the cap must not differ
-    between two arms of the same comparison."""
-    assert load_config(path).max_component_pixels() == 1200
+    between two arms of the same comparison. sanjay_van_baseline's own cap,
+    1200, is pinned by test_derived_cap_at_defaults."""
+    assert load_config(path).max_component_pixels() == (
+        load_config(_baseline_of(path)).max_component_pixels()
+    )
 
 
 @pytest.mark.parametrize("path", SHIPPED_CONFIGS, ids=lambda p: p.stem)
@@ -266,9 +344,10 @@ def test_shipped_configs_share_the_merge_rules(path: Path):
 
     The band *names* may differ where another config block renames them
     (nirv_dual's `features_optical.index: nirv`), but the tolerances, area
-    bounds and gate must not.
+    bounds and gate must not. Each config is compared with the baseline of its
+    own comparison (`_baseline_of`).
     """
-    base = load_config(CONFIG_DIR / "sanjay_van_baseline.yaml").merge
+    base = load_config(_baseline_of(path)).merge
     got = load_config(path).merge
     for knob in (
         "enabled",
@@ -280,6 +359,8 @@ def test_shipped_configs_share_the_merge_rules(path: Path):
         "tie_break",
         "max_pass2_iterations",
         "max_superpixels",
+        "pass2_skip_at_min_area",
+        "pass2_soft_ceiling",
     ):
         assert getattr(got, knob) == getattr(base, knob), (path.stem, knob)
     assert sorted(got.tolerances().values()) == sorted(base.tolerances().values())

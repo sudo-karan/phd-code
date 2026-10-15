@@ -23,7 +23,13 @@ from __future__ import annotations
 import ee
 
 from fmu.config import Config
-from fmu.stages.base import PipelineContext, Stage, StageResult, register_stage
+from fmu.stages.base import (
+    DisplayLayer,
+    PipelineContext,
+    Stage,
+    StageResult,
+    register_stage,
+)
 from fmu.utils.gee import safe_call, safe_get_info
 from fmu.utils.logging import get_logger
 
@@ -36,6 +42,39 @@ class FeaturesRadarStage(Stage):
     required_inputs = {"s1_collection", "roi"}
     produces = {"radar_features"}
     cacheable_outputs = {"radar_features"}
+
+    # Transparency: the cross-polarisation contrast, the one radar band
+    # segmentation reads by default, not all nine. It exists only under
+    # `include_cross_pol_contrast` (the default); tests/
+    # test_transparency_contract.py fails for a config under configs/ that
+    # turns it off.
+    #
+    # Stretch 3 to 12 dB: a starting value around the stand means of the 14
+    # runs of 13 Oct 2026, which lie between 4.3 and 10.1 dB (the colour scales
+    # of the early ui_data build of that day, scripts/build_ui_early_data.py).
+    # The palette is the one that build drew this band in.
+    display_layers = (
+        DisplayLayer(
+            key="radar_features",
+            band="vv_minus_vh_median",
+            title="Radar contrast between polarisations (VV minus VH), dB",
+            description=(
+                "The median Sentinel-1 backscatter in VV minus the median in "
+                "VH, in decibels, over the radar window. A difference in "
+                "decibels is the ratio of the two signals. It comes from "
+                "radar alone, so it does not depend on cloud or on the "
+                "optical bands, and it is one of the bands the superpixels "
+                "are drawn on by default. Read it as a second, independent "
+                "view of surface structure, not as a measure of any one "
+                "forest property."
+            ),
+            vis={
+                "min": 3,
+                "max": 12,
+                "palette": ["f7fbff", "c6dbef", "6baed6", "2171b5", "08306b"],
+            },
+        ),
+    )
 
     @safe_call("computing radar features")
     def run(self, ctx: PipelineContext, config: Config) -> StageResult:

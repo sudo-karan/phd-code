@@ -86,6 +86,7 @@ from fmu.utils.adjacency import (
 )
 from fmu.utils.components import assert_components_fit
 from fmu.utils.gee import safe_call
+from fmu.utils.kept_land import kept_land_coverage
 from fmu.utils.logging import get_logger
 from fmu.utils.region_merge import calibrate_thresholds, merge_superpixels
 
@@ -135,12 +136,14 @@ _MERGE_KIND_NOTE = (
     "colours the whole stand red however many well-justified merges it also "
     "contains. A fallback merge is one that no merge criterion justified, even "
     "relaxed: the second pass, which exists so that no stand stays below the "
-    "minimum size, joined the two on the length of their shared edge only. A "
-    "second-pass merge does not always add a piece that was below the minimum "
-    "size at that moment: each sweep lists the undersized pieces once, and a "
-    "piece that grows past the minimum earlier in a sweep still takes its turn "
-    "in that sweep. The exact counts per stand are in stand_provenance and on "
-    "the exported stands_merged layer (n_pass1, n_relaxed, n_fallback)."
+    "minimum size, joined the two on the length of their shared edge only. "
+    "Unless merge.pass2_skip_at_min_area is true, a second-pass merge does not "
+    "always add a piece that was below the minimum size at that moment: each "
+    "sweep lists the undersized pieces once, and a piece that reaches the "
+    "minimum earlier in a sweep still takes its turn in that sweep. With the "
+    "setting on, such a piece is skipped. The exact counts per stand are in "
+    "stand_provenance and on the exported stands_merged layer (n_pass1, "
+    "n_relaxed, n_fallback)."
 )
 
 
@@ -216,7 +219,9 @@ class MergeStage(Stage):
             "stands_below_min_area_by_cause",
             "Why those stands stayed small. isolated: it touches no other "
             "stand. area_blocked: every neighbour is already too big to take it "
-            "under the maximum size. iteration_cap: it still had a neighbour it "
+            "under the ceiling that applies to it: the maximum size, or the "
+            "maximum plus the minimum with merge.pass2_soft_ceiling on. "
+            "iteration_cap: it still had a neighbour it "
             "could have joined when the second pass ran out of iterations",
             "count",
         ),
@@ -227,12 +232,15 @@ class MergeStage(Stage):
 
     def validate(self, ctx: PipelineContext, config: Config) -> None:
         needed = {"roi", "snic_clusters"} | config.merge.input_sources()
+        if config.segmentation.mask_before_snic:
+            needed.add("habitat_mask")
         missing = needed - ctx.keys()
         if missing:
             raise KeyError(
                 f"{self.name}: missing required context inputs: {sorted(missing)}. "
                 f"Context has: {sorted(ctx.keys())}. These are required because "
-                f"merge.criteria references them -- either add the producing "
+                f"merge.criteria references them (and, for habitat_mask, because "
+                f"segmentation.mask_before_snic is on) -- either add the producing "
                 f"stage to the run, or change merge.criteria."
             )
 
@@ -244,9 +252,11 @@ class MergeStage(Stage):
         scale = config.export.analysis_scale_m
         warnings: list[str] = []
 
-        # The cap is derived from merge.max_area_ha, so checking it against the
-        # *input* superpixels is the weaker half; the output stands are checked
-        # below, after the merge, which is where a violation would actually bite.
+        # The cap is derived from merge.max_area_ha (plus merge.min_area_ha with
+        # merge.pass2_soft_ceiling on), so checking it against the *input*
+        # superpixels is the weaker half; the output stands are checked where
+        # they are reduced over, by clustering and metrics, which is where a
+        # violation would actually bite.
         max_component_px = config.max_component_pixels()
         assert_components_fit(
             snic_clusters, roi, scale, max_component_px, context="merge input"
@@ -264,6 +274,35 @@ class MergeStage(Stage):
                 "merge: the SNIC label image has no labels inside the ROI. "
                 "Check that segmentation ran and that roi matches the one it used."
             )
+
+        # Superpixels on kept land only (segmentation.mask_before_snic): the
+        # merge can then join only superpixels that touch on kept land, and a
+        # patch with no kept neighbour stays a stand of its own. What it cannot
+        # place at all is kept land SNIC left without a superpixel, so that is
+        # measured here, on the image the merge reads, with the area of any
+        # superpixel off kept land (zero against the mask SNIC read; see
+        # _kept_land_warnings for when this pass reads another copy of it).
+        kept_cover: dict[str, float] | None = None
+        if config.segmentation.mask_before_snic:
+            kept_cover = kept_land_coverage(
+                snic_clusters,
+                ctx.get("habitat_mask"),
+                roi,
+                scale,
+                min_patch_pixels=config.kept_patch_min_pixels(),
+                connectivity=config.segmentation.connectivity,
+                context="merge input",
+            )
+            log.info(
+                "  kept land %.2f ha (%.2f ha more in patches too small to be a "
+                "stand, left out), of it without a superpixel %.4f ha; "
+                "superpixel area off kept land %.4f ha",
+                kept_cover["kept_land_ha"],
+                kept_cover["small_patches_ha"],
+                kept_cover["kept_land_ha_without_superpixel"],
+                kept_cover["superpixel_ha_off_kept_land"],
+            )
+            warnings.extend(_kept_land_warnings(kept_cover))
 
         criteria_image = _criteria_image(ctx, params)
         means, valid_counts = extract_superpixel_attributes(
@@ -298,6 +337,8 @@ class MergeStage(Stage):
             min_frac_valid=params.min_frac_valid,
             max_pass2_iterations=params.max_pass2_iterations,
             centroids=centroids,
+            pass2_skip_at_min_area=params.pass2_skip_at_min_area,
+            pass2_soft_ceiling=params.pass2_soft_ceiling,
         )
 
         # Back up to the server as a relabel of the SNIC image. No export, no
@@ -338,6 +379,9 @@ class MergeStage(Stage):
             "adjacency": graph.summary(),
             "threshold_calibration": calibration,
             "warnings": warnings,
+            # Only when SNIC saw kept land only, so the diagnostics of every
+            # other run keep exactly the keys they had.
+            **({"kept_land": kept_cover} if kept_cover is not None else {}),
         }
 
         return StageResult(
@@ -358,6 +402,9 @@ class MergeStage(Stage):
                 "max_area_ha": params.max_area_ha,
                 "min_defined_criteria": params.min_defined_criteria,
                 "min_frac_valid": params.min_frac_valid,
+                "pass2_skip_at_min_area": params.pass2_skip_at_min_area,
+                "pass2_soft_ceiling": params.pass2_soft_ceiling,
+                "mask_before_snic": config.segmentation.mask_before_snic,
                 "adjacency": graph.summary(),
                 # Where the configured thresholds actually land in this AOI's
                 # own neighbour-difference distribution, including the joint
@@ -461,6 +508,40 @@ def _log_calibration(calibration: dict[str, Any]) -> None:
     )
 
 
+def _kept_land_warnings(cover: dict[str, float]) -> list[str]:
+    """Say so when the superpixels do not cover kept land exactly.
+
+    Both numbers compare the superpixels with kept land made from the
+    habitat_mask this pass reads. If SNIC ran on the mask as computed live and
+    this pass reads the cached copy, the two can differ along the edges of kept
+    land, because the copy sits on a different pixel grid (docs/reproducibility.md,
+    "Superpixels depend on whether the features were cached when SNIC ran"). That
+    gives a little of both at once; a large area of either has another cause,
+    which the text names.
+    """
+    edge = (
+        " A little of this, together with the other number, is expected when "
+        "SNIC ran on the mask as computed live and this pass reads the cached copy."
+    )
+    out: list[str] = []
+    if cover["kept_land_ha_without_superpixel"] > 0:
+        out.append(
+            f"{cover['kept_land_ha_without_superpixel']} ha of kept land has no "
+            f"superpixel, so it is in no stand. The seeds of "
+            f"fmu.utils.kept_land should reach every kept patch; one they miss "
+            f"is a strip too long for the patch search and narrower than the "
+            f"seed spacing, or a tile edge SNIC did not see across." + edge
+        )
+    if cover["superpixel_ha_off_kept_land"] > 0:
+        out.append(
+            f"{cover['superpixel_ha_off_kept_land']} ha of superpixels lies off "
+            f"kept land, which segmentation rules out for the mask it read. A "
+            f"large area means the habitat_mask read here is another mask: "
+            f"check the cache." + edge
+        )
+    return out
+
+
 def _warnings_from(d: dict[str, Any], params: Any) -> list[str]:
     """Turn the merge diagnostics into things worth saying out loud.
 
@@ -469,14 +550,46 @@ def _warnings_from(d: dict[str, Any], params: Any) -> list[str]:
     of the numbers.
     """
     out: list[str] = []
+    # The ceiling a stand below the minimum could join a neighbour under.
+    soft_ceiling_ha = round(params.max_area_ha + params.min_area_ha, 6)
+    if params.pass2_soft_ceiling:
+        ceiling = (
+            f"max_area_ha + min_area_ha ({soft_ceiling_ha} ha), the ceiling "
+            f"merge.pass2_soft_ceiling sets for a stand below the minimum"
+        )
+    else:
+        ceiling = f"max_area_ha ({params.max_area_ha} ha)"
     if d["orphans_area_blocked"]:
         out.append(
             f"{d['orphans_area_blocked']} stand(s) stayed below min_area_ha "
             f"({params.min_area_ha} ha) because every neighbour is already too "
-            f"big to absorb them under max_area_ha ({params.max_area_ha} ha). "
+            f"big to absorb them under {ceiling}. "
             f"That is a signal max_area_ha is too tight, not that the forest is "
             f"heterogeneous."
         )
+    if params.pass2_soft_ceiling and d["stands_over_max_area"]:
+        # A superpixel that came in larger than max_area_ha and never merged
+        # is over it whatever the setting, so it is not put down to the setting.
+        n_over = d["stands_over_max_area"]
+        n_never_merged = d["stands_over_max_area_never_merged"]
+        text = (
+            f"{n_over} stand(s) are over max_area_ha ({params.max_area_ha} ha), "
+            f"by up to {d['excess_over_max_area_largest_ha']} ha."
+        )
+        if n_never_merged < n_over:
+            some = f" for {n_over - n_never_merged} of them" if n_never_merged else ""
+            text += (
+                f" merge.pass2_soft_ceiling allows it{some}: in the second pass a "
+                f"stand below min_area_ha may join a neighbour up to max_area_ha + "
+                f"min_area_ha ({soft_ceiling_ha} ha)."
+            )
+        if n_never_merged:
+            text += (
+                f" {n_never_merged} of them never merged: each is a single "
+                f"superpixel that came in larger than max_area_ha, which "
+                f"merge.pass2_soft_ceiling did not cause."
+            )
+        out.append(text)
     if d["orphans_isolated"]:
         out.append(
             f"{d['orphans_isolated']} stand(s) have no 4-connected neighbour at "

@@ -32,6 +32,7 @@ from fmu.stages.base import (
     Stage,
     StageResult,
     _clear_registry_for_testing,
+    _stage_registry,
     register_stage,
 )
 from fmu.utils.caching import ExportTaskInfo
@@ -39,9 +40,21 @@ from fmu.utils.caching import ExportTaskInfo
 
 @pytest.fixture(autouse=True)
 def reset_registry():
+    """Every test here starts with an empty stage registry, and the registry it
+    found is put back afterwards.
+
+    The real stages register themselves once, when their modules are imported.
+    A fixture that only empties the registry leaves it empty for every test
+    file that runs later in the same process, so whether those pass depends on
+    the order of the files (`pytest tests/test_pipeline.py tests/test_merge_stage.py`
+    used to fail one test)."""
+    found = dict(_stage_registry)
     _clear_registry_for_testing()
-    yield
-    _clear_registry_for_testing()
+    try:
+        yield
+    finally:
+        _clear_registry_for_testing()
+        _stage_registry.update(found)
 
 
 # Helper: build a minimal-but-valid Config object for tests.

@@ -1,0 +1,94 @@
+{
+ "run_id": "odisha_v120_3ha_squares_dhenkanal",
+ "site": "Odisha",
+ "area": "Dhenkanal",
+ "arm": "feature_vector",
+ "roi": "boxes",
+ "stand_ceiling_ha": 3.0,
+ "k": 5,
+ "as_run": "made under the new rule; nothing was re-merged",
+ "merge_rule": {
+  "new": "merge.pass2_skip_at_min_area true (spec-merge-pass2-skip-at-minimum), as the run's config sets it"
+ },
+ "superpixels_in_merge": 3884,
+ "pixels": {
+  "in_the_merge": 136931,
+  "on_the_downloaded_grid": 137252,
+  "of_superpixels_the_merge_did_not_see": 0
+ },
+ "run_check": {
+  "reproduces": true,
+  "record": {
+   "totals_equal": true,
+   "totals_that_differ": {},
+   "stands_mine": 648,
+   "stands_theirs": 648,
+   "same_stand_ids": true,
+   "stand_values_that_differ": 0,
+   "largest_difference": 0.0,
+   "examples": [],
+   "equal": true
+  },
+  "pixels": {
+   "pixels_compared": 137222,
+   "pixels_in_another_stand": 0,
+   "same_stand_ids_everywhere": true,
+   "same_partition": true,
+   "pixels_with_no_exported_polygon": 30
+  },
+  "stand_layer": "outputs/squares_runs/phase2_vectors/odisha_v120_3ha_squares_dhenkanal_stands_merged.geojson",
+  "run_record": "outputs/squares_runs/phase2_vectors/odisha_v120_3ha_squares_dhenkanal_run.json",
+  "read_back": {
+   "by": "odisha_script/odisha_read_back_export.py",
+   "why": "the run's export pass ended before it wrote this record",
+   "layers_read_back": [
+    "stands_merged",
+    "stands_snic",
+    "stands_dissolved"
+   ],
+   "layers_the_run_wrote": []
+  }
+ },
+ "stands": {
+  "new": 648
+ },
+ "merge_totals": {
+  "new": {
+   "n_superpixels": 3884,
+   "n_stands": 648,
+   "reduction_factor": 5.994,
+   "pass1_rounds": 6,
+   "pass1_merges": 2619,
+   "pass1_pairs_blocked_by_area_round1": 0,
+   "pass1_pairs_blocked_by_undefined_criteria_round1": 23,
+   "pass2_iterations": 3,
+   "pass2_merges": 617,
+   "pass2_fallback_merges": 222,
+   "stands_below_min_area": 52,
+   "area_in_undersized_stands_ha": 27.51,
+   "orphans_isolated": 0,
+   "orphans_area_blocked": 52,
+   "orphans_no_attribute_match": 0,
+   "stands_with_incomplete_criteria": 1
+  }
+ },
+ "stands_with_a_type": {
+  "new": 590
+ },
+ "clustering": {
+  "new": {
+   "k": 5,
+   "n_units_total": 648,
+   "n_units_in_habitat": 576,
+   "n_training_units": 576
+  }
+ },
+ "plots": {
+  "in_the_district": 76,
+  "in_a_stand": 75,
+  "with_a_type": {
+   "new": 75
+  }
+ },
+ "export_tasks_submitted": 0
+}

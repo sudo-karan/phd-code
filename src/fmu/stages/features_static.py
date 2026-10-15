@@ -26,7 +26,13 @@ from __future__ import annotations
 import ee
 
 from fmu.config import Config
-from fmu.stages.base import PipelineContext, Stage, StageResult, register_stage
+from fmu.stages.base import (
+    DisplayLayer,
+    PipelineContext,
+    Stage,
+    StageResult,
+    register_stage,
+)
 from fmu.utils.gee import safe_call, safe_get_info
 from fmu.utils.logging import get_logger
 
@@ -39,6 +45,36 @@ class FeaturesStaticStage(Stage):
     required_inputs = {"roi", "water_mask"}
     produces = {"static_features"}
     cacheable_outputs = {"static_features"}
+
+    # Transparency: elevation only. Slope, aspect, distance to water and
+    # rainfall go into the clustering features but are in no segmentation
+    # stack, so they are left out of the display rather than offered as four
+    # more toggles.
+    #
+    # Stretch 0 to 1500 m: the repo states no range for this band. It is wide
+    # enough for a lowland and a plateau site on one scale, and so far too wide
+    # for one small ROI, where a reader should stretch to the ROI's own range.
+    display_layers = (
+        DisplayLayer(
+            key="static_features",
+            band="elevation",
+            title="Elevation (NASADEM), m",
+            description=(
+                "Height of the ground above sea level in metres, from NASADEM "
+                "at 30 m. It does not change between runs. It is one of the "
+                "features the stands are typed on in the hand-crafted arm, "
+                "and by default it is not used to draw the superpixels. The "
+                "colour scale is wide enough for lowland and plateau sites at "
+                "once, so a small area can look almost flat on it; that is "
+                "the scale, not the ground."
+            ),
+            vis={
+                "min": 0,
+                "max": 1500,
+                "palette": ["440154", "3b528b", "21918c", "5ec962", "fde725"],
+            },
+        ),
+    )
 
     @safe_call("computing static features")
     def run(self, ctx: PipelineContext, config: Config) -> StageResult:

@@ -36,7 +36,13 @@ from datetime import date
 import ee
 
 from fmu.config import Config
-from fmu.stages.base import PipelineContext, Stage, StageResult, register_stage
+from fmu.stages.base import (
+    DisplayLayer,
+    PipelineContext,
+    Stage,
+    StageResult,
+    register_stage,
+)
 from fmu.utils.gee import safe_call, safe_get_info
 from fmu.utils.logging import get_logger
 
@@ -49,6 +55,46 @@ class FeaturesOpticalStage(Stage):
     required_inputs = {"s2_collection", "roi"}
     produces = {"optical_features"}
     cacheable_outputs = {"optical_features"}
+
+    # Transparency: one band, the one segmentation and the merge read by
+    # default, not all seven. A declaration is static and the band name is
+    # not: it carries the index prefix. `ndvi` is the default and the name
+    # declared; under `index: nirv` the band is `nirv_amplitude_annual` and
+    # this layer names a band the run does not have. tests/
+    # test_transparency_contract.py lists the one config under configs/ on
+    # NIRv and fails for any other.
+    #
+    # Stretch 0 to 0.4. Zero is exact: the amplitude is sqrt(b^2 + c^2). The
+    # upper end is a starting value: the stand means of the 14 runs of 13 Oct
+    # 2026 lie between 0.01 and 0.26 (the colour scales of the early ui_data
+    # build of that day, scripts/build_ui_early_data.py), and pixels reach
+    # further than the means of their stands. The palette is the one that
+    # build drew this band in.
+    display_layers = (
+        DisplayLayer(
+            key="optical_features",
+            band="ndvi_amplitude_annual",
+            title="Seasonal swing in greenness (NDVI annual amplitude)",
+            description=(
+                "How far greenness rises and falls over a year: the amplitude "
+                "of the annual cycle fitted to every cloud-free Sentinel-2 "
+                "NDVI observation in the phenology window. It has no unit. "
+                "Low values are vegetation that stays the same all year "
+                "(evergreen cover, or bare ground); high values are vegetation "
+                "that greens up and dries out (deciduous trees, grass, crops). "
+                "It is one of the bands the superpixels are drawn on by "
+                "default and one of the two the merge compares by default; a "
+                "config can name other merge criteria. The band name "
+                "is that of the default NDVI index; a config on the NIRv index "
+                "writes nirv_amplitude_annual in its place."
+            ),
+            vis={
+                "min": 0,
+                "max": 0.4,
+                "palette": ["fff7ec", "fdd49e", "fc8d59", "d7301f", "7f0000"],
+            },
+        ),
+    )
 
     @safe_call("computing optical phenology features")
     def run(self, ctx: PipelineContext, config: Config) -> StageResult:

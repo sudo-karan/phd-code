@@ -395,6 +395,48 @@ tolerance to hit a pass rate or an R²; do not put an Odisha-derived constant in
 
 ## Reproducing
 
+Run every command from inside `odisha_script/`: the scripts read and write their files by
+bare name.
+
+Steps 0 to 6, in this order:
+
+```bash
+cd odisha_script
+python odisha_phase1_0_clean.py            # fully offline; the raw records to one row per plot
+python odisha_phase1_1_sample_gee.py       # needs GEE; getInfo only, no exports
+python odisha_phase1_2_analyse.py          # fully offline; tests 1, 2 and 3
+python odisha_phase1_3_sample_gee_v2.py    # needs GEE; getInfo only, no exports
+python odisha_phase1_4_analyse_v2.py       # fully offline; tests 4, 5 and 6
+python odisha_phase1_5_meta_rerun.py       # needs GEE; getInfo only, no exports; rewrites the v2 CSV
+python odisha_phase1_6_closeout.py         # fully offline; reads the v2 CSV as step 5 left it
+```
+
+| step | Earth Engine | reads | writes |
+|---|---|---|---|
+| 0 | no | `Odisha_samples.csv`, `Odisha_sites.csv` | `odisha_plots_clean.csv` |
+| 1 | **yes** | `odisha_plots_clean.csv` | `odisha_plots_sampled.csv` |
+| 2 | no | `odisha_plots_sampled.csv` | `odisha_phase1_results.txt`, `odisha_phase1_figs.png` |
+| 3 | **yes** | `odisha_plots_sampled.csv` | `odisha_plots_sampled_v2.csv` |
+| 4 | no | `odisha_plots_sampled_v2.csv` | `odisha_phase1_tests456_results.txt`, `odisha_phase1_tests456_figs.png` |
+| 5 | **yes** | `odisha_plots_sampled_v2.csv` | the same file, with four `meta_*` columns added |
+| 6 | no | `odisha_plots_sampled_v2.csv`, after step 5 | `odisha_phase1_closeout.txt` |
+
+Steps 1, 3 and 5 overwrite committed files that later steps read (`odisha_plots_sampled.csv`
+and `odisha_plots_sampled_v2.csv`). To check them, run in a copy of the folder and compare; do
+not replace a committed file silently. Two things about a re-run of step 3 are known in
+advance:
+
+- The GEDI code of step 3 was corrected after the committed `odisha_plots_sampled_v2.csv` was
+  written (the step 3 row under "What changed this session"), so a re-run is expected to write
+  different `gedi_*` columns. The committed file keeps the old ones on purpose: steps 4, 6 and
+  7 read it, and step 9 writes the corrected columns to `odisha_plots_sampled_v3.csv` instead.
+- Step 3 starts again from `odisha_plots_sampled.csv`, so the four `meta_*` columns of step 5
+  are missing until step 5 has run again.
+
+What each of these files gave on a re-run is in `docs/reproducibility.md`, "Phase 1".
+
+Steps 7 to 11:
+
 ```bash
 cd odisha_script
 python odisha_phase1_7_meta_zero_diagnosis.py   # part A offline; part B needs GEE (has run)
@@ -404,7 +446,7 @@ python odisha_phase1_10_meta_offset_check.py    # needs GEE; 4 getInfo calls, no
 python odisha_phase1_11_survey_date_check.py    # fully offline; reads the raw Odisha_samples.csv
 ```
 
-Each writes `odisha_phase1_<n>_results.txt` beside itself; step 8 also writes
+Each of these five writes `odisha_phase1_<n>_results.txt` beside itself; step 8 also writes
 `odisha_phase1_8_separation_null.png`. Step 10 imports `pick_plots` from step 7 rather than
 reimplementing the selection, so the two cannot drift apart.
 

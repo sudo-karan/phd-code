@@ -1,0 +1,66 @@
+plots: 274 (coordinates parsed from plot_key)
+habitations with >= 5 plots: 21, holding 261 plots
+
+==========================================================================================
+BOXES: per habitation, the plots' north-up box widened by 300 m; boxes that meet are merged
+==========================================================================================
+  district   boxes   box_ha  hull_ha square_ha plots       bbox km  bbox px (M)
+  ANGUL          4    602.5    439.3     923.2    39    8.9 x 10.3          0.9   valid=True
+  DHENKANAL      8   1372.6    995.4    1900.4    75   35.2 x 27.0          9.5   valid=True
+  KENDUJHAR      1   1330.4    404.7    2629.7     8     2.7 x 5.1          0.1   valid=True
+  KORAPUT        7   4942.5   2459.2   17544.6   145   17.9 x 13.5          2.4   valid=True
+  total              8248.0   4298.6   22997.8   267
+
+  box_ha: the AOIs written here. hull_ha: the Phase 2 AOIs they replace. square_ha: what
+  exact squares (side = the box's longer edge) would cover; reported only, not used.
+
+==========================================================================================
+THE BOXES, ONE LINE EACH (width x height on the ground)
+==========================================================================================
+  ANGUL      KANSAB                               1305 x 1214   m    154.1 ha   10 plots
+  ANGUL      GHANAJODI                            2324 x 1199   m    269.2 ha   10 plots
+  ANGUL      JOGI BANDHA                           898 x 983    m     85.8 ha   10 plots
+  ANGUL      ANANDA PUR                           1077 x 893    m     93.4 ha    9 plots
+  DHENKANAL  TULASIPASI                           2240 x 1564   m    344.2 ha    7 plots
+  DHENKANAL  KANKANA                               820 x 1115   m     89.9 ha    8 plots
+  DHENKANAL  BALIKUMA                             1643 x 1180   m    190.4 ha   11 plots
+  DHENKANAL  NUA SAHI                             1451 x 1880   m    268.3 ha    9 plots
+  DHENKANAL  ADHAPALLI                            1420 x 1110   m    154.7 ha   11 plots
+  DHENKANAL  BURUGI BHUIN                         1130 x 894    m     99.0 ha    9 plots
+  DHENKANAL  BALI SAHI                             800 x 1094   m     85.9 ha   10 plots
+  DHENKANAL  RAIJHARANA                           1009 x 1420   m    140.2 ha   10 plots
+  KENDUJHAR  BHANRADI SAHI                        2660 x 5128   m   1330.4 ha    8 plots
+  KORAPUT    HANDAPUR                             1312 x 1028   m    132.2 ha   20 plots
+  KORAPUT    BILAPUT, HATIMUNDA                   2579 x 2620   m    662.3 ha   59 plots
+  KORAPUT    BARIGUDA                             1045 x 942    m     96.5 ha   10 plots
+  KORAPUT    KONDASRIMUNDA                         711 x 709    m     49.4 ha    5 plots
+  KORAPUT    KHASUGUDA                            4901 x 2857   m   1365.6 ha   11 plots
+  KORAPUT    SAKIAGUDA                             813 x 715    m     57.0 ha    9 plots
+  KORAPUT    BARAKANTI                           11857 x 2307   m   2579.6 ha   31 plots
+
+==========================================================================================
+PLOTS
+==========================================================================================
+  plots inside a box: 267 of 274
+    from a habitation with >= 5 plots: 261
+    from a habitation with fewer plots, inside a box all the same: 6
+      18.653207_82.811814  KORAPUT/KHARAGUDA
+      18.653365_82.811206  KORAPUT/KHARAGUDA
+      21.043929_85.684979  DHENKANAL/HADI SAHI
+      21.074972_85.389524  DHENKANAL/MAHABIR ROAD
+      21.075714_85.392354  DHENKANAL/KANKADAHAD
+      21.574844_85.390232  KENDUJHAR/JAKARBANDHA SAHI
+  plots outside every box: 7
+      18.55814_82.928984  KORAPUT/CHAMPAKENDA
+      20.621695_85.564537  DHENKANAL/MANGALPUR
+      20.767532_84.743722  ANGUL/KANTAPADA
+      21.6178_85.381345  KENDUJHAR/TUNKULSAHI
+      21.618997_85.379154  KENDUJHAR/TUNKULSAHI
+      21.621938_85.383944  KENDUJHAR/TUNKULSAHI
+      21.62195_85.383933  KENDUJHAR/TUNKULSAHI
+  plots inside two districts' boxes: 0
+
+==========================================================================================
+EXIT CONDITION
+==========================================================================================
+  boxes: PASS

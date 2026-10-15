@@ -19,7 +19,8 @@ from typing import Any, ClassVar
 # stage, what it has to show for itself:
 #
 #   display_layers   images worth looking at, each with the context key and band
-#                    it lives on, how to draw it, and a legend
+#                    (or three bands, for a colour composite) it lives on, how
+#                    to draw it, and a legend
 #   summary_numbers  the few numbers that say what the stage did (what went in,
 #                    what came out, what changed), computed by `summarise()`
 #
@@ -43,6 +44,9 @@ _LEGEND_GAP_COLOR = "000000"
 # legend value to the highest. Beyond this span that stops being a legend; remap
 # the band to compact codes first.
 _MAX_LEGEND_SPAN = 255
+
+# A colour composite is three bands, drawn as red, green and blue in that order.
+_COMPOSITE_BANDS = 3
 
 
 @dataclass(frozen=True)
@@ -74,6 +78,23 @@ class DisplayLayer:
     and its drawing parameters follow from it; a continuous layer carries `vis`
     (min / max / palette) instead. One or the other, not both.
 
+    A layer shown as a colour composite (true colour, three bands of an
+    embedding) also names its three bands in `bands`, in red, green, blue order.
+    `band` is then the first of them, so a reader that only knows single-band
+    layers still finds a band that exists. A composite is continuous: it
+    carries `vis` (min / max) and neither a legend nor a palette, since a
+    palette colours one band. The three are distinct, non-empty band names.
+
+    The bands a layer is drawn from are stated in `band` and `bands` and nowhere
+    else: `vis` may not carry a "bands" key of its own, which would be drawn in
+    place of the declared ones while the record still named them.
+
+    `vis` is handed to Earth Engine as it stands, with one exception a reader
+    has to know: `{"style": "outline"}` marks a label image (superpixels) whose
+    values mean nothing as colours. It is drawn as the boundaries between
+    labels, in the palette's one colour, and that drawing is the reader's job;
+    Earth Engine has no such parameter.
+
     `description` says what the layer shows. `legend_note` is for what a reader
     must be told in order not to misread it, and belongs wherever the legend is
     drawn, not only in a tooltip.
@@ -86,11 +107,61 @@ class DisplayLayer:
     legend: tuple[LegendEntry, ...] = ()
     legend_note: str = ""
     vis: Mapping[str, Any] = field(default_factory=dict)
+    bands: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
-        # Frozen, so a list passed for `legend` is normalised this way.
-        object.__setattr__(self, "legend", tuple(self.legend))
         where = f"DisplayLayer {self.key}.{self.band}"
+        # A string is a sequence too: tuple("abc") would pass for three bands.
+        if isinstance(self.bands, str):
+            raise ValueError(
+                f"{where}: bands must be a tuple of {_COMPOSITE_BANDS} band "
+                f"names, got the single string {self.bands!r}."
+            )
+        # Frozen, so a list passed for `legend` or `bands` is normalised this way.
+        object.__setattr__(self, "legend", tuple(self.legend))
+        object.__setattr__(self, "bands", tuple(self.bands))
+        if "bands" in self.vis:
+            raise ValueError(
+                f"{where}: vis cannot carry 'bands'. The layer is drawn from "
+                f"its band (or, for a colour composite, its bands); name them "
+                f"there."
+            )
+        if self.bands:
+            if len(self.bands) != _COMPOSITE_BANDS:
+                raise ValueError(
+                    f"{where}: bands must name exactly {_COMPOSITE_BANDS} bands "
+                    f"(red, green, blue) or be left empty, got {list(self.bands)}."
+                )
+            if not all(isinstance(b, str) and b for b in self.bands):
+                raise ValueError(
+                    f"{where}: every one of bands must be a non-empty band "
+                    f"name, got {list(self.bands)}."
+                )
+            if len(set(self.bands)) != _COMPOSITE_BANDS:
+                raise ValueError(
+                    f"{where}: bands must be three different bands, got "
+                    f"{list(self.bands)}."
+                )
+            if self.bands[0] != self.band:
+                raise ValueError(
+                    f"{where}: band must be the first of bands, got band "
+                    f"{self.band!r} and bands {list(self.bands)}."
+                )
+            if self.legend:
+                raise ValueError(
+                    f"{where}: a colour composite cannot carry a legend. Give "
+                    f"vis parameters (min / max) instead."
+                )
+            if "palette" in self.vis:
+                raise ValueError(
+                    f"{where}: a colour composite cannot carry a palette, which "
+                    f"colours a single band. Give min / max only."
+                )
+            if "style" in self.vis:
+                raise ValueError(
+                    f"{where}: a colour composite cannot carry a style. "
+                    f"'style' marks a single-band label image drawn as outlines."
+                )
         if not self.legend and not self.vis:
             raise ValueError(
                 f"{where}: has neither a legend nor vis parameters, so nothing "
@@ -116,10 +187,11 @@ class DisplayLayer:
 
         For a categorical layer the palette is laid out over the full value
         range, with gaps (values no legend entry names) drawn black, so a value
-        always gets the colour its legend entry states.
+        always gets the colour its legend entry states. A colour composite
+        names its three bands; every other layer names its one.
         """
         if not self.legend:
-            return {"bands": [self.band], **self.vis}
+            return {"bands": list(self.bands) or [self.band], **self.vis}
         by_value = {e.value: e.color for e in self.legend}
         lo, hi = min(by_value), max(by_value)
         # A single class would give min == max, which Earth Engine cannot
@@ -133,7 +205,7 @@ class DisplayLayer:
         }
 
     def to_manifest(self) -> dict[str, Any]:
-        return {
+        entry: dict[str, Any] = {
             "key": self.key,
             "band": self.band,
             "title": self.title,
@@ -145,6 +217,11 @@ class DisplayLayer:
             ],
             "legend_note": self.legend_note,
         }
+        # Only a composite gets the key, so the record of a single-band layer
+        # is what it was before composites existed.
+        if self.bands:
+            entry["bands"] = list(self.bands)
+        return entry
 
 
 @dataclass(frozen=True)

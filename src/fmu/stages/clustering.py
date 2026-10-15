@@ -51,6 +51,10 @@ Pipeline (server-side throughout):
          pixel and area-weighted every statistic computed from it: a 10 ha stand
          outweighed a 0.1 ha stand 100 to 1 in the skewness, the median/IQR and
          the fit. That is a property of stand size, not of what a stand is.
+       - With clustering.fit_excludes_stands_below_min_area on, the stands the
+         merge left below merge.min_area_ha are left out of these rows. Not of
+         the samples of steps 5 to 7, which still take a row from every unit.
+         Step 9 types them like every other unit, by the nearest fitted cluster.
        - ee.Clusterer.wekaKMeans(nClusters=k, seed=seed).
 
   9. Apply k-means to all habitat pixels, producing cluster_labels image (0..k-1).
@@ -69,11 +73,20 @@ from __future__ import annotations
 
 import json
 import math
+from typing import Any
 
 import ee
 
 from fmu.config import Config
-from fmu.stages.base import PipelineContext, Stage, StageResult, register_stage
+from fmu.stages.base import (
+    DisplayLayer,
+    LegendEntry,
+    PipelineContext,
+    Stage,
+    StageResult,
+    SummaryNumber,
+    register_stage,
+)
 from fmu.utils.components import assert_components_fit
 from fmu.utils.gee import LABEL_BAND, safe_call, safe_get_info
 from fmu.utils.logging import get_logger
@@ -113,6 +126,125 @@ _HANDCRAFTED_INPUTS: frozenset[str] = frozenset(
     {"optical_features", "radar_features", "structure_features", "static_features"}
 )
 _EMBEDDING_INPUTS: frozenset[str] = frozenset({"embedding_features"})
+# The merge outputs that say which stands are below merge.min_area_ha and how
+# big they are. Read only with clustering.fit_excludes_stands_below_min_area.
+_BELOW_MIN_AREA_INPUTS: frozenset[str] = frozenset(
+    {"stand_provenance", "stand_attributes"}
+)
+
+
+# ---------------------------------------------------------------------
+# Transparency: the stand types, and how many units the fit rested on
+# ---------------------------------------------------------------------
+
+# One colour per stand type, for types 0 to 9. A legend is static and k is a
+# config value, so the legend names more types than most runs have; a run uses
+# the first k. The first eight are the Okabe-Ito colour-blind-safe set, with its
+# black moved to the end as a grey: black is what a legend gap is drawn in. The
+# first six are in the order the early ui_data build of 13 Oct 2026
+# (scripts/build_ui_early_data.py) coloured stand types, so the page and the
+# manifest agree. The last two extend
+# the set and have not been checked for colour-blind safety; no config under
+# configs/ has k above 6.
+_STAND_TYPE_COLORS: tuple[str, ...] = (
+    "E69F00",
+    "56B4E9",
+    "009E73",
+    "F0E442",
+    "0072B2",
+    "D55E00",
+    "CC79A7",
+    "999999",
+    "882255",
+    "44AA99",
+)
+_STAND_TYPE_LEGEND = tuple(
+    LegendEntry(value, f"Stand type {value}", color)
+    for value, color in enumerate(_STAND_TYPE_COLORS)
+)
+_STAND_TYPE_NOTE = (
+    "A run uses the first k of these types, where k is clustering.k in its "
+    "config; the rest do not occur. Type numbers are fitted afresh in every "
+    "run and mean nothing across runs: type 2 of one run is not type 2 of "
+    "another, and the same colour in two runs is a coincidence. Pixels "
+    "outside the habitat mask are left blank, so a stand wholly outside it has "
+    "no type; nor has a stand with no data in one of the feature bands."
+)
+
+# Summary number -> the clustering_metadata key it is read from. The four
+# counts are the ones _train_and_apply_kmeans reports; see there for what each
+# means.
+_SUMMARY_FROM_METADATA: dict[str, str] = {
+    "k": "k",
+    "units_total": "n_units_total",
+    "units_in_habitat": "n_units_in_habitat",
+    "units_fitted": "n_training_units",
+    "units_dropped_missing_band": "n_units_dropped_null_band",
+}
+# The sixth, the stands left out of the fit (_leave_out_of_fit). Its key is
+# written only with clustering.fit_excludes_stands_below_min_area on, and then
+# always; with the setting off nothing is left out, so there its absence is a
+# zero, not a gap.
+_LEFT_OUT_OF_FIT_NUMBER = "units_left_out_of_fit"
+_LEFT_OUT_OF_FIT_KEY = "n_stands_left_out_of_fit"
+
+
+def read_clustering_metadata(cluster_labels: ee.Image) -> dict[str, Any]:
+    """The `clustering_metadata` property of a cluster_labels image, parsed.
+
+    One small request: it reads a string property, not pixels. The property is
+    set by `run()` and is kept by the cache export, so this works on the image
+    of a live run and on one read back from the cache alike.
+    """
+    raw = safe_get_info(
+        cluster_labels.get("clustering_metadata"),
+        context="clustering_metadata property (summary numbers)",
+    )
+    if not raw:
+        raise ValueError(
+            "cluster_labels has no 'clustering_metadata' property, so the "
+            "summary numbers cannot be read from it. The cached asset was made "
+            "by an older clustering stage."
+        )
+    metadata = json.loads(raw)
+    if not isinstance(metadata, dict):
+        raise ValueError(
+            f"clustering_metadata is not a JSON object: {type(metadata).__name__}."
+        )
+    return metadata
+
+
+def tabulate_clustering_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
+    """Clustering's summary numbers, picked out of `clustering_metadata`.
+
+    Raises if a count is absent, which it is on an asset made before the fit
+    reported its coverage: a missing count must not be read as zero. The one
+    exception is the count of stands left out of the fit, which is zero when
+    the metadata does not record clustering.fit_excludes_stands_below_min_area
+    as on: the setting off, or an asset made before it existed.
+    """
+    setting_on = bool(metadata.get("fit_excludes_stands_below_min_area"))
+    missing = sorted(
+        key
+        for key in (
+            *_SUMMARY_FROM_METADATA.values(),
+            *((_LEFT_OUT_OF_FIT_KEY,) if setting_on else ()),
+        )
+        if metadata.get(key) is None
+    )
+    if missing:
+        raise ValueError(
+            f"clustering_metadata lacks {missing}, so the summary numbers "
+            f"cannot be given. The cached asset was made by an older "
+            f"clustering stage."
+        )
+    numbers = {
+        name: int(metadata[key]) for name, key in _SUMMARY_FROM_METADATA.items()
+    }
+    numbers[_LEFT_OUT_OF_FIT_NUMBER] = (
+        int(metadata[_LEFT_OUT_OF_FIT_KEY]) if setting_on else 0
+    )
+    return numbers
 
 
 @register_stage("clustering")
@@ -122,6 +254,87 @@ class ClusteringStage(Stage):
     produces = {"cluster_labels", "feature_stack"}
     cacheable_outputs = {"cluster_labels", "feature_stack"}
 
+    display_layers = (
+        DisplayLayer(
+            key="cluster_labels",
+            band="cluster_id",
+            title="Stand types",
+            description=(
+                "Each stand, coloured by the type k-means gave it. The stands "
+                "are grouped by their mean features (the hand-crafted bands, "
+                "or the embedding) into k types, so stands of one colour are "
+                "similar in those features. A type is a group the data fell "
+                "into, not a forest class anyone named: what a type is has to "
+                "be read from its profile, and whether it matches the field "
+                "from the comparison with the field plots."
+            ),
+            legend=_STAND_TYPE_LEGEND,
+            legend_note=_STAND_TYPE_NOTE,
+        ),
+    )
+
+    # What the fit rested on, as counts. They are read from the
+    # clustering_metadata property the stage already attaches to
+    # cluster_labels, so they cost one small request and no reduction. A unit
+    # is a stand when merge ran and a superpixel when it did not.
+    #
+    # They count distinct labels on the analysis grid, as the fit saw them
+    # (_count_units), and that is not the number of polygons in the stand
+    # layer the same run exports: in the 14 re-runs of 13 Oct 2026 the
+    # exported layer has between 4 fewer and 20 more stands than units_total,
+    # and always more typed stands than units_in_habitat (sanjay_van_baseline_repro:
+    # 291 and 257 here, 295 stands and 269 typed in the file). Three causes
+    # are known (docs/demo/remerge/README.md): a stand in several pieces is
+    # several polygons; the export stage types a stand from the typed pixels
+    # its polygon touches, so a stand with no habitat pixel of its own can
+    # take a neighbour's type; and the merge is not cached, so the pass that
+    # fits the types and the pass that exports the stands each merge again,
+    # and where one of them computed a merge criterion live they did not get
+    # the same stands (102 here against 97 exported, odisha_alphaearth_angul_repro).
+    # The descriptions say the counts differ, because a reader shown these
+    # numbers beside the stand map would otherwise try to make them add up.
+    summary_numbers = (
+        SummaryNumber("k", "Number of stand types the run fitted", "count"),
+        SummaryNumber(
+            "units_total",
+            "Distinct unit labels in the ROI on the analysis grid, as the fit "
+            "saw them. A unit is a stand, or a superpixel in a run without "
+            "merge. This is not the number of polygons in the exported stand "
+            "layer, which can differ from it by a few",
+            "count",
+        ),
+        SummaryNumber(
+            "units_in_habitat",
+            "Distinct unit labels with at least one pixel inside the habitat "
+            "mask on the analysis grid; the fit takes no row from the rest. "
+            "The exported stand layer can hold more stands with a type than "
+            "this count",
+            "count",
+        ),
+        SummaryNumber(
+            "units_fitted",
+            "Units the k-means fit was trained on, one row each",
+            "count",
+        ),
+        SummaryNumber(
+            "units_dropped_missing_band",
+            "Units inside the habitat mask that the fit left out because a "
+            "feature band has no data over them. They have no type on the "
+            "map: holes, not mistyped stands",
+            "count",
+        ),
+        SummaryNumber(
+            _LEFT_OUT_OF_FIT_NUMBER,
+            "Stands below merge.min_area_ha that the fit left out, with "
+            "clustering.fit_excludes_stands_below_min_area on; 0 with it off. "
+            "They are on the map, typed by the nearest fitted cluster. With "
+            "the setting on, units_in_habitat is units_fitted plus "
+            "units_dropped_missing_band plus these, and the stage's log warns "
+            "when its samples do not add up to that",
+            "count",
+        ),
+    )
+
     def validate(self, ctx: PipelineContext, config: Config) -> None:
         """Require the context keys the configured feature source needs.
 
@@ -130,11 +343,15 @@ class ClusteringStage(Stage):
         single embedding image) are checked here so an embedding run isn't
         forced to produce the hand-crafted stack it never uses. The unit key
         (`stand_clusters` or `snic_clusters`) is checked here for the same
-        reason -- which one exists depends on whether merge ran.
+        reason -- which one exists depends on whether merge ran. So are the
+        merge's stand_provenance and stand_attributes, which only
+        clustering.fit_excludes_stands_below_min_area reads.
         """
         source = config.clustering.feature_source
         extra = _EMBEDDING_INPUTS if source == "embedding" else _HANDCRAFTED_INPUTS
         needed = _INVARIANT_INPUTS | extra | {config.unit_label_key()}
+        if config.clustering.fit_excludes_stands_below_min_area:
+            needed |= _BELOW_MIN_AREA_INPUTS
         missing = needed - ctx.keys()
         if missing:
             raise KeyError(
@@ -153,6 +370,17 @@ class ClusteringStage(Stage):
         habitat_mask: ee.Image = ctx.get("habitat_mask")
         params = config.clustering
         scale = config.export.analysis_scale_m
+        # With clustering.fit_excludes_stands_below_min_area on: the stands the
+        # merge left below merge.min_area_ha, by id, with their area. They are
+        # found by the merge's own flag, so the two stages cannot disagree on
+        # which they are. None with the setting off.
+        below_min = (
+            _stands_below_min_area(
+                ctx.get("stand_provenance"), ctx.get("stand_attributes")
+            )
+            if params.fit_excludes_stands_below_min_area
+            else None
+        )
 
         # 1. Build raw feature stack (hand-crafted multi-sensor stack, or a
         #    single pretrained embedding image — the rest of the stage is
@@ -301,6 +529,8 @@ class ClusteringStage(Stage):
         )
 
         # 8-9. Train k-means on every unit, then apply to all habitat pixels.
+        # With the setting on, the stands below the minimum are left out of the
+        # k-means rows only; steps 5 to 7 above took a row from every unit.
         cluster_labels, unit_coverage = _train_and_apply_kmeans(
             scaled_stack=scaled_stack,
             active_bands=active_bands,
@@ -311,6 +541,7 @@ class ClusteringStage(Stage):
             k=params.k,
             seed=params.seed,
             unit_key=unit_key,
+            below_min=below_min,
         )
 
         # 10. Attach preprocessing metadata
@@ -322,8 +553,17 @@ class ClusteringStage(Stage):
             # The full breakdown, not just the row count: a unit missing from
             # the fit had no say in the cluster definitions it is judged by, and
             # the two reasons for missing (non-habitat, no band data) mean
-            # different things. See _train_and_apply_kmeans.
+            # different things. See _train_and_apply_kmeans. With the setting
+            # on it also says what was left out of the fit.
             **unit_coverage,
+            # Only with the setting on, so that the metadata of every other run
+            # keeps exactly the keys it had: summarise() reads it from cached
+            # assets.
+            **(
+                {"fit_excludes_stands_below_min_area": True}
+                if below_min is not None
+                else {}
+            ),
             "training_unit_key": unit_key,
             "normalization_method": method,
             "skewness_threshold": params.skewness_threshold,
@@ -356,6 +596,12 @@ class ClusteringStage(Stage):
                 # stand; without merge it is a raw superpixel, and the two are
                 # not interchangeable when reading a silhouette or a profile.
                 "unit_key": unit_key,
+                # On every run, on or off, as segmentation records
+                # mask_before_snic: whether the stands below merge.min_area_ha
+                # were left out of the fit.
+                "fit_excludes_stands_below_min_area": (
+                    params.fit_excludes_stands_below_min_area
+                ),
                 # Recorded even when the check passes: the headroom is the early
                 # warning that a merge.max_area_ha change is about to start
                 # masking components rather than merely resizing them.
@@ -367,6 +613,17 @@ class ClusteringStage(Stage):
                 "widest_unit_extent_px": neighbourhood_widest_px,
             },
         )
+
+
+    def summarise(self, ctx: PipelineContext, config: Config) -> dict[str, Any]:
+        """Report the fit's unit counts from the image's own metadata.
+
+        Reads the property off `cluster_labels` in the context, so the numbers
+        describe the image the run actually carries: the one just computed, or
+        the cached one.
+        """
+        metadata = read_clustering_metadata(ctx.get("cluster_labels"))
+        return tabulate_clustering_metadata(metadata)
 
 
 # ---------------------------------------------------------------------
@@ -874,13 +1131,20 @@ def _train_and_apply_kmeans(
     k: int,
     seed: int,
     unit_key: str,
-) -> tuple[ee.Image, dict[str, int]]:
+    below_min: dict[int, float] | None = None,
+) -> tuple[ee.Image, dict[str, Any]]:
     """Train wekaKMeans on every unit, apply to the full habitat-masked stack.
 
     Returns the label image and the number of units actually fitted on, which
     goes into the manifest: k-means over 269 stands and k-means over 10,000
     pixels drawn from those stands are different fits, and the record has to say
     which one produced the labels.
+
+    `below_min` is None unless clustering.fit_excludes_stands_below_min_area is
+    on. Then it holds the stands the merge left below merge.min_area_ha, by id,
+    with their area in ha, and they are left out of the rows the fit is trained
+    on (_leave_out_of_fit). The clusterer is applied to the same image either
+    way, so they are typed like every other unit.
     """
     # Sample only within habitat. Non-habitat pixels are masked out.
     training_input = scaled_stack.updateMask(habitat_mask)
@@ -912,6 +1176,10 @@ def _train_and_apply_kmeans(
     #     forest character -- and since `cluster()` masks wherever an input band
     #     is masked, those units are missing from `cluster_labels` too. They
     #     become holes in the map, not mistyped stands.
+    #
+    # Both are counted against every row, before the stands below the minimum
+    # are left out (clustering.fit_excludes_stands_below_min_area), or those
+    # stands would be counted as missing band data.
     n_total = _count_units(unit_labels, roi, scale, context=f"{unit_key} in ROI")
     n_in_habitat = _count_units(
         unit_labels.updateMask(habitat_mask),
@@ -944,29 +1212,219 @@ def _train_and_apply_kmeans(
             len(active_bands),
         )
 
-    if n_units < k:
-        raise ValueError(
-            f"clustering: only {n_units} {unit_key} unit(s) available to fit "
-            f"k={k} clusters on. Either the merge collapsed the ROI too far "
+    # The rows the fit is trained on: every row, or, with the setting on, every
+    # row but those of the stands below the minimum.
+    def too_few(n: int, without: str = "") -> ValueError:
+        return ValueError(
+            f"clustering: only {n} {unit_key} unit(s) available to fit "
+            f"k={k} clusters on{without}. Either the merge collapsed the ROI too far "
             f"(check merge.criteria and the threshold_calibration in the merge "
             f"stage metadata) or the habitat mask leaves too little standing."
         )
+
+    # Too few rows before anything is left out: say so before asking Earth Engine for
+    # the two samples of _leave_out_of_fit, and do not blame the stands left out.
+    if n_units < k:
+        raise too_few(n_units)
+    fit_sample, n_fit = training_sample, n_units
+    fit_report: dict[str, Any] | None = None
+    if below_min is not None:
+        fit_sample, n_fit, fit_report = _leave_out_of_fit(
+            training_input=training_input,
+            training_sample=training_sample,
+            n_rows=n_units,
+            unit_labels=unit_labels,
+            roi=roi,
+            scale=scale,
+            seed=seed,
+            unit_key=unit_key,
+            below_min=below_min,
+        )
+        if n_fit < k:
+            raise too_few(
+                n_fit,
+                f" once the {fit_report['n_stands_left_out_of_fit']} stand(s) below "
+                f"merge.min_area_ha were left out",
+            )
 
     # wekaKMeans: init=1 is k-means++ (better init than random).
     clusterer = ee.Clusterer.wekaKMeans(
         nClusters=k,
         init=1,
         seed=seed,
-    ).train(features=training_sample, inputProperties=active_bands)
+    ).train(features=fit_sample, inputProperties=active_bands)
 
-    coverage = {
-        "n_training_units": n_units,
+    coverage: dict[str, Any] = {
+        "n_training_units": n_fit,
         "n_units_total": n_total,
         "n_units_in_habitat": n_in_habitat,
         "n_units_outside_habitat": n_non_habitat,
         "n_units_dropped_null_band": n_null_dropped,
+        # Only with the setting on: what was left out of the fit.
+        **(fit_report or {}),
     }
+    # Applied to the image every row was sampled from, the stands left out of
+    # the fit included: each unit gets the type of the nearest fitted cluster.
     return training_input.cluster(clusterer).rename("cluster_id"), coverage
+
+
+def _stands_below_min_area(
+    provenance: dict[Any, dict[str, Any]], attributes: dict[Any, dict[str, Any]]
+) -> dict[int, float]:
+    """{stand id: area in ha} of every stand the merge left below merge.min_area_ha.
+
+    `provenance` and `attributes` are the merge stage's stand_provenance and
+    stand_attributes, under the same stand ids as the stand_clusters label
+    image. A stand is below the minimum where the merge says so (below_min is
+    1), whatever the cause it gives in below_why. Pure Python.
+    """
+    return {
+        int(sid): float(attributes[sid]["area_ha"])
+        for sid, record in provenance.items()
+        if record["below_min"]
+    }
+
+
+def _leave_out_of_fit(
+    *,
+    training_input: ee.Image,
+    training_sample: ee.FeatureCollection,
+    n_rows: int,
+    unit_labels: ee.Image,
+    roi: ee.Geometry,
+    scale: int,
+    seed: int,
+    unit_key: str,
+    below_min: dict[int, float],
+) -> tuple[ee.FeatureCollection, int, dict[str, Any]]:
+    """The k-means rows without the stands below the minimum, and what was left out.
+
+    Returns (rows, how many, report). `training_sample` is the sample of every
+    row, `n_rows` its size, and `below_min` the stands to leave out with their
+    area (_stands_below_min_area). The report gives how many stands the merge
+    left below the minimum and their area, and how many of them had a training
+    row, so were left out of the fit, and their area. The two can differ: a
+    stand outside the habitat mask, or with no data in an active band, had no
+    row to leave out.
+
+    Only the k-means rows. The skewness, log offsets and scaling are still taken
+    over every unit. The log transform is log(x - min + 0.001), with min the
+    minimum of its sample, so a stand left out of that sample with a value more
+    than 0.001 below that minimum would get the log of a negative number, which
+    is undefined, and not the type of the nearest fitted cluster.
+
+    The stands are left out with masks on the integer label image, as the merge
+    relabels with remap, not by filtering the sampled rows by label: whether
+    Earth Engine matches a list of integers against the sampled number is not
+    established, and a mismatch would silently leave every such stand in the
+    fit. The rows are sampled from the training image masked to the other
+    units, and the stands left out are read from a sample of it masked to them
+    alone. With no stand below the minimum the fit takes every row, and nothing
+    more is asked of Earth Engine.
+
+    tests/test_clustering_fit_excludes_ee_graph.py checks offline that the
+    requests are valid. On Earth Engine, read-only, the masked samples took the
+    units intended on Kendujhar's box run (15 Oct 2026,
+    docs/reproducibility/fit_excludes_stands_kendujhar.json); in any run, the
+    warnings below check that they add up.
+    """
+    ids = sorted(below_min)
+    report: dict[str, Any] = {
+        "n_stands_below_min_area": len(ids),
+        "area_ha_in_stands_below_min_area": round(float(sum(below_min.values())), 4),
+        "n_stands_left_out_of_fit": 0,
+        "area_ha_in_stands_left_out_of_fit": 0.0,
+    }
+    if not ids:
+        log.info("  k-means fit: no stand below merge.min_area_ha to leave out")
+        return training_sample, n_rows, report
+
+    # 1 on every other unit and 0 on the stands below the minimum, then the
+    # reverse. A pixel where a mask is 0 is masked, and the sample skips a pixel
+    # with a masked band (dropNulls), so it gives no row. That is what the Earth
+    # Engine reference says of updateMask and dropNulls, and what the read-only
+    # check of 15 Oct 2026 saw for these samples (see the docstring).
+    others = unit_labels.remap(ids, [0] * len(ids), 1)
+    themselves = unit_labels.remap(ids, [1] * len(ids), 0)
+    fit_sample = _sample_one_point_per_unit(
+        training_input.updateMask(others),
+        unit_labels,
+        roi,
+        scale,
+        seed=seed,
+        context=(
+            f"k-means training rows per {unit_key}, without the stands below the "
+            f"minimum"
+        ),
+    )
+    n_fit = int(
+        safe_get_info(
+            fit_sample.size(),
+            context="k-means training row count without the stands below the minimum",
+        )
+    )
+    their_rows = _sample_one_point_per_unit(
+        training_input.updateMask(themselves),
+        unit_labels,
+        roi,
+        scale,
+        seed=seed,
+        context="training rows of the stands below the minimum",
+    )
+    labels = (
+        safe_get_info(
+            their_rows.aggregate_array(LABEL_BAND),
+            context="stands below the minimum with a training row",
+        )
+        or []
+    )
+    found = {int(v) for v in labels}
+    left_out = sorted(found & set(ids))
+    strays = sorted(found - set(ids))
+    if not left_out:
+        log.warning(
+            "  k-means fit: none of the %d stand(s) below merge.min_area_ha had a "
+            "training row, so none was left out of the fit. Either every one of "
+            "them lies outside the habitat mask or lacks data in a band, or the "
+            "mask on the stand labels did not match them.",
+            len(ids),
+        )
+    if strays:
+        log.warning(
+            "  k-means fit: the sample of the %d stand(s) below merge.min_area_ha "
+            "holds rows of %d other unit(s) (%s), which the mask should have "
+            "removed. They are not counted as left out.",
+            len(ids),
+            len(strays),
+            ", ".join(str(s) for s in strays[:10]),
+        )
+    if n_fit + len(labels) != n_rows:
+        log.warning(
+            "  k-means fit: %d row(s) without the stands below merge.min_area_ha "
+            "and %d of them do not add up to the %d row(s) of every %s. The "
+            "masked samples did not take the same units as the full one; the fit "
+            "is trained on the %d.",
+            n_fit,
+            len(labels),
+            n_rows,
+            unit_key,
+            n_fit,
+        )
+
+    report["n_stands_left_out_of_fit"] = len(left_out)
+    report["area_ha_in_stands_left_out_of_fit"] = round(
+        float(sum(below_min[s] for s in left_out)), 4
+    )
+    log.info(
+        "  k-means fit: %d row(s); %d of the %d stand(s) below merge.min_area_ha "
+        "(%.2f of %.2f ha) left out of it, to be typed by the fitted clusters",
+        n_fit,
+        report["n_stands_left_out_of_fit"],
+        report["n_stands_below_min_area"],
+        report["area_ha_in_stands_left_out_of_fit"],
+        report["area_ha_in_stands_below_min_area"],
+    )
+    return fit_sample, n_fit, report
 
 
 def _count_units(

@@ -97,9 +97,11 @@ ignore = ["E501"]  # line length handled by formatter
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 # Default: skip live GEE tests. Run them explicitly with `pytest -m live_gee`.
-addopts = "-v --tb=short -m 'not live_gee'"
+# Also skipped by default: offline tests that take minutes. Run them with `pytest -m slow`.
+addopts = "-v --tb=short -m 'not live_gee and not slow'"
 markers = [
     "live_gee: tests that make real Earth Engine API calls (slow; require auth)",
+    "slow: offline tests that take minutes (no Earth Engine); run with `pytest -m slow`",
 ]
 
 [tool.mypy]

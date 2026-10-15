@@ -319,6 +319,9 @@ the new config's outputs cache to their own asset folder.
 ```bash
 pytest                  # fast tier, no GEE auth, runs in CI
 pytest -m live_gee      # live tier, needs earthengine authenticate
+pytest -m slow          # offline, minutes, not run in CI: the FES wrapper against the plain
+                        # chance test on the committed stands. Run it after any change to
+                        # odisha_phase3_3_significance.py or odisha_phase3_demo_*.py
 ```
 
 - **Fast tier**: pure-Python infrastructure. Config, settings, pipeline

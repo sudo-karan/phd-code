@@ -1,0 +1,1898 @@
+<title>Forest Stand Explorer</title>
+<meta name="description" content="How satellite data becomes forest stands, one step at a time, at Sanjay Van and in four Odisha districts, and whether the stands match the FES field plots.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* A walkthrough panel beside a map. The panel tells the story of one step at a time and sets the
+   map for it; the map carries the colour. */
+:root {
+  --bg: #edf0ea;
+  --surface: #f8f9f6;
+  --ink: #17201b;
+  --muted: #56625b;
+  --line: #d2d8d0;
+  --accent: #1c6b56;
+  --accent-ink: #ffffff;
+  --accent-soft: #d7ebe3;
+  --map-bg: #dde3da;
+  --good: #2d7a34;
+  --good-soft: #dcefdc;
+  --bad: #b3261e;
+  --bad-soft: #f8dcd9;
+  --warn: #9a5b00;
+  --warn-soft: #f6e6c9;
+  --neutral-soft: #e4e8e2;
+  --shadow: 0 1px 2px rgba(23, 32, 27, .08), 0 6px 18px rgba(23, 32, 27, .08);
+  --stand-line: #ff4fa3;
+  --font-ui: "IBM Plex Sans", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-label: "IBM Plex Sans Condensed", "Arial Narrow", "IBM Plex Sans", sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111613;
+    --surface: #182019;
+    --ink: #e3eae5;
+    --muted: #98a59d;
+    --line: #2a352e;
+    --accent: #5ec6a4;
+    --accent-ink: #0b1310;
+    --accent-soft: #1d3a31;
+    --map-bg: #0d1210;
+    --good: #85c98a;
+    --good-soft: #1f3522;
+    --bad: #f2a29b;
+    --bad-soft: #3d1f1c;
+    --warn: #e2a84d;
+    --warn-soft: #3a2c14;
+    --neutral-soft: #222b25;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 18px rgba(0, 0, 0, .35);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111613;
+  --surface: #182019;
+  --ink: #e3eae5;
+  --muted: #98a59d;
+  --line: #2a352e;
+  --accent: #5ec6a4;
+  --accent-ink: #0b1310;
+  --accent-soft: #1d3a31;
+  --map-bg: #0d1210;
+  --good: #85c98a;
+  --good-soft: #1f3522;
+  --bad: #f2a29b;
+  --bad-soft: #3d1f1c;
+  --warn: #e2a84d;
+  --warn-soft: #3a2c14;
+  --neutral-soft: #222b25;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 18px rgba(0, 0, 0, .35);
+  color-scheme: dark;
+}
+
+.leaflet-pane, .leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow, .leaflet-tile-container, .leaflet-pane > svg, .leaflet-pane > canvas, .leaflet-zoom-box, .leaflet-image-layer, .leaflet-layer{ position:absolute;left:0;top:0;}.leaflet-container{ overflow:hidden;}.leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow{ -webkit-user-select:none;-moz-user-select:none;user-select:none;-webkit-user-drag:none;}.leaflet-tile::selection{ background:transparent;}.leaflet-safari .leaflet-tile{ image-rendering:-webkit-optimize-contrast;}.leaflet-safari .leaflet-tile-container{ width:1600px;height:1600px;-webkit-transform-origin:0 0;}.leaflet-marker-icon, .leaflet-marker-shadow{ display:block;}.leaflet-container .leaflet-overlay-pane svg{ max-width:none !important;max-height:none !important;}.leaflet-container .leaflet-marker-pane img, .leaflet-container .leaflet-shadow-pane img, .leaflet-container .leaflet-tile-pane img, .leaflet-container img.leaflet-image-layer, .leaflet-container .leaflet-tile{ max-width:none !important;max-height:none !important;width:auto;padding:0;}.leaflet-container img.leaflet-tile{ mix-blend-mode:plus-lighter;}.leaflet-container.leaflet-touch-zoom{ -ms-touch-action:pan-x pan-y;touch-action:pan-x pan-y;}.leaflet-container.leaflet-touch-drag{ -ms-touch-action:pinch-zoom;touch-action:none;touch-action:pinch-zoom;}.leaflet-container.leaflet-touch-drag.leaflet-touch-zoom{ -ms-touch-action:none;touch-action:none;}.leaflet-container{ -webkit-tap-highlight-color:transparent;}.leaflet-container a{ -webkit-tap-highlight-color:rgba(51, 181, 229, 0.4);}.leaflet-tile{ filter:inherit;visibility:hidden;}.leaflet-tile-loaded{ visibility:inherit;}.leaflet-zoom-box{ width:0;height:0;-moz-box-sizing:border-box;box-sizing:border-box;z-index:800;}.leaflet-overlay-pane svg{ -moz-user-select:none;}.leaflet-pane{ z-index:400;}.leaflet-tile-pane{ z-index:200;}.leaflet-overlay-pane{ z-index:400;}.leaflet-shadow-pane{ z-index:500;}.leaflet-marker-pane{ z-index:600;}.leaflet-tooltip-pane{ z-index:650;}.leaflet-popup-pane{ z-index:700;}.leaflet-map-pane canvas{ z-index:100;}.leaflet-map-pane svg{ z-index:200;}.leaflet-vml-shape{ width:1px;height:1px;}.leaflet-control{ position:relative;z-index:800;pointer-events:visiblePainted;pointer-events:auto;}.leaflet-top, .leaflet-bottom{ position:absolute;z-index:1000;pointer-events:none;}.leaflet-top{ top:0;}.leaflet-right{ right:0;}.leaflet-bottom{ bottom:0;}.leaflet-left{ left:0;}.leaflet-control{ float:left;clear:both;}.leaflet-right .leaflet-control{ float:right;}.leaflet-top .leaflet-control{ margin-top:10px;}.leaflet-bottom .leaflet-control{ margin-bottom:10px;}.leaflet-left .leaflet-control{ margin-left:10px;}.leaflet-right .leaflet-control{ margin-right:10px;}.leaflet-fade-anim .leaflet-popup{ opacity:0;-webkit-transition:opacity 0.2s linear;-moz-transition:opacity 0.2s linear;transition:opacity 0.2s linear;}.leaflet-fade-anim .leaflet-map-pane .leaflet-popup{ opacity:1;}.leaflet-zoom-animated{ -webkit-transform-origin:0 0;-ms-transform-origin:0 0;transform-origin:0 0;}svg.leaflet-zoom-animated{ will-change:transform;}.leaflet-zoom-anim .leaflet-zoom-animated{ -webkit-transition:-webkit-transform 0.25s cubic-bezier(0,0,0.25,1);-moz-transition:-moz-transform 0.25s cubic-bezier(0,0,0.25,1);transition:transform 0.25s cubic-bezier(0,0,0.25,1);}.leaflet-zoom-anim .leaflet-tile, .leaflet-pan-anim .leaflet-tile{ -webkit-transition:none;-moz-transition:none;transition:none;}.leaflet-zoom-anim .leaflet-zoom-hide{ visibility:hidden;}.leaflet-interactive{ cursor:pointer;}.leaflet-grab{ cursor:-webkit-grab;cursor:-moz-grab;cursor:grab;}.leaflet-crosshair, .leaflet-crosshair .leaflet-interactive{ cursor:crosshair;}.leaflet-popup-pane, .leaflet-control{ cursor:auto;}.leaflet-dragging .leaflet-grab, .leaflet-dragging .leaflet-grab .leaflet-interactive, .leaflet-dragging .leaflet-marker-draggable{ cursor:move;cursor:-webkit-grabbing;cursor:-moz-grabbing;cursor:grabbing;}.leaflet-marker-icon, .leaflet-marker-shadow, .leaflet-image-layer, .leaflet-pane > svg path, .leaflet-tile-container{ pointer-events:none;}.leaflet-marker-icon.leaflet-interactive, .leaflet-image-layer.leaflet-interactive, .leaflet-pane > svg path.leaflet-interactive, svg.leaflet-image-layer.leaflet-interactive path{ pointer-events:visiblePainted;pointer-events:auto;}.leaflet-container{ background:#ddd;outline-offset:1px;}.leaflet-container a{ color:#0078A8;}.leaflet-zoom-box{ border:2px dotted #38f;background:rgba(255,255,255,0.5);}.leaflet-container{ font-family:"Helvetica Neue", Arial, Helvetica, sans-serif;font-size:12px;font-size:0.75rem;line-height:1.5;}.leaflet-bar{ box-shadow:0 1px 5px rgba(0,0,0,0.65);border-radius:4px;}.leaflet-bar a{ background-color:#fff;border-bottom:1px solid #ccc;width:26px;height:26px;line-height:26px;display:block;text-align:center;text-decoration:none;color:black;}.leaflet-bar a, .leaflet-control-layers-toggle{ background-position:50% 50%;background-repeat:no-repeat;display:block;}.leaflet-bar a:hover, .leaflet-bar a:focus{ background-color:#f4f4f4;}.leaflet-bar a:first-child{ border-top-left-radius:4px;border-top-right-radius:4px;}.leaflet-bar a:last-child{ border-bottom-left-radius:4px;border-bottom-right-radius:4px;border-bottom:none;}.leaflet-bar a.leaflet-disabled{ cursor:default;background-color:#f4f4f4;color:#bbb;}.leaflet-touch .leaflet-bar a{ width:30px;height:30px;line-height:30px;}.leaflet-touch .leaflet-bar a:first-child{ border-top-left-radius:2px;border-top-right-radius:2px;}.leaflet-touch .leaflet-bar a:last-child{ border-bottom-left-radius:2px;border-bottom-right-radius:2px;}.leaflet-control-zoom-in, .leaflet-control-zoom-out{ font:bold 18px 'Lucida Console', Monaco, monospace;text-indent:1px;}.leaflet-touch .leaflet-control-zoom-in, .leaflet-touch .leaflet-control-zoom-out{ font-size:22px;}.leaflet-control-layers{ box-shadow:0 1px 5px rgba(0,0,0,0.4);background:#fff;border-radius:5px;}.leaflet-touch .leaflet-control-layers-toggle{ width:44px;height:44px;}.leaflet-control-layers .leaflet-control-layers-list, .leaflet-control-layers-expanded .leaflet-control-layers-toggle{ display:none;}.leaflet-control-layers-expanded .leaflet-control-layers-list{ display:block;position:relative;}.leaflet-control-layers-expanded{ padding:6px 10px 6px 6px;color:#333;background:#fff;}.leaflet-control-layers-scrollbar{ overflow-y:scroll;overflow-x:hidden;padding-right:5px;}.leaflet-control-layers-selector{ margin-top:2px;position:relative;top:1px;}.leaflet-control-layers label{ display:block;font-size:13px;font-size:1.08333em;}.leaflet-control-layers-separator{ height:0;border-top:1px solid #ddd;margin:5px -10px 5px -6px;}.leaflet-container .leaflet-control-attribution{ background:#fff;background:rgba(255, 255, 255, 0.8);margin:0;}.leaflet-control-attribution, .leaflet-control-scale-line{ padding:0 5px;color:#333;line-height:1.4;}.leaflet-control-attribution a{ text-decoration:none;}.leaflet-control-attribution a:hover, .leaflet-control-attribution a:focus{ text-decoration:underline;}.leaflet-attribution-flag{ display:inline !important;vertical-align:baseline !important;width:1em;height:0.6669em;}.leaflet-left .leaflet-control-scale{ margin-left:5px;}.leaflet-bottom .leaflet-control-scale{ margin-bottom:5px;}.leaflet-control-scale-line{ border:2px solid #777;border-top:none;line-height:1.1;padding:2px 5px 1px;white-space:nowrap;-moz-box-sizing:border-box;box-sizing:border-box;background:rgba(255, 255, 255, 0.8);text-shadow:1px 1px #fff;}.leaflet-control-scale-line:not(:first-child){ border-top:2px solid #777;border-bottom:none;margin-top:-2px;}.leaflet-control-scale-line:not(:first-child):not(:last-child){ border-bottom:2px solid #777;}.leaflet-touch .leaflet-control-attribution, .leaflet-touch .leaflet-control-layers, .leaflet-touch .leaflet-bar{ box-shadow:none;}.leaflet-touch .leaflet-control-layers, .leaflet-touch .leaflet-bar{ border:2px solid rgba(0,0,0,0.2);background-clip:padding-box;}.leaflet-popup{ position:absolute;text-align:center;margin-bottom:20px;}.leaflet-popup-content-wrapper{ padding:1px;text-align:left;border-radius:12px;}.leaflet-popup-content{ margin:13px 24px 13px 20px;line-height:1.3;font-size:13px;font-size:1.08333em;min-height:1px;}.leaflet-popup-content p{ margin:17px 0;margin:1.3em 0;}.leaflet-popup-tip-container{ width:40px;height:20px;position:absolute;left:50%;margin-top:-1px;margin-left:-20px;overflow:hidden;pointer-events:none;}.leaflet-popup-tip{ width:17px;height:17px;padding:1px;margin:-10px auto 0;pointer-events:auto;-webkit-transform:rotate(45deg);-moz-transform:rotate(45deg);-ms-transform:rotate(45deg);transform:rotate(45deg);}.leaflet-popup-content-wrapper, .leaflet-popup-tip{ background:white;color:#333;box-shadow:0 3px 14px rgba(0,0,0,0.4);}.leaflet-container a.leaflet-popup-close-button{ position:absolute;top:0;right:0;border:none;text-align:center;width:24px;height:24px;font:16px/24px Tahoma, Verdana, sans-serif;color:#757575;text-decoration:none;background:transparent;}.leaflet-container a.leaflet-popup-close-button:hover, .leaflet-container a.leaflet-popup-close-button:focus{ color:#585858;}.leaflet-popup-scrolled{ overflow:auto;}.leaflet-oldie .leaflet-popup-content-wrapper{ -ms-zoom:1;}.leaflet-oldie .leaflet-popup-tip{ width:24px;margin:0 auto;-ms-filter:"progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)";filter:progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678);}.leaflet-oldie .leaflet-control-zoom, .leaflet-oldie .leaflet-control-layers, .leaflet-oldie .leaflet-popup-content-wrapper, .leaflet-oldie .leaflet-popup-tip{ border:1px solid #999;}.leaflet-div-icon{ background:#fff;border:1px solid #666;}.leaflet-tooltip{ position:absolute;padding:6px;background-color:#fff;border:1px solid #fff;border-radius:3px;color:#222;white-space:nowrap;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;pointer-events:none;box-shadow:0 1px 3px rgba(0,0,0,0.4);}.leaflet-tooltip.leaflet-interactive{ cursor:pointer;pointer-events:auto;}.leaflet-tooltip-top:before, .leaflet-tooltip-bottom:before, .leaflet-tooltip-left:before, .leaflet-tooltip-right:before{ position:absolute;pointer-events:none;border:6px solid transparent;background:transparent;content:"";}.leaflet-tooltip-bottom{ margin-top:6px;}.leaflet-tooltip-top{ margin-top:-6px;}.leaflet-tooltip-bottom:before, .leaflet-tooltip-top:before{ left:50%;margin-left:-6px;}.leaflet-tooltip-top:before{ bottom:0;margin-bottom:-12px;border-top-color:#fff;}.leaflet-tooltip-bottom:before{ top:0;margin-top:-12px;margin-left:-6px;border-bottom-color:#fff;}.leaflet-tooltip-left{ margin-left:-6px;}.leaflet-tooltip-right{ margin-left:6px;}.leaflet-tooltip-left:before, .leaflet-tooltip-right:before{ top:50%;margin-top:-6px;}.leaflet-tooltip-left:before{ right:0;margin-right:-12px;border-left-color:#fff;}.leaflet-tooltip-right:before{ left:0;margin-left:-12px;border-right-color:#fff;}.leaflet-control{ -webkit-print-color-adjust:exact;print-color-adjust:exact;}
+
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.5;
+}
+* { box-sizing: border-box; }
+button, select, input { font: inherit; color: inherit; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app {
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 10px;
+  padding-inline: 16px;
+  padding-block: 12px;
+}
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 10px 24px;
+}
+.brand { min-width: 0; max-width: 62ch; }
+.brand h1 {
+  margin: 0;
+  font-family: var(--font-label);
+  font-weight: 600;
+  font-size: 21px;
+  letter-spacing: .01em;
+  text-wrap: balance;
+}
+.brand p { margin: 2px 0 0; color: var(--muted); font-size: 13px; text-wrap: pretty; }
+.pickers { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: end; }
+.field { display: grid; gap: 3px; justify-items: start; }
+.field > span, .eyebrow {
+  font-family: var(--font-label);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+select {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 8px;
+  min-width: 11rem;
+  max-width: 100%;
+}
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 2px;
+  gap: 2px;
+}
+.seg button {
+  border: 0;
+  background: transparent;
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.seg button[aria-checked="true"] { background: var(--accent); color: var(--accent-ink); }
+.seg button:disabled { opacity: .4; cursor: not-allowed; }
+.banner {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--muted);
+  border-left: 3px solid var(--warn);
+  padding: 2px 0 2px 10px;
+  max-width: 120ch;
+}
+.banner button { border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; text-decoration: underline; font-size: 12.5px; }
+.banner .more { display: block; margin-top: 4px; }
+
+.main {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(320px, 460px) minmax(0, 1fr);
+  gap: 12px;
+}
+
+/* ---------- walkthrough panel ---------- */
+.panel {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.stepper {
+  flex: none;
+  display: flex;
+  gap: 4px;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.stepper button {
+  flex: 1 1 0;
+  min-width: 34px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  padding: 2px 2px 4px;
+  border-radius: 8px;
+  color: var(--muted);
+}
+.stepper button:hover { background: var(--bg); }
+.stepper .dot {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: var(--font-data);
+  font-size: 12px;
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+}
+.stepper .lbl { font-family: var(--font-label); font-size: 10.5px; line-height: 1.15; text-align: center; text-wrap: balance; hyphens: manual; }
+.stepper button[aria-current="step"] { color: var(--ink); }
+.stepper button[aria-current="step"] .dot { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.stepper button.done .dot { border-color: var(--accent); color: var(--accent); }
+
+.story { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 12px; }
+.story h2 { margin: 0; font-size: 18px; line-height: 1.25; font-weight: 600; text-wrap: balance; }
+.story .kicker { margin: 0 0 2px; }
+.story p { margin: 0; text-wrap: pretty; }
+.story p.small, .small { font-size: 12.5px; color: var(--muted); }
+.story .note { font-size: 12.5px; background: var(--warn-soft); border-radius: 8px; padding: 8px 10px; }
+.facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+.fact { background: var(--bg); border-radius: 8px; padding: 7px 9px; min-width: 0; }
+.fact b { display: block; font-family: var(--font-data); font-size: 17px; font-weight: 500; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.fact span { display: block; font-size: 11.5px; color: var(--muted); line-height: 1.3; }
+.bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: var(--neutral-soft); }
+.bar i { display: block; height: 100%; }
+.barkey { display: flex; flex-wrap: wrap; gap: 3px 12px; font-size: 12px; color: var(--muted); margin-top: 5px; }
+.barkey span { display: inline-flex; align-items: center; gap: 5px; }
+.barkey i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+.toggles { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--line); padding-top: 10px; }
+.toggles .cap { margin: 0; }
+.layer { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 8px; align-items: center; cursor: pointer; font-size: 13px; }
+.layer input { accent-color: var(--accent); margin: 0; width: 16px; height: 16px; }
+.layer .sw { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--line); }
+.opacity { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; align-items: center; padding-left: 46px; font-size: 11.5px; color: var(--muted); }
+.opacity input { width: 100%; accent-color: var(--accent); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button { border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 4px 11px; cursor: pointer; font-size: 12.5px; }
+.chips button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+.why { align-self: flex-start; border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 4px 11px 4px 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--muted); }
+.why b { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font-family: Georgia, "Times New Roman", serif; font-style: italic; font-size: 12px; }
+.why:hover { border-color: var(--accent); color: var(--ink); }
+
+.nav { flex: none; display: flex; gap: 8px; justify-content: space-between; padding: 10px 14px; border-top: 1px solid var(--line); background: var(--surface); }
+.nav button { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+.nav button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 500; }
+.nav button:disabled { opacity: .45; cursor: default; }
+
+details.all { flex: none; max-height: 40%; overflow-y: auto; border-top: 1px solid var(--line); padding: 8px 14px 10px; }
+details.all summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
+details.all .group { margin-top: 8px; display: flex; flex-direction: column; gap: 5px; }
+details.all .group h4 { margin: 4px 0 0; font-size: 11.5px; font-family: var(--font-label); letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+
+/* field check */
+.card { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.card h3 { margin: 0; font-size: 14px; }
+.verdict { display: flex; gap: 10px; align-items: flex-start; }
+.verdict .big { font-size: 15px; font-weight: 600; }
+.badge { display: inline-block; border-radius: 999px; padding: 1px 9px; font-size: 11.5px; font-weight: 500; white-space: nowrap; background: var(--neutral-soft); color: var(--muted); }
+.badge.good { background: var(--good-soft); color: var(--good); }
+.badge.bad { background: var(--bad-soft); color: var(--bad); }
+.badge.warn { background: var(--warn-soft); color: var(--warn); }
+ul.tests { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+ul.tests li { border-top: 1px solid var(--line); padding: 8px 0 6px; display: grid; gap: 4px; }
+ul.tests .t { font-size: 13px; }
+.meter { position: relative; height: 10px; border-radius: 5px; background: var(--neutral-soft); }
+.meter .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; background: var(--accent); opacity: .75; }
+.meter .mark { position: absolute; top: -3px; width: 2px; height: 16px; background: var(--ink); left: 95%; }
+.meterline { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); }
+.meterline b { color: var(--ink); font-weight: 500; }
+.nums { font-family: var(--font-data); font-size: 11.5px; color: var(--muted); }
+table.xtab { border-collapse: separate; border-spacing: 2px; font-size: 12px; width: 100%; }
+table.xtab th { font-weight: 500; color: var(--muted); font-family: var(--font-label); padding: 2px 4px; text-align: center; }
+table.xtab th.row { text-align: left; white-space: nowrap; }
+table.xtab td { text-align: center; font-family: var(--font-data); padding: 4px 2px; border-radius: 4px; min-width: 26px; }
+table.xtab .chip { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.pairs { display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
+.pairs span { display: inline-flex; align-items: center; gap: 6px; }
+.pairs i { width: 22px; height: 0; border-top: 3px solid; display: inline-block; }
+
+/* ---------- map ---------- */
+.mapwrap { position: relative; min-height: 0; min-width: 0; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); }
+#map { position: absolute; inset: 0; background: var(--map-bg); }
+.leaflet-container { font-family: var(--font-ui); background: var(--map-bg); }
+.leaflet-image-layer.crisp { image-rendering: pixelated; }
+.leaflet-image-layer.smooth { image-rendering: auto; }
+.leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+.leaflet-popup-content { margin: 10px 12px; font-size: 12.5px; }
+.leaflet-container a.leaflet-popup-close-button { color: var(--muted); }
+.leaflet-control-attribution { background: color-mix(in srgb, var(--surface) 85%, transparent) !important; color: var(--muted); font-size: 10.5px; }
+.leaflet-control-attribution a { color: var(--accent); }
+.leaflet-control-scale-line { background: color-mix(in srgb, var(--surface) 85%, transparent); color: var(--ink); border-color: var(--ink); }
+.leaflet-bar a { background: var(--surface); color: var(--ink); border-bottom-color: var(--line); }
+.leaflet-bar a:hover { background: var(--bg); }
+.pop h4 { margin: 0 0 6px; font-size: 13px; }
+.pop table { border-collapse: collapse; }
+.pop td { padding: 1px 0; vertical-align: top; }
+.pop td:first-child { color: var(--muted); padding-right: 12px; }
+.pop td:last-child { font-family: var(--font-data); font-size: 11.5px; white-space: nowrap; }
+.pop p { margin: 6px 0 0; font-size: 12px; }
+
+.legend {
+  position: absolute; left: 10px; bottom: 26px; z-index: 800;
+  max-width: min(330px, calc(100% - 20px)); max-height: 50%; overflow-y: auto;
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow);
+  padding: 8px 10px; font-size: 12px; display: flex; flex-direction: column; gap: 8px;
+}
+.legend h5 { margin: 0 0 3px; font-size: 12px; font-weight: 600; }
+.legend-toggle { border: 0; background: transparent; padding: 0; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 12px; font-family: var(--font-label); font-weight: 600; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.legend-body { display: flex; flex-direction: column; gap: 8px; }
+.legend[data-collapsed="true"] .legend-body { display: none; }
+.legend ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.legend li { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 6px; align-items: center; }
+.legend .sq { width: 14px; height: 12px; border-radius: 2px; }
+.legend .dot { width: 12px; height: 12px; border-radius: 50%; }
+.legend .ln { width: 16px; height: 0; border-top-width: 3px; border-top-style: solid; }
+.legend .ramp { height: 10px; border-radius: 3px; }
+.legend .ends { display: flex; justify-content: space-between; font-family: var(--font-data); font-size: 11px; color: var(--muted); }
+.legend p { margin: 0; color: var(--muted); }
+
+.zoomto { position: absolute; top: 10px; right: 10px; z-index: 800; max-width: min(340px, calc(100% - 70px)); }
+.zoomto select { min-width: 0; width: 100%; box-shadow: var(--shadow); }
+.basemap { position: absolute; right: 10px; bottom: 26px; z-index: 800; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 5px 9px; font-size: 12px; display: flex; gap: 6px; align-items: center; box-shadow: var(--shadow); max-width: min(260px, calc(100% - 20px)); }
+.basemap input { accent-color: var(--accent); margin: 0; }
+
+.drawer {
+  position: absolute; top: 0; right: 0; bottom: 0; z-index: 900;
+  width: min(460px, 100%);
+  background: var(--surface); color: var(--ink);
+  border-left: 1px solid var(--line); box-shadow: var(--shadow);
+  display: flex; flex-direction: column;
+}
+.drawer header { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 12px 14px 10px; border-bottom: 1px solid var(--line); }
+.drawer header h3 { margin: 2px 0 0; font-size: 16px; text-wrap: balance; }
+.drawer .close { border: 1px solid var(--line); background: transparent; border-radius: 8px; padding: 4px 10px; cursor: pointer; height: fit-content; }
+.drawer .key { margin: 0; padding: 8px 14px; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--line); }
+.drawer .list { overflow-y: auto; padding: 10px 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+.dec { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.dec h4 { margin: 0; font-size: 13.5px; line-height: 1.3; }
+.dec .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.dec .id { font-family: var(--font-data); font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
+.dec p { margin: 0; font-size: 12.5px; }
+.dec ul { margin: 4px 0 0; padding-left: 18px; font-size: 12px; display: grid; gap: 4px; }
+.papers { list-style: none; padding: 0 !important; }
+.papers li { border-top: 1px dashed var(--line); padding-top: 6px; }
+.papers .what { color: var(--muted); font-size: 11.5px; }
+.nopaper { color: var(--warn) !important; }
+.chip { display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 500; white-space: nowrap; background: var(--neutral-soft); color: var(--muted); }
+.chip.good { background: var(--good-soft); color: var(--good); }
+.chip.warn { background: var(--warn-soft); color: var(--warn); }
+.chip.accent { background: var(--accent-soft); color: var(--accent); }
+details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
+
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.empty { display: grid; place-items: center; height: 100%; padding: 24px; text-align: center; color: var(--muted); }
+.empty h2 { color: var(--ink); font-size: 16px; margin: 0 0 6px; }
+
+@media (max-width: 860px) {
+  .app { height: auto; grid-template-rows: auto auto auto; }
+  .main { grid-template-columns: minmax(0, 1fr); }
+  .mapwrap { height: 56vh; min-height: 320px; order: -1; }
+  .panel { overflow: visible; }
+  .story { overflow: visible; }
+  .stepper .lbl { display: none; }
+  .stepper button[aria-current="step"] .lbl { display: block; }
+  .stepper button[aria-current="step"] { flex: 0 0 auto; min-width: 66px; }
+  .drawer { position: fixed; inset: 0; width: 100%; padding-top: env(safe-area-inset-top, 0px); }
+  select { min-width: 0; }
+}
+
+/* What each type looks like, and two stands side by side */
+.profiles { display: flex; flex-direction: column; gap: 12px; }
+.groups summary { cursor: pointer; }
+.groups > div { margin-top: 6px; }
+.groups .gname { font-weight: 600; font-size: 13px; }
+.groups ul { margin: 2px 0 0; padding-left: 18px; font-size: 12.5px; }
+.chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.chart svg text { font-family: var(--font-data); font-size: 10.5px; fill: var(--muted); }
+.chart svg text.lab { font-family: var(--font-label); font-size: 10.5px; fill: var(--ink); }
+.chart select { font-size: 12.5px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); padding: 3px 6px; max-width: 100%; }
+.arows { display: flex; flex-direction: column; gap: 5px; }
+.arow { display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; gap: 8px; align-items: center; font-size: 12.5px; cursor: pointer; border-radius: 6px; padding: 1px 4px; margin: 0 -4px; }
+.arow:hover { background: var(--bg); }
+.arow[aria-pressed="true"] { background: var(--accent-soft); }
+.arow .tname { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.arow .tname i, .tdesc .chip { width: 11px; height: 11px; border-radius: 3px; display: inline-block; flex: none; }
+.arow .abar { height: 10px; background: var(--neutral-soft); border-radius: 5px; overflow: hidden; }
+.arow .abar i { display: block; height: 100%; border-radius: 5px; }
+.arow .aval { font-family: var(--font-data); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.arow .aval .small { font-family: var(--font-ui); }
+.hscroll { overflow-x: auto; }
+.heat { border-collapse: separate; border-spacing: 2px; font-size: 11px; table-layout: fixed; }
+.heat th.grp { font-family: var(--font-label); font-weight: 500; font-size: 10.5px; color: var(--muted); text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; max-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.heat th.mh { height: 74px; vertical-align: bottom; padding: 0; font-weight: 400; color: var(--muted); }
+.heat th.mh span { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; font-size: 10.5px; }
+.heat th.row { white-space: nowrap; font-weight: 500; text-align: left; padding-right: 4px; font-family: var(--font-data); }
+.heat th.row .chip { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 4px; vertical-align: -1px; }
+.heat td { width: 14px; min-width: 14px; height: 20px; border-radius: 3px; text-align: center; color: var(--muted); }
+.zkey { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--muted); }
+.zkey i { flex: 0 0 120px; height: 9px; border-radius: 4px; display: block; border: 1px solid var(--line); }
+.tdesc { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.tdesc li { display: block; padding-left: 18px; text-indent: -18px; }
+.tdesc .chip { margin-right: 7px; vertical-align: -1px; }
+.compare { border-color: var(--accent); }
+.cmp { border-collapse: collapse; width: 100%; font-size: 12px; }
+.cmp th { text-align: left; font-weight: 500; font-size: 11.5px; padding: 2px 4px; border-bottom: 1px solid var(--line); }
+.cmp td { padding: 3px 4px; border-bottom: 1px solid color-mix(in srgb, var(--line) 50%, transparent); vertical-align: middle; }
+.cmp td:nth-child(2), .cmp td:nth-child(3) { font-family: var(--font-data); font-size: 11.5px; white-space: nowrap; }
+.cmp td:last-child { width: 30%; }
+.dbar { position: relative; display: block; height: 9px; background: var(--neutral-soft); border-radius: 4px; }
+.dbar::after { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--muted); }
+.dbar i { position: absolute; top: 0; bottom: 0; background: var(--accent); border-radius: 4px; }
+.linkish { align-self: flex-start; border: 0; background: none; color: var(--accent); padding: 0; cursor: pointer; text-decoration: underline; font-size: 12.5px; }
+.popbtn { margin-top: 8px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); border-radius: 6px; padding: 4px 9px; cursor: pointer; font-size: 12px; }
+.pop details { margin-top: 6px; }
+.pop summary { cursor: pointer; color: var(--accent); font-size: 12px; }
+.pop tr.gh td { padding-top: 6px; font-family: var(--font-label); font-size: 11px; color: var(--ink); font-weight: 600; }
+.stepper button.off { opacity: .5; cursor: not-allowed; }
+.stepper .offnote { font-size: 10px; color: var(--muted); }
+.drawer .dscroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.drawer .dscroll .list { overflow: visible; }
+.drawer .info { display: flex; flex-direction: column; gap: 6px; font-size: 13px; padding: 12px 14px 4px; }
+.drawer .info p { margin: 0; }
+.drawer .info ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.drawer .dechead { margin: 8px 14px 0; font-size: 13.5px; border-top: 1px solid var(--line); padding-top: 10px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+</style>
+
+<div class="app" id="app">
+  <header class="top">
+    <div class="brand">
+      <h1>Forest stands, step by step</h1>
+      <p>How we turn satellite data into forest stands at Sanjay Van and in four Odisha districts, and whether the stands match the FES field plots.</p>
+    </div>
+    <div class="pickers">
+      <label class="field"><span>Place</span><select id="pick-area" aria-label="Place"></select></label>
+      <div class="field"><span>Features</span><div class="seg" role="radiogroup" aria-label="Features" id="pick-arm"></div></div>
+      <div class="field"><span>Stand size</span><div class="seg" role="radiogroup" aria-label="Stand size" id="pick-ceiling"></div></div>
+      <div class="field" id="pick-roi-wrap" hidden><span>Area</span><div class="seg" role="radiogroup" aria-label="Area" id="pick-roi"></div></div>
+      <div class="field" id="pick-kept-wrap" hidden><span>Stands drawn on</span><div class="seg" role="radiogroup" aria-label="Stands drawn on" id="pick-kept"></div></div>
+    </div>
+  </header>
+  <p class="banner" id="banner">Loading.</p>
+  <main class="main">
+    <section class="panel" aria-label="Step by step">
+      <nav class="stepper" id="stepper" aria-label="Steps"></nav>
+      <article class="story" id="story" aria-live="polite"></article>
+      <details class="all" id="all"><summary>All map layers</summary><div id="all-list"></div></details>
+      <div class="nav">
+        <button type="button" id="prev">&larr; Back</button>
+        <button type="button" id="next" class="primary">Next &rarr;</button>
+      </div>
+    </section>
+    <section class="mapwrap" aria-label="Map">
+      <div id="map"></div>
+      <div class="legend" id="legend" hidden></div>
+      <label class="zoomto" id="zoomto-wrap" hidden><span class="sr">Go to</span><select id="zoomto" aria-label="Go to a village"></select></label>
+      <label class="basemap" id="basemap-toggle"><input type="checkbox" id="basemap"> <span id="basemap-label">Street map underneath</span></label>
+      <aside class="drawer" id="drawer" hidden aria-label="How this step works">
+        <header>
+          <div><span class="eyebrow">How this step works</span><h3 id="drawer-title"></h3></div>
+          <button class="close" id="drawer-close" type="button">Close</button>
+        </header>
+        <div class="dscroll">
+        <div class="info" id="drawer-info"></div>
+        <h4 class="dechead" id="drawer-dec-head">The decisions behind it, and the papers</h4>
+        <p class="key"><strong>How strong is each paper's support?</strong> <span class="chip accent">used</span> others use the method; <span class="chip accent">recommended</span> a review recommends it; <span class="chip good">shown better</span> a comparison shows it beats the alternatives.</p>
+        <div class="list" id="drawer-list"></div>
+        </div>
+      </aside>
+    </section>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script>
+(() => {
+  "use strict";
+  const DATA = "ui_data/";
+  const REPO = "https://github.com/sudo-karan/phd-code/blob/main/";
+  const ARM_LABEL = { feature_vector: "Ours", alphaearth: "AlphaEarth" };
+  const ARM_TITLE = { feature_vector: "Our 22 measurements per pixel", alphaearth: "Google's AlphaEarth embedding (64 numbers per pixel)" };
+  const ROI_LABEL = { boxes: "Boxes", hulls: "Village outlines", rectangle: "Rectangle" };
+  const STAND_LINE = "#ff4fa3";   // stand outlines sit on imagery; this magenta reads in both themes
+  const EDGE_LINE = "#ffd400";    // superpixel edges
+  const AREA_LINE = "#ffffff";
+  const SAME = "#3dff6e", DIFF = "#ff3b30";
+  const PALETTE = ["#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#999999"];
+
+  // The walkthrough. Each step sets the map (layer ids, in drawing order) and names the index
+  // step whose decisions explain it.
+  const WALK = [
+    { id: "area", label: "Area", decisions: "data_load", layers: ["true_colour", "roi_outline"] },
+    { id: "land", label: "Land cover", decisions: "masking", layers: ["true_colour", "habitat_reason", "roi_outline"] },
+    { id: "measure", label: "Measures", decisions: "features", layers: ["true_colour", "@feature"] },
+    { id: "superpixels", label: "Super\u00ADpixels", decisions: "segmentation", layers: ["true_colour", "superpixels"] },
+    { id: "stands", label: "Stands", decisions: "merge", layers: ["true_colour", "stands"] },
+    { id: "types", label: "Types", decisions: "clustering", layers: ["true_colour", "stand_types", "removed_land"] },
+    { id: "profiles", label: "Profiles", decisions: "clustering", layers: ["true_colour", "stand_types"] },
+    { id: "field", label: "Field check", decisions: "fes_plots", layers: ["true_colour", "stands", "links", "plots"], odisha: true },
+  ];
+  // What each step does and how, for the "How this step works" drawer. Plain words; the numbers
+  // for the chosen run are in the step's own text.
+  const STEP_INFO = {
+    area: {
+      what: "Choose the land to map and fetch a clear satellite picture of it.",
+      how: ["For Sanjay Van, a rectangle drawn around the park. In Odisha, a box around each village's FES plots, 300 m wider than the plots on every side, so no plot sits on the edge.",
+        "The picture is Sentinel-2: for every 10 m pixel, the middle value of all the clear views from 2017 to 2022. Taking the middle value hides clouds and odd days."],
+    },
+    land: {
+      what: "Find the pixels that are trees or scrub, so stands are only drawn where there is forest to describe.",
+      how: ["We read IndiaSAT's land-cover map (LULC v4, from CoRE Stack) for 2017 to 2021 and keep a pixel if it was trees or scrub in most of those years.",
+        "Where IndiaSAT has no data we fall back on ESA WorldCover. Water from the JRC map is used only to measure distance to water."],
+    },
+    measure: {
+      what: "Describe every pixel with numbers that a forester would care about.",
+      how: ["Our arm: 22 measurements in four groups. Greenness through the year from Sentinel-2 (a smooth yearly curve fitted to six years of images), radar from Sentinel-1 (how strongly the canopy scatters the signal, and how much that changes), canopy height from ETH's 2020 map, and the ground: elevation, slope, which way it faces, distance to water and rainfall.",
+        "AlphaEarth arm: Google's satellite embedding, 64 numbers per pixel per year that a model learned from many satellites at once. We average the years 2017 to 2022."],
+    },
+    superpixels: {
+      what: "Cut the land into small patches of pixels that look alike.",
+      how: ["SNIC plants seeds on a regular grid and grows a patch around each seed, adding neighbouring pixels that are close to it in both measurements and distance.",
+        r => (r.facts && r.facts.segmentation_bands && r.facts.segmentation_bands.length
+          ? `In this run it looks at ${r.facts.segmentation_bands.length} of the measurements: ${listWords(r.facts.segmentation_bands.map(b => BAND_WORDS[b] || b))}. Each is scaled so that none dominates.`
+          : r.arm === "alphaearth" ? "In this run it looks at all 64 AlphaEarth numbers, scaled so that none dominates." : "Each measurement it uses is scaled so that none dominates.")],
+    },
+    stands: {
+      what: "Join neighbouring superpixels into stands of a workable size.",
+      how: [r => `First pass: two neighbours join if they match on ${(r.facts && r.facts.merge_criteria || []).length ? listWords(r.facts.merge_criteria.map(c => (CRITERION_WORDS[c.band] || (t => `${c.band} within ${t}`))(c.tolerance))) : "the measurements set for joining"}, and only while the joined stand stays under ${fmt(r.stand_ceiling_ha, 0)} ha.`,
+        "Second pass: pieces still under the smallest allowed size join their most similar neighbour, with the limits loosened, or else the neighbour they share the longest border with."],
+    },
+    types: {
+      what: "Sort the stands into a few types, so that stands of the same type can be managed alike.",
+      how: ["k-means groups stands whose averages are close. Each measurement is scaled by its typical spread first, so that one with big numbers, like elevation, doesn't drown out the rest.",
+        r => `The number of types is set in the run's settings beforehand: ${n0(r.k || (r.facts || {}).k)} for this run.`],
+    },
+    profiles: {
+      what: "Show what makes each type different from the others.",
+      how: ["For every type we take its middle stand on each measurement and compare it with the middle of all stands, in units of the typical spread. This only describes the types; it doesn't change them.",
+        "The comparison of two stands works the same way: it lists the measurements on which they are furthest apart."],
+    },
+    field: {
+      what: "Check the stands against what FES found on the ground.",
+      how: ["If the stands follow the forest, plots in the same stand should be the same field type, and plots of the same field type should get the same stand type.",
+        "To tell a real match from luck, the plots are slid and turned to random spots over the same stand map, and the real placement has to beat 95 of every 100 random ones. The tests were written down before they were run."],
+    },
+  };
+  const BAND_WORDS = {
+    B4_median: "red light",
+    B8_median: "near-infrared light",
+    canopy_height: "canopy height",
+    canopy_height_std: "how much the canopy height varies",
+    ndvi_amplitude_annual: "how much the greenness rises and falls over the year",
+    vv_minus_vh_median: "radar (VV minus VH)",
+  };
+  const CRITERION_WORDS = {
+    canopy_height: t => `canopy height within ${t} m`,
+    canopy_height_std: t => `variation in canopy height within ${t} m`,
+    ndvi_amplitude_annual: t => `seasonal swing in greenness within ${t}`,
+  };
+  const FIELDS = {
+    stand_id: ["Stand", v => String(v)],
+    stand_type: ["Stand type", v => "Type " + Math.round(v)],
+    area_ha: ["Size", v => fmt(v, 2) + " ha"],
+    canopy_height: ["Canopy height", v => fmt(v, 1) + " m"],
+    canopy_height_std: ["Canopy height varies by", v => fmt(v, 2) + " m"],
+    ndvi_amplitude_annual: ["Seasonal swing in greenness", v => fmt(v, 3)],
+    ndvi_mean: ["Average greenness (NDVI)", v => fmt(v, 3)],
+    vv_minus_vh_median: ["Radar, VV minus VH", v => fmt(v, 2) + " dB"],
+    elevation: ["Elevation", v => fmt(v, 0) + " m"],
+    slope: ["Slope", v => fmt(v, 1) + "°"],
+    n_superpx: ["Superpixels in it", v => String(v)],
+    plot_key: ["Plot", v => String(v).replace("_", ", ")],
+    habitation: ["Village", v => String(v)],
+    field_type: ["Field type", v => fieldTypeLabel(v)],
+    mask: ["Land cover at the plot", v => (v === "kept" ? "Trees or scrub" : "Not trees or scrub")],
+    in_mapped_area: ["Inside the mapped area", v => (v ? "Yes" : "No")],
+    outside_reason: ["Why not mapped", v => String(v)],
+  };
+
+  const state = { focusType: null, compare: null, boxKey: null, profile: null, index: null, decisions: null, fes: null, run: null, step: 0, layers: new Map(), on: new Set(), opacity: new Map(), feature: null, cache: new Map(), map: null, renderers: {}, plots: null };
+  const $ = (s, el = document) => el.querySelector(s);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
+  /* ---------- numbers in words ---------- */
+  function fmt(v, d = 0) {
+    if (v === null || v === undefined || Number.isNaN(Number(v))) return "–";
+    return Number(v).toLocaleString("en-IN", { minimumFractionDigits: d, maximumFractionDigits: d });
+  }
+  const n0 = v => fmt(v, 0);
+  function ha(v) {
+    if (v === null || v === undefined) return "–";
+    if (Number.isInteger(v) || v >= 100) return fmt(v, 0) + " ha";
+    if (v >= 10) return fmt(v, 1) + " ha";
+    return fmt(v, 2).replace(/\.?0+$/, "") + " ha";
+  }
+  function pct(x) {
+    if (x === null || x === undefined) return "–";
+    const p = x * 100;
+    if (p === 0) return "0%";
+    if (p < 0.1) return "under 0.1%";
+    if (p < 10) return fmt(p, 1) + "%";
+    return fmt(p, 0) + "%";
+  }
+  function plural(n, one, many) { return `${n0(n)} ${n === 1 ? one : (many || one + "s")}`; }
+  function listWords(items) {
+    const xs = items.filter(Boolean);
+    if (xs.length <= 1) return xs.join("");
+    return xs.slice(0, -1).join(", ") + " and " + xs[xs.length - 1];
+  }
+  function cap(s) { return s ? s[0].toUpperCase() + s.slice(1) : s; }
+  function store(key, val) { try { localStorage.setItem(key, val); } catch (e) { /* storage unavailable */ } }
+  function recall(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+  function getJSON(path) {
+    if (!state.cache.has(path)) {
+      state.cache.set(path, fetch(path).then(r => {
+        if (!r.ok) throw new Error(path + " (" + r.status + ")");
+        return r.json();
+      }).then(inflate));
+    }
+    return state.cache.get(path);
+  }
+  // Stands may come as encoded polylines ({"encoding": "polyline6", "features": [{properties,
+  // polygons: [[outer, hole, ...], ...]}]}) to keep the files small; Leaflet wants GeoJSON.
+  function inflate(j) {
+    if (!j || j.encoding !== "polyline6" || !Array.isArray(j.features)) return j;
+    return {
+      type: "FeatureCollection",
+      features: j.features.map(f => {
+        const polys = (f.polygons || []).map(rings => rings.map(r => decode(r).map(([lat, lng]) => [lng, lat])));
+        return { type: "Feature", properties: f.properties || {}, geometry: polys.length === 1 ? { type: "Polygon", coordinates: polys[0] } : { type: "MultiPolygon", coordinates: polys } };
+      }),
+    };
+  }
+
+  /* ---------- colour ---------- */
+  function hexToRgb(h) { const x = h.replace("#", ""); return [0, 2, 4].map(i => parseInt(x.slice(i, i + 2), 16)); }
+  function ramp(palette, t) {
+    if (!palette || !palette.length) return "#888888";
+    if (palette.length === 1) return palette[0];
+    const x = Math.min(1, Math.max(0, t)) * (palette.length - 1);
+    const i = Math.min(palette.length - 2, Math.floor(x));
+    const f = x - i;
+    const a = hexToRgb(palette[i]), b = hexToRgb(palette[i + 1]);
+    return "#" + a.map((v, k) => Math.round(v + (b[k] - v) * f).toString(16).padStart(2, "0")).join("");
+  }
+  function legendColor(layer, value) {
+    if (value === null || value === undefined) return null;
+    const num = Number(value);
+    const key = Number.isFinite(num) ? String(Math.round(num)) : String(value);
+    const hit = (layer.legend || []).find(e => e.value !== undefined && String(e.value) === key);
+    if (hit) return hit.color;
+    return PALETTE[(Number.isFinite(num) ? Math.round(num) : 0) % PALETTE.length];
+  }
+  function featureColor(layer, props) {
+    if (!layer.color_by) return null;
+    const v = props[layer.color_by];
+    if (layer.color_is_value) return v || null;
+    if (layer.colormap) {
+      if (v === null || v === undefined) return null;
+      const cm = layer.colormap;
+      return ramp(cm.palette, (v - cm.min) / ((cm.max - cm.min) || 1));
+    }
+    return legendColor(layer, v);
+  }
+
+  /* ---------- encoded lines (Google polyline, 6 decimals, latitude first) ---------- */
+  function decode(str) {
+    const out = [];
+    let i = 0, lat = 0, lng = 0;
+    while (i < str.length) {
+      for (let k = 0; k < 2; k++) {
+        let shift = 0, result = 0, b;
+        do { b = str.charCodeAt(i++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+        const d = (result & 1) ? ~(result >> 1) : (result >> 1);
+        if (k === 0) lat += d; else lng += d;
+      }
+      out.push([lat / 1e6, lng / 1e6]);
+    }
+    return out;
+  }
+
+  /* ---------- run lookups ---------- */
+  const run = () => state.run;
+  const isOdisha = r => r.site === "Odisha";
+  // Runs whose superpixels and stands were drawn on trees and scrub only (mask before SNIC).
+  const isKept = r => r.kept_land === true || r.mask_before_snic === true || /_keptland$/.test(r.run_id || "");
+  function allLayers(r) {
+    const out = [];
+    (r.steps || []).forEach(step => (step.layers || []).forEach((layer, j) => {
+      layer._key = layer._key || `${r.run_id}|${step.step}|${layer.layer_id || j}`;
+      layer._step = step.step;
+      out.push(layer);
+    }));
+    return out;
+  }
+  function layerById(r, id) { return allLayers(r).find(l => l.layer_id === id); }
+  function featureLayers(r) { return allLayers(r).filter(l => l.layer_id && (l.layer_id.startsWith("feature_") || l.layer_id === "embedding_rgb")); }
+  function stepOf(r, name) { return (r.steps || []).find(s => s.step === name); }
+  function walkFor(r) { return WALK.filter(w => !w.odisha || isOdisha(r)); }
+  function fesRows(r) {
+    if (!state.fes) return [];
+    const roi = r.roi || "hulls";
+    return (state.fes.rows || []).filter(x => x.arm === r.arm && Number(x.stand_ceiling_ha) === Number(r.stand_ceiling_ha) && (x.roi || "hulls") === roi);
+  }
+  // The plots-against-stands views appear only once the comparison is declared: scored rows exist,
+  // or the run says its analysis is written down (fes_declared). AlphaEarth waits for its own.
+  function comparable(r) { return fesRows(r).length > 0 || r.fes_declared === true; }
+  function linksLayer(r) {
+    return { layer_id: "links", _key: `${r.run_id}|links`, title: "Plots in the same stand", kind: "links" };
+  }
+
+  /* ---------- map ---------- */
+  function initMap() {
+    const map = L.map("map", { zoomControl: true, preferCanvas: true, minZoom: 3, maxZoom: 19 });
+    map.attributionControl.setPrefix(false);
+    map.attributionControl.addAttribution("Sentinel-2 (Copernicus), IndiaSAT LULC (CoRE Stack), ESA WorldCover, ETH canopy height, Google Satellite Embedding, FES plots");
+    L.control.scale({ metric: true, imperial: false }).addTo(map);
+    [["rasters", 350], ["fills", 420], ["veil", 430], ["lines", 440], ["links", 450], ["points", 460]].forEach(([n, z]) => { map.createPane(n).style.zIndex = z; });
+    state.renderers = {
+      fills: L.canvas({ pane: "fills", padding: 0.5 }),
+      veil: L.canvas({ pane: "veil", padding: 0.5 }),
+      lines: L.canvas({ pane: "lines", padding: 0.5 }),
+      links: L.canvas({ pane: "links", padding: 0.5 }),
+      points: L.canvas({ pane: "points", padding: 0.5 }),
+    };
+    map.setView([22, 82], 5);
+    state.map = map;
+    map.on("zoomend", restyle);
+    const osm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap contributors", opacity: 0.85 });
+    let loaded = false, warned = false;
+    osm.on("tileload", () => { loaded = true; });
+    osm.on("tileerror", () => {
+      if (loaded || warned) return;
+      warned = true;
+      $("#basemap-label").textContent = "Street map can't load in this preview; it works on the published site";
+      $("#basemap").checked = false;
+      map.removeLayer(osm);
+    });
+    $("#basemap").addEventListener("change", e => { if (e.target.checked) osm.addTo(map); else map.removeLayer(osm); });
+  }
+  function zoomWeight(kind) {
+    const z = state.map ? state.map.getZoom() : 14;
+    if (kind === "area") return z >= 13 ? 2.2 : 1.6;
+    if (kind === "edges") return z >= 17 ? 1.6 : z >= 16 ? 1.2 : z >= 15 ? 0.9 : z >= 14 ? 0.6 : 0.4;
+    return z >= 16 ? 2 : z >= 15 ? 1.5 : z >= 14 ? 1.1 : z >= 13 ? 0.7 : 0.45;
+  }
+  function outlineStyle(layer) {
+    const area = layer.layer_id === "roi_outline";
+    const z = state.map ? state.map.getZoom() : 14;
+    if (!area && state.stepId === "field") return { renderer: state.renderers.lines, pane: "lines", color: "#ffffff", weight: Math.max(0.6, zoomWeight("stands") * 0.8), opacity: 0.6, fill: false };
+    return area
+      ? { renderer: state.renderers.lines, pane: "lines", color: AREA_LINE, weight: zoomWeight("area"), opacity: 0.95, dashArray: "6 4", fill: false }
+      : { renderer: state.renderers.lines, pane: "lines", color: STAND_LINE, weight: zoomWeight("stands"), opacity: z >= 14 ? 0.95 : 0.7, fill: false };
+  }
+  function restyle() {
+    for (const [key, l] of state.layers) {
+      if (!l || !state.on.has(key)) continue;
+      const layer = l._def;
+      if (!layer) continue;
+      if (layer.kind === "lines") l.setStyle({ weight: zoomWeight("edges") });
+      else if (layer.kind === "vector" && layer.style === "outline") l.setStyle(outlineStyle(layer));
+      else if (layer.kind === "links") l.eachLayer(x => x.setStyle({ weight: linkWeight() + (x._casing ? 3 : 0) }));
+    }
+  }
+  function partsOf(layer) {
+    if (Array.isArray(layer.parts) && layer.parts.length) return layer.parts;
+    if (layer.file && layer.bounds) return [{ file: layer.file, bounds: layer.bounds }];
+    return [];
+  }
+  function opacityOf(layer) {
+    if (state.opacity.has(layer.layer_id)) return state.opacity.get(layer.layer_id);
+    if (layer.kind === "shapes") return Array.isArray(layer.only) ? 0.62 : 0.72;
+    return 1;
+  }
+  async function makeLayer(layer) {
+    const R = state.renderers;
+    if (layer.kind === "raster") {
+      const g = L.layerGroup();
+      partsOf(layer).forEach(p => {
+        const b = p.bounds;
+        L.imageOverlay(DATA + p.file, [[b[1], b[0]], [b[3], b[2]]], { pane: "rasters", opacity: opacityOf(layer), interactive: false, className: layer.smooth === false || (layer.legend && !layer.smooth) ? "crisp" : "smooth" }).addTo(g);
+      });
+      return g;
+    }
+    if (layer.kind === "lines") {
+      const data = await getJSON(DATA + layer.file);
+      const lines = (data.lines || []).map(decode);
+      return L.polyline(lines, { renderer: R.lines, pane: "lines", color: EDGE_LINE, weight: zoomWeight("edges"), opacity: opacityOf(layer), interactive: false, smoothFactor: 0.5 });
+    }
+    if (layer.kind === "shapes") {
+      const data = await getJSON(DATA + layer.file);
+      const g = L.layerGroup();
+      const veil = Array.isArray(layer.only);
+      const pane = veil ? "veil" : "fills";
+      if (!veil) layer._present = (data.classes || []).map(c => c.value);
+      (data.classes || []).filter(c => !veil || layer.only.includes(c.value)).forEach(c => {
+        const col = layer.fill || legendColor(layer, c.value) || "#888888";
+        const shape = L.polygon(c.polygons.map(rings => rings.map(decode)), {
+          renderer: R[pane], pane, stroke: !veil, color: col, weight: 0.5, opacity: opacityOf(layer),
+          fillColor: col, fillOpacity: opacityOf(layer), interactive: !veil, smoothFactor: 0.3,
+        });
+        if (!veil) shape.bindTooltip(esc((layer.legend || []).find(e => e.value === c.value)?.label || ""), { sticky: true });
+        shape.addTo(g);
+      });
+      return g;
+    }
+    if (layer.kind === "links") return makeLinks();
+    const data = await getJSON(DATA + layer.file);
+    const pts = isPoints(data);
+    const outline = !pts && (layer.style === "outline" || !layer.color_by);
+    const pane = pts ? "points" : (outline ? "lines" : "fills");
+    const renderer = R[pane];
+    const pointStyle = p => ({
+      renderer, pane, radius: 6.5, weight: 2.2, opacity: 1,
+      color: p.mask === "dropped" ? "#e3342f" : "#ffffff",
+      fillColor: featureColor(layer, p) || "#777777",
+      fillOpacity: p.in_mapped_area === false ? 0.25 : 0.95,
+    });
+    return L.geoJSON(data, {
+      pane, renderer,
+      style: f => {
+        if (pts) return pointStyle(f.properties || {});
+        if (outline) return outlineStyle(layer);
+        const c = featureColor(layer, f.properties);
+        if (!c) return { renderer, pane, color: "#9aa39d", weight: 0.6, fillColor: "#9aa39d", fillOpacity: 0.18, dashArray: "3 3" };
+        return { renderer, pane, color: c, weight: 0.6, opacity: 0.9, fillColor: c, fillOpacity: 0.66 * opacityOf(layer) };
+      },
+      pointToLayer: (f, latlng) => L.circleMarker(latlng, pointStyle(f.properties || {})),
+      interactive: layer.layer_id !== "roi_outline",
+      onEachFeature: (f, l) => { if (layer.layer_id !== "roi_outline") l.bindPopup(() => popupHTML(layer, f), { maxWidth: 330, maxHeight: 380 }); },
+    });
+  }
+  function isPoints(data) {
+    const g = data && data.features && data.features[0] && data.features[0].geometry;
+    return !!g && (g.type === "Point" || g.type === "MultiPoint");
+  }
+
+  /* ---------- plots that share a stand ---------- */
+  async function plotsOf(r) {
+    const layer = layerById(r, "plots");
+    if (!layer) return null;
+    const data = await getJSON(DATA + layer.file);
+    return data.features || [];
+  }
+  function groupsByStand(feats) {
+    const g = new Map();
+    feats.forEach(f => {
+      const p = f.properties || {};
+      if (p.stand_id === null || p.stand_id === undefined) return;
+      const key = (p.district || "") + "|" + p.stand_id;
+      if (!g.has(key)) g.set(key, []);
+      g.get(key).push(f);
+    });
+    return g;
+  }
+  function pairStats(feats) {
+    const groups = groupsByStand(feats);
+    let pairs = 0, same = 0, plotsShared = 0, withStand = 0;
+    const lines = [];
+    for (const members of groups.values()) {
+      withStand += members.length;
+      if (members.length < 2) continue;
+      plotsShared += members.length;
+      for (let i = 0; i < members.length; i++) for (let j = i + 1; j < members.length; j++) {
+        const a = members[i], b = members[j];
+        const s = a.properties.field_type !== null && a.properties.field_type === b.properties.field_type;
+        pairs += 1; if (s) same += 1;
+        lines.push({ a: a.geometry.coordinates, b: b.geometry.coordinates, same: s });
+      }
+    }
+    return { pairs, same, plotsShared, withStand, lines };
+  }
+  function linkWeight() { const z = state.map ? state.map.getZoom() : 14; return z >= 16 ? 3.2 : z >= 14 ? 2.6 : 2; }
+  async function makeLinks() {
+    const feats = await plotsOf(run());
+    const g = L.layerGroup();
+    if (!feats) return g;
+    const opts = { renderer: state.renderers.links, pane: "links", interactive: false, lineCap: "round" };
+    pairStats(feats).lines.forEach(x => {
+      const ll = [[x.a[1], x.a[0]], [x.b[1], x.b[0]]];
+      const casing = L.polyline(ll, { ...opts, color: "#111111", weight: linkWeight() + 3, opacity: 0.55 });
+      casing._casing = true;
+      casing.addTo(g);
+      L.polyline(ll, { ...opts, color: x.same ? SAME : DIFF, weight: linkWeight(), opacity: 1, dashArray: x.same ? null : "6 6" }).addTo(g);
+    });
+    return g;
+  }
+
+  /* ---------- popups ---------- */
+  function fieldTypeLabel(v) {
+    const pl = layerById(run(), "plots");
+    const e = pl && (pl.legend || []).find(x => Number(x.value) === Number(v));
+    return e ? e.label : "Type " + Math.round(v);
+  }
+  function popupHTML(layer, f) {
+    const p = f.properties || {};
+    if ((layer.layer_id === "stands" || layer.layer_id === "stand_types") && p.stand_id !== undefined) return standPopup(layer, p);
+    const keys = (layer.popup_fields && layer.popup_fields.length) ? layer.popup_fields : Object.keys(p).slice(0, 8);
+    const rows = keys.filter(k => p[k] !== undefined && p[k] !== null && p[k] !== "").map(k => {
+      const [label, show] = FIELDS[k] || [k, v => String(v)];
+      return `<tr><td>${esc(label)}</td><td>${esc(show(p[k]))}</td></tr>`;
+    }).join("");
+    let extra = "";
+    if (layer.layer_id === "plots" && p.stand_id !== null && p.stand_id !== undefined && state.plots) {
+      const mates = state.plots.filter(x => x !== f && x.properties.stand_id === p.stand_id && x.properties.district === p.district);
+      if (mates.length) {
+        const same = mates.filter(x => x.properties.field_type === p.field_type).length;
+        extra = `<p>Shares its stand with ${plural(mates.length, "other plot")}: ${same} the same field type, ${mates.length - same} different.</p>`;
+      } else {
+        extra = `<p>No other plot falls in its stand.</p>`;
+      }
+    }
+    const title = layer.layer_id === "plots" ? "FES plot" : layer.title;
+    return `<div class="pop"><h4>${esc(title)}</h4><table>${rows || "<tr><td>No details</td></tr>"}</table>${extra}</div>`;
+  }
+
+  /* ---------- switching layers ---------- */
+  async function show(layer, on) {
+    const key = layer._key;
+    if (!on) {
+      state.on.delete(key);
+      const l = state.layers.get(key);
+      if (l) state.map.removeLayer(l);
+      return;
+    }
+    state.on.add(key);
+    let l = state.layers.get(key);
+    if (!l) {
+      try {
+        l = await makeLayer(layer);
+        l._def = layer;
+        state.layers.set(key, l);
+      } catch (err) {
+        state.on.delete(key);
+        console.warn("could not load", layer.layer_id, err);
+        return;
+      }
+    }
+    if (state.on.has(key) && !state.map.hasLayer(l)) l.addTo(state.map);
+    restyle();
+  }
+  function wanted(r, w) {
+    const ids = [];
+    w.layers.forEach(id => {
+      if (id === "@feature") {
+        const fl = featureLayers(r);
+        const pick = fl.find(l => l.layer_id === state.feature) || fl[0];
+        if (pick) ids.push(pick.layer_id);
+      } else ids.push(id);
+    });
+    if (w.id === "field" && !comparable(r)) return ids.filter(id => id !== "links");
+    return ids;
+  }
+  async function applyStep() {
+    const r = run();
+    const w = walkFor(r)[state.step];
+    state.stepId = w.id;
+    // A canvas pane catches every click over the whole map, even where it draws nothing. Panes
+    // that draw nothing clickable step aside so the stands underneath can be clicked.
+    ["veil", "links"].forEach(n => { state.map.getPane(n).style.pointerEvents = "none"; });
+    state.map.getPane("lines").style.pointerEvents = ["types", "profiles"].includes(w.id) ? "none" : "";
+    if (w.id !== "profiles" && state.focusType !== null && state.focusType !== undefined) { state.focusType = null; applyFocus(); }
+    const ids = wanted(r, w);
+    const defs = allLayers(r).concat([linksLayer(r)]);
+    const want = new Set(ids.map(id => (defs.find(l => l.layer_id === id) || {})._key).filter(Boolean));
+    for (const key of [...state.on]) if (!want.has(key)) { const d = defs.find(l => l._key === key); if (d) await show(d, false); else state.on.delete(key); }
+    for (const id of ids) {
+      const d = defs.find(l => l.layer_id === id);
+      if (d) await show(d, true);
+    }
+    reorder(ids, defs);
+    restyle();
+    renderLegend();
+    syncToggles();
+  }
+  function reorder(ids, defs) {
+    // canvas renderers draw in add order inside a pane; bring later ids forward
+    ids.forEach(id => {
+      const d = defs.find(l => l.layer_id === id);
+      const l = d && state.layers.get(d._key);
+      if (l && l.bringToFront && state.on.has(d._key)) l.bringToFront();
+    });
+  }
+
+  /* ---------- pickers ---------- */
+  const runsWhere = f => state.index.runs.filter(f);
+  function places() { return [...new Map(state.index.runs.map(r => [r.area, r.site])).entries()]; }
+  function renderPickers() {
+    const r = run();
+    $("#pick-area").innerHTML = places().map(([a, site]) => `<option value="${esc(a)}"${a === r.area ? " selected" : ""}>${esc(a)}${site && site !== a ? " (" + esc(site) + ")" : ""}</option>`).join("");
+    $("#pick-arm").innerHTML = ["feature_vector", "alphaearth"].map(arm => {
+      const ok = runsWhere(x => x.area === r.area && x.arm === arm).length > 0;
+      return `<button type="button" role="radio" title="${esc(ARM_TITLE[arm])}" data-arm="${arm}" aria-checked="${arm === r.arm}"${ok ? "" : " disabled"}>${ARM_LABEL[arm]}</button>`;
+    }).join("");
+    const ceilings = [...new Set(runsWhere(x => x.area === r.area).map(x => x.stand_ceiling_ha))].sort((a, b) => a - b);
+    $("#pick-ceiling").innerHTML = ceilings.map(c => {
+      const ok = runsWhere(x => x.area === r.area && x.arm === r.arm && x.stand_ceiling_ha === c).length > 0;
+      return `<button type="button" role="radio" data-ceiling="${c}" aria-checked="${c === r.stand_ceiling_ha}"${ok ? "" : " disabled"}>up to ${fmt(c, 0)} ha</button>`;
+    }).join("");
+    const rois = [...new Set(runsWhere(x => x.area === r.area && x.arm === r.arm && x.stand_ceiling_ha === r.stand_ceiling_ha).map(x => x.roi || "hulls"))];
+    $("#pick-roi-wrap").hidden = rois.length < 2;
+    const same = runsWhere(x => x.area === r.area && x.arm === r.arm && x.stand_ceiling_ha === r.stand_ceiling_ha && (x.roi || "hulls") === (r.roi || "hulls"));
+    const keptChoices = [...new Set(same.map(isKept))];
+    $("#pick-kept-wrap").hidden = keptChoices.length < 2;
+    $("#pick-kept").innerHTML = [true, false].filter(v => keptChoices.includes(v)).map(v => `<button type="button" role="radio" data-kept="${v}" aria-checked="${v === isKept(r)}" title="${v ? "Superpixels and stands drawn on trees and scrub only" : "Superpixels and stands drawn over the whole area"}">${v ? "Trees and scrub" : "All land"}</button>`).join("");
+    $("#pick-roi").innerHTML = rois.map(v => `<button type="button" role="radio" data-roi="${v}" aria-checked="${v === (r.roi || "hulls")}">${esc(ROI_LABEL[v] || v)}</button>`).join("");
+  }
+  function chooseRun({ area, arm, ceiling, roi, kept }) {
+    const pool = state.index.runs;
+    const want = kept === undefined ? (state.run ? isKept(state.run) : true) : kept;
+    // Prefer the same choice of land (kept land or all), then boxes over village outlines.
+    const rank = x => (isKept(x) === want ? 0 : 2) + (x.roi === "boxes" ? 0 : 1);
+    const pick = list => list.slice().sort((a, b) => rank(a) - rank(b))[0];
+    const exact = pool.filter(x => x.area === area && x.arm === arm && x.stand_ceiling_ha === ceiling);
+    const chosen = (roi && pick(exact.filter(x => (x.roi || "hulls") === roi))) || pick(exact) ||
+      pick(pool.filter(x => x.area === area && x.arm === arm)) || pick(pool.filter(x => x.area === area)) || pool[0];
+    selectRun(chosen, { keepStep: true });
+  }
+  async function selectRun(r, { keepStep = false } = {}) {
+    for (const l of state.layers.values()) if (l) state.map.removeLayer(l);
+    state.layers.clear(); state.on.clear();
+    if (state.hl) { state.map.removeLayer(state.hl); state.hl = null; }
+    state.compare = null;
+    state.focusType = null;
+    const prevStepId = state.run ? walkFor(state.run)[state.step]?.id : null;
+    state.run = r;
+    state.plots = await plotsOf(r).catch(() => null);
+    const walk = walkFor(r);
+    let i = keepStep && prevStepId ? walk.findIndex(w => w.id === prevStepId) : 0;
+    if (i < 0) i = walk.length - 1;
+    state.step = Math.max(0, i);
+    store("fmu-run", r.run_id);
+    renderPickers();
+    const b = r.start_bounds || r.bounds;
+    if (b) state.map.fitBounds([[b[1], b[0]], [b[3], b[2]]], { padding: [24, 24] });
+    buildZoomTo(r);
+    renderAll();
+    closeDrawer();
+    await applyStep();
+  }
+  function setHash() {
+    const r = run();
+    try { history.replaceState(null, "", "#" + r.run_id + "/" + walkFor(r)[state.step].id); } catch (e) { /* not allowed here */ }
+  }
+  async function buildZoomTo(r) {
+    const wrap = $("#zoomto-wrap"), sel = $("#zoomto");
+    wrap.hidden = true;
+    state.zoomParts = null;
+    const outline = layerById(r, "roi_outline");
+    if (!outline || !outline.file) return;
+    try {
+      const data = await getJSON(DATA + outline.file);
+      if (run() !== r) return;
+      const feats = (data.features || []).filter(f => f.geometry);
+      if (feats.length < 2) return;
+      state.zoomParts = feats.map((f, i) => ({ name: (f.properties && f.properties.name) || `Part ${i + 1}`, n: (f.properties && f.properties.n_plots) || 0, bounds: L.geoJSON(f).getBounds() }));
+      const busiest = state.zoomParts.reduce((m, p, i, a) => (p.n > a[m].n ? i : m), 0);
+      const word = (r.roi || "hulls") === "boxes" ? "boxes" : "patches";
+      sel.innerHTML = `<option value="-1">All ${feats.length} ${word} in ${esc(r.area)}</option>` + state.zoomParts.map((p, i) => `<option value="${i}"${i === busiest && r.start_bounds ? " selected" : ""}>${esc(p.name)}</option>`).join("");
+      wrap.hidden = false;
+    } catch (e) { /* no outline, no list */ }
+  }
+
+  /* ---------- the walkthrough text ---------- */
+  function factBox(value, label) { return `<div class="fact"><b>${value}</b><span>${esc(label)}</span></div>`; }
+  function landBar(f) {
+    const parts = [
+      ["Trees or scrub", f.share_kept, "#1a9850"],
+      ["Cropland", f.share_removed?.cropland, "#fdae61"],
+      ["Built-up", f.share_removed?.built_up, "#d73027"],
+      ["Water", f.share_removed?.water, "#4575b4"],
+      ["Other land", f.share_removed?.other, "#9e9e9e"],
+      ["No data", f.share_removed?.no_data, "#000000"],
+    ].filter(p => p[1] > 0);
+    return `<div><div class="bar" role="img" aria-label="Share of the area by land cover">${parts.map(p => `<i style="width:${(p[1] * 100).toFixed(2)}%;background:${p[2]}"></i>`).join("")}</div>` +
+      `<div class="barkey">${parts.map(p => `<span><i style="background:${p[2]}"></i>${esc(p[0])} ${pct(p[1])}</span>`).join("")}</div></div>`;
+  }
+  function stepText(w) {
+    // Every number comes from the run's facts. A sentence whose numbers are missing is either left
+    // out or written without them, so an export with fewer facts still reads as plain prose.
+    const r = run(), f = r.facts || {}, odisha = isOdisha(r);
+    const has = (...xs) => xs.every(x => x !== null && x !== undefined && !(typeof x === "number" && Number.isNaN(x)));
+    const roi = r.roi || (odisha ? "hulls" : "rectangle");
+    const parts = roi === "boxes" ? "boxes" : "patches";
+    const where = odisha ? r.area : "Sanjay Van";
+    const plotsInside = has(f.plots_inside) ? f.plots_inside : (state.plots ? state.plots.filter(x => x.properties && x.properties.in_mapped_area).length : null);
+    const out = { title: "", body: [], facts: "", extra: "" };
+    if (w.id === "area") {
+      out.title = odisha ? `The area: land around the FES plots in ${r.area}` : "The area: Sanjay Van";
+      const count = has(f.n_parts, f.area_ha)
+        ? ` That gives ${plural(f.n_parts, roi === "boxes" ? "box" : "patch", parts)}, ${ha(f.area_ha)} in all` + (has(plotsInside, f.plots_in_district) ? `, holding ${n0(plotsInside)} of the district's ${n0(f.plots_in_district)} plots.` : ".")
+        : "";
+      if (roi === "rectangle") {
+        out.body.push(`We start with a rectangle${has(f.area_ha) ? ` of about ${n0(Math.round(f.area_ha / 100) * 100)} ha` : ""} around Sanjay Van, the forest in south Delhi. It is a working area drawn around the park, not the park's official boundary.`);
+      } else if (roi === "boxes") {
+        out.body.push(`We start with a box around each village's FES plots in ${r.area}, 300 m wider than the plots on every side.` + count);
+      } else {
+        out.body.push(`We start with the land around the FES plots in ${r.area}. For each village we took the smallest outline that holds all its plots and widened it by 300 m.` + count);
+        out.body.push(`These outlines hug the plots, so the maps look like small blobs. The next runs use a box around each village instead.`);
+      }
+      out.body.push(`The picture is a Sentinel-2 satellite image: for every 10 m pixel, the middle value of the clear views from 2017 to 2022.`);
+      if (odisha && (!has(f.n_parts) || f.n_parts > 1)) out.body.push(`The map opens on the village with the most plots. Use the list at its top right to move between villages.`);
+      if (r.note) out.extra = `<p class="small">${esc(r.note)}</p>`;
+      out.facts = (has(f.area_ha) ? factBox(ha(f.area_ha), "area we work on") : "") +
+        (odisha && has(f.n_parts) ? factBox(n0(f.n_parts), f.n_parts === 1 ? (roi === "boxes" ? "box" : "patch") : parts) : "") + (odisha && has(plotsInside) ? factBox(n0(plotsInside), "FES plots inside") : "");
+    } else if (w.id === "land") {
+      out.title = "Mark the trees and scrub";
+      out.body.push(`Stands are about forest, so we mark the pixels that a land-cover map calls trees or scrub. The map is IndiaSAT's LULC v4 from CoRE Stack, for 2017 to 2021. A pixel counts as trees or scrub if it was in most of those years.`);
+      if (has(f.share_kept)) {
+        const sr = f.share_removed || {};
+        const removed = [["cropland", "cropland"], ["built_up", "built-up land"], ["water", "water"], ["other", "other land"], ["no_data", "pixels with no land-cover data"]]
+          .filter(([k]) => (sr[k] || 0) > 0).sort((a, b) => sr[b[0]] - sr[a[0]]).map(([k, word]) => `${word} (${pct(sr[k])})`);
+        out.body.push(`In ${odisha ? r.area + "'s " + parts : "the Sanjay Van rectangle"}, ${pct(f.share_kept)} of the area is trees or scrub.` + (removed.length ? ` The rest is ${listWords(removed)}.` : ""));
+        out.extra = landBar(f);
+      }
+      if ((f.share_decided_by_worldcover || 0) > 0) out.body.push(`Where IndiaSAT has no data (${pct(f.share_decided_by_worldcover)} of the area) we use ESA WorldCover instead.`);
+      out.body.push(isKept(r)
+        ? `Everything else is cut out here. From now on the superpixels, the stands and the types are drawn on trees and scrub only, so a field or a village never ends up inside a stand.`
+        : `We don't cut the rest out in this run. The superpixels and stands in the next steps cover the whole area; the mark comes back when we sort the stands into types, and only stands with some trees or scrub get a type.`);
+    } else if (w.id === "measure") {
+      if (r.arm === "alphaearth") {
+        out.title = "What the satellite tells us: AlphaEarth";
+        out.body.push(`Here we don't compute our own measurements. We take Google's AlphaEarth embedding instead: 64 numbers for every 10 m pixel, which the AlphaEarth model computes from each year's satellite data. We average the yearly embeddings for 2017 to 2022.`);
+        const perPixel = featureLayers(r).some(l => l.kind === "raster");
+        out.body.push(perPixel
+          ? `No one decided what each of the 64 numbers means, so the map turns them into colour: every pixel's 64 numbers squeezed into red, green and blue (the first three principal components). Pixels with similar colours look alike to AlphaEarth.`
+          : `No one decided what each of the 64 numbers means, so the map turns them into colour. Each stand gets its average embedding, squeezed into red, green and blue (the first three principal components). Stands with similar colours look alike to AlphaEarth.`);
+        out.facts = factBox("64", "numbers per pixel") + factBox("10 m", "pixel size");
+      } else {
+        out.title = "What the satellite tells us";
+        out.body.push(`For every 10 m pixel we compute ${has(f.n_feature_bands) ? n0(f.n_feature_bands) + " measurements" : "a set of measurements"}: how green it is and how that changes through the year (Sentinel-2), how it scatters radar (Sentinel-1), how tall the canopy is (ETH canopy height, 2020), and the terrain, the distance to water and the rainfall.`);
+        const fl = featureLayers(r);
+        const perStand = fl.some(l => l.kind === "vector");
+        if (fl.length) out.body.push(`The map shows ${fl.length === 1 ? "one of them" : fl.length === 2 ? "two of them" : fl.length === 3 ? "three of them" : n0(fl.length) + " of them"}.` + (perStand ? ` In this version each is averaged over a stand; the next version shows them pixel by pixel.` : ""));
+        out.body.push(`Every measurement is also averaged over each stand. From the Stands step on, click a stand to see all of them.`);
+        out.facts = (has(f.n_feature_bands) ? factBox(n0(f.n_feature_bands), "measurements per pixel") : "") + factBox("10 m", "pixel size");
+        const groupsHTML = `<details class="card groups"><summary><b>The measurements, in four groups</b></summary>${GROUPS.map(g => {
+          const gm = MEASURES.filter(m => m.group === g.id);
+          return `<div><p class="gname">${esc(g.label)} <span class="small">(${esc(g.source)})</span></p><ul>${gm.map(m => `<li>${esc(m.label)}${m.note ? ` <span class="small">(${esc(m.note.replace(/\.$/, "").toLowerCase())})</span>` : ""}</li>`).join("")}</ul></div>`;
+        }).join("")}</details>`;
+        out.extra = groupsHTML;
+        if (fl.length > 1) {
+          const cur = (fl.find(l => l.layer_id === state.feature) || fl[0]).layer_id;
+          out.extra = `<div class="chips" role="group" aria-label="Which measurement">${fl.map(l => `<button type="button" data-feature="${esc(l.layer_id)}" aria-pressed="${l.layer_id === cur}">${esc(l.title)}</button>`).join("")}</div>` + groupsHTML;
+        }
+      }
+    } else if (w.id === "superpixels") {
+      out.title = "Cut the land into superpixels";
+      const bands = f.segmentation_bands && f.segmentation_bands.length
+        ? `${n0(f.segmentation_bands.length)} measurements: ${listWords(f.segmentation_bands.map(b => BAND_WORDS[b] || b))}`
+        : r.arm === "alphaearth" ? "all 64 AlphaEarth numbers" : "a few of the measurements: light, canopy height, greenness through the year and radar";
+      out.body.push(`Next we cut ${isKept(r) ? "the trees and scrub" : "the whole area"} into small patches of pixels that look alike, called superpixels, with an algorithm called SNIC. It plants ${has(f.seed_spacing_m) ? `a seed every ${n0(f.seed_spacing_m)} m` : "seeds on a regular grid"} and grows a patch around each one, adding nearby pixels that are similar in ${bands}.`);
+      if (has(f.n_superpixels)) out.body.push(`${where} ends up with ${n0(f.n_superpixels)} superpixels` + (has(f.median_superpixel_ha) ? `, a typical one ${ha(f.median_superpixel_ha)}` : "") + `. Zoom in to see the yellow edges.`);
+      else out.body.push(`Zoom in to see the yellow edges.`);
+      if (isKept(r)) out.body.push(`Every pixel of trees or scrub ends up in a superpixel, and no superpixel reaches into fields, villages or water.`);
+      else if (state.index && state.index.commit === "early build") out.body.push(`In this early version the map draws only the superpixels that hold some trees or scrub: the saved file left out the ones on fields and villages alone.`);
+      out.facts = (has(f.n_superpixels) ? factBox(n0(f.n_superpixels), "superpixels") : "") + (has(f.seed_spacing_m) ? factBox(`${n0(f.seed_spacing_m)} m`, "between seeds") : "") + (has(f.median_superpixel_ha) ? factBox(ha(f.median_superpixel_ha), "typical size") : "");
+    } else if (w.id === "stands") {
+      out.title = "Join superpixels into stands";
+      const crit = (f.merge_criteria || []).map(c => (CRITERION_WORDS[c.band] || (t => `${c.band} within ${t}`))(c.tolerance));
+      const limit = has(f.max_stand_ha) ? `under ${ha(f.max_stand_ha)}` : `under the size limit (${fmt(r.stand_ceiling_ha, 0)} ha)`;
+      out.body.push(`A superpixel is smaller than a stand, so we join neighbours that are alike. Two neighbours join only if they match on ${crit.length ? listWords(crit) : "every merge measurement (canopy height and greenness through the year among them)"}, and only while the joined stand stays ${limit}.` + (has(f.merges_pass1) ? ` That makes ${plural(f.merges_pass1, "join")}.` : ""));
+      const loosen = has(f.relax_factor) ? Math.round((f.relax_factor - 1) * 100) : null;
+      const minHa = has(f.min_stand_ha) ? ha(f.min_stand_ha) : "the minimum size";
+      out.body.push(`Pieces still under ${minHa} then join their most similar neighbour, with the limits loosened${loosen ? ` by ${loosen}%` : ""}${has(f.merges_relaxed) ? ` (${plural(f.merges_relaxed, "join")})` : ""}, or, when no neighbour is close enough, the neighbour they share the longest border with${has(f.merges_fallback) ? ` (${plural(f.merges_fallback, "join")})` : ""}.`);
+      const keptSmall = isKept(r) && has(f.n_stands, f.stands_below_min) && f.stands_below_min > 0;
+      let tail = keptSmall
+        ? `In the end ${has(f.n_superpixels) ? n0(f.n_superpixels) + " superpixels become " : "we have "}${plural(f.n_stands - f.stands_below_min, "stand")} of ${minHa} or more. Trees and scrub also come in ${plural(f.stands_below_min, "small patch", "small patches")} under ${minHa} that touch no other forest${has(f.area_ha_left_out_of_fit) ? `, about ${ha(Math.round(f.area_ha_left_out_of_fit))} in all` : ""}. There is nothing to join them to, so each stays on the map as a stand of its own.`
+        : has(f.n_superpixels, f.n_stands) ? `In the end ${n0(f.n_superpixels)} superpixels become ${n0(f.n_stands)} stands` + (has(f.median_stand_ha) ? `; a typical stand is ${ha(f.median_stand_ha)}.` : ".") : "";
+      tail += `${tail ? " " : ""}` + (isKept(r) ? `The stands cover trees and scrub only.` : `The stands cover the whole area, fields and villages included, in this run.`);
+      if (isKept(r) && has(f.min_stand_ha, f.max_stand_ha)) tail += ` In the second step a piece still under ${minHa} may join a neighbour even if the stand then goes past ${ha(f.max_stand_ha)}, up to ${ha(f.max_stand_ha + f.min_stand_ha)}, rather than be left on its own` + (has(f.stands_over_max_stand_ha) ? (f.stands_over_max_stand_ha ? `: ${plural(f.stands_over_max_stand_ha, "stand")} ended up over ${ha(f.max_stand_ha)}.` : `; none needed to.`) : ".");
+      if (has(f.stands_below_min) && f.stands_below_min > 0 && !keptSmall) {
+        const why = f.below_min_blocked === f.stands_below_min ? "because every neighbour was already too big to take them" : f.below_min_isolated === f.stands_below_min ? "because they touch no other stand" : "because no neighbour could take them";
+        tail += ` ${plural(f.stands_below_min, "stand")} stay under ${minHa}, ${why}.`;
+      }
+      out.body.push(tail);
+      if (r.merge_rule === "before the merge fix") out.body.push(`These are the stands before this week's fix to that second step, which stops a piece that has already reached ${minHa} from joining again.`);
+      out.facts = keptSmall
+        ? factBox(n0(f.n_stands - f.stands_below_min), `stands of ${minHa} or more`) + factBox(n0(f.stands_below_min), "small cut-off patches") +
+          (has(f.min_stand_ha, f.max_stand_ha) ? factBox(`${fmt(f.min_stand_ha, 0)}–${fmt(f.max_stand_ha, 0)} ha`, has(f.largest_excess_over_max_stand_ha) && f.largest_excess_over_max_stand_ha > 0 ? `allowed size; largest ${ha(f.max_stand_ha + f.largest_excess_over_max_stand_ha)}` : "allowed size") : "")
+        : (has(f.n_stands) ? factBox(n0(f.n_stands), "stands") : "") + (has(f.median_stand_ha) ? factBox(ha(f.median_stand_ha), "typical stand") : "") +
+        (has(f.min_stand_ha, f.max_stand_ha) ? factBox(`${fmt(f.min_stand_ha, 0)}–${fmt(f.max_stand_ha, 0)} ha`, "allowed size") : "");
+    } else if (w.id === "types") {
+      out.title = "Sort the stands into types";
+      const k = has(f.k) ? f.k : r.k;
+      const what = r.arm === "alphaearth" ? "their 64 AlphaEarth numbers, averaged over each stand" : `their ${has(f.n_feature_bands) ? n0(f.n_feature_bands) + " " : ""}measurements, averaged over each stand and scaled so that no single one dominates`;
+      out.body.push(`Last, we sort the stands into ${has(k) ? n0(k) + " " : ""}types with k-means, a standard way of grouping similar things. It groups stands by ${what}. Same colour, same type.`);
+      if (isKept(r)) out.body.push(`Every stand here is trees or scrub, so every stand gets a type. The types are worked out from the ${has(f.n_stands, f.stands_below_min) ? n0(f.n_stands - f.stands_below_min) + " " : ""}stands of ${has(f.min_stand_ha) ? ha(f.min_stand_ha) : "the smallest allowed size"} or more; the small cut-off patches then get the type they are closest to.`);
+      else if (has(f.n_untyped_stands, f.share_stand_area_untyped)) out.body.push(`Only stands with some trees or scrub get a type: ${plural(f.n_untyped_stands, "stand")} (${pct(f.share_stand_area_untyped)} of the stand area) have none. The dark shading marks land that isn't trees or scrub; a stand that is mostly field can still get a type from the trees in it, and its averages include the field.`);
+      else out.body.push(`Only stands with some trees or scrub get a type. The dark shading marks land that isn't trees or scrub.`);
+      if (!isKept(r) && state.index && state.index.commit === "early build") out.body.push(`A caution about these types: they are the ones the 13 October run saved, and a second fit of the same stands gives different types in most runs, because that run computed part of its input fresh and read part from storage. The next update uses a fit that repeats.`);
+      if (odisha) out.body.push(`The type numbers are only names. The types are worked out for each district separately, so type 2 in ${r.area} has nothing to do with type 2 in another district.`);
+      else out.body.push(`The type numbers are only names. Sanjay Van has no field plots, so the check against the ground is done in Odisha.`);
+      out.body.push(`Click any stand to see its measurements, or to compare it with another stand. The next step shows what each type looks like.`);
+      out.facts = (has(k) ? factBox(n0(k), "stand types") : "") + (isKept(r) && has(f.n_stands, f.stands_below_min) && f.stands_below_min > 0
+        ? factBox(n0(f.n_stands - f.stands_below_min), "stands that set the types") + factBox(n0(f.stands_below_min), "small patches, typed after")
+        : (has(f.n_stands) ? factBox(n0(f.n_stands), "stands") : ""));
+    } else if (w.id === "profiles") {
+      out.title = "What each type looks like";
+      out.body.push(r.arm === "alphaearth"
+        ? `AlphaEarth sorted these stands by its 64 numbers, which have no names, so its types can only be described with our own measurements, averaged over the same stands.`
+        : `Here are the types side by side: how much land each covers, how each differs from the rest on every measurement, and how big the stands are.`);
+      out.body.push(`Click a stand on the map to see all its measurements, or pick two stands to compare them.`);
+      out.extra = `<div id="profiles-host" class="profiles"><p class="small">Loading the stands.</p></div>`;
+    } else if (w.id === "field") {
+      out.title = "Do the stands follow the field plots?";
+      out.body.push(`FES measured the trees on ${has(plotsInside) ? n0(plotsInside) + " plots" : "the plots"} inside these ${parts}, and every Odisha plot was sorted into one of five field types by its trees: height, trunk size, crown cover and how many there are.`);
+      out.body.push(`If our stands follow the forest, plots that fall in the same stand should be the same field type, and plots of the same field type should get the same stand type.`);
+      out.extra = fieldExtras();
+    }
+    return out;
+  }
+
+  function fieldExtras() {
+    const r = run();
+    const rows = fesRows(r);
+    if (!comparable(r)) {
+      return `<p class="note">We haven't compared ${r.arm === "alphaearth" ? "AlphaEarth's" : "these"} stands with the plots yet. We write down exactly how we'll test them before we run the test, so the result can't steer the method. That comes with the next update. Until then the map shows where the plots fall, without the comparison.</p>`;
+    }
+    const feats = state.plots || [];
+    const st = pairStats(feats);
+    const pairsHTML = st.pairs
+      ? `<p>${n0(st.plotsShared)} of the ${n0(st.withStand)} plots on a stand share it with another plot. That makes ${plural(st.pairs, "pair")}: <b>${n0(st.same)} the same field type</b> and <b>${n0(st.pairs - st.same)} different</b>.</p>`
+      : `<p>No two plots here fall in the same stand, so this district can't answer that question on its own.</p>`;
+    const linesKey = `<div class="pairs"><span><i style="border-top-color:${SAME}"></i>same stand, same field type</span><span><i style="border-top-color:${DIFF};border-top-style:dashed"></i>same stand, different field type</span></div>`;
+    return `<div class="card"><h3>Plots that share a stand, on the map</h3>${linesKey}${pairsHTML}</div>` + crossTab(feats) + chanceCard(rows);
+  }
+
+  function crossTab(feats) {
+    const r = run();
+    const st = layerById(r, "stand_types"), pl = layerById(r, "plots");
+    const types = (st && st.legend ? st.legend.map(e => Number(e.value)) : []).sort((a, b) => a - b);
+    const ftypes = (pl && pl.legend ? pl.legend.map(e => Number(e.value)) : []).sort((a, b) => a - b);
+    if (!types.length || !ftypes.length) return "";
+    const counts = new Map();
+    let untyped = 0;
+    feats.forEach(f => {
+      const p = f.properties || {};
+      if (p.stand_id === null || p.stand_id === undefined || p.field_type === null || p.field_type === undefined) return;
+      if (p.stand_type === null || p.stand_type === undefined) { untyped += 1; return; }
+      const k = p.stand_type + "|" + p.field_type;
+      counts.set(k, (counts.get(k) || 0) + 1);
+    });
+    const max = Math.max(1, ...counts.values());
+    const head = `<tr><th></th>${ftypes.map(t => `<th title="${esc(fieldTypeLabel(t))}">${t}</th>`).join("")}</tr>`;
+    const body = types.map(t => {
+      const cells = ftypes.map(ft => {
+        const c = counts.get(t + "|" + ft) || 0;
+        const a = c ? 0.12 + 0.68 * (c / max) : 0;
+        return `<td style="background:color-mix(in srgb, var(--accent) ${Math.round(a * 100)}%, transparent)">${c || ""}</td>`;
+      }).join("");
+      return `<tr><th class="row"><span class="chip" style="background:${esc(legendColor(st, t))}"></span>Type ${t}</th>${cells}</tr>`;
+    }).join("");
+    return `<div class="card"><h3>Stand type against field type</h3><p class="small">Plots counted by the type of the stand they fall in (rows) and their field type (columns, 0 = no trees to 4 = tallest; hover a number for its meaning). If stand types matched field types, each row would have one dark cell.</p><table class="xtab">${head}${body}</table>${untyped ? `<p class="small">${plural(untyped, "plot")} fall on stands without a type and are not counted.</p>` : ""}${state.index && state.index.commit === "early build" ? `<p class="small">These are the run's saved stand types, which a second fit does not repeat (step 6), so read this table as a picture, not a result.</p>` : ""}</div>`;
+  }
+
+  function chanceCard(rows) {
+    const tested = rows.filter(x => x.chance_percentile !== null && x.chance_percentile !== undefined && (!x.analysis || x.analysis === "primary"));
+    if (!tested.length) {
+      const decl = run().roi === "boxes" ? ` It is written down in <a href="${REPO}odisha_script/PHASE_SQUARES_PREDECLARED.md" target="_blank" rel="noopener">PHASE_SQUARES_PREDECLARED.md</a>, from before these runs: the same five tests and 1,999 random placements as before, on the boxes.` : "";
+      return `<div class="card"><h3>Is that more than chance?</h3><p class="small">Not tested yet; the chance test runs next.${decl}</p></div>`;
+    }
+    const pass = tested.filter(x => x.p_holm !== null && x.p_holm <= 0.05);
+    const rawOnly = tested.filter(x => x.p !== null && x.p <= 0.05 && !(x.p_holm !== null && x.p_holm <= 0.05));
+    const best = tested.slice().sort((a, b) => b.chance_percentile - a.chance_percentile)[0];
+    const verdict = pass.length
+      ? `<span class="badge good">Yes, on ${plural(pass.length, "test")}</span><span class="big">The stands beat chance${pass.length < tested.length ? " on part of the check" : ""}.</span>`
+      : `<span class="badge bad">No</span><span class="big">Not clearly better than chance, on any of the ${tested.length} tests.</span>`;
+    const closest = !pass.length && best ? `<p>The closest is “${esc(best.title.toLowerCase())}”: it beats ${n0(best.chance_percentile)} of 100 random placements, short of the 95 we set in advance${rawOnly.length ? `; ${plural(rawOnly.length, "test")} get past 95 only before the correction for running several tests` : ""}.</p>` : "";
+    const items = tested.map(x => {
+      const pc = Math.max(0, Math.min(100, x.chance_percentile));
+      const badge = x.p_holm !== null && x.p_holm <= 0.05 ? `<span class="badge good">passes</span>` : x.p !== null && x.p <= 0.05 ? `<span class="badge warn">only before correction</span>` : `<span class="badge">no</span>`;
+      return `<li><span class="t">${esc(x.title)}</span><div class="meter" title="Beats ${fmt(x.chance_percentile, 1)} of 100 random placements; the line marks 95"><span class="fill" style="width:${pc}%"></span><span class="mark"></span></div><div class="meterline"><span>beats <b>${n0(x.chance_percentile)}</b> of 100 random placements</span>${badge}</div><span class="nums">score ${fmt(x.score, 4)} · p ${fmt(x.p, 3)} · corrected p ${fmt(x.p_holm, 3)}</span></li>`;
+    }).join("");
+    const plotsN = tested[0].n_plots ? `${n0(tested[0].n_plots)} plots in all four districts` : "all four districts";
+    const map = run();
+    const scoreOnly = fesRows(map).filter(x => (x.chance_percentile === null || x.chance_percentile === undefined) && x.test === "drawing_all_plots");
+    const tStands = tested[0].stands;
+    const firstTested = tested.find(x => x.test === "drawing_all_plots") || {};
+    const mismatch = scoreOnly.length && tStands ? `<p class="note">These tests were run on the stands of the ${esc(tStands)}. The stands on this map come from the ${esc(scoreOnly[0].stands || "re-runs")} and score ${fmt(scoreOnly[0].score, 4)} on the first test (the September stands: ${fmt(firstTested.score, 4)}). Their own chance test comes with the next update.</p>` : "";
+    const reading = state.fes && state.fes.reading ? `<details><summary>What this means</summary><p class="small">${esc(state.fes.reading)}</p></details>` : "";
+    return `<div class="card"><h3>Is that more than chance? (${esc(plotsN)})</h3>` +
+      `<p class="small">To find out, we keep each village's plots in the same arrangement but slide and turn them to 1,999 random spots over the same stand map, and score every one. The real placement has to beat 95 of every 100 random ones, after a correction for running several tests (Holm's method).</p>` +
+      `<div class="verdict">${verdict}</div>${closest}<ul class="tests">${items}</ul>` +
+      `<details><summary>About the scores</summary><p class="small">Four of the five scores are the adjusted Rand index: 0 means no better than grouping the plots at random, 1 means perfect agreement. The third is the share of same-stand pairs that are the same field type; the fifth is how much more often far-apart plots that are alike share a stand type than far-apart plots that differ.</p></details>` +
+      mismatch + reading + `</div>`;
+  }
+
+  /* ---------- the measurements, in words ---------- */
+  // Every stand carries the average of each measurement over its pixels. These are their names
+  // in plain words, the group each belongs to, and how to show a value.
+  const GROUPS = [
+    { id: "optical", label: "Greenness through the year", short: "Greenness", source: "Sentinel-2" },
+    { id: "radar", label: "Radar", short: "Radar", source: "Sentinel-1" },
+    { id: "structure", label: "Canopy", short: "Canopy", source: "ETH canopy height, 2020" },
+    { id: "static", label: "Ground and climate", short: "Ground", source: "NASADEM, JRC water, CHIRPS" },
+  ];
+  const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  function peakMonth(rad) {
+    // phase = atan2(c, b) of the yearly cycle, with t in years from 1 January: the peak falls at
+    // phase / 2π of the way through the year.
+    const frac = (((rad / (2 * Math.PI)) % 1) + 1) % 1;
+    return MONTHS[Math.min(11, Math.floor(frac * 12))];
+  }
+  function compass(deg) {
+    const names = ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"];
+    return names[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
+  }
+  function waterWords(v) {
+    // distance_to_water stops counting at 10 km and then holds a fill value (about 463 km), so
+    // anything past 10 km is "over 10 km", never a number.
+    if (v >= 10000) return "over 10 km";
+    return v >= 1000 ? fmt(v / 1000, 1) + " km" : fmt(v, 0) + " m";
+  }
+  const dB = d => v => fmt(v, d) + " dB";
+  // [key, short name, full name, group, show, words for higher, words for lower, note]
+  const MEASURES = [
+    ["ndvi_mean", "Greenness", "Average greenness (NDVI)", "optical", v => fmt(v, 3), "greener", "less green"],
+    ["ndvi_amplitude_annual", "Seasonal swing", "How much the greenness rises and falls over the year", "optical", v => fmt(v, 3), "bigger seasonal swing", "steadier through the year"],
+    ["ndvi_phase_annual", "Peak month", "When in the year it is greenest", "optical", v => peakMonth(v), null, null],
+    ["ndvi_trend", "Trend", "Change in greenness per year, 2017 to 2022", "optical", v => (v > 0 ? "+" : "") + fmt(v, 4), "greening over the years", "browning over the years"],
+    ["ndvi_residual_variance", "Irregularity", "Change in greenness the yearly cycle doesn't explain", "optical", v => fmt(v, 4), "more irregular greenness", "more regular greenness", "Not used to sort stands into types."],
+    ["vv_p50", "VV typical", "Radar VV, typical value", "radar", dB(1), "stronger radar return", "weaker radar return"],
+    ["vv_p10", "VV low", "Radar VV, low value (10th percentile)", "radar", dB(1), null, null],
+    ["vv_p90", "VV high", "Radar VV, high value (90th percentile)", "radar", dB(1), null, null],
+    ["vv_iqr", "VV spread", "Radar VV, how much it changes over time", "radar", dB(1), "radar changes more over time", "radar steadier over time"],
+    ["vh_p50", "VH typical", "Radar VH, typical value", "radar", dB(1), "stronger cross-polarised return", "weaker cross-polarised return"],
+    ["vh_p10", "VH low", "Radar VH, low value (10th percentile)", "radar", dB(1), null, null],
+    ["vh_p90", "VH high", "Radar VH, high value (90th percentile)", "radar", dB(1), null, null],
+    ["vh_iqr", "VH spread", "Radar VH, how much it changes over time", "radar", dB(1), null, null],
+    ["vv_minus_vh_median", "VV − VH", "Radar, VV minus VH", "radar", dB(2), null, null],
+    ["canopy_height", "Height", "Canopy height", "structure", v => fmt(v, 1) + " m", "taller canopy", "shorter canopy"],
+    ["canopy_height_max", "Tallest nearby", "Tallest canopy within 30 m", "structure", v => fmt(v, 1) + " m", null, null],
+    ["canopy_height_std", "Height varies", "How much canopy height varies within 30 m", "structure", v => fmt(v, 2) + " m", "more uneven canopy", "more even canopy"],
+    ["elevation", "Elevation", "Elevation", "static", v => fmt(v, 0) + " m", "higher ground", "lower ground"],
+    ["slope", "Slope", "Slope", "static", v => fmt(v, 1) + "°", "steeper", "flatter"],
+    ["aspect", "Faces", "Which way the slope faces", "static", v => compass(v), null, null],
+    ["distance_to_water", "To water", "Distance to water", "static", waterWords, "farther from water", "nearer water"],
+    ["annual_rainfall", "Rainfall", "Rain per year (1991 to 2020 average)", "static", v => fmt(v, 0) + " mm", null, null, "Not used to sort stands into types."],
+  ].map(([key, short, label, group, show, up, down, note]) => ({ key, short, label, group, show, up, down, note }));
+  const measureOf = key => MEASURES.find(m => m.key === key);
+  // A measurement whose average over a stand is not a simple number to compare: a month or a
+  // compass direction, averaged as plain numbers, would mislead in a chart.
+  const CIRCULAR = new Set(["ndvi_phase_annual", "aspect"]);
+
+  /* ---------- small statistics ---------- */
+  function quantile(sorted, q) {
+    if (!sorted.length) return NaN;
+    const x = (sorted.length - 1) * q, i = Math.floor(x), f = x - i;
+    return i + 1 < sorted.length ? sorted[i] + (sorted[i + 1] - sorted[i]) * f : sorted[i];
+  }
+  const nums = xs => xs.filter(v => typeof v === "number" && Number.isFinite(v)).sort((a, b) => a - b);
+  function spreadOf(values) {
+    const s = nums(values);
+    const med = quantile(s, 0.5), iqr = quantile(s, 0.75) - quantile(s, 0.25);
+    return { med, iqr, n: s.length, constant: s.length > 0 && s[0] === s[s.length - 1], sorted: s };
+  }
+
+  /* ---------- stands of the current run ---------- */
+  function standsLayer(r) { return layerById(r, "stand_types") || layerById(r, "stands"); }
+  async function standsOf(r) {
+    const layer = standsLayer(r);
+    if (!layer || !layer.file) return null;
+    const data = await getJSON(DATA + layer.file);
+    // A stand drawn in several pieces is one stand: its area is the pieces' total, and the rest
+    // comes from its largest piece.
+    const byId = new Map();
+    (data.features || []).forEach(f => {
+      const p = f.properties || {};
+      const id = p.stand_id === undefined ? Symbol() : String(p.stand_id);
+      const seen = byId.get(id);
+      if (!seen) { byId.set(id, { ...p }); return; }
+      const total = (seen.area_ha || 0) + (p.area_ha || 0);
+      byId.set(id, (p.area_ha || 0) > (seen._largest || seen.area_ha || 0) ? { ...p, _largest: p.area_ha, area_ha: total } : { ...seen, _largest: seen._largest || seen.area_ha, area_ha: total });
+    });
+    return [...byId.values()];
+  }
+  function measuresIn(stands) {
+    // The measurements this run's stands carry a value for, in the order above.
+    const present = new Set();
+    stands.forEach(p => Object.keys(p).forEach(k => { if (valueOf(k, p) !== null) present.add(k); }));
+    return MEASURES.filter(m => present.has(m.key));
+  }
+  // The value used in charts and comparisons. Distance to water stops at 10 km (past that the
+  // file holds a fill value), so it is counted as 10 km there, as "over 10 km" reads.
+  function valueOf(key, p) {
+    const v = p[key];
+    if (key === "distance_to_water" && typeof v === "string" && /over/i.test(v)) return 10000;
+    if (typeof v !== "number" || !Number.isFinite(v)) return null;
+    return key === "distance_to_water" ? Math.min(v, 10000) : v;
+  }
+  function profileModel(r, stands) {
+    const typeLayer = layerById(r, "stand_types");
+    const typed = stands.filter(p => p.stand_type !== null && p.stand_type !== undefined);
+    const types = [...new Set(typed.map(p => Math.round(p.stand_type)))].sort((a, b) => a - b);
+    // Small cut-off patches get a type but take no part in deciding the types, so the profile of
+    // each type is drawn from the stands that did.
+    const fitted = typed.filter(p => p.below_min !== true);
+    const ms = measuresIn(stands);
+    const overall = new Map(ms.map(m => [m.key, spreadOf(fitted.map(p => valueOf(m.key, p)))]));
+    const byType = types.map(t => {
+      const mine = typed.filter(p => Math.round(p.stand_type) === t);
+      const area = mine.reduce((s, p) => s + (p.area_ha || 0), 0);
+      const core = mine.filter(p => p.below_min !== true);
+      const med = new Map(ms.map(m => [m.key, spreadOf(core.map(p => valueOf(m.key, p)))]));
+      return { t, color: legendColor(typeLayer || {}, t), n: core.length, nSmall: mine.length - core.length, area, med };
+    });
+    return { typed, types, ms, overall, byType, untyped: stands.length - typed.length, typeLayer, nSmall: typed.length - fitted.length };
+  }
+  // How far a type's middle stand sits from the middle of all stands, in "typical spreads" (the
+  // spread of the middle half of all stands). Robust to a few odd stands, and the same scale for
+  // every measurement.
+  function shiftOf(model, typeRow, key) {
+    const o = model.overall.get(key), m = typeRow.med.get(key);
+    if (!o || !m || !o.n || !m.n || o.constant || !(o.iqr > 0)) return null;
+    return (m.med - o.med) / o.iqr;
+  }
+  function typeWords(model, row) {
+    const picks = model.ms
+      .filter(m => m.up && m.down && !m.note)
+      .map(m => ({ m, z: shiftOf(model, row, m.key) }))
+      .filter(x => x.z !== null && Math.abs(x.z) >= 0.75)
+      .sort((a, b) => Math.abs(b.z) - Math.abs(a.z))
+      .slice(0, 3)
+      .map(x => (x.z > 0 ? x.m.up : x.m.down));
+    return picks.length ? cap(listWords(picks)) : "Close to the middle on every measurement";
+  }
+
+  /* ---------- charts (inline SVG, sized by the panel) ---------- */
+  const SVG_NS = 'xmlns="http://www.w3.org/2000/svg"';
+  function sizeHistogram(r, stands) {
+    const small = stands.filter(p => p.below_min === true);
+    const areas = nums(stands.filter(p => p.below_min !== true).map(p => p.area_ha));
+    if (!areas.length) return "";
+    const f = r.facts || {};
+    const ceil = Number(f.max_stand_ha || r.stand_ceiling_ha || areas[areas.length - 1]);
+    const minHa = Number(f.min_stand_ha || 0);
+    const top = Math.max(ceil, areas[areas.length - 1]);
+    const step = top <= 4 ? 0.25 : top <= 12 ? 0.5 : 1;
+    const nb = Math.ceil(top / step) || 1;
+    const bins = new Array(nb).fill(0);
+    areas.forEach(a => { bins[Math.min(nb - 1, Math.floor(a / step))] += 1; });
+    const W = 380, H = 140, L = 30, B = 22, T = 18, max = Math.max(...bins);
+    const bw = (W - L - 6) / nb;
+    const x = v => L + (v / step) * bw;
+    const y = c => T + (H - T - B) * (1 - c / max);
+    const bars = bins.map((c, i) => c ? `<rect x="${(L + i * bw + 0.5).toFixed(1)}" y="${y(c).toFixed(1)}" width="${Math.max(1, bw - 1).toFixed(1)}" height="${(H - B - y(c)).toFixed(1)}" fill="var(--accent)" opacity=".8"><title>${fmt(i * step, 2)} to ${fmt((i + 1) * step, 2)} ha: ${plural(c, "stand")}</title></rect>` : "").join("");
+    const ticks = [0, ceil / 2, ceil].concat(top > ceil * 1.05 ? [top] : []).map(v => `<text x="${x(v).toFixed(1)}" y="${H - 6}" text-anchor="middle">${fmt(v, v % 1 ? 1 : 0)}</text>`).join("");
+    const line = (v, label, end) => `<line x1="${x(v)}" x2="${x(v)}" y1="${T - 4}" y2="${H - B}" stroke="var(--ink)" stroke-dasharray="3 3" opacity=".7"/><text x="${x(v) + (end ? -3 : 3)}" y="${T - 7}" class="lab"${end ? ' text-anchor="end"' : ""}>${label}</text>`;
+    // Areas in the file are measured from the outlines and rounded, so a stand within 1% of a limit counts as at it.
+    const over = areas.filter(a => a > ceil * 1.01).length;
+    const below = minHa ? areas.filter(a => a < minHa * 0.99).length : 0;
+    return `<div class="card chart"><h3>How big the stands are</h3>` +
+      `<svg ${SVG_NS} viewBox="0 0 ${W} ${H}" role="img" aria-label="Histogram of stand sizes">` +
+      `<text x="${L - 4}" y="${T + 4}" text-anchor="end">${max}</text><text x="${L - 4}" y="${H - B}" text-anchor="end">0</text>` +
+      bars + (minHa ? line(minHa, "smallest allowed", false) : "") + line(ceil, "largest allowed", true) + `<g class="ticks">${ticks}</g></svg>` +
+      `<p class="small">Each bar counts the stands of that size, in hectares. ${plural(areas.length, "stand")} in all; the middle one is ${ha(quantile(areas, 0.5))}.` +
+      (below ? ` ${plural(below, "stand")} ${below === 1 ? "is" : "are"} still under ${ha(minHa)}.` : "") +
+      (small.length ? ` Not counted here: ${plural(Math.max(small.length, f.stands_below_min || 0), "small patch", "small patches")} of trees or scrub under ${ha(minHa)} that touch no other forest, about ${ha(Math.round(small.reduce((s, p) => s + (p.area_ha || 0), 0)))} in all.` : "") +
+      (over ? ` ${plural(over, "stand")} ${over === 1 ? "goes" : "go"} past ${ha(ceil)}, the most is ${ha(areas[areas.length - 1])}.` : "") + `</p></div>`;
+  }
+  function areaByType(model) {
+    const total = model.byType.reduce((s, x) => s + x.area, 0) || 1;
+    const max = Math.max(...model.byType.map(x => x.area), 1e-9);
+    const rows = model.byType.map(x => `<div class="arow" role="button" tabindex="0" data-focus-type="${x.t}" aria-pressed="${state.focusType === x.t}" title="Show only type ${x.t} on the map"><span class="tname"><i style="background:${esc(x.color)}"></i>Type ${x.t}</span>` +
+      `<span class="abar"><i style="width:${(100 * x.area / max).toFixed(1)}%;background:${esc(x.color)}"></i></span>` +
+      `<span class="aval">${pct(x.area / total)} <span class="small">${plural(x.n, "stand")}${x.nSmall ? ` + ${n0(x.nSmall)} small` : ""}</span></span></div>`).join("");
+    return `<div class="card chart"><h3>How much land each type covers</h3><div class="arows">${rows}</div>` +
+      `<p class="small">Share of the area of the stands that have a type. Click a type to see only its stands on the map.${model.nSmall ? ` “Small” counts the cut-off patches under the smallest stand size that took the type.` : ""}${model.untyped ? ` ${plural(model.untyped, "stand")} ${model.untyped === 1 ? "has" : "have"} no type and ${model.untyped === 1 ? "is" : "are"} left out.` : ""}</p></div>`;
+  }
+  function shiftColor(z) {
+    if (z === null) return "var(--neutral-soft)";
+    const c = Math.max(-2, Math.min(2, z)) / 2;
+    const hue = c >= 0 ? "#c2611f" : "#2c6fb0";
+    return `color-mix(in srgb, ${hue} ${Math.round(Math.abs(c) * 85)}%, var(--surface))`;
+  }
+  function profileTable(model) {
+    const groups = GROUPS.map(g => ({ g, ms: model.ms.filter(m => m.group === g.id && !CIRCULAR.has(m.key)) })).filter(x => x.ms.length);
+    const head1 = `<tr><th></th>${groups.map(x => `<th colspan="${x.ms.length}" class="grp" title="${esc(x.g.label)} (${esc(x.g.source)})"><span>${esc(x.g.short)}</span></th>`).join("")}</tr>`;
+    const head2 = `<tr><th></th>${groups.map(x => x.ms.map(m => `<th class="mh" title="${esc(m.label)}"><span>${esc(m.short)}</span></th>`).join("")).join("")}</tr>`;
+    const body = model.byType.map(row => `<tr><th class="row"><span class="chip" style="background:${esc(row.color)}"></span>${row.t}</th>` +
+      groups.map(x => x.ms.map(m => {
+        const z = shiftOf(model, row, m.key), med = row.med.get(m.key);
+        const o = model.overall.get(m.key);
+        const tip = o && o.constant ? `${m.label}: the same in every stand here (${m.show(o.med)}), so it can't tell types apart`
+          : `${m.label}, type ${row.t}: middle stand ${med && med.n ? m.show(med.med) : "–"}; all stands ${m.show(o.med)}`;
+        return `<td style="background:${shiftColor(z)}" title="${esc(tip)}">${o && o.constant ? "=" : ""}</td>`;
+      }).join("")).join("") + `</tr>`).join("");
+    const key = `<div class="zkey"><span>lower</span><i style="background:linear-gradient(90deg, ${shiftColor(-2)}, ${shiftColor(0)}, ${shiftColor(2)})"></i><span>higher than most stands</span></div>`;
+    return `<div class="card chart"><h3>What each type looks like</h3>` +
+      `<p class="small">One row per type, one column per measurement. Orange means the type's middle stand is higher than the middle of all stands, blue means lower; the stronger the colour, the bigger the gap. Hover a cell for the values.</p>` +
+      `<div class="hscroll"><table class="heat">${head1}${head2}${body}</table></div>${key}` +
+      (model.ms.some(m => model.overall.get(m.key)?.constant) ? `<p class="small">“=” marks a measurement that is the same in every stand here, so it can't tell types apart.${model.ms.some(m => m.key === "distance_to_water" && model.overall.get(m.key)?.constant) ? " At Sanjay Van no stand is within 10 km of the water our map uses, so distance to water is the same everywhere." : ""}</p>` : "") +
+      `<ul class="tdesc">${model.byType.map(row => `<li><span class="chip" style="background:${esc(row.color)}"></span><b>Type ${row.t}.</b> ${esc(typeWords(model, row))}.</li>`).join("")}</ul>` +
+      `<p class="small">These descriptions compare each type with the other stands at this place only.</p></div>`;
+  }
+  function boxPlot(model, key) {
+    const m = measureOf(key);
+    const o = model.overall.get(key);
+    if (!m || !o || !o.n) return "";
+    const rows = model.byType.map(row => ({ row, s: row.med.get(key) })).filter(x => x.s && x.s.n);
+    const lo = quantile(o.sorted, 0.02), hi = quantile(o.sorted, 0.98);
+    const span = (hi - lo) || 1;
+    const W = 380, rowH = 22, L = 56, R = 10, T = 6, H = T + rows.length * rowH + 20;
+    const x = v => L + (W - L - R) * Math.max(0, Math.min(1, (v - lo) / span));
+    const marks = rows.map(({ row, s }, i) => {
+      const y = T + i * rowH + rowH / 2;
+      const q = p => quantile(s.sorted, p);
+      return `<g><text x="${L - 8}" y="${y + 4}" text-anchor="end">Type ${row.t}</text>` +
+        `<line x1="${x(q(0.1))}" x2="${x(q(0.9))}" y1="${y}" y2="${y}" stroke="var(--muted)"/>` +
+        `<rect x="${x(q(0.25))}" y="${y - 7}" width="${Math.max(1.5, x(q(0.75)) - x(q(0.25)))}" height="14" rx="3" fill="${esc(row.color)}" stroke="var(--ink)" stroke-opacity=".35"/>` +
+        `<line x1="${x(q(0.5))}" x2="${x(q(0.5))}" y1="${y - 7}" y2="${y + 7}" stroke="var(--ink)" stroke-width="2"/>` +
+        `<title>Type ${row.t}: middle stand ${m.show(q(0.5))}; middle half ${m.show(q(0.25))} to ${m.show(q(0.75))}</title></g>`;
+    }).join("");
+    const axis = `<text x="${L}" y="${H - 4}">${esc(m.show(lo))}</text><text x="${W - R}" y="${H - 4}" text-anchor="end">${esc(m.show(hi))}</text>`;
+    const choices = model.ms.filter(x => !CIRCULAR.has(x.key) && !model.overall.get(x.key)?.constant);
+    const select = `<select data-boxkey aria-label="Measurement to compare across types">${choices.map(x => `<option value="${x.key}"${x.key === key ? " selected" : ""}>${esc(x.label)}</option>`).join("")}</select>`;
+    return `<div class="card chart"><h3>One measurement, type by type</h3>${select}` +
+      `<svg ${SVG_NS} viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(m.label)} by stand type">${marks}${axis}</svg>` +
+      `<p class="small">Each box holds the middle half of the type's stands, with a line at the middle one; the thin line runs from the 10th to the 90th percentile. Boxes that don't overlap mean the types differ on this measurement.</p></div>`;
+  }
+
+  function applyFocus() {
+    const r = run(), layer = layerById(r, "stand_types");
+    const l = layer && state.layers.get(layer._key);
+    if (!l || !l.setStyle) return;
+    const t = state.focusType;
+    l.setStyle(f => {
+      const p = f.properties || {}, c = featureColor(layer, p);
+      const R = state.renderers.fills;
+      if (!c) return { renderer: R, pane: "fills", color: "#9aa39d", weight: 0.6, fillColor: "#9aa39d", fillOpacity: t === null || t === undefined ? 0.18 : 0.05, dashArray: "3 3" };
+      const mine = t === null || t === undefined || Math.round(p.stand_type) === t;
+      return { renderer: R, pane: "fills", color: c, weight: mine ? 0.8 : 0.3, opacity: mine ? 0.95 : 0.15, fillColor: c, fillOpacity: mine ? 0.66 * opacityOf(layer) : 0.06 };
+    });
+  }
+  async function renderProfiles() {
+    const host = $("#profiles-host");
+    if (!host) return;
+    const r = run();
+    let stands;
+    try { stands = await standsOf(r); } catch (e) { stands = null; }
+    if (run() !== r || !$("#profiles-host")) return;
+    if (!stands || !stands.length) { host.innerHTML = `<p class="small">The stand file for this run did not load.</p>`; return; }
+    const model = profileModel(r, stands);
+    state.profile = model;
+    const pick = state.boxKey && model.ms.some(m => m.key === state.boxKey) ? state.boxKey : (model.ms.find(m => m.key === "canopy_height") || model.ms[0] || {}).key;
+    const noMeasures = `<div class="card"><h3>What each type looks like</h3><p class="small">This run's stand file carries no measurements by name yet, only ${r.arm === "alphaearth" ? "AlphaEarth's 64 unnamed numbers" : "the stand types"}. The next data update adds our measurements to every stand, so the types can be described here.</p></div>`;
+    host.innerHTML = (model.types.length ? areaByType(model) + (model.ms.length ? profileTable(model) + (pick ? boxPlot(model, pick) : "") : noMeasures) : `<p class="small">No stand in this run has a type.</p>`) + sizeHistogram(r, stands);
+  }
+
+  /* ---------- two stands, side by side ---------- */
+  function compareHTML() {
+    const c = state.compare;
+    if (!c || !c.a) return "";
+    const ms = c.ms || [];
+    if (!c.b) {
+      return `<div class="card compare" id="compare-card"><h3>Compare two stands</h3><p>Stand ${esc(c.a.stand_id)} is picked. Click another stand on the map and choose <b>Compare</b>.</p><button type="button" class="linkish" data-compare-clear>Cancel</button></div>`;
+    }
+    const a = c.a, b = c.b, model = c.model;
+    const rows = ms.filter(m => !CIRCULAR.has(m.key) && valueOf(m.key, a) !== null && valueOf(m.key, b) !== null).map(m => {
+      const o = model && model.get(m.key);
+      const d = valueOf(m.key, b) - valueOf(m.key, a);
+      const z = o && o.iqr > 0 && !o.constant && Number.isFinite(d) ? d / o.iqr : null;
+      return { m, z };
+    });
+    const ranked = rows.filter(x => x.z !== null).sort((x, y) => Math.abs(y.z) - Math.abs(x.z));
+    const bar = z => {
+      const w = Math.min(1, Math.abs(z) / 3) * 50;
+      return `<span class="dbar"><i style="${z >= 0 ? "left:50%" : `left:${50 - w}%`};width:${w}%"></i></span>`;
+    };
+    const line = ({ m, z }) => `<tr><td>${esc(m.label)}${m.note ? ` <span class="small">(${esc(m.note.replace(/\.$/, "").toLowerCase())})</span>` : ""}</td><td>${esc(m.show(valueOf(m.key, a)))}</td><td>${esc(m.show(valueOf(m.key, b)))}</td><td>${z === null ? "" : bar(z)}</td></tr>`;
+    const top = ranked.slice(0, 6);
+    const circ = ms.filter(m => CIRCULAR.has(m.key) && valueOf(m.key, a) !== null && valueOf(m.key, b) !== null).map(m => `<tr><td>${esc(m.label)}</td><td>${esc(m.show(valueOf(m.key, a)))}</td><td>${esc(m.show(valueOf(m.key, b)))}</td><td></td></tr>`).join("");
+    const head = `<tr><th></th><th>Stand ${esc(a.stand_id)}</th><th>Stand ${esc(b.stand_id)}</th><th class="small">${esc(b.stand_id)} vs ${esc(a.stand_id)}</th></tr>`;
+    const typeOf = p => (p.stand_type === null || p.stand_type === undefined ? "no type" : "type " + Math.round(p.stand_type));
+    const verdict = (a.stand_type !== null && a.stand_type !== undefined && a.stand_type === b.stand_type) ? "Both are " + typeOf(a) + "." : `Stand ${esc(a.stand_id)} is ${typeOf(a)}, stand ${esc(b.stand_id)} is ${typeOf(b)}.`;
+    return `<div class="card compare" id="compare-card"><h3>Stand ${esc(a.stand_id)} and stand ${esc(b.stand_id)}</h3>` +
+      `<p>${verdict} ${ha(a.area_ha)} and ${ha(b.area_ha)}.${ranked.length ? ` They differ most in ${listWords(ranked.slice(0, 2).map(x => lowerFirst(x.m.label)))}.` : ""}</p>` +
+      `<table class="cmp">${head}${top.map(line).join("")}</table>` +
+      (ranked.length > top.length || circ ? `<details><summary>All ${rows.length + ms.filter(m => CIRCULAR.has(m.key)).length} measurements</summary><table class="cmp">${head}${ranked.slice(top.length).map(line).join("")}${rows.filter(x => x.z === null).map(line).join("")}${circ}</table></details>` : "") +
+      `<p class="small">The bars show how far apart the two are, against the typical spread of that measurement across all stands here; a full bar is three typical spreads or more.</p>` +
+      `<button type="button" class="linkish" data-compare-clear>Clear</button></div>`;
+  }
+  // "Radar, VV minus VH" -> "radar, VV minus VH": lower-case the first letter only, and not in an acronym.
+  function lowerFirst(t) { return /^[A-Z][a-z]/.test(t) ? t[0].toLowerCase() + t.slice(1) : t; }
+  async function highlightCompared() {
+    if (state.hl) { state.map.removeLayer(state.hl); state.hl = null; }
+    const c = state.compare, r = run();
+    if (!c || c.run !== r.run_id || !c.a) return;
+    const layer = standsLayer(r);
+    const data = await getJSON(DATA + layer.file).catch(() => null);
+    if (!data || run() !== r) return;
+    const ids = [c.a, c.b].filter(Boolean).map(p => String(p.stand_id));
+    const feats = (data.features || []).filter(f => ids.includes(String((f.properties || {}).stand_id)));
+    state.hl = L.geoJSON({ type: "FeatureCollection", features: feats }, {
+      pane: "links", interactive: false,
+      style: () => ({ color: "#ffffff", weight: 3.5, opacity: 1, fill: false, dashArray: null }),
+    }).addTo(state.map);
+  }
+  async function pickForCompare(id) {
+    const r = run();
+    const stands = await standsOf(r).catch(() => null);
+    if (!stands) return;
+    const p = stands.find(x => String(x.stand_id) === String(id));
+    if (!p) return;
+    const c = state.compare && state.compare.run === r.run_id ? state.compare : { run: r.run_id };
+    if (!c.a || c.b) { c.a = p; c.b = null; } else if (String(c.a.stand_id) !== String(id)) c.b = p;
+    c.ms = measuresIn(stands);
+    const typed = stands.filter(x => x.stand_type !== null && x.stand_type !== undefined);
+    c.model = new Map(c.ms.map(m => [m.key, spreadOf((typed.length ? typed : stands).map(x => valueOf(m.key, x)))]));
+    state.compare = c;
+    state.map.closePopup();
+    renderStory();
+    highlightCompared();
+    const card = $("#compare-card");
+    if (card) card.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+  function standPopup(layer, p) {
+    const r = run();
+    const ms = MEASURES.filter(m => valueOf(m.key, p) !== null);
+    const type = p.stand_type === null || p.stand_type === undefined ? "No type" : "Type " + Math.round(p.stand_type);
+    const key = ["canopy_height", "ndvi_mean", "ndvi_amplitude_annual", "vv_p50"].map(measureOf).filter(m => m && valueOf(m.key, p) !== null);
+    const rows = [`<tr><td>Type</td><td>${esc(type)}</td></tr>`, `<tr><td>Size</td><td>${esc(ha(p.area_ha))}</td></tr>`]
+      .concat(key.map(m => `<tr><td>${esc(m.label)}</td><td>${esc(m.show(valueOf(m.key, p)))}</td></tr>`)).join("");
+    const rest = GROUPS.map(g => {
+      const gm = ms.filter(m => m.group === g.id && !key.includes(m));
+      return gm.length ? `<tr class="gh"><td colspan="2">${esc(g.label)}</td></tr>` + gm.map(m => `<tr><td>${esc(m.label)}</td><td>${esc(m.show(valueOf(m.key, p)))}</td></tr>`).join("") : "";
+    }).join("");
+    const c = state.compare && state.compare.run === r.run_id ? state.compare : null;
+    const btn = c && c.a && !c.b && String(c.a.stand_id) !== String(p.stand_id)
+      ? `<button type="button" class="popbtn" data-compare="${esc(p.stand_id)}">Compare with stand ${esc(c.a.stand_id)}</button>`
+      : `<button type="button" class="popbtn" data-compare="${esc(p.stand_id)}">Compare with another stand</button>`;
+    const avg = r.arm === "alphaearth" ? `<p class="small">Averages over the stand. AlphaEarth's own 64 numbers have no names, so the stand is described with our measurements.</p>` : `<p class="small">Averages over the stand's pixels.</p>`;
+    const speck = p.below_min === true ? `<p class="small">A small patch of trees or scrub, cut off from the rest, so it stays a stand of its own. It has the type it is closest to, but didn't help decide the types.</p>` : "";
+    return `<div class="pop"><h4>${p.below_min === true ? "Small patch" : "Stand"} ${esc(p.stand_id)}</h4><table>${rows}</table>${speck}` +
+      (rest ? `<details><summary>All measurements</summary><table>${rest}</table></details>` : "") + avg + btn + `</div>`;
+  }
+
+  /* ---------- rendering ---------- */
+  function renderStepper() {
+    const walk = walkFor(run());
+    $("#stepper").innerHTML = walk.map((w, i) => `<button type="button" data-go="${i}" ${i === state.step ? 'aria-current="step"' : ""} class="${i < state.step ? "done" : ""}"><span class="dot">${i + 1}</span><span class="lbl">${esc(w.label)}</span></button>`).join("");
+    const off = WALK.filter(w => w.odisha && !isOdisha(run()));
+    $("#stepper").insertAdjacentHTML("beforeend", off.map((w, j) => `<button type="button" class="off" disabled title="There are no field plots at ${esc(run().area)}. The field check runs in Odisha."><span class="dot">${walk.length + j + 1}</span><span class="lbl">${esc(w.label)}<br><span class="offnote">not here</span></span></button>`).join(""));
+  }
+  function renderStory() {
+    const r = run();
+    const walk = walkFor(r);
+    const w = walk[state.step];
+    const t = stepText(w);
+    const decisions = (stepOf(r, w.decisions) || {}).decisions || [];
+    const toggles = wanted(r, w).map(id => allLayers(r).concat([linksLayer(r)]).find(l => l.layer_id === id)).filter(Boolean);
+    $("#story").innerHTML =
+      `<div><p class="eyebrow kicker">Step ${state.step + 1} of ${walk.length} · ${esc(r.area)} · ${r.arm === "alphaearth" ? "AlphaEarth" : "our features"} · stands up to ${fmt(r.stand_ceiling_ha, 0)} ha</p><h2>${esc(t.title)}</h2></div>` +
+      t.body.map(p => `<p>${p}</p>`).join("") +
+      (t.facts && r.facts ? `<div class="facts">${t.facts}</div>` : "") + (t.extra || "") + summaryHTML(r, w) +
+      (["stands", "types", "profiles"].includes(w.id) && state.compare && state.compare.run === r.run_id ? compareHTML() : "") +
+      (toggles.length ? `<div class="toggles"><p class="eyebrow cap">On the map</p>${toggles.map(togHTML).join("")}</div>` : "") +
+      `<button type="button" class="why" id="why"><b>i</b>How this step works, and why</button>`;
+    if (w.id === "profiles") renderProfiles();
+    const prev = $("#prev"), next = $("#next");
+    prev.disabled = state.step === 0;
+    if (state.step < walk.length - 1) { next.disabled = false; next.innerHTML = `Next: ${esc(walk[state.step + 1].label)} &rarr;`; }
+    else { next.disabled = true; next.innerHTML = "The end"; }
+    setHash();
+  }
+  function summaryHTML(r, w) {
+    // An export without run facts (version 1 of the index) still has each step's formatted summary.
+    if (r.facts) return "";
+    const step = stepOf(r, w.decisions);
+    const sum = step && step.summary;
+    if (!sum || !Object.keys(sum).length) return "";
+    return `<div class="facts">${Object.entries(sum).map(([k, v]) => factBox(esc(typeof v === "object" ? JSON.stringify(v) : v), k)).join("")}</div>`;
+  }
+  function swatch(layer) {
+    if (layer.kind === "lines") return `background:${EDGE_LINE}`;
+    if (layer.kind === "links") return `background:linear-gradient(90deg, ${SAME} 50%, ${DIFF} 50%)`;
+    if (layer.layer_id === "roi_outline") return "border:2px dashed #8a948e;background:transparent";
+    if (layer.fill) return `background:${layer.fill};opacity:.75`;
+    if (layer.style === "outline") return `border:2px solid ${state.stepId === "field" ? "#c9cfca" : STAND_LINE};background:transparent`;
+    if (layer.colormap && layer.colormap.palette) return `background:linear-gradient(90deg, ${layer.colormap.palette.join(", ")})`;
+    if (layer.legend && layer.legend.length) { const c = layer.legend.map(e => e.color).slice(0, 6); return `background:${c.length === 1 ? c[0] : `linear-gradient(90deg, ${c.join(", ")})`}`; }
+    if (layer.color_is_value) return "background:linear-gradient(90deg, #d95f02, #7570b3, #1b9e77)";
+    if (layer.kind === "raster") return "background:linear-gradient(135deg, #4b6b3c, #a9a07a)";
+    return "background:var(--line)";
+  }
+  function togHTML(layer) {
+    const on = state.on.has(layer._key);
+    const op = layer.kind === "raster" || layer.kind === "shapes" || layer.kind === "lines";
+    return `<label class="layer"${layer.description ? ` title="${esc(layer.description)}"` : ""}><input type="checkbox" data-key="${esc(layer._key)}"${on ? " checked" : ""}><span class="sw" style="${swatch(layer)}"></span><span>${esc(layer.title)}</span></label>` +
+      (op ? `<div class="opacity" data-op="${esc(layer._key)}"${on ? "" : " hidden"}><span>Opacity</span><input type="range" min="0.1" max="1" step="0.05" value="${opacityOf(layer)}" aria-label="Opacity of ${esc(layer.title)}" data-opkey="${esc(layer._key)}"></div>` : "");
+  }
+  function renderAllList() {
+    const r = run();
+    allLayers(r);
+    $("#all-list").innerHTML = walkFor(r).map(w => {
+      const step = stepOf(r, w.decisions);
+      let list = (step && step.layers) || [];
+      if (w.id === "field" && comparable(r)) list = list.concat([linksLayer(r)]);
+      return list.length ? `<div class="group"><h4>${esc(w.label)}</h4>${list.map(togHTML).join("")}</div>` : "";
+    }).join("");
+  }
+  function syncToggles() {
+    document.querySelectorAll('input[type="checkbox"][data-key]').forEach(b => { b.checked = state.on.has(b.dataset.key); });
+    document.querySelectorAll("[data-op]").forEach(d => { d.hidden = !state.on.has(d.dataset.op); });
+  }
+  function renderAll() { renderStepper(); renderStory(); renderAllList(); }
+
+  function defByKey(key) { const r = run(); return allLayers(r).concat([linksLayer(r)]).find(l => l._key === key); }
+  async function onToggle(e) {
+    const t = e.target;
+    if (t.matches('input[type="checkbox"][data-key]')) {
+      const d = defByKey(t.dataset.key);
+      if (!d) return;
+      await show(d, t.checked);
+      syncToggles();
+      renderLegend();
+    } else if (t.matches('input[type="range"][data-opkey]')) {
+      const d = defByKey(t.dataset.opkey);
+      if (!d) return;
+      state.opacity.set(d.layer_id, +t.value);
+      const l = state.layers.get(d._key);
+      if (!l) return;
+      const v = +t.value;
+      if (d.kind === "raster") l.eachLayer(x => x.setOpacity(v));
+      else if (d.kind === "lines") l.setStyle({ opacity: v });
+      else if (d.kind === "shapes") l.eachLayer(x => x.setStyle({ opacity: v, fillOpacity: v }));
+      document.querySelectorAll(`input[type="range"][data-opkey="${CSS.escape(d._key)}"]`).forEach(x => { if (x !== t) x.value = v; });
+    }
+  }
+
+  /* ---------- legend ---------- */
+  function renderLegend() {
+    const box = $("#legend");
+    const r = run();
+    if (!r) { box.hidden = true; return; }
+    const blocks = [];
+    const defs = allLayers(r).concat([linksLayer(r)]);
+    defs.forEach(layer => {
+      if (!state.on.has(layer._key)) return;
+      if (layer.kind === "links") {
+        blocks.push(`<div><h5>Plots in the same stand</h5><ul><li><span class="ln" style="border-color:${SAME}"></span><span>same field type</span></li><li><span class="ln" style="border-color:${DIFF};border-top-style:dashed"></span><span>different field type</span></li></ul></div>`);
+      } else if (layer.kind === "lines") {
+        blocks.push(`<div><ul><li><span class="ln" style="border-color:${EDGE_LINE};border-top-width:2px"></span><span>${esc(layer.title)}: edges</span></li></ul></div>`);
+      } else if (layer.colormap) {
+        const cm = layer.colormap;
+        blocks.push(`<div><h5>${esc(layer.title)}${layer.description ? ` <span class="small">(stand average)</span>` : ""}</h5><div class="ramp" style="background:linear-gradient(90deg, ${cm.palette.join(", ")})"></div><div class="ends"><span>${fmt(cm.min, 2)}</span><span>${esc(cm.units || "")}</span><span>${fmt(cm.max, 2)}</span></div></div>`);
+      } else if (layer.legend && layer.legend.length) {
+        const pts = layer.layer_id === "plots";
+        const entries = layer._present ? layer.legend.filter(e => layer._present.includes(e.value)) : layer.legend;
+        blocks.push(`<div><h5>${esc(pts ? "FES plots, by field type (typical plot)" : layer.title)}</h5><ul>${entries.map(e => `<li><span class="${pts ? "dot" : "sq"}" style="background:${esc(e.color)}"></span><span>${esc(e.label)}</span></li>`).join("")}</ul>` +
+          (pts ? `<p>White ring: on trees or scrub. Red ring: on land that isn't. Faint: outside the mapped area.</p>` : "") + `</div>`);
+      } else if (layer.color_is_value) {
+        blocks.push(`<div><h5>${esc(layer.title)}</h5><p>${esc(layer.description || "Similar colours mean similar values.")}</p></div>`);
+      } else if (layer.kind === "shapes" && layer.fill) {
+        blocks.push(`<div><ul><li><span class="sq" style="background:${esc(layer.fill)};opacity:.7"></span><span>${esc(layer.title)}</span></li></ul></div>`);
+      } else if (layer.layer_id === "roi_outline") {
+        blocks.push(`<div><ul><li><span class="ln" style="border-color:#8a948e;border-top-style:dashed;border-top-width:2px"></span><span>${esc(layer.title)}</span></li></ul></div>`);
+      } else if (layer.style === "outline") {
+        const quiet = state.stepId === "field";
+        blocks.push(`<div><ul><li><span class="ln" style="border-color:${quiet ? "#c9cfca" : STAND_LINE};border-top-width:2px"></span><span>${esc(layer.title)}: outlines</span></li></ul></div>`);
+      }
+    });
+    if (box.dataset.collapsed === undefined) box.dataset.collapsed = String(window.matchMedia("(max-width: 860px)").matches);
+    const open = box.dataset.collapsed !== "true";
+    box.innerHTML = `<button type="button" class="legend-toggle" aria-expanded="${open}">Key <span aria-hidden="true">${open ? "−" : "+"}</span></button><div class="legend-body">${blocks.join("")}</div>`;
+    box.hidden = blocks.length === 0;
+  }
+
+  /* ---------- decisions drawer ---------- */
+  function supportChip(s) {
+    if (!s) return "";
+    const label = s === "shown_better" ? "shown better" : s;
+    return `<span class="chip ${s === "shown_better" ? "good" : "accent"}">${esc(label)}</span>`;
+  }
+  function openDrawer() {
+    const r = run();
+    const w = walkFor(r)[state.step];
+    const ids = (stepOf(r, w.decisions) || {}).decisions || [];
+    $("#drawer-title").textContent = w.label;
+    const info = STEP_INFO[w.id];
+    $("#drawer-info").innerHTML = info ? `<p><strong>What it does.</strong> ${esc(info.what)}</p><p><strong>How.</strong></p><ul>${info.how.map(x => `<li>${esc(typeof x === "function" ? x(r) : x)}</li>`).join("")}</ul>` : "";
+    $("#drawer-dec-head").hidden = !ids.length;
+    const list = $("#drawer-list");
+    if (!state.decisions) {
+      list.innerHTML = `<p>The list of decisions did not load. It lives in <a href="${REPO}docs/decisions.yaml" target="_blank" rel="noopener">docs/decisions.yaml</a>.</p>`;
+    } else {
+      list.innerHTML = ids.map(id => {
+        const d = state.decisions[id];
+        if (!d) return `<article class="dec"><h4>${esc(id)}</h4><p class="small">Not found in the register.</p></article>`;
+        const papers = d.papers || [];
+        const paperHTML = papers.length
+          ? `<ul class="papers">${papers.map(p => `<li><a href="https://doi.org/${esc(p.doi)}" target="_blank" rel="noopener">${esc(p.title || p.doi)}</a> <span class="small">${esc(p.first_author || "")}${p.year ? " " + esc(p.year) : ""}</span><div class="meta">${supportChip(p.supports)}<span class="chip ${p.verified ? "good" : "warn"}">${p.verified ? "DOI checked" : "UNVERIFIED"}</span></div>${p.supports_what ? `<div class="what">${esc(String(p.supports_what).slice(0, 260))}${String(p.supports_what).length > 260 ? "…" : ""}</div>` : ""}</li>`).join("")}</ul>`
+          : `<p class="nopaper">No paper cited for this one yet.</p>`;
+        const alts = (d.alternatives_considered || []).length ? `<p><strong>Other options we considered</strong></p><ul>${d.alternatives_considered.map(a => `<li>${esc(a)}</li>`).join("")}</ul>` : "";
+        const ev = (d.evidence || []).length ? `<details><summary>Where this is in the code</summary><ul>${d.evidence.map(e => `<li><a href="${REPO}${esc(e.path)}" target="_blank" rel="noopener">${esc(e.path)}</a>${e.what ? ": " + esc(e.what) : ""}</li>`).join("")}</ul></details>` : "";
+        return `<article class="dec"><div class="meta"><span class="chip ${d.status === "adopted" ? "good" : (d.status === "superseded" ? "" : "warn")}">${esc(d.status || "?")}</span><span class="id">${esc(d.id)}</span></div><h4>${esc(d.title)}</h4><p>${esc(d.decision)}</p>${paperHTML}<details><summary>Why, and what else we considered</summary><p>${esc(d.rationale || "")}</p>${alts}</details>${ev}</article>`;
+      }).join("") || `<p class="small">This step only describes the results, so no decision sits behind it.</p>`;
+    }
+    $("#drawer").hidden = false;
+    $("#drawer-close").focus();
+  }
+  function closeDrawer() { $("#drawer").hidden = true; }
+
+  /* ---------- navigation ---------- */
+  async function go(i) {
+    const walk = walkFor(run());
+    state.step = Math.max(0, Math.min(walk.length - 1, i));
+    renderStepper();
+    renderStory();
+    closeDrawer();
+    await applyStep();
+    renderStory();
+    if (window.matchMedia("(max-width: 860px)").matches) { /* keep the map in view on phones */ }
+    else $("#story").scrollTop = 0;
+  }
+
+  /* ---------- boot ---------- */
+  function emptyState(msg) {
+    $("#story").innerHTML = "";
+    $("#banner").textContent = "";
+    $(".mapwrap").insertAdjacentHTML("beforeend", `<div class="empty" style="position:absolute;inset:0;z-index:1000;background:var(--map-bg)"><div><h2>No pipeline data here yet</h2><p>${msg}</p><p>Claude Code exports it into <code>ui_data/</code> (handoff brief, task A3).</p></div></div>`);
+  }
+  async function boot() {
+    initMap();
+    try { state.index = await getJSON(DATA + "index.json"); } catch (e) { emptyState("The file <code>ui_data/index.json</code> could not be read."); return; }
+    if (!state.index.runs || !state.index.runs.length) { emptyState("The index lists no runs."); return; }
+    try {
+      const reg = await getJSON("decisions.json");
+      state.decisions = Object.fromEntries((reg.decisions || []).map(d => [d.id, d]));
+    } catch (e) { state.decisions = null; }
+    if (state.index.fes_comparison) { try { state.fes = await getJSON(DATA + state.index.fes_comparison); } catch (e) { state.fes = null; } }
+    const short = state.index.short_label || state.index.label || "";
+    $("#banner").innerHTML = `<strong>Early version.</strong> ${esc(short)}` + (state.index.label && state.index.short_label ? ` <button type="button" id="more">More</button><span class="more" id="more-text" hidden>${esc(state.index.label)}</span>` : "");
+    const more = $("#more");
+    if (more) more.addEventListener("click", () => { const t = $("#more-text"); t.hidden = !t.hidden; more.textContent = t.hidden ? "More" : "Less"; });
+    $("#pick-area").addEventListener("change", e => chooseRun({ area: e.target.value, arm: run().arm, ceiling: run().stand_ceiling_ha }));
+    $("#pick-arm").addEventListener("click", e => { const b = e.target.closest("button[data-arm]"); if (b && !b.disabled) chooseRun({ area: run().area, arm: b.dataset.arm, ceiling: run().stand_ceiling_ha }); });
+    $("#pick-ceiling").addEventListener("click", e => { const b = e.target.closest("button[data-ceiling]"); if (b && !b.disabled) chooseRun({ area: run().area, arm: run().arm, ceiling: Number(b.dataset.ceiling) }); });
+    $("#pick-kept").addEventListener("click", e => { const b = e.target.closest("button[data-kept]"); if (b) chooseRun({ area: run().area, arm: run().arm, ceiling: run().stand_ceiling_ha, roi: run().roi, kept: b.dataset.kept === "true" }); });
+    $("#pick-roi").addEventListener("click", e => { const b = e.target.closest("button[data-roi]"); if (b) chooseRun({ area: run().area, arm: run().arm, ceiling: run().stand_ceiling_ha, roi: b.dataset.roi }); });
+    $("#stepper").addEventListener("click", e => { const b = e.target.closest("button[data-go]"); if (b) go(+b.dataset.go); });
+    $("#prev").addEventListener("click", () => go(state.step - 1));
+    $("#next").addEventListener("click", () => go(state.step + 1));
+    const panel = document.querySelector(".panel");
+    panel.addEventListener("change", e => {
+      if (e.target.matches("select[data-boxkey]")) { state.boxKey = e.target.value; renderProfiles(); return; }
+      onToggle(e);
+    });
+    state.map.on("popupopen", ev => {
+      const el = ev.popup.getElement();
+      if (el) el.querySelectorAll("button[data-compare]").forEach(b => b.addEventListener("click", () => pickForCompare(b.dataset.compare)));
+    });
+    panel.addEventListener("input", e => { if (e.target.matches('input[type="range"]')) onToggle(e); });
+    panel.addEventListener("click", async e => {
+      if (e.target.closest("#why")) { openDrawer(); return; }
+      const ft = e.target.closest("[data-focus-type]");
+      if (ft) { const t = +ft.dataset.focusType; state.focusType = state.focusType === t ? null : t; applyFocus(); document.querySelectorAll("[data-focus-type]").forEach(x => x.setAttribute("aria-pressed", String(+x.dataset.focusType === state.focusType))); return; }
+      if (e.target.closest("[data-compare-clear]")) { state.compare = null; renderStory(); highlightCompared(); return; }
+      const fb = e.target.closest("button[data-feature]");
+      if (fb) { state.feature = fb.dataset.feature; await applyStep(); renderStory(); }
+    });
+    $("#drawer-close").addEventListener("click", closeDrawer);
+    $("#legend").addEventListener("click", e => {
+      if (!e.target.closest(".legend-toggle")) return;
+      const box = $("#legend");
+      box.dataset.collapsed = String(box.dataset.collapsed !== "true");
+      renderLegend();
+    });
+    $("#zoomto").addEventListener("change", e => {
+      const i = +e.target.value;
+      if (i < 0) { const b = run().bounds; state.map.fitBounds([[b[1], b[0]], [b[3], b[2]]], { padding: [24, 24] }); }
+      else if (state.zoomParts && state.zoomParts[i]) state.map.fitBounds(state.zoomParts[i].bounds, { padding: [24, 24] });
+    });
+    document.addEventListener("keydown", e => {
+      if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches("[data-focus-type]")) { e.preventDefault(); e.target.click(); return; }
+      if (e.key === "Escape") { closeDrawer(); return; }
+      if (e.target.closest("input, select, textarea, .leaflet-container") || e.altKey || e.ctrlKey || e.metaKey) return;
+      if (e.key === "ArrowRight") go(state.step + 1);
+      else if (e.key === "ArrowLeft") go(state.step - 1);
+    });
+    const [wantRun, wantStep] = ((location.hash || "").replace(/^#/, "") || recall("fmu-run") || "").split("/");
+    // Opens on Sanjay Van, our features, on the kept-land run when there is one.
+    const sv = state.index.runs.filter(r => r.area === "Sanjay Van" && r.arm === "feature_vector").sort((a, b) => Number(isKept(b)) - Number(isKept(a)));
+    const first = state.index.runs.find(r => r.run_id === wantRun) || sv[0] || state.index.runs[0];
+    await selectRun(first);
+    if (wantStep) { const i = walkFor(first).findIndex(w => w.id === wantStep); if (i > 0) go(i); }
+  }
+  boot();
+})();
+</script>

@@ -299,6 +299,120 @@ def test_one_more_sweep_resolves_the_iteration_cap_case():
     assert r.stand_provenance == {0: _made_of(4, fallback=3)}
 
 
+# A chain A - B - C of 60, 70 and 500 pixels, none alike; the minimum is 100 px.
+# One sweep lists A and B, smallest first. A joins B (its only neighbour) by the
+# fallback, and B, the larger, is the one that stays: 130 px, no longer
+# undersized. Then comes B's own turn.
+_GROWN_CHAIN: dict[str, Any] = dict(
+    n_pixels=[60, 70, 500],
+    edges={(0, 1): 2, (1, 2): 2},
+    ch=[5.0, 25.0, 45.0],
+)
+
+
+def test_a_region_that_reached_the_minimum_still_takes_its_turn_by_default():
+    """The committed behaviour: B, already 1.3 ha, is merged once more, and by
+    the fallback, so the whole chain becomes one stand."""
+    r = _run(**_GROWN_CHAIN)
+    assert r.stand_provenance == {0: _made_of(3, fallback=2)}
+    assert r.diagnostics["pass2_merges"] == r.diagnostics["pass2_fallback_merges"] == 2
+    assert _run(**_GROWN_CHAIN, pass2_skip_at_min_area=False).assignment == r.assignment
+
+
+def test_with_the_setting_on_a_region_that_reached_the_minimum_is_skipped():
+    """spec-merge-pass2-skip-at-minimum: B is no longer undersized when its turn
+    comes, so pass 2 leaves it alone and C stays a stand of its own."""
+    r = _run(**_GROWN_CHAIN, pass2_skip_at_min_area=True)
+    assert r.n_stands == 2
+    assert _stand_of(r, 0) == _stand_of(r, 1) == _made_of(2, fallback=1)
+    assert _stand_of(r, 2) == _made_of(1)
+    assert r.diagnostics["pass2_merges"] == r.diagnostics["pass2_fallback_merges"] == 1
+    assert r.diagnostics["stands_below_min_area"] == 0
+
+
+def test_the_setting_also_stops_a_second_relaxed_merge():
+    """The same chain with neighbours alike enough for the relaxed tolerances
+    (3.5 for `ch`) but not for the first pass (2.0). A joins B; their mean,
+    25.35, is within 3.5 of C's 28.7. By default B then joins C as well."""
+    chain = dict(n_pixels=[60, 70, 500], edges={(0, 1): 2, (1, 2): 2}, ch=[24.0, 26.5, 28.7])
+    assert _run(**chain).stand_provenance == {0: _made_of(3, relaxed=2)}
+    r = _run(**chain, pass2_skip_at_min_area=True)
+    assert r.n_stands == 2
+    assert _stand_of(r, 1) == _made_of(2, relaxed=1) and _stand_of(r, 2) == _made_of(1)
+
+
+def test_the_setting_leaves_a_region_still_below_the_minimum_alone():
+    """In the iteration-cap chain the region that grows (U, 15 then 27 px) never
+    reaches the minimum, so the setting changes nothing there."""
+    for sweeps in (1, 2):
+        off = _run(**_CAP_CHAIN, max_pass2_iterations=sweeps)
+        on = _run(**_CAP_CHAIN, max_pass2_iterations=sweeps, pass2_skip_at_min_area=True)
+        assert on.assignment == off.assignment and on.stand_provenance == off.stand_provenance
+
+
+# A chain A - B - C of 40, 60 and 500 pixels, none alike. A joins B, and B is
+# then 100 px: exactly the minimum, 1.0 ha, and not a pixel over it.
+_EXACT_CHAIN: dict[str, Any] = dict(
+    n_pixels=[40, 60, 500],
+    edges={(0, 1): 2, (1, 2): 2},
+    ch=[5.0, 25.0, 45.0],
+)
+
+
+def test_a_region_exactly_at_the_minimum_has_reached_it():
+    """The setting skips a region whose area is at or above `min_area_ha`, not
+    only one above it. B is exactly 1.0 ha when its turn comes: by default it
+    is merged once more, into C; with the setting on it is skipped, the same
+    way the next sweep's list (regions below the minimum) would leave it out."""
+    assert _run(**_EXACT_CHAIN).stand_provenance == {0: _made_of(3, fallback=2)}
+    r = _run(**_EXACT_CHAIN, pass2_skip_at_min_area=True)
+    assert r.assignment == [0, 0, 1]
+    assert _stand_of(r, 1) == _made_of(2, fallback=1) and _stand_of(r, 2) == _made_of(1)
+    assert r.stand_attributes[0]["n_pixels"] == 100
+    assert r.stand_attributes[0]["area_ha"] == DEFAULTS["min_area_ha"]
+    assert r.diagnostics["pass2_merges"] == 1
+    assert r.diagnostics["stands_below_min_area"] == 0
+
+
+# Five regions, none alike: a - b - C, with d and e touching C as well. In
+# pixels a is 30, b 80, C 810, d 90 and e 95; the minimum is 100 px and the cap
+# (`max_area_ha`, 10 ha) is 1000 px. One sweep lists a, b, d and e, smallest
+# first, and a joins b (110 px) under either rule. What b does on its own turn
+# decides how much room C has left under the cap for d and e.
+_ROOM_UNDER_THE_CAP: dict[str, Any] = dict(
+    n_pixels=[30, 80, 810, 90, 95],
+    edges={(0, 1): 2, (1, 2): 2, (2, 3): 2, (2, 4): 2},
+    ch=[5.0, 25.0, 45.0, 65.0, 85.0],
+)
+
+
+def test_the_setting_can_give_more_merges_and_fewer_stands():
+    """The new rule's stands are not always a split of the old ones. Skipping
+    one merge can leave room under `max_area_ha` for others.
+
+    By default b (110 px) is merged once more, into C, which is then 920 px. d
+    and e no longer fit (1010 and 1015 px), so they stay below the minimum,
+    area-blocked: three stands from two merges. With the setting on, b is
+    skipped and C is still 810 px, so it takes d (900 px) and then e (995 px):
+    two stands from three merges, and nothing left below the minimum."""
+    off = _run(**_ROOM_UNDER_THE_CAP)
+    assert off.assignment == [0, 0, 0, 1, 2]
+    assert _stand_of(off, 2) == _made_of(3, fallback=2)
+    assert _stand_of(off, 3) == _stand_of(off, 4) == _made_of(1, below_why="area_blocked")
+    assert off.diagnostics["pass2_merges"] == 2
+    assert off.diagnostics["stands_below_min_area"] == 2
+
+    on = _run(**_ROOM_UNDER_THE_CAP, pass2_skip_at_min_area=True)
+    assert on.assignment == [0, 0, 1, 1, 1]
+    assert _stand_of(on, 1) == _made_of(2, fallback=1)
+    assert _stand_of(on, 2) == _made_of(3, fallback=2)
+    assert on.diagnostics["pass2_merges"] == 3
+    assert on.diagnostics["stands_below_min_area"] == 0
+
+    assert on.diagnostics["pass2_merges"] > off.diagnostics["pass2_merges"]
+    assert on.n_stands < off.n_stands
+
+
 def test_a_graph_where_nothing_merges():
     """Two 2 ha regions 20 m apart in height. Pass 1 rejects the pair and pass 2
     has nothing undersized, so each stand is one superpixel with no merges."""
@@ -782,6 +896,25 @@ def test_invariants_hold_on_every_golden_graph(golden_runs):
 # ---------------------------------------------------------------------------
 # Regenerating the fixture:  python tests/test_region_merge_provenance.py <commit>
 # ---------------------------------------------------------------------------
+
+
+def test_the_new_rule_keeps_the_invariants_and_moves_stands_on_some_golden_graphs(golden_runs):
+    """With the setting on, the same 200 graphs still satisfy every invariant
+    between provenance and totals, pass 1 makes the same merges, and on some of
+    them the stands differ: the graphs do reach the case the setting is about.
+    Nothing is asserted about how many pass-2 merges or stands there are: the
+    setting can move both either way
+    (`test_the_setting_can_give_more_merges_and_fewer_stands`). (The digests
+    above are the proof that the default moves nothing.)"""
+    differ = []
+    for seed, case, off in golden_runs:
+        settings = {**case.settings, "pass2_skip_at_min_area": True}
+        on = merge_superpixels(case.graph, case.means, case.valid_counts, **settings)
+        assert_provenance_invariants(on, case.graph, **settings)
+        assert on.diagnostics["pass1_merges"] == off.diagnostics["pass1_merges"], seed
+        if on.assignment != off.assignment:
+            differ.append(seed)
+    assert differ, "no golden graph reaches a region that grows to the minimum before its turn"
 
 
 def _git(*args: str) -> str:

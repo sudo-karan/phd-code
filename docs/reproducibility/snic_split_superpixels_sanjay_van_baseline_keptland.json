@@ -1,0 +1,58 @@
+{
+ "config": "sanjay_van_baseline_repro",
+ "checks_the_segmentation_of": "sanjay_van_baseline_keptland",
+ "with_the_setting_on": {
+  "mask_before_snic": true,
+  "drop_kept_patches_below_min_area": false,
+  "size": 10,
+  "connectivity": 8,
+  "neighborhood_size": 128
+ },
+ "upstream_cache_status": {
+  "masking": {
+   "habitat_mask": "hit",
+   "landcover_summary": "hit",
+   "mask_provenance": "miss",
+   "water_mask": "hit"
+  },
+  "data_load": {
+   "s2_composite": "hit"
+  },
+  "features_optical": {
+   "optical_features": "hit"
+  },
+  "features_radar": {
+   "radar_features": "hit"
+  },
+  "features_structure": {
+   "structure_features": "hit"
+  }
+ },
+ "analysis_grid": {
+  "crs": "EPSG:32643",
+  "transform": [
+   10,
+   0,
+   0,
+   0,
+   10,
+   0
+  ]
+ },
+ "tile_lattice_assumed": "256 px, starting at the grid's pixel origin",
+ "totals": {
+  "superpixels_as_a6_counts_them": 1201,
+  "pieces_as_a6_counts_them": 1201,
+  "null_key_pixels": {
+   "superpixels": 45456,
+   "pieces": 45456
+  },
+  "superpixels": 1200,
+  "pieces": 1200,
+  "superpixels_with_a_piece_label": 1200,
+  "pieces_of_those": 1200,
+  "superpixels_without_a_piece_label": {}
+ },
+ "split": [],
+ "export_tasks_submitted": 0
+}

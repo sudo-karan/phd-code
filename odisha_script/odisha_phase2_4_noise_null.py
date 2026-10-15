@@ -23,7 +23,8 @@ Per realisation r:
      arms (common random numbers), since the distance normaliser makes band count irrelevant to
      compactness. That makes arm-vs-arm comparisons paired.
   2. MERGE -- fmu.utils.adjacency + fmu.utils.region_merge.merge_superpixels itself, with each
-     arm's relax_factor, min/max area, min_defined_criteria, min_frac_valid and iteration cap.
+     arm's relax_factor, min/max area, min_defined_criteria, min_frac_valid, iteration cap,
+     pass2_skip_at_min_area and pass2_soft_ceiling.
      It merges on NOISE criteria: one extra iid N(0,1) band per real criterion. Each noise
      tolerance is the quantile of this realisation's own adjacent-superpixel noise differences
      at the `percentile_of_threshold` the real tolerance reached in the OBSERVED run
@@ -209,7 +210,9 @@ def realisation(r: int, ref_cfg: Config, arm_cfgs: dict[str, Config], calib: dic
             graph, means, counts, criteria=tols, relax_factor=mp.relax_factor,
             min_area_ha=mp.min_area_ha, max_area_ha=mp.max_area_ha,
             min_defined_criteria=mp.min_defined_criteria, min_frac_valid=mp.min_frac_valid,
-            max_pass2_iterations=mp.max_pass2_iterations, centroids=centroids)
+            max_pass2_iterations=mp.max_pass2_iterations, centroids=centroids,
+            pass2_skip_at_min_area=mp.pass2_skip_at_min_area,
+            pass2_soft_ceiling=mp.pass2_soft_ceiling)
         bands[f"stand_{arm}"] = snic.remap(graph.raw_labels, res.assignment).toInt32().clip(roi)
         areas = np.array([a["area_ha"] for a in res.stand_attributes.values()])
         d = res.diagnostics

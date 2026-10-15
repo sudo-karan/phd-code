@@ -43,6 +43,11 @@ them, and the deck builder `scripts/build_phase3_summary_deck.js` all show the s
 They do not show the final results in `PHASE3_STATUS.md`. Details are in "Figures and deck
 facts" below.
 
+**Those files have since been deleted** (the decision on question 6 of PR #42): the eleven
+figures, the fact sheet, the four figure scripts, their style file and the deck builder.
+"Figures and deck facts" says what was deleted, why, and how to find the commit. The counts
+and tables in this report are those of the check and still include the deleted files.
+
 ## How the check was done
 
 - Every command was run in a clean clone of the repository at commit `a477ab1`, with no ignored
@@ -90,8 +95,8 @@ The report above was then checked by a second agent, which did the following.
   - Phase 3: `odisha_phase3_0_field_structure_types.py --k 4`,
     `odisha_phase3_2_stand_k_elbow.py --arm odisha_v120_handcrafted`,
     `odisha_phase3_1_pairwise_score.py --arm v120`, the same script for the 3 hectare stands
-    with and without `--exclude-types 0`, `odisha_phase3_4c_sizes.py`, and the 3 hectare join
-    into `phase3_3ha/`.
+    with and without `--exclude-types 0`, `odisha_phase3_4c_sizes.py` (deleted since), and the
+    3 hectare join into `phase3_3ha/`.
   - Skipped as too long: the chance tests and the Phase 2 statistics.
 - **The rows marked "differs".** The Phase 1 text file: the old script (`5271ea5`) was run
   again in the new clone with the two committed outputs deleted, and wrote both back byte for
@@ -123,8 +128,9 @@ this machine covers the same files in the Phase 3 table.
 
 ## Phase 1
 
-Commands are run from inside `odisha_script/`. `PHASE1_STATUS.md`, "Reproducing", lists only
-steps 7 to 11; the commands for steps 0 to 6 are from the scripts themselves.
+Commands are run from inside `odisha_script/`. When this check was made, `PHASE1_STATUS.md`,
+"Reproducing", listed only steps 7 to 11, so the commands for steps 0 to 6 are from the scripts
+themselves. They have since been added there (Problem 8).
 
 | File | Command | Outcome | Detail |
 |---|---|---|---|
@@ -133,7 +139,7 @@ steps 7 to 11; the commands for steps 0 to 6 are from the scripts themselves.
 | `odisha_phase1_results.txt` | `cd odisha_script && python odisha_phase1_2_analyse.py` | **reproduced exactly** |  |
 | `odisha_phase1_figs.png` | `cd odisha_script && python odisha_phase1_2_analyse.py` | **reproduced exactly** |  |
 | `odisha_plots_sampled_v2.csv` | `cd odisha_script && python odisha_phase1_3_sample_gee_v2.py, then odisha_phase1_5_meta_rerun.py (rewrites the file in place)` | **not run** | Needs Earth Engine, which this check was not allowed to touch. |
-| `odisha_phase1_tests456_results.txt` | `cd odisha_script && python odisha_phase1_4_analyse_v2.py` | **differs** | No number differs. One line of the committed file is replaced by five. The committed file was written by the first version of the script (commit 5271ea5). Commit 36a0c73 then changed the script to print both GEDI counts and a warning that they disagree (0 against 10), and the results file was not regenerated. Tested: the 5271ea5 version of the script, run in a fresh clone on today's inputs, writes the committed file byte for byte. |
+| `odisha_phase1_tests456_results.txt` | `cd odisha_script && python odisha_phase1_4_analyse_v2.py` | **differs** | No number differs. One line of the committed file is replaced by five. The committed file was written by the first version of the script (commit 5271ea5). Commit 36a0c73 then changed the script to print both GEDI counts and a warning that they disagree (0 against 10), and the results file was not regenerated. Tested: the 5271ea5 version of the script, run in a fresh clone on today's inputs, writes the committed file byte for byte. **Replaced on 14 Oct 2026 (commit `354b6b9`)** by the file the script writes now; the comparison was as described here. |
 | `odisha_phase1_tests456_figs.png` | `cd odisha_script && python odisha_phase1_4_analyse_v2.py` | **reproduced exactly** |  |
 | `odisha_phase1_closeout.txt` | `cd odisha_script && python odisha_phase1_6_closeout.py` | **reproduced exactly** |  |
 | `odisha_phase1_7_results.txt` | `cd odisha_script && python odisha_phase1_7_meta_zero_diagnosis.py` | **not run** | Part B needs Earth Engine, and the script starts it whenever credentials are present, so the script was not run as a whole. Part A is offline and was run on its own (the module imported, `part_a` called, Earth Engine never imported): its 182 lines are identical to the first 182 lines of the committed 383-line file. Part B (the other 201 lines) was not run. |
@@ -151,7 +157,7 @@ Commands are run from the repo root.
 | File | Command | Outcome | Detail |
 |---|---|---|---|
 | `odisha_phase2_0_results.txt` | `python odisha_script/odisha_phase2_0_aois.py` | **reproduced exactly** | The study-area files it also writes under `aois/` came out unchanged too. |
-| `odisha_phase2_1_results.txt` | `python odisha_script/odisha_phase2_1_mask_retention.py` | **differs** | Needs Earth Engine (read-only: four requests, nothing submitted). Regenerated in a clean clone of `1da0614` for the task 2 maps. No number differs: 257 of 274 plots kept, and every table is the same. One line differs, the last, and only in wording: the committed file ends "Proceed to step 2.", the script now writes "Proceed to the pipeline run (odisha_phase2_2_run_pipeline.py)." The committed file was not replaced. |
+| `odisha_phase2_1_results.txt` | `python odisha_script/odisha_phase2_1_mask_retention.py` | **differs** | Needs Earth Engine (read-only: four requests, nothing submitted). Regenerated in a clean clone of `1da0614` for the task 2 maps. No number differs: 257 of 274 plots kept, and every table is the same. One line differs, the last, and only in wording: the committed file ends "Proceed to step 2.", the script now writes "Proceed to the pipeline run (odisha_phase2_2_run_pipeline.py)." The committed file was not replaced. **Replaced on 14 Oct 2026 (commit `e461815`)** by the file the script writes now; the comparison was as described here. |
 | `odisha_phase2_1_mask_retention.csv` | `python odisha_script/odisha_phase2_1_mask_retention.py` | **reproduced exactly** | Same run as the row above. Byte-identical. |
 | phase2_vectors/odisha_v120_3ha_<district>_* (20 files: 4 districts x raster_at_plots.csv, run.json, stands_snic / stands_merged / stands_dissolved.geojson) | `bash odisha_script/run_config_passes.sh <logfile> configs/odisha_v120_3ha_<district>.yaml` | **not run** | Needs Earth Engine. A from-scratch re-run under `_repro` config names is queued tonight; the comparison with these committed files will be added by the orchestrator in the Earth Engine section below. |
 | phase2_vectors/odisha_v120_handcrafted_<district>_* (20 files, same five kinds) | `python odisha_script/odisha_phase2_2_run_pipeline.py --config configs/<config>.yaml --through segmentation --wait; then --through clustering --wait; then --through export` | **not run** | Needs Earth Engine. A from-scratch re-run under `_repro` config names is queued tonight; the comparison with these committed files will be added by the orchestrator in the Earth Engine section below. |
@@ -202,7 +208,7 @@ Commands are run from the repo root, as in `PHASE3_STATUS.md`, "Reproducing".
 | `odisha_phase3_3_results_excl0.txt` | `python odisha_script/odisha_phase3_3_significance.py --exclude-types 0` | **differs** | Every statistic identical. Two lines differ and both are run times, as in the primary file. |
 | `odisha_phase3_3_results_ft-k4.txt` | `python odisha_script/odisha_phase3_3_significance.py --field-types odisha_script/odisha_phase3_0_field_types_k4.csv` | **differs** | Every statistic identical. Two lines differ and both are run times, as in the primary file. |
 | `odisha_phase3_3_results_ft-allrows.txt` | `python odisha_script/odisha_phase3_3_significance.py --field-types odisha_script/odisha_phase3_0_field_types_allrows.csv` | **differs** | Every statistic identical. Two lines differ and both are run times, as in the primary file. |
-| `odisha_phase3_stands_unchanged.txt` | `python odisha_script/check_stands_unchanged.py --ref cff45d9 --expect-new-run  (the script prints; the file is that print saved by hand)` | **differs** | Every comparison line is identical. Five lines differ because the committed file was saved from a run with `--ref main` (they name the reference and the folder), and the committed file ends with a blank line and a hand-added line that carries a date and time (quoted under Problems). `main` has moved since, so `--ref cff45d9` is the command that still means the same thing. |
+| `odisha_phase3_stands_unchanged.txt` | `python odisha_script/check_stands_unchanged.py --ref cff45d9 --expect-new-run  (the script prints; the file is that print saved by hand)` | **differs** | Every comparison line is identical. Five lines differ because the committed file was saved from a run with `--ref main` (they name the reference and the folder), and the committed file ends with a blank line and a hand-added line that carries a date and time (quoted under Problems). `main` has moved since, so `--ref cff45d9` is the command that still means the same thing. **Replaced on 14 Oct 2026 (commit `37aed39`)** by the output of the command in this row, with `--ref cff45d9`; the hand-added dated line is gone. |
 | `phase3_3ha/phase2_plots_joined_districts.csv` | `python odisha_script/odisha_phase2_3_join.py --set districts --arms v120_3ha --out-dir odisha_script/phase3_3ha/` | **reproduced exactly** | Run three times tonight in three clean clones; the same each time. |
 | `phase3_3ha/odisha_phase2_3_results_districts.txt` | `python odisha_script/odisha_phase2_3_join.py --set districts --arms v120_3ha --out-dir odisha_script/phase3_3ha/` | **reproduced exactly** | Run three times tonight in three clean clones; the same each time. |
 | `phase3_before_regroup/odisha_phase3_3_results.txt` | `python odisha_script/odisha_phase3_3_significance.py  (on PR #40's 3 hectare stand files, which f4ca143 replaced)` | **not run** | A record of runs made on stand files that are no longer in the tree (see its README). Not a current result, so it was not re-run. It carries two run-time lines, like the files it was copied from. |
@@ -219,6 +225,39 @@ All four chance-test files were regenerated twice tonight, in two clones at `a47
 | `gate_effect_results.txt` | `python scripts/gate_effect.py` | **not run** | Needs Earth Engine, which this check was not allowed to touch. The file also carries five run-time lines (see Problems). |
 
 ## Figures and deck facts
+
+**Deleted since.** The files this section examines are no longer in the repo. One commit
+deleted all eighteen, on the decision on question 6 of PR #42
+(`docs/handoff/2026-10-13-round2.md`, B1):
+
+- the four figure scripts, `odisha_script/odisha_phase3_4a_maps.py`,
+  `odisha_phase3_4b_field.py`, `odisha_phase3_4c_sizes.py` and `odisha_phase3_4d_results.py`,
+  and their style file `odisha_script/phase3_figstyle.py`;
+- the eleven figures in `odisha_script/phase3_figures/` and the fact sheet `deck_facts.md`
+  beside them (the folder held nothing else, so it is gone too);
+- the deck builder `scripts/build_phase3_summary_deck.js`.
+
+Why: they were stale. They were made from the first Phase 3 analysis of 24 September (PR #40)
+and never redrawn after the results changed on 7 and 8 October. Eight of the eleven figures
+showed PR #40's field types, six stand types at 3 hectares, or the old scores (`chance_test.png`
+printed 0.024 / 0.035 / 0.025 / 0.056; the final scores are 0.0257 / 0.0389 / 0.0244 / 0.0793,
+with five stand types at 3 hectares). The fact sheet and the deck builder carried the same old
+numbers, and two of the four figure scripts stopped with an error when run from a clean
+checkout (Problem 3). Three figures were still right (`study_area`, `patch_sizes`,
+`stand_sizes`); they were deleted with the rest. The evidence is the rest of this section. It
+is kept as written and describes the files as they were at commit `a477ab1`.
+
+To find the commit: `git log --diff-filter=D -- odisha_script/phase3_figures/`. To read a
+deleted file: `git show a477ab1:<path>`, for example
+`git show a477ab1:odisha_script/phase3_figures/deck_facts.md`. Commit `a477ab1` added all
+eighteen files and none was changed after it.
+
+Of this report's counts, 12 of the 170 result files (the eleven figures and the fact sheet)
+and 5 of the 34 scripts are the deleted ones.
+
+The deck built from them, `Phase3_Odisha_stand_check_summary.pptx`, was never in git (`*.pptx`
+is ignored), so no commit shows its removal. The same decision covers the copy at the repo
+root on the Mac; deleting that copy is a step outside git.
 
 **The committed figures and `deck_facts.md` show an earlier state, not the final results.**
 They show the first Phase 3 analysis (PR #40, merged 2026-09-24): field types built from all
@@ -471,7 +510,8 @@ this script today would present the 24 September analysis as the result.
 
 ### What each figure script needs before it runs from a clean checkout
 
-None of these was edited.
+None of these was edited. All five files were deleted instead (see the top of this section),
+so nothing in this list is still to do.
 
 - **`phase3_figstyle.py`** names the five field types by PR #40's numbers (2 scrub, 4 low-few,
   0 low-many, 1 tall-few, 3 tall-many). The final types are numbered 0 to 4 from shortest to
@@ -878,20 +918,19 @@ without submitting anything.
 Each with its evidence and what should happen next.
 
 1. **The Phase 3 summary figures, `deck_facts.md` and the deck builder show the PR #40
-   analysis, not the final results.** Evidence: "Figures and deck facts" above. Next: fix the
-   figure scripts as listed, regenerate all eleven figures, rewrite the fact sheet from the
-   final results files, update the deck builder's typed-in numbers, and only then build a deck.
-   Until then nothing in `phase3_figures/` should be shown as the Phase 3 result.
+   analysis, not the final results.** Evidence: "Figures and deck facts" above. DELETED, not
+   fixed (the decision on question 6 of PR #42): the eleven figures, the fact sheet, the figure
+   scripts and the deck builder are no longer in the repo. See "Deleted since" at the top of
+   "Figures and deck facts".
 2. **`phase3_figstyle.py` mislabels the field types without any error.** Evidence: the
    regenerated `structure_boxplots.png` calls the 18 no-tree plots "Low, many trees" and the
    77 low-forest plots "Scrub"; the regenerated `stand_view_10_vs_3.png` and
-   `species_groups.png` are wrong in the same way. Next: re-key the names, and have the figure
-   scripts check the names against the medians in `odisha_phase3_0_results.txt`.
+   `species_groups.png` are wrong in the same way. DELETED with the figure scripts (Problem 1).
 3. **Two of the four figure scripts do not run from a clean checkout.** Evidence:
    `odisha_phase3_4b_field.py` stops with `AssertionError` in `check_field`;
    `odisha_phase3_4d_results.py` stops with `AttributeError: ... no attribute 'OUT_NAME'`.
-   `odisha_phase3_4b_field.py` overwrites two committed figures before it stops. Next: as
-   listed above; and move its checks before its first `save`.
+   `odisha_phase3_4b_field.py` overwrites two committed figures before it stops. DELETED: all
+   four scripts (Problem 1).
 4. **`odisha_phase1_tests456_results.txt` is older than its script.** Evidence: the Phase 1
    row. The committed file lacks the warning that the GEDI row is withdrawn, which the script
    has printed since `36a0c73`. Next: commit the regenerated file, in its own commit, saying
@@ -925,8 +964,9 @@ Each with its evidence and what should happen next.
    It records `--ref main`; `main` has moved. Evidence: the Phase 3 row. Next: regenerate with
    `--ref cff45d9`, the command `PHASE3_STATUS.md` already gives, and drop the dated line.
 8. **`PHASE1_STATUS.md`, "Reproducing", covers only steps 7 to 11.** Steps 0 to 6 write eight
-   of the committed files and have no listed command. Next: add them (they are in the Phase 1
-   table above).
+   of the committed files and had no listed command. FIXED (the decision on question 10 of
+   PR #42): the section now lists the commands for steps 0 to 6, what each reads and writes,
+   and which need Earth Engine.
 9. **`odisha_phase1_7_meta_zero_diagnosis.py` cannot be run offline on purpose.** It calls
    Earth Engine whenever credentials are present, and rewrites the whole results file. Next:
    an option to run part A alone.
@@ -940,6 +980,6 @@ Each with its evidence and what should happen next.
 Every offline job has finished and is in the tables above. Not started, and needed before the report is complete:
 
 1. Decide how to stop a config's superpixels depending on whether its features were cached when it segmented ("Earth Engine re-runs", section 4): write the cache on the UTM grid, or make segmentation always read the cache. Either moves stands, so the configs it touches are then re-run. Re-run the chance tests on re-run stands if the stand-level differences are to be carried into Phase 3.
-2. Fix the figure scripts and `phase3_figstyle.py`, regenerate the eleven figures and rewrite `deck_facts.md` from the final results (Problems 1 to 3).
+2. Nothing left to do: the figure scripts, `phase3_figstyle.py`, the eleven figures and `deck_facts.md` were deleted, not fixed (Problems 1 to 3).
 3. Move run times out of `scripts/gate_effect.py` and regenerate `gate_effect_results.txt` at the next Earth Engine run (Problem 5).
 4. Regenerate `odisha_phase1_tests456_results.txt` and `odisha_phase3_stands_unchanged.txt` in their own commits (Problems 4 and 7).

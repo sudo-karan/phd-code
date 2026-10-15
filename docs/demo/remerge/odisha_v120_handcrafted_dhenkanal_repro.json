@@ -1,0 +1,302 @@
+{
+ "run_id": "odisha_v120_handcrafted_dhenkanal_repro",
+ "site": "Odisha",
+ "area": "Dhenkanal",
+ "arm": "feature_vector",
+ "stand_ceiling_ha": 10.0,
+ "k": 6,
+ "merge_rule": {
+  "old": "merge.pass2_skip_at_min_area false, as the run was made",
+  "new": "merge.pass2_skip_at_min_area true (spec-merge-pass2-skip-at-minimum)"
+ },
+ "superpixels_in_merge": 1020,
+ "pixels": {
+  "in_the_merge": 99385,
+  "on_the_downloaded_grid": 99563
+ },
+ "old_rule_check": {
+  "reproduces": true,
+  "types_reproduce": false,
+  "layer_reproduces": false,
+  "record": {
+   "totals_equal": true,
+   "totals_that_differ": {},
+   "stands_mine": 231,
+   "stands_theirs": 231,
+   "same_stand_ids": true,
+   "stand_values_that_differ": 0,
+   "largest_difference": 0.0,
+   "examples": [],
+   "equal": true
+  },
+  "pixels": {
+   "pixels_compared": 99558,
+   "pixels_in_another_stand": 0,
+   "same_stand_ids_everywhere": true,
+   "same_partition": true,
+   "pixels_with_no_exported_polygon": 5
+  },
+  "layer": {
+   "features": {
+    "mine": 243,
+    "theirs": 243
+   },
+   "stands": {
+    "mine": 231,
+    "theirs": 231,
+    "only_in_mine": 0,
+    "only_in_theirs": 0
+   },
+   "stands_whose_type_differs": 143,
+   "stands_typed_in_one_layer_only": 0,
+   "stand_types_up_to_renumbering": {
+    "compared": 215,
+    "same_numbers": 72,
+    "same_after_best_renumbering": 172,
+    "differ_after_best_renumbering": 43,
+    "adjusted_rand_index": 0.6234
+   },
+   "stands_whose_area_differs": 0,
+   "stands_whose_number_of_pieces_differs": 0,
+   "stands_whose_outline_differs": 0,
+   "examples_of_a_different_type": [
+    [
+     9,
+     2,
+     0
+    ],
+    [
+     25,
+     1,
+     2
+    ],
+    [
+     27,
+     1,
+     5
+    ],
+    [
+     34,
+     2,
+     5
+    ],
+    [
+     38,
+     1,
+     0
+    ],
+    [
+     59,
+     2,
+     1
+    ],
+    [
+     61,
+     2,
+     1
+    ],
+    [
+     63,
+     5,
+     1
+    ],
+    [
+     64,
+     5,
+     1
+    ],
+    [
+     65,
+     5,
+     1
+    ]
+   ],
+   "equal": false,
+   "type_pixels_against_the_saved_type_raster": {
+    "pixels_typed_in_both": 86208,
+    "pixels_typed_in_one_only": 0,
+    "pixels_whose_type_number_differs": 56850,
+    "up_to_renumbering": {
+     "compared": 86208,
+     "same_numbers": 29358,
+     "same_after_best_renumbering": 64766,
+     "differ_after_best_renumbering": 21442,
+     "adjusted_rand_index": 0.5194
+    }
+   }
+  },
+  "saved_fit": {
+   "k": 6,
+   "n_units_total": 231,
+   "n_units_in_habitat": 209,
+   "n_training_units": 209
+  }
+ },
+ "stands": {
+  "old": 231,
+  "new": 236
+ },
+ "merge_totals": {
+  "old": {
+   "n_superpixels": 1020,
+   "n_stands": 231,
+   "reduction_factor": 4.416,
+   "pass1_rounds": 7,
+   "pass1_merges": 662,
+   "pass1_pairs_blocked_by_area_round1": 0,
+   "pass1_pairs_blocked_by_undefined_criteria_round1": 6,
+   "pass2_iterations": 2,
+   "pass2_merges": 127,
+   "pass2_fallback_merges": 42,
+   "stands_below_min_area": 4,
+   "area_in_undersized_stands_ha": 1.46,
+   "orphans_isolated": 0,
+   "orphans_area_blocked": 4,
+   "orphans_no_attribute_match": 0,
+   "stands_with_incomplete_criteria": 1
+  },
+  "new": {
+   "n_superpixels": 1020,
+   "n_stands": 236,
+   "reduction_factor": 4.322,
+   "pass1_rounds": 7,
+   "pass1_merges": 662,
+   "pass1_pairs_blocked_by_area_round1": 0,
+   "pass1_pairs_blocked_by_undefined_criteria_round1": 6,
+   "pass2_iterations": 2,
+   "pass2_merges": 122,
+   "pass2_fallback_merges": 40,
+   "stands_below_min_area": 4,
+   "area_in_undersized_stands_ha": 1.46,
+   "orphans_isolated": 0,
+   "orphans_area_blocked": 4,
+   "orphans_no_attribute_match": 0,
+   "stands_with_incomplete_criteria": 1
+  }
+ },
+ "stands_with_a_type": {
+  "old": 215,
+  "new": 220
+ },
+ "clustering": {
+  "old": {
+   "k": 6,
+   "seed": 42,
+   "n_training_units": 209,
+   "n_units_total": 231,
+   "n_units_in_habitat": 209,
+   "n_units_outside_habitat": 22,
+   "n_units_dropped_null_band": 0,
+   "stands_typed_by_the_export_only": 6,
+   "stands_the_export_types_differently_from_the_fit": 0,
+   "stands_whose_pixel_centres_disagree_with_the_fit": 1
+  },
+  "new": {
+   "k": 6,
+   "seed": 42,
+   "n_training_units": 214,
+   "n_units_total": 236,
+   "n_units_in_habitat": 214,
+   "n_units_outside_habitat": 22,
+   "n_units_dropped_null_band": 0,
+   "stands_typed_by_the_export_only": 6,
+   "stands_the_export_types_differently_from_the_fit": 0,
+   "stands_whose_pixel_centres_disagree_with_the_fit": 1
+  }
+ },
+ "change": {
+  "n_old": 231,
+  "n_new": 236,
+  "n_unchanged": 226,
+  "n_pixels": 99563,
+  "n_pixels_changed": 1920,
+  "area_ha_total": 995.63,
+  "area_ha_changed": 19.2,
+  "share_area_changed": 0.01928427226981911,
+  "area_weighted_iou_old_to_new": 0.9930998463284554,
+  "area_weighted_iou_new_to_old": 0.9912762623085283,
+  "n_parts": 8,
+  "n_old_in_several_parts": 0,
+  "n_new_in_several_parts": 0
+ },
+ "types_old_against_new": {
+  "pixels_typed_in_both": 85183,
+  "adjusted_rand_index": 0.9383
+ },
+ "plots": {
+  "in_the_district": 76,
+  "in_a_stand": 75,
+  "changed_stand": 2,
+  "changed_stand_keys": [
+   "21.157913_85.365213",
+   "21.158187_85.36696"
+  ],
+  "with_a_type": {
+   "old": 75,
+   "new": 75
+  }
+ },
+ "elbow": {
+  "old": {
+   "rows": 209,
+   "ks": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "inertia": [
+    4890.963712,
+    3542.663755,
+    2662.836708,
+    2091.831254,
+    1736.198141,
+    1506.895251,
+    1391.434564,
+    1290.499773,
+    1209.661071,
+    1136.117257,
+    1087.595088
+   ],
+   "elbow_k": 5
+  },
+  "new": {
+   "rows": 214,
+   "ks": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "inertia": [
+    5935.207753,
+    4293.1749,
+    2904.004458,
+    2302.817788,
+    1933.236307,
+    1679.796809,
+    1534.573212,
+    1429.781511,
+    1346.977886,
+    1273.268475,
+    1206.583516
+   ],
+   "elbow_k": 5
+  }
+ },
+ "export_tasks_submitted": 0
+}

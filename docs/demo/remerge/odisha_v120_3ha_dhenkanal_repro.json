@@ -1,0 +1,301 @@
+{
+ "run_id": "odisha_v120_3ha_dhenkanal_repro",
+ "site": "Odisha",
+ "area": "Dhenkanal",
+ "arm": "feature_vector",
+ "stand_ceiling_ha": 3.0,
+ "k": 5,
+ "merge_rule": {
+  "old": "merge.pass2_skip_at_min_area false, as the run was made",
+  "new": "merge.pass2_skip_at_min_area true (spec-merge-pass2-skip-at-minimum)"
+ },
+ "superpixels_in_merge": 2827,
+ "pixels": {
+  "in_the_merge": 99273,
+  "on_the_downloaded_grid": 99563
+ },
+ "old_rule_check": {
+  "reproduces": true,
+  "types_reproduce": false,
+  "layer_reproduces": false,
+  "record": {
+   "totals_equal": true,
+   "totals_that_differ": {},
+   "stands_mine": 462,
+   "stands_theirs": 462,
+   "same_stand_ids": true,
+   "stand_values_that_differ": 0,
+   "largest_difference": 0.0,
+   "examples": [],
+   "equal": true
+  },
+  "pixels": {
+   "pixels_compared": 99558,
+   "pixels_in_another_stand": 0,
+   "same_stand_ids_everywhere": true,
+   "same_partition": true,
+   "pixels_with_no_exported_polygon": 5
+  },
+  "layer": {
+   "features": {
+    "mine": 474,
+    "theirs": 474
+   },
+   "stands": {
+    "mine": 462,
+    "theirs": 462,
+    "only_in_mine": 0,
+    "only_in_theirs": 0
+   },
+   "stands_whose_type_differs": 227,
+   "stands_typed_in_one_layer_only": 0,
+   "stand_types_up_to_renumbering": {
+    "compared": 445,
+    "same_numbers": 218,
+    "same_after_best_renumbering": 356,
+    "differ_after_best_renumbering": 89,
+    "adjusted_rand_index": 0.6012
+   },
+   "stands_whose_area_differs": 0,
+   "stands_whose_number_of_pieces_differs": 0,
+   "stands_whose_outline_differs": 0,
+   "examples_of_a_different_type": [
+    [
+     1,
+     0,
+     1
+    ],
+    [
+     5,
+     0,
+     1
+    ],
+    [
+     9,
+     2,
+     0
+    ],
+    [
+     11,
+     0,
+     2
+    ],
+    [
+     48,
+     0,
+     1
+    ],
+    [
+     57,
+     0,
+     1
+    ],
+    [
+     60,
+     0,
+     1
+    ],
+    [
+     75,
+     0,
+     1
+    ],
+    [
+     81,
+     0,
+     2
+    ],
+    [
+     86,
+     0,
+     2
+    ]
+   ],
+   "equal": false,
+   "type_pixels_against_the_saved_type_raster": {
+    "pixels_typed_in_both": 86190,
+    "pixels_typed_in_one_only": 0,
+    "pixels_whose_type_number_differs": 40045,
+    "up_to_renumbering": {
+     "compared": 86190,
+     "same_numbers": 46145,
+     "same_after_best_renumbering": 66107,
+     "differ_after_best_renumbering": 20083,
+     "adjusted_rand_index": 0.548
+    }
+   }
+  },
+  "saved_fit": {
+   "k": 5,
+   "n_units_total": 462,
+   "n_units_in_habitat": 444,
+   "n_training_units": 442
+  }
+ },
+ "stands": {
+  "old": 462,
+  "new": 475
+ },
+ "merge_totals": {
+  "old": {
+   "n_superpixels": 2827,
+   "n_stands": 462,
+   "reduction_factor": 6.119,
+   "pass1_rounds": 6,
+   "pass1_merges": 1945,
+   "pass1_pairs_blocked_by_area_round1": 0,
+   "pass1_pairs_blocked_by_undefined_criteria_round1": 14,
+   "pass2_iterations": 3,
+   "pass2_merges": 420,
+   "pass2_fallback_merges": 151,
+   "stands_below_min_area": 37,
+   "area_in_undersized_stands_ha": 19.13,
+   "orphans_isolated": 0,
+   "orphans_area_blocked": 37,
+   "orphans_no_attribute_match": 0,
+   "stands_with_incomplete_criteria": 1
+  },
+  "new": {
+   "n_superpixels": 2827,
+   "n_stands": 475,
+   "reduction_factor": 5.952,
+   "pass1_rounds": 6,
+   "pass1_merges": 1945,
+   "pass1_pairs_blocked_by_area_round1": 0,
+   "pass1_pairs_blocked_by_undefined_criteria_round1": 14,
+   "pass2_iterations": 3,
+   "pass2_merges": 407,
+   "pass2_fallback_merges": 145,
+   "stands_below_min_area": 36,
+   "area_in_undersized_stands_ha": 18.29,
+   "orphans_isolated": 0,
+   "orphans_area_blocked": 36,
+   "orphans_no_attribute_match": 0,
+   "stands_with_incomplete_criteria": 1
+  }
+ },
+ "stands_with_a_type": {
+  "old": 445,
+  "new": 454
+ },
+ "clustering": {
+  "old": {
+   "k": 5,
+   "seed": 42,
+   "n_training_units": 442,
+   "n_units_total": 462,
+   "n_units_in_habitat": 444,
+   "n_units_outside_habitat": 18,
+   "n_units_dropped_null_band": 2,
+   "stands_typed_by_the_export_only": 3,
+   "stands_the_export_types_differently_from_the_fit": 0,
+   "stands_whose_pixel_centres_disagree_with_the_fit": 1
+  },
+  "new": {
+   "k": 5,
+   "seed": 42,
+   "n_training_units": 451,
+   "n_units_total": 475,
+   "n_units_in_habitat": 453,
+   "n_units_outside_habitat": 22,
+   "n_units_dropped_null_band": 2,
+   "stands_typed_by_the_export_only": 3,
+   "stands_the_export_types_differently_from_the_fit": 0,
+   "stands_whose_pixel_centres_disagree_with_the_fit": 1
+  }
+ },
+ "change": {
+  "n_old": 462,
+  "n_new": 475,
+  "n_unchanged": 440,
+  "n_pixels": 99563,
+  "n_pixels_changed": 5010,
+  "area_ha_total": 995.63,
+  "area_ha_changed": 50.1,
+  "share_area_changed": 0.05031989795405924,
+  "area_weighted_iou_old_to_new": 0.9766392462642597,
+  "area_weighted_iou_new_to_old": 0.9751816681625819,
+  "n_parts": 8,
+  "n_old_in_several_parts": 0,
+  "n_new_in_several_parts": 0
+ },
+ "types_old_against_new": {
+  "pixels_typed_in_both": 85168,
+  "adjusted_rand_index": 0.649
+ },
+ "plots": {
+  "in_the_district": 76,
+  "in_a_stand": 75,
+  "changed_stand": 1,
+  "changed_stand_keys": [
+   "20.926499_85.652478"
+  ],
+  "with_a_type": {
+   "old": 75,
+   "new": 75
+  }
+ },
+ "elbow": {
+  "old": {
+   "rows": 442,
+   "ks": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "inertia": [
+    8702.719501,
+    6696.248815,
+    5694.130742,
+    4837.589457,
+    4130.645092,
+    3634.226784,
+    3354.348841,
+    3116.446088,
+    2919.226302,
+    2731.199779,
+    2569.674511
+   ],
+   "elbow_k": 6
+  },
+  "new": {
+   "rows": 451,
+   "ks": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "inertia": [
+    8831.658041,
+    6773.756913,
+    5779.306796,
+    4912.542004,
+    4185.877217,
+    3706.268513,
+    3416.329576,
+    3180.42236,
+    2966.05391,
+    2786.934423,
+    2602.020039
+   ],
+   "elbow_k": 6
+  }
+ },
+ "export_tasks_submitted": 0
+}

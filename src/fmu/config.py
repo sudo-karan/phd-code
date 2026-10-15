@@ -321,13 +321,59 @@ class SegmentationParams(BaseModel):
         default_factory=lambda: [b.model_copy() for b in _DEFAULT_SNIC_INPUT_BANDS],
         min_length=1,
     )
+    # Whether SNIC sees only the land the masking stage keeps (habitat_mask 1:
+    # trees or scrub). False (the default, and the behaviour of every run made
+    # before this setting existed): SNIC and the merge cover the whole ROI, and
+    # the mask is applied at clustering only, so a stand can hold cropland or
+    # built-up land and its type is fitted on means over all of it. True: the
+    # z-score and distance statistics are taken over kept land only, SNIC runs
+    # on the stack with every other pixel masked, every patch of kept land gets
+    # at least one seed, and the superpixels, hence the stands, lie on kept land
+    # only. The merge then joins only superpixels that touch on kept land; a
+    # patch with no kept-land neighbour stays a stand of its own, below the
+    # minimum size if it is small (docs/decisions.yaml,
+    # spec-segmentation-mask-before-snic). The default is left out of the cache
+    # fingerprint (`fmu.utils.caching._OMITTED_AT_DEFAULT`), so adding this field
+    # moved no existing config's cached assets; a config that sets it to true
+    # gets a new fingerprint.
+    mask_before_snic: bool = False
+    # With mask_before_snic on: whether a patch of kept land smaller than the
+    # smallest stand the merge allows (merge.min_area_ha), joined to no other
+    # kept land by SNIC's `connectivity`, is left out before SNIC, as removed
+    # land is. Such a patch can merge with nothing, so it could only ever be a
+    # stand below the minimum size; kept in, each one is a stand of its own and
+    # a row of its own in the k-means fit, which fits one row per stand however
+    # small. The standard minimum-mapping-unit step, tied to the stand minimum
+    # rather than to a number of its own. The area left out is reported
+    # (merge_diagnostics["kept_land"]["small_patches_ha"]). Same register entry;
+    # left out of the fingerprint while false, like mask_before_snic.
+    drop_kept_patches_below_min_area: bool = False
+
+    @model_validator(mode="after")
+    def _kept_land_options_fit_together(self) -> SegmentationParams:
+        if self.drop_kept_patches_below_min_area and not self.mask_before_snic:
+            raise ValueError(
+                "segmentation.drop_kept_patches_below_min_area needs "
+                "segmentation.mask_before_snic: without it SNIC does not work on "
+                "kept land, so there are no kept patches to leave out."
+            )
+        if self.mask_before_snic and self.size < 2:
+            raise ValueError(
+                "segmentation.size must be at least 2 with mask_before_snic: the "
+                "seeds are given to SNIC explicitly, and SNIC takes seed pixels "
+                "that touch as one seed, so a grid of spacing 1 would make every "
+                "patch of kept land a single superpixel."
+            )
+        return self
 
     def input_sources(self) -> set[str]:
         """PipelineContext keys the configured SNIC stack reads.
 
         One definition, used by three callers that must agree: the
         orchestrator (to decide which feature stages a run needs), the
-        segmentation stage's validate(), and the tests.
+        segmentation stage's validate(), and the tests. `habitat_mask`, which
+        the stage also reads when `mask_before_snic` is on, is not a source of
+        a band and is not listed: the masking stage runs in every run.
         """
         return {b.source for b in self.input_bands}
 
@@ -380,6 +426,25 @@ class ClusteringParams(BaseModel):
     # Skewness threshold above which a feature gets log-transformed before scaling.
     # Per DEC-004: a feature with |skew| > 1.0 is log-transformed via log(x - min + 1e-3).
     skewness_threshold: float = Field(default=1.0, ge=0.0)
+    # Whether the stands the merge leaves below merge.min_area_ha are rows of the
+    # k-means fit. False (the default, and the behaviour of every run made before
+    # this setting existed): every stand is a row of its own, however small. True:
+    # the stands the merge marks below the minimum (below_min in stand_provenance)
+    # are left out of the k-means training rows. Only those rows: the skewness, log
+    # offsets and scaling are still taken over every stand. They stay on the map
+    # as stands of their own, and the trained clusterer, applied to every unit,
+    # gives each the type of the nearest fitted cluster. How many were left
+    # out, and their area, is recorded in clustering_metadata (docs/decisions.yaml,
+    # spec-clustering-fit-excludes-stands-below-min-area). Needs merge.enabled.
+    # True has not run in batch. Its requests are checked offline
+    # (tests/test_clustering_fit_excludes_ee_graph.py), and read-only on Earth
+    # Engine it left out the rows intended (scripts/check_fit_excludes_stands.py,
+    # 15 Oct 2026).
+    # The default is left out of the cache fingerprint
+    # (`fmu.utils.caching._OMITTED_AT_DEFAULT`), so adding this field moved no
+    # existing config's cached assets; a config that sets it to true gets a new
+    # fingerprint.
+    fit_excludes_stands_below_min_area: bool = False
     # NOTE: `superpixel_max_size` used to live here as the `maxSize` argument to
     # reduceConnectedComponents. It is now DERIVED -- see
     # `Config.max_component_pixels()` -- because (a) the name stopped being true
@@ -416,9 +481,13 @@ class MergeCriterion(BaseModel):
 
 
 # Defaults measured from this AOI's own adjacent-superpixel difference
-# distribution (1249 superpixels, 3569 adjacent pairs):
+# distribution (1249 superpixels, 3569 adjacent pairs, in the run the
+# tolerances were set on):
 #   canopy_height          p50 1.81  p75 3.15   -> 2.00 m
 #   ndvi_amplitude_annual  p50 0.016 p75 0.027  -> 0.030
+# Demo set, 13 Oct 2026 (1,298 superpixels, 3,615 adjacent pairs; it carries
+# the open cache-grid issue, docs/reproducibility.md): p50 1.85 p75 3.27, and
+# p50 0.017 p75 0.031. The tolerances were not changed.
 # These are per-band marginals and the gate is conjunctive, so they do NOT
 # describe the joint admit rate -- the calibration helper reports that.
 _DEFAULT_MERGE_CRITERIA: list[MergeCriterion] = [
@@ -472,9 +541,13 @@ class MergeParams(BaseModel):
     # not a quantile. Xiong reports SH1 = 3 m for the same reason.
     #
     # Defaults measured from this AOI's own adjacent-superpixel difference
-    # distribution (1249 superpixels, 3569 adjacent pairs):
+    # distribution (1249 superpixels, 3569 adjacent pairs, in the run the
+    # tolerances were set on):
     #   canopy_height          p50 1.81  p75 3.15   -> 2.00 m
     #   ndvi_amplitude_annual  p50 0.016 p75 0.027  -> 0.030
+    # Demo set, 13 Oct 2026 (1,298 superpixels, 3,615 adjacent pairs; it carries
+    # the open cache-grid issue, docs/reproducibility.md): p50 1.85 p75 3.27, and
+    # p50 0.017 p75 0.031. The tolerances were not changed.
     # These are per-band marginals and the gate is conjunctive, so they do NOT
     # describe the joint admit rate -- the calibration helper reports that.
     # canopy_height at 2.00 m is intentionally the binding criterion: it is the
@@ -509,7 +582,8 @@ class MergeParams(BaseModel):
 
     # Hard area bounds, in hectares. Xiong uses 20 ha max for plantation, 50 ha
     # for natural forest, 0.5 ha min. Area is a first-class term in the merge
-    # rule, not a post-filter.
+    # rule, not a post-filter. (`pass2_soft_ceiling`, below, lets a region below
+    # the minimum go over max_area_ha in pass 2, by at most min_area_ha.)
     min_area_ha: float = Field(default=1.0, gt=0.0)
     max_area_ha: float = Field(default=10.0, gt=0.0)
 
@@ -517,7 +591,8 @@ class MergeParams(BaseModel):
     # justify, so a pair needs at least this many criteria *defined on both
     # sides*. Pairs that fall short drop to pass 2, which is the right
     # destination. (14 of 1249 superpixels in the committed run have no
-    # canopy_height at all -- ETH no-data.)
+    # canopy_height at all -- ETH no-data. Demo set, 13 Oct 2026: 107 of
+    # 1,298; why it is more has not been looked into.)
     #
     # Read this against `len(criteria)`, because the default list is now two
     # long and 2 == 2: **every criterion is currently mandatory**, where three
@@ -548,6 +623,40 @@ class MergeParams(BaseModel):
     # Pass 2 runs to convergence but is capped so a pathological AOI logs its
     # stragglers instead of looping forever.
     max_pass2_iterations: int = Field(default=60, ge=1)
+
+    # Pass 2 lists the undersized regions once per sweep and takes them in turn.
+    # A listed region can reach `min_area_ha` before its turn comes, when a
+    # smaller one joins it earlier in the same sweep. False (the default, and
+    # the behaviour of every run made before this setting existed): it still
+    # takes its turn and can be merged once more. True: it is skipped, because
+    # it is no longer undersized (docs/decisions.yaml,
+    # spec-merge-pass2-skip-at-minimum). The default is left out of the cache
+    # fingerprint (`fmu.utils.caching._OMITTED_AT_DEFAULT`), so adding this
+    # field moved no existing config's cached assets; a config that sets it to
+    # true gets a new fingerprint.
+    pass2_skip_at_min_area: bool = False
+
+    # Whether pass 2 may take a region over `max_area_ha`. False (the default,
+    # and the behaviour of every run made before this setting existed):
+    # `max_area_ha` binds in both passes, so a region below the minimum whose
+    # neighbours are all close to `max_area_ha` stays below the minimum
+    # (area-blocked).
+    # True: a region whose area is still below `min_area_ha` when its turn
+    # comes may join a neighbour even if the result is over `max_area_ha`. It
+    # takes, in this order: a neighbour that passes the relaxed tolerances and
+    # keeps the result at most `max_area_ha`, the closest; one that passes them
+    # with the result over it, the closest; the neighbour sharing the longest
+    # edge with the result at most `max_area_ha`; the one sharing the longest
+    # edge with the result over it. No merge makes a region larger than
+    # `max_area_ha + min_area_ha`, and `Config.max_component_pixels()` is then
+    # derived from that sum. Pass 1, and a region that has reached the minimum
+    # by its turn, keep `max_area_ha`. The merge diagnostics then count the
+    # stands over `max_area_ha` and by how much (docs/decisions.yaml,
+    # spec-merge-pass2-soft-ceiling). The default is left out of the cache
+    # fingerprint (`fmu.utils.caching._OMITTED_AT_DEFAULT`), so adding this
+    # field moved no existing config's cached assets; a config that sets it to
+    # true gets a new fingerprint.
+    pass2_soft_ceiling: bool = False
 
     # The merge runs client-side over a {snic_label -> stand_id} lookup table
     # and comes back as `snic_clusters.remap(...)`, so the label list has to
@@ -821,24 +930,43 @@ class Config(BaseModel):
         it is too small is a number that should not be hand-set.
 
         The largest component the pipeline can produce is a merged stand, which
-        `merge.max_area_ha` bounds by construction (the pass-2 fallback respects
-        it too -- violating it would break exactly this derivation). Convert to
-        pixels at the analysis scale and add 20% headroom for the boundary
-        pixels a polygon's raster footprint picks up:
+        the merge's ceiling bounds by construction: `merge.max_area_ha`, which
+        the pass-2 fallback respects too, or, with `merge.pass2_soft_ceiling`
+        on, `merge.max_area_ha + merge.min_area_ha`, which no pass-2 merge goes
+        past. Breaking that bound would break exactly this derivation. Convert
+        the ceiling to pixels at the analysis scale and add 20% headroom for the
+        boundary pixels a polygon's raster footprint picks up:
 
-            ceil(max_area_ha * 10_000 / scale^2) * 1.2
+            ceil(ceiling_ha * 10_000 / scale^2) * 1.2
 
         At the defaults (10 ha, 10 m) that is 1200 px, against 1000 px of stand
         -- versus a hand-set 1024, which was razor thin, and 256, which was not
-        thin but wrong.
+        thin but wrong. With the soft ceiling on, the defaults give 11 ha and
+        1320 px.
 
         Callers must still assert that no *actual* component exceeds this;
         `assert_components_fit()` does that, because a derivation is only as
         good as its premise.
         """
         scale = self.export.analysis_scale_m
-        exact = math.ceil(self.merge.max_area_ha * 10_000 / (scale * scale))
+        ceiling_ha = self.merge.max_area_ha
+        if self.merge.pass2_soft_ceiling:
+            ceiling_ha += self.merge.min_area_ha
+        exact = math.ceil(ceiling_ha * 10_000 / (scale * scale))
         return int(math.ceil(exact * 1.2))
+
+    def kept_patch_min_pixels(self) -> int:
+        """Smallest patch of kept land SNIC sees, in pixels; 0 when none is left out.
+
+        Nonzero only with segmentation.drop_kept_patches_below_min_area, and then
+        merge.min_area_ha at the analysis scale, rounded up: a patch of fewer
+        pixels is below the smallest stand the merge allows. Segmentation and
+        merge both read it, so they agree on what kept land is.
+        """
+        if not self.segmentation.drop_kept_patches_below_min_area:
+            return 0
+        scale = self.export.analysis_scale_m
+        return int(math.ceil(self.merge.min_area_ha * 10_000 / (scale * scale)))
 
     @model_validator(mode="after")
     def _optical_band_prefixes_match_index(self) -> Config:
@@ -874,6 +1002,16 @@ class Config(BaseModel):
         offenders(self.segmentation.input_bands, "segmentation.input_bands")
         offenders(self.merge.criteria, "merge.criteria")
         offenders(self.metrics.r2_attributes, "metrics.r2_attributes")
+        return self
+
+    @model_validator(mode="after")
+    def _fit_exclusion_needs_the_merge(self) -> Config:
+        if self.clustering.fit_excludes_stands_below_min_area and not self.merge.enabled:
+            raise ValueError(
+                "clustering.fit_excludes_stands_below_min_area needs merge.enabled: "
+                "without the merge there are no stands, and nothing marks a stand "
+                "as below merge.min_area_ha."
+            )
         return self
 
     @model_validator(mode="after")

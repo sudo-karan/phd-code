@@ -12,7 +12,8 @@ wrong and impossible to notice from a stand map:
     null-canopy region cannot give a merged stand a canopy height for territory
     that never measured one;
   - `max_area_ha` binds in **both** passes, including the shared-edge fallback,
-    because the derived `max_component_pixels` depends on it;
+    because the derived `max_component_pixels` depends on it (by default:
+    tests/test_region_merge_soft_ceiling.py covers `pass2_soft_ceiling`);
   - orphans are split by cause, since "surrounded by different forest" and
     "every neighbour is already too big" call for opposite fixes.
 """
