@@ -89,6 +89,10 @@ KEPTLAND_RUNS = {"sanjay_van_baseline_keptland": ("feature_vector", "sanjay_van_
                  "sanjay_van_alphaearth_keptland": ("alphaearth", "sanjay_van_alphaearth_repro")}
 # The box kept-land runs of round 6: run id -> the district whose box run's assets it reuses.
 KEPTLAND_BOX_RUNS = {f"odisha_v120_3ha_squares_{d}_keptland": d for d in DISTRICTS}
+# The runs whose stands the "13 October 2026 re-runs" score rows scored (docs/reproducibility.md,
+# section 3): the hull _repro runs, the 10 ha hand-crafted arm and the 3 ha arm.
+RERUN_IDS = {10.0: [f"odisha_v120_handcrafted_{d}_repro" for d in DISTRICTS],
+             3.0: [f"odisha_v120_3ha_{d}_repro" for d in DISTRICTS]}
 # Their descending-orbit runs of round 7 (spec-odisha-keptland-s1-orbit-descending): run id ->
 # the district. A stand layer of theirs over 5 MB is kept off git (spec-files-over-5-mb-off-git)
 # and read from where its record says (`vec_file`).
@@ -1054,6 +1058,9 @@ def main() -> None:
             })
             entry.update({
                 "kept_land": True,
+                # Round 8: the descending-orbit runs' declared field check has been run (numbers
+                # only, odisha_script/keptland_scores/); the round-6 ascending runs' has not.
+                "fes_declared": run_id.endswith("_s1desc"),
                 "source_commit": str(run["git"]["commit"])[:7],
                 "merge_rule": "spec-merge-pass2-skip-at-minimum, spec-merge-pass2-soft-ceiling",
                 "note": (SANJAY_NOTE + " " if sanjay else "") + "SNIC and the merge saw kept "
@@ -1119,22 +1126,51 @@ def fes_rows() -> dict:
             rows.append({"arm": "feature_vector", "stand_ceiling_ha": ceil, "roi": "hulls",
                          "analysis": "primary", "stands": "September 2026 runs (Phase 3)",
                          "test": tid, "title": title, "score": score, "chance_percentile": pct,
-                         "p": p, "p_holm": ph, "n_plots": 267})
+                         "p": p, "p_holm": ph, "n_plots": 267,
+                         # No run in ui_data holds the September stands.
+                         "run_ids": []})
         for tid, title in tests:
             if tid in rerun[ceil]:
                 rows.append({"arm": "feature_vector", "stand_ceiling_ha": ceil, "roi": "hulls",
                              "analysis": "primary", "stands": "13 October 2026 re-runs",
                              "test": tid, "title": title, "score": rerun[ceil][tid],
                              "chance_percentile": None, "p": None, "p_holm": None,
-                             "n_plots": 267})
+                             "n_plots": 267, "run_ids": RERUN_IDS[ceil]})
     reading = (
         "At neither stand size can the stands be told apart from a randomly placed copy of the "
         "same stand map, on drawing or on labelling. None of the ten planned tests passes once "
         "corrected for running ten. That does not make the stands wrong: with 267 plots in 20 "
         "villages, a real but modest agreement could go undetected.")
-    return {"label": "Phase 3 numbers (September 2026 runs) and the 13 October re-runs' scores. "
+    rows += keptland_rows(tests)
+    return {"label": "Phase 3 numbers (September 2026 runs), the 13 October re-runs' scores, and the "
+                     "15 October kept-land runs' scores, numbers only (their chance test is not run). "
                      "Claude Code re-scores the demo set, both arms (brief A4).",
             "reading": reading, "rows": rows}
+
+
+def keptland_rows(tests: list[tuple[str, str]]) -> list[dict]:
+    """The field check of the four descending-orbit kept-land runs (round 7,
+    odisha_script/keptland_scores/keptland_s1desc_scores.json): every analysis, five rows each,
+    numbers only. Each row names the four runs it belongs to; the box_runs analysis, the 13 Oct
+    box runs' stands on the same plots, is part of their field check."""
+    path = REPO / "odisha_script" / "keptland_scores" / "keptland_s1desc_scores.json"
+    if not path.exists():
+        return []
+    stat = {"drawing_all_plots": "delin_all", "drawing_multi_plot": "delin_multi",
+            "pair_precision": "prec", "labelling_district": "lab_wmean", "far_apart": "far_gap"}
+    run_ids = sorted(KEPTLAND_S1DESC_RUNS)
+    rows = []
+    for a in json.loads(path.read_text())["analyses"]:
+        for tid, title in tests:
+            rows.append({"arm": "feature_vector", "stand_ceiling_ha": 3.0, "roi": "boxes",
+                         "analysis": a["analysis"],
+                         "stands": "15 Oct 2026 kept-land runs (descending radar)",
+                         "test": tid, "title": title, "score": a[stat[tid]],
+                         "chance_percentile": None, "p": None, "p_holm": None,
+                         "n_plots": a["counts"]["plots"],
+                         "declaration": "odisha_script/PHASE_KEPTLAND_PREDECLARED.md",
+                         "run_ids": run_ids})
+    return rows
 
 
 if __name__ == "__main__":

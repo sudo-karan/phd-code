@@ -387,3 +387,25 @@ def test_a_file_kept_off_git_is_found_by_its_record_and_checked(builder, tmp_pat
     big.unlink()
     with pytest.raises(SystemExit, match="not on this machine"):
         builder.vec_file(vec, big.name)
+
+
+def test_the_kept_land_score_rows_follow_the_scores_file(builder):
+    """Round 8: every analysis of odisha_script/keptland_scores/keptland_s1desc_scores.json, five
+    rows each, numbers only, naming the four descending-orbit runs."""
+    tests = [("drawing_all_plots", "a"), ("drawing_multi_plot", "b"), ("pair_precision", "c"),
+             ("labelling_district", "d"), ("far_apart", "e")]
+    rows = builder.keptland_rows(tests)
+    scores = json.loads((SCRIPTS.parent / "odisha_script" / "keptland_scores"
+                         / "keptland_s1desc_scores.json").read_text())["analyses"]
+    assert len(rows) == 5 * len(scores) == 25
+    stat = {"drawing_all_plots": "delin_all", "drawing_multi_plot": "delin_multi",
+            "pair_precision": "prec", "labelling_district": "lab_wmean", "far_apart": "far_gap"}
+    by = {a["analysis"]: a for a in scores}
+    for r in rows:
+        a = by[r["analysis"]]
+        assert r["score"] == a[stat[r["test"]]] and r["n_plots"] == a["counts"]["plots"]
+        assert (r["chance_percentile"], r["p"], r["p_holm"]) == (None, None, None)
+        assert (r["arm"], r["stand_ceiling_ha"], r["roi"]) == ("feature_vector", 3.0, "boxes")
+        assert r["stands"] == "15 Oct 2026 kept-land runs (descending radar)"
+        assert r["declaration"] == "odisha_script/PHASE_KEPTLAND_PREDECLARED.md"
+        assert r["run_ids"] == sorted(builder.KEPTLAND_S1DESC_RUNS)
