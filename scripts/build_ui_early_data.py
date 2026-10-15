@@ -496,12 +496,18 @@ def feature_names(properties: dict) -> list[str]:
     return [k for k in properties if k not in ID_FIELDS and k not in PROVENANCE_FIELDS]
 
 
+def far(value) -> bool:
+    """A distance_to_water of 10 km or more, at the four significant figures ui_data writes it
+    with: Earth Engine reads the cap back as 9,999.98 m and the like (see FAR_WATER_M)."""
+    return float(f"{float(value):.4g}") >= FAR_WATER_M
+
+
 def feature_value(name: str, value, *, far_water: bool = False) -> float | str | None:
     """A stand mean as ui_data keeps it: None for no data, else rounded (`DECIMALS`). With
-    `far_water`, a distance_to_water above 10 km is OVER_10_KM (see FAR_WATER_M)."""
+    `far_water`, a distance_to_water of 10 km or more is OVER_10_KM (`far`)."""
     if value is None or (isinstance(value, float) and math.isnan(value)):
         return None
-    if far_water and name == "distance_to_water" and float(value) >= FAR_WATER_M:
+    if far_water and name == "distance_to_water" and far(value):
         return OVER_10_KM
     if name in DECIMALS:
         return round(value, DECIMALS[name])
@@ -780,7 +786,7 @@ def profile_value(band: str, value):
     """A profile statistic as ui_data keeps it: four significant figures, far water marked."""
     if value is None or (isinstance(value, float) and math.isnan(value)):
         return None
-    if band == "distance_to_water" and float(value) >= FAR_WATER_M:
+    if band == "distance_to_water" and far(value):
         return OVER_10_KM
     return float(f"{float(value):.4g}")
 

@@ -157,6 +157,10 @@ def test_far_water_is_over_10_km_where_it_is_marked(builder):
     # A capped band (features_static.cap_distance_to_water) holds the cap itself there.
     assert builder.feature_value("distance_to_water", 10_000.0, far_water=True) == "over 10 km"
     assert builder.feature_value("distance_to_water", 9_999.0, far_water=True) == 9999.0
+    # The cap as Earth Engine reads it back, just under 10 km: "over 10 km", never 10000.0.
+    assert builder.feature_value("distance_to_water", 9_999.98, far_water=True) == "over 10 km"
+    assert builder.profile_value("distance_to_water", 9_999.5646) == "over 10 km"
+    assert builder.feature_value("distance_to_water", 9_994.9, far_water=True) == 9995.0
     assert builder.feature_value("distance_to_water", FILL) == float(f"{FILL:.4g}")
     assert builder.feature_value("elevation", FILL, far_water=True) == round(FILL, 0)
     assert builder.profile_value("distance_to_water", FILL) == "over 10 km"
