@@ -1990,7 +1990,15 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     $("#banner").innerHTML = `<strong>Early version.</strong> ${esc(short)}` + (state.index.label && state.index.short_label ? ` <button type="button" id="more">More</button><span class="more" id="more-text" hidden>${esc(state.index.label)}</span>` : "");
     const more = $("#more");
     if (more) more.addEventListener("click", () => { const t = $("#more-text"); t.hidden = !t.hidden; more.textContent = t.hidden ? "More" : "Less"; });
-    $("#pick-area").addEventListener("change", e => chooseRun({ area: e.target.value, arm: run().arm, ceiling: run().stand_ceiling_ha }));
+    // A new place opens on its latest runs (kept land, boxes, our features), not on whatever stand
+    // size the last place happened to have.
+    $("#pick-area").addEventListener("change", e => {
+      const area = e.target.value;
+      const pool = state.index.runs.filter(x => x.area === area);
+      const latest = x => (isKept(x) ? 0 : 8) + (x.arm === run().arm ? 0 : 4) + (x.roi === "boxes" ? 0 : 2) + (isAscendingRedo(x) ? 1 : 0);
+      const best = pool.slice().sort((a, b) => latest(a) - latest(b))[0];
+      if (best) chooseRun({ area, arm: best.arm, ceiling: best.stand_ceiling_ha, roi: best.roi || "hulls", kept: isKept(best) });
+    });
     $("#pick-arm").addEventListener("click", e => { const b = e.target.closest("button[data-arm]"); if (b && !b.disabled) chooseRun({ area: run().area, arm: b.dataset.arm, ceiling: run().stand_ceiling_ha }); });
     $("#pick-ceiling").addEventListener("click", e => { const b = e.target.closest("button[data-ceiling]"); if (b && !b.disabled) chooseRun({ area: run().area, arm: run().arm, ceiling: Number(b.dataset.ceiling) }); });
     $("#pick-kept").addEventListener("click", e => { const b = e.target.closest("button[data-kept]"); if (b) chooseRun({ area: run().area, arm: run().arm, ceiling: run().stand_ceiling_ha, roi: run().roi, kept: b.dataset.kept === "true" }); });
