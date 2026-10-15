@@ -212,12 +212,13 @@ def test_a_kept_land_runs_profiles_diagnostics_and_metadata_are_written(builder,
         {"name": "export", "metadata": {"manifest": {"clustering": {
             "k": 2, "n_stands_left_out_of_fit": 3, "area_ha_in_stands_left_out_of_fit": 0.9}}}}]}
     (tmp_path / "k_run_manifest_export.json").write_text(json.dumps(manifest))
-    run = {"merge_diagnostics": {"n_stands": 5, "kept_land": {"kept_land_ha": 12.3}}}
-    names, clustering = builder.keptland_files("k_run", tmp_path, run)
+    # The one type's 0.1 ha against 0.0877 ha of kept land: 14% more.
+    run = {"merge_diagnostics": {"n_stands": 5, "kept_land": {"kept_land_ha": 0.0877}}}
+    names, clustering = builder.keptland_files("k_run", tmp_path, run, "at Sanjay Van", 28.53)
     assert clustering["n_stands_left_out_of_fit"] == 3
     out = tmp_path / "ui_data"
     prof = json.loads((out / names["profiles"]).read_text())
-    assert "1/cos(latitude)" in prof["area_note"]
+    assert prof["area_note"] == builder.area_note("at Sanjay Van", 14)
     (t0,) = prof["types"]
     assert t0["bands"]["canopy_height"] == {"mean": 6.123, "p25": 5.0, "p50": 6.0, "p75": 7.0}
     assert t0["bands"]["distance_to_water"] == {"mean": "over 10 km", "p25": 800.0,
@@ -235,3 +236,68 @@ def test_the_kept_land_layer_holds_kept_land_only(builder, tmp_path, monkeypatch
     data = json.loads((tmp_path / "ui_data" / name).read_text())
     assert [c["value"] for c in data["classes"]] == [1]
     assert len(data["classes"][0]["polygons"]) == 2  # the two patches
+
+
+# ------------------------------------------------------- the box kept-land runs (round 6)
+
+def test_the_area_note_gives_how_much_larger_the_type_areas_come_to(builder):
+    # Sanjay Van's note as round 5 wrote it, word for word: its six types came to 967.3 ha on
+    # 847.47 ha of kept land.
+    assert builder.type_area_excess(967.3, 847.47, 28.53) == 14
+    assert builder.area_note("at Sanjay Van", 14) == (
+        "pixel_count and area_ha are the profiling stage's: pixels counted on the clustering "
+        "image's own grid, a geographic one, each taken as 0.01 ha. Away from the equator its "
+        "pixels are narrower than 10 m, so area_ha is too large by about 1/cos(latitude), some "
+        "14% at Sanjay Van. The stands' areas (stands.json) are on the analysis grid.")
+    # Measured where the kept land's area is known: a little more than the grid's share alone
+    # (Angul's boxes, 20.8 N: 437.2 ha of types on 405.6 ha, against 1/cos 1.0696).
+    assert builder.type_area_excess(437.2, 405.6, 20.79) == 8
+    # Without it, the grid's share at the area's latitude.
+    assert builder.type_area_excess(437.2, None, 20.79) == 7
+    assert builder.type_area_excess(1.0, None, 18.8) == 6
+
+
+def test_without_stands_the_plots_carry_no_stand(builder):
+    """A box kept-land run's plots: shown, but joined to no stand (its field check is not run)."""
+    from shapely.geometry import box
+
+    everywhere = box(-180, -90, 180, 90)
+    fc, n = builder.plots_for("k_run", "kendujhar", everywhere, with_stands=False)
+    assert fc["features"] and n["in_district"] == len(fc["features"]) == n["inside"]
+    assert "with_stand" not in n
+    for f in fc["features"]:
+        p = f["properties"]
+        assert "stand_id" not in p and "stand_type" not in p
+        assert p["district"] == "Kendujhar" and p["mask"] in ("kept", "dropped")
+    # With stands (a box run), each plot carries the stand that covers it, or none.
+    stands = {"type": "FeatureCollection", "features": [
+        {"type": "Feature", "properties": {"stand_id": 7, "stand_type": 2},
+         "geometry": {"type": "Polygon", "coordinates": [[[-180, -90], [180, -90], [180, 90],
+                                                          [-180, 90], [-180, -90]]]}}]}
+    fc, n = builder.plots_for("k_run", "kendujhar", everywhere, stands)
+    assert n["with_stand"] == len(fc["features"])
+    assert {(f["properties"]["stand_id"], f["properties"]["stand_type"])
+            for f in fc["features"]} == {(7, 2)}
+
+
+def test_a_box_kept_land_run_is_added_on_its_box_runs_area(builder, tmp_path, monkeypatch):
+    kept = tmp_path / "keptland_runs"
+    kept.mkdir()
+    run_id = "odisha_v120_3ha_squares_kendujhar_keptland"
+    for name in ("stands_merged.geojson", "stands_snic.geojson", "run.json",
+                 "manifest_export.json"):
+        (kept / f"{run_id}_{name}").write_text("{}")
+    monkeypatch.setattr(builder, "KEPTLAND", kept)
+    monkeypatch.setattr(builder, "RUNS", [])
+    areas = {k: v for k, v in builder.AREAS.items() if not k.endswith("_boxes")}
+    monkeypatch.setattr(builder, "AREAS", areas)
+    notes = builder.add_keptland_runs()
+    assert not builder.RUNS
+    assert f"{run_id}: skipped (no area kendujhar_boxes: its box run was skipped)" in notes
+    areas["kendujhar_boxes"] = {"title": "Kendujhar", "site": "Odisha", "roi": "boxes"}
+    notes = builder.add_keptland_runs()
+    (added,) = builder.RUNS
+    assert added == {"run_id": run_id, "area": "kendujhar_boxes", "arm": "feature_vector",
+                     "vec": kept, "keptland": True, "pixels_from": None}
+    # The other three districts and the two Sanjay Van runs have no files here.
+    assert len(notes) == 5 and all("no committed files" in n for n in notes)

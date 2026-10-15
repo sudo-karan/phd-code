@@ -2,7 +2,7 @@
 
     python scripts/describe_keptland_runs.py [<run_id> ...]
 
-For each run (default: both Sanjay Van kept-land runs), from
+For each run (default: every run with a run record in docs/reproducibility/keptland_runs/), from
 docs/reproducibility/keptland_runs/<run>_run.json and <run>_manifest_export.json:
   - stands: how many, the smallest and the largest (ha), how many have no pixel in the merge's
     count and so 0 ha (superpixels on the ROI edge, of pixels the ROI covers only in part), and
@@ -24,7 +24,6 @@ from typing import Any
 
 REPO = Path(__file__).resolve().parent.parent
 RUNS_DIR = REPO / "docs" / "reproducibility" / "keptland_runs"
-DEFAULT_RUNS = ("sanjay_van_baseline_keptland", "sanjay_van_alphaearth_keptland")
 
 
 def describe(run: dict[str, Any], manifest: dict[str, Any]) -> dict[str, Any]:
@@ -66,7 +65,8 @@ def describe(run: dict[str, Any], manifest: dict[str, Any]) -> dict[str, Any]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    runs = (argv if argv is not None else sys.argv[1:]) or list(DEFAULT_RUNS)
+    runs = (argv if argv is not None else sys.argv[1:]) or sorted(
+        p.name.removesuffix("_run.json") for p in RUNS_DIR.glob("*_run.json"))
     for run_id in runs:
         run = json.loads((RUNS_DIR / f"{run_id}_run.json").read_text())
         manifest = json.loads((RUNS_DIR / f"{run_id}_manifest_export.json").read_text())

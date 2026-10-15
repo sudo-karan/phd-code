@@ -30,6 +30,15 @@ flag on each stand; its profiles, merge diagnostics and clustering metadata as f
 own; and distance_to_water above 10 km written as "over 10 km", since beyond
 features_static.max_water_distance_pixels the band holds a fill value, not a distance.
 
+The four box kept-land runs of round 6 (`KEPTLAND_BOX_RUNS`:
+configs/odisha_v120_3ha_squares_<district>_keptland.yaml) are added the same way, each on the area
+of its district's box run, so only when that run is added too. Their upstream assets are copies of
+the box runs' (docs/reproducibility/keptland_reuse_odisha.json), except the static features: each
+run computed its own, with distance_to_water capped at 10 km. They get what the round-5 runs get,
+with their feature layers as stand means, as the box runs have. Their plots are shown without a stand:
+their field check (odisha_script/PHASE_KEPTLAND_PREDECLARED.md) is not run yet, so no plot is
+joined to a stand, the plots carry no stand_id or stand_type, and the runs are not fes_declared.
+
 The box runs of A0 (configs/odisha_v120_3ha_squares_<district>.yaml) are added when their files
 exist: the stand files and run record (searched in BOX_VEC_DIRS) and the output of
 scripts/transparency_masking.py for the box config (searched in BOX_MASK_DIRS). Their plots are
@@ -77,6 +86,8 @@ PIXEL_LAYER_RUNS = ("sanjay_van_baseline_repro", "sanjay_van_alphaearth_repro")
 KEPTLAND = REPO / "docs" / "reproducibility" / "keptland_runs"
 KEPTLAND_RUNS = {"sanjay_van_baseline_keptland": ("feature_vector", "sanjay_van_baseline_repro"),
                  "sanjay_van_alphaearth_keptland": ("alphaearth", "sanjay_van_alphaearth_repro")}
+# The box kept-land runs of round 6: run id -> the district whose box run's assets it reuses.
+KEPTLAND_BOX_RUNS = {f"odisha_v120_3ha_squares_{d}_keptland": d for d in DISTRICTS}
 # Beyond features_static.max_water_distance_pixels (1,000 px = 10 km) fastDistanceTransform gives
 # its fill value, sqrt(2^31 - 1) x 10 m, not a distance, or with features_static.
 # cap_distance_to_water on the cap itself: 10 km or more is written as OVER_10_KM, in the stands of
@@ -107,6 +118,12 @@ SHORT_LABEL_WITH_KEPTLAND = ("Test runs from 13 to 15 October 2026: the village 
                              "only. The final runs will replace them.")
 KEPTLAND_LABEL = (" Two Sanjay Van runs of 15 Oct 2026 (commit {commit}) segment kept land only "
                   "(configs/sanjay_van_*_keptland.yaml).")
+SHORT_LABEL_WITH_BOX_KEPTLAND = ("Test runs from 13 to 15 October 2026: the village outlines before "
+                                 "the merge fix, the boxes with it, and kept land only at Sanjay "
+                                 "Van and in the boxes. The final runs will replace them.")
+KEPTLAND_BOX_LABEL = (" {n} Odisha box runs of 15 Oct 2026 (commit {commit}) segment kept land only "
+                      "in the boxes (configs/odisha_v120_3ha_squares_*_keptland.yaml).")
+NUMBER_WORDS = {1: "One", 2: "Two", 3: "Three", 4: "Four"}
 
 RUNS: list[dict] = []
 for _arm_id, _arm in (("sanjay_van_baseline_repro", "feature_vector"),
@@ -148,15 +165,23 @@ def add_box_runs() -> list[str]:
     return notes
 
 def add_keptland_runs() -> list[str]:
-    """Add each kept-land run whose committed files exist; return notes on the rest."""
+    """Add each kept-land run whose committed files exist; return notes on the rest. A box
+    kept-land run goes on the area of its district's box run, so add_box_runs comes first."""
     notes = []
-    for run_id, (arm, source) in KEPTLAND_RUNS.items():
+    specs = [(run_id, arm, "sanjay_van", source)
+             for run_id, (arm, source) in KEPTLAND_RUNS.items()]
+    specs += [(run_id, "feature_vector", f"{d}_boxes", None)
+              for run_id, d in KEPTLAND_BOX_RUNS.items()]
+    for run_id, arm, area, source in specs:
         need = [f"{run_id}_{n}" for n in ("stands_merged.geojson", "stands_snic.geojson",
                                           "run.json", "manifest_export.json")]
         if first_dir_with([KEPTLAND], need) is None:
             notes.append(f"{run_id}: skipped (no committed files under {KEPTLAND})")
             continue
-        RUNS.append({"run_id": run_id, "area": "sanjay_van", "arm": arm, "vec": KEPTLAND,
+        if area not in AREAS:
+            notes.append(f"{run_id}: skipped (no area {area}: its box run was skipped)")
+            continue
+        RUNS.append({"run_id": run_id, "area": area, "arm": arm, "vec": KEPTLAND,
                      "keptland": True, "pixels_from": source})
     return notes
 
@@ -568,13 +593,20 @@ def join_plots_to_stands(stands_fc: dict, plot_keys: list[str]) -> dict:
     return out
 
 
-def plots_for(run_id: str, district: str, area_geom, stands_fc: dict | None = None) -> tuple[dict, dict]:
+def plots_for(run_id: str, district: str, area_geom, stands_fc: dict | None = None, *,
+              with_stands: bool = True) -> tuple[dict, dict]:
+    """A district's FES plots, each with its field type and mask, and the stand it is on: a box
+    run's by the Phase 2 join rule on `stands_fc`, any other run's from its committed join.
+    Without `with_stands` no plot is joined: the plots carry no stand_id or stand_type, and the
+    counts leave out the plots with a stand (for a run whose field check is not run yet)."""
     plots = read_csv(REPO / "odisha_script" / "odisha_plots_clean.csv")
     ftype = {r["plot_key"]: r["field_type"]
              for r in read_csv(REPO / "odisha_script" / "odisha_phase3_0_field_types.csv")}
     ret = {r["plot_key"]: r["habitat"]
            for r in read_csv(REPO / "odisha_script" / "odisha_phase2_1_mask_retention.csv")}
-    if stands_fc is not None:
+    if not with_stands:
+        col, join = "", {}
+    elif stands_fc is not None:
         col = "box"
         join = join_plots_to_stands(stands_fc, [p["plot_key"] for p in plots
                                                 if p["district"].lower() == district])
@@ -605,11 +637,14 @@ def plots_for(run_id: str, district: str, area_geom, stands_fc: dict | None = No
                  "habitation": p["habitation"].title(),
                  "field_type": int(ftype[p["plot_key"]]) if p["plot_key"] in ftype else None,
                  "mask": "kept" if kept else "dropped", "in_mapped_area": inside,
-                 "outside_reason": None if inside else OUTSIDE_REASON,
-                 "stand_id": int(float(sid)) if sid else None,
-                 "stand_type": int(float(stype)) if stype else None}
+                 "outside_reason": None if inside else OUTSIDE_REASON}
+        if with_stands:
+            props["stand_id"] = int(float(sid)) if sid else None
+            props["stand_type"] = int(float(stype)) if stype else None
         feats.append({"type": "Feature", "properties": props,
                       "geometry": {"type": "Point", "coordinates": [r6(lon), r6(lat)]}})
+    if not with_stands:
+        del n["with_stand"]
     return {"type": "FeatureCollection", "features": feats}, n
 
 
@@ -750,12 +785,32 @@ def profile_value(band: str, value):
     return float(f"{float(value):.4g}")
 
 
-def keptland_files(run_id: str, vec: Path, run: dict) -> tuple[dict, dict]:
-    """Write a kept-land run's profiles, merge diagnostics and clustering metadata; return the
-    index's references to them and the run's clustering metadata."""
+def type_area_excess(types_ha: float, kept_land_ha: float | None, lat: float) -> int:
+    """How much larger, in %, the profiling stage's type areas come to than the kept land they
+    cover (spec-profiling-export-type-areas-later); without the kept land's area, the grid's
+    share alone, 1/cos(lat) - 1, at `lat`, the middle of the area."""
+    if kept_land_ha:
+        return round((types_ha / kept_land_ha - 1) * 100)
+    return round((1 / math.cos(math.radians(lat)) - 1) * 100)
+
+
+def area_note(where: str, pct: int) -> str:
+    """profiles.json's note on its areas: `pct` from type_area_excess."""
+    return ("pixel_count and area_ha are the profiling stage's: pixels counted on the clustering "
+            "image's own grid, a geographic one, each taken as 0.01 ha. Away from the equator its "
+            "pixels are narrower than 10 m, so area_ha is too large by about 1/cos(latitude), "
+            f"some {pct}% {where}. The stands' areas (stands.json) are on the analysis grid.")
+
+
+def keptland_files(run_id: str, vec: Path, run: dict, where: str, lat: float) -> tuple[dict, dict]:
+    """Write a kept-land run's profiles (with a note on their areas: area_note, `where` naming
+    the area, `lat` its middle), merge diagnostics and clustering metadata; return the index's
+    references to them and the run's clustering metadata."""
     manifest = json.loads((vec / f"{run_id}_manifest_export.json").read_text())
     stages = {st["name"]: st for st in manifest["stages"]}
     prof = stages["profiling"]["metadata"]
+    kept_ha = (run["merge_diagnostics"].get("kept_land") or {}).get("kept_land_ha")
+    pct = type_area_excess(sum(p["area_ha"] for p in prof["profiles"]), kept_ha, lat)
     types = []
     for p in prof["profiles"]:
         bands: dict = {}
@@ -770,12 +825,7 @@ def keptland_files(run_id: str, vec: Path, run: dict) -> tuple[dict, dict]:
                 "what": "Per stand type, over the pixels of that type in the area: each "
                         "feature's mean and its 25th, 50th and 75th percentiles, in the "
                         "feature's own units (the profiling stage).",
-                "area_note": "pixel_count and area_ha are the profiling stage's: pixels counted "
-                             "on the clustering image's own grid, a geographic one, each taken "
-                             "as 0.01 ha. Away from the equator its pixels are narrower than "
-                             "10 m, so area_ha is too large by about 1/cos(latitude), some 14% "
-                             "at Sanjay Van. The stands' areas (stands.json) are on the "
-                             "analysis grid.",
+                "area_note": area_note(where, pct),
                 "types": types}
     clustering = stages["export"]["metadata"]["manifest"]["clustering"]
     names = {"profiles": f"by_run/{run_id}/profiles.json",
@@ -899,11 +949,16 @@ def main() -> None:
                         "description": "Cropland, built-up land, water, other land and pixels "
                                        "with no land-cover data, from the land-cover step."}]}]
         if odisha:
+            # A kept-land run's plots are not joined to its stands: its field check is not run.
             pfc, pn = plots_for(run_id, AREAS[area]["district"], ai["geom"],
-                                stands_fc if box else None)
+                                stands_fc if box else None, with_stands=not keptland)
             write_json(OUT / "by_run" / run_id / "plots.geojson", pfc)
             facts.update({"plots_in_district": pn["in_district"], "plots_inside": pn["inside"],
-                          "plots_on_kept_pixels": pn["kept"], "plots_with_stand": pn["with_stand"]})
+                          "plots_on_kept_pixels": pn["kept"]})
+            if "with_stand" in pn:
+                facts["plots_with_stand"] = pn["with_stand"]
+            plot_fields = ["plot_key", "habitation", "field_type", "mask", "in_mapped_area",
+                           "outside_reason"] + ([] if keptland else ["stand_id", "stand_type"])
             steps.append({
                 "step": "fes_plots", "title": "Field check",
                 "decisions": STEP_DECISIONS["fes_plots"],
@@ -911,9 +966,7 @@ def main() -> None:
                             "file": f"by_run/{run_id}/plots.geojson", "color_by": "field_type",
                             "legend": [{"value": v, "label": lab, "color": FIELD_COLORS[v]}
                                        for v, lab, _ in FIELD_TYPES],
-                            "popup_fields": ["plot_key", "habitation", "field_type", "mask",
-                                             "in_mapped_area", "outside_reason", "stand_id",
-                                             "stand_type"],
+                            "popup_fields": plot_fields,
                             "default_on": True}]})
         entry = {
             "run_id": run_id, "site": AREAS[area]["site"], "area": AREAS[area]["title"],
@@ -927,7 +980,10 @@ def main() -> None:
             "note": SANJAY_NOTE if area == "sanjay_van" else "", "facts": facts,
             "steps": steps}
         if keptland:
-            files, clustering = keptland_files(run_id, vec, run)
+            sanjay = area == "sanjay_van"
+            where = "at Sanjay Van" if sanjay else f"in the {AREAS[area]['title']} boxes"
+            files, clustering = keptland_files(run_id, vec, run, where,
+                                               (ai["bbox"][1] + ai["bbox"][3]) / 2)
             kl = md.get("kept_land") or {}
             facts.update({
                 "kept_land_ha": kl.get("kept_land_ha"),
@@ -942,20 +998,27 @@ def main() -> None:
                 "kept_land": True,
                 "source_commit": str(run["git"]["commit"])[:7],
                 "merge_rule": "spec-merge-pass2-skip-at-minimum, spec-merge-pass2-soft-ceiling",
-                "note": SANJAY_NOTE + " SNIC and the merge saw kept land only (trees or scrub): "
-                        "the rest of the rectangle is in no stand.",
+                "note": (SANJAY_NOTE + " " if sanjay else "") + "SNIC and the merge saw kept "
+                        "land only (trees or scrub): the rest of the "
+                        + ("rectangle" if sanjay else "boxes") + " is in no stand.",
                 "files": files})
         runs_out.append(entry)
         print("built", run_id, st["n_stands"], "stands")
     for note in notes:
         print("note:", note)
     has_boxes = any(spec.get("box") for spec in RUNS)
-    kept = [r for r in runs_out if r.get("kept_land")]
+    kept = [r for r in runs_out if r.get("kept_land") and r["roi"] != "boxes"]
+    kept_boxes = [r for r in runs_out if r.get("kept_land") and r["roi"] == "boxes"]
     short = SHORT_LABEL_WITH_BOXES if has_boxes else SHORT_LABEL
     label = LABEL
     if kept:
         short = SHORT_LABEL_WITH_KEPTLAND
         label += KEPTLAND_LABEL.format(commit=", ".join(sorted({r["source_commit"] for r in kept})))
+    if kept_boxes:
+        short = SHORT_LABEL_WITH_BOX_KEPTLAND
+        label += KEPTLAND_BOX_LABEL.format(
+            n=NUMBER_WORDS.get(len(kept_boxes), str(len(kept_boxes))),
+            commit=", ".join(sorted({r["source_commit"] for r in kept_boxes})))
     index = {"label": label, "short_label": short,
              "commit": "early build", "fes_comparison": "fes_comparison.json", "runs": runs_out}
     write_json(OUT / "index.json", index)
