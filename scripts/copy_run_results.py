@@ -11,7 +11,7 @@ What it copies, from the run tree (a clean clone a batch ran from):
     export>.json, without "run_dir", "total_elapsed_sec", each stage's "elapsed_sec", the export
     manifest's "run_timestamp" and each Drive export's "submitted_at". A run folder whose manifest
     ends at profiling is the read-back tool's own (odisha_script/odisha_read_back_export.py), not a
-    pass, and is skipped.
+    pass, and is skipped, as is one with no manifest (a pass that failed before writing it).
 <run>_raster_at_plots.csv is not copied: it samples the stand rasters at the field plots, which joins
 plots to stands outside the declared field check.
 
@@ -73,6 +73,11 @@ def passes(tree: Path, run_id: str) -> dict[str, tuple[str, dict]]:
     """The last manifest of each pass kind, by the stage it ends at."""
     out = {}
     for d in sorted((tree / "runs").glob(f"{run_id}_2*")):
+        if not (d / "manifest.json").exists():
+            # A pass that failed before writing its manifest (the first-pass memory limit on a
+            # cold cache, for one): its fmu.log stays on the Mac; a later pass of its kind counts.
+            print(f"  {d.name}: no manifest (a pass that failed), skipped")
+            continue
         manifest = json.loads((d / "manifest.json").read_text())
         last = manifest["stages"][-1]["name"]
         if last == "profiling":

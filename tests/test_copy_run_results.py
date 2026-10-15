@@ -31,6 +31,10 @@ def _tree(tmp_path: Path, big: int) -> Path:
     (vec / f"{RUN}_stands_dissolved.geojson").write_text('{"type":"FeatureCollection","features":[]}')
     (vec / f"{RUN}_raster_at_plots.csv").write_text("plot_key,stand_clusters\n1_2,3\n")
     (vec / f"{RUN}_run.json").write_text(json.dumps({"run_dir": "runs/x_20261015_134106", "fingerprint": "f"}))
+    # A pass that failed before writing its manifest: a folder with only its log.
+    failed = tree / "runs" / f"{RUN}_20261015_134000"
+    failed.mkdir(parents=True)
+    (failed / "fmu.log").write_text("User memory limit exceeded.\n")
     for i, last in enumerate(["segmentation", "clustering", "export", "profiling"]):
         d = tree / "runs" / f"{RUN}_20261015_1341{i:02d}"
         d.mkdir(parents=True)
