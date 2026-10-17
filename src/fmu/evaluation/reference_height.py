@@ -20,8 +20,9 @@ Source and what it supports (CLAUDE.md, "Sources"):
   Xiong, H., Pang, Y., Jia, W., Bai, Y. (2024). Forest stand delineation using
   airborne LiDAR and hyperspectral data. Silva Fennica 58(2), article 23014.
   DOI 10.14214/sf.23014. Support: (a) others use the method. The DOI's
-  Crossref record was checked when it entered docs/decisions.yaml; it could
-  not be re-checked on 17 Oct 2026 (Crossref rate-limited). The publisher's
+  Crossref record was checked on 17 Oct 2026 (in Jaskaran's other session):
+  the title and journal match; Crossref deposits affiliations in the author
+  field, and the article page lists Xiong first. Verified. The publisher's
   page (read 17 Oct 2026) describes SS_total and SS_within in words; its
   equations are images that could not be read then, and docs/decisions.yaml
   records one earlier reader who read them as R2 = 1 - SS_within / SS_total.

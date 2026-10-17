@@ -44,9 +44,11 @@ others use the method:
   image) could not be read. The thresholds are cited there to Luo et al. 2020,
   which was not checked.
 
-  Both DOIs' Crossref records were checked when the papers entered
-  docs/decisions.yaml; neither could be re-checked on 17 Oct 2026 (Crossref
-  rate-limited).
+  Both DOIs' Crossref records were checked on 17 Oct 2026 (in Jaskaran's other
+  session) and are verified: 10.3390/f16040666 returns the title above, first
+  author Vatandaslar, Forests 16(4) 666, 2025; 10.14214/sf.23014 returns the
+  title above, Silva Fennica 58(2), 2024, with affiliations deposited in the
+  author field, so the authors are taken from the article page (Xiong first).
 
 UNVERIFIED: what neither paper says, and what this module does instead. Each
 is a question for the evaluation stage (docs/handoff/2026-10-17-round9-chat.md),
