@@ -4,8 +4,8 @@ Phase 2, step 2 — run the real pipeline over an Odisha AOI and pull the stand 
 NEEDS LIVE EARTH ENGINE. Submits cache exports to assets, and in the final pass the export
 stage's own Drive tasks. Everything after this script is offline.
 
-WHY THREE PASSES
-----------------
+WHY FOUR PASSES
+---------------
 With `use_cache: true`, a stage that misses the cache runs live and submits an export of what it
 just computed. An export task re-evaluates its image graph in batch, independently of the
 interactive run. That is harmless for the feature images, but not for the chain
@@ -13,14 +13,22 @@ SNIC -> merge -> clustering: the merge is computed client-side from the SNIC lab
 interactive run saw, and applied as `snic_clusters.remap(raw_labels, stand_ids)`. If the cached
 `cluster_labels` asset were evaluated against a different SNIC realisation than the cached
 `snic_clusters` asset, the remap would be silently wrong. So each pass consumes the assets the
-previous one cached:
+previous one cached, and refuses to start (exit 3) while any of them is missing:
 
-  --through segmentation   caches masking, the S2 composite, the feature images, snic_*
+  --through features       caches masking, the S2 composite and EVERY feature image the config
+                           needs (segmentation's, the merge criteria's and clustering's alike:
+                           fmu.pipeline.feature_stage_names). Round 9, issue #44 item 2: no later
+                           pass computes a feature image live that another pass reads from the
+                           cache, so SNIC, the merge and the fit all see the cached features
+  --through segmentation   every feature asset is a HIT; caches snic_*
   --through clustering     SNIC is now a cache HIT, so the merge runs on the cached SNIC asset;
                            caches cluster_labels and feature_stack
-  --through export         every cacheable output must be a HIT (checked BEFORE the run -- the
-                           script refuses otherwise); runs profiling + export, then pulls the
-                           three vector layers with the export stage's own builders
+  --through export         every cacheable output must be a HIT; runs profiling + export, then
+                           reads the three vector layers back with the export stage's own
+                           builders
+
+Asset paths follow the config's cache layout (fmu.pipeline.cache_layout_for): the legacy one for
+a config run before round 9, the per-step one otherwise.
 
 `--wait` polls the tasks the pass submitted and returns when they finish.
 
@@ -67,17 +75,24 @@ import fmu.stages.merge  # noqa: F401
 import fmu.stages.profiling  # noqa: F401
 import fmu.stages.segmentation  # noqa: F401
 from fmu.config import Config, load_config
-from fmu.pipeline import Pipeline, default_stage_names, segmentation_stage_names
+from fmu.pipeline import (
+    Pipeline,
+    cache_asset_path_for,
+    cache_layout_for,
+    default_stage_names,
+    feature_stage_names,
+    segmentation_stage_names,
+)
 from fmu.stages.base import PipelineContext, get_stage_class
 from fmu.stages.export import (
     _build_dissolved_feature_collection,
     _build_merged_feature_collection,
     _build_snic_feature_collection,
 )
-from fmu.utils.caching import asset_exists, cached_asset_path, config_fingerprint
+from fmu.utils.caching import asset_exists, config_fingerprint, step_keys
 from fmu.utils.gee import init_gee, load_roi_geometry, safe_get_info
 from fmu.utils.logging import init_logging
-from fmu.utils.provenance import git_state
+from fmu.utils.provenance import environment_state, git_state
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -87,20 +102,43 @@ VECTOR_DIR = HERE / "phase2_vectors"
 POLL_S = 30
 
 
+PASSES = ("features", "segmentation", "clustering", "export")
+
+
 def stage_names(cfg: Config, through: str) -> list[str]:
+    if through == "features":
+        return feature_stage_names(cfg)
     if through == "segmentation":
         return segmentation_stage_names(cfg)
     return default_stage_names(cfg, through=through)
 
 
-def missing_cache(cfg: Config, names: list[str]) -> list[str]:
-    """Cacheable outputs of `names` that do not exist as assets yet."""
-    fp = config_fingerprint(cfg)
+def prerequisites(cfg: Config, through: str) -> list[str]:
+    """The stages whose every cacheable output must exist before a pass starts.
+
+    Every feature stage before segmentation, and before each pass after it: a
+    pass never computes a feature image live (round 9, issue #44 item 2).
+    """
+    features = feature_stage_names(cfg)
+    if through == "features":
+        return []
+    if through == "segmentation":
+        return features
+    if through == "clustering":
+        return [*features, "segmentation"]
+    return [*features, *[n for n in default_stage_names(cfg, through="clustering")
+                         if n not in features]]
+
+
+def missing_cache(cfg: Config, names: list[str], layout: str | None = None) -> list[str]:
+    """Cacheable outputs of `names` that do not exist as assets yet, in the config's layout."""
+    if layout is None:
+        layout = cache_layout_for(cfg)[0]
     out = []
     for name in names:
         stage = get_stage_class(name)()
         for key in sorted(Pipeline._resolve_cacheable_outputs(stage)):
-            path = cached_asset_path(cfg.name, name, key, fp)
+            path = cache_asset_path_for(cfg, name, key, layout)
             if not asset_exists(path):
                 out.append(path)
     return out
@@ -181,21 +219,20 @@ def sample_rasters_at_plots(cfg: Config, ctx: PipelineContext) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", required=True)
-    ap.add_argument("--through", choices=["segmentation", "clustering", "export"], required=True)
+    ap.add_argument("--through", choices=list(PASSES), required=True)
     ap.add_argument("--wait", action="store_true")
     args = ap.parse_args()
 
     cfg = load_config(args.config)
     init_gee()
     names = stage_names(cfg, args.through)
+    layout, why = cache_layout_for(cfg)
     print(f"{cfg.name} fingerprint={config_fingerprint(cfg)} through={args.through}")
+    print(f"  cache layout: {layout} ({why})")
     print(f"  stages: {' -> '.join(names)}")
 
-    # Pre-flight: a pass may only run on top of the assets the previous pass cached.
-    prereq = {"segmentation": [],
-              "clustering": segmentation_stage_names(cfg),
-              "export": default_stage_names(cfg, through="clustering")}[args.through]
-    gaps = missing_cache(cfg, prereq)
+    # Pre-flight: a pass may only run on top of the assets the previous passes cached.
+    gaps = missing_cache(cfg, prerequisites(cfg, args.through), layout)
     if gaps:
         print(f"  REFUSING: {len(gaps)} upstream cache asset(s) missing; run the earlier pass first:")
         for g in gaps:
@@ -206,7 +243,7 @@ def main() -> int:
     ctx = PipelineContext()
     ctx.set("roi", roi)
     run_dir = init_logging(config_name=cfg.name)
-    result = Pipeline(stage_names=names, use_cache=True).run(
+    result = Pipeline(stage_names=names, use_cache=True, cache_layout=layout).run(
         config=cfg, run_dir=run_dir, initial_context=ctx)
 
     tasks = [t["task_id"] for s in result.stages for t in s.export_tasks]
@@ -223,7 +260,10 @@ def main() -> int:
         run = {
             "config": cfg.name,
             "fingerprint": config_fingerprint(cfg),
+            "cache_layout": layout,
+            "step_keys": step_keys(cfg) if layout == "per_step" else None,
             "git": git_state(),
+            "environment": environment_state(),
             "run_dir": str(run_dir),
             "cache_status": status,
             "pulled_polygon_counts": counts,

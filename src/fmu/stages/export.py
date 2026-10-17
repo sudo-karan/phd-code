@@ -75,6 +75,7 @@ Schema note (v1.1.0 — breaking change from v0.18.0):
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any, ClassVar
 
@@ -83,10 +84,10 @@ import ee
 from fmu import __version__
 from fmu.config import Config
 from fmu.stages.base import PipelineContext, Stage, StageResult, register_stage
-from fmu.utils.caching import asset_exists, cached_asset_path, config_fingerprint
+from fmu.utils.caching import asset_exists, cached_asset_path
 from fmu.utils.gee import safe_call, safe_get_info
 from fmu.utils.logging import get_logger
-from fmu.utils.provenance import git_state
+from fmu.utils.provenance import environment_state, git_state
 from fmu.utils.region_merge import PROVENANCE_FIELDS
 
 log = get_logger(__name__)
@@ -202,9 +203,11 @@ class ExportStage(Stage):
         log.info("  cluster distribution: %d clusters totaling %d pixels",
                  len(distribution), sum(c["pixel_count"] for c in distribution))
 
-        # 3. Inventory cached assets for this config
+        # 3. Inventory cached assets for this config, in the run's cache layout
+        from fmu.pipeline import current_cache_key
+
         asset_paths = _inventory_cached_assets(
-            config.name, config_fingerprint(config)
+            config.name, key_for=lambda stage_name: current_cache_key(config, stage_name)
         )
         log.info("  cached assets for this config: %d", len(asset_paths))
 
@@ -483,6 +486,8 @@ class ExportStage(Stage):
             "config_name": config.name,
             "pipeline_version": __version__,
             "git": git_state(),
+            # The Python environment (round 9): fmu.utils.provenance.environment_state.
+            "environment": environment_state(),
             "run_timestamp": now_iso,
             "roi": {
                 "name": config.roi.name,
@@ -707,9 +712,16 @@ def _compute_cluster_distribution(
 
 
 def _inventory_cached_assets(
-    config_name: str, fingerprint: str | None = None
+    config_name: str,
+    fingerprint: str | None = None,
+    *,
+    key_for: Callable[[str], str] | None = None,
 ) -> dict[str, str]:
     """Discover cached assets for this config by walking the stage registry.
+
+    The key in each asset's name is `key_for(stage name)` when given (the run's
+    cache layout: one key per stage in the per-step layout, round 9), else
+    `fingerprint` for every stage (the legacy layout).
 
     For each registered stage, ask the orchestrator's resolution helper
     what that stage's cacheable_outputs are (handles MRO inheritance and
@@ -733,7 +745,10 @@ def _inventory_cached_assets(
         cacheable = Pipeline._resolve_cacheable_outputs(stage)
         for output_key in sorted(cacheable):
             path = cached_asset_path(
-                config_name, stage_name, output_key, fingerprint
+                config_name,
+                stage_name,
+                output_key,
+                key_for(stage_name) if key_for is not None else fingerprint,
             )
             if asset_exists(path):
                 paths[output_key] = path

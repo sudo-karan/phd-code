@@ -10,10 +10,10 @@ from __future__ import annotations
 import argparse
 
 from fmu.config import load_config
-from fmu.pipeline import Pipeline
+from fmu.pipeline import Pipeline, current_cache_key
 from fmu.stages.base import PipelineContext
 from fmu.stages.data_load import DataLoadStage  # noqa: F401  # registers the stage
-from fmu.utils.caching import asset_exists, cached_asset_path, config_fingerprint
+from fmu.utils.caching import asset_exists, cached_asset_path
 from fmu.utils.gee import init_gee, load_roi_geometry, safe_get_info
 from fmu.utils.logging import init_logging
 
@@ -65,7 +65,7 @@ def main() -> None:
 
     # JS snippet
     composite_path = cached_asset_path(
-        config.name, "data_load", "s2_composite", config_fingerprint(config)
+        config.name, "data_load", "s2_composite", current_cache_key(config, "data_load")
     )
     composite_cached = asset_exists(composite_path)
 

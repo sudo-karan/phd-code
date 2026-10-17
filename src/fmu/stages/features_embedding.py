@@ -26,6 +26,8 @@ clustering feature vector changes.
 
 from __future__ import annotations
 
+from typing import Any
+
 import ee
 
 from fmu.config import Config
@@ -86,6 +88,19 @@ class FeaturesEmbeddingStage(Stage):
         ),
     )
 
+    def input_collections(self, ctx: PipelineContext, config: Config) -> dict[str, Any]:
+        """The annual embedding images collapsed into one, for an embedding given as
+        a collection (AlphaEarth); none for a single uploaded image (Tessera), which
+        the config names."""
+        asset = config.datasets.embedding
+        try:
+            asset_type = ee.data.getAsset(asset).get("type")
+        except Exception:  # noqa: BLE001 - the same tolerant check as run()
+            asset_type = None
+        if asset_type == "IMAGE":
+            return {}
+        return {"embedding": _embedding_window(asset, config.dates.phenology, ctx.get("roi"))}
+
     @safe_call("computing embedding features")
     def run(self, ctx: PipelineContext, config: Config) -> StageResult:
         roi = ctx.get("roi")
@@ -110,14 +125,8 @@ class FeaturesEmbeddingStage(Stage):
             n_images = 1
         else:
             # Annual ImageCollection (AlphaEarth) or unknown: filter to the
-            # feature window and collapse to one image. advance(1, "day") makes
-            # the end date inclusive (filterDate's upper bound is exclusive).
-            end_exclusive = ee.Date(str(window.end)).advance(1, "day")
-            ic = (
-                ee.ImageCollection(asset)
-                .filterBounds(roi)
-                .filterDate(str(window.start), end_exclusive)
-            )
+            # feature window and collapse to one image.
+            ic = _embedding_window(asset, window, roi)
             n_images = safe_get_info(ic.size(), context="embedding collection size")
             if not n_images:
                 raise ee.EEException(
@@ -157,3 +166,15 @@ class FeaturesEmbeddingStage(Stage):
                 "output_bands": band_names,
             },
         )
+
+
+def _embedding_window(asset: str, window: Any, roi: ee.Geometry) -> ee.ImageCollection:
+    """The annual embedding images of the feature window over the ROI. advance(1,
+    "day") makes the end date inclusive (filterDate's upper bound is exclusive).
+    One definition, read by `run()` and by `input_collections`."""
+    end_exclusive = ee.Date(str(window.end)).advance(1, "day")
+    return (
+        ee.ImageCollection(asset)
+        .filterBounds(roi)
+        .filterDate(str(window.start), end_exclusive)
+    )

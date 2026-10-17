@@ -589,7 +589,9 @@ def _fake_cache(existing: set[str]):
     """
     task_numbers = iter(range(1, 100))
 
-    def fake_start_export(*, image, asset_path, roi, scale, description):
+    # crs and crs_transform come only in the per-step layout (an empty cache holds
+    # no legacy asset, so a run on it takes that layout).
+    def fake_start_export(*, image, asset_path, roi, scale, description, **grid):
         return ExportTaskInfo(
             task_id=f"TASK{next(task_numbers)}",
             asset_path=asset_path,
@@ -604,6 +606,9 @@ def _fake_cache(existing: set[str]):
     ), patch(
         "fmu.pipeline.load_cached_image",
         side_effect=lambda path: _FakeImage(f"cached {path}"),
+    ), patch(
+        "fmu.pipeline.analysis_grid_export_args",
+        return_value={"crs": "EPSG:32645", "crs_transform": [10.0, 0.0, 0.0, 0.0, 10.0, 0.0]},
     ), patch(
         "fmu.pipeline.start_export", side_effect=fake_start_export
     ) as start_export:
@@ -814,7 +819,10 @@ class TestSubmitExportsSwitch:
                 "fmu.utils.caching.asset_exists", return_value=False
             ), patch("fmu.utils.caching.ee.data.createFolder") as create_folder, patch(
                 "fmu.utils.caching.ee.batch.Export.image.toAsset", return_value=task
-            ) as to_asset:
+            ) as to_asset, patch(
+                "fmu.pipeline.analysis_grid_export_args",
+                return_value={"crs": "EPSG:32645", "crs_transform": [10.0, 0, 0, 0, 10.0, 0]},
+            ):
                 result = Pipeline(
                     stage_names=["two_images"], use_cache=True, **pipeline_kwargs
                 ).run(config=_make_config(), run_dir=tmp_path, initial_context=ctx)

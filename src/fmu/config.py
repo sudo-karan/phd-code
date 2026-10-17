@@ -733,6 +733,33 @@ class NormalizationParams(BaseModel):
     method: Literal["zscore", "robust"] = "robust"
 
 
+class KElbowParams(BaseModel):
+    """The k elbow step (fmu.stages.k_elbow; round 9): k-means on the stands for a
+    range of k, and the elbow of the within-cluster spread. Not part of a default
+    run, and k is never set from it automatically."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    # The range and the fit of odisha_script/odisha_phase3_2_stand_k_elbow.py and
+    # scripts/remerge_demo_set.py, the elbows run so far: k 2 to 12, seed 42,
+    # 25 starts.
+    k_min: int = Field(default=2, ge=2)
+    k_max: int = Field(default=12, ge=3, le=50)
+    seed: int = 42
+    n_init: int = Field(default=25, ge=1)
+
+    @model_validator(mode="after")
+    def _range_has_three_points(self) -> KElbowParams:
+        # The elbow is the point farthest from the chord between the first and
+        # last k, so it needs at least one point between them.
+        if self.k_max < self.k_min + 2:
+            raise ValueError(
+                f"k_elbow: k_max ({self.k_max}) must be at least k_min + 2 "
+                f"({self.k_min + 2}): the elbow needs a k between the two ends."
+            )
+        return self
+
+
 class FeatureToggles(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -908,6 +935,7 @@ class Config(BaseModel):
     features: FeatureToggles = Field(default_factory=FeatureToggles)
     export: ExportParams = Field(default_factory=ExportParams)
     metrics: MetricsParams = Field(default_factory=MetricsParams)
+    k_elbow: KElbowParams = Field(default_factory=KElbowParams)
 
     @field_validator("name")
     @classmethod

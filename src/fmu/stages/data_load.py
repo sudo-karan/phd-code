@@ -16,6 +16,8 @@ the static composite is in `cacheable_outputs`.
 
 from __future__ import annotations
 
+from typing import Any
+
 import ee
 
 from fmu.config import Config
@@ -39,6 +41,22 @@ _REDUCERS = {
     "p50": lambda: ee.Reducer.percentile([50]),
     "p75": lambda: ee.Reducer.percentile([75]),
 }
+
+
+def _composite_window(roi: ee.Geometry, config: Config) -> ee.ImageCollection:
+    """The Sentinel-2 images the static composite is built from, before the SCL mask.
+
+    The optical_composite window and the cloud filter. One definition, read by
+    `_build_composite` and by `input_collections`, so that the record of which
+    images were used names the images that were used.
+    """
+    dates = config.dates.optical_composite
+    return (
+        ee.ImageCollection(config.datasets.optical_composite_collection)
+        .filterBounds(roi)
+        .filterDate(str(dates.start), str(dates.end))
+        .filter(ee.Filter.lte("CLOUDY_PIXEL_PERCENTAGE", config.cloud_mask.max_cloud_pct))
+    )
 
 
 @register_stage("data_load")
@@ -80,6 +98,12 @@ class DataLoadStage(Stage):
             vis={"min": 0, "max": 3000},
         ),
     )
+
+    def input_collections(self, ctx: PipelineContext, config: Config) -> dict[str, Any]:
+        """The Sentinel-2 images the cached composite is made of. The phenology and
+        radar collections are named by the stages that read them (features_optical,
+        features_radar), so that each is recorded with the asset made from it."""
+        return {"s2_composite": _composite_window(ctx.get("roi"), config)}
 
     @safe_call("loading S2 + S1 data")
     def run(self, ctx: PipelineContext, config: Config) -> StageResult:
@@ -203,16 +227,11 @@ class DataLoadStage(Stage):
         date range is independent of the phenology collection.
         """
         dates = config.dates.optical_composite
-        ds = config.datasets.optical_composite_collection
         cm = config.cloud_mask
         reducer_name = config.data_load.s2_composite_reducer
 
-        coll = (
-            ee.ImageCollection(ds)
-            .filterBounds(roi)
-            .filterDate(str(dates.start), str(dates.end))
-            .filter(ee.Filter.lte("CLOUDY_PIXEL_PERCENTAGE", cm.max_cloud_pct))
-            .map(lambda img: self._mask_s2_scl(img, cm.drop_scl_classes))
+        coll = _composite_window(roi, config).map(
+            lambda img: self._mask_s2_scl(img, cm.drop_scl_classes)
         )
 
         size = safe_get_info(coll.size(), context="S2 composite window image count")

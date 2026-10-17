@@ -55,7 +55,7 @@ from sklearn.metrics import (
 from fmu.config import Config
 from fmu.stages.base import PipelineContext, Stage, StageResult, register_stage
 from fmu.utils.adjacency import stand_geometry, summarize_stand_geometry
-from fmu.utils.caching import asset_exists, cached_asset_path, config_fingerprint
+from fmu.utils.caching import asset_exists, cached_asset_path
 from fmu.utils.components import assert_components_fit, explained_variance_r2
 from fmu.utils.gee import safe_call, safe_get_info
 from fmu.utils.logging import get_logger
@@ -91,10 +91,13 @@ class MetricsStage(Stage):
         scale = config.export.analysis_scale_m
         params = config.metrics
         k = config.clustering.k
-        # Cache paths carry a fingerprint of the config content, so resolving
-        # the reference arm's assets means fingerprinting ITS config -- knowing
-        # its name is no longer enough.
-        fingerprint = config_fingerprint(config)
+        # Cache paths carry a key derived from the config content (the
+        # fingerprint in the legacy cache layout, the clustering step's key in
+        # the per-step one), so resolving the reference arm's assets means
+        # keying ITS config -- knowing its name is no longer enough.
+        from fmu.pipeline import current_cache_key
+
+        fingerprint = current_cache_key(config, "clustering")
         reference_fingerprint = _reference_fingerprint(params)
 
         metrics: dict[str, Any] = {
@@ -596,5 +599,7 @@ def _reference_fingerprint(params: Any) -> str | None:
             f"configs/<name>.yaml."
         )
     from fmu.config import load_config
+    from fmu.pipeline import current_cache_key
 
-    return config_fingerprint(load_config(path))
+    # The key of its clustering assets, in the cache layout the reference uses.
+    return current_cache_key(load_config(path), "clustering")

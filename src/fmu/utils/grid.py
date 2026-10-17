@@ -91,3 +91,22 @@ def analysis_grid(
         )
 
     return ee.Projection(f"EPSG:{code}").atScale(scale)
+
+
+def analysis_grid_export_args(
+    roi: ee.Geometry, scale: int, *, context: str = "cache export grid"
+) -> dict[str, object]:
+    """`crs` and `crs_transform` that put an asset export on the analysis grid.
+
+    The cache of the per-step layout is written on the grid segmentation works
+    on (round 9, issue #44 item 1): the CRS and the affine transform of
+    `analysis_grid`, as Earth Engine gives them (for a UTM zone at 10 m,
+    `[10, 0, 0, 0, 10, 0]`), so every cached asset's pixel edges lie on the
+    same multiples of the scale as the superpixels' and nothing a later stage
+    reads is resampled. Two small requests: the ROI's bounds (in
+    `analysis_grid`) and the projection.
+    """
+    info = safe_get_info(
+        analysis_grid(roi, scale, context=context), context=f"{context} projection"
+    )
+    return {"crs": str(info["crs"]), "crs_transform": [float(v) for v in info["transform"]]}

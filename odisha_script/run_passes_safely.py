@@ -43,7 +43,7 @@ import time
 from pathlib import Path
 
 ACTIVE_STATES = ("PENDING", "RUNNING", "CANCELLING")
-STAGE_EXIT = re.compile(r"^--- PASS1 (\S+) (segmentation|clustering|export) exit=(\d+) ---$")
+STAGE_EXIT = re.compile(r"^--- PASS1 (\S+) (features|segmentation|clustering|export) exit=(\d+) ---$")
 POLL_S = 60
 
 
