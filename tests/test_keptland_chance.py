@@ -172,6 +172,8 @@ def test_a_short_run_on_the_committed_inputs_passes_its_identity_checks(tmp_path
     assert "REHEARSAL" in txt and "NOT THE DECLARED TEST'S RESULT" in txt
     # with 12 realisations every test is below the 100 usable the percentile needs
     assert all(r["p"] is None for r in res["analyses"]["primary"]["scores"].values())
+    assert not any("holm_p" in r for r in res["analyses"]["primary"]["scores"].values())
+    assert res["rehearsal"] and all(k.startswith("stands:") for k in list(res["inputs_sha256"])[:4])
     assert not (tmp_path / "keptland_s1desc_chance_rehearsal.txt").exists()
 
 
@@ -193,6 +195,29 @@ def test_the_geojson_route_gives_the_ui_data_stands():
 def test_re_run_stands_cannot_be_read_from_ui_data(tmp_path):
     with pytest.raises(SystemExit, match="geojson"):
         C.run(12, tmp_path, stands_from="ui_data", run_suffix="_r9")
+    with pytest.raises(SystemExit, match="geojson"):
+        C.run(12, tmp_path, declared=True)
+
+
+def test_the_pre_fix_files_are_known_and_a_declared_run_refuses_them():
+    pre = C.pre_fix_sha256()
+    angul = K.STANDS_DIR / f"{K.run_id('angul')}_stands_merged.geojson"
+    koraput_rec = K.STANDS_DIR / f"{K.run_id('koraput')}_files_off_git.json"
+    if not angul.exists() or not koraput_rec.exists():
+        pytest.skip("inputs not present")
+    assert C.sha256(angul) in pre
+    assert C.sha256(C.UI_DATA / K.run_id("koraput") / "stands.json") in pre
+    off = {e["sha256"] for e in json.loads(koraput_rec.read_text())["files"] if e["file"].endswith("_merged.geojson")}
+    assert off <= pre
+
+
+def test_boxes_are_named_as_the_village_test_names_its_parts():
+    parts = C.box_parts()
+    C.load_plots(parts)
+    names = {p["name"] for p in parts}
+    # the habitation of the box would be dhenkanal:BALIKUMA; stats.load names it by the plots' site polygon
+    assert "dhenkanal:Balikurma" in names and "dhenkanal:BALIKUMA" not in names
+    assert len(names) == len(parts)
 
 
 def test_output_stems():

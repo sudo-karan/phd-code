@@ -34,7 +34,8 @@ docs/handoff/2026-10-17-round9-chat.md:
       without a stand were never scored in the village test;
   Q2  the conditional labelling null: each box's layer limited to typed stands, its own seed. On
       kept land every stand has a type (D3), so this null differs from the unconditional one only
-      in its random stream;
+      in its random stream. Were some stands untyped, a placed plot's 30 m search would run over
+      typed stands only and could reach past an untyped stand, which the observed join never does;
   Q3  the far-apart pairs: fixed from the plots' real positions (same district, over 2 km), each
       pair used in a realisation when both plots are typed there;
   Q4  S1 and S2 with the chance test: the same realisations, scored with field type 0 masked out
@@ -42,16 +43,33 @@ docs/handoff/2026-10-17-round9-chat.md:
       within each. The declaration's other two checks (covered plots only; beside the box runs)
       are descriptive in keptland_s1desc_scores.txt and get no chance test here;
   Q5  the box declaration's check "how far the null moves the plots", reported here too;
-  Q6  the arm name in the seed strings: v120_3ha_squares_keptland_s1desc.
+  Q6  the arm name in the seed strings: v120_3ha_squares_keptland_s1desc. The seeds do not take
+      the run suffix, and with no forced landing the placements no longer depend on the stands, so
+      the declared run on the re-run stands draws the same placements as this rehearsal;
+  Q7  what the labelling mean averages over: without forced landing a district can drop out of
+      the plot-weighted mean in a realisation (it needs 2 plots and 2 field types there), and the
+      stands holding 2 or more plots change too. Each realisation is scored as it falls, as the
+      village test scores whatever its realisation gives; how often the mean covers fewer
+      districts than the observed one is reported;
+  Q8  Holm when a test is not estimable: over the estimable tests only, m their number (the
+      village test's rule).
+Boxes are named as odisha_phase2_5_stats.load names AOI parts (the mode of the plots' site polygon,
+else of their habitation), which is what the acceptance estimate's seed string is built from.
 Sampler, draw cap and unbuildable-null rule are rotation_null's (geometric acceptance below 0.02
 -> the feasible-region sampler; a part that cannot place its realisations within the cap makes the
 whole null unbuilt, and every test NOT ESTIMABLE).
 
 INPUTS. The stands: by default as the explorer holds them, ui_data/by_run/<run>/stands.json
-(polyline6 at 1e-6 degrees, every merged stand of the run, unsimplified); with --stands-from geojson,
+(polyline6 at 1e-6 degrees, every merged stand of the run, unsimplified). That is close but not
+bit-identical to the merged layers: the observed join is the same for all 267 plots, but in a
+review over 1,999 realisations for angul, dhenkanal and kendujhar the stand chosen differed in 107
+of 243,878 placed plots, all near a stand edge or the 30 m limit (koraput's layer is off git and
+was not compared). Good enough for a rehearsal; the declared run reads the merged layers. With
+--stands-from geojson,
 the merged stand layers <run>_stands_merged.geojson (docs/reproducibility/keptland_runs/ or where a
 run's off-git record says, SHA-256 checked), which is how re-run stands are read (--run-suffix _r9;
-ui_data is not updated in round 9). Either way the declared join on them is checked plot by plot
+ui_data is not updated in round 9). The output is labelled a rehearsal unless --declared is given;
+--declared needs the merged layers and stops if any of them is a pre-fix run's file. Either way the declared join on them is checked plot by plot
 against the field check's <scored-stem>_joined.csv before any null is drawn, and the observed scores
 against <scored-stem>_scores.json. Also: the box outlines aois/odisha_squares_<district>.geojson, and
 the plots and field types (odisha_phase3_0_field_types.csv, _k4.csv).
@@ -193,7 +211,7 @@ def box_parts(aoi_dir: Path = AOI_DIR) -> list[dict[str, Any]]:
             epsg, fwd, _ = utm_transformers(c.x, c.y)
             props = feat["properties"]["parts"][k]
             parts.append({"district": district, "k": k, "epsg": int(epsg), "geom_ll": g,
-                          "geom": shapely.ops.transform(fwd, g),
+                          "geom": shapely.ops.transform(fwd, g), "props": props,
                           "name": f"{district}:{'/'.join(props.get('habitations') or [f'part{k}'])}"})
             shapely.prepare(parts[-1]["geom"])
     return parts
@@ -223,7 +241,24 @@ def load_plots(parts: list[dict[str, Any]]) -> pd.DataFrame:
     plots["x"], plots["y"] = x, y
     if plots.field_type.isna().any() or plots.ft_k4.isna().any():
         raise SystemExit("a plot inside the boxes has no field type")
+    name_parts(parts, plots)
     return plots
+
+
+def name_parts(parts: list[dict[str, Any]], plots: pd.DataFrame) -> None:
+    """Each box's name by odisha_phase2_5_stats.load's rule: the mode of the site polygon of the
+    plots inside it, else of their habitation, else the box's own habitations; prefixed by the
+    district. The rotation null builds its acceptance estimate's seed from this name."""
+    for q, p in enumerate(parts):
+        inside = plots[plots.aoi_part == q]
+        sp = inside.site_polygon.dropna() if "site_polygon" in inside else pd.Series([], dtype=object)
+        if len(sp):
+            nm = sp.mode().iat[0]
+        elif len(inside) and inside.habitation.notna().any():
+            nm = inside.habitation.dropna().mode().iat[0]
+        else:
+            nm = "/".join(p["props"].get("sites") or p["props"].get("habitations") or [f"part{p['k']}"])
+        p["name"] = f"{p['district']}:{nm}"
 
 
 # ---------------------------------------------------------------------- the declared join, on arrays
@@ -417,18 +452,34 @@ def geojson_stands(path: Path) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def pre_fix_sha256() -> set[str]:
+    """SHA-256 of the pre-fix runs' stand files: the merged layers in git, those an off-git record
+    names, and the explorer's stands.json. A declared run may score none of them."""
+    out = set()
+    for d in K.DISTRICTS:
+        run_name = K.run_id(d)
+        for f in (K.STANDS_DIR / f"{run_name}_stands_merged.geojson", UI_DATA / run_name / "stands.json"):
+            if f.exists():
+                out.add(sha256(f))
+        rec = K.STANDS_DIR / f"{run_name}_files_off_git.json"
+        if rec.exists():
+            out |= {e["sha256"] for e in json.loads(rec.read_text())["files"]
+                    if e["file"].endswith("_stands_merged.geojson")}
+    return out
+
+
 def rel(p: Path) -> str:
     return str(p.relative_to(REPO)) if p.is_relative_to(REPO) else str(p)
 
 
 def run(n_rot: int, out_dir: Path, *, stands_from: str = "ui_data", stands_dir: Path | None = None,
         run_suffix: str = "", scored_stem: str = "keptland_s1desc", ui_data: Path = UI_DATA,
-        scores_dir: Path = SCORES_DIR, cap_scale: float = 1.0) -> dict[str, Any]:
+        scores_dir: Path = SCORES_DIR, cap_scale: float = 1.0, declared: bool = False) -> dict[str, Any]:
     """stands_from 'ui_data' reads ui_data/by_run/<run>/stands.json; 'geojson' reads
     <stands_dir>/<run>_stands_merged.geojson (or where its off-git record says, SHA-256 checked).
     <run> is odisha_v120_3ha_squares_<district>_keptland_s1desc<run_suffix>. The identity checks
     read <scored_stem>_joined.csv and <scored_stem>_scores.json in scores_dir. The run is a
-    REHEARSAL when it scores the pre-fix runs (no run_suffix)."""
+    REHEARSAL unless declared=True, which needs geojson stands that are not the pre-fix files."""
     t_start = time.time()
     _lines.clear()
     _timings.clear()
@@ -436,7 +487,9 @@ def run(n_rot: int, out_dir: Path, *, stands_from: str = "ui_data", stands_dir: 
         raise SystemExit(f"stands_from must be 'ui_data' or 'geojson', got {stands_from!r}")
     if stands_from == "ui_data" and run_suffix:
         raise SystemExit("ui_data holds only the pre-fix runs; read re-run stands with stands_from='geojson'")
-    rehearsal = run_suffix == ""
+    if declared and stands_from != "geojson":
+        raise SystemExit("the declared test reads the merged stand layers: use stands_from='geojson'")
+    rehearsal = not declared
     parts = box_parts()
     plots = load_plots(parts)
     inputs: dict[str, str] = {}
@@ -449,7 +502,12 @@ def run(n_rot: int, out_dir: Path, *, stands_from: str = "ui_data", stands_dir: 
         else:
             path = K.stand_layer(run_name, stands_dir if stands_dir is not None else K.STANDS_DIR)
             stands[d] = geojson_stands(path)
-        inputs[rel(path)] = sha256(path)
+        inputs[f"stands:{run_name}"] = sha256(path)
+    if declared:
+        pre = pre_fix_sha256()
+        same_as_pre = [r for r in runs if inputs[f"stands:{r}"] in pre]
+        if same_as_pre:
+            raise SystemExit(f"declared=True, but these stand files are the pre-fix runs' files: {same_as_pre}")
     joined_csv = scores_dir / f"{scored_stem}_joined.csv"
     scores_json = scores_dir / f"{scored_stem}_scores.json"
     for p in (K.FIELD_TYPES, K.FIELD_TYPES_K4, joined_csv, scores_json,
@@ -528,11 +586,15 @@ def run(n_rot: int, out_dir: Path, *, stands_from: str = "ui_data", stands_dir: 
                     if k in null:
                         null[k][r] = v
         rows = {k: summarise(observed[a][k], null[k]) for k, _ in STATS}
-        ps = [rows[k]["p"] for k, _ in STATS]
-        if all(p is not None for p in ps):
-            for (k, _), h in zip(STATS, holm(ps), strict=True):
-                rows[k]["holm_p"] = h
-                rows[k]["passes"] = bool(h <= ALPHA)
+        # Holm over the estimable tests, m their number (the village test's rule)
+        est = [k for k, _ in STATS if rows[k]["p"] is not None]
+        for k, h in zip(est, holm([rows[k]["p"] for k in est]), strict=True):
+            rows[k]["holm_p"] = h
+            rows[k]["passes"] = bool(h <= ALPHA)
+        n_dist_obs = sum(1 for k in observed[a] if k.startswith("lab_") and k != "lab_wmean")
+        dist_keys = [k for k in null if k.startswith("lab_") and k != "lab_wmean"]
+        n_dist_null = (np.isfinite(np.vstack([null[k] for k in dist_keys])).sum(0) if dist_keys and built
+                       else np.array([], dtype=int))
         per_district = {k[4:]: summarise(observed[a][k], null[k]) for k in sorted(observed[a])
                         if k.startswith("lab_") and k != "lab_wmean"}
         # how many plots each realisation scores: the null leaves out plots that land off every stand
@@ -543,12 +605,16 @@ def run(n_rot: int, out_dir: Path, *, stands_from: str = "ui_data", stands_dir: 
                            "drawing": dict(zip(("median", "p5", "p95"), S.qs(n_delin), strict=True)),
                            "labelling": dict(zip(("median", "p5", "p95"), S.qs(n_lab), strict=True))},
                        "far_apart_pairs": int(len(sc.fi)), "scores": rows,
-                       "labelling_by_district": per_district}
+                       "labelling_by_district": per_district,
+                       "districts_in_labelling_mean": {
+                           "observed": n_dist_obs,
+                           "realisations_by_count": {str(int(c)): int((n_dist_null == c).sum())
+                                                     for c in np.unique(n_dist_null)}}}
     result["analyses"] = analyses
     if built:
         mv = {}
         for q, p in enumerate(parts):
-            m = plots.aoi_part.to_numpy() == q
+            m = (plots.aoi_part.to_numpy() == q) & scored
             if m.any():
                 v = unc["moved"][:, m].ravel()
                 mv[p["name"]] = {"plots": int(m.sum()), "median_m": float(np.median(v)),
@@ -630,17 +696,22 @@ def report(res: dict[str, Any], plots: pd.DataFrame, how0: np.ndarray) -> None:
             say(f"    {label:<56}{fmt(r['observed']):>9} | {band:>28}{r['pctile']:>8.1f}{r['p']:>7.3f}"
                 f"{fmt(r.get('holm_p'), 3, False):>8}{r['n_null']:>6}"
                 + ("  <- passes" if r.get("passes") else ""))
-        say("  labelling ARI by district (descriptive, not tests; against the conditional null):")
+        dl = an["districts_in_labelling_mean"]
+        counts = ", ".join(f"{c} districts in {n}" for c, n in sorted(dl["realisations_by_count"].items()))
+        say(f"  districts in the labelling mean: observed {dl['observed']}; realisations: {counts or 'none'}")
+        say("  labelling ARI by district (descriptive, not tests; against the conditional null, over the realisations")
+        say("  in which the district has 2 scored plots of 2 field types, n given):")
         for d, r in an["labelling_by_district"].items():
             if r["p"] is None:
                 say(f"    {d:<56}{fmt(r['observed']):>9} | NOT ESTIMABLE (usable realisations {r['n_null']})")
             else:
                 band = f"{fmt(r['null_median'])} [{fmt(r['null_p5'])}, {fmt(r['null_p95'])}]"
-                say(f"    {d:<56}{fmt(r['observed']):>9} | {band:>28}{r['pctile']:>8.1f}{r['p']:>7.3f}")
+                say(f"    {d:<56}{fmt(r['observed']):>9} | {band:>28}{r['pctile']:>8.1f}{r['p']:>7.3f}"
+                    f"{'':>8}{r['n_null']:>6}")
     if res["null_built"]:
         say("")
         say("-" * w)
-        say("How far the null moves the plots (the box declaration's check; unconditional null, every plot)")
+        say("How far the null moves the plots (the box declaration's check; unconditional null, the plots the join scores)")
         say("-" * w)
         say(f"    {'box':<40}{'plots':>6}{'median m':>10}{'p90 m':>9}{'draws/realisation':>19}{'sampler':>17}")
         for name, v in res["null_moves_plots"]["by_box"].items():
@@ -653,16 +724,26 @@ def report(res: dict[str, Any], plots: pd.DataFrame, how0: np.ndarray) -> None:
     say("WHAT THIS SAYS")
     say("-" * w)
     p = res["analyses"]["primary"]["scores"]
-    if res["null_built"] and all("holm_p" in p[k] for k, _ in STATS):
-        n_pass = sum(p[k]["passes"] for k, _ in STATS)
-        say(f"  * Primary: {n_pass} of 5 tests pass after Holm at 0.05"
-            + (" on these (pre-fix) stands." if res["rehearsal"] else "."))
-        inside = [lbl for k, lbl in STATS if 5 <= p[k]["pctile"] <= 95]
-        say(f"  * {len(inside)} of 5 primary scores sit inside the null's central 90%.")
+    est = [k for k, _ in STATS if "holm_p" in p[k]]
+    if res["null_built"] and est:
+        n_pass = sum(p[k]["passes"] for k in est)
+        say(f"  * Primary: {n_pass} of {len(est)} estimable tests pass after Holm at 0.05"
+            + (" on these (pre-fix) stands." if res["rehearsal"] else ".")
+            + ("" if len(est) == 5 else f" {5 - len(est)} not estimable."))
+        inside = [k for k in est if 5 <= p[k]["pctile"] <= 95]
+        say(f"  * {len(inside)} of {len(est)} estimable primary scores sit inside the null's central 90%.")
     else:
         say("  * The primary tests are not estimable (see above).")
-    say("  * The null scores fewer plots than the observed join in most realisations (plots that land off every")
-    say("    stand are left out), so the null's scores rest on fewer plots; the counts are given per analysis.")
+    pa = res["analyses"]["primary"]
+    say(f"  * The null scores fewer plots than the observed join (median {fmt(pa['plots_scored_per_realisation']['drawing']['median'], 0, False)}"
+        f" of {pa['plots_scored_observed']}): plots that land off every")
+    say("    stand are left out of that realisation, as declared, so the null's scores rest on fewer plots.")
+    dl = pa["districts_in_labelling_mean"]
+    fewer = sum(n for c, n in dl["realisations_by_count"].items() if int(c) < dl["observed"])
+    if fewer:
+        short = [d for d, r in pa["labelling_by_district"].items() if r["n_null"] < res["rotations"]]
+        say(f"  * In {fewer} of {res['rotations']} realisations the labelling mean averages fewer districts than the observed")
+        say(f"    {dl['observed']}, because a district then lacks 2 scored plots of 2 field types ({', '.join(short)}).")
     say("  * NOT supported by this file: "
         + ("any claim about the declared test (it runs on the re-run stands); " if res["rehearsal"] else "")
         + "'better than chance' from a score")
@@ -696,9 +777,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--scored-stem", default="keptland_s1desc",
                     help="stem of the field check's <stem>_joined.csv and <stem>_scores.json in --scores-dir")
     ap.add_argument("--scores-dir", type=Path, default=SCORES_DIR)
+    ap.add_argument("--declared", action="store_true",
+                    help="the declared test, not a rehearsal: needs --stands-from geojson, and stops if any "
+                         "stand file is a pre-fix run's file (by SHA-256)")
     args = ap.parse_args(argv)
     res = run(args.rotations, args.out_dir, stands_from=args.stands_from, stands_dir=args.stands_dir,
-              run_suffix=args.run_suffix, scored_stem=args.scored_stem, scores_dir=args.scores_dir)
+              run_suffix=args.run_suffix, scored_stem=args.scored_stem, scores_dir=args.scores_dir,
+              declared=args.declared)
     write_run_record(args.out_dir, out_stem(args.scored_stem, res["rehearsal"], args.rotations),
                      list(sys.argv[1:] if argv is None else argv))
     return 0
