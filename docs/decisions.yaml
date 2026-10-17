@@ -5405,7 +5405,8 @@ decisions:
     For the batch runs of the kept-land configs, an export pass that stops at the runner's read-back of a vector layer
     (more than 5,000 elements for one getInfo, or a count that times out) is finished with
     odisha_script/odisha_read_back_export.py, as for the box runs of round 2. The export stage and the runner are not
-    changed for it now.
+    changed for it now. (Superseded in part in round 9: the export stage and the runner now work one ROI part at a
+    time, spec-export-and-read-back-by-roi-part; the tool stays for an export pass that still stops.)
   alternatives_considered:
   - >-
     Fix both limits, the export stage's count and the runner's read-back, before these runs (option (a) of question
@@ -5420,7 +5421,7 @@ decisions:
   - path: docs/handoff/2026-10-14-round3.md
     what: The question, with its two options
   papers: []
-  status: adopted
+  status: superseded
   design_notes_section: null
   source: Jaskaran, 15 Oct 2026, with Claude (chat)
 - id: spec-odisha-keptland-s1-orbit-descending
@@ -5708,3 +5709,51 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, round 9 brief (17 Oct 2026)
+- id: spec-export-and-read-back-by-roi-part
+  title: >-
+    The export stage builds, counts and sends each vector layer one ROI part at a time, and the runner reads each part
+    back in pages
+  decision: >-
+    src/fmu/stages/export.py splits the ROI into its own polygons (_roi_parts: roi.geometries(), so each part keeps the
+    ROI's projection and edges), builds each vector layer over each part with the stage's own builders (now given a
+    region), counts its polygons and stands one request per part (_count_by_part), and sends the union of the parts,
+    numbered 1..N over all of them by the stage's own sort key, to Drive (_layer_by_part). An ROI of one polygon is one
+    part, and its layers are built exactly as before; parts within two pixels of each other are not split, with a
+    warning. The manifest records roi_parts per layer. odisha_script/odisha_phase2_2_run_pipeline.py reads each layer
+    back over the same parts, a page of 2,500 polygons at a time, and numbers the polygons over all parts with the same
+    key (read_layer_by_part); odisha_script/odisha_read_back_export.py takes the same parts by default (--parts stage),
+    or the ROI file's polygons as before (--parts file).
+  alternatives_considered:
+  - >-
+    Leave the export stage and the runner as they were, and finish a stopped export pass with the read-back tool
+    (spec-export-read-back-tool-when-an-export-pass-stops, rounds 6 and 7): superseded
+  - >-
+    Count the polygons in batch, or not at all: not chosen; the manifest's counts are what the run records report
+  rationale: >-
+    The round 9 brief (17 Oct 2026, task C, issue #44 item 11: "Export and read-back one ROI part at a time (method of
+    odisha_script/odisha_read_back_export.py). The export stage is Locked: add the docs/decisions.yaml entry MODULES.md
+    requires."), and question 5 of PR #43, which Jaskaran answered yes for the final round. The export stage counted
+    all stand polygons of the whole ROI in one request, which timed out for the eight Dhenkanal boxes, and the runner
+    read a layer back in one request, which Earth Engine stops above 5,000 elements (8,744 superpixel polygons in
+    Koraput). Checked read-only before the change was committed, with odisha_script/odisha_read_back_export.py --check:
+    for odisha_v120_3ha_squares_dhenkanal_keptland_s1desc (8 parts) the three layers built and read back one stage part
+    at a time equal the files its export pass wrote over the whole ROI (559, 2,889 and 85 polygons; no polygon,
+    property or outline differs). For odisha_v120_3ha_squares_koraput_keptland_s1desc (7 parts) the superpixels equal
+    the file (8,744 polygons); of its 1,631 stand polygons one differs from the file its export pass wrote over the
+    whole ROI, stand 1315, by an edge pixel at a part's outline, the same polygon and the same difference with the ROI
+    file's parts (rounds 6 and 7 found it too); and 90 of its 324 same-type regions differ in profile medians only,
+    which the profiling stage computes live with Earth Engine's percentile reducer (a histogram over large clusters),
+    every outline equal. No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/export.py
+    what: _roi_parts, _layer_by_part, _count_by_part; the builders' region; roi_parts in the manifest
+  - path: odisha_script/odisha_phase2_2_run_pipeline.py
+    what: read_layer_by_part and pull_vectors
+  - path: odisha_script/odisha_read_back_export.py
+    what: The method, and its --parts option
+  - path: tests/test_export_by_part.py
+    what: One part as before, several parts built and numbered over all, the counts, the runner's read-back
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, round 9 brief (17 Oct 2026); PR #43 question 5

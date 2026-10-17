@@ -280,6 +280,17 @@ class ExportStage(Stage):
                     submitted_at=now_iso_initial,
                 )
 
+        # The vector layers are built, counted and sent one ROI part at a time
+        # (round 9, issue #44 item 11); an ROI of one polygon is one part.
+        builds_vectors = (
+            (config.export.export_vector_merged and config.merge.enabled)
+            or config.export.export_vector_snic
+            or config.export.export_vector_dissolved
+        )
+        parts = _roi_parts(roi, scale) if builds_vectors else [roi]
+        if len(parts) > 1:
+            log.info("  vector layers: built and counted one ROI part at a time (%d parts)", len(parts))
+
         # 4b. Merged-stand vectors -- the delineation this pipeline produces.
         #
         # Only when merge ran. Without it `unit_label_key()` is `snic_clusters`
@@ -288,13 +299,14 @@ class ExportStage(Stage):
         # names, and a reader with no way to tell they are the same thing.
         if config.export.export_vector_merged and config.merge.enabled:
             log.info("  building merged-stand vector layer...")
-            merged_fc = _build_merged_feature_collection(
-                ctx=ctx, config=config, scale=scale
+            merged_fc, merged_parts = _layer_by_part(
+                _build_merged_feature_collection,
+                ctx=ctx, config=config, scale=scale, parts=parts, id_field="stand_id",
             )
-            merged_n_features = safe_get_info(
-                merged_fc.size(), context="stands_merged feature count"
+            merged_counts = _count_by_part(
+                merged_parts, context="stands_merged polygons", label_property="stand_lbl"
             )
-            merged_counts = _stand_polygon_counts(merged_fc)
+            merged_n_features = merged_counts["n_features"]
             log.info(
                 "  stands_merged: %s features over %d stands",
                 merged_n_features,
@@ -322,6 +334,8 @@ class ExportStage(Stage):
                 "n_stands": merged_counts["n_stands"],
                 "n_stands_split_into_pieces": merged_counts["n_split"],
                 "max_pieces_per_stand": merged_counts["max_pieces"],
+                # Built, counted and sent one ROI part at a time (round 9).
+                "roi_parts": len(parts),
                 "geometry_type": "Polygon",
                 "id_field": "stand_id",
                 "id_renumbering": (
@@ -366,12 +380,13 @@ class ExportStage(Stage):
         # 4c. SNIC superpixel vectors
         if config.export.export_vector_snic:
             log.info("  building SNIC superpixel vector layer...")
-            snic_fc = _build_snic_feature_collection(
-                ctx=ctx, config=config, scale=scale
+            snic_fc, snic_parts = _layer_by_part(
+                _build_snic_feature_collection,
+                ctx=ctx, config=config, scale=scale, parts=parts, id_field="stand_id",
             )
-            snic_n_features = safe_get_info(
-                snic_fc.size(), context="stands_snic feature count"
-            )
+            snic_n_features = _count_by_part(snic_parts, context="stands_snic polygons")[
+                "n_features"
+            ]
             log.info("  stands_snic: %s features", snic_n_features)
 
             vector_layers[_SNIC_LAYER_NAME] = {
@@ -382,6 +397,7 @@ class ExportStage(Stage):
                     "clustering. Use for methodology / debugging."
                 ),
                 "n_features": snic_n_features,
+                "roi_parts": len(parts),
                 "geometry_type": "Polygon",
                 "id_field": "stand_id",
                 "id_renumbering": (
@@ -418,12 +434,13 @@ class ExportStage(Stage):
         # 4d. Dissolved cluster vectors
         if config.export.export_vector_dissolved:
             log.info("  building dissolved cluster vector layer...")
-            dissolved_fc = _build_dissolved_feature_collection(
-                ctx=ctx, config=config, scale=scale
+            dissolved_fc, dissolved_parts = _layer_by_part(
+                _build_dissolved_feature_collection,
+                ctx=ctx, config=config, scale=scale, parts=parts, id_field="unit_id",
             )
-            dissolved_n_features = safe_get_info(
-                dissolved_fc.size(), context="stands_dissolved feature count"
-            )
+            dissolved_n_features = _count_by_part(
+                dissolved_parts, context="stands_dissolved polygons"
+            )["n_features"]
             log.info(
                 "  stands_dissolved: %s features (after min_stand_pixels filter)",
                 dissolved_n_features,
@@ -437,6 +454,7 @@ class ExportStage(Stage):
                     "to drop speckle from misclassification."
                 ),
                 "n_features": dissolved_n_features,
+                "roi_parts": len(parts),
                 "geometry_type": "Polygon",
                 "id_field": "unit_id",
                 "id_renumbering": (
@@ -833,11 +851,117 @@ def _warn_on_split_stands(counts: dict[str, int], n_features: int) -> None:
     )
 
 
+# ---------------------------------------------------------------------
+# The vector layers one ROI part at a time (round 9, issue #44 item 11)
+# ---------------------------------------------------------------------
+
+
+def _roi_parts(roi: ee.Geometry, scale: int) -> list[ee.Geometry]:
+    """The ROI's polygons, for building and counting the vector layers one at a time.
+
+    On an ROI of several polygons (the Odisha boxes) counting a layer's polygons
+    in one request timed out (Dhenkanal's eight boxes), and reading a layer back
+    in one request failed above 5,000 polygons (Koraput's superpixels).
+    odisha_script/odisha_read_back_export.py showed that one part at a time gives
+    the same layers. The parts are the ROI's own polygons (`geometries()`), so
+    they keep its projection and its edges. An ROI of one polygon is returned
+    whole, and its layers are built exactly as before round 9.
+
+    Two parts closer than two pixels could hold the two halves of one connected
+    stand, which a part at a time would vectorise as two polygons: then the ROI
+    is built whole, with a warning. One request for the count of parts, one for
+    the distances between them.
+    """
+    n = int(safe_get_info(roi.geometries().size(), context="ROI parts"))
+    if n <= 1:
+        return [roi]
+    parts = [ee.Geometry(roi.geometries().get(i)) for i in range(n)]
+    gaps = safe_get_info(
+        ee.List(
+            [parts[i].distance(parts[j], maxError=1) for i in range(n) for j in range(i + 1, n)]
+        ),
+        context="distances between ROI parts",
+    )
+    nearest = min(float(g) for g in gaps)
+    if nearest < 2 * scale:
+        log.warning(
+            "  ROI parts lie %.1f m apart, within two pixels of each other: the vector "
+            "layers are built over the whole ROI, not a part at a time", nearest,
+        )
+        return [roi]
+    return parts
+
+
+def _layer_by_part(
+    build: Callable[..., ee.FeatureCollection],
+    *,
+    ctx: PipelineContext,
+    config: Config,
+    scale: int,
+    parts: list[ee.Geometry],
+    id_field: str,
+) -> tuple[ee.FeatureCollection, list[ee.FeatureCollection]]:
+    """A vector layer built one ROI part at a time: (the whole layer, each part's layer).
+
+    Each part's layer is the builder's over that part; the whole layer is their
+    union, numbered 1..N over all parts by the builders' own rule
+    (`_renumber_by_centroid`), which is what the Drive export sends. With one
+    part, the builder's layer over it, unchanged.
+    """
+    if len(parts) == 1:
+        layer = build(ctx=ctx, config=config, scale=scale, region=parts[0])
+        return layer, [layer]
+    per_part = [build(ctx=ctx, config=config, scale=scale, region=part) for part in parts]
+    whole = _renumber_by_centroid(ee.FeatureCollection(per_part).flatten(), id_field=id_field)
+    return whole, per_part
+
+
+def _count_by_part(
+    per_part: list[ee.FeatureCollection],
+    *,
+    context: str,
+    label_property: str | None = None,
+) -> dict[str, int]:
+    """A layer's polygons counted one part at a time, one request per part.
+
+    With `label_property` (`stand_lbl` of the merged layer), also the distinct
+    stands, how many are in more than one piece, and the most pieces of one, as
+    `_stand_polygon_counts` gives them for a whole layer. A stand cannot be in two
+    parts: the parts are at least two pixels apart (`_roi_parts`).
+    """
+    n_features = 0
+    pieces: dict[int, int] = {}
+    for i, layer in enumerate(per_part):
+        got = safe_get_info(
+            ee.Dictionary(
+                {
+                    "n": layer.size(),
+                    "labels": layer.aggregate_array(label_property)
+                    if label_property
+                    else ee.List([]),
+                }
+            ),
+            context=f"{context}, part {i + 1} of {len(per_part)}",
+        )
+        n_features += int(got["n"])
+        for raw in got["labels"] or []:
+            key = int(float(raw))
+            pieces[key] = pieces.get(key, 0) + 1
+    split = [n for n in pieces.values() if n > 1]
+    return {
+        "n_features": n_features,
+        "n_stands": len(pieces),
+        "n_split": len(split),
+        "max_pieces": max(split, default=1),
+    }
+
+
 def _build_merged_feature_collection(
     *,
     ctx: PipelineContext,
     config: Config,
     scale: int,
+    region: ee.Geometry | None = None,
 ) -> ee.FeatureCollection:
     """Build the merged-stand vector layer -- the pipeline's actual product.
 
@@ -855,10 +979,13 @@ def _build_merged_feature_collection(
 
     So `cluster_id` is null on exactly those stands, which makes the coverage gap
     visible in the layer itself rather than only in the log.
+
+    `region` (default: the ROI) is the area vectorised: one part of the ROI when
+    the layer is built a part at a time (`_layer_by_part`).
     """
     stand_clusters: ee.Image = ctx.get(config.unit_label_key())
     cluster_labels: ee.Image = ctx.get("cluster_labels")
-    roi: ee.Geometry = ctx.get("roi")
+    roi: ee.Geometry = region if region is not None else ctx.get("roi")
 
     # Step 1: vectorize the stand labels. `stand_lbl` rather than `stand_label`
     # so the name survives SHP's 10-character field limit unchanged, and both
@@ -964,6 +1091,7 @@ def _build_snic_feature_collection(
     ctx: PipelineContext,
     config: Config,
     scale: int,
+    region: ee.Geometry | None = None,
 ) -> ee.FeatureCollection:
     """Build the SNIC superpixel vector layer.
 
@@ -986,11 +1114,12 @@ def _build_snic_feature_collection(
       6. Sort by centroid (lat desc, lon asc) and renumber stand_id 1..N.
 
     Returns a FeatureCollection with all attributes attached. The caller
-    selects per-format subsets via the `selectors` arg on export.
+    selects per-format subsets via the `selectors` arg on export. `region`
+    (default: the ROI) is the area vectorised (`_layer_by_part`).
     """
     snic_clusters: ee.Image = ctx.get("snic_clusters")
     cluster_labels: ee.Image = ctx.get("cluster_labels")
-    roi: ee.Geometry = ctx.get("roi")
+    roi: ee.Geometry = region if region is not None else ctx.get("roi")
 
     # Step 1: vectorize SNIC labels. Rename to a known band name so
     # labelProperty is deterministic regardless of segmentation's band naming.
@@ -1058,6 +1187,7 @@ def _build_dissolved_feature_collection(
     ctx: PipelineContext,
     config: Config,
     scale: int,
+    region: ee.Geometry | None = None,
 ) -> ee.FeatureCollection:
     """Build the dissolved cluster vector layer.
 
@@ -1069,9 +1199,11 @@ def _build_dissolved_feature_collection(
       4. Attach profile_<band>_p50 columns from the cluster_profiles list of
          dicts, joined by cluster_id.
       5. Sort by centroid (lat desc, lon asc) and renumber unit_id 1..M.
+
+    `region` (default: the ROI) is the area vectorised (`_layer_by_part`).
     """
     cluster_labels: ee.Image = ctx.get("cluster_labels")
-    roi: ee.Geometry = ctx.get("roi")
+    roi: ee.Geometry = region if region is not None else ctx.get("roi")
     cluster_profiles: list[dict[str, Any]] = ctx.get("cluster_profiles")
     min_pixels = config.export.vector_min_stand_pixels
 

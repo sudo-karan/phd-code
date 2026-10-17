@@ -25,7 +25,9 @@ previous one cached, and refuses to start (exit 3) while any of them is missing:
                            caches cluster_labels and feature_stack
   --through export         every cacheable output must be a HIT; runs profiling + export, then
                            reads the three vector layers back with the export stage's own
-                           builders
+                           builders, one ROI part at a time and in pages (round 9, issue #44
+                           item 11), numbered 1..N over all parts as the stage numbers the
+                           layer it sends to Drive
 
 Asset paths follow the config's cache layout (fmu.pipeline.cache_layout_for): the legacy one for
 a config run before round 9, the per-step one otherwise.
@@ -85,9 +87,11 @@ from fmu.pipeline import (
 )
 from fmu.stages.base import PipelineContext, get_stage_class
 from fmu.stages.export import (
+    _SORT_LAT_MULT,
     _build_dissolved_feature_collection,
     _build_merged_feature_collection,
     _build_snic_feature_collection,
+    _roi_parts,
 )
 from fmu.utils.caching import asset_exists, config_fingerprint, step_keys
 from fmu.utils.gee import init_gee, load_roi_geometry, safe_get_info
@@ -97,6 +101,7 @@ from fmu.utils.provenance import environment_state, git_state
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from odisha_phase2_0_aois import load_plot_points  # noqa: E402
+from odisha_read_back_export import read_layer, renumber  # noqa: E402
 
 VECTOR_DIR = HERE / "phase2_vectors"
 POLL_S = 30
@@ -176,15 +181,44 @@ def to_wgs84(fc: ee.FeatureCollection) -> ee.FeatureCollection:
     return fc.map(lambda f: f.setGeometry(f.geometry().transform("EPSG:4326", 0.1)))
 
 
+# Layer -> (builder, the property numbered 1..N).
+LAYER_BUILDERS = {
+    "stands_merged": (_build_merged_feature_collection, "stand_id"),
+    "stands_snic": (_build_snic_feature_collection, "stand_id"),
+    "stands_dissolved": (_build_dissolved_feature_collection, "unit_id"),
+}
+
+
+def read_layer_by_part(cfg: Config, ctx: PipelineContext, layer: str) -> dict:
+    """A layer as the export stage builds it, read back one ROI part at a time, in pages.
+
+    The parts are the export stage's own (`_roi_parts`), so this is the layer the
+    stage counted and sent to Drive. With one part and at most one page it is the
+    one request this script always made, and the file is what it always was. With
+    more, the parts' polygons are numbered 1..N over all parts with the stage's
+    sort key (`renumber`), as the stage numbers the layer it sends.
+    """
+    scale = cfg.export.analysis_scale_m
+    build, id_field = LAYER_BUILDERS[layer]
+    parts = _roi_parts(ctx.get("roi"), scale)
+    if len(parts) == 1:
+        fc = to_wgs84(build(ctx=ctx, config=cfg, scale=scale, region=parts[0]))
+        n = int(safe_get_info(fc.size(), context=f"{cfg.name} {layer}: count"))
+        if n <= 2500:
+            return safe_get_info(fc, context=f"{cfg.name} {layer}")
+    features: list[dict] = []
+    for i, part in enumerate(parts):
+        fc = to_wgs84(build(ctx=ctx, config=cfg, scale=scale, region=part))
+        features.extend(read_layer(fc, f"{cfg.name} {layer} part {i + 1} of {len(parts)}"))
+    return {"type": "FeatureCollection", "columns": [],
+            "features": renumber(features, id_field, _SORT_LAT_MULT)}
+
+
 def pull_vectors(cfg: Config, ctx: PipelineContext) -> dict:
     VECTOR_DIR.mkdir(exist_ok=True)
-    scale = cfg.export.analysis_scale_m
     counts = {}
-    for layer, build in (("stands_merged", _build_merged_feature_collection),
-                         ("stands_snic", _build_snic_feature_collection),
-                         ("stands_dissolved", _build_dissolved_feature_collection)):
-        fc = to_wgs84(build(ctx=ctx, config=cfg, scale=scale))
-        gj = safe_get_info(fc, context=f"{cfg.name} {layer}")
+    for layer in LAYER_BUILDERS:
+        gj = read_layer_by_part(cfg, ctx, layer)
         path = VECTOR_DIR / f"{cfg.name}_{layer}.geojson"
         path.write_text(json.dumps(gj))
         counts[layer] = len(gj["features"])

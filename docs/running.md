@@ -342,7 +342,10 @@ For the Odisha configs the passes run through
 (`--through features`, `segmentation`, `clustering`, `export`). The first
 caches every feature stage the config needs, and each later one refuses to start
 while any of them is missing, so no pass computes a feature image live that
-another reads from the cache (round 9).
+another reads from the cache (round 9). The export pass builds, counts and sends
+each stand layer one ROI part at a time, and reads each part back in pages, so a
+large area of many parts neither times out on the count nor passes Earth
+Engine's 5,000 elements a request (round 9; an ROI of one polygon is one part).
 `odisha_script/run_config_passes.sh` loops over them, and a first pass on an
 empty cache often hits Earth Engine's memory limit; the next pass completes
 from cache. The shell script must never be started again while tasks from an
