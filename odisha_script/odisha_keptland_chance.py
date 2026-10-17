@@ -53,6 +53,10 @@ docs/handoff/2026-10-17-round9-chat.md:
       districts than the observed one is reported;
   Q8  Holm when a test is not estimable: over the estimable tests only, m their number (the
       village test's rule).
+CHECK C1 (odisha_script/PHASE_KEPTLAND_AMENDMENT_chance_checks.md, amending the declaration by
+reference): score 4 without Kendujhar on both sides, the observed value and every realisation of
+the conditional null, reported beside score 4, outside the Holm correction, with no pass or fail.
+
 Boxes are named as odisha_phase2_5_stats.load names AOI parts (the mode of the plots' site polygon,
 else of their habitation), which is what the acceptance estimate's seed string is built from.
 Sampler, draw cap and unbuildable-null rule are rotation_null's (geometric acceptance below 0.02
@@ -121,6 +125,8 @@ SCORES_DIR = HERE / "keptland_scores"
 STATS = K.STATS
 DELIN = ("delin_all", "delin_multi", "prec")    # against the unconditional null
 LABEL = ("lab_wmean", "far_gap")                # against the conditional null
+#: check C1 (PHASE_KEPTLAND_AMENDMENT_chance_checks.md): score 4 without this district, on both sides
+C1_LEFT_OUT = "kendujhar"
 ANALYSES = (("primary", "the primary field types, every plot the join scores"),
             ("S1", "field type 0 (no trees) left out, same realisations"),
             ("S2", "four field types (odisha_phase3_0_field_types_k4.csv), same realisations"))
@@ -611,6 +617,17 @@ def run(n_rot: int, out_dir: Path, *, stands_from: str = "ui_data", stands_dir: 
                            "realisations_by_count": {str(int(c)): int((n_dist_null == c).sum())
                                                      for c in np.unique(n_dist_null)}}}
     result["analyses"] = analyses
+    # C1: the labelling mean without Kendujhar, observed and in the conditional null's realisations
+    sc1 = Scoring(plots, ft_primary, scored & (plots.box_district.to_numpy() != C1_LEFT_OUT))
+    obs_c1 = sc1.label(cl0)["lab_wmean"]
+    null_c1 = np.full(n_rot, np.nan)
+    if built:
+        for r in range(n_rot):
+            null_c1[r] = sc1.label(con["cluster"][r])["lab_wmean"]
+    result["checks"] = {"C1": {
+        "what": (f"score 4, the labelling mean, without {C1_LEFT_OUT} on both sides "
+                 "(PHASE_KEPTLAND_AMENDMENT_chance_checks.md); beside the primary, outside Holm, no pass or fail"),
+        "plots_scored_observed": int(sc1.base.sum()), **summarise(obs_c1, null_c1)}}
     if built:
         mv = {}
         for q, p in enumerate(parts):
@@ -708,6 +725,20 @@ def report(res: dict[str, Any], plots: pd.DataFrame, how0: np.ndarray) -> None:
                 band = f"{fmt(r['null_median'])} [{fmt(r['null_p5'])}, {fmt(r['null_p95'])}]"
                 say(f"    {d:<56}{fmt(r['observed']):>9} | {band:>28}{r['pctile']:>8.1f}{r['p']:>7.3f}"
                     f"{'':>8}{r['n_null']:>6}")
+    c1 = res["checks"]["C1"]
+    say("")
+    say("-" * w)
+    say(f"Check C1 (PHASE_KEPTLAND_AMENDMENT_chance_checks.md): the labelling mean without {C1_LEFT_OUT}, on both sides")
+    say("-" * w)
+    say("  Beside the primary's labelling mean, not replacing it: outside the Holm correction, no pass or fail.")
+    say(f"  plots scored: observed {c1['plots_scored_observed']}; the conditional null's realisations, as the primary's")
+    if c1["p"] is None:
+        say(f"    {'labelling ARI, plot-weighted mean, ' + C1_LEFT_OUT + ' left out':<56}{fmt(c1['observed']):>9} | "
+            f"NOT ESTIMABLE (usable realisations {c1['n_null']})")
+    else:
+        band = f"{fmt(c1['null_median'])} [{fmt(c1['null_p5'])}, {fmt(c1['null_p95'])}]"
+        say(f"    {'labelling ARI, plot-weighted mean, ' + C1_LEFT_OUT + ' left out':<56}{fmt(c1['observed']):>9} | "
+            f"{band:>28}{c1['pctile']:>8.1f}{c1['p']:>7.3f}{'':>8}{c1['n_null']:>6}")
     if res["null_built"]:
         say("")
         say("-" * w)

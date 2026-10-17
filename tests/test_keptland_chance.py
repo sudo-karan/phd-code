@@ -174,6 +174,14 @@ def test_a_short_run_on_the_committed_inputs_passes_its_identity_checks(tmp_path
     assert all(r["p"] is None for r in res["analyses"]["primary"]["scores"].values())
     assert not any("holm_p" in r for r in res["analyses"]["primary"]["scores"].values())
     assert res["rehearsal"] and all(k.startswith("stands:") for k in list(res["inputs_sha256"])[:4])
+    # C1: the observed value is the plot-weighted mean of the three other districts' committed ARIs
+    by = json.loads((C.SCORES_DIR / "keptland_s1desc_scores.json").read_text())["analyses"][0]["labelling_by_district"]
+    rest = {d: v for d, v in by.items() if d != "KENDUJHAR"}
+    want = sum(v["n"] * v["ari"] for v in rest.values()) / sum(v["n"] for v in rest.values())
+    c1 = res["checks"]["C1"]
+    assert math.isclose(c1["observed"], want, abs_tol=1e-12)
+    assert c1["plots_scored_observed"] == sum(v["n"] for v in rest.values())
+    assert "Check C1" in txt
     assert not (tmp_path / "keptland_s1desc_chance_rehearsal.txt").exists()
 
 
