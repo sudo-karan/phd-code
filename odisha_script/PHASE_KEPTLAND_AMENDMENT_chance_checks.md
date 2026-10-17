@@ -50,9 +50,11 @@ test, not the Holm correction, not the other checks.
 ## Where it applies
 
 To the primary analysis of the declaration: the four `_keptland_s1desc` runs, and their round 9
-re-runs (`_r9`) when those are scored. Whether C1 also applies to the AlphaEarth arm that Claude
-Code adds tonight is left to Jaskaran. That arm's amendment says it takes the primary's checks,
-and this file does not decide whether a check added afterwards is one of them.
+re-runs (`_r9`) when those are scored.
+
+**C1 applies to every arm scored under `PHASE_KEPTLAND_PREDECLARED.md`, including the AlphaEarth
+arm Claude Code adds in round 9 (Jaskaran, 17 Oct 2026, written before any AlphaEarth arm in
+Odisha was configured or scored).**
 
 ## How it is run
 
