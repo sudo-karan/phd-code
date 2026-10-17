@@ -29,6 +29,8 @@ matches the notebook approach.
 
 from __future__ import annotations
 
+from typing import Any
+
 import ee
 
 from fmu.config import Config
@@ -82,6 +84,13 @@ class FeaturesStaticStage(Stage):
         ),
     )
 
+    def input_collections(self, ctx: PipelineContext, config: Config) -> dict[str, Any]:
+        """The CHIRPS pentads the rainfall climatology sums, when it is computed (the
+        DEM is one image, named in the config)."""
+        if not config.features_static.include_climate:
+            return {}
+        return {"chirps": _climate_window(config)}
+
     @safe_call("computing static features")
     def run(self, ctx: PipelineContext, config: Config) -> StageResult:
         roi = ctx.get("roi")
@@ -121,10 +130,7 @@ class FeaturesStaticStage(Stage):
         # climatology window then divide by number of years.
         if params.include_climate:
             climate_dates = config.dates.climate
-            chirps = (
-                ee.ImageCollection(config.datasets.climate)
-                .filterDate(str(climate_dates.start), str(climate_dates.end))
-            )
+            chirps = _climate_window(config)
             n_years = climate_dates.end.year - climate_dates.start.year + 1
             annual_rainfall = (
                 chirps.sum().divide(n_years).rename("annual_rainfall")
@@ -157,3 +163,12 @@ class FeaturesStaticStage(Stage):
                 "output_bands": band_names,
             },
         )
+
+
+def _climate_window(config: Config) -> ee.ImageCollection:
+    """The CHIRPS pentads of the climatology window. One definition, read by `run()`
+    and by `input_collections`."""
+    climate_dates = config.dates.climate
+    return ee.ImageCollection(config.datasets.climate).filterDate(
+        str(climate_dates.start), str(climate_dates.end)
+    )

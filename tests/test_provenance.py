@@ -181,3 +181,59 @@ def test_default_describes_the_checkout_holding_the_imported_package():
     if s["root"] is not None:
         assert Path(fmu.__file__).resolve().is_relative_to(Path(s["root"]).resolve())
         assert s["commit"] is None or len(s["commit"]) == 40
+
+
+# ---------------------------------------------------------------------
+# environment_state (round 9)
+# ---------------------------------------------------------------------
+
+
+def test_environment_names_python_earthengine_and_a_freeze_hash():
+    from fmu.utils import provenance
+
+    env = provenance.environment_state(refresh=True)
+    assert set(env) == {
+        "python", "earthengine_api", "pip_freeze_sha256", "pip_freeze_packages",
+        "pip_freeze_left_out", "error",
+    }
+    assert env["python"].count(".") == 2
+    assert env["earthengine_api"]
+    if env["error"] is None:
+        assert len(env["pip_freeze_sha256"]) == 64 and env["pip_freeze_packages"] > 10
+    # this package's own line names a commit or a path, so it is not in the hash
+    assert all(provenance._is_this_package(ln, provenance._checkout_root())
+               for ln in env["pip_freeze_left_out"])
+
+
+def test_environment_is_remembered_and_copied():
+    from fmu.utils import provenance
+
+    a = provenance.environment_state()
+    a["python"] = "changed"
+    assert provenance.environment_state()["python"] != "changed"
+
+
+def test_the_package_lines_left_out_of_the_freeze_hash():
+    from fmu.utils.provenance import _is_this_package
+
+    root = "/somewhere/phd-code"
+    assert _is_this_package("-e git+https://github.com/x/phd-code.git@abc#egg=fmu", root)
+    assert _is_this_package("fmu==1.3.0", root)
+    assert _is_this_package("-e /somewhere/phd-code", root)
+    assert not _is_this_package("-e /elsewhere/other", root)
+    assert not _is_this_package("numpy==2.5.1", root)
+
+
+def test_a_failing_pip_freeze_is_reported_not_raised(monkeypatch):
+    import subprocess
+
+    from fmu.utils import provenance
+
+    def boom(*a, **k):
+        raise subprocess.TimeoutExpired("pip", 1)
+
+    monkeypatch.setattr(provenance.subprocess, "run", boom)
+    env = provenance.environment_state(refresh=True)
+    assert env["pip_freeze_sha256"] is None and "could not run" in env["error"]
+    monkeypatch.undo()
+    provenance.environment_state(refresh=True)

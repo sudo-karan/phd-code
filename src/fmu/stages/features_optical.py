@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import math
 from datetime import date
+from typing import Any
 
 import ee
 
@@ -95,6 +96,10 @@ class FeaturesOpticalStage(Stage):
             },
         ),
     )
+
+    def input_collections(self, ctx: PipelineContext, config: Config) -> dict[str, Any]:
+        """The cloud-masked Sentinel-2 collection the harmonic fit reads (data_load's)."""
+        return {"s2_phenology": ctx.get("s2_collection")}
 
     @safe_call("computing optical phenology features")
     def run(self, ctx: PipelineContext, config: Config) -> StageResult:

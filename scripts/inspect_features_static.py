@@ -6,11 +6,11 @@ import argparse
 import json
 
 from fmu.config import load_config
-from fmu.pipeline import Pipeline
+from fmu.pipeline import Pipeline, current_cache_key
 from fmu.stages.base import PipelineContext
 from fmu.stages.features_static import FeaturesStaticStage  # noqa: F401
 from fmu.stages.masking import MaskingStage  # noqa: F401
-from fmu.utils.caching import asset_exists, cached_asset_path, config_fingerprint
+from fmu.utils.caching import asset_exists, cached_asset_path
 from fmu.utils.gee import init_gee, load_roi_geometry, safe_get_info
 from fmu.utils.logging import init_logging
 
@@ -36,9 +36,7 @@ def main() -> None:
         config=config, run_dir=run_dir, initial_context=ctx
     )
 
-    features_path = cached_asset_path(
-        config.name, "features_static", "static_features", config_fingerprint(config)
-    )
+    features_path = cached_asset_path(config.name, "features_static", "static_features", current_cache_key(config, "features_static"))
     features_cached = asset_exists(features_path)
 
     print()

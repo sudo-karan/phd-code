@@ -12,7 +12,7 @@ import argparse
 import json as json_mod
 
 from fmu.config import load_config
-from fmu.pipeline import Pipeline, default_stage_names
+from fmu.pipeline import Pipeline, current_cache_key, default_stage_names
 from fmu.stages.base import PipelineContext
 from fmu.stages.clustering import ClusteringStage  # noqa: F401
 from fmu.stages.data_load import DataLoadStage  # noqa: F401
@@ -24,7 +24,7 @@ from fmu.stages.features_structure import FeaturesStructureStage  # noqa: F401
 from fmu.stages.masking import MaskingStage  # noqa: F401
 from fmu.stages.merge import MergeStage  # noqa: F401
 from fmu.stages.segmentation import SegmentationStage  # noqa: F401
-from fmu.utils.caching import asset_exists, cached_asset_path, config_fingerprint
+from fmu.utils.caching import asset_exists, cached_asset_path
 from fmu.utils.gee import init_gee, load_roi_geometry, safe_get_info
 from fmu.utils.logging import init_logging
 
@@ -53,12 +53,8 @@ def main() -> None:
         use_cache=True,
     ).run(config=config, run_dir=run_dir, initial_context=ctx)
 
-    labels_path = cached_asset_path(
-        config.name, "clustering", "cluster_labels", config_fingerprint(config)
-    )
-    stack_path = cached_asset_path(
-        config.name, "clustering", "feature_stack", config_fingerprint(config)
-    )
+    labels_path = cached_asset_path(config.name, "clustering", "cluster_labels", current_cache_key(config, "clustering"))
+    stack_path = cached_asset_path(config.name, "clustering", "feature_stack", current_cache_key(config, "clustering"))
     labels_cached = asset_exists(labels_path)
     stack_cached = asset_exists(stack_path)
 

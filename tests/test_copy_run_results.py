@@ -97,3 +97,20 @@ def test_a_recorded_drive_copy_survives_a_new_copy_of_the_same_file(mod, tmp_pat
     (vec / f"{RUN}_stands_snic.geojson").write_text('{"x":"' + "b" * (mod.LIMIT + 1) + '"}')
     mod.copy(tree, RUN, dest, off)  # another file: its Drive copy is not that one
     assert "drive" not in json.loads(record.read_text())["files"][0]
+
+
+def test_the_features_pass_of_a_round_9_run_is_copied_too(mod, tmp_path):
+    """Since round 9 a run's first pass caches the feature stages and ends at one of them."""
+    tree = _tree(tmp_path, big=10)
+    d = tree / "runs" / f"{RUN}_20261017_120000"
+    d.mkdir(parents=True)
+    (d / "manifest.json").write_text(json.dumps({
+        "run_dir": str(d), "total_elapsed_sec": 3,
+        "stages": [{"name": "masking", "elapsed_sec": 1.0}, {"name": "features_static", "elapsed_sec": 2.0}],
+        "config": {"dates": {"radar": "2017"}}}))
+    dest = tmp_path / "dest"
+    done = mod.copy(tree, RUN, dest, tmp_path / "off")
+    assert f"{RUN}_manifest_features.json" in done["in_repo"]
+    copied = json.loads((dest / f"{RUN}_manifest_features.json").read_text())
+    assert [s["name"] for s in copied["stages"]] == ["masking", "features_static"]
+    assert "elapsed_sec" not in copied["stages"][0]

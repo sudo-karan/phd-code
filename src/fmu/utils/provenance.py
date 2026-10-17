@@ -9,6 +9,7 @@ make every re-run differ.
 
 from __future__ import annotations
 
+import contextlib
 import copy
 import os
 import subprocess
@@ -159,4 +160,99 @@ def _read_git_state(start: Path) -> dict[str, Any]:
     state["modified_truncated"] = len(modified) > _MAX_LISTED
     state["untracked"] = untracked[:_MAX_LISTED]
     state["untracked_truncated"] = len(untracked) > _MAX_LISTED
+    return state
+
+
+# ---------------------------------------------------------------------
+# Which Python environment ran (round 9): manifests record it beside `git`
+# ---------------------------------------------------------------------
+
+_PIP_TIMEOUT_S = 120
+_environment: dict[str, Any] | None = None
+
+
+def environment_state(*, refresh: bool = False) -> dict[str, Any]:
+    """The Python environment a run ran in, for its manifest.
+
+    Returns a dict that always has these keys:
+
+      python               the interpreter's version, e.g. "3.13.14"
+      earthengine_api      the installed earthengine-api version, or None
+      pip_freeze_sha256    SHA-256 of the sorted lines of `python -m pip freeze`,
+                           without comment lines and without the line of this
+                           package itself, or None
+      pip_freeze_packages  how many lines the hash is over
+      pip_freeze_left_out  the lines left out of the hash (this package's own:
+                           `-e git+...@<commit>#egg=fmu`, which names the commit
+                           the git block already records and would make two
+                           checkouts of one commit differ)
+      error                None, or why pip freeze could not be read
+
+    Two runs with the same hash ran on the same third-party packages, version for
+    version. Never raises; asked once per process (`refresh=True` asks again).
+    """
+    global _environment
+    if _environment is None or refresh:
+        _environment = _read_environment()
+    return copy.deepcopy(_environment)
+
+
+def _is_this_package(line: str, checkout: str | None = None) -> bool:
+    """A pip freeze line that names this package: `fmu==...`, `...#egg=fmu`, or an
+    editable install of the checkout the package sits in (`-e <its root>`)."""
+    text = line.strip()
+    lower = text.lower()
+    if lower.startswith("fmu==") or lower.endswith("#egg=fmu"):
+        return True
+    if checkout and lower.startswith("-e "):
+        target = text[3:].strip()
+        return target.rstrip("/") == checkout.rstrip("/")
+    return False
+
+
+def _checkout_root() -> str | None:
+    import fmu
+
+    # src/fmu/__init__.py -> the checkout holding src/
+    return str(Path(fmu.__file__).resolve().parents[2])
+
+
+def _read_environment() -> dict[str, Any]:
+    import platform
+    import sys
+    from importlib import metadata
+
+    state: dict[str, Any] = {
+        "python": platform.python_version(),
+        "earthengine_api": None,
+        "pip_freeze_sha256": None,
+        "pip_freeze_packages": None,
+        "pip_freeze_left_out": [],
+        "error": None,
+    }
+    with contextlib.suppress(metadata.PackageNotFoundError):
+        state["earthengine_api"] = metadata.version("earthengine-api")
+    try:
+        done = subprocess.run(  # noqa: S603 - fixed argv, no shell
+            [sys.executable, "-m", "pip", "freeze"],
+            capture_output=True,
+            timeout=_PIP_TIMEOUT_S,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError) as e:
+        state["error"] = f"pip freeze could not run: {type(e).__name__}: {e}"
+        return state
+    if done.returncode != 0:
+        err = done.stderr.decode("utf-8", "replace").strip()[:300]
+        state["error"] = f"pip freeze failed: {err}"
+        return state
+    import hashlib
+
+    lines = [ln.strip() for ln in done.stdout.decode("utf-8", "replace").splitlines()]
+    lines = [ln for ln in lines if ln and not ln.startswith("#")]
+    checkout = _checkout_root()
+    kept = sorted(ln for ln in lines if not _is_this_package(ln, checkout))
+    state["pip_freeze_left_out"] = sorted(ln for ln in lines if _is_this_package(ln, checkout))
+    state["pip_freeze_sha256"] = hashlib.sha256("\n".join(kept).encode()).hexdigest()
+    state["pip_freeze_packages"] = len(kept)
     return state

@@ -263,6 +263,12 @@ renaming the config changes the fingerprint, so the run writes new assets
 and the old ones are left as they were. See
 [running.md](running.md#paths-carry-a-fingerprint-of-the-config).
 
+That is the legacy layout. Since round 9 (17 Oct 2026) a config with no asset
+of it uses the per-step layout: `<output_key>__s<step key>`, a key per step over
+what that step reads, with every asset written on the analysis grid
+(`step_key`, `cache_key` and `STEP_SETTINGS` in `src/fmu/utils/caching.py`,
+`cache_layout_for` in `src/fmu/pipeline.py`; [running.md](running.md#the-cache-layer)).
+
 ### What's cacheable
 
 Only `ee.Image` outputs can be cached as GEE assets. So:

@@ -202,6 +202,19 @@ Three design points:
    out of the hash unnoticed. Narrowing it per stage is a follow-up that
    test already guards.
 
+
+   Round 9 (17 Oct 2026) made the narrow map, with the test it needed: a second
+   cache layout, per-step, for every config run from then on. Each step's key
+   hashes the settings that step reads (`STEP_SETTINGS` in
+   `src/fmu/utils/caching.py`) and the keys of the steps whose outputs it reads,
+   and `tests/test_cache_layout.py` reads each stage's module and fails on a
+   setting it reads that its key does not cover, which is the guard this
+   paragraph asked for. Its assets are also written on the analysis grid, so the
+   cache-grid issue above does not arise in it. A config whose cache already
+   holds assets of the one-fingerprint layout keeps that layout
+   (`fmu.pipeline.cache_layout_for`; register entry
+   `spec-cache-on-the-analysis-grid-with-per-step-keys`).
+
 3. **Fire-and-forget on cache miss.** Stage runs live AND submits an async
    export task. The current run returns the live computation; the next
    run benefits from the cache. No blocking on the (5-15 min) export.

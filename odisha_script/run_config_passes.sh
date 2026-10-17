@@ -1,6 +1,6 @@
 #!/bin/bash
-# Run one or more pipeline configs through segmentation -> clustering -> export on
-# Earth Engine, in repeated cache passes, until every config has completed.
+# Run one or more pipeline configs through features -> segmentation -> clustering -> export
+# on Earth Engine, in repeated cache passes, until every config has completed.
 #
 #   odisha_script/run_config_passes.sh <logfile> <config.yaml> [<config.yaml> ...]
 #
@@ -14,8 +14,10 @@
 # 3 ha arm needed two.
 #
 # Each stage call waits for its own export tasks (--wait) before the next stage starts.
-# The export stage refuses to run if an upstream asset is missing, so a pass that races
-# Earth Engine fails safely and is repaired by the following pass.
+# Every call but the first refuses to run while an upstream asset is missing (exit 3), so a
+# pass that races Earth Engine fails safely and is repaired by the following pass. The first
+# call, "features" (round 9), caches every feature image the config needs before segmentation
+# reads any of them, so no later call computes a feature image live.
 #
 # Run from the repo root (the pipeline reads .env from the working directory).
 set -u
@@ -30,7 +32,7 @@ for pass in $(seq 1 "$MAX_PASSES"); do
   allok=1
   for cfg in "$@"; do
     name=$(basename "$cfg" .yaml)
-    for stage in segmentation clustering export; do
+    for stage in features segmentation clustering export; do
       echo "" >> "$LOG"; echo "##### PASS$pass $name :: $stage :: $(date +%H:%M:%S) #####" >> "$LOG"
       if [ "$stage" = "export" ]; then
         "$PY" "$RUNNER" --config "$cfg" --through export >> "$LOG" 2>&1

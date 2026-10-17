@@ -2,7 +2,7 @@
 
     python odisha_script/odisha_read_back_export.py --config configs/<name>.yaml
         [--vectors-dir odisha_script/phase2_vectors] [--runs-dir runs] [--check]
-        [--layers stands_merged ...] [--keep-read-back DIR]
+        [--layers stands_merged ...] [--keep-read-back DIR] [--parts stage|file]
 
 READ-ONLY on Earth Engine. It reads cached assets, runs reductions and reads small results. It
 submits no task and writes, changes or deletes no asset: `ee_read_only.forbid_writes()` makes any
@@ -21,7 +21,10 @@ second time.
 What it does. It rebuilds the context exactly as the export pass does (every cached stage read
 from the cache, the merge and the profiling run live), and then calls the export stage's own
 three layer builders ONE PART OF THE ROI AT A TIME, reads each result back, and puts the parts
-together. The builders number the polygons 1..N by centroid over what they are given; the
+together. The parts are the export stage's own (`--parts stage`, the default since round 9:
+`fmu.stages.export._roi_parts`, the ROI's polygons as Earth Engine splits it, which the export
+stage and the runner use too); `--parts file` takes them from the ROI file instead, as the tool did
+before round 9 (rounds 2, 6 and 7). The builders number the polygons 1..N by centroid over what they are given; the
 numbering is redone here over all parts, with the stage's own sort key. Nothing is sent to
 Drive. It writes the files the export pass writes, but only those that are missing: a file the
 run itself wrote is never replaced; what was read back is compared with it and the result goes
@@ -170,6 +173,9 @@ def main() -> int:
                     help="with --check: only these layers (default all three)")
     ap.add_argument("--keep-read-back", type=Path, default=None,
                     help="with --check: also save what was read back in this folder, to look at a difference")
+    ap.add_argument("--parts", choices=["stage", "file"], default="stage",
+                    help="the ROI parts: the export stage's own (default) or the ROI file's polygons, "
+                         "as before round 9")
     args = ap.parse_args()
     if not args.check and (args.layers != list(LAYERS) or args.keep_read_back):
         ap.error("--layers and --keep-read-back go with --check")
@@ -218,7 +224,15 @@ def main() -> int:
     scale = cfg.export.analysis_scale_m
     whole_roi = ctx.get("roi")
 
-    parts = roi_parts(json.loads((REPO / cfg.roi.roi_file).read_text()), name_key="habitations")
+    if args.parts == "stage":
+        regions = [(f"part {i + 1}", g) for i, g in enumerate(export_stage._roi_parts(whole_roi, scale))]
+    else:
+        # The part exactly as it is in the ROI file: the same outline, so the same pixels
+        # as when the whole ROI is given at once. (Widening it adds edge pixels that the
+        # cached assets hold but the ROI leaves out, and the polygons then differ.)
+        file_parts = roi_parts(json.loads((REPO / cfg.roi.roi_file).read_text()), name_key="habitations")
+        regions = [(p.name, ee.Geometry(mapping(p.geometry))) for p in file_parts]
+    print(f"  {len(regions)} ROI part(s), from the {'export stage' if args.parts == 'stage' else 'ROI file'}")
     builders = {
         "stands_merged": export_stage._build_merged_feature_collection,
         "stands_snic": export_stage._build_snic_feature_collection,
@@ -226,18 +240,11 @@ def main() -> int:
     }
     builders = {name: build for name, build in builders.items() if name in args.layers}
     layers: dict[str, list[dict[str, Any]]] = {name: [] for name in builders}
-    try:
-        for part in parts:
-            # The part exactly as it is in the ROI file: the same outline, so the same pixels
-            # as when the whole ROI is given at once. (Widening it adds edge pixels that the
-            # cached assets hold but the ROI leaves out, and the polygons then differ.)
-            ctx._data["roi"] = ee.Geometry(mapping(part.geometry))  # the builders read the ROI from the context
-            for name, build in builders.items():
-                print(f"  ... {name}, part {part.index + 1} of {len(parts)} ({part.name})", file=sys.stderr, flush=True)
-                fc = runner.to_wgs84(build(ctx=ctx, config=cfg, scale=scale))
-                layers[name].extend(read_layer(fc, f"{cfg.name} {name} part {part.index + 1}"))
-    finally:
-        ctx._data["roi"] = whole_roi
+    for index, (label, region) in enumerate(regions):
+        for name, build in builders.items():
+            print(f"  ... {name}, part {index + 1} of {len(regions)} ({label})", file=sys.stderr, flush=True)
+            fc = runner.to_wgs84(build(ctx=ctx, config=cfg, scale=scale, region=region))
+            layers[name].extend(read_layer(fc, f"{cfg.name} {name} part {index + 1}"))
     for name in layers:
         layers[name] = renumber(layers[name], LAYERS[name][1], export_stage._SORT_LAT_MULT)
 
