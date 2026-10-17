@@ -526,7 +526,7 @@ Each one will get its own section here as it's built.
 | Manifest of a run | `outputs/runs/<config>_<timestamp>/manifest.json` |
 | Asset caching utility | `src/fmu/utils/caching.py` |
 | Cache integration in orchestrator | `src/fmu/pipeline.py` (`Pipeline(use_cache=True)`, `_try_load_cache`, `_submit_exports`) |
-| Cache asset path format | `{asset_root}/{config_name}/{stage_name}/{key}__{fingerprint}`; `config_fingerprint()` in `src/fmu/utils/caching.py` |
+| Cache asset path format | `{asset_root}/{config_name}/{stage_name}/{key}__{fingerprint}` in the legacy layout (`config_fingerprint()`), `{key}__s{step key}` in the per-step layout of round 9 (`step_key()`), both in `src/fmu/utils/caching.py`; which a config uses: `cache_layout_for()` in `src/fmu/pipeline.py` |
 
 ---
 

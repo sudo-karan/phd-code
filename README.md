@@ -187,7 +187,9 @@ result = Pipeline(stage_names=["masking"], use_cache=True).run(
 
 `use_cache=True` makes the orchestrator look up each cacheable output as a
 GEE asset under `{GEE_ASSET_ROOT}/{config_name}/{stage_name}/{key}__{fingerprint}`,
-where the fingerprint is a hash of the config content. On a
+where the fingerprint is a hash of the config content (since round 9 a config
+with no such asset uses one key per step, `{key}__s{step key}`, with its assets
+on the analysis grid; see docs/running.md, "The cache layer"). On a
 miss it submits an async export task and continues with the live-computed
 image; the asset becomes available for the next run. Add
 `submit_exports=False` to read the cache without submitting anything. Tests

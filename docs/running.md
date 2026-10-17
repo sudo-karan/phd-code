@@ -167,9 +167,10 @@ print(f"Done. Manifest: {run_dir}/manifest.json")
 `Pipeline(stage_names, use_cache=True)` enables it. With cache on:
 
 - **Before each stage:** the orchestrator checks
-  `{GEE_ASSET_ROOT}/{config_name}/{stage_name}/{output_key}__{fingerprint}`
+  `{GEE_ASSET_ROOT}/{config_name}/{stage_name}/{output_key}__{key}`
   for every cacheable output. If all are present, the live computation is
-  skipped and the cached assets are loaded into the context.
+  skipped and the cached assets are loaded into the context. What `{key}` is
+  depends on the config's cache layout (below).
 - **After each stage:** any cacheable output that missed the cache is
   submitted as an async export task. The current run keeps the live
   computation (so downstream stages don't block); subsequent runs hit
@@ -177,12 +178,33 @@ print(f"Done. Manifest: {run_dir}/manifest.json")
 
 Cache asset path layout:
 ```
-projects/<your-project>/assets/fmu/<config_name>/<stage_name>/<output_key>__<fingerprint>
+projects/<your-project>/assets/fmu/<config_name>/<stage_name>/<output_key>__<key>
 ```
 
-`<fingerprint>` is a 10-character hash of the config content
-(`config_fingerprint()` in `src/fmu/utils/caching.py`). Example after running
-the baseline through clustering, with `<fp>` standing for it:
+**Two cache layouts** (round 9, 17 Oct 2026; `src/fmu/utils/caching.py`):
+
+- **Per-step**, for every config run from now on: `<key>` is `s` and ten hex
+  digits, a hash over what that step reads (its settings in `STEP_SETTINGS`, the
+  ROI file's content, and the keys of the steps whose outputs it reads), so a
+  setting moves the key of the step that reads it and of the steps after it, and
+  no other. Every asset is exported on the analysis grid segmentation works on
+  (the ROI's UTM zone at `export.analysis_scale_m`), so a stage reads cached
+  features on the very pixels it would compute them on live. A per-step asset
+  also carries the count and SHA-256 of the images each of its input
+  collections held (`fmu_input_images`).
+- **Legacy**, for a config whose cache already holds an asset made before round
+  9: `<key>` is the config's fingerprint, a 10-character hash of most of the
+  config (`config_fingerprint()`), and assets are exported with the scale alone,
+  which puts a computed image on a geographic grid. Such a config is read and
+  written exactly as before, so the record of earlier runs stays readable.
+
+`Pipeline(..., use_cache=True)` takes the layout `fmu.pipeline.cache_layout_for`
+finds for the config (it looks for any legacy asset of it), records it in the
+manifest with the reason and each stage's key, and `cache_layout="legacy"` or
+`"per_step"` forces one. A copy of a config under a new name, changing nothing
+else, has no legacy asset, so it gets the per-step layout. Example of the legacy
+layout after running the baseline through clustering, with `<fp>` standing for
+its fingerprint:
 ```
 .../fmu/sanjay_van_baseline/masking/habitat_mask__<fp>
 .../fmu/sanjay_van_baseline/masking/water_mask__<fp>
@@ -199,7 +221,14 @@ the baseline through clustering, with `<fp>` standing for it:
 .../fmu/sanjay_van_baseline/clustering/feature_stack__<fp>
 ```
 
-The merge stage caches nothing.
+The merge stage caches nothing. The k elbow step (`stages/k_elbow.py`, in no
+default run) caches a table, in the per-step layout only.
+
+Every manifest also records the Python environment (`environment`: Python,
+earthengine-api, a pip freeze hash) and, per stage, the images of each input
+collection its outputs were made from (`input_images`: count, SHA-256, and the
+ids when there are at most 100; all ids in the run folder's
+`input_images.json`).
 
 **Tests should leave `use_cache=False`** (the default). The unit tests do.
 
@@ -229,10 +258,13 @@ without changing its `name`, the fingerprint changes and **the next run
 computes and exports new assets beside the old ones; nothing is overwritten
 and the old assets are not read.** Two things follow:
 
-- Editing almost any config block makes every stage of that config recompute.
-  The fingerprint is one hash over the config, not one per stage. The blocks
-  that do not change it are `name`, `description`, `metrics`, and `export`
-  apart from `export.analysis_scale_m`.
+- In the legacy layout, editing almost any config block makes every stage of
+  that config recompute. The fingerprint is one hash over the config, not one
+  per stage. The blocks that do not change it are `name`, `description`,
+  `metrics`, `k_elbow`, and `export` apart from `export.analysis_scale_m`. In
+  the per-step layout only the step that reads the setting and the steps after
+  it recompute; `tests/test_cache_layout.py` fails if a stage reads a setting
+  its key does not cover.
 - Running an unchanged config again reads its assets back. To recompute from
   scratch, see "Re-running a config from scratch" below.
 
@@ -296,7 +328,8 @@ wrapper does this itself). Drawing needs matplotlib
 A second run of the same config is not a reproducibility test: it finds its own
 assets in the cache and reads them back. To recompute every stage, copy the
 config under a new name and change nothing else. The copy has the same
-fingerprint in a fresh asset folder, so nothing is a cache hit.
+fingerprint (and the same per-step keys) in a fresh asset folder, so nothing is
+a cache hit; having no asset of the legacy layout, it runs in the per-step one.
 `configs/<name>_repro.yaml` are such copies of fourteen configs (see
 [configs.md](configs.md)).
 
@@ -305,8 +338,11 @@ Run the copy like any other config, with the inspect scripts or your own driver
 Earth Engine export tasks.
 
 For the Odisha configs the passes run through
-`odisha_script/odisha_phase2_2_run_pipeline.py`, three times per config
-(`--through segmentation`, `clustering`, `export`).
+`odisha_script/odisha_phase2_2_run_pipeline.py`, four times per config
+(`--through features`, `segmentation`, `clustering`, `export`). The first
+caches every feature stage the config needs, and each later one refuses to start
+while any of them is missing, so no pass computes a feature image live that
+another reads from the cache (round 9).
 `odisha_script/run_config_passes.sh` loops over them, and a first pass on an
 empty cache often hits Earth Engine's memory limit; the next pass completes
 from cache. The shell script must never be started again while tasks from an
@@ -366,17 +402,19 @@ Results of the re-runs made so far are in
 
 ### Superpixels depend on whether the features were cached
 
-A cached feature asset sits on a geographic grid, because the cache export is
-given no CRS. Segmentation works on the UTM grid of the ROI. So segmentation
-gives different superpixels when it reads its features from the cache than when
-it draws on features computed live in the same run: by about a quarter of the
-pixels with hand-crafted features, and by one to two per cent with AlphaEarth.
-Which of the two a from-scratch run gets depends on whether its first attempt
-at segmentation succeeds, not on any setting. The measurements are in
-[reproducibility.md](reproducibility.md), "Superpixels depend on whether the
-features were cached when SNIC ran". Nothing in the pipeline has been changed
-for this. Until that is decided, check which route two runs took before
-comparing their stands:
+In the legacy cache layout a cached feature asset sits on a geographic grid,
+because the cache export is given no CRS. Segmentation works on the UTM grid of
+the ROI. So segmentation gives different superpixels when it reads its features
+from the cache than when it draws on features computed live in the same run: by
+about a quarter of the pixels with hand-crafted features, and by one to two per
+cent with AlphaEarth. Which of the two a from-scratch run got depended on
+whether its first attempt at segmentation succeeded, not on any setting. The
+measurements are in [reproducibility.md](reproducibility.md), "Superpixels
+depend on whether the features were cached when SNIC ran". Since round 9 a new
+config gets the per-step layout, whose cache is on the analysis grid, and its
+batch passes cache every feature stage before segmentation reads one (above).
+For the runs made before, check which route two runs took before comparing
+their stands:
 
 ```bash
 # which inputs each run segmented on, read from the run manifests. Offline.
