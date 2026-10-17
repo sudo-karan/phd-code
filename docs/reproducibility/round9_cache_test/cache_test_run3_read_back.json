@@ -1,0 +1,65 @@
+{
+ "what": "run 3: odisha_v120_3ha_squares_kendujhar_keptland_s1desc_r9 again, reading everything back from the cache",
+ "passes": {
+  "features": {
+   "cacheable_outputs": 9,
+   "not_read_from_the_cache": {},
+   "tasks_submitted": 0
+  },
+  "segmentation": {
+   "cacheable_outputs": 10,
+   "not_read_from_the_cache": {},
+   "tasks_submitted": 0
+  },
+  "clustering": {
+   "cacheable_outputs": 13,
+   "not_read_from_the_cache": {},
+   "tasks_submitted": 0
+  }
+ },
+ "read_back": {
+  "stands_merged": {
+   "verdict": "EQUAL",
+   "polygons": {
+    "read_back": 547,
+    "in_the_file": 547
+   },
+   "numbers_only_in_one": 0,
+   "polygons_with_a_property_that_differs": 0,
+   "polygons_whose_outline_differs": 0,
+   "examples": [],
+   "equal": true
+  },
+  "stands_snic": {
+   "verdict": "EQUAL",
+   "polygons": {
+    "read_back": 2749,
+    "in_the_file": 2749
+   },
+   "numbers_only_in_one": 0,
+   "polygons_with_a_property_that_differs": 0,
+   "polygons_whose_outline_differs": 0,
+   "examples": [],
+   "equal": true
+  },
+  "stands_dissolved": {
+   "verdict": "EQUAL",
+   "polygons": {
+    "read_back": 111,
+    "in_the_file": 111
+   },
+   "numbers_only_in_one": 0,
+   "polygons_with_a_property_that_differs": 0,
+   "polygons_whose_outline_differs": 0,
+   "examples": [],
+   "equal": true
+  }
+ },
+ "read_back_tasks_submitted": 0,
+ "exactly_equal_to_run_1": {
+  "stands_merged": true,
+  "stands_snic": true,
+  "stands_dissolved": true,
+  "how": "every polygon's geometry and every property value equal, compared as parsed JSON"
+ }
+}
