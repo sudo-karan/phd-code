@@ -102,3 +102,23 @@ def test_a_plot_near_a_stand_in_pieces_takes_the_nearest_pieces_type(tmp_path):
     layer.write_text(json.dumps({"type": "FeatureCollection", "features": feats}))
     j = K.join(_plots({"near_second": (85.0041, 21.0005)}), layer, K.REACH_M).set_index("plot_key")
     assert (j.loc["near_second", "sid"], j.loc["near_second", "how"], j.loc["near_second", "cluster"]) == (5, "within", 3.0)
+
+
+def test_the_runs_scored_are_named_by_a_pattern_and_default_to_the_declared_ones():
+    """Round 10: --runs and --stem score the _r9 re-runs and the AlphaEarth arm into files of
+    their own; the defaults are the declaration's _s1desc runs and its file names."""
+    assert K.run_id("angul") == "odisha_v120_3ha_squares_angul_keptland_s1desc"
+    assert K.run_id("koraput", "odisha_alphaearth_3ha_squares_{district}_keptland_r9") == (
+        "odisha_alphaearth_3ha_squares_koraput_keptland_r9")
+    assert K.runs_label(K.RUNS) == "the _s1desc runs"
+    assert K.runs_label("odisha_v120_3ha_squares_{district}_keptland_s1desc_r9") == (
+        "the runs odisha_v120_3ha_squares_<district>_keptland_s1desc_r9")
+    with pytest.raises(SystemExit):
+        K.main(["--runs", "no_placeholder"])
+
+
+def test_the_run_record_is_named_by_the_stem(tmp_path, monkeypatch):
+    K.write_run_record(tmp_path, ["--stem", "keptland_s1desc_r9"], "keptland_s1desc_r9")
+    record = json.loads((tmp_path / "keptland_s1desc_r9_scores_run.json").read_text())
+    assert record["result_files"] == ["keptland_s1desc_r9_joined.csv", "keptland_s1desc_r9_scores.json",
+                                      "keptland_s1desc_r9_scores.txt"]
