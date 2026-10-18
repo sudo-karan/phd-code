@@ -167,3 +167,13 @@ exists.
   the primary score's log there. Nothing in this arm is Claude Code's choice, and nothing in it was
   chosen from a score: the copy, the one change and k = 5 are the brief's, and the AlphaEarth
   settings (the 64 bands, the mean over 2017 to 2022) are Sanjay Van's.
+
+## Note of 19 Oct 2026 (round 11): which scores are the record
+
+Since 18 Oct 2026 (Jaskaran's answer to question 1 of `docs/handoff/2026-10-18-round10.md`; register
+entry `field-keptland-scores-of-record-are-the-r9-re-runs`) the scores of record are those on the
+`_r9` stands: the primary's re-runs (`keptland_scores/keptland_s1desc_r9_scores.*`) and the
+AlphaEarth arm (`keptland_scores/keptland_alphaearth_r9_scores.*`). The scores on the runs of 15 Oct
+(`keptland_scores/keptland_s1desc_scores.*`) stay as history. Kept-land scores existed when this
+note was written: those of round 7, of the `_r9` re-runs and of the AlphaEarth arm, the chance test's
+rehearsal and its declared results on both arms. Nothing declared above is changed.

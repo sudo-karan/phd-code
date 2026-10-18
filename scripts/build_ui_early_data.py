@@ -1066,7 +1066,9 @@ def main() -> None:
                 "note": (SANJAY_NOTE + " " if sanjay else "") + "SNIC and the merge saw kept "
                         "land only (trees or scrub): the rest of the "
                         + ("rectangle" if sanjay else "boxes") + " is in no stand."
-                        + (" Its radar comes from the descending Sentinel-1 orbit."
+                        + (" Its radar comes from the descending Sentinel-1 orbit. Its field-check "
+                           "scores here are round 7's, kept as history: the record is the scores on "
+                           "its _r9 re-run, which this site does not show."
                            if run_id.endswith("_s1desc") else "")
                         + (MEANS_NOTE.format(run=run_id) if stand_means(run_id, vec) else ""),
                 "files": files})
@@ -1143,7 +1145,12 @@ def fes_rows() -> dict:
         "villages, a real but modest agreement could go undetected.")
     rows += keptland_rows(tests)
     return {"label": "Phase 3 numbers (September 2026 runs), the 13 October re-runs' scores, and the "
-                     "15 October kept-land runs' scores, numbers only (their chance test is not run). "
+                     "15 October kept-land runs' scores, numbers only (the declared chance test was not "
+                     "run on these stands). The kept-land record is the scores on those runs' _r9 "
+                     "re-runs (odisha_script/keptland_scores/keptland_s1desc_r9_scores.json, their "
+                     "declared chance test in keptland_s1desc_r9_chance.txt; register entry "
+                     "field-keptland-scores-of-record-are-the-r9-re-runs), which are not in ui_data; "
+                     "the 15 October scores here stay as history. "
                      "Claude Code re-scores the demo set, both arms (brief A4).",
             "reading": reading, "rows": rows}
 

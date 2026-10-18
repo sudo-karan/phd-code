@@ -26,6 +26,10 @@ name, size in bytes, SHA-256 and where it is (on the Mac, under `outputs/keptlan
 `scripts/build_ui_early_data.py` and `odisha_script/odisha_keptland_score.py` read such a file there,
 after checking its SHA-256.
 
+**Note of 19 Oct 2026 (round 11):** the field check's scores of record are now those on these runs'
+`_r9` copies, run again from empty caches (`docs/reproducibility/r9_runs/`; register entry
+`field-keptland-scores-of-record-are-the-r9-re-runs`); the scores on these runs stay as history.
+
 Per run `<run>`:
 
 - `<run>_stands_merged.geojson`, `<run>_stands_snic.geojson`, `<run>_stands_dissolved.geojson`:
