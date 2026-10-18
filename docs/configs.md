@@ -503,12 +503,18 @@ a two-tier threshold scheme.
 
 - `enabled`: run the merge stage (default `true`).
 - `criteria`: mapping of band name to tolerance, **in the band's own physical
-  units**. Defaults `{canopy_height: 2.00, ndvi_amplitude_annual: 0.030}` — two
-  of Xiong's three axes (stand height and species), using the closest analogue
-  available without ALS or a species map. His third, canopy closure, is **not
-  covered**: it was carried by `canopy_height_std` until the Odisha field
-  validation measured that band at R²=0.000 against crown cover, so the axis was
-  nominal rather than real. See `docs/datasets.md`. Measured from this AOI's own
+  units**. Defaults `{canopy_height: 2.00, ndvi_amplitude_annual: 0.030}`, the
+  closest analogues available without ALS or a species map. Xiong's merging rule
+  (Eq. 1) has five conditions: the pair's area under the maximum, the same
+  dominant species, canopy closure within 0.2, dominant-species proportion
+  within TP1 and mean height within SH1; the eliminating rule (Eq. 2) drops
+  closure and relaxes TP and SH. FMU has analogues of three: `max_area_ha` for
+  the area bound, `canopy_height` for the stand height and
+  `ndvi_amplitude_annual` for the species proportion. It has **none for closure
+  or for the same species**. Closure was carried by `canopy_height_std` until
+  the Odisha field validation measured that band at R²=0.000 against crown
+  cover, so the analogue was nominal rather than real. See `docs/datasets.md`.
+  Measured from this AOI's own
   adjacent-superpixel difference distribution (1249 superpixels, 3569 adjacent
   pairs, in the run the tolerances were set on). Demo set, 13 Oct 2026: 1,298
   superpixels and 3,615 adjacent pairs; `canopy_height` differences have a

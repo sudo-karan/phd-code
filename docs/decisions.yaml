@@ -1728,7 +1728,7 @@ decisions:
       Module docstring paragraph on canopy_height_std; second reader: docstring lines 19-26
   - path: tests/test_merge_config.py
     what: >-
-      test_default_criteria_are_two_of_xiongs_three_axes; second reader: test_default_criteria_are_two_of_xiongs_three_axes
+      test_default_criteria_are_analogues_of_two_of_xiongs_merge_conditions; second reader: test_default_criteria_are_analogues_of_two_of_xiongs_merge_conditions
   - path: tests/test_segmentation_inputs.py
     what: test_default_input_bands.
   - path: odisha_script/odisha_phase1_results.txt
@@ -2146,7 +2146,7 @@ decisions:
       docstring lines 31-38
   - path: tests/test_merge_config.py
     what: >-
-      test_shipped_configs_share_the_merge_rules, test_default_criteria_are_two_of_xiongs_three_axes;
+      test_shipped_configs_share_the_merge_rules, test_default_criteria_are_analogues_of_two_of_xiongs_merge_conditions;
       second reader: test_shipped_configs_share_the_merge_rules (covers configs/sanjay_van_*.yaml)
   - path: tests/test_embedding_arm.py
     what: >-
@@ -2171,7 +2171,9 @@ decisions:
       manual delineation and 'multi-scale segmentation' on explained variance of mean canopy height; the
       repo cites the paper as the design it follows, so 'used' is the claim recorded. In this entry the
       repo cites it for: the merge design (section 2.6: two passes, hard area bounds, two-tier thresholds)
-      and three merge axes, of which the two default criteria are the closest analogues of two. The repo
+      and three merge axes, of which the two default criteria are the closest analogues of two (until 19 Oct
+      2026; since round 12 the MergeParams docstring and the test cite Eq. 1's five conditions instead,
+      spec-merge-comment-states-xiong-eq1-exactly). The repo
       does not cite it for holding the rule identical across arms. Check of that claim: Two passes (2.6.1
       merge, 2.6.2 eliminate), hard area bounds and two-tier thresholds: confirmed by both verifiers.
       Three merge axes (stand height, dominant-species proportion, canopy closure): confirmed for the
@@ -2577,9 +2579,11 @@ decisions:
   title: 'Default merge criteria: canopy height (2.00 m) and annual NDVI amplitude (0.030)'
   decision: >-
     By default two neighbouring patches may merge only if their mean ETH canopy height differs by at most
-    2.00 m and their mean annual NDVI amplitude (seasonal swing) by at most 0.030. These stand in for
-    two of Xiong's three axes: stand height and dominant-species proportion. His third axis, canopy closure,
-    is not covered.
+    2.00 m and their mean annual NDVI amplitude (seasonal swing) by at most 0.030. Xiong's merging rule (Eq. 1)
+    has five conditions: the pair's area under the maximum, the same dominant species, canopy closure within
+    0.2, dominant-species proportion within TP1 and mean height within SH1; the eliminating rule (Eq. 2) drops
+    closure and relaxes TP and SH. The two criteria stand in for mean height and dominant-species proportion,
+    and max_area_ha for the area bound. The pipeline has no analogue of closure or of the same species.
   alternatives_considered:
   - >-
     canopy_height_std as a third criterion for canopy closure: was a default, removed after the Odisha
@@ -2594,7 +2598,9 @@ decisions:
     of relief and a within-cluster elevation spread of 10-12 m, so two structurally identical patches
     would refuse to merge over 10 m of altitude; terrain is a site variable, not a forest-condition variable.
     Radar is off because no paper in the 20-paper survey uses radar for stand delineation, so it would
-    be a novelty claim; the comment says to add it and report the ablation.
+    be a novelty claim; the comment says to add it and report the ablation. The decision text was restated on
+    19 Oct 2026 (round 12) to give Xiong's merging rule (Eq. 1) exactly, in place of "two of Xiong's three
+    axes"; the defaults did not change (spec-merge-comment-states-xiong-eq1-exactly).
   evidence:
   - path: src/fmu/config.py
     what: >-
@@ -2602,7 +2608,7 @@ decisions:
       467-490
   - path: tests/test_merge_config.py
     what: >-
-      test_default_criteria_are_two_of_xiongs_three_axes, test_elevation_is_not_a_default_criterion, test_radar_criterion_is_off_by_default,
+      test_default_criteria_are_analogues_of_two_of_xiongs_merge_conditions, test_elevation_is_not_a_default_criterion, test_radar_criterion_is_off_by_default,
       test_accepts_optional_radar_criterion
   - path: docs/configs.md
     what: merge criteria, lines 453-482
@@ -2623,7 +2629,9 @@ decisions:
       score the result with explained variance and IoU. The abstract also reports their method beating
       manual delineation and 'multi-scale segmentation' on explained variance of mean canopy height; the
       repo cites the paper as the design it follows, so 'used' is the claim recorded. In this entry the
-      repo cites it for: three merge axes: stand height, dominant-species proportion and canopy closure.
+      repo cites it for: three merge axes: stand height, dominant-species proportion and canopy closure
+      (until 19 Oct 2026; since round 12 the MergeParams docstring and the test cite Eq. 1's five conditions
+      instead, spec-merge-comment-states-xiong-eq1-exactly).
       Check of that claim: Three merge axes (stand height, dominant-species proportion, canopy closure):
       confirmed for the merge rule by the verifier who read the equation images (Eq. 1 also requires the
       same dominant species; canopy closure uses a fixed 0.2 and is absent from the eliminate rule). The
@@ -3661,7 +3669,9 @@ decisions:
   - path: odisha_script/odisha_phase1_9_results.txt
     what: 'GEDI re-sampled: coverage 10 to 89 plots, R² 0.404 to 0.088'
   - path: src/fmu/config.py
-    what: 'lines 529-533: the closure axis is an admitted gap'
+    what: >-
+      MergeParams docstring, lines 526-527 and 537-541 (lines 529-533 until 19 Oct 2026, round 12): closure has no
+      analogue, an admitted gap; replacing canopy_height_std is an open question
   - path: odisha_script/odisha_phase1_12_radar_descending_results.txt
     what: >-
       Test 5 on the descending orbit, and on the ascending orbit with and without the 146 plots of zero spread
@@ -5948,7 +5958,8 @@ decisions:
     numbers on their stands are the kept-land check's descriptive box_runs analysis (round 7), and the code written for
     the declared check in round 2 was never committed or reviewed. From round 3 on the rounds moved to kept land. The
     answer does not say whether the four box runs stay marked fes_declared in ui_data/index.json; they do for now
-    (question 3 of docs/handoff/2026-10-18-round11.md). No paper was searched for this decision.
+    (question 3 of docs/handoff/2026-10-18-round11.md). Answered on 19 Oct 2026 (round 12): they stay marked
+    (field-box-runs-keep-fes-declared). No paper was searched for this decision.
   evidence:
   - path: docs/handoff/2026-10-16-round8.md
     what: Task 3 (the box runs' declared scores were never computed) and questions 1 and 2, with their options
@@ -5962,3 +5973,157 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 18 Oct 2026 (round 11 brief)
+- id: field-box-runs-beside-the-r9-record-reported-without-a-reading
+  title: >-
+    Beside the 13 Oct box runs, the kept-land record's differences are reported and no reading is made of them
+  decision: >-
+    On the record of the kept-land field check (the scores on the _r9 stands,
+    field-keptland-scores-of-record-are-the-r9-re-runs), the five scores' differences from the 13 Oct box runs on the
+    same 264 plots (each arm's primary analysis minus its box_runs analysis, in the arm's scores file; the box runs'
+    labelling scores, 4 and 5, are on 263, one Koraput plot's box stand having no type) are reported as a table, and
+    no reading is made of them: neither round 7's "no clear rise" nor a rise. Kept-land run minus box run,
+    scores 1 to 5 (drawing ARI on all plots, drawing ARI on stands of two or more plots, same-stand pair precision,
+    labelling ARI as the plot-weighted mean over districts, far-apart gap), to four decimals: hand-crafted _r9
+    +0.0017, +0.0052, +0.0105,
+    -0.0035, +0.0189; AlphaEarth _r9 +0.0002, +0.0004, -0.0055, -0.0092, +0.0122; round 7, kept as history, -0.0003,
+    -0.0046, -0.0493, -0.0064, +0.0053. No difference is tested.
+  alternatives_considered:
+  - >-
+    No clear rise on the record either (option (a) of question 1 of docs/handoff/2026-10-18-round11.md): not chosen
+  - >-
+    Report a rise in scores 3 and 5 of the hand-crafted arm and in score 5 of the AlphaEarth arm, descriptive only
+    (option (b)): not chosen
+  rationale: >-
+    Jaskaran's answer (c) to question 1 of docs/handoff/2026-10-18-round11.md, 19 Oct 2026 (the round 12 brief): "Box
+    runs against _r9: (c). Report the table of differences and make no reading of them." The kept-land declaration
+    sets each district's box run beside the kept-land run, descriptive only, with "No test of the difference", and,
+    in its section on what Claude (chat) expects, says that "A clear rise in any score would be a change of
+    conclusion and is reported as one, but without the chance test it cannot be called more than chance"
+    (odisha_script/PHASE_KEPTLAND_PREDECLARED.md); it sets no size for "clear". Round 7's 0.006 described its own row and was not a declared size, so a reading of the record's rows
+    would be a judgement made with the numbers in view; and the box runs are a descriptive comparison only
+    (field-box-runs-a-descriptive-comparison-only). Round 12 recomputed the fifteen differences from the three
+    committed scores files and found round 11's table exact. In neither _r9 arm can any score be called more than
+    chance (every Holm p 1.000, keptland_s1desc_r9_chance.json and keptland_alphaearth_r9_chance.json). No paper was
+    searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-18-round11.md
+    what: Question 1, with its table and its three options
+  - path: docs/handoff/2026-10-19-round12.md
+    what: Jaskaran's answer, as given, and the table recomputed from the scores files (Task 1)
+  - path: odisha_script/keptland_scores/keptland_s1desc_r9_scores.json
+    what: The hand-crafted arm's primary and box_runs analyses
+  - path: odisha_script/keptland_scores/keptland_alphaearth_r9_scores.json
+    what: The AlphaEarth arm's primary and box_runs analyses
+  - path: odisha_script/keptland_scores/keptland_s1desc_scores.json
+    what: Round 7's primary and box_runs analyses, kept as history
+  - path: odisha_script/PHASE_KEPTLAND_PREDECLARED.md
+    what: '"Beside the box runs, descriptive only", and the sentence on a clear rise'
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 12 brief)
+- id: spec-merge-comment-states-xiong-eq1-exactly
+  title: >-
+    The merge settings' comment gives Xiong's merging rule (Eq. 1) exactly, canopy closure among its five conditions
+  decision: >-
+    The comment on the merge settings, the MergeParams docstring in src/fmu/config.py (a Locked module), no longer calls
+    canopy closure Xiong's "third axis". It says: "Xiong's merging rule (Eq. 1) has five conditions: the pair's area
+    under the maximum, the same dominant species, canopy closure within 0.2, dominant-species proportion within TP1
+    and mean height within SH1; the eliminating rule (Eq. 2) drops closure and relaxes TP and SH. FMU has analogues of
+    three: max_area_ha for the area bound, canopy_height for the stand height and ndvi_amplitude_annual for the
+    species proportion. It has none for closure or for the same species." docs/configs.md (the merge criteria), the
+    decision text of spec-merge-default-criteria, and the name and docstring of the test that pins the default
+    criteria say the same; the test is now
+    test_default_criteria_are_analogues_of_two_of_xiongs_merge_conditions (tests/test_merge_config.py), and the
+    three other entries that named it (dn-snic-canopy-height-std-removed, dn-merge-criteria-identical-across-arms,
+    spec-merge-default-criteria) name it so. A comment only: no setting, default or behaviour changed.
+  alternatives_considered:
+  - >-
+    Leave the comment as it is (option (a) of question 2 of docs/handoff/2026-10-18-round11.md): not chosen
+  - >-
+    Use round 11's brief's wording, that canopy closure is computed per segment but is not a merge rule (option (c)):
+    not chosen
+  rationale: >-
+    Jaskaran's answer (b) to question 2 of docs/handoff/2026-10-18-round11.md, 19 Oct 2026 (the round 12 brief): "Xiong
+    comment: (b). Make it exact, keeping closure as a merge condition, with the wording option (b) proposes. Comment
+    only: prove it inert (config fingerprints, the gate tests), and bring docs/configs.md, the decision text of
+    spec-merge-default-criteria, and the test's name and docstring into line. A register entry for the Locked module,
+    as MODULES.md asks." The wording is option (b)'s, with "his" four times replaced by "the", the
+    paper having several authors. Round 11 read the version of record (Silva Fennica 58(2), article 23014: the
+    publisher's PDF and the images of the equations on its web page) and the authors' code: Eq. 1 (section 2.6.1) is
+    five conditions, among them canopy closure within 0.2, and merges a segment with the neighbour "which meets all
+    the above conditions"; Eq. 2 (section 2.6.2) has no closure term; the thresholds are SH1 3, TP1 0.2, SH2 5 and TP2
+    0.5 (section 4.1). The old comment's core claim agreed with Eq. 1, but "axis" put closure on a par with height and
+    species proportion and the comment left out the same-species condition. Proof that the change is inert, against
+    the commit before it: the legacy fingerprint, the per-step cache keys and the loaded settings of all 63 configs in
+    configs/, and MergeParams()'s defaults, are the same before and after; src/fmu/config.py's syntax tree with its
+    docstrings removed is unchanged; and the gate passes. Crossref (https://api.crossref.org/works/10.14214/sf.23014),
+    read again on 19 Oct 2026, gives the paper's title and Hao Xiong as its first person author, and lists no
+    correction.
+  evidence:
+  - path: src/fmu/config.py
+    what: The MergeParams docstring
+  - path: docs/configs.md
+    what: The merge section, criteria
+  - path: tests/test_merge_config.py
+    what: test_default_criteria_are_analogues_of_two_of_xiongs_merge_conditions, its name and docstring
+  - path: docs/handoff/2026-10-18-round11.md
+    what: Fix 1, the reading of the paper and of the authors' code; question 2, with its three options
+  - path: docs/handoff/2026-10-19-round12.md
+    what: Jaskaran's answer, as given, and the proof that the change is inert (Task 1)
+  - path: MODULES.md
+    what: config.py is Locked; a change to a Locked module needs an entry in this register
+  papers:
+  - doi: 10.14214/sf.23014
+    title: Forest stand delineation using airborne LiDAR and hyperspectral data
+    first_author: Xiong
+    year: 2024
+    verified: true
+    supports: used
+    supports_what: >-
+      The merging rule (Eq. 1) and the eliminating rule (Eq. 2) that the comment states. Read in round 11 from the
+      version of record: the publisher's PDF (Eq. 1 on page 7, Eq. 2 on page 8, the thresholds in section 4.1) and
+      the images of the equations on the publisher's web page; the five conditions of Eq. 1 and the absence of a
+      closure term in Eq. 2 were checked there. Crossref's author list starts with an institution deposited as an
+      author; the first person listed is Hao Xiong, marked first.
+    cited_in: >-
+      src/fmu/config.py (MergeParams docstring); docs/configs.md (merge criteria); tests/test_merge_config.py
+      (docstring of test_default_criteria_are_analogues_of_two_of_xiongs_merge_conditions)
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 12 brief)
+- id: field-box-runs-keep-fes-declared
+  title: >-
+    The four 13 Oct box runs stay marked fes_declared in the site's data
+  decision: >-
+    The four Odisha box runs of 13 Oct 2026 (odisha_v120_3ha_squares_<district>) stay marked fes_declared: true in
+    ui_data/index.json, so the page keeps showing their plots in their stands, the pairs and the table of stand type
+    against field type, a descriptive view; its card on the chance test says the test is not run and will not be.
+    Nothing changes.
+  alternatives_considered:
+  - >-
+    Unmark the four runs (option (b) of question 3 of docs/handoff/2026-10-18-round11.md), as round 8 recommended and
+    PR #48's option (b) said: not chosen
+  rationale: >-
+    Jaskaran's answer (a) to question 3 of docs/handoff/2026-10-18-round11.md, 19 Oct 2026 (the round 12 brief): "Box
+    runs keep fes_declared: (a). No change." The view is descriptive, which the answer on the box runs keeps
+    (field-box-runs-a-descriptive-comparison-only), and the page says that no test is coming. Against it, round 11
+    noted a flag named "declared" on runs whose declared check is not run, and a departure from round 8's
+    recommendation. No paper was searched for this decision.
+  evidence:
+  - path: ui_data/index.json
+    what: The four box runs, each with fes_declared true
+  - path: scripts/build_ui_early_data.py
+    what: >-
+      The builder that sets the flag ("fes_declared": box)
+  - path: ui/explorer.html
+    what: >-
+      comparable() reads fes_declared; the box runs' card on the chance test ("Not tested, and it won't be")
+  - path: docs/handoff/2026-10-18-round11.md
+    what: Question 3, with its two options
+  - path: docs/handoff/2026-10-19-round12.md
+    what: Jaskaran's answer, as given (Task 1)
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 12 brief)
