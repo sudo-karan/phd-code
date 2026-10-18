@@ -13,8 +13,11 @@ Offline; reads committed files only: the two scores files written by odisha_kept
 Writes one Markdown file of results: the scores of every analysis, old, new and new minus old;
 how the plots join, per district; and per district the superpixels, the stands, the stand
 polygons and the stands below the minimum size, and the same counts for each run named by
---pair (runs that are not scored, such as Sanjay Van's). No test of any difference is made, as
-the declaration makes none (odisha_script/PHASE_KEPTLAND_PREDECLARED.md). No dates.
+--pair (runs that are not scored, such as Sanjay Van's). With --plots, also the plots one side
+scores and the other does not, by name and district (from the two <stem>_joined.csv files), as the
+AlphaEarth arm's declaration asks; --diff-label names the difference column, for two arms rather
+than two runs of one. No test of any difference is made, as the declaration makes none
+(odisha_script/PHASE_KEPTLAND_PREDECLARED.md). No dates.
 """
 
 from __future__ import annotations
@@ -54,8 +57,36 @@ def run_counts(records: Path, run: str) -> dict[str, Any]:
             "regions": (layers.get("stands_dissolved") or {}).get("n_features")}
 
 
+def plots_scored(joined: Any) -> dict[str, set[str]]:
+    """The plots each side scores: by the declared join (covered, or within 30 m), and covered only."""
+    return {"scored (the join with the 30 m rule)": set(joined.loc[joined["how"] != "none", "plot_key"]),
+            "covered by a stand (no 30 m rule)": set(joined.loc[joined["how"] == "covered", "plot_key"])}
+
+
+def plot_lines(old_joined: Any, new_joined: Any, labels: tuple[str, str]) -> list[str]:
+    """Which plots one side scores and the other does not, per district, each named."""
+    lo, ln = labels
+    district = dict(zip(new_joined["plot_key"], new_joined["district"], strict=True))
+    district.update(zip(old_joined["plot_key"], old_joined["district"], strict=True))
+    lines = ["", "## The plots each side scores", ""]
+    for what, olds in plots_scored(old_joined).items():
+        news = plots_scored(new_joined)[what]
+        only_old, only_new = sorted(olds - news), sorted(news - olds)
+        lines.append(f"- {what}: {len(olds)} ({lo}), {len(news)} ({ln}), {len(olds & news)} in both.")
+        for side, keys in ((lo, only_old), (ln, only_new)):
+            if keys:
+                by_d: dict[str, list[str]] = {}
+                for k in keys:
+                    by_d.setdefault(district[k], []).append(k)
+                named = "; ".join(f"{d} {len(v)}: {', '.join(v)}" for d, v in sorted(by_d.items()))
+                lines.append(f"  - only {side}: {named}")
+            else:
+                lines.append(f"  - only {side}: none")
+    return lines
+
+
 def compare(old: dict[str, Any], new: dict[str, Any], old_counts: dict[str, dict], new_counts: dict[str, dict],
-            labels: tuple[str, str]) -> str:
+            labels: tuple[str, str], diff_label: str = "new minus old", extra: list[str] | None = None) -> str:
     """The Markdown text. The count dicts are keyed by district, then by any other run compared."""
     lo, ln = labels
     lines = [f"# The kept-land field check: {ln} against {lo}", "",
@@ -63,7 +94,7 @@ def compare(old: dict[str, Any], new: dict[str, Any], old_counts: dict[str, dict
              "records. Numbers only: as the declaration fixes, no chance test is run and no difference is",
              "tested (`odisha_script/PHASE_KEPTLAND_PREDECLARED.md`).", "",
              "## The five scores", "",
-             "| Analysis | Score | " + lo + " | " + ln + " | new minus old |", "|---|---|---|---|---|"]
+             "| Analysis | Score | " + lo + " | " + ln + " | " + diff_label + " |", "|---|---|---|---|---|"]
     by_old = {a["analysis"]: a for a in old["analyses"]}
     for a in new["analyses"]:
         o = by_old.get(a["analysis"])
@@ -105,7 +136,7 @@ def compare(old: dict[str, Any], new: dict[str, Any], old_counts: dict[str, dict
     for label, scores in ((lo, old), (ln, new)):
         for run, sha in sorted(scores["inputs_sha256"].items()):
             lines.append(f"| {label} | `{run}` | `{sha}` |")
-    return "\n".join(lines) + "\n"
+    return "\n".join(lines + (extra or [])) + "\n"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -120,6 +151,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--new-label", default="new")
     ap.add_argument("--pair", nargs=2, action="append", default=[], metavar=("OLD_RUN", "NEW_RUN"),
                     help="another run whose stand counts are compared (not scored); repeatable")
+    ap.add_argument("--diff-label", default="new minus old", help="the heading of the difference column")
+    ap.add_argument("--plots", action="store_true",
+                    help="also name the plots one side scores and the other does not (from the <stem>_joined.csv files)")
     ap.add_argument("--out", type=Path, required=True)
     args = ap.parse_args(argv)
     old = json.loads((SCORES / f"{args.old_stem}_scores.json").read_text())
@@ -129,7 +163,14 @@ def main(argv: list[str] | None = None) -> int:
     for old_run, new_run in args.pair:
         oc[old_run] = run_counts(args.old_records, old_run)
         nc[old_run] = run_counts(args.new_records, new_run)
-    text = compare(old, new, oc, nc, (args.old_label, args.new_label))
+    labels = (args.old_label, args.new_label)
+    extra = None
+    if args.plots:
+        import pandas as pd
+
+        extra = plot_lines(pd.read_csv(SCORES / f"{args.old_stem}_joined.csv"),
+                           pd.read_csv(SCORES / f"{args.new_stem}_joined.csv"), labels)
+    text = compare(old, new, oc, nc, labels, args.diff_label, extra)
     if args.out.exists():
         raise SystemExit(f"{args.out} exists: write a new file, never over an old one")
     args.out.write_text(text)

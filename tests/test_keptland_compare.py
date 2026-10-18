@@ -92,3 +92,30 @@ def test_a_pair_adds_the_stand_counts_of_a_run_that_is_not_scored(two_sets):
     C.main([*args, "--pair", "sanjay", "sanjay_r9"])
     text = (tmp_path / "out.md").read_text()
     assert "| sanjay | 200, 220 | 40, 44 | 41, 45 | 3, 3 | 202, 222 | 10, 11 |" in text
+
+
+def test_the_difference_column_takes_a_label(two_sets):
+    tmp_path, args = two_sets
+    C.main([*args, "--diff-label", "AlphaEarth minus hand-crafted"])
+    text = (tmp_path / "out.md").read_text()
+    assert "| Analysis | Score | old | new | AlphaEarth minus hand-crafted |" in text
+    assert "new minus old" not in text
+
+
+def test_the_plots_one_side_scores_and_the_other_does_not_are_named(two_sets):
+    tmp_path, args = two_sets
+    header = "plot_key,district,how\n"
+    (tmp_path / "old_joined.csv").write_text(header + "p1,ANGUL,covered\np2,ANGUL,within\np3,KORAPUT,none\n")
+    (tmp_path / "new_joined.csv").write_text(header + "p1,ANGUL,covered\np2,ANGUL,none\np3,KORAPUT,covered\n")
+    C.main([*args, "--plots"])
+    text = (tmp_path / "out.md").read_text()
+    assert "- scored (the join with the 30 m rule): 2 (old), 2 (new), 1 in both." in text
+    assert "  - only old: ANGUL 1: p2" in text
+    assert "  - only new: KORAPUT 1: p3" in text
+    assert "- covered by a stand (no 30 m rule): 1 (old), 2 (new), 1 in both." in text
+
+
+def test_without_the_plots_option_no_plot_is_read(two_sets):
+    tmp_path, args = two_sets
+    C.main(args)
+    assert "The plots each side scores" not in (tmp_path / "out.md").read_text()
