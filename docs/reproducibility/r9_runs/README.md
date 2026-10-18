@@ -14,6 +14,7 @@ strips run times. Timings are in the logs on the Mac (`outputs/round10/logs/`), 
 | `odisha_v120_3ha_squares_kendujhar_keptland_s1desc_r9` | `odisha_v120_3ha_squares_kendujhar_keptland_s1desc` | `fb8e8ce` | 2,747 | 547 | 547 |
 | `odisha_v120_3ha_squares_koraput_keptland_s1desc_r9` | `odisha_v120_3ha_squares_koraput_keptland_s1desc` | `acb5f8d` | 8,743 | 1,616 | 1,616 |
 | `sanjay_van_baseline_keptland_r9` | `sanjay_van_baseline_keptland` | `acb5f8d` | 1,205 | 583 | 578 |
+| `sanjay_van_alphaearth_keptland_r9` | `sanjay_van_alphaearth_keptland` | `acb5f8d` | 1,205 | 565 | 560 |
 
 Kendujhar's re-run is round 9's Task D run 1 (`docs/reproducibility/round9_cache_test/`): its
 files here are byte-for-byte copies of those, so that the field check reads all four districts
