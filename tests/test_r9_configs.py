@@ -34,7 +34,13 @@ ALPHAEARTH: dict[str, tuple[str, set[tuple[str, ...]]]] = {
     )
     for d in DISTRICTS
 }
-NOT_NAME_ONLY: dict[str, tuple[str, set[tuple[str, ...]]]] = {**ALPHAEARTH}
+# Task I: the district cost pilot, the Angul _r9 config on one 10 km tile; only the ROI changes.
+TILE = "odisha_v120_3ha_tile10km_angul_keptland_s1desc_r9"
+TILE_SOURCE = "odisha_v120_3ha_squares_angul_keptland_s1desc_r9"
+NOT_NAME_ONLY: dict[str, tuple[str, set[tuple[str, ...]]]] = {
+    **ALPHAEARTH,
+    TILE: (TILE_SOURCE, {("description",), ("roi", "name"), ("roi", "roi_file")}),
+}
 
 
 def _source(stem: str) -> str:
@@ -114,3 +120,29 @@ def test_an_alphaearth_copy_shares_the_steps_the_features_do_not_touch(stem: str
     for step in ("masking", "data_load", "features_optical", "features_structure"):
         assert mine[step] == theirs[step], step
     assert mine["segmentation"] != theirs["segmentation"]
+
+
+def test_the_tile_copy_changes_only_the_roi():
+    mine = _loaded_difference(CONFIGS / f"{TILE_SOURCE}.yaml", CONFIGS / f"{TILE}.yaml")
+    assert mine == {("name",), ("description",), ("roi", "name"), ("roi", "roi_file")}
+
+
+def test_the_tile_is_the_declared_square():
+    """10 km by 10 km, north-up in EPSG:32645, centred on the centroid of the union of the Angul boxes."""
+    import json
+
+    pytest.importorskip("shapely")
+    from pyproj import Transformer
+    from shapely.geometry import shape
+    from shapely.ops import transform, unary_union
+
+    to_utm = Transformer.from_crs(4326, 32645, always_xy=True).transform
+    boxes = json.loads((REPO / "aois" / "odisha_squares_angul.geojson").read_text())
+    centre = transform(to_utm, unary_union([shape(f["geometry"]) for f in boxes["features"]])).centroid
+    tile_fc = json.loads((REPO / load_config(CONFIGS / f"{TILE}.yaml").roi.roi_file).read_text())
+    assert len(tile_fc["features"]) == 1
+    tile = transform(to_utm, shape(tile_fc["features"][0]["geometry"]))
+    x0, y0, x1, y1 = tile.bounds
+    assert abs(x1 - x0 - 10_000) < 0.01 and abs(y1 - y0 - 10_000) < 0.01
+    assert abs(tile.area - 1e8) < 1e2  # a square, not a rotated or bent one
+    assert abs((x0 + x1) / 2 - centre.x) < 0.01 and abs((y0 + y1) / 2 - centre.y) < 0.01
