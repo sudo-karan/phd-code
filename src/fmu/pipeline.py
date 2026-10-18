@@ -268,7 +268,7 @@ class StageRecord:
     # the cache asset each belongs at, when caching is on) and its summary numbers.
     transparency: dict[str, Any] = field(default_factory=dict)
     # What follows `__` in the names of the stage's cached assets in this run's
-    # cache layout. None with caching off.
+    # cache layout. None with caching off, and for a stage that caches nothing.
     cache_key: str | None = None
     # The images of each input collection the stage's outputs were made from,
     # per cacheable output (or under "live" with caching off): computed in this
@@ -567,7 +567,8 @@ class Pipeline:
                 for t in export_tasks
             ],
             transparency=transparency,
-            cache_key=self._cache_key(config, name) if self.use_cache else None,
+            # None for a stage that caches nothing: no asset carries its key.
+            cache_key=self._cache_key(config, name) if self.use_cache and cacheable else None,
             input_images=input_images,
         )
 

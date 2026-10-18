@@ -343,3 +343,23 @@ def test_the_grid_args_come_from_the_analysis_grid():
                return_value={"type": "Projection", "crs": "EPSG:32644", "transform": [10, 0, 0, 0, 10, 0]}):
         args = grid.analysis_grid_export_args("ROI", 10)
     assert args == {"crs": "EPSG:32644", "crs_transform": [10.0, 0.0, 0.0, 0.0, 10.0, 0.0]}
+
+
+def test_a_stage_that_caches_nothing_has_no_cache_key(tmp_path):
+    """Round 9 question 5 (a): profiling and export cache nothing, so no key names an asset."""
+
+    @register_stage("caches_nothing")
+    class CachesNothing(Stage):
+        name = "caches_nothing"
+        required_inputs: ClassVar[set[str]] = set()
+        produces = {"x"}
+        cacheable_outputs: ClassVar[set[str]] = set()
+
+        def run(self, ctx, config):
+            return StageResult(outputs={"x": 1})
+
+    with _fake_ee(set()):
+        Pipeline(["caches_nothing"], use_cache=True).run(config=_config(), run_dir=tmp_path)
+    manifest = json.loads((tmp_path / "manifest.json").read_text())
+    assert manifest["cache_layout"] == "per_step"
+    assert manifest["stages"][0]["cache_key"] is None
