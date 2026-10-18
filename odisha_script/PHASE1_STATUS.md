@@ -20,7 +20,7 @@ estimated.
 | 4a | Meta/WRI vs Lorey's | R²=0.241 as published, **0.142** with zeros excluded | **DISQUALIFIED** — see Task 1 |
 | 4b | GLAD/Potapov vs Lorey's | R²=0.041; **flips to r=−0.121** with Meta-zeros excluded | out |
 | 4c | GEDI rh98 vs Lorey's | **R²=0.088 at n=89** (was R²=0.404 at n=10) | re-sampled; **out** |
-| 5 | S1 backscatter vs Lorey's | `vh_iqr` **R²=0.210 → 0.227** with zeros excluded | best free signal at plot scale |
+| 5 | S1 backscatter vs Lorey's | `vh_iqr` **R²=0.210 → 0.227** with zeros excluded | best free signal at plot scale (see the note of 19 Oct 2026 at the end) |
 | 6 | leaf-off / seasonal vs composition | `off_B5` R²=0.140; `ndvi_seasonal_diff` R²=0.001 | `off_B5` is the only one worth keeping |
 
 ### The ETH problem is dynamic range, not noise
@@ -467,3 +467,18 @@ print('zeros >20m:', int((df[z].loreys_h_m > 20).sum()), ' median:', df[z].lorey
 # band-identity histogram: contiguity and where it breaks
 grep -E '^ +[0-9]+ +[0-9,]+ +[0-9.]+%' odisha_phase1_10_results.txt
 ```
+
+---
+
+## Note of 19 Oct 2026 (round 11): the radar result
+
+Test 5's `vh_iqr` R²=0.210 (the ascending orbit, 274 plots) rested on the 146 Koraput plots whose
+ascending spread is exactly zero (one image each): without them it is 0.028 (128 plots), and on the
+descending orbit, where no plot has zero spread, 0.018 (274 plots, r −0.133). `vv_iqr` goes the same
+way: 0.172, 0.005 and 0.002. The 0.227 with Meta's zeros excluded still counts 67 of those Koraput
+plots (79 of Koraput's 146 have a Meta zero) and was not recomputed without them. The "best free
+signal at plot scale" and "best-validated free signal" above are drawn from figures that include the
+same plots: all 146 in the 0.210, 67 in the 0.227. Found in round 9's Task E (17 Oct 2026):
+`odisha_phase1_12_radar_descending_results.txt`, declared in
+`PHASE1_RADAR_DESCENDING_PREDECLARED.md`; the register entry `field-structural-criterion-unresolved`
+records it. The numbers above are as first written.

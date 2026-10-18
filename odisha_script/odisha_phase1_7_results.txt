@@ -181,6 +181,14 @@ A7 — does aggregation still 'recover signal', with zeros excluded?
   better (vh_iqr -0.111 -> -0.157), so 'aggregation recovers signal' is a statement
   about these height products, not a general property of stand-scale averaging.
 
+  NOTE ADDED 19 Oct 2026 (round 11; the numbers above are as first written): vh_iqr's R2=0.210
+  and vv_iqr's R2=0.172 on all 274 plots rested on the 146 Koraput plots whose ascending spread is
+  exactly zero (one image each): without them they are 0.028 and 0.005 (128 plots), and on the
+  descending orbit, where no plot has zero spread, 0.018 and 0.002 (274 plots). The 152 plots
+  without Meta's zeros still hold 67 of those Koraput plots (79 of Koraput's 146 have a Meta zero,
+  above), and the radar lines here were not recomputed without them. See
+  odisha_phase1_12_radar_descending_results.txt (round 9, task E, 17 Oct 2026).
+
 ================================================================================================
 B — raw 1 m Meta neighbourhood at the zero plots (Earth Engine)
 ================================================================================================

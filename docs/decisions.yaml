@@ -3642,7 +3642,12 @@ decisions:
     on validity. GEDI at honest coverage shows the same compression as ETH. vh_iqr is the best-validated
     free signal at plot scale (R² 0.227), but it is a radar texture proxy and not a height, no surveyed
     paper uses radar for delineation, and it gets worse when aggregated, the opposite of what a stand-scale
-    criterion needs.
+    criterion needs. Round 9's Task E (17 Oct 2026; added here 19 Oct 2026, round 11) found the radar result
+    resting on one district: Test 5's vh_iqr R² of 0.210 against Lorey's height, on the ascending orbit over 274
+    plots, rested on the 146 Koraput plots whose ascending spread is exactly zero (one image each); without them
+    it is 0.028 (128 plots), and on the descending orbit, where no plot has zero spread, 0.018 (274 plots, r
+    -0.133). The 0.227 above, on the 152 plots without Meta's zeros, still counts 67 of those Koraput plots and
+    was not recomputed without them.
   evidence:
   - path: odisha_script/PHASE1_STATUS.md
     what: >-
@@ -3657,6 +3662,14 @@ decisions:
     what: 'GEDI re-sampled: coverage 10 to 89 plots, R² 0.404 to 0.088'
   - path: src/fmu/config.py
     what: 'lines 447-451: the closure axis is an admitted gap'
+  - path: odisha_script/odisha_phase1_12_radar_descending_results.txt
+    what: >-
+      Test 5 on the descending orbit, and on the ascending orbit with and without the 146 plots of zero spread
+      (round 9, Task E)
+  - path: odisha_script/PHASE1_RADAR_DESCENDING_PREDECLARED.md
+    what: Its declaration, written before any descending value was sampled
+  - path: odisha_script/odisha_phase1_7_results.txt
+    what: 'A1, Meta zeros by district (Koraput 79 of 146); A5, vh_iqr R² 0.227 on the 152 plots without them'
   papers: []
   status: pending
   design_notes_section: null
