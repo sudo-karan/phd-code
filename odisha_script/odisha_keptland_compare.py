@@ -37,6 +37,9 @@ STATS = (("delin_all", "1 drawing: ARI, all plots"),
          ("prec", "3 drawing: same-stand pair precision"),
          ("lab_wmean", "4 labelling: ARI, district mean"),
          ("far_gap", "5 labelling: far-apart gap"))
+# How an analysis is named in the tables. The box runs' stands are a comparison beside the field
+# check, not one of its declared scores (Jaskaran, 18 Oct 2026; field-box-runs-a-descriptive-comparison-only).
+ANALYSIS_NAMES = {"box_runs": "box_runs (the 13 Oct box stands: a comparison, not a declared score)"}
 
 
 def fmt(v: Any, signed: bool = True) -> str:
@@ -98,13 +101,14 @@ def compare(old: dict[str, Any], new: dict[str, Any], old_counts: dict[str, dict
     by_old = {a["analysis"]: a for a in old["analyses"]}
     for a in new["analyses"]:
         o = by_old.get(a["analysis"])
+        name = ANALYSIS_NAMES.get(a["analysis"], a["analysis"])
         for key, label in STATS:
             ov = o[key] if o else None
             nv = a[key]
             d = (nv - ov) if (ov is not None and nv == nv and ov == ov) else None
-            lines.append(f"| {a['analysis']} | {label} | {fmt(ov)} | {fmt(nv)} | {fmt(d)} |")
+            lines.append(f"| {name} | {label} | {fmt(ov)} | {fmt(nv)} | {fmt(d)} |")
         if o:
-            lines.append(f"| {a['analysis']} | plots scored | {o['counts']['plots']} | {a['counts']['plots']} | "
+            lines.append(f"| {name} | plots scored | {o['counts']['plots']} | {a['counts']['plots']} | "
                          f"{a['counts']['plots'] - o['counts']['plots']:+d} |")
     lines += ["", "## How the plots join", "",
               "| District | Inside the boxes | On a stand (old, new) | By the 30 m rule (old, new) | Left out (old, new) |",

@@ -409,9 +409,14 @@ def test_the_kept_land_score_rows_follow_the_scores_file(builder):
         assert r["score"] == a[stat[r["test"]]] and r["n_plots"] == a["counts"]["plots"]
         assert (r["chance_percentile"], r["p"], r["p_holm"]) == (None, None, None)
         assert (r["arm"], r["stand_ceiling_ha"], r["roi"]) == ("feature_vector", 3.0, "boxes")
-        assert r["stands"] == "15 Oct 2026 kept-land runs (descending radar)"
+        # Round 11: the box_runs rows are the 13 Oct box stands, a comparison and not a declared score.
+        assert r["stands"] == (builder.BOX_RUNS_STANDS if r["analysis"] == "box_runs"
+                               else "15 Oct 2026 kept-land runs (descending radar)")
         assert r["declaration"] == "odisha_script/PHASE_KEPTLAND_PREDECLARED.md"
         assert r["run_ids"] == sorted(builder.KEPTLAND_S1DESC_RUNS)
+    assert sum(r["analysis"] == "box_runs" for r in rows) == 5
+    assert "13 Oct 2026 box runs" in builder.BOX_RUNS_STANDS
+    assert "not a declared score" in builder.BOX_RUNS_STANDS
 
 
 def test_every_score_row_names_runs_in_the_index_and_no_run_has_a_row_twice():

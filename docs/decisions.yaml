@@ -5516,18 +5516,26 @@ decisions:
   - >-
     Keep committing the runs' own files whatever their size (option (a) of question 3 of
     docs/handoff/2026-10-15-round6.md): not chosen
+  - >-
+    Move the nine files over 5 MB committed before the rule off the tree, onto the Mac and Drive, with their size and
+    SHA-256 committed (option (b) of question 3 of docs/handoff/2026-10-16-round8.md): not chosen
   rationale: >-
     Jaskaran's answer (b) to question 3 of docs/handoff/2026-10-15-round6.md and his round-7 message, 15 Oct 2026:
     "Files over 5 MB: keep them off git from now (Mac or Drive), commit their size and SHA-256 instead." Koraput's
-    round-6 superpixel layer was 17.71 MB of text GeoJSON, and district-wide runs will be larger. No paper was
-    searched for this decision.
+    round-6 superpixel layer was 17.71 MB of text GeoJSON, and district-wide runs will be larger. Round 8 asked
+    about the nine files over 5 MB committed before the rule (question 3 of docs/handoff/2026-10-16-round8.md: four
+    kept-land layers of round 6 in docs/reproducibility/keptland_runs/ and five older superpixel layers in
+    odisha_script/phase2_vectors/); Jaskaran's answer, 18 Oct 2026 (the round 11 brief): "the old files over 5 MB
+    already in history stay as they are". No paper was searched for this decision.
   evidence:
   - path: docs/handoff/2026-10-15-round6.md
     what: The question, with its two options (section 5, question 3)
+  - path: docs/handoff/2026-10-16-round8.md
+    what: The nine committed files over 5 MB, and the question on them, with its two options (section 5, question 3)
   papers: []
   status: adopted
   design_notes_section: null
-  source: Jaskaran, 15 Oct 2026 (round 7)
+  source: Jaskaran, 15 Oct 2026 (round 7) and 18 Oct 2026 (round 11 brief)
 - id: spec-ui-alphaearth-stands-named-means-by-reduction
   title: >-
     The AlphaEarth Sanjay Van kept-land stands get their named means from one read-only reduction over cached
@@ -5913,6 +5921,43 @@ decisions:
     what: The AlphaEarth arm's declared run, with its seed name (arm_seed_name)
   - path: docs/handoff/2026-10-18-round10.md
     what: The chance test on both arms ("After the round", step 1), and question 4, with its two options
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 18 Oct 2026 (round 11 brief)
+- id: field-box-runs-a-descriptive-comparison-only
+  title: >-
+    The 13 Oct box runs stay a descriptive comparison beside the kept-land runs; their declared field check is not run
+  decision: >-
+    The four Odisha box runs of 13 Oct 2026 (configs/odisha_v120_3ha_squares_<district>.yaml) get no declared score: the
+    field check that odisha_script/PHASE_SQUARES_PREDECLARED.md declares for them is not run. Their stands are scored
+    against the plots only beside the kept-land runs, on the kept-land check's plots, as that check's descriptive
+    box_runs analysis, with no test of any difference, and wherever those rows appear they are labelled as a
+    comparison, not a declared score.
+  alternatives_considered:
+  - >-
+    Run the box runs' declared field check as PHASE_SQUARES_PREDECLARED.md fixes it, offline, with its chance test, and
+    add its rows (option (a) of question 1 of docs/handoff/2026-10-16-round8.md): not chosen
+  - >-
+    Leave the five box_runs rows' stands label as it was, naming the kept-land runs (option (a) of question 2): not
+    chosen
+  rationale: >-
+    Jaskaran's answers to questions 1 and 2 of docs/handoff/2026-10-16-round8.md, 18 Oct 2026 (the round 11 brief): "the
+    box runs stay as a descriptive comparison only, not a declared score; relabel the box_runs rows so they read that
+    way wherever they appear". Round 8 found that the declared field check of the box runs was never computed: the only
+    numbers on their stands are the kept-land check's descriptive box_runs analysis (round 7), and the code written for
+    the declared check in round 2 was never committed or reviewed. From round 3 on the rounds moved to kept land. The
+    answer does not say whether the four box runs stay marked fes_declared in ui_data/index.json; they do for now
+    (question 3 of docs/handoff/2026-10-18-round11.md). No paper was searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-16-round8.md
+    what: Task 3 (the box runs' declared scores were never computed) and questions 1 and 2, with their options
+  - path: odisha_script/PHASE_SQUARES_PREDECLARED.md
+    what: The box runs' declared field check, not run; a dated note at its end
+  - path: odisha_script/PHASE_KEPTLAND_PREDECLARED.md
+    what: The kept-land check's "Beside the box runs, descriptive only"
+  - path: ui_data/fes_comparison.json
+    what: The five box_runs rows
   papers: []
   status: adopted
   design_notes_section: null

@@ -119,3 +119,22 @@ def test_without_the_plots_option_no_plot_is_read(two_sets):
     tmp_path, args = two_sets
     C.main(args)
     assert "The plots each side scores" not in (tmp_path / "out.md").read_text()
+
+
+def test_the_box_runs_rows_read_as_a_comparison_not_a_declared_score(two_sets):
+    """Round 11: the box_runs analysis, the 13 Oct box stands beside the field check, is named in the
+    tables as a comparison and not a declared score; the other analyses keep their own names."""
+    tmp_path, args = two_sets
+    for stem in ("old", "new"):
+        f = tmp_path / f"{stem}_scores.json"
+        scores = json.loads(f.read_text())
+        scores["analyses"].append(dict(scores["analyses"][0], analysis="box_runs"))
+        f.write_text(json.dumps(scores))
+    C.main(args)
+    text = (tmp_path / "out.md").read_text()
+    name = C.ANALYSIS_NAMES["box_runs"]
+    assert "not a declared score" in name
+    assert f"| {name} | 1 drawing: ARI, all plots |" in text
+    assert f"| {name} | plots scored |" in text
+    assert "| box_runs |" not in text
+    assert "| primary | 1 drawing: ARI, all plots |" in text
