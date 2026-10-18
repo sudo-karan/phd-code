@@ -27,6 +27,13 @@ each config a copy of the district's `_r9` run changing only the feature descrip
 | `odisha_alphaearth_3ha_squares_kendujhar_keptland_r9` | `odisha_v120_3ha_squares_kendujhar_keptland_s1desc_r9` | `fcfc169` | 2,747 | 555 | 555 |
 | `odisha_alphaearth_3ha_squares_koraput_keptland_r9` | `odisha_v120_3ha_squares_koraput_keptland_s1desc_r9` | `fcfc169` | 8,743 | 1,644 | 1,641 |
 
+Task I's cost pilot: the Angul `_r9` config with only the ROI changed, to one 10 km square on the
+Angul boxes' centroid (`aois/odisha_tile_angul_10km.geojson`), run the same way and not scored.
+
+| Run | Copy of | Run tree at | Superpixels | Stands | Stand polygons |
+|---|---|---|---|---|---|
+| `odisha_v120_3ha_tile10km_angul_keptland_s1desc_r9` | `odisha_v120_3ha_squares_angul_keptland_s1desc_r9` | `be36f74` | 21,263 | 3,748 | 3,743 |
+
 Kendujhar's re-run is round 9's Task D run 1 (`docs/reproducibility/round9_cache_test/`): its
 files here are byte-for-byte copies of those, so that the field check reads all four districts
 from one folder. Its features were computed by a features pass of its own before the wrapper
@@ -39,5 +46,6 @@ The stands and stand polygons are from each run's record (`merge_diagnostics` an
 |---|---|
 | `<run>_stands_merged.geojson`, `_stands_snic.geojson`, `_stands_dissolved.geojson` | the run's stands, superpixels and same-type regions, as its export pass wrote them |
 | `<run>_files_off_git.json` | where a run has a layer over 5 MB: its size, SHA-256 and where it is on the Mac (`outputs/round10/results/`; Kendujhar's in `outputs/round9/results/`) |
+| `cost_<run>.json` (and `_run.json`) | Task I: the run's EECU-hours, batch by stage and online by pass, and per 1,000 ha (`scripts/eecu_by_stage.py`); the record holds the pass spans and when they were read |
 | `<run>_run.json` | the run record: merge diagnostics, per-stand attributes and provenance, export counts, cache layout, step keys, git, environment |
 | `<run>_manifest_features.json`, `_segmentation`, `_clustering`, `_export` | the manifests of the wrapper's four passes; the features pass computed and exported every feature asset |
