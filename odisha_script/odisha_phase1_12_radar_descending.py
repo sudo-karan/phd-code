@@ -98,7 +98,9 @@ def sample() -> tuple[pd.DataFrame, dict[str, int]]:
 
 
 def fit(x: pd.Series, y: pd.Series) -> dict[str, Any]:
-    """n, r, R2, slope of y on x (Test 5); RMSE and bias as odisha_phase1_9_gedi_recount.py."""
+    """n, r, R2, slope of y on x (Test 5). RMSE and bias, as odisha_phase1_9_gedi_recount.py
+    computes them, are computed but not written: for radar they compare dB with metres (Jaskaran,
+    18 Oct 2026, round 9 question 3 (b))."""
     m = x.notna() & y.notna()
     xs, ys = x[m].to_numpy(float), y[m].to_numpy(float)
     if len(xs) < 8:
@@ -132,7 +134,7 @@ def zero_spread(df: pd.DataFrame) -> pd.Series:
     return (df.vv_iqr == 0) | (df.vh_iqr == 0)
 
 
-def line(label: str, f: dict[str, Any], *, bias: bool = True) -> str:
+def line(label: str, f: dict[str, Any], *, bias: bool = False) -> str:
     if "note" in f:
         return f"  {label:44} n={f['n']:>3}  ({f['note']})"
     out = f"  {label:44} n={f['n']:>3}  r={f['r']:+.3f}  R2={f['r2']:.3f}"
@@ -190,8 +192,9 @@ def main() -> int:
              "=" * 92,
              f"  plots: {len(d)} (odisha_plots_sampled.csv); radar window {FEAT_START} to {FEAT_END} (end exclusive),",
              "  IW, VV and VH; percentiles 10, 50, 90 per pixel; iqr = p90 - p10, as Phase 1 defines it",
-             "  RMSE and bias are as odisha_phase1_9_gedi_recount.py computes them (y - x): for radar",
-             "  they compare dB with metres, per cent or cm2, and carry no meaning.",
+             "  per band: n, r, R2, slope (x the field measure, y the band). RMSE and bias, which for",
+             "  radar compare dB with metres, are not reported (Jaskaran, 18 Oct 2026). The multi-band",
+             "  line's RMSE is of predicted against measured height, in metres.",
              "", "Images per district (descending): images over the district's plots | n_images per plot"]
     record: dict[str, Any] = {"images_per_district": per_district, "plots": len(d)}
     for dist in DISTRICTS:

@@ -62,3 +62,11 @@ The eight bands: `vv_p10`, `vv_p50`, `vv_p90`, `vv_iqr`, `vh_p10`, `vh_p50`, `vh
 No threshold, band or field measure is chosen by its result; nothing here passes or fails. The
 result file holds results only, no dates or run times; the run record beside it
 (`odisha_phase1_12_radar_descending_run.json`) holds the commit and the date.
+
+## Change of 18 Oct 2026 (round 10)
+
+Jaskaran's answer (b) to question 3 of `docs/handoff/2026-10-17-round9.md`: the per-band RMSE and
+bias, which for radar subtract metres (or per cent, or cm²) from dB, are no longer written in the
+result file. Nothing else changes: the same sample (not taken again), the same plots, bands, field
+measures and subsets, and n, r, R², slope and the multi-band line as before. The results of
+`212b4f9` showed them; the result file of this change does not.
