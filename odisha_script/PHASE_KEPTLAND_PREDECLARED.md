@@ -110,3 +110,60 @@ Made by Claude Code on Jaskaran's instruction of 15 Oct 2026 (round 7,
   (`configs/odisha_v120_3ha_squares_<district>_keptland.yaml`,
   `docs/reproducibility/keptland_runs/`) were never scored, and `ui_data/` showed their plots
   without a stand. The `_s1desc` runs are not run yet.
+
+## Change of 18 Oct 2026 (round 10): an AlphaEarth arm
+
+Made by Claude Code on Jaskaran's instruction (round 9's Task H, `docs/handoff/2026-10-17-round9.md`,
+run in round 10, `docs/handoff/2026-10-18-round10.md`). It adds a second arm and changes nothing
+above: the primary analysis, the field types, the plots, the join, the five scores, the checks and
+the chance test stay as they are, and so does Claude (chat)'s amendment
+`PHASE_KEPTLAND_AMENDMENT_chance_checks.md`. This change is committed before any config of the arm
+exists.
+
+- **The arm's runs** are four configs, `configs/odisha_alphaearth_3ha_squares_<district>_keptland_r9.yaml`.
+  Each is a copy of the primary's re-run, `configs/odisha_v120_3ha_squares_<district>_keptland_s1desc_r9.yaml`,
+  changing only the feature description to AlphaEarth, as `configs/sanjay_van_alphaearth_keptland.yaml`
+  does against `configs/sanjay_van_baseline_keptland.yaml`. SNIC draws the superpixels on the 64
+  AlphaEarth dimensions (`segmentation.input_bands`), and k-means types the stands on them
+  (`clustering.feature_source: embedding`). The annual images (`GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL`)
+  are averaged over 2017 to 2022. `tests/test_r9_configs.py` checks that nothing else differs.
+- **The same boxes and the same mask.** Everything else is the copied config: the 20 boxes, the
+  kept-land mask before SNIC, SNIC's spacing 6 and compactness 0.5, stands of 1 to 3 ha with the
+  soft ceiling, k = 5 stand types per district, seed 42, the stands under 1 ha left out of the fit.
+  The merge keeps its three criteria (canopy height, its spread, the NDVI amplitude), which still
+  come from the hand-crafted features, so that what makes two pieces one stand is the same rule in
+  both arms, as in Sanjay Van. The arm computes the optical, structure and embedding features; the
+  radar and static features are read by nothing in it (`fmu.pipeline.feature_stage_names`, and
+  the clustering and export stages read the embedding alone), so the radar orbit plays no part.
+- **Scored as the primary, on the same plots.** The field types (`odisha_phase3_0_field_types.csv`),
+  the 267 plots inside the boxes, the join (the covering stand, the lowest stand id where several
+  cover; the nearest stand whose edge lies within 30 m; left out past 30 m, reported per district),
+  the five scores and the checks (S1, S2, how the plots join with every score again on the covered
+  plots only, the box runs beside it) are all exactly the primary's. The masks of the two arms are
+  the same, so they should leave out the same plots. If the plots the arm scores differ from those
+  the primary's re-run scores, the difference is reported as counts per district and the plots are
+  named, and no further analysis is made of it.
+- **Reported beside the primary, descriptive only.** The arm's five scores are written next to the
+  primary re-run's (`keptland_s1desc_r9`), on the same plots. No test of the difference between
+  the arms, and, as for the primary, no pass or fail and no claim about chance until the chance
+  test runs.
+- **The chance test is not part of this change.** Claude (chat)'s amendment says its check C1
+  applies to every arm scored under this file, this one included. Running the chance test, C1
+  with it, and deciding how it treats two arms are for the chance test and its author, not for
+  this change.
+- **Files.** `odisha_script/odisha_keptland_score.py --runs 'odisha_alphaearth_3ha_squares_{district}_keptland_r9' --stem keptland_alphaearth_r9`,
+  with the stand layers in `docs/reproducibility/r9_runs/`, writes
+  `odisha_script/keptland_scores/keptland_alphaearth_r9_*`; no older file is written over.
+- **The kept-land scores that existed when this was written.** The primary's on the round 7 runs
+  (`keptland_s1desc_scores.json`, commit `f56ad57`); the chance test's rehearsal on the same stands
+  (`keptland_s1desc_chance_rehearsal.txt`, `f041170`, Claude (chat)); the primary's on the round 9
+  re-runs (`keptland_s1desc_r9_scores.json`, `99480b7`); and the comparison of the two
+  (`keptland_s1desc_r9_vs_s1desc.md`, `e926a31`). **No AlphaEarth stand or score on the boxes or
+  on kept land existed**: no such config existed before this change.
+- **AlphaEarth scores in Odisha on other stands did exist:** the demo set's AlphaEarth runs on the
+  village hulls (10 ha, k = 6, no kept-land mask), scored in round 2 under
+  `PHASE3_ALPHAEARTH_PREDECLARED.md`. Their logs are in `odisha_script/phase3_demo/` on the Mac;
+  their result files are not on the branch. While writing this, Claude Code read the last lines of
+  the primary score's log there. Nothing in this arm is Claude Code's choice, and nothing in it was
+  chosen from a score: the copy, the one change and k = 5 are the brief's, and the AlphaEarth
+  settings (the 64 bands, the mean over 2017 to 2022) are Sanjay Van's.
