@@ -78,6 +78,14 @@ against the field check's <scored-stem>_joined.csv before any null is drawn, and
 against <scored-stem>_scores.json. Also: the box outlines aois/odisha_squares_<district>.geojson, and
 the plots and field types (odisha_phase3_0_field_types.csv, _k4.csv).
 
+OTHER RUNS, ANOTHER ARM (round 10, 18 Oct 2026). --runs names the runs scored by a pattern with
+{district}, as odisha_keptland_score.py's --runs does, for runs that are not the default name plus
+a --run-suffix: the AlphaEarth arm's odisha_alphaearth_3ha_squares_{district}_keptland_r9. --arm
+names the arm in the seed strings; by default it is the runs' own name without "odisha_", the
+district or a round 9 run suffix (_r9, _r9_check), which for the default runs, with or without
+_r9, is v120_3ha_squares_keptland_s1desc as before (Q6), and for the AlphaEarth arm
+alphaearth_3ha_squares_keptland: each arm its own seeds, as the village test seeds each arm.
+
 WRITES, in --out-dir: keptland_s1desc_chance_rehearsal.txt and .json for the pre-fix runs, or
 <scored-stem>_chance.txt and .json for runs with a suffix; results only (no dates, no run times; the
 inputs' SHA-256 in the JSON); <same stem>_run.json, the run's record (command, date, git commit,
@@ -131,8 +139,21 @@ ANALYSES = (("primary", "the primary field types, every plot the join scores"),
             ("S1", "field type 0 (no trees) left out, same realisations"),
             ("S2", "four field types (odisha_phase3_0_field_types_k4.csv), same realisations"))
 
+#: round 9's run suffixes, which the seed strings do not take (Q6)
+RUN_SUFFIXES = ("_r9_check", "_r9")
+
 _lines: list[str] = []
 _timings: list[str] = []
+
+
+def arm_from_runs(pattern: str) -> str:
+    """The arm's name in the seed strings, from the runs' name pattern: without "odisha_", the
+    district and a round 9 run suffix. The default runs give ARM, with or without _r9."""
+    arm = pattern.removeprefix("odisha_").replace("{district}_", "").replace("_{district}", "")
+    for sfx in RUN_SUFFIXES:
+        if arm.endswith(sfx):
+            return arm[: -len(sfx)]
+    return arm
 
 
 def say(s: str = "") -> None:
@@ -480,19 +501,29 @@ def rel(p: Path) -> str:
 
 def run(n_rot: int, out_dir: Path, *, stands_from: str = "ui_data", stands_dir: Path | None = None,
         run_suffix: str = "", scored_stem: str = "keptland_s1desc", ui_data: Path = UI_DATA,
-        scores_dir: Path = SCORES_DIR, cap_scale: float = 1.0, declared: bool = False) -> dict[str, Any]:
+        scores_dir: Path = SCORES_DIR, cap_scale: float = 1.0, declared: bool = False,
+        runs_pattern: str | None = None, arm: str | None = None) -> dict[str, Any]:
     """stands_from 'ui_data' reads ui_data/by_run/<run>/stands.json; 'geojson' reads
     <stands_dir>/<run>_stands_merged.geojson (or where its off-git record says, SHA-256 checked).
     <run> is odisha_v120_3ha_squares_<district>_keptland_s1desc<run_suffix>. The identity checks
     read <scored_stem>_joined.csv and <scored_stem>_scores.json in scores_dir. The run is a
-    REHEARSAL unless declared=True, which needs geojson stands that are not the pre-fix files."""
+    REHEARSAL unless declared=True, which needs geojson stands that are not the pre-fix files.
+    runs_pattern names the runs by a pattern with {district} in place of the default name plus
+    run_suffix; arm names the arm in the seed strings (default: arm_from_runs of the pattern)."""
     t_start = time.time()
     _lines.clear()
     _timings.clear()
     if stands_from not in ("ui_data", "geojson"):
         raise SystemExit(f"stands_from must be 'ui_data' or 'geojson', got {stands_from!r}")
-    if stands_from == "ui_data" and run_suffix:
+    if runs_pattern is not None and run_suffix:
+        raise SystemExit("give the runs by --runs or by --run-suffix, not both")
+    pattern = runs_pattern if runs_pattern is not None else K.RUNS + run_suffix
+    if "{district}" not in pattern:
+        raise SystemExit(f"the runs' pattern must hold {{district}}: {pattern!r}")
+    if stands_from == "ui_data" and pattern != K.RUNS:
         raise SystemExit("ui_data holds only the pre-fix runs; read re-run stands with stands_from='geojson'")
+    arm = arm if arm is not None else arm_from_runs(pattern)
+    seed_unc, seed_lab = G.SEED_UNCOND.format(arm=arm), G.SEED_LABELLED.format(arm=arm)
     if declared and stands_from != "geojson":
         raise SystemExit("the declared test reads the merged stand layers: use stands_from='geojson'")
     rehearsal = not declared
@@ -500,7 +531,7 @@ def run(n_rot: int, out_dir: Path, *, stands_from: str = "ui_data", stands_dir: 
     plots = load_plots(parts)
     inputs: dict[str, str] = {}
     stands = {}
-    runs = [K.run_id(d) + run_suffix for d in K.DISTRICTS]
+    runs = [pattern.format(district=d) for d in K.DISTRICTS]
     for d, run_name in zip(K.DISTRICTS, runs, strict=True):
         if stands_from == "ui_data":
             path = ui_data / run_name / "stands.json"
@@ -561,9 +592,9 @@ def run(n_rot: int, out_dir: Path, *, stands_from: str = "ui_data", stands_dir: 
             raise SystemExit(f"observed {a} scores disagree with {scores_json.name}: {bad}")
 
     t1 = time.time()
-    unc = draw_null(plots, parts, full, n_rot, S.seeded(SEED_UNCOND), "unconditional", cap_scale)
+    unc = draw_null(plots, parts, full, n_rot, S.seeded(seed_unc), "unconditional", cap_scale)
     t2 = time.time()
-    con = draw_null(plots, parts, typed, n_rot, S.seeded(SEED_LABELLED), "conditional", cap_scale)
+    con = draw_null(plots, parts, typed, n_rot, S.seeded(seed_lab), "conditional", cap_scale)
     t3 = time.time()
     note_time(f"  nulls: unconditional {t2 - t1:.0f} s, conditional {t3 - t2:.0f} s")
     built = not unc["failures"] and not con["failures"]
@@ -575,8 +606,8 @@ def run(n_rot: int, out_dir: Path, *, stands_from: str = "ui_data", stands_dir: 
                  "The chance test of PHASE_KEPTLAND_PREDECLARED.md on the runs named in 'runs'."),
         "rehearsal": rehearsal, "runs": runs, "stands_from": stands_from,
         "identity_files": [rel(joined_csv), rel(scores_json)],
-        "inputs_sha256": inputs, "rotations": n_rot, "arm_seed_name": ARM,
-        "seeds": {"unconditional": SEED_UNCOND, "conditional": SEED_LABELLED},
+        "inputs_sha256": inputs, "rotations": n_rot, "arm_seed_name": arm,
+        "seeds": {"unconditional": seed_unc, "conditional": seed_lab},
         "identity_checks": {"join_at_real_positions": "PASS", "observed_scores_vs_committed": "PASS (|diff| < 1e-12)"},
         "null_built": built, "failures": {"unconditional": unc["failures"], "conditional": con["failures"]},
         "draws": {"unconditional": unc["draws"], "conditional": con["draws"]},
@@ -805,6 +836,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--stands-dir", type=Path, default=None,
                     help=f"with --stands-from geojson: where <run>_stands_merged.geojson is (default {rel(K.STANDS_DIR)})")
     ap.add_argument("--run-suffix", default="", help="suffix of the runs scored, e.g. _r9; empty: the pre-fix runs")
+    ap.add_argument("--runs", default=None,
+                    help="the runs scored, a pattern with {district}, in place of the default name plus --run-suffix "
+                         "(e.g. odisha_alphaearth_3ha_squares_{district}_keptland_r9)")
+    ap.add_argument("--arm", default=None,
+                    help="the arm's name in the seed strings (default: the runs' name without odisha_, the district "
+                         "and a round 9 run suffix)")
     ap.add_argument("--scored-stem", default="keptland_s1desc",
                     help="stem of the field check's <stem>_joined.csv and <stem>_scores.json in --scores-dir")
     ap.add_argument("--scores-dir", type=Path, default=SCORES_DIR)
@@ -814,7 +851,7 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
     res = run(args.rotations, args.out_dir, stands_from=args.stands_from, stands_dir=args.stands_dir,
               run_suffix=args.run_suffix, scored_stem=args.scored_stem, scores_dir=args.scores_dir,
-              declared=args.declared)
+              declared=args.declared, runs_pattern=args.runs, arm=args.arm)
     write_run_record(args.out_dir, out_stem(args.scored_stem, res["rehearsal"], args.rotations),
                      list(sys.argv[1:] if argv is None else argv))
     return 0
