@@ -5585,8 +5585,11 @@ decisions:
     35% of pixels with hand-crafted features. A per-step key over a wrong list of settings would leave a stale asset
     in use for one step; tests/test_cache_layout.py reads each stage's module and fails on a setting it reads that
     its key does not cover. How a config's layout is chosen (by the assets in its cache) and the key's form ("s" and
-    ten hex digits) are Claude Code's choices, put to Jaskaran in the round 9 brief file. No paper was searched for
-    this decision.
+    ten hex digits) are Claude Code's choices, put to Jaskaran in the round 9 brief file; he kept them (question 2,
+    answer (a), 18 Oct 2026). The round 9 cache test (docs/reproducibility/round9_cache_test/) passed under the
+    brief's criterion (Jaskaran's ruling, 18 Oct 2026): two from-scratch runs give the same superpixels, stands and
+    stand types exactly, and their feature values agree to about 1e-13, a stated property of the pipeline. No paper
+    was searched for this decision.
   evidence:
   - path: src/fmu/utils/caching.py
     what: The two layouts, STEP_SETTINGS, step_upstream, step_key, cache_key, start_export with crs and crs_transform
