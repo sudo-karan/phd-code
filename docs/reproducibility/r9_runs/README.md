@@ -16,6 +16,14 @@ strips run times. Timings are in the logs on the Mac (`outputs/round10/logs/`), 
 | `sanjay_van_baseline_keptland_r9` | `sanjay_van_baseline_keptland` | `acb5f8d` | 1,205 | 583 | 578 |
 | `sanjay_van_alphaearth_keptland_r9` | `sanjay_van_alphaearth_keptland` | `acb5f8d` | 1,205 | 565 | 560 |
 
+Task H's AlphaEarth arm (the change of 18 Oct 2026 to `odisha_script/PHASE_KEPTLAND_PREDECLARED.md`):
+each config a copy of the district's `_r9` run changing only the feature description to AlphaEarth
+(`tests/test_r9_configs.py`), run the same way.
+
+| Run | Copy of | Run tree at | Superpixels | Stands | Stand polygons |
+|---|---|---|---|---|---|
+| `odisha_alphaearth_3ha_squares_angul_keptland_r9` | `odisha_v120_3ha_squares_angul_keptland_s1desc_r9` | `fcfc169` | 1,205 | 237 | 235 |
+
 Kendujhar's re-run is round 9's Task D run 1 (`docs/reproducibility/round9_cache_test/`): its
 files here are byte-for-byte copies of those, so that the field check reads all four districts
 from one folder. Its features were computed by a features pass of its own before the wrapper
