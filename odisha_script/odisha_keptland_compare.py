@@ -5,6 +5,7 @@
         --new-runs odisha_v120_3ha_squares_{district}_keptland_s1desc_r9 --new-records docs/reproducibility/r9_runs \
         --pair sanjay_van_baseline_keptland sanjay_van_baseline_keptland_r9 \
         --pair sanjay_van_alphaearth_keptland sanjay_van_alphaearth_keptland_r9 \
+        --old-label "old (round 7)" --new-label "re-run (_r9)" \
         --out odisha_script/keptland_scores/keptland_s1desc_r9_vs_s1desc.md
 
 Offline; reads committed files only: the two scores files written by odisha_keptland_score.py
