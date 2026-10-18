@@ -97,6 +97,10 @@ RERUN_IDS = {10.0: [f"odisha_v120_handcrafted_{d}_repro" for d in DISTRICTS],
 # the district. A stand layer of theirs over 5 MB is kept off git (spec-files-over-5-mb-off-git)
 # and read from where its record says (`vec_file`).
 KEPTLAND_S1DESC_RUNS = {f"odisha_v120_3ha_squares_{d}_keptland_s1desc": d for d in DISTRICTS}
+# The stands of their field check's box_runs rows: the 13 Oct box runs, a comparison beside the
+# check and not a declared score (Jaskaran, 18 Oct 2026; field-box-runs-a-descriptive-comparison-only).
+BOX_RUNS_STANDS = ("13 Oct 2026 box runs, on the kept-land check's plots: a descriptive comparison, "
+                   "not a declared score")
 # Where fastDistanceTransform finds no water within features_static.max_water_distance_pixels
 # (1,000 px = 10 km) it gives its fill value, sqrt(2^31 - 1) x 10 m, not a distance, or with
 # features_static.cap_distance_to_water on the cap itself: 10 km or more is written as OVER_10_KM
@@ -1066,7 +1070,9 @@ def main() -> None:
                 "note": (SANJAY_NOTE + " " if sanjay else "") + "SNIC and the merge saw kept "
                         "land only (trees or scrub): the rest of the "
                         + ("rectangle" if sanjay else "boxes") + " is in no stand."
-                        + (" Its radar comes from the descending Sentinel-1 orbit."
+                        + (" Its radar comes from the descending Sentinel-1 orbit. Its field-check "
+                           "scores here are round 7's, kept as history: the record is the scores on "
+                           "its _r9 re-run, which this site does not show."
                            if run_id.endswith("_s1desc") else "")
                         + (MEANS_NOTE.format(run=run_id) if stand_means(run_id, vec) else ""),
                 "files": files})
@@ -1143,7 +1149,14 @@ def fes_rows() -> dict:
         "villages, a real but modest agreement could go undetected.")
     rows += keptland_rows(tests)
     return {"label": "Phase 3 numbers (September 2026 runs), the 13 October re-runs' scores, and the "
-                     "15 October kept-land runs' scores, numbers only (their chance test is not run). "
+                     "15 October kept-land runs' scores, numbers only (the declared chance test was not "
+                     "run on these stands), with, beside them on the same plots, the 13 Oct box runs' "
+                     "stands (the box_runs rows: a descriptive comparison, not a declared score). The "
+                     "kept-land record is the scores on those runs' _r9 "
+                     "re-runs (odisha_script/keptland_scores/keptland_s1desc_r9_scores.json, their "
+                     "declared chance test in keptland_s1desc_r9_chance.txt; register entry "
+                     "field-keptland-scores-of-record-are-the-r9-re-runs), which are not in ui_data; "
+                     "the 15 October scores here stay as history. "
                      "Claude Code re-scores the demo set, both arms (brief A4).",
             "reading": reading, "rows": rows}
 
@@ -1152,7 +1165,8 @@ def keptland_rows(tests: list[tuple[str, str]]) -> list[dict]:
     """The field check of the four descending-orbit kept-land runs (round 7,
     odisha_script/keptland_scores/keptland_s1desc_scores.json): every analysis, five rows each,
     numbers only. Each row names the four runs it belongs to; the box_runs analysis, the 13 Oct
-    box runs' stands on the same plots, is part of their field check."""
+    box runs' stands on the same plots, is part of their field check as a descriptive comparison,
+    not a declared score, and its rows say so in their own stands label."""
     path = REPO / "odisha_script" / "keptland_scores" / "keptland_s1desc_scores.json"
     if not path.exists():
         return []
@@ -1164,7 +1178,8 @@ def keptland_rows(tests: list[tuple[str, str]]) -> list[dict]:
         for tid, title in tests:
             rows.append({"arm": "feature_vector", "stand_ceiling_ha": 3.0, "roi": "boxes",
                          "analysis": a["analysis"],
-                         "stands": "15 Oct 2026 kept-land runs (descending radar)",
+                         "stands": (BOX_RUNS_STANDS if a["analysis"] == "box_runs"
+                                    else "15 Oct 2026 kept-land runs (descending radar)"),
                          "test": tid, "title": title, "score": a[stat[tid]],
                          "chance_percentile": None, "p": None, "p_holm": None,
                          "n_plots": a["counts"]["plots"],

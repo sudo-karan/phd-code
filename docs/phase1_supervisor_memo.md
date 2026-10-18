@@ -24,7 +24,7 @@ Plot-level R² against field Lorey's height, n=274 unless stated.
 
 | product | R² | failure mode |
 |---|---|---|
-| `vh_iqr` — Sentinel-1 radar texture | **0.227** | not a height measurement; a backscatter-variability proxy |
+| `vh_iqr` — Sentinel-1 radar texture | **0.227** | not a height measurement; a backscatter-variability proxy (see the note of 19 Oct 2026 at the end) |
 | Meta/WRI 1 m | 0.241 → **0.142** excl. zeros | reads 0 over 12–33 m of measured canopy |
 | ETH 10 m | **0.207** | range compressed to 14.30–22.47 m against a real 3.45–37.75 m; slope 0.30 |
 | GEDI rh98 (n=89) | **0.088** | reproduces ETH's compression; slope 0.27 |
@@ -191,3 +191,15 @@ so it may be a recording convention rather than an error — which is itself the
 **Reference.** Tolan, J. et al. (2024). Very high resolution canopy height maps from RGB
 imagery using self-supervised vision transformer and convolutional decoder trained on aerial
 lidar. *Remote Sensing of Environment*. arXiv:2304.07213.
+
+---
+
+**Note of 19 Oct 2026 (round 11).** The radar figures in section 2 and in decision (c) start from
+Test 5's `vh_iqr`, whose R² of 0.210 on all 274 plots rested on the 146 Koraput plots whose
+ascending Sentinel-1 spread is exactly zero (one image each): without them it is 0.028 (128 plots),
+and on the descending orbit, where no plot has zero spread, 0.018. The table's 0.227 is the same
+band on the 152 plots without Meta's zeros, not on 274 as the table's heading would have it; it
+still counts 67 of those Koraput plots and was not recomputed without them. Nor was decision (b)'s
+pair for `vh_iqr` (0.484 against 0.458), which is on all 274 plots. Found in round 9 (17 Oct 2026):
+`odisha_script/odisha_phase1_12_radar_descending_results.txt`. The memo's numbers are as first
+written.

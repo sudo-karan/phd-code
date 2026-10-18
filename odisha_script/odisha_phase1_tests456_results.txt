@@ -96,6 +96,12 @@ Against basal area (cm2 per plot — per-hectare not possible without plot radiu
 Read: single-band r above ~0.4 with a consistent sign means radar carries height/closure info.
       The LOO R2 is the honest ceiling for a locally calibrated radar height model.
 
+  NOTE ADDED 19 Oct 2026 (round 11; the numbers above are as first written): vh_iqr's R2=0.210
+  and vv_iqr's R2=0.172 rested on the 146 Koraput plots whose ascending spread is exactly zero
+  (one image each, so p10 = p50 = p90): without them they are 0.028 and 0.005 (128 plots), and on
+  the descending orbit, where no plot has zero spread, 0.018 and 0.002 (274 plots). See
+  odisha_phase1_12_radar_descending_results.txt (round 9, task E, 17 Oct 2026).
+
 ====================================================================================
 TEST 6 — leaf-off reflectance and seasonal difference vs composition
 ====================================================================================

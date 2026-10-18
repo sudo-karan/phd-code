@@ -1407,7 +1407,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
   // Scores without their chance test: numbers only, no verdict either way.
   const ANALYSIS_WORDS = {
     primary: "Main result", S1: "Without the no-tree field type", S2: "With four field types",
-    covered_only: "Only plots a stand covers (no 30 m rule)", box_runs: "The 13 Oct box stands, same plots",
+    covered_only: "Only plots a stand covers (no 30 m rule)", box_runs: "The 13 Oct box stands, same plots (a comparison, not a declared score)",
   };
   const TEST_SHORT = {
     drawing_all_plots: "Drawing, all plots", drawing_multi_plot: "Drawing, stands with 2+ plots",
@@ -1425,7 +1425,11 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     const head = `<tr><th></th>${tests.map(t => `<th title="${esc(TEST_SHORT[t] || t)}">${esc(TEST_COL[t] || t)}</th>`).join("")}</tr>`;
     const body = analyses.map(a => `<tr><th class="row">${esc(ANALYSIS_WORDS[a] || a)}</th>${tests.map(t => `<td>${cell(a, t)}</td>`).join("")}</tr>`).join("");
     return `<div class="card"><h3>How well the stands match the plots${esc(n)}</h3>` +
-      `<p class="small">The chance test hasn't been run on these stands yet, so these are numbers only: they can't be called better or worse than chance.${decl}</p>` +
+      // Round 7's runs (15 Oct): their scores are kept as history; the record is the scores on their
+      // re-runs, which ui_data does not hold (Jaskaran, 18 Oct 2026).
+      (/_keptland_s1desc$/.test(run().run_id || "")
+        ? `<p class="small">These are the scores of the 15 Oct runs, kept as history: the record is the scores on their re-runs, which this site does not show, and the declared chance test was run on those, not on these stands. So these are numbers only: they can't be called better or worse than chance.${decl}</p>`
+        : `<p class="small">The chance test hasn't been run on these stands yet, so these are numbers only: they can't be called better or worse than chance.${decl}</p>`) +
       `<ul class="tests">${items}</ul>` +
       `<details><summary>The checks, side by side</summary><div class="scroll"><table class="xtab scores">${head}${body}</table></div></details>` +
       `<details><summary>About the scores</summary><p class="small">Four of the five scores are the adjusted Rand index: 0 means no better than grouping the plots at random, 1 means perfect agreement. The third is the share of same-stand pairs that are the same field type; the fifth is how much more often far-apart plots that are alike share a stand type than far-apart plots that differ.</p></details></div>`;
@@ -1436,8 +1440,10 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     const untested = rows.filter(x => (x.chance_percentile === null || x.chance_percentile === undefined) && Array.isArray(x.run_ids));
     if (!tested.length && untested.length) return scoresCard(untested);
     if (!tested.length) {
-      const decl =run().roi === "boxes" ? ` It is written down in <a href="${REPO}odisha_script/PHASE_SQUARES_PREDECLARED.md" target="_blank" rel="noopener">PHASE_SQUARES_PREDECLARED.md</a>, from before these runs: the same five tests and 1,999 random placements as before, on the boxes.` : "";
-      return `<div class="card"><h3>Is that more than chance?</h3><p class="small">Not tested yet; the chance test runs next.${decl}</p></div>`;
+      // The 13 Oct box runs: the test declared for them is not run; they stay a comparison beside the
+      // kept-land runs, not a declared score (Jaskaran, 18 Oct 2026).
+      if (run().roi === "boxes" && !isKept(run())) return `<div class="card"><h3>Is that more than chance?</h3><p class="small">Not tested, and it won't be: these box runs stay a comparison beside the kept-land runs, not a declared score. Their stands' five scores on the kept-land check's plots are shown with the kept-land runs, under "The checks, side by side". The test written down for them in <a href="${REPO}odisha_script/PHASE_SQUARES_PREDECLARED.md" target="_blank" rel="noopener">PHASE_SQUARES_PREDECLARED.md</a> is not run.</p></div>`;
+      return `<div class="card"><h3>Is that more than chance?</h3><p class="small">Not tested yet; the chance test runs next.</p></div>`;
     }
     const pass = tested.filter(x => x.p_holm !== null && x.p_holm <= 0.05);
     const rawOnly = tested.filter(x => x.p !== null && x.p <= 0.05 && !(x.p_holm !== null && x.p_holm <= 0.05));

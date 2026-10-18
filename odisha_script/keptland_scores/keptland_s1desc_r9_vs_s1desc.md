@@ -32,12 +32,12 @@ tested (`odisha_script/PHASE_KEPTLAND_PREDECLARED.md`).
 | covered_only | 4 labelling: ARI, district mean | +0.0379 | +0.0475 | +0.0097 |
 | covered_only | 5 labelling: far-apart gap | -0.0148 | +0.0008 | +0.0156 |
 | covered_only | plots scored | 252 | 252 | +0 |
-| box_runs | 1 drawing: ARI, all plots | +0.0051 | +0.0051 | +0.0000 |
-| box_runs | 2 drawing: ARI, stands of 2+ plots | +0.0225 | +0.0225 | +0.0000 |
-| box_runs | 3 drawing: same-stand pair precision | +0.5185 | +0.5185 | +0.0000 |
-| box_runs | 4 labelling: ARI, district mean | +0.0504 | +0.0504 | +0.0000 |
-| box_runs | 5 labelling: far-apart gap | -0.0165 | -0.0165 | +0.0000 |
-| box_runs | plots scored | 264 | 264 | +0 |
+| box_runs (the 13 Oct box stands: a comparison, not a declared score) | 1 drawing: ARI, all plots | +0.0051 | +0.0051 | +0.0000 |
+| box_runs (the 13 Oct box stands: a comparison, not a declared score) | 2 drawing: ARI, stands of 2+ plots | +0.0225 | +0.0225 | +0.0000 |
+| box_runs (the 13 Oct box stands: a comparison, not a declared score) | 3 drawing: same-stand pair precision | +0.5185 | +0.5185 | +0.0000 |
+| box_runs (the 13 Oct box stands: a comparison, not a declared score) | 4 labelling: ARI, district mean | +0.0504 | +0.0504 | +0.0000 |
+| box_runs (the 13 Oct box stands: a comparison, not a declared score) | 5 labelling: far-apart gap | -0.0165 | -0.0165 | +0.0000 |
+| box_runs (the 13 Oct box stands: a comparison, not a declared score) | plots scored | 264 | 264 | +0 |
 
 ## How the plots join
 

@@ -33,10 +33,15 @@ For a write-up, cite a frozen copy instead:
        git tag paper-v1 <commit>
        git push origin paper-v1
 
-3. The Pages workflow runs on the tag and publishes that commit's site at
-   `https://<user>.github.io/phd-code/v/paper-v1/` beside the live one. Every later build keeps
-   it, built again from the same tagged commit, so it does not change.
-4. Open the frozen copy, set up each view, and use "Copy link to this view": the link keeps the
+3. Then run the Pages workflow on `main`: Actions → Pages → Run workflow, with the branch set to
+   `main` (or `gh workflow run pages.yml --ref main`). Pushing the tag starts a run of its own,
+   but on 15 Oct 2026 the tag's own deploy did not go live, although its run reported success. A
+   run on `main` builds every `paper-*` copy again from its tagged commit and publishes them with
+   the live site.
+4. When that run has finished, the copy is at `https://<user>.github.io/phd-code/v/paper-v1/`,
+   beside the live one. Every later build keeps it, built again from the same tagged commit, so it
+   does not change.
+5. Open the frozen copy, set up each view, and use "Copy link to this view": the link keeps the
    `/v/paper-v1/` part. The frozen page says it is a frozen copy and links to the same view on the
    live site.
 

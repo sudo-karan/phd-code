@@ -76,3 +76,13 @@ the scores to stay small (every ARI under 0.1) and no test to pass after the cor
 null moves plots clearly further on the boxes, the percentiles may rise for that reason alone,
 which is why the check above exists. A pass would be a change of conclusion and is reported as
 one.
+
+## Note of 19 Oct 2026 (round 11): not run
+
+The analysis declared here was never run on the box runs (`docs/handoff/2026-10-16-round8.md`,
+Task 3), and on 18 Oct 2026 Jaskaran decided that it will not be: the box runs stay a descriptive
+comparison beside the kept-land runs, not a declared score (register entry
+`field-box-runs-a-descriptive-comparison-only`). Their stands are scored only as the kept-land
+check's descriptive analysis beside the box runs (`PHASE_KEPTLAND_PREDECLARED.md`, "Beside the box
+runs, descriptive only"), with no chance test and no test of any difference. Nothing declared above
+is changed.
