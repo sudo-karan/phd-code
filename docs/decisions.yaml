@@ -5438,7 +5438,9 @@ decisions:
     features and everything after them; masking, the S2 composite and the optical, structure and static features
     are copied from the round-6 runs (scripts/reuse_upstream_assets.py, RECOMPUTE_VIA_CONTEXT). They are the runs
     the field check of odisha_script/PHASE_KEPTLAND_PREDECLARED.md scores. The other Odisha configs keep
-    ASCENDING, as does Sanjay Van, with 178 ascending images; their runs are not made again this round.
+    ASCENDING, as does Sanjay Van, with 178 ascending images; their runs are not made again this round. (Since 18 Oct
+    2026 the field check's scores of record are those on these configs' _r9 copies, run again from empty caches with
+    the same orbit, field-keptland-scores-of-record-are-the-r9-re-runs; the scores on these runs stay as history.)
   alternatives_considered:
   - >-
     Leave the ascending orbit (option (a) of question 4 of docs/handoff/2026-10-15-round6.md): not chosen
@@ -5760,3 +5762,145 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, round 9 brief (17 Oct 2026); PR #43 question 5
+- id: field-keptland-scores-of-record-are-the-r9-re-runs
+  title: >-
+    The kept-land field check's scores of record are those on the _r9 stands; round 7's stay as history
+  decision: >-
+    From 18 Oct 2026 the record of the declared kept-land field check (odisha_script/PHASE_KEPTLAND_PREDECLARED.md) is
+    its scores on the stands of the _r9 runs, made from empty caches in the per-step cache layout:
+    odisha_script/keptland_scores/keptland_s1desc_r9_scores.{json,txt} for the hand-crafted re-runs, with their joined
+    table and run record, and keptland_alphaearth_r9_scores.{json,txt} for the AlphaEarth arm, scored under the
+    amendment that adds it, whose only runs are _r9 runs. Round 7's scores on the stands of the runs of 15 Oct 2026,
+    keptland_s1desc_{joined.csv,scores.json,scores.txt,scores_run.json} (f56ad57), stay in the repo unchanged as
+    history, and a committed file that quotes them as current gets a one-line note saying so.
+  alternatives_considered:
+  - >-
+    Round 7's scores stay the record and the _r9 scores are a check beside them (option (b) of question 1 of
+    docs/handoff/2026-10-18-round10.md): not chosen
+  rationale: >-
+    Jaskaran's answer (a) to question 1 of docs/handoff/2026-10-18-round10.md, 18 Oct 2026 (the round 11 brief): "the
+    _r9 kept-land scores become the record; round 7's stay as history. Add a one-line note wherever a committed file
+    quotes round 7's kept-land scores as current." Round 7's stands were made under the old cache layout; the _r9
+    stands are what the pipeline makes since the cache fix (spec-cache-on-the-analysis-grid-with-per-step-keys), whose
+    test on Kendujhar (round 9, Task D) gave the same superpixels, stands and stand types from two empty caches, which
+    Jaskaran ruled a property of the pipeline. Against round 7's, every score of the primary and of the three checks is
+    a little higher on the re-run stands, by +0.0004 to +0.0598, every ARI among the five scores stays under 0.06 (the
+    largest, S1's labelling mean, +0.0566), and the box runs' scores are equal, as they must be
+    (odisha_script/keptland_scores/keptland_s1desc_r9_vs_s1desc.md). The declared chance test, run on both arms'
+    _r9 stands at Jaskaran's request of 18 Oct 2026 (docs/handoff/2026-10-18-round10.md, "After the round"), reads
+    the same stands (keptland_s1desc_r9_chance.* and keptland_alphaearth_r9_chance.*); Claude (chat)'s rehearsal of
+    it on round 7's stands (keptland_s1desc_chance_rehearsal.*) stays as it is. No paper was searched for this
+    decision.
+  evidence:
+  - path: docs/handoff/2026-10-18-round10.md
+    what: The re-runs and their field check (Task G), the chance test on both arms, and the question, with its two options
+  - path: docs/handoff/2026-10-18-round11.md
+    what: Jaskaran's answer, as he gave it
+  - path: odisha_script/keptland_scores/keptland_s1desc_r9_scores.json
+    what: The hand-crafted scores of record
+  - path: odisha_script/keptland_scores/keptland_s1desc_r9_vs_s1desc.md
+    what: Round 7's scores and the re-run's side by side
+  - path: odisha_script/keptland_scores/keptland_s1desc_scores.json
+    what: Round 7's scores, kept as history
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 18 Oct 2026 (round 11 brief)
+- id: spec-district-step-next-one-30-km-tile
+  title: >-
+    The next step towards a district is one 30 km by 30 km tile, placed by the rule of the 10 km tile
+  decision: >-
+    Before any whole district, the pipeline runs on one tile of 30 km by 30 km (90,000 ha), placed by the same rule as
+    round 10's 10 km cost pilot in Angul (docs/handoff/2026-10-18-round10.md, Task I, "The rule, written before the
+    run"; odisha_script/odisha_tile_0_aoi.py): a square north-up in EPSG:32645, the UTM zone of the Angul boxes,
+    centred on the centroid of the union of the four Angul boxes, wherever the rule puts it. It runs in the next
+    round; round 11 has no Earth Engine work.
+  alternatives_considered:
+  - >-
+    A whole district (option (b) of question 2 of docs/handoff/2026-10-18-round10.md): not chosen
+  - >-
+    Neither yet (option (c)): not chosen
+  rationale: >-
+    Jaskaran's answer (a) to question 2 of docs/handoff/2026-10-18-round10.md, 18 Oct 2026 (the round 11 brief): "next
+    step towards a district is one 30 km x 30 km tile by the same rule (next round)." The 10 km tile cost 0.39
+    EECU-hours per 1,000 ha (3.89 for its 10,000 ha; Angul's 603 ha of boxes 6.57 per 1,000 ha), so 90,000 ha would
+    cost about 35 EECU-hours if the cost grew in proportion to the area. One tile does not show that it does, and a
+    bigger ROI may meet Earth Engine's memory limits, which the 10 km tile did not; its Drive exports also took more
+    than two hours longer than the run, in the shared queue. A bigger tile tests the scaling and the memory limits
+    for a fraction of a district's cost. No paper was searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-18-round10.md
+    what: Task I, its rule, its run and its cost; question 2, with its three options
+  - path: odisha_script/odisha_tile_0_aoi.py
+    what: The rule that placed the 10 km tile
+  - path: aois/odisha_tile_angul_10km.geojson
+    what: The 10 km tile the rule gave
+  - path: docs/reproducibility/r9_runs/cost_odisha_v120_3ha_tile10km_angul_keptland_s1desc_r9.json
+    what: The 10 km tile's cost by stage
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 18 Oct 2026 (round 11 brief)
+- id: spec-cached-rasters-built-over-the-whole-roi
+  title: >-
+    A many-part ROI's cached rasters stay built over the whole ROI, not one part at a time
+  decision: >-
+    Every cached image of a run (the masks, the S2 composite, the feature images and the rest) is exported as before,
+    in one task over the ROI as a whole, also when the ROI has several parts. Only the export stage's vector layers are
+    built one ROI part at a time (spec-export-and-read-back-by-roi-part).
+  alternatives_considered:
+  - >-
+    Build each cached raster one ROI part at a time, as the export stage builds the vector layers (option (b) of
+    question 3 of docs/handoff/2026-10-18-round10.md): not chosen
+  rationale: >-
+    Jaskaran's answer (a) to question 3 of docs/handoff/2026-10-18-round10.md, 18 Oct 2026 (the round 11 brief): "leave
+    per-part cached rasters as they are (option a)." Round 10 found the S2 composite of a box ROI charged by the extent
+    of its boxes, not their area: Dhenkanal's 1,373 ha of boxes, spread over 94,218 ha, cost 5.5 to 7.9 EECU-hours a
+    run, Kendujhar's one box of 1,330 ha 0.14 to 0.20. For leaving it: the box runs are done, and a district or a tile
+    is one piece, so it costs by its area anyway. Against: a later run on scattered sites pays for the space between
+    them. Building by part would change the export of every cached stage, and would need a check, as round 9 made for
+    the vector layers, that the parts give the same pixels as the whole. No paper was searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-18-round10.md
+    what: The note under Task H on what the S2 composite costs, and question 3, with its two options
+  - path: src/fmu/pipeline.py
+    what: Each cached image exported in one task over the run's ROI
+  - path: src/fmu/utils/caching.py
+    what: start_export, its region the ROI
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 18 Oct 2026 (round 11 brief)
+- id: field-keptland-chance-each-arm-draws-its-own-placements
+  title: >-
+    In the kept-land chance test each arm draws its own placements, seeded by the arm's name
+  decision: >-
+    The declared chance test of the kept-land field check (odisha_script/odisha_keptland_chance.py) seeds the random
+    placements of each arm by that arm's name, as the village test seeds each arm: v120_3ha_squares_keptland_s1desc for
+    the hand-crafted runs, with or without _r9 (so the declared run on the re-run stands draws the rehearsal's
+    placements), and alphaearth_3ha_squares_keptland for the AlphaEarth arm. The AlphaEarth arm is not read against the
+    hand-crafted arm's placements, and its declared run of 18 Oct 2026 stands as run.
+  alternatives_considered:
+  - >-
+    Read the AlphaEarth arm against the hand-crafted arm's placements (--arm v120_3ha_squares_keptland_s1desc), so that
+    the two arms meet the same 1,999 realisations (option (b) of question 4 of docs/handoff/2026-10-18-round10.md): not
+    chosen
+  rationale: >-
+    Jaskaran's answer (a) to question 4 of docs/handoff/2026-10-18-round10.md, 18 Oct 2026 (the round 11 brief): "each
+    arm keeps its own placements, seeded by its arm name (option a)." It is the project's rule for every arm so far.
+    With no plot forced onto a stand the placements depend on the plots, the boxes and the seed only, so the seed alone
+    decides whether two arms meet the same realisations; with a seed each, the two arms' p-values differ by Monte Carlo
+    noise as well as by their stands. Nothing in the test compares the arms. No paper was searched for this decision.
+  evidence:
+  - path: odisha_script/odisha_keptland_chance.py
+    what: --arm, and the seed strings that take the arm's name
+  - path: tests/test_keptland_chance_runs.py
+    what: The default arm names, and the AlphaEarth arm's seed strings
+  - path: odisha_script/keptland_scores/keptland_alphaearth_r9_chance.json
+    what: The AlphaEarth arm's declared run, with its seed name (arm_seed_name)
+  - path: docs/handoff/2026-10-18-round10.md
+    what: The chance test on both arms ("After the round", step 1), and question 4, with its two options
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 18 Oct 2026 (round 11 brief)
