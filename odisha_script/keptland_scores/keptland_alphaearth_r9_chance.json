@@ -1,0 +1,727 @@
+{
+ "what": "The chance test of PHASE_KEPTLAND_PREDECLARED.md on the runs named in 'runs'.",
+ "rehearsal": false,
+ "runs": [
+  "odisha_alphaearth_3ha_squares_angul_keptland_r9",
+  "odisha_alphaearth_3ha_squares_dhenkanal_keptland_r9",
+  "odisha_alphaearth_3ha_squares_kendujhar_keptland_r9",
+  "odisha_alphaearth_3ha_squares_koraput_keptland_r9"
+ ],
+ "stands_from": "geojson",
+ "identity_files": [
+  "odisha_script/keptland_scores/keptland_alphaearth_r9_joined.csv",
+  "odisha_script/keptland_scores/keptland_alphaearth_r9_scores.json"
+ ],
+ "inputs_sha256": {
+  "stands:odisha_alphaearth_3ha_squares_angul_keptland_r9": "58dd99a802db20926d0b06e5e2f3b597484dac892646a7a0ac5276c3a565e93b",
+  "stands:odisha_alphaearth_3ha_squares_dhenkanal_keptland_r9": "406e3d860100072d8e76e7c2275d7a51c0142203ac725558ea13d9cc6aee5c99",
+  "stands:odisha_alphaearth_3ha_squares_kendujhar_keptland_r9": "0adfb6bc14c2d338bd9a606e3a4dcc42ba01eaa3bffa5a10440e8e1f3600d115",
+  "stands:odisha_alphaearth_3ha_squares_koraput_keptland_r9": "acc709e78be7b88a2ad1a48a31cfb91340c42e6983009a6863ac7ea2a36fbc5c",
+  "odisha_script/odisha_phase3_0_field_types.csv": "8717e4a79222eba767fa8fd4135b464d9460beab8a20994cc9b46f909bbd0dfd",
+  "odisha_script/odisha_phase3_0_field_types_k4.csv": "4cea8b6c6287306dcb2105b959f2f9edf6373c187b68480b793f6663a731f82f",
+  "odisha_script/keptland_scores/keptland_alphaearth_r9_joined.csv": "79b4210f91ef14c01a9d5e3d95c39736b13ad706be984134497a04adf765bf24",
+  "odisha_script/keptland_scores/keptland_alphaearth_r9_scores.json": "a8442982126ed0ca5f718eff5f28554391b83a2645f82e722a3557903c6ce3c6",
+  "aois/odisha_squares_angul.geojson": "bb2fe45ac1e1572f13f7e1edf3ef14b653a96ff0f725183c0057065b5c0442f1",
+  "aois/odisha_squares_dhenkanal.geojson": "616c0414bae8eb0eaebbda346d4bee980b35bfb9e2df123d164741afd9473fe9",
+  "aois/odisha_squares_kendujhar.geojson": "cbbcb6991819e13a1ed68c2bfdb73fea5caaed549d3f61e20a7c2447e902eb77",
+  "aois/odisha_squares_koraput.geojson": "5dc98db617bd36536a2db9f52298cde29cc94bca6c8a29c6cf5912e7079f4858"
+ },
+ "rotations": 1999,
+ "arm_seed_name": "alphaearth_3ha_squares_keptland",
+ "seeds": {
+  "unconditional": "alphaearth_3ha_squares_keptland/stands_merged/phase3_ari",
+  "conditional": "alphaearth_3ha_squares_keptland/stands_merged/phase3_ari_labelled"
+ },
+ "identity_checks": {
+  "join_at_real_positions": "PASS",
+  "observed_scores_vs_committed": "PASS (|diff| < 1e-12)"
+ },
+ "null_built": true,
+ "failures": {
+  "unconditional": [],
+  "conditional": []
+ },
+ "draws": {
+  "unconditional": {
+   "angul:KANSAB": {
+    "draws_per_realisation": 4.52776388194097,
+    "sampler": "plain",
+    "geometric_acceptance": 0.21475
+   },
+   "angul:GHANAJODI": {
+    "draws_per_realisation": 26.842921460730366,
+    "sampler": "plain",
+    "geometric_acceptance": 0.03875
+   },
+   "angul:JOGI BANDHA": {
+    "draws_per_realisation": 2.4912456228114057,
+    "sampler": "plain",
+    "geometric_acceptance": 0.40525
+   },
+   "angul:ANANDA PUR": {
+    "draws_per_realisation": 2.750375187593797,
+    "sampler": "plain",
+    "geometric_acceptance": 0.36775
+   },
+   "dhenkanal:TULASIPASI": {
+    "draws_per_realisation": 31.47623811905953,
+    "sampler": "plain",
+    "geometric_acceptance": 0.02925
+   },
+   "dhenkanal:KANKANA": {
+    "draws_per_realisation": 2.9249624812406205,
+    "sampler": "plain",
+    "geometric_acceptance": 0.3485
+   },
+   "dhenkanal:Balikurma": {
+    "draws_per_realisation": 7.179089544772387,
+    "sampler": "plain",
+    "geometric_acceptance": 0.14275
+   },
+   "dhenkanal:Kampulei": {
+    "draws_per_realisation": 8.60280140070035,
+    "sampler": "plain",
+    "geometric_acceptance": 0.10875
+   },
+   "dhenkanal:Adhapalli": {
+    "draws_per_realisation": 4.5052526263131565,
+    "sampler": "plain",
+    "geometric_acceptance": 0.2115
+   },
+   "dhenkanal:Mahabirod": {
+    "draws_per_realisation": 4.486743371685843,
+    "sampler": "plain",
+    "geometric_acceptance": 0.21325
+   },
+   "dhenkanal:Kerijoli": {
+    "draws_per_realisation": 2.8129064532266135,
+    "sampler": "plain",
+    "geometric_acceptance": 0.348
+   },
+   "dhenkanal:Pangatira": {
+    "draws_per_realisation": 4.866433216608304,
+    "sampler": "plain",
+    "geometric_acceptance": 0.20525
+   },
+   "kendujhar:BHANRADI SAHI": {
+    "draws_per_realisation": 1.0,
+    "sampler": "feasible-region",
+    "geometric_acceptance": 0.00975
+   },
+   "koraput:HANDAPUR": {
+    "draws_per_realisation": 4.153576788394197,
+    "sampler": "plain",
+    "geometric_acceptance": 0.24175
+   },
+   "koraput:HATIMUNDA": {
+    "draws_per_realisation": 21.280140070035017,
+    "sampler": "plain",
+    "geometric_acceptance": 0.049
+   },
+   "koraput:BARIGUDA": {
+    "draws_per_realisation": 2.647823911955978,
+    "sampler": "plain",
+    "geometric_acceptance": 0.36325
+   },
+   "koraput:KONDASRIMUNDA": {
+    "draws_per_realisation": 1.4122061030515258,
+    "sampler": "plain",
+    "geometric_acceptance": 0.7305
+   },
+   "koraput:KHASUGUDA": {
+    "draws_per_realisation": 1.0,
+    "sampler": "feasible-region",
+    "geometric_acceptance": 0.00825
+   },
+   "koraput:SAKIAGUDA": {
+    "draws_per_realisation": 1.7423711855927964,
+    "sampler": "plain",
+    "geometric_acceptance": 0.57375
+   },
+   "koraput:BARAKANTI": {
+    "draws_per_realisation": 1.0,
+    "sampler": "feasible-region",
+    "geometric_acceptance": 0.0015
+   }
+  },
+  "conditional": {
+   "angul:KANSAB": {
+    "draws_per_realisation": 4.592296148074037,
+    "sampler": "plain",
+    "geometric_acceptance": 0.21475
+   },
+   "angul:GHANAJODI": {
+    "draws_per_realisation": 25.2176088044022,
+    "sampler": "plain",
+    "geometric_acceptance": 0.03875
+   },
+   "angul:JOGI BANDHA": {
+    "draws_per_realisation": 2.3741870935467735,
+    "sampler": "plain",
+    "geometric_acceptance": 0.40525
+   },
+   "angul:ANANDA PUR": {
+    "draws_per_realisation": 2.7543771885942974,
+    "sampler": "plain",
+    "geometric_acceptance": 0.36775
+   },
+   "dhenkanal:TULASIPASI": {
+    "draws_per_realisation": 30.71385692846423,
+    "sampler": "plain",
+    "geometric_acceptance": 0.02925
+   },
+   "dhenkanal:KANKANA": {
+    "draws_per_realisation": 2.8384192096048024,
+    "sampler": "plain",
+    "geometric_acceptance": 0.3485
+   },
+   "dhenkanal:Balikurma": {
+    "draws_per_realisation": 7.177088544272136,
+    "sampler": "plain",
+    "geometric_acceptance": 0.14275
+   },
+   "dhenkanal:Kampulei": {
+    "draws_per_realisation": 8.602301150575288,
+    "sampler": "plain",
+    "geometric_acceptance": 0.10875
+   },
+   "dhenkanal:Adhapalli": {
+    "draws_per_realisation": 4.427213606803401,
+    "sampler": "plain",
+    "geometric_acceptance": 0.2115
+   },
+   "dhenkanal:Mahabirod": {
+    "draws_per_realisation": 4.488744372186093,
+    "sampler": "plain",
+    "geometric_acceptance": 0.21325
+   },
+   "dhenkanal:Kerijoli": {
+    "draws_per_realisation": 2.6893446723361683,
+    "sampler": "plain",
+    "geometric_acceptance": 0.348
+   },
+   "dhenkanal:Pangatira": {
+    "draws_per_realisation": 4.788394197098549,
+    "sampler": "plain",
+    "geometric_acceptance": 0.20525
+   },
+   "kendujhar:BHANRADI SAHI": {
+    "draws_per_realisation": 1.0,
+    "sampler": "feasible-region",
+    "geometric_acceptance": 0.00975
+   },
+   "koraput:HANDAPUR": {
+    "draws_per_realisation": 4.0945472736368185,
+    "sampler": "plain",
+    "geometric_acceptance": 0.24175
+   },
+   "koraput:HATIMUNDA": {
+    "draws_per_realisation": 22.059029514757377,
+    "sampler": "plain",
+    "geometric_acceptance": 0.049
+   },
+   "koraput:BARIGUDA": {
+    "draws_per_realisation": 2.713856928464232,
+    "sampler": "plain",
+    "geometric_acceptance": 0.36325
+   },
+   "koraput:KONDASRIMUNDA": {
+    "draws_per_realisation": 1.4022011005502752,
+    "sampler": "plain",
+    "geometric_acceptance": 0.7305
+   },
+   "koraput:KHASUGUDA": {
+    "draws_per_realisation": 1.0,
+    "sampler": "feasible-region",
+    "geometric_acceptance": 0.00825
+   },
+   "koraput:SAKIAGUDA": {
+    "draws_per_realisation": 1.710855427713857,
+    "sampler": "plain",
+    "geometric_acceptance": 0.57375
+   },
+   "koraput:BARAKANTI": {
+    "draws_per_realisation": 1.0,
+    "sampler": "feasible-region",
+    "geometric_acceptance": 0.0015
+   }
+  }
+ },
+ "analyses": {
+  "primary": {
+   "what": "the primary field types, every plot the join scores",
+   "plots_scored_observed": 264,
+   "plots_scored_per_realisation": {
+    "drawing": {
+     "median": 213.0,
+     "p5": 189.0,
+     "p95": 235.0
+    },
+    "labelling": {
+     "median": 212.0,
+     "p5": 188.0,
+     "p95": 234.0
+    }
+   },
+   "far_apart_pairs": 10433,
+   "scores": {
+    "delin_all": {
+     "observed": 0.005278449774661852,
+     "null_median": 0.006430522012189004,
+     "null_p5": 0.003818893686251082,
+     "null_p95": 0.009795000469500837,
+     "pctile": 26.313156578289146,
+     "p": 0.737,
+     "n_null": 1999,
+     "holm_p": 1.0,
+     "passes": false
+    },
+    "delin_multi": {
+     "observed": 0.022852145192628296,
+     "null_median": 0.028493453008463305,
+     "null_p5": 0.015925921785977983,
+     "null_p95": 0.04652130467670939,
+     "pctile": 26.163081540770385,
+     "p": 0.7385,
+     "n_null": 1999,
+     "holm_p": 1.0,
+     "passes": false
+    },
+    "prec": {
+     "observed": 0.5130434782608696,
+     "null_median": 0.5308641975308642,
+     "null_p5": 0.44432989690721647,
+     "null_p95": 0.6351351351351351,
+     "pctile": 37.81890945472736,
+     "p": 0.622,
+     "n_null": 1999,
+     "holm_p": 1.0,
+     "passes": false
+    },
+    "lab_wmean": {
+     "observed": 0.041141567930747684,
+     "null_median": 0.04174019148173476,
+     "null_p5": 0.013084813385719924,
+     "null_p95": 0.07761914378244787,
+     "pctile": 48.57428714357179,
+     "p": 0.5145,
+     "n_null": 1999,
+     "holm_p": 1.0,
+     "passes": false
+    },
+    "far_gap": {
+     "observed": -0.004324399336894963,
+     "null_median": 0.007377092251349665,
+     "null_p5": -0.02410655838031614,
+     "null_p95": 0.04807031659119313,
+     "pctile": 29.564782391195596,
+     "p": 0.7045,
+     "n_null": 1999,
+     "holm_p": 1.0,
+     "passes": false
+    }
+   },
+   "labelling_by_district": {
+    "angul": {
+     "observed": 0.11736027110130287,
+     "null_median": 0.0639386189258312,
+     "null_p5": -0.02055920702823282,
+     "null_p95": 0.16642066748623696,
+     "pctile": 80.04002001000501,
+     "p": 0.2,
+     "n_null": 1999
+    },
+    "dhenkanal": {
+     "observed": 0.0740053918436677,
+     "null_median": 0.07142310252015713,
+     "null_p5": 0.023728752763839747,
+     "null_p95": 0.1384476633435047,
+     "pctile": 52.8264132066033,
+     "p": 0.472,
+     "n_null": 1999
+    },
+    "kendujhar": {
+     "observed": 0.3333333333333333,
+     "null_median": 0.0,
+     "null_p5": -0.25806451612903225,
+     "null_p95": 0.5161290322580645,
+     "pctile": 87.6937984496124,
+     "p": 0.1484828921885087,
+     "n_null": 1548
+    },
+    "koraput": {
+     "observed": -0.010593117840265025,
+     "null_median": 0.012485818718662252,
+     "null_p5": -0.01625596212852785,
+     "null_p95": 0.06311775506527328,
+     "pctile": 10.205102551275639,
+     "p": 0.898,
+     "n_null": 1999
+    }
+   },
+   "districts_in_labelling_mean": {
+    "observed": 4,
+    "realisations_by_count": {
+     "3": 451,
+     "4": 1548
+    }
+   }
+  },
+  "S1": {
+   "what": "field type 0 (no trees) left out, same realisations",
+   "plots_scored_observed": 248,
+   "plots_scored_per_realisation": {
+    "drawing": {
+     "median": 202.0,
+     "p5": 180.0,
+     "p95": 222.0
+    },
+    "labelling": {
+     "median": 201.0,
+     "p5": 180.0,
+     "p95": 221.0
+    }
+   },
+   "far_apart_pairs": 9147,
+   "scores": {
+    "delin_all": {
+     "observed": 0.004351189624534144,
+     "null_median": 0.005788304162460469,
+     "null_p5": 0.003467470135066994,
+     "null_p95": 0.008785957179572139,
+     "pctile": 15.757878939469736,
+     "p": 0.8425,
+     "n_null": 1999,
+     "holm_p": 1.0,
+     "passes": false
+    },
+    "delin_multi": {
+     "observed": 0.019313048331016876,
+     "null_median": 0.025492663742952174,
+     "null_p5": 0.014017656916879045,
+     "null_p95": 0.041995978437619264,
+     "pctile": 20.76038019009505,
+     "p": 0.7925,
+     "n_null": 1999,
+     "holm_p": 1.0,
+     "passes": false
+    },
+    "prec": {
+     "observed": 0.5483870967741935,
+     "null_median": 0.5797101449275363,
+     "null_p5": 0.4917754931925535,
+     "null_p95": 0.6769727047146402,
+     "pctile": 28.989494747373687,
+     "p": 0.7115,
+     "n_null": 1999,
+     "holm_p": 1.0,
+     "passes": false
+    },
+    "lab_wmean": {
+     "observed": 0.05673814994821833,
+     "null_median": 0.044591567157504966,
+     "null_p5": 0.015142846115289038,
+     "null_p95": 0.08399159308062422,
+     "pctile": 70.73536768384191,
+     "p": 0.293,
+     "n_null": 1999,
+     "holm_p": 1.0,
+     "passes": false
+    },
+    "far_gap": {
+     "observed": 0.002163040524860327,
+     "null_median": 0.011665193723454093,
+     "null_p5": -0.019611978175643967,
+     "null_p95": 0.05563955347245295,
+     "pctile": 32.16608304152076,
+     "p": 0.6785,
+     "n_null": 1999,
+     "holm_p": 1.0,
+     "passes": false
+    }
+   },
+   "labelling_by_district": {
+    "angul": {
+     "observed": 0.13768286531024046,
+     "null_median": 0.0772541951740188,
+     "null_p5": -0.014702819396766167,
+     "null_p95": 0.1868372689363562,
+     "pctile": 82.04102051025512,
+     "p": 0.18,
+     "n_null": 1999
+    },
+    "dhenkanal": {
+     "observed": 0.0740053918436677,
+     "null_median": 0.07142310252015713,
+     "null_p5": 0.023728752763839747,
+     "null_p95": 0.1384476633435047,
+     "pctile": 52.8264132066033,
+     "p": 0.472,
+     "n_null": 1999
+    },
+    "kendujhar": {
+     "observed": 1.0,
+     "null_median": 0.0,
+     "null_p5": -0.2962962962962963,
+     "null_p95": 1.0,
+     "pctile": 90.8,
+     "p": 0.18465227817745802,
+     "n_null": 1250
+    },
+    "koraput": {
+     "observed": -0.01136063504357696,
+     "null_median": 0.008391465068931252,
+     "null_p5": -0.014797590072156376,
+     "null_p95": 0.059446209368466923,
+     "pctile": 9.054527263631815,
+     "p": 0.9095,
+     "n_null": 1999
+    }
+   },
+   "districts_in_labelling_mean": {
+    "observed": 4,
+    "realisations_by_count": {
+     "3": 749,
+     "4": 1250
+    }
+   }
+  },
+  "S2": {
+   "what": "four field types (odisha_phase3_0_field_types_k4.csv), same realisations",
+   "plots_scored_observed": 264,
+   "plots_scored_per_realisation": {
+    "drawing": {
+     "median": 213.0,
+     "p5": 189.0,
+     "p95": 235.0
+    },
+    "labelling": {
+     "median": 212.0,
+     "p5": 188.0,
+     "p95": 234.0
+    }
+   },
+   "far_apart_pairs": 10433,
+   "scores": {
+    "delin_all": {
+     "observed": 0.0050585831131200795,
+     "null_median": 0.005168266611761431,
+     "null_p5": 0.0032000124881132984,
+     "null_p95": 0.007720160639485923,
+     "pctile": 46.97348674337169,
+     "p": 0.5305,
+     "n_null": 1999,
+     "holm_p": 1.0,
+     "passes": false
+    },
+    "delin_multi": {
+     "observed": 0.018998972270326323,
+     "null_median": 0.021809924355267386,
+     "null_p5": 0.011711182347842448,
+     "null_p95": 0.036781427463579465,
+     "pctile": 34.31715857928965,
+     "p": 0.657,
+     "n_null": 1999,
+     "holm_p": 1.0,
+     "passes": false
+    },
+    "prec": {
+     "observed": 0.6869565217391305,
+     "null_median": 0.6440677966101694,
+     "null_p5": 0.5624143835616439,
+     "null_p95": 0.737743950039032,
+     "pctile": 79.58979489744873,
+     "p": 0.2045,
+     "n_null": 1999,
+     "holm_p": 1.0,
+     "passes": false
+    },
+    "lab_wmean": {
+     "observed": 0.03401569226257528,
+     "null_median": 0.03476160200698104,
+     "null_p5": 0.004832661348481126,
+     "null_p95": 0.06911924429813113,
+     "pctile": 48.47423711855928,
+     "p": 0.5155,
+     "n_null": 1999,
+     "holm_p": 1.0,
+     "passes": false
+    },
+    "far_gap": {
+     "observed": -0.005682550866441122,
+     "null_median": 0.01876191286060061,
+     "null_p5": -0.015738588673919234,
+     "null_p95": 0.06324523606206015,
+     "pctile": 12.65632816408204,
+     "p": 0.8735,
+     "n_null": 1999,
+     "holm_p": 1.0,
+     "passes": false
+    }
+   },
+   "labelling_by_district": {
+    "angul": {
+     "observed": 0.10462719454118985,
+     "null_median": 0.0630338441732069,
+     "null_p5": -0.024174436983167152,
+     "null_p95": 0.1779276336851716,
+     "pctile": 74.93746873436719,
+     "p": 0.251,
+     "n_null": 1999
+    },
+    "dhenkanal": {
+     "observed": 0.06279138327319783,
+     "null_median": 0.05668374172376971,
+     "null_p5": 0.00939278206294849,
+     "null_p95": 0.13084483433102426,
+     "pctile": 56.62831415707854,
+     "p": 0.434,
+     "n_null": 1999
+    },
+    "kendujhar": {
+     "observed": 0.3333333333333333,
+     "null_median": 0.0,
+     "null_p5": -0.25806451612903225,
+     "null_p95": 0.5161290322580645,
+     "pctile": 87.6937984496124,
+     "p": 0.1484828921885087,
+     "n_null": 1548
+    },
+    "koraput": {
+     "observed": -0.014445927259281253,
+     "null_median": 0.007635711743476566,
+     "null_p5": -0.026891547980016597,
+     "null_p95": 0.049051854782961986,
+     "pctile": 14.857428714357178,
+     "p": 0.8515,
+     "n_null": 1999
+    }
+   },
+   "districts_in_labelling_mean": {
+    "observed": 4,
+    "realisations_by_count": {
+     "3": 451,
+     "4": 1548
+    }
+   }
+  }
+ },
+ "checks": {
+  "C1": {
+   "what": "score 4, the labelling mean, without kendujhar on both sides (PHASE_KEPTLAND_AMENDMENT_chance_checks.md); beside the primary, outside Holm, no pass or fail",
+   "plots_scored_observed": 257,
+   "observed": 0.03318303735557999,
+   "null_median": 0.04184456635244582,
+   "null_p5": 0.014148167365404623,
+   "null_p95": 0.07768892944839847,
+   "pctile": 31.315657828914457,
+   "p": 0.687,
+   "n_null": 1999
+  }
+ },
+ "null_moves_plots": {
+  "by_box": {
+   "angul:KANSAB": {
+    "plots": 10,
+    "median_m": 373.5807016730522,
+    "p90_m": 786.0961937382725
+   },
+   "angul:GHANAJODI": {
+    "plots": 10,
+    "median_m": 434.2959134298586,
+    "p90_m": 1604.3328315137933
+   },
+   "angul:JOGI BANDHA": {
+    "plots": 10,
+    "median_m": 283.7197530894326,
+    "p90_m": 493.70504546931096
+   },
+   "angul:ANANDA PUR": {
+    "plots": 9,
+    "median_m": 305.1936072334512,
+    "p90_m": 556.6151675092606
+   },
+   "dhenkanal:TULASIPASI": {
+    "plots": 7,
+    "median_m": 706.2659829071482,
+    "p90_m": 1801.8659016107906
+   },
+   "dhenkanal:KANKANA": {
+    "plots": 7,
+    "median_m": 304.07381991291794,
+    "p90_m": 572.8274620140504
+   },
+   "dhenkanal:Balikurma": {
+    "plots": 11,
+    "median_m": 447.0351674270325,
+    "p90_m": 949.1185423359495
+   },
+   "dhenkanal:Kampulei": {
+    "plots": 9,
+    "median_m": 692.3349365875458,
+    "p90_m": 1203.8675428605222
+   },
+   "dhenkanal:Adhapalli": {
+    "plots": 11,
+    "median_m": 416.45951215134886,
+    "p90_m": 793.3385783536736
+   },
+   "dhenkanal:Mahabirod": {
+    "plots": 9,
+    "median_m": 302.92657909332036,
+    "p90_m": 607.7091214074915
+   },
+   "dhenkanal:Kerijoli": {
+    "plots": 10,
+    "median_m": 282.3619784518986,
+    "p90_m": 523.0325714412577
+   },
+   "dhenkanal:Pangatira": {
+    "plots": 10,
+    "median_m": 365.8756952381399,
+    "p90_m": 736.4013613994304
+   },
+   "kendujhar:BHANRADI SAHI": {
+    "plots": 7,
+    "median_m": 4033.8124754496157,
+    "p90_m": 4739.392275158143
+   },
+   "koraput:HANDAPUR": {
+    "plots": 20,
+    "median_m": 332.6045371922376,
+    "p90_m": 666.6431715711338
+   },
+   "koraput:HATIMUNDA": {
+    "plots": 59,
+    "median_m": 771.3380138208919,
+    "p90_m": 1559.5629316060104
+   },
+   "koraput:BARIGUDA": {
+    "plots": 10,
+    "median_m": 320.3366971789152,
+    "p90_m": 566.0373288293861
+   },
+   "koraput:KONDASRIMUNDA": {
+    "plots": 5,
+    "median_m": 247.74410715625217,
+    "p90_m": 373.56682067346594
+   },
+   "koraput:KHASUGUDA": {
+    "plots": 11,
+    "median_m": 2009.7889554773221,
+    "p90_m": 4254.0312775260445
+   },
+   "koraput:SAKIAGUDA": {
+    "plots": 9,
+    "median_m": 241.47597313114315,
+    "p90_m": 382.22374636798946
+   },
+   "koraput:BARAKANTI": {
+    "plots": 30,
+    "median_m": 1063.4037663245422,
+    "p90_m": 10170.383707626284
+   }
+  },
+  "all_scored_plots_median_m": 440.18653680298314
+ }
+}
