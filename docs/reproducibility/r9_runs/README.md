@@ -23,6 +23,7 @@ each config a copy of the district's `_r9` run changing only the feature descrip
 | Run | Copy of | Run tree at | Superpixels | Stands | Stand polygons |
 |---|---|---|---|---|---|
 | `odisha_alphaearth_3ha_squares_angul_keptland_r9` | `odisha_v120_3ha_squares_angul_keptland_s1desc_r9` | `fcfc169` | 1,205 | 237 | 235 |
+| `odisha_alphaearth_3ha_squares_dhenkanal_keptland_r9` | `odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r9` | `fcfc169` | 2,889 | 574 | 570 |
 
 Kendujhar's re-run is round 9's Task D run 1 (`docs/reproducibility/round9_cache_test/`): its
 files here are byte-for-byte copies of those, so that the field check reads all four districts
