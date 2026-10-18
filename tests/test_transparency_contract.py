@@ -40,6 +40,7 @@ import fmu.stages.features_optical as optical_module
 import fmu.stages.features_radar as radar_module
 import fmu.stages.features_static as static_module
 import fmu.stages.features_structure as structure_module
+import fmu.stages.k_elbow  # noqa: F401
 import fmu.stages.masking as masking_module
 import fmu.stages.merge  # noqa: F401
 import fmu.stages.metrics  # noqa: F401
@@ -105,7 +106,7 @@ ENFORCED = {
 
 # Stages that do not yet. Listed in the PR as pending; move a name to ENFORCED
 # when its stage declares something.
-PENDING = {"profiling", "export", "metrics"}
+PENDING = {"profiling", "export", "metrics", "k_elbow"}
 
 # The pipeline's own stages, snapshotted at import, when every stage module
 # above has registered. Other test modules empty the registry to test the

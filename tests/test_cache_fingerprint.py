@@ -246,12 +246,13 @@ def test_shipped_configs_have_distinct_fingerprints():
     assets from under the shared stage path.
 
     A `_repro` copy is the same experiment under a new name, so it shares its
-    original's fingerprint on purpose; it is left out here and checked below.
+    original's fingerprint on purpose; it is left out here and checked below. So is
+    a round 9 copy (`_r9`; tests/test_r9_configs.py).
     """
     fps = {
         p.stem: config_fingerprint(load_config(p))
         for p in sorted(CONFIG_DIR.glob("sanjay_van_*.yaml"))
-        if not p.stem.endswith("_repro")
+        if not p.stem.endswith(("_repro", "_r9", "_r9_check"))
     }
     assert len(set(fps.values())) == len(fps), fps
 

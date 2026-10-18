@@ -4,22 +4,41 @@ from __future__ import annotations
 
 import json
 import time
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from fmu.config import Config
-from fmu.stages.base import PipelineContext, Stage, StageResult, get_stage_class
+from fmu.stages.base import (
+    PipelineContext,
+    Stage,
+    StageResult,
+    get_stage_class,
+    list_registered_stages,
+)
 from fmu.utils.caching import (
+    CACHE_LAYOUTS,
+    INPUT_IMAGES_PROPERTY,
+    LEGACY_LAYOUT,
+    PER_STEP_LAYOUT,
     ExportTaskInfo,
+    active_layout,
     asset_exists,
+    cache_key,
     cached_asset_path,
     config_fingerprint,
+    input_images_record,
+    layout_in_use,
     load_cached_image,
+    load_cached_table,
     start_export,
+    start_table_export,
 )
+from fmu.utils.gee import safe_get_info
+from fmu.utils.grid import analysis_grid_export_args
 from fmu.utils.logging import get_logger
-from fmu.utils.provenance import git_state
+from fmu.utils.provenance import environment_state, git_state
 
 log = get_logger(__name__)
 
@@ -35,6 +54,8 @@ _STAGE_TAILS: dict[str, list[str]] = {
     "profiling": ["profiling"],
     "export": ["profiling", "export"],
     "metrics": ["metrics"],
+    # The k elbow (round 9): cached, not part of any default run.
+    "k_elbow": ["k_elbow"],
 }
 
 
@@ -64,6 +85,17 @@ _FEATURE_STAGE_ORDER: list[str] = [
 # `Pipeline(..., submit_exports=False)` refuses these, because it could not keep
 # its promise with one of them in the run.
 _SUBMITS_OWN_TASKS: frozenset[str] = frozenset({"export"})
+
+# The image ids of an input collection are listed in the manifest when there are
+# at most this many; a longer list is given by its count and SHA-256 there, and
+# in full in the run folder's input_images.json.
+_INPUT_IDS_LISTED_UP_TO = 100
+
+# The order cache_layout_for looks for legacy assets in: the pipeline's own stages
+# first, as a run makes them, then any other registered stage.
+_PIPELINE_ORDER: tuple[str, ...] = (
+    "masking", "data_load", *_FEATURE_STAGE_ORDER, "segmentation", "clustering",
+)
 
 
 def default_stage_names(config: Config, through: str = "metrics") -> list[str]:
@@ -123,6 +155,71 @@ def default_stage_names(config: Config, through: str = "metrics") -> list[str]:
     ]
 
 
+def feature_stage_names(config: Config) -> list[str]:
+    """masking, data_load and every feature stage a full run of the config needs.
+
+    The first pass of a batch run (round 9, issue #44 item 2): every feature stage
+    is cached before the first pass that reads any of them, segmentation's and the
+    merge's and clustering's alike, so that no later pass computes a feature image
+    live that another pass reads from the cache. `segmentation_stage_names` has
+    only segmentation's own; this has the union `default_stage_names` takes.
+    """
+    full = default_stage_names(config, through="clustering")
+    return [n for n in full if n in ("masking", "data_load", *_FEATURE_STAGE_ORDER)]
+
+
+def cache_layout_for(config: Config) -> tuple[str, str]:
+    """Which cache layout a config's cached assets are in, and why.
+
+    The legacy layout if the cache holds an asset of that layout for any
+    cacheable output of any registered stage (the asset made under the config's
+    legacy fingerprint, `config_fingerprint`), the per-step layout otherwise. A
+    config run before round 9 therefore goes on reading the assets it made, and
+    is written to as it always was; a config never run, or whose legacy assets
+    have all been deleted, gets the per-step layout: per-step keys, and assets
+    on the analysis grid (fmu.utils.caching).
+
+    Up to one small request per cacheable output (about fifteen for a config with
+    no legacy asset), stopping at the first asset found.
+    """
+    fingerprint = config_fingerprint(config)
+    registered = list_registered_stages()
+    order = [n for n in _PIPELINE_ORDER if n in registered]
+    order += [n for n in registered if n not in order]
+    for stage_name in order:
+        stage = get_stage_class(stage_name)()
+        for key in sorted(Pipeline._resolve_cacheable_outputs(stage)):
+            path = cached_asset_path(config.name, stage_name, key, fingerprint)
+            if asset_exists(path):
+                return LEGACY_LAYOUT, f"its cache holds an asset of the legacy layout: {path}"
+    return PER_STEP_LAYOUT, "its cache holds no asset of the legacy layout"
+
+
+def cache_asset_path_for(config: Config, stage_name: str, key: str, layout: str) -> str:
+    """The asset path of one cacheable output of a stage, under a cache layout."""
+    return cached_asset_path(config.name, stage_name, key, cache_key(config, stage_name, layout))
+
+
+# Layouts found by current_cache_key, per config, for the life of the process.
+_found_layouts: dict[tuple[str, str], str] = {}
+
+
+def current_cache_key(config: Config, stage_name: str) -> str:
+    """The key of a stage's cached assets in the layout the config uses.
+
+    Inside a pipeline run, the run's layout; outside one (a script naming a
+    config's assets), the layout `cache_layout_for` finds, asked once per config
+    per process.
+    """
+    layout = active_layout(config)
+    if layout is None:
+        memo = (config.name, config_fingerprint(config))
+        if memo not in _found_layouts:
+            _found_layouts[memo] = cache_layout_for(config)[0]
+        layout = _found_layouts[memo]
+    return cache_key(config, stage_name, layout)
+
+
 def _feature_stages_for(sources: set[str]) -> set[str]:
     """Feature stages that produce these context keys.
 
@@ -170,6 +267,14 @@ class StageRecord:
     # The stage's transparency declaration, filled in: its display layers (with
     # the cache asset each belongs at, when caching is on) and its summary numbers.
     transparency: dict[str, Any] = field(default_factory=dict)
+    # What follows `__` in the names of the stage's cached assets in this run's
+    # cache layout. None with caching off, and for a stage that caches nothing.
+    cache_key: str | None = None
+    # The images of each input collection the stage's outputs were made from,
+    # per cacheable output (or under "live" with caching off): computed in this
+    # run, or read from the cached asset (Stage.input_collections). Empty for a
+    # stage that names no input collection.
+    input_images: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -205,6 +310,11 @@ class Pipeline:
             has run and write the declared summary numbers into the manifest.
             Turn off to skip the Earth Engine round trips they can cost
             (masking's is one reduction over the ROI).
+        cache_layout: only matters with `use_cache=True`. "auto" (default)
+            takes the layout the config's cache is in (`cache_layout_for`):
+            "legacy" for a config run before round 9, "per_step" otherwise.
+            Giving one of the two names it instead (for tests, and for a tool
+            that must read one layout whatever is there).
     """
 
     def __init__(
@@ -214,15 +324,26 @@ class Pipeline:
         *,
         submit_exports: bool = True,
         summaries: bool = True,
+        cache_layout: str = "auto",
     ) -> None:
         if not stage_names:
             raise ValueError("Pipeline must have at least one stage.")
+        if cache_layout != "auto" and cache_layout not in CACHE_LAYOUTS:
+            raise ValueError(
+                f"cache_layout must be 'auto' or one of {CACHE_LAYOUTS}, got {cache_layout!r}"
+            )
         self.stage_names = list(stage_names)
         # eager resolution: typos in stage names fail now, not after 10 min of GEE work
         self.stage_classes: list[type[Stage]] = [get_stage_class(n) for n in stage_names]
         self.use_cache = use_cache
         self.submit_exports = submit_exports
         self.summaries = summaries
+        self.cache_layout = cache_layout
+        # Set at the start of every run().
+        self._layout: str | None = None
+        self._layout_reason: str | None = None
+        self._grid_args: dict[str, Any] | None = None
+        self._input_image_lists: dict[str, dict[str, list[str]]] = {}
         if not submit_exports:
             own = sorted(set(self.stage_names) & _SUBMITS_OWN_TASKS)
             if own:
@@ -245,11 +366,22 @@ class Pipeline:
         log.info("Pipeline run: %s", config.name)
         log.info("Stages: %s", " -> ".join(self.stage_names))
         log.info("Run directory: %s", run_dir)
+
+        self._layout, self._layout_reason = None, None
+        self._grid_args = None
+        self._input_image_lists = {}
+        if self.use_cache:
+            if self.cache_layout == "auto":
+                self._layout, self._layout_reason = cache_layout_for(config)
+            else:
+                self._layout, self._layout_reason = self.cache_layout, "given to Pipeline()"
+            log.info("Cache layout: %s (%s)", self._layout, self._layout_reason)
         log.info("=" * 60)
 
         t0 = time.perf_counter()
-        for stage_cls in self.stage_classes:
-            result.stages.append(self._run_one(stage_cls, ctx, config))
+        with layout_in_use(config, self._layout) if self._layout else nullcontext():
+            for stage_cls in self.stage_classes:
+                result.stages.append(self._run_one(stage_cls, ctx, config))
         result.total_elapsed_sec = time.perf_counter() - t0
         result.context = ctx
 
@@ -260,8 +392,19 @@ class Pipeline:
         manifest_path = run_dir / "manifest.json"
         self._write_manifest(result, config, manifest_path)
         log.info("Manifest written: %s", manifest_path)
+        if self._input_image_lists:
+            # Every id, however many: the manifest lists only short lists.
+            (run_dir / "input_images.json").write_text(
+                json.dumps(self._input_image_lists, indent=1, sort_keys=True)
+            )
 
         return result
+
+    def _cache_key(self, config: Config, stage_name: str) -> str:
+        """The key of a stage's cached assets in this run's layout."""
+        if self._layout is None:
+            raise RuntimeError("no cache layout outside a run with use_cache=True")
+        return cache_key(config, stage_name, self._layout)
 
     def _run_one(
         self,
@@ -314,6 +457,7 @@ class Pipeline:
                     transparency, summary_warnings = self._transparency(
                         stage, ctx, config, cacheable, cache_status
                     )
+                    input_images = self._recorded_input_images(stage, cached_outputs)
                     elapsed = time.perf_counter() - t0
                     log.info("stage %s done in %.2f sec (from cache)", name, elapsed)
                     return StageRecord(
@@ -325,6 +469,8 @@ class Pipeline:
                         cache_status=cache_status,
                         export_tasks=[],
                         transparency=transparency,
+                        cache_key=self._cache_key(config, name),
+                        input_images=input_images,
                     )
 
             # Run live
@@ -354,10 +500,25 @@ class Pipeline:
             for key, value in final_outputs.items():
                 ctx.set(key, value)
 
+            # Which images the outputs computed now were made from, and, for any
+            # output read from the cache, what its asset says it was made from.
+            computed_now = {
+                k for k in (cacheable if self.use_cache else {"live"})
+                if cache_status.get(k) != "hit"
+            }
+            live_images, live_summary = (
+                self._live_input_images(stage, ctx, config, name) if computed_now else ({}, {})
+            )
+            input_images = {
+                **({k: live_images for k in sorted(computed_now)} if live_images else {}),
+                **self._recorded_input_images(stage, cached_outputs),
+            }
+
             # Submit exports for any cacheable outputs that missed
             if self.use_cache and self.submit_exports:
                 export_tasks = self._submit_exports(
-                    stage, config, ctx, final_outputs, cache_status, cacheable
+                    stage, config, ctx, final_outputs, cache_status, cacheable,
+                    input_images_summary=live_summary,
                 )
             elif self.use_cache:
                 # Read-only run: the misses were computed live above and stay
@@ -406,7 +567,94 @@ class Pipeline:
                 for t in export_tasks
             ],
             transparency=transparency,
+            # None for a stage that caches nothing: no asset carries its key.
+            cache_key=self._cache_key(config, name) if self.use_cache and cacheable else None,
+            input_images=input_images,
         )
+
+    @staticmethod
+    def _names_input_collections(stage: Stage) -> bool:
+        return type(stage).input_collections is not Stage.input_collections
+
+    def _live_input_images(
+        self, stage: Stage, ctx: PipelineContext, config: Config, name: str
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        """The record of the stage's input images, computed now, and its short form.
+
+        One request per stage: the ids of every input collection it names, read
+        together. The record goes in the manifest (ids listed when there are at
+        most _INPUT_IDS_LISTED_UP_TO), the full lists in the run folder, and the
+        short form (count and SHA-256 per collection) onto every asset the stage
+        exports in the per-step layout. A failure is recorded, never raised: the
+        stage's products are already made.
+        """
+        if not self._names_input_collections(stage):
+            return {}, {}
+        try:
+            collections = stage.input_collections(ctx, config)
+            if not collections:
+                return {}, {}
+            import ee
+
+            ids = safe_get_info(
+                ee.Dictionary(
+                    {n: ee.ImageCollection(c).aggregate_array("system:id")
+                     for n, c in collections.items()}
+                ),
+                context=f"{name} input image ids",
+            )
+        except Exception as e:  # noqa: BLE001 - recorded in the manifest, see docstring
+            msg = f"input image ids not read: {type(e).__name__}: {e}"
+            log.warning("  [%s] %s", name, msg)
+            return {"source": "computed in this run", "error": msg}, {}
+        ids = {n: [str(i) for i in (v or [])] for n, v in ids.items()}
+        self._input_image_lists[name] = ids
+        record = input_images_record(ids, list_up_to=_INPUT_IDS_LISTED_UP_TO)
+        for n, r in record.items():
+            log.info("  input images, %s: %d (sha256 %s)", n, r["count"], r["sha256"][:12])
+        summary = {n: {"count": r["count"], "sha256": r["sha256"]} for n, r in record.items()}
+        return {"source": "computed in this run", "collections": record}, summary
+
+    def _recorded_input_images(
+        self, stage: Stage, cached_outputs: dict[str, Any]
+    ) -> dict[str, Any]:
+        """What each cached output's asset says its input images were.
+
+        Only for a stage that names input collections, so a stage that names
+        none costs nothing; one request for all of a stage's cached outputs. An
+        asset made before round 9, or in the legacy layout, carries no record.
+        """
+        if not cached_outputs or not self._names_input_collections(stage):
+            return {}
+        try:
+            import ee
+
+            raw = safe_get_info(
+                ee.Dictionary(
+                    {k: v.get(INPUT_IMAGES_PROPERTY) for k, v in sorted(cached_outputs.items())}
+                ),
+                context=f"{stage.name} input images of the cached assets",
+            )
+        except Exception as e:  # noqa: BLE001 - recorded in the manifest, never raised
+            return {
+                k: {"source": "the cached asset", "error": f"{type(e).__name__}: {e}"}
+                for k in sorted(cached_outputs)
+            }
+        out: dict[str, Any] = {}
+        for k in sorted(cached_outputs):
+            value = (raw or {}).get(k)
+            if not value:
+                out[k] = {
+                    "source": "the cached asset",
+                    "not_recorded": "the asset carries no record of its input images "
+                    "(made before round 9, or in the legacy layout)",
+                }
+                continue
+            try:
+                out[k] = {"source": "the cached asset", "collections": json.loads(value)}
+            except (TypeError, ValueError):
+                out[k] = {"source": "the cached asset", "error": f"unreadable record: {value!r}"[:300]}
+        return out
 
     def _transparency(
         self,
@@ -443,7 +691,7 @@ class Pipeline:
             cached = self.use_cache and layer.key in cacheable
             entry["asset"] = (
                 cached_asset_path(
-                    config.name, stage.name, layer.key, config_fingerprint(config)
+                    config.name, stage.name, layer.key, self._cache_key(config, stage.name)
                 )
                 if cached
                 else None
@@ -527,12 +775,13 @@ class Pipeline:
         Non-cacheable keys are not checked.
         """
         outputs: dict[str, Any] = {}
-        fingerprint = config_fingerprint(config)
+        key_suffix = self._cache_key(config, stage.name)
+        tables = type(stage).table_outputs
         for key in sorted(cacheable):
-            path = cached_asset_path(config.name, stage.name, key, fingerprint)
+            path = cached_asset_path(config.name, stage.name, key, key_suffix)
             if asset_exists(path):
                 cache_status[key] = "hit"
-                outputs[key] = load_cached_image(path)
+                outputs[key] = load_cached_table(path) if key in tables else load_cached_image(path)
                 log.debug("  [cache] hit:  %s at %s", key, path)
             else:
                 cache_status[key] = "miss"
@@ -547,8 +796,17 @@ class Pipeline:
         outputs: dict[str, Any],
         cache_status: dict[str, str],
         cacheable: set[str],
+        *,
+        input_images_summary: dict[str, Any] | None = None,
     ) -> list[ExportTaskInfo]:
-        """Submit async export tasks for cacheable outputs that missed the cache."""
+        """Submit async export tasks for cacheable outputs that missed the cache.
+
+        In the per-step layout an image goes onto the analysis grid (the ROI's
+        UTM zone at export.analysis_scale_m), the grid segmentation works on, and
+        carries the count and SHA-256 of its input images as a property; in the
+        legacy layout it is exported as before round 9, with the scale alone. A
+        table output (`Stage.table_outputs`) is exported as a table.
+        """
         import ee  # local import: only needed if caching is on
 
         if not ctx.has("roi"):
@@ -565,27 +823,61 @@ class Pipeline:
             return []
 
         tasks: list[ExportTaskInfo] = []
+        per_step = self._layout == PER_STEP_LAYOUT
+        tables = type(stage).table_outputs
         for key, image in outputs.items():
             if key not in cacheable:
                 continue
             if cache_status.get(key) == "hit":
                 continue
-            if not isinstance(image, ee.Image):
+            path = cached_asset_path(config.name, stage.name, key, self._cache_key(config, stage.name))
+            description = f"{config.name}_{stage.name}_{key}"
+            if key in tables:
+                if not isinstance(image, ee.FeatureCollection):
+                    log.warning(
+                        "  [cache] skipping export of %s: declared a table output but not an "
+                        "ee.FeatureCollection (got %s)", key, type(image).__name__,
+                    )
+                    continue
+                task = start_table_export(image, asset_path=path, description=description)
+            elif not isinstance(image, ee.Image):
                 log.warning(
                     "  [cache] skipping export of %s: declared cacheable but not an ee.Image (got %s)",
                     key, type(image).__name__,
                 )
                 continue
-            path = cached_asset_path(
-                config.name, stage.name, key, config_fingerprint(config)
-            )
-            task = start_export(
-                image=image,
-                asset_path=path,
-                roi=roi,
-                scale=10,
-                description=f"{config.name}_{stage.name}_{key}",
-            )
+            elif per_step:
+                if self._grid_args is None:
+                    self._grid_args = analysis_grid_export_args(
+                        roi, config.export.analysis_scale_m
+                    )
+                    log.info("  [cache] exports on the analysis grid: %s", self._grid_args)
+                if input_images_summary:
+                    # A cast, not ee.Image(...): Element.set() is typed as
+                    # returning Element, and the value is the same image.
+                    image = cast(
+                        ee.Image,
+                        image.set(
+                            INPUT_IMAGES_PROPERTY,
+                            json.dumps(input_images_summary, sort_keys=True),
+                        ),
+                    )
+                task = start_export(
+                    image=image,
+                    asset_path=path,
+                    roi=roi,
+                    scale=config.export.analysis_scale_m,
+                    description=description,
+                    **self._grid_args,
+                )
+            else:
+                task = start_export(
+                    image=image,
+                    asset_path=path,
+                    roi=roi,
+                    scale=10,
+                    description=description,
+                )
             cache_status[key] = "miss-exported"
             tasks.append(task)
         return tasks
@@ -606,9 +898,15 @@ class Pipeline:
             "use_cache": self.use_cache,
             "submit_exports": self.submit_exports,
             "summaries": self.summaries,
+            # Which cache layout the run read and wrote (None with caching off),
+            # and why: fmu.utils.caching, "Two cache layouts".
+            "cache_layout": self._layout,
+            "cache_layout_reason": self._layout_reason,
             # Which code ran: the commit of the checkout the fmu package was
             # imported from, and whether it had uncommitted changes.
             "git": git_state(),
+            # And in which Python environment (round 9).
+            "environment": environment_state(),
             "stages": [
                 {
                     "name": s.name,
@@ -617,8 +915,10 @@ class Pipeline:
                     "warnings": s.warnings,
                     "metadata": _json_safe(s.metadata),
                     "cache_status": s.cache_status,
+                    "cache_key": s.cache_key,
                     "export_tasks": s.export_tasks,
                     "transparency": _json_safe(s.transparency),
+                    "input_images": _json_safe(s.input_images),
                 }
                 for s in result.stages
             ],

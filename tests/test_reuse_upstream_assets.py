@@ -59,7 +59,9 @@ def plans():
 def test_the_pairs_are_the_kept_land_configs():
     names = {Path(new).stem for new, _, _ in mod.PAIRS}
     assert names == set(EXPECTED_COPIES)
-    assert names == {p.stem for p in (REPO / "configs").glob("*_keptland*.yaml")}
+    # The round 9 copies (*_r9*.yaml) run from scratch, with no copied assets.
+    assert names == {p.stem for p in (REPO / "configs").glob("*_keptland*.yaml")
+                     if "_r9" not in p.stem}
     # Round 7: each descending-orbit config reuses its district's round-6 kept-land run.
     for new, source, record in mod.PAIRS:
         if Path(new).stem in S1DESC:

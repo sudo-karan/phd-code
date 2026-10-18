@@ -973,7 +973,10 @@ projects/<your-gcp-project>/assets/fmu/<config_name>/<stage_name>/<output_key>__
 ```
 
 `<fingerprint>` is a 10-character hash of the config *contents* — see
-`config_fingerprint()` in `src/fmu/utils/caching.py`. It exists because the
+`config_fingerprint()` in `src/fmu/utils/caching.py`. That is the legacy layout,
+of every run before round 9 (17 Oct 2026). A config run since, with no asset of
+that layout, uses the per-step one: `<output_key>__s<step key>`, one key per
+step, and its assets are on the analysis grid ([running.md](running.md#the-cache-layer)). It exists because the
 path used to be name-only, so editing a threshold and re-running the same
 config silently reused the old asset. Two runs of the same config name with
 different parameters now get different assets.

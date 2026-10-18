@@ -20,6 +20,8 @@ Output is a single multi-band image, cacheable.
 
 from __future__ import annotations
 
+from typing import Any
+
 import ee
 
 from fmu.config import Config
@@ -75,6 +77,10 @@ class FeaturesRadarStage(Stage):
             },
         ),
     )
+
+    def input_collections(self, ctx: PipelineContext, config: Config) -> dict[str, Any]:
+        """The Sentinel-1 collection the percentiles are taken over (data_load's)."""
+        return {"s1": ctx.get("s1_collection")}
 
     @safe_call("computing radar features")
     def run(self, ctx: PipelineContext, config: Config) -> StageResult:

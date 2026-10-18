@@ -5405,7 +5405,8 @@ decisions:
     For the batch runs of the kept-land configs, an export pass that stops at the runner's read-back of a vector layer
     (more than 5,000 elements for one getInfo, or a count that times out) is finished with
     odisha_script/odisha_read_back_export.py, as for the box runs of round 2. The export stage and the runner are not
-    changed for it now.
+    changed for it now. (Superseded in part in round 9: the export stage and the runner now work one ROI part at a
+    time, spec-export-and-read-back-by-roi-part; the tool stays for an export pass that still stops.)
   alternatives_considered:
   - >-
     Fix both limits, the export stage's count and the runner's read-back, before these runs (option (a) of question
@@ -5420,7 +5421,7 @@ decisions:
   - path: docs/handoff/2026-10-14-round3.md
     what: The question, with its two options
   papers: []
-  status: adopted
+  status: superseded
   design_notes_section: null
   source: Jaskaran, 15 Oct 2026, with Claude (chat)
 - id: spec-odisha-keptland-s1-orbit-descending
@@ -5548,3 +5549,214 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 15 Oct 2026 (round 7)
+- id: spec-cache-on-the-analysis-grid-with-per-step-keys
+  title: >-
+    New runs cache every asset on the UTM analysis grid, under one key per step; configs run before round 9 keep
+    the legacy layout
+  decision: >-
+    Two cache layouts (src/fmu/utils/caching.py). In the per-step layout every cached asset is exported on the
+    analysis grid segmentation uses (the ROI's UTM zone at export.analysis_scale_m, with the crs and crsTransform of
+    fmu.utils.grid.analysis_grid), so cached and live features are the same pixels, and is named
+    <key>__s<step key>, a hash of the settings that step reads (STEP_SETTINGS), the ROI file's content and the keys
+    of the steps whose outputs it reads. The legacy layout is the one of every run before 17 Oct 2026: one
+    fingerprint over most of the config, exports given the scale alone (a geographic grid for a computed image).
+    fmu.pipeline.cache_layout_for gives a config the legacy layout when its cache holds an asset of that layout,
+    and the per-step layout otherwise, so the configs run before round 9 still read and write their assets as they
+    did, and a copy of one under a new name, changing nothing else, gets the per-step layout. The manifest records
+    the layout, why, and each stage's key.
+  alternatives_considered:
+  - >-
+    Make segmentation always read the cache, with the cache left on the geographic grid (option (b) of question 1
+    of PR #42): not chosen
+  - >-
+    Leave the cache as it is and record the route each run took (option (c)): not chosen
+  - >-
+    Switch every config to the new layout at once: not chosen, because the scripts that read the record of earlier
+    runs from their assets (the read-back, the masking maps, the inspectors) would then compute those runs live
+    instead of reading what they made
+  - >-
+    A config setting that chooses the layout: not chosen, because the round-9 copies of the configs change only
+    their name
+  rationale: >-
+    Jaskaran's answer (a) to question 1 of PR #42 ("the cache on the UTM grid", 13 Oct 2026, deferred to the final
+    round) and the round 9 brief of 17 Oct 2026 (task B, issue #44 items 1 and 2: "Cached features on the UTM grid
+    segmentation uses. Per-step cache keys"). docs/reproducibility.md (section 4 of the Odisha re-runs) showed that
+    a config's superpixels depend on whether its features were cached when SNIC ran, through the grid alone: 22% to
+    35% of pixels with hand-crafted features. A per-step key over a wrong list of settings would leave a stale asset
+    in use for one step; tests/test_cache_layout.py reads each stage's module and fails on a setting it reads that
+    its key does not cover. How a config's layout is chosen (by the assets in its cache) and the key's form ("s" and
+    ten hex digits) are Claude Code's choices, put to Jaskaran in the round 9 brief file; he kept them (question 2,
+    answer (a), 18 Oct 2026). The round 9 cache test (docs/reproducibility/round9_cache_test/) passed under the
+    brief's criterion (Jaskaran's ruling, 18 Oct 2026): two from-scratch runs give the same superpixels, stands and
+    stand types exactly, and their feature values agree to about 1e-13, a stated property of the pipeline. No paper
+    was searched for this decision.
+  evidence:
+  - path: src/fmu/utils/caching.py
+    what: The two layouts, STEP_SETTINGS, step_upstream, step_key, cache_key, start_export with crs and crs_transform
+  - path: src/fmu/pipeline.py
+    what: cache_layout_for, Pipeline(cache_layout=...), the exports on the analysis grid, the manifest's cache_layout
+  - path: src/fmu/utils/grid.py
+    what: analysis_grid_export_args
+  - path: tests/test_cache_layout.py
+    what: What each key covers, how keys move, which layout a config gets
+  - path: tests/test_pipeline_cache_layout.py
+    what: The orchestrator under the two layouts
+  - path: docs/reproducibility.md
+    what: Section 4 of the Odisha re-runs, the cause found on 13 Oct 2026
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, PR #42 question 1 (13 Oct 2026) and the round 9 brief (17 Oct 2026)
+- id: spec-every-feature-stage-cached-before-the-first-pass-that-reads-one
+  title: >-
+    A batch run caches every feature stage in a pass of its own before the first pass that reads any of them
+  decision: >-
+    odisha_script/odisha_phase2_2_run_pipeline.py runs four passes: features (masking, the S2 composite and every
+    feature stage the config needs, fmu.pipeline.feature_stage_names: segmentation's, the merge criteria's and
+    clustering's alike), segmentation, clustering and export. Each pass after the first refuses to start (exit 3)
+    while any cacheable output of the features pass, or of an earlier pass, is missing, so no pass computes a feature
+    image live that another pass reads from the cache. odisha_script/run_config_passes.sh calls the four in order and
+    odisha_script/run_passes_safely.py reads the features pass's exit code too.
+  alternatives_considered:
+  - >-
+    Keep the three passes, with the feature stages segmentation does not read computed in the clustering pass: the
+    way of every run before round 9, not chosen
+  rationale: >-
+    The round 9 brief (17 Oct 2026, task B, issue #44 item 2: "every feature stage cached before the first pass that
+    needs any of them"), and question 2 of PR #43: in 13 of the 14 runs of 13 Oct 2026 the pass that fitted the stand
+    types computed a feature stage live that the export pass read from the cache (static features in the hand-crafted
+    runs, the merge criteria in the AlphaEarth runs), and the saved types agree with a second fit in 3 of 14 runs. No
+    paper was searched for this decision.
+  evidence:
+  - path: odisha_script/odisha_phase2_2_run_pipeline.py
+    what: PASSES, stage_names, prerequisites, missing_cache in the config's layout
+  - path: src/fmu/pipeline.py
+    what: feature_stage_names
+  - path: odisha_script/run_config_passes.sh
+    what: The four calls per config
+  - path: tests/test_run_passes.py
+    what: The features pass holds every feature stage; every later pass needs them
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, round 9 brief (17 Oct 2026); PR #43 question 2
+- id: spec-manifests-record-the-environment-and-the-input-images
+  title: >-
+    Run manifests record the Python environment and, per input collection, the images the run used
+  decision: >-
+    Every pipeline manifest, export manifest and Odisha run record gets an environment block
+    (fmu.utils.provenance.environment_state): the Python version, the earthengine-api version, and the SHA-256 of
+    the sorted lines of pip freeze, without comments and without this package's own line, with the number of lines.
+    A stage that reads image collections names them (Stage.input_collections: masking the annual LULC images and
+    WorldCover, data_load the composite's Sentinel-2 images, features_optical the phenology collection,
+    features_radar the Sentinel-1 collection, features_static CHIRPS, features_embedding the annual embeddings).
+    When it runs live the manifest records, per collection, the count and SHA-256 of the sorted image ids, and the
+    ids themselves when there are at most 100; every id goes to the run folder's input_images.json; in the per-step
+    layout the count and SHA-256 also go on each asset it exports (property fmu_input_images), and a later run that
+    reads the asset from the cache records them from there.
+  alternatives_considered:
+  - >-
+    Record the ids only as the stage logs a count of images: the state before round 9, not chosen
+  rationale: >-
+    The round 9 brief (17 Oct 2026, task B: "Manifests also record: Python package versions (earthengine-api and pip
+    freeze hash) and, per input collection, the list of image IDs the run used (or a hash of the sorted list plus the
+    count, if the list is too long)"). Between 27 Aug and 13 Oct 2026 the same Sentinel-2 filter gave 192 and then
+    195 images at Sanjay Van, and the Kendujhar composite changed with its count unchanged (docs/reproducibility.md).
+    This package's own pip freeze line names the commit, which the git block records, and would make two checkouts
+    of one commit differ. The limit of 100 listed ids is Claude Code's choice. No paper was searched for this
+    decision.
+  evidence:
+  - path: src/fmu/utils/provenance.py
+    what: environment_state
+  - path: src/fmu/stages/base.py
+    what: Stage.input_collections
+  - path: src/fmu/pipeline.py
+    what: _live_input_images, _recorded_input_images, the manifest's environment and input_images
+  - path: tests/test_pipeline_cache_layout.py
+    what: The records, computed and read back from an asset
+  - path: tests/test_provenance.py
+    what: environment_state
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, round 9 brief (17 Oct 2026)
+- id: spec-k-elbow-as-a-cached-step
+  title: >-
+    The k elbow is a cached step of its own, keyed without k; built and tested, not used to set k
+  decision: >-
+    src/fmu/stages/k_elbow.py: k-means (scikit-learn, seed 42, 25 starts) on the clustering stage's training rows,
+    read back from its cached feature_stack, for k from k_elbow.k_min to k_elbow.k_max (default 2 to 12), with the
+    elbow by the rule of the earlier elbows (the point farthest from the chord). Its output is a table cached as an
+    asset, in the per-step layout only, under a key over the clustering settings but k, the steps upstream of
+    clustering and the new k_elbow config block, so a configuration's elbow is computed once and read back by later
+    runs whatever its k. It is in no default run and nothing reads it; k stays as each config sets it.
+  alternatives_considered:
+  - >-
+    Recompute the elbow offline from each run's exported stand layer, as odisha_script/odisha_phase3_2_stand_k_elbow.py
+    and scripts/remerge_demo_set.py did: not chosen
+  rationale: >-
+    The round 9 brief (17 Oct 2026, task B: "The k elbow as a cached step: key it on what determines it (feature set,
+    scaling, settings), so it is computed once per configuration and reused by later runs of the same configuration.
+    Not used this round (k stays as in the configs); build and test it only."). Whether k is set from the elbow is
+    issue #44 item 13, out of scope this round. No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/k_elbow.py
+    what: The step
+  - path: src/fmu/config.py
+    what: KElbowParams
+  - path: tests/test_k_elbow.py
+    what: The rule, the sweep on planted data, the table, the refusal of the legacy layout
+  - path: tests/test_cache_layout.py
+    what: test_k_moves_clustering_and_not_the_elbow
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, round 9 brief (17 Oct 2026)
+- id: spec-export-and-read-back-by-roi-part
+  title: >-
+    The export stage builds, counts and sends each vector layer one ROI part at a time, and the runner reads each part
+    back in pages
+  decision: >-
+    src/fmu/stages/export.py splits the ROI into its own polygons (_roi_parts: roi.geometries(), so each part keeps the
+    ROI's projection and edges), builds each vector layer over each part with the stage's own builders (now given a
+    region), counts its polygons and stands one request per part (_count_by_part), and sends the union of the parts,
+    numbered 1..N over all of them by the stage's own sort key, to Drive (_layer_by_part). An ROI of one polygon is one
+    part, and its layers are built exactly as before; parts within two pixels of each other are not split, with a
+    warning. The manifest records roi_parts per layer. odisha_script/odisha_phase2_2_run_pipeline.py reads each layer
+    back over the same parts, a page of 2,500 polygons at a time, and numbers the polygons over all parts with the same
+    key (read_layer_by_part); odisha_script/odisha_read_back_export.py takes the same parts by default (--parts stage),
+    or the ROI file's polygons as before (--parts file).
+  alternatives_considered:
+  - >-
+    Leave the export stage and the runner as they were, and finish a stopped export pass with the read-back tool
+    (spec-export-read-back-tool-when-an-export-pass-stops, rounds 6 and 7): superseded
+  - >-
+    Count the polygons in batch, or not at all: not chosen; the manifest's counts are what the run records report
+  rationale: >-
+    The round 9 brief (17 Oct 2026, task C, issue #44 item 11: "Export and read-back one ROI part at a time (method of
+    odisha_script/odisha_read_back_export.py). The export stage is Locked: add the docs/decisions.yaml entry MODULES.md
+    requires."), and question 5 of PR #43, which Jaskaran answered yes for the final round. The export stage counted
+    all stand polygons of the whole ROI in one request, which timed out for the eight Dhenkanal boxes, and the runner
+    read a layer back in one request, which Earth Engine stops above 5,000 elements (8,744 superpixel polygons in
+    Koraput). Checked read-only before the change was committed, with odisha_script/odisha_read_back_export.py --check:
+    for odisha_v120_3ha_squares_dhenkanal_keptland_s1desc (8 parts) the three layers built and read back one stage part
+    at a time equal the files its export pass wrote over the whole ROI (559, 2,889 and 85 polygons; no polygon,
+    property or outline differs). For odisha_v120_3ha_squares_koraput_keptland_s1desc (7 parts) the superpixels equal
+    the file (8,744 polygons); of its 1,631 stand polygons one differs from the file its export pass wrote over the
+    whole ROI, stand 1315, by an edge pixel at a part's outline, the same polygon and the same difference with the ROI
+    file's parts (rounds 6 and 7 found it too); and 90 of its 324 same-type regions differ in profile medians only,
+    which the profiling stage computes live with Earth Engine's percentile reducer (a histogram over large clusters),
+    every outline equal. No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/export.py
+    what: _roi_parts, _layer_by_part, _count_by_part; the builders' region; roi_parts in the manifest
+  - path: odisha_script/odisha_phase2_2_run_pipeline.py
+    what: read_layer_by_part and pull_vectors
+  - path: odisha_script/odisha_read_back_export.py
+    what: The method, and its --parts option
+  - path: tests/test_export_by_part.py
+    what: One part as before, several parts built and numbered over all, the counts, the runner's read-back
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, round 9 brief (17 Oct 2026); PR #43 question 5

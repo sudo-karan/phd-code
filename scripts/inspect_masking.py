@@ -14,7 +14,7 @@ import argparse
 import ee
 
 from fmu.config import load_config
-from fmu.pipeline import Pipeline
+from fmu.pipeline import Pipeline, current_cache_key
 from fmu.stages.base import PipelineContext
 from fmu.stages.masking import MaskingStage  # noqa: F401  # registers the stage
 from fmu.utils.gee import init_gee, load_roi_geometry, safe_get_info
@@ -86,10 +86,10 @@ def main() -> None:
     roi_coords_js = _json.dumps(roi_coords)
 
     # Check what's cached so we emit the right JS.
-    from fmu.utils.caching import asset_exists, cached_asset_path, config_fingerprint
+    from fmu.utils.caching import asset_exists, cached_asset_path
     cached_paths = {}
     for key in ("habitat_mask", "water_mask", "landcover_summary"):
-        path = cached_asset_path(config.name, "masking", key, config_fingerprint(config))
+        path = cached_asset_path(config.name, "masking", key, current_cache_key(config, "masking"))
         if asset_exists(path):
             cached_paths[key] = path
 

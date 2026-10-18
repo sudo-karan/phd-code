@@ -25,6 +25,12 @@ scripts/compare_stand_runs.py to say how far apart the two partitions are.
 changed (the fingerprint in the asset name is then not the one the config gives today).
 Only compare stages whose settings did not change between the two.
 
+Each config's assets are named in the cache layout it uses (fmu.pipeline.cache_layout_for):
+by its fingerprint in the legacy layout, by each stage's key in the per-step one (round 9).
+When both configs are in the per-step layout, their assets are on the analysis grid, and the
+pixels are compared on the grid of the old run's asset when the two share it; otherwise on a
+geographic grid at the analysis scale, as before round 9.
+
 `--out` writes two files: the rows, which hold results only, and beside them
 `<name>_run.json` with the command, the date and the git commit it ran from.
 
@@ -92,19 +98,26 @@ def compare(
     import fmu.stages.merge  # noqa: F401
     import fmu.stages.segmentation  # noqa: F401
     from fmu.config import load_config
-    from fmu.pipeline import Pipeline, default_stage_names
+    from fmu.pipeline import Pipeline, cache_layout_for, default_stage_names
     from fmu.stages.base import get_stage_class
-    from fmu.utils.caching import asset_exists, cached_asset_path, config_fingerprint
+    from fmu.utils.caching import PER_STEP_LAYOUT, asset_exists, cache_key, cached_asset_path
     from fmu.utils.gee import init_gee, load_roi_geometry, safe_get_info
 
     old, new = load_config(old_config), load_config(new_config)
     init_gee()
     roi = load_roi_geometry(new.roi.roi_file)
-    fp_old = old_fingerprint or config_fingerprint(old)
-    fp_new = config_fingerprint(new)
+    layout_old, layout_new = cache_layout_for(old)[0], cache_layout_for(new)[0]
+    on_asset_grid = layout_old == layout_new == PER_STEP_LAYOUT
+    print(f"cache layouts: old {layout_old}, new {layout_new}", flush=True)
+
+    def key_old(stage: str) -> str:
+        if old_fingerprint and layout_old != PER_STEP_LAYOUT:
+            return old_fingerprint
+        return cache_key(old, stage, layout_old)
+
     scale = new.export.analysis_scale_m
     names = stages or default_stage_names(new, through="clustering")
-    kw = {
+    kw_geographic = {
         "geometry": roi,
         "crs": "EPSG:4326",
         "scale": scale,
@@ -115,8 +128,8 @@ def compare(
     rows: list[dict[str, Any]] = []
     for stage in names:
         for key in sorted(Pipeline._resolve_cacheable_outputs(get_stage_class(stage)())):
-            pa = cached_asset_path(old.name, stage, key, fp_old)
-            pb = cached_asset_path(new.name, stage, key, fp_new)
+            pa = cached_asset_path(old.name, stage, key, key_old(stage))
+            pb = cached_asset_path(new.name, stage, key, cache_key(new, stage, layout_new))
             have_a, have_b = asset_exists(pa), asset_exists(pb)
             if not (have_a and have_b):
                 missing = [n for n, h in ((old.name, have_a), (new.name, have_b)) if not h]
@@ -134,6 +147,20 @@ def compare(
                 continue
             proj_a = safe_get_info(a.projection(), context=f"{pa} projection")
             proj_b = safe_get_info(b.projection(), context=f"{pb} projection")
+            same_grid = proj_a.get("crs") == proj_b.get("crs") and proj_a.get(
+                "transform"
+            ) == proj_b.get("transform")
+            kw = (
+                {
+                    "geometry": roi,
+                    "crs": proj_a["crs"],
+                    "crsTransform": proj_a["transform"],
+                    "maxPixels": int(1e10),
+                    "tileScale": 4,
+                }
+                if on_asset_grid and same_grid
+                else kw_geographic
+            )
             got = safe_get_info(
                 ee.Dictionary(
                     {
@@ -159,8 +186,9 @@ def compare(
                     "old_asset": pa,
                     "new_asset": pb,
                     "bands": len(bands_a),
-                    "same_grid": proj_a.get("crs") == proj_b.get("crs")
-                    and proj_a.get("transform") == proj_b.get("transform"),
+                    "same_grid": same_grid,
+                    "compared_on": "the assets' own grid" if kw is not kw_geographic
+                    else f"EPSG:4326 at {scale} m",
                     # Bands can be masked differently, so the total is summed per band.
                     "pixel_values_compared": int(sum((got["n"].get(k) or 0) for k in bands_a)),
                     "pixel_bands_that_differ": int(sum((got["neq"].get(k) or 0) for k in bands_a)),

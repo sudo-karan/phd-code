@@ -7,11 +7,13 @@ What it copies, from the run tree (a clean clone a batch ran from):
   - odisha_script/phase2_vectors/<run>_stands_merged.geojson, _stands_snic.geojson,
     _stands_dissolved.geojson: as they are;
   - <run>_run.json: the run record, without "run_dir" (a path holding the run's date and time);
-  - runs/<run>_<date>_<time>/manifest.json of each pass, as <run>_manifest_<segmentation|clustering|
-    export>.json, without "run_dir", "total_elapsed_sec", each stage's "elapsed_sec", the export
-    manifest's "run_timestamp" and each Drive export's "submitted_at". A run folder whose manifest
-    ends at profiling is the read-back tool's own (odisha_script/odisha_read_back_export.py), not a
-    pass, and is skipped, as is one with no manifest (a pass that failed before writing it).
+  - runs/<run>_<date>_<time>/manifest.json of each pass, as <run>_manifest_<features|segmentation|
+    clustering|export>.json, without "run_dir", "total_elapsed_sec", each stage's "elapsed_sec", the
+    export manifest's "run_timestamp" and each Drive export's "submitted_at". A run folder whose
+    manifest ends at profiling is the read-back tool's own (odisha_script/odisha_read_back_export.py),
+    not a pass, and is skipped, as is one with no manifest (a pass that failed before writing it). The
+    features pass (round 9) is the one whose manifest ends at a feature stage; a run made before round
+    9 has none.
 <run>_raster_at_plots.csv is not copied: it samples the stand rasters at the field plots, which joins
 plots to stands outside the declared field check.
 
@@ -42,6 +44,9 @@ SETTINGS = ("dates", "time_reference")  # config keys that are settings, not tim
 STAMP = re.compile(r"20\d\d-\d\d-\d\dT\d\d:|20\d{6}_\d{6}")
 LAYERS = ("stands_merged", "stands_snic", "stands_dissolved")
 PASSES = ("segmentation", "clustering", "export")
+# The first pass of a run since round 9 caches the feature stages and ends at one of them.
+FEATURE_PASS_ENDS = ("masking", "data_load", "features_optical", "features_radar",
+                     "features_structure", "features_static", "features_embedding")
 
 
 def strip(obj: Any) -> Any:
@@ -83,7 +88,9 @@ def passes(tree: Path, run_id: str) -> dict[str, tuple[str, dict]]:
         last = manifest["stages"][-1]["name"]
         if last == "profiling":
             continue  # the read-back tool's own run folder, not a pass
-        if last not in PASSES:
+        if last in FEATURE_PASS_ENDS:
+            last = "features"
+        elif last not in PASSES:
             raise SystemExit(f"{d}: a pass ending at {last}")
         out[last] = (d.name, strip(manifest))
     missing = [k for k in PASSES if k not in out]

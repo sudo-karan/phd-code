@@ -335,6 +335,19 @@ class MaskingStage(Stage):
         ),
     )
 
+    def input_collections(self, ctx: PipelineContext, config: Config) -> dict[str, Any]:
+        """The annual LULC images the vote reads and the WorldCover image used where
+        it has no data, as `run()` loads them (the JRC water map is one image, named
+        in the config)."""
+        roi = ctx.get("roi")
+        return {
+            "indiasat_lulc": _load_indiasat_collection(
+                config.datasets.indiasat, config.masking, roi
+            ),
+            # run() takes the collection's first image
+            "worldcover": ee.ImageCollection(config.datasets.worldcover).limit(1),
+        }
+
     @safe_call("building masking layers")
     def run(self, ctx: PipelineContext, config: Config) -> StageResult:
         roi = ctx.get("roi")

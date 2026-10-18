@@ -371,6 +371,10 @@ class Stage(ABC):
     # outputs are mostly ee.ImageCollection / non-Image should override this
     # to limit the orchestrator's cache check to the actually-cacheable keys.
     cacheable_outputs: ClassVar[set[str]] = set()
+    # Cacheable outputs that are tables (ee.FeatureCollection), not images: the
+    # orchestrator exports them with Export.table.toAsset and reads them back as
+    # FeatureCollections. Empty for every stage but the k elbow (round 9).
+    table_outputs: ClassVar[set[str]] = set()
     # Transparency contract (see the top of this module). Both default to empty:
     # a stage opts in by declaring them, and tests/test_transparency_contract.py
     # lists which stages are required to.
@@ -478,6 +482,21 @@ class Stage(ABC):
         A summary reports on the stage's products; it must not change them. If
         it raises, or returns the wrong names, the orchestrator records that in
         the manifest and carries on: the products are already made.
+        """
+        return {}
+
+    def input_collections(self, ctx: PipelineContext, config: Any) -> dict[str, Any]:
+        """The image collections this stage reads, by a short name. Default none.
+
+        The orchestrator records, in the run manifest, the ids of the images in
+        each (their count and SHA-256, and the ids themselves when there are few),
+        so that two runs can be told apart by what Earth Engine gave them and not
+        only by their settings (round 9; between 27 Aug and 13 Oct 2026 the same
+        Sentinel-2 filter gave 192 and then 195 images at Sanjay Van). It is
+        called only when the stage runs live, after `run()`, with the same
+        context; a cached output carries the record of the run that made it.
+        Each value is an ee.ImageCollection filtered exactly as `run()` filters
+        it. Building them must not submit anything.
         """
         return {}
 

@@ -1251,7 +1251,11 @@ def _layer_record(config: Any, manifest: dict[str, Any], fingerprint: str) -> di
                 "stage": stage["name"],
                 "cache_status": status,
                 "read_from": "cached asset" if hit else "computed live, not exported",
-                "asset": cached_asset_path(config.name, stage["name"], key, fingerprint)
+                # The run's own key for the stage (one per stage in the per-step
+                # cache layout); the fingerprint for a manifest made before round 9.
+                "asset": cached_asset_path(
+                    config.name, stage["name"], key, stage.get("cache_key") or fingerprint
+                )
                 if hit else None,
             }
     return layers

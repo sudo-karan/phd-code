@@ -99,14 +99,15 @@ def other_dataset_differences(district: str) -> list[str]:
 def other_arm_mask_assets(district: str) -> list[str]:
     """The other arms' cached habitat_mask assets that exist, under their current fingerprints."""
     from fmu.config import load_config
-    from fmu.utils.caching import asset_exists, cached_asset_path, config_fingerprint
+    from fmu.pipeline import current_cache_key
+    from fmu.utils.caching import asset_exists, cached_asset_path
     from fmu.utils.gee import init_gee
 
     init_gee()
     found = []
     for arm in OTHER_ARMS:
         cfg = load_config(REPO / "configs" / f"{arm}_{district}.yaml")
-        path = cached_asset_path(cfg.name, "masking", "habitat_mask", config_fingerprint(cfg))
+        path = cached_asset_path(cfg.name, "masking", "habitat_mask", current_cache_key(cfg, "masking"))
         if asset_exists(path):
             found.append(path)
         else:

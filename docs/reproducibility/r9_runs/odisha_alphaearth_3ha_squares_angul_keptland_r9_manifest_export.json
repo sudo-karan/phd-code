@@ -1,0 +1,3504 @@
+{
+ "config_name": "odisha_alphaearth_3ha_squares_angul_keptland_r9",
+ "use_cache": true,
+ "submit_exports": true,
+ "summaries": true,
+ "cache_layout": "per_step",
+ "cache_layout_reason": "given to Pipeline()",
+ "git": {
+  "commit": "fcfc169564bff6b142ed1da34b800947edbade94",
+  "dirty": false,
+  "modified": [],
+  "modified_truncated": false,
+  "untracked": [
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r9_raster_at_plots.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r9_run.json",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r9_stands_dissolved.geojson",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r9_stands_merged.geojson",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r9_stands_snic.geojson",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r9_raster_at_plots.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r9_run.json",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r9_stands_dissolved.geojson",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r9_stands_merged.geojson",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r9_stands_snic.geojson",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_koraput_keptland_s1desc_r9_raster_at_plots.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_koraput_keptland_s1desc_r9_run.json",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_koraput_keptland_s1desc_r9_stands_dissolved.geojson",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_koraput_keptland_s1desc_r9_stands_merged.geojson",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_koraput_keptland_s1desc_r9_stands_snic.geojson",
+   "odisha_script/phase2_vectors/sanjay_van_alphaearth_keptland_r9_raster_at_plots.csv",
+   "odisha_script/phase2_vectors/sanjay_van_alphaearth_keptland_r9_run.json",
+   "odisha_script/phase2_vectors/sanjay_van_alphaearth_keptland_r9_stands_dissolved.geojson",
+   "odisha_script/phase2_vectors/sanjay_van_alphaearth_keptland_r9_stands_merged.geojson",
+   "odisha_script/phase2_vectors/sanjay_van_alphaearth_keptland_r9_stands_snic.geojson",
+   "odisha_script/phase2_vectors/sanjay_van_baseline_keptland_r9_raster_at_plots.csv",
+   "odisha_script/phase2_vectors/sanjay_van_baseline_keptland_r9_run.json",
+   "odisha_script/phase2_vectors/sanjay_van_baseline_keptland_r9_stands_dissolved.geojson",
+   "odisha_script/phase2_vectors/sanjay_van_baseline_keptland_r9_stands_merged.geojson",
+   "odisha_script/phase2_vectors/sanjay_van_baseline_keptland_r9_stands_snic.geojson"
+  ],
+  "untracked_truncated": false,
+  "root": "/Users/karan/Desktop/phd-code/outputs/round10/run_tree",
+  "error": null
+ },
+ "environment": {
+  "python": "3.13.14",
+  "earthengine_api": "1.7.35",
+  "pip_freeze_sha256": "31aca07855862d34db7bcb31a6b60769d1785e80606cdaa23093cdf2a60bcc21",
+  "pip_freeze_packages": 232,
+  "pip_freeze_left_out": [
+   "-e git+https://github.com/sudo-karan/phd-code.git@fcfc169564bff6b142ed1da34b800947edbade94#egg=fmu"
+  ],
+  "error": null
+ },
+ "stages": [
+  {
+   "name": "masking",
+   "produced": [
+    "habitat_mask",
+    "landcover_summary",
+    "mask_provenance",
+    "water_mask"
+   ],
+   "warnings": [],
+   "metadata": {
+    "source": "cache"
+   },
+   "cache_status": {
+    "habitat_mask": "hit",
+    "landcover_summary": "hit",
+    "mask_provenance": "hit",
+    "water_mask": "hit"
+   },
+   "cache_key": "s073c13df8c",
+   "export_tasks": [],
+   "transparency": {
+    "display_layers": [
+     {
+      "key": "mask_provenance",
+      "band": "reason",
+      "title": "Habitat mask, by reason",
+      "description": "What the mask kept, and why it removed the rest: cropland, built-up, water or other non-habitat. Under IndiaSAT a pixel is kept or removed by a majority vote over its usable years, and a removed pixel is given the reason of its most recent non-habitat year. Other non-habitat is every remaining class: in IndiaSAT, barren land and orchard/plantation; in WorldCover, bare or sparse vegetation, snow and ice, herbaceous wetland, mangroves, and moss and lichen.",
+      "vis": {
+       "bands": [
+        "reason"
+       ],
+       "min": 0,
+       "max": 5,
+       "palette": [
+        "000000",
+        "1a9850",
+        "fdae61",
+        "d73027",
+        "4575b4",
+        "9e9e9e"
+       ]
+      },
+      "legend": [
+       {
+        "value": 0,
+        "label": "No land-cover data in either map (not habitat)",
+        "color": "000000"
+       },
+       {
+        "value": 1,
+        "label": "Kept as habitat (not only forest)",
+        "color": "1a9850"
+       },
+       {
+        "value": 2,
+        "label": "Removed: cropland",
+        "color": "fdae61"
+       },
+       {
+        "value": 3,
+        "label": "Removed: built-up",
+        "color": "d73027"
+       },
+       {
+        "value": 4,
+        "label": "Removed: water",
+        "color": "4575b4"
+       },
+       {
+        "value": 5,
+        "label": "Removed: other non-habitat",
+        "color": "9e9e9e"
+       }
+      ],
+      "legend_note": "This is a habitat mask, not a strict forest mask. By default it keeps IndiaSAT Trees and Shrubs/Scrub, and WorldCover tree cover, shrubland and grassland where IndiaSAT has no data; the classes a run kept are listed in its masking summary (kept_classes). The definition and the reasoning behind it are in docs/design_notes.md, section \"Masking: IndiaSAT-primary, single-phase habitat\".",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_3ha_squares_angul_keptland_r9/masking/mask_provenance__s073c13df8c",
+      "asset_status": "hit"
+     },
+     {
+      "key": "mask_provenance",
+      "band": "source",
+      "title": "Which map decided each pixel",
+      "description": "IndiaSAT decides wherever it has at least one usable year; WorldCover decides only where IndiaSAT has no data.",
+      "vis": {
+       "bands": [
+        "source"
+       ],
+       "min": 0,
+       "max": 2,
+       "palette": [
+        "000000",
+        "7570b3",
+        "e7298a"
+       ]
+      },
+      "legend": [
+       {
+        "value": 0,
+        "label": "Neither map has data",
+        "color": "000000"
+       },
+       {
+        "value": 1,
+        "label": "IndiaSAT decided",
+        "color": "7570b3"
+       },
+       {
+        "value": 2,
+        "label": "WorldCover decided (IndiaSAT has no data)",
+        "color": "e7298a"
+       }
+      ],
+      "legend_note": "",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_3ha_squares_angul_keptland_r9/masking/mask_provenance__s073c13df8c",
+      "asset_status": "hit"
+     }
+    ],
+    "summary_numbers": [
+     {
+      "name": "area_ha",
+      "description": "Area of the ROI the mask was tabulated over",
+      "unit": "ha",
+      "value": 601.5234
+     },
+     {
+      "name": "share_kept",
+      "description": "Share of that area kept as habitat",
+      "unit": "fraction",
+      "value": 0.674011
+     },
+     {
+      "name": "share_by_reason",
+      "description": "Share of the area under each reason: kept, removed as cropland, as built-up, as water, as other non-habitat, or no land-cover data. Adds up to 1",
+      "unit": "fraction",
+      "value": {
+       "no_data": 0.0,
+       "kept": 0.674011,
+       "cropland": 0.319973,
+       "built_up": 0.004241,
+       "water": 0.000448,
+       "other_non_habitat": 0.001326
+      }
+     },
+     {
+      "name": "share_kept_by_source",
+      "description": "Share of the whole area that was kept as habitat, split by the map that decided it. Adds up to share_kept",
+      "unit": "fraction",
+      "value": {
+       "none": 0.0,
+       "indiasat": 0.674011,
+       "worldcover": 0.0
+      }
+     },
+     {
+      "name": "share_decided_by_source",
+      "description": "Share of the area each map decided, kept or removed. Adds up to 1",
+      "unit": "fraction",
+      "value": {
+       "none": 0.0,
+       "indiasat": 1.0,
+       "worldcover": 0.0
+      }
+     },
+     {
+      "name": "area_ha_by_reason_and_source",
+      "description": "Area under each reason, split by the map that decided it",
+      "unit": "ha",
+      "value": {
+       "no_data": {
+        "none": 0.0,
+        "indiasat": 0.0,
+        "worldcover": 0.0
+       },
+       "kept": {
+        "none": 0.0,
+        "indiasat": 405.4335,
+        "worldcover": 0.0
+       },
+       "cropland": {
+        "none": 0.0,
+        "indiasat": 192.4714,
+        "worldcover": 0.0
+       },
+       "built_up": {
+        "none": 0.0,
+        "indiasat": 2.5512,
+        "worldcover": 0.0
+       },
+       "water": {
+        "none": 0.0,
+        "indiasat": 0.2697,
+        "worldcover": 0.0
+       },
+       "other_non_habitat": {
+        "none": 0.0,
+        "indiasat": 0.7975,
+        "worldcover": 0.0
+       }
+      }
+     },
+     {
+      "name": "area_ha_reason_disagrees_with_habitat_mask",
+      "description": "Area where the reason layer says kept and habitat_mask does not, or the reverse. Zero when both come from the same inputs; anything else means the cached habitat_mask predates a change in a land-cover input",
+      "unit": "ha",
+      "value": 0.0
+     },
+     {
+      "name": "kept_classes",
+      "description": "Land-cover classes this run kept as habitat, from the config: IndiaSAT classes, and the WorldCover classes used where IndiaSAT has no data",
+      "unit": "class code",
+      "value": {
+       "indiasat": [
+        6,
+        12
+       ],
+       "worldcover": [
+        10,
+        20,
+        30
+       ]
+      }
+     }
+    ]
+   },
+   "input_images": {
+    "habitat_mask": {
+     "source": "the cached asset",
+     "collections": {
+      "indiasat_lulc": {
+       "count": 5,
+       "sha256": "c831b93509e8b256d00212060f1ff452784c162843d2b67ab0da6058a60ac422"
+      },
+      "worldcover": {
+       "count": 1,
+       "sha256": "bf43ff10c8c01e227a26bf36344b492dde5da8975ff49e581814de5b8ae2d8df"
+      }
+     }
+    },
+    "landcover_summary": {
+     "source": "the cached asset",
+     "collections": {
+      "indiasat_lulc": {
+       "count": 5,
+       "sha256": "c831b93509e8b256d00212060f1ff452784c162843d2b67ab0da6058a60ac422"
+      },
+      "worldcover": {
+       "count": 1,
+       "sha256": "bf43ff10c8c01e227a26bf36344b492dde5da8975ff49e581814de5b8ae2d8df"
+      }
+     }
+    },
+    "mask_provenance": {
+     "source": "the cached asset",
+     "collections": {
+      "indiasat_lulc": {
+       "count": 5,
+       "sha256": "c831b93509e8b256d00212060f1ff452784c162843d2b67ab0da6058a60ac422"
+      },
+      "worldcover": {
+       "count": 1,
+       "sha256": "bf43ff10c8c01e227a26bf36344b492dde5da8975ff49e581814de5b8ae2d8df"
+      }
+     }
+    },
+    "water_mask": {
+     "source": "the cached asset",
+     "collections": {
+      "indiasat_lulc": {
+       "count": 5,
+       "sha256": "c831b93509e8b256d00212060f1ff452784c162843d2b67ab0da6058a60ac422"
+      },
+      "worldcover": {
+       "count": 1,
+       "sha256": "bf43ff10c8c01e227a26bf36344b492dde5da8975ff49e581814de5b8ae2d8df"
+      }
+     }
+    }
+   }
+  },
+  {
+   "name": "data_load",
+   "produced": [
+    "s1_collection",
+    "s2_collection",
+    "s2_composite"
+   ],
+   "warnings": [],
+   "metadata": {
+    "s2_dataset": "COPERNICUS/S2_SR_HARMONIZED",
+    "s1_dataset": "COPERNICUS/S1_GRD",
+    "s2_phenology_window": "2017-01-01 to 2022-12-31",
+    "s1_radar_window": "2017-01-01 to 2022-12-31",
+    "s2_composite_window": "2017-01-01 to 2022-12-31",
+    "s1_orbit": "DESCENDING",
+    "s1_polarizations": [
+     "VV",
+     "VH"
+    ],
+    "s1_instrument_mode": "IW",
+    "s2_composite_reducer": "median",
+    "cloud_max_pct": 20.0,
+    "scl_drop_classes": [
+     3,
+     8,
+     9,
+     10
+    ]
+   },
+   "cache_status": {
+    "s2_composite": "hit"
+   },
+   "cache_key": "s6aee5bb6e6",
+   "export_tasks": [],
+   "transparency": {
+    "display_layers": [
+     {
+      "key": "s2_composite",
+      "band": "B4_median",
+      "title": "True colour (Sentinel-2 composite)",
+      "description": "The cloud-masked Sentinel-2 composite over the optical_composite window, drawn as red, green and blue: the ground as a camera would show it. With the default hand-crafted bands, segmentation reads its red and near-infrared bands from this same image, so this is then part of what the superpixels were drawn on, not a separate picture; a run that segments on the embedding does not read it. The band names are those of the default median composite; a config with another s2_composite_reducer writes other names.",
+      "vis": {
+       "bands": [
+        "B4_median",
+        "B3_median",
+        "B2_median"
+       ],
+       "min": 0,
+       "max": 3000
+      },
+      "legend": [],
+      "legend_note": "",
+      "bands": [
+       "B4_median",
+       "B3_median",
+       "B2_median"
+      ],
+      "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_3ha_squares_angul_keptland_r9/data_load/s2_composite__s6aee5bb6e6",
+      "asset_status": "hit"
+     }
+    ],
+    "summary_numbers": []
+   },
+   "input_images": {
+    "s2_composite": {
+     "source": "the cached asset",
+     "collections": {
+      "s2_composite": {
+       "count": 713,
+       "sha256": "2abd57bf40f3257c490dab999a8d43d5577b0c45c555e7baf4f67862875f1fa0"
+      }
+     }
+    }
+   }
+  },
+  {
+   "name": "features_optical",
+   "produced": [
+    "optical_features"
+   ],
+   "warnings": [],
+   "metadata": {
+    "source": "cache"
+   },
+   "cache_status": {
+    "optical_features": "hit"
+   },
+   "cache_key": "sd8a42026e9",
+   "export_tasks": [],
+   "transparency": {
+    "display_layers": [
+     {
+      "key": "optical_features",
+      "band": "ndvi_amplitude_annual",
+      "title": "Seasonal swing in greenness (NDVI annual amplitude)",
+      "description": "How far greenness rises and falls over a year: the amplitude of the annual cycle fitted to every cloud-free Sentinel-2 NDVI observation in the phenology window. It has no unit. Low values are vegetation that stays the same all year (evergreen cover, or bare ground); high values are vegetation that greens up and dries out (deciduous trees, grass, crops). It is one of the bands the superpixels are drawn on by default and one of the two the merge compares by default; a config can name other merge criteria. The band name is that of the default NDVI index; a config on the NIRv index writes nirv_amplitude_annual in its place.",
+      "vis": {
+       "bands": [
+        "ndvi_amplitude_annual"
+       ],
+       "min": 0,
+       "max": 0.4,
+       "palette": [
+        "fff7ec",
+        "fdd49e",
+        "fc8d59",
+        "d7301f",
+        "7f0000"
+       ]
+      },
+      "legend": [],
+      "legend_note": "",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_3ha_squares_angul_keptland_r9/features_optical/optical_features__sd8a42026e9",
+      "asset_status": "hit"
+     }
+    ],
+    "summary_numbers": []
+   },
+   "input_images": {
+    "optical_features": {
+     "source": "the cached asset",
+     "collections": {
+      "s2_phenology": {
+       "count": 713,
+       "sha256": "2abd57bf40f3257c490dab999a8d43d5577b0c45c555e7baf4f67862875f1fa0"
+      }
+     }
+    }
+   }
+  },
+  {
+   "name": "features_structure",
+   "produced": [
+    "structure_features"
+   ],
+   "warnings": [],
+   "metadata": {
+    "source": "cache"
+   },
+   "cache_status": {
+    "structure_features": "hit"
+   },
+   "cache_key": "sc823e0cc39",
+   "export_tasks": [],
+   "transparency": {
+    "display_layers": [
+     {
+      "key": "structure_features",
+      "band": "canopy_height",
+      "title": "Canopy height (ETH 2020), m",
+      "description": "Height of the top of the canopy in metres, from the ETH Global Canopy Height map for 2020 at 10 m. It is a single snapshot, the same in every run. It is one of the bands the superpixels are drawn on by default and one of the two the merge compares by default; a config can name other merge criteria.",
+      "vis": {
+       "bands": [
+        "canopy_height"
+       ],
+       "min": 0,
+       "max": 30,
+       "palette": [
+        "f7fcf5",
+        "c7e9c0",
+        "74c476",
+        "238b45",
+        "00441b"
+       ]
+      },
+      "legend": [],
+      "legend_note": "This is a modelled map, not a field measurement. docs/datasets.md, section 'ETH Global Canopy Height 2020', records a field validation of this product; read differences of a few metres with that in mind.",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_3ha_squares_angul_keptland_r9/features_structure/structure_features__sc823e0cc39",
+      "asset_status": "hit"
+     },
+     {
+      "key": "structure_features",
+      "band": "canopy_height_std",
+      "title": "Local spread of canopy height, m",
+      "description": "The standard deviation of ETH 2020 canopy height in a small window around each pixel (3 by 3 pixels by default), in metres. Low where neighbouring pixels have the same height, high at edges and gaps. It is shown because some configurations segment on it and some use it as a merge criterion; it is in neither the default segmentation bands nor the default merge criteria.",
+      "vis": {
+       "bands": [
+        "canopy_height_std"
+       ],
+       "min": 0,
+       "max": 3,
+       "palette": [
+        "fcfbfd",
+        "dadaeb",
+        "9e9ac8",
+        "6a51a3",
+        "3f007d"
+       ]
+      },
+      "legend": [],
+      "legend_note": "",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_3ha_squares_angul_keptland_r9/features_structure/structure_features__sc823e0cc39",
+      "asset_status": "hit"
+     }
+    ],
+    "summary_numbers": []
+   },
+   "input_images": {}
+  },
+  {
+   "name": "features_embedding",
+   "produced": [
+    "embedding_features"
+   ],
+   "warnings": [],
+   "metadata": {
+    "source": "cache"
+   },
+   "cache_status": {
+    "embedding_features": "hit"
+   },
+   "cache_key": "s21b47a530b",
+   "export_tasks": [],
+   "transparency": {
+    "display_layers": [
+     {
+      "key": "embedding_features",
+      "band": "A00",
+      "title": "AlphaEarth embedding, three of its 64 bands as colour",
+      "description": "The first three of the 64 bands of the embedding, drawn as red, green and blue. Places with similar colours are similar in these three bands; the colours themselves mean nothing, and the other 61 bands are not shown. Segmentation and clustering in the embedding arm use all 64. A view through the first three principal components shows more of the embedding, but it depends on the area it is fitted over, so it is the exporter's business and not declared here. The band names and the count of 64 are those of the default AlphaEarth embedding; a config that points datasets.embedding at another embedding writes other bands, and this layer does not describe them.",
+      "vis": {
+       "bands": [
+        "A00",
+        "A01",
+        "A02"
+       ],
+       "min": -0.3,
+       "max": 0.3
+      },
+      "legend": [],
+      "legend_note": "",
+      "bands": [
+       "A00",
+       "A01",
+       "A02"
+      ],
+      "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_3ha_squares_angul_keptland_r9/features_embedding/embedding_features__s21b47a530b",
+      "asset_status": "hit"
+     }
+    ],
+    "summary_numbers": []
+   },
+   "input_images": {
+    "embedding_features": {
+     "source": "the cached asset",
+     "collections": {
+      "embedding": {
+       "count": 6,
+       "sha256": "65951631623a65929c2747a6d573f938da1993a4672af84f1c84cf36c788d209"
+      }
+     }
+    }
+   }
+  },
+  {
+   "name": "segmentation",
+   "produced": [
+    "snic_clusters",
+    "snic_means"
+   ],
+   "warnings": [],
+   "metadata": {
+    "source": "cache"
+   },
+   "cache_status": {
+    "snic_clusters": "hit",
+    "snic_means": "hit"
+   },
+   "cache_key": "s6123730adb",
+   "export_tasks": [],
+   "transparency": {
+    "display_layers": [
+     {
+      "key": "snic_clusters",
+      "band": "snic_clusters",
+      "title": "Superpixels (outlines)",
+      "description": "The boundaries of the SNIC superpixels: small patches of similar pixels, grown from a regular grid of seeds on the bands named in segmentation.input_bands. By default they cover the whole area. With segmentation.mask_before_snic on they cover only the land the masking step keeps, and a patch of kept land that no seed of the grid falls in is one superpixel. They are the pieces the merge step joins into stands, so every stand boundary runs along one of these lines. The superpixels are not stands, and their numbers mean nothing.",
+      "vis": {
+       "bands": [
+        "snic_clusters"
+       ],
+       "style": "outline",
+       "palette": [
+        "ffd400"
+       ]
+      },
+      "legend": [],
+      "legend_note": "",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_3ha_squares_angul_keptland_r9/segmentation/snic_clusters__s6123730adb",
+      "asset_status": "hit"
+     }
+    ],
+    "summary_numbers": []
+   },
+   "input_images": {}
+  },
+  {
+   "name": "merge",
+   "produced": [
+    "merge_diagnostics",
+    "merge_provenance",
+    "stand_attributes",
+    "stand_clusters",
+    "stand_provenance"
+   ],
+   "warnings": [
+    "14 stand(s) are over max_area_ha (3.0 ha), by up to 0.77 ha. merge.pass2_soft_ceiling allows it: in the second pass a stand below min_area_ha may join a neighbour up to max_area_ha + min_area_ha (4.0 ha).",
+    "54 stand(s) have no 4-connected neighbour at all and cannot be merged with anything.",
+    "3 stand(s) have at least one criterion valid on under 50% of their pixels; those bands are reported as null rather than as a mean over territory that has no data.",
+    "11 of 75 pass-2 merges used the shared-edge fallback, i.e. no relaxed criterion could justify them. These are the merges to look at first if stand geometry looks wrong."
+   ],
+   "metadata": {
+    "criteria": [
+     {
+      "source": "structure_features",
+      "band": "canopy_height",
+      "tolerance": 2.0
+     },
+     {
+      "source": "structure_features",
+      "band": "canopy_height_std",
+      "tolerance": 0.45
+     },
+     {
+      "source": "optical_features",
+      "band": "ndvi_amplitude_annual",
+      "tolerance": 0.03
+     }
+    ],
+    "relax_factor": 1.75,
+    "min_area_ha": 1.0,
+    "max_area_ha": 3.0,
+    "min_defined_criteria": 2,
+    "min_frac_valid": 0.5,
+    "pass2_skip_at_min_area": true,
+    "pass2_soft_ceiling": true,
+    "mask_before_snic": true,
+    "adjacency": {
+     "n_regions": 1205,
+     "n_edges": 2838,
+     "mean_degree": 4.71,
+     "n_isolated": 50
+    },
+    "threshold_calibration": {
+     "n_pairs": 2838,
+     "per_band": {
+      "canopy_height": {
+       "threshold": 2.0,
+       "n_pairs_defined": 2838,
+       "percentile_of_threshold": 89.78,
+       "p25": 0.343318,
+       "p50": 0.752801,
+       "p75": 1.3367,
+       "p90": 2.013289
+      },
+      "canopy_height_std": {
+       "threshold": 0.45,
+       "n_pairs_defined": 2838,
+       "percentile_of_threshold": 96.05,
+       "p25": 0.054033,
+       "p50": 0.114621,
+       "p75": 0.205417,
+       "p90": 0.321288
+      },
+      "ndvi_amplitude_annual": {
+       "threshold": 0.03,
+       "n_pairs_defined": 2838,
+       "percentile_of_threshold": 82.8,
+       "p25": 0.007261,
+       "p50": 0.015493,
+       "p75": 0.025735,
+       "p90": 0.037997
+      }
+     },
+     "joint_admit_rate_pct": 72.69,
+     "n_pairs_with_any_defined_criterion": 2838
+    },
+    "n_superpixels": 1205,
+    "n_stands": 237,
+    "reduction_factor": 5.084,
+    "pass1_rounds": 6,
+    "pass1_merges": 893,
+    "pass1_pairs_blocked_by_area_round1": 0,
+    "pass1_pairs_blocked_by_undefined_criteria_round1": 0,
+    "pass2_iterations": 2,
+    "pass2_merges": 75,
+    "pass2_fallback_merges": 11,
+    "stands_below_min_area": 54,
+    "area_in_undersized_stands_ha": 4.94,
+    "orphans_isolated": 54,
+    "orphans_area_blocked": 0,
+    "orphans_no_attribute_match": 0,
+    "stands_with_incomplete_criteria": 3,
+    "pass2_relaxed_merges_over_max_area": 14,
+    "pass2_fallback_merges_over_max_area": 1,
+    "stands_over_max_area": 14,
+    "stands_over_max_area_never_merged": 0,
+    "excess_over_max_area_total_ha": 4.24,
+    "excess_over_max_area_largest_ha": 0.77,
+    "excess_over_max_area_each_ha": [
+     0.77,
+     0.63,
+     0.6,
+     0.44,
+     0.42,
+     0.39,
+     0.26,
+     0.2,
+     0.19,
+     0.11,
+     0.09,
+     0.09,
+     0.03,
+     0.02
+    ]
+   },
+   "cache_status": {},
+   "cache_key": null,
+   "export_tasks": [],
+   "transparency": {
+    "display_layers": [
+     {
+      "key": "merge_provenance",
+      "band": "merge_kind",
+      "title": "How each stand was put together",
+      "description": "Each stand, coloured by the weakest kind of merge it contains. It shows where the stand boundaries rest on the merge criteria and where they rest only on the rule that no stand may stay below the minimum size.",
+      "vis": {
+       "bands": [
+        "merge_kind"
+       ],
+       "min": 0,
+       "max": 3,
+       "palette": [
+        "bdbdbd",
+        "1a9850",
+        "fdae61",
+        "d73027"
+       ]
+      },
+      "legend": [
+       {
+        "value": 0,
+        "label": "A single superpixel: it merged with nothing",
+        "color": "bdbdbd"
+       },
+       {
+        "value": 1,
+        "label": "Built by first-pass merges only: every merge passed every criterion at its configured tolerance",
+        "color": "1a9850"
+       },
+       {
+        "value": 2,
+        "label": "Contains a relaxed second-pass merge: a merge the second pass made under tolerances loosened by the relax factor",
+        "color": "fdae61"
+       },
+       {
+        "value": 3,
+        "label": "Contains a shared-edge fallback merge: a merge the second pass made with the neighbour sharing the longest edge, which no criterion justified",
+        "color": "d73027"
+       }
+      ],
+      "legend_note": "A stand is coloured by the weakest merge inside it, so one fallback merge colours the whole stand red however many well-justified merges it also contains. A fallback merge is one that no merge criterion justified, even relaxed: the second pass, which exists so that no stand stays below the minimum size, joined the two on the length of their shared edge only. Unless merge.pass2_skip_at_min_area is true, a second-pass merge does not always add a piece that was below the minimum size at that moment: each sweep lists the undersized pieces once, and a piece that reaches the minimum earlier in a sweep still takes its turn in that sweep. With the setting on, such a piece is skipped. The exact counts per stand are in stand_provenance and on the exported stands_merged layer (n_pass1, n_relaxed, n_fallback).",
+      "asset": null,
+      "asset_status": null
+     }
+    ],
+    "summary_numbers": [
+     {
+      "name": "superpixels_in",
+      "description": "SNIC superpixels the merge started from",
+      "unit": "count",
+      "value": 1205
+     },
+     {
+      "name": "stands_out",
+      "description": "Stands left after both passes",
+      "unit": "count",
+      "value": 237
+     },
+     {
+      "name": "merges_first_pass",
+      "description": "Merges made in the first pass: neighbours that pass every merge criterion at its configured tolerance",
+      "unit": "count",
+      "value": 893
+     },
+     {
+      "name": "merges_second_pass_relaxed",
+      "description": "Merges made in the second pass, which absorbs regions below the minimum size, where a neighbour passed the relaxed tolerances",
+      "unit": "count",
+      "value": 64
+     },
+     {
+      "name": "merges_second_pass_shared_edge_fallback",
+      "description": "Merges made in the second pass by the fallback: no neighbour passed even the relaxed tolerances, so the region joined the neighbour it shares the longest edge with",
+      "unit": "count",
+      "value": 11
+     },
+     {
+      "name": "stands_below_min_area",
+      "description": "Stands still below the minimum size after both passes",
+      "unit": "count",
+      "value": 54
+     },
+     {
+      "name": "stands_below_min_area_by_cause",
+      "description": "Why those stands stayed small. isolated: it touches no other stand. area_blocked: every neighbour is already too big to take it under the ceiling that applies to it: the maximum size, or the maximum plus the minimum with merge.pass2_soft_ceiling on. iteration_cap: it still had a neighbour it could have joined when the second pass ran out of iterations",
+      "unit": "count",
+      "value": {
+       "isolated": 54,
+       "area_blocked": 0,
+       "iteration_cap": 0
+      }
+     },
+     {
+      "name": "area_ha_in_stands_below_min_area",
+      "description": "Area in those stands",
+      "unit": "ha",
+      "value": 4.94
+     }
+    ]
+   },
+   "input_images": {}
+  },
+  {
+   "name": "clustering",
+   "produced": [
+    "cluster_labels",
+    "feature_stack"
+   ],
+   "warnings": [],
+   "metadata": {
+    "source": "cache"
+   },
+   "cache_status": {
+    "cluster_labels": "hit",
+    "feature_stack": "hit"
+   },
+   "cache_key": "s2e287b836a",
+   "export_tasks": [],
+   "transparency": {
+    "display_layers": [
+     {
+      "key": "cluster_labels",
+      "band": "cluster_id",
+      "title": "Stand types",
+      "description": "Each stand, coloured by the type k-means gave it. The stands are grouped by their mean features (the hand-crafted bands, or the embedding) into k types, so stands of one colour are similar in those features. A type is a group the data fell into, not a forest class anyone named: what a type is has to be read from its profile, and whether it matches the field from the comparison with the field plots.",
+      "vis": {
+       "bands": [
+        "cluster_id"
+       ],
+       "min": 0,
+       "max": 9,
+       "palette": [
+        "E69F00",
+        "56B4E9",
+        "009E73",
+        "F0E442",
+        "0072B2",
+        "D55E00",
+        "CC79A7",
+        "999999",
+        "882255",
+        "44AA99"
+       ]
+      },
+      "legend": [
+       {
+        "value": 0,
+        "label": "Stand type 0",
+        "color": "E69F00"
+       },
+       {
+        "value": 1,
+        "label": "Stand type 1",
+        "color": "56B4E9"
+       },
+       {
+        "value": 2,
+        "label": "Stand type 2",
+        "color": "009E73"
+       },
+       {
+        "value": 3,
+        "label": "Stand type 3",
+        "color": "F0E442"
+       },
+       {
+        "value": 4,
+        "label": "Stand type 4",
+        "color": "0072B2"
+       },
+       {
+        "value": 5,
+        "label": "Stand type 5",
+        "color": "D55E00"
+       },
+       {
+        "value": 6,
+        "label": "Stand type 6",
+        "color": "CC79A7"
+       },
+       {
+        "value": 7,
+        "label": "Stand type 7",
+        "color": "999999"
+       },
+       {
+        "value": 8,
+        "label": "Stand type 8",
+        "color": "882255"
+       },
+       {
+        "value": 9,
+        "label": "Stand type 9",
+        "color": "44AA99"
+       }
+      ],
+      "legend_note": "A run uses the first k of these types, where k is clustering.k in its config; the rest do not occur. Type numbers are fitted afresh in every run and mean nothing across runs: type 2 of one run is not type 2 of another, and the same colour in two runs is a coincidence. Pixels outside the habitat mask are left blank, so a stand wholly outside it has no type; nor has a stand with no data in one of the feature bands.",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_alphaearth_3ha_squares_angul_keptland_r9/clustering/cluster_labels__s2e287b836a",
+      "asset_status": "hit"
+     }
+    ],
+    "summary_numbers": [
+     {
+      "name": "k",
+      "description": "Number of stand types the run fitted",
+      "unit": "count",
+      "value": 5
+     },
+     {
+      "name": "units_total",
+      "description": "Distinct unit labels in the ROI on the analysis grid, as the fit saw them. A unit is a stand, or a superpixel in a run without merge. This is not the number of polygons in the exported stand layer, which can differ from it by a few",
+      "unit": "count",
+      "value": 237
+     },
+     {
+      "name": "units_in_habitat",
+      "description": "Distinct unit labels with at least one pixel inside the habitat mask on the analysis grid; the fit takes no row from the rest. The exported stand layer can hold more stands with a type than this count",
+      "unit": "count",
+      "value": 237
+     },
+     {
+      "name": "units_fitted",
+      "description": "Units the k-means fit was trained on, one row each",
+      "unit": "count",
+      "value": 183
+     },
+     {
+      "name": "units_dropped_missing_band",
+      "description": "Units inside the habitat mask that the fit left out because a feature band has no data over them. They have no type on the map: holes, not mistyped stands",
+      "unit": "count",
+      "value": 2
+     },
+     {
+      "name": "units_left_out_of_fit",
+      "description": "Stands below merge.min_area_ha that the fit left out, with clustering.fit_excludes_stands_below_min_area on; 0 with it off. They are on the map, typed by the nearest fitted cluster. With the setting on, units_in_habitat is units_fitted plus units_dropped_missing_band plus these, and the stage's log warns when its samples do not add up to that",
+      "unit": "count",
+      "value": 52
+     }
+    ]
+   },
+   "input_images": {}
+  },
+  {
+   "name": "profiling",
+   "produced": [
+    "cluster_profiles"
+   ],
+   "warnings": [],
+   "metadata": {
+    "k": 5,
+    "n_feature_bands": 64,
+    "feature_bands": [
+     "A00",
+     "A01",
+     "A02",
+     "A03",
+     "A04",
+     "A05",
+     "A06",
+     "A07",
+     "A08",
+     "A09",
+     "A10",
+     "A11",
+     "A12",
+     "A13",
+     "A14",
+     "A15",
+     "A16",
+     "A17",
+     "A18",
+     "A19",
+     "A20",
+     "A21",
+     "A22",
+     "A23",
+     "A24",
+     "A25",
+     "A26",
+     "A27",
+     "A28",
+     "A29",
+     "A30",
+     "A31",
+     "A32",
+     "A33",
+     "A34",
+     "A35",
+     "A36",
+     "A37",
+     "A38",
+     "A39",
+     "A40",
+     "A41",
+     "A42",
+     "A43",
+     "A44",
+     "A45",
+     "A46",
+     "A47",
+     "A48",
+     "A49",
+     "A50",
+     "A51",
+     "A52",
+     "A53",
+     "A54",
+     "A55",
+     "A56",
+     "A57",
+     "A58",
+     "A59",
+     "A60",
+     "A61",
+     "A62",
+     "A63"
+    ],
+    "cyclic_decomposed": [],
+    "profiles": [
+     {
+      "cluster_id": 0,
+      "pixel_count": 4257,
+      "area_ha": 42.57,
+      "A00_mean": 0.034896284378553674,
+      "A00_p25": 0.02001458036655535,
+      "A00_p50": 0.03570279769313358,
+      "A00_p75": 0.050308331394277594,
+      "A01_mean": -0.06305037965693555,
+      "A01_p25": -0.07667587679952156,
+      "A01_p50": -0.06392695221486921,
+      "A01_p75": -0.05027528448116333,
+      "A02_mean": 0.16762098992019722,
+      "A02_p25": 0.14001446994274735,
+      "A02_p50": 0.1686771233367994,
+      "A02_p75": 0.19661899485458048,
+      "A03_mean": 0.02350847183446563,
+      "A03_p25": 0.011226320895275857,
+      "A03_p50": 0.02393063557486213,
+      "A03_p75": 0.03662963921411471,
+      "A04_mean": -0.035352651528066624,
+      "A04_p25": -0.04421356102963911,
+      "A04_p50": -0.03588451326590813,
+      "A04_p75": -0.027098979025161257,
+      "A05_mean": -0.08859591164050154,
+      "A05_p25": -0.11435990145895995,
+      "A05_p50": -0.09670253725190969,
+      "A05_p75": -0.07136384222832029,
+      "A06_mean": -0.135479815010941,
+      "A06_p25": -0.15082895978758695,
+      "A06_p50": -0.1381474061932995,
+      "A06_p75": -0.12155303951646018,
+      "A07_mean": 0.24647774838224046,
+      "A07_p25": 0.22432926955306684,
+      "A07_p50": 0.25362441866632135,
+      "A07_p75": 0.2736703556908316,
+      "A08_mean": -0.050585431027281615,
+      "A08_p25": -0.06272524173664198,
+      "A08_p50": -0.048618032800941985,
+      "A08_p75": -0.035352600570794875,
+      "A09_mean": 0.05789235245474078,
+      "A09_p25": 0.04150460913959747,
+      "A09_p50": 0.05813063737884956,
+      "A09_p75": 0.07469931628737578,
+      "A10_mean": 0.08957633080191137,
+      "A10_p25": 0.0677945694785372,
+      "A10_p50": 0.09231656993838698,
+      "A10_p75": 0.11467431634350292,
+      "A11_mean": 0.032663127092468845,
+      "A11_p25": 0.019126912918195838,
+      "A11_p50": 0.0336950435085899,
+      "A11_p75": 0.045393146233207754,
+      "A12_mean": -0.2541338202692149,
+      "A12_p25": -0.27234744667631317,
+      "A12_p50": -0.2589424580289631,
+      "A12_p75": -0.23809858301207787,
+      "A13_mean": 0.003220296812167548,
+      "A13_p25": -0.010216622567999187,
+      "A13_p50": 0.0024275014138447903,
+      "A13_p75": 0.016115729158535496,
+      "A14_mean": -0.03871587753691337,
+      "A14_p25": -0.05808685626726642,
+      "A14_p50": -0.03859539386434637,
+      "A14_p75": -0.018027661557156828,
+      "A15_mean": 0.09665406638842063,
+      "A15_p25": 0.08622906643667887,
+      "A15_p50": 0.09592706900142872,
+      "A15_p75": 0.10718176388482388,
+      "A16_mean": 0.04419832235315111,
+      "A16_p25": 0.017175294569961783,
+      "A16_p50": 0.04441254449511643,
+      "A16_p75": 0.0698040601154788,
+      "A17_mean": 0.056165225457758754,
+      "A17_p25": 0.023005543773486622,
+      "A17_p50": 0.05326669229783416,
+      "A17_p75": 0.08741172248112665,
+      "A18_mean": -0.10617012921849266,
+      "A18_p25": -0.12848458164866636,
+      "A18_p50": -0.10490045357686252,
+      "A18_p75": -0.08252386444773983,
+      "A19_mean": -0.1171684521116401,
+      "A19_p25": -0.14122106267517054,
+      "A19_p50": -0.12344556123102836,
+      "A19_p75": -0.09911058066900466,
+      "A20_mean": -0.33493061192495344,
+      "A20_p25": -0.35076188943488623,
+      "A20_p50": -0.32945383345285034,
+      "A20_p75": -0.3146204688381791,
+      "A21_mean": 0.26204007851903593,
+      "A21_p25": 0.22732628598638993,
+      "A21_p50": 0.26845841448042007,
+      "A21_p75": 0.2997831291367415,
+      "A22_mean": 0.23606032194509632,
+      "A22_p25": 0.20195350293953884,
+      "A22_p50": 0.23350582782611945,
+      "A22_p75": 0.26860214217530065,
+      "A23_mean": -0.09869900796097118,
+      "A23_p25": -0.10769256392389683,
+      "A23_p50": -0.09834430926070616,
+      "A23_p75": -0.08957581484556647,
+      "A24_mean": 0.04650718922316332,
+      "A24_p25": 0.03663361906933886,
+      "A24_p50": 0.04736157850514628,
+      "A24_p75": 0.05809004615556957,
+      "A25_mean": 0.05559220999139752,
+      "A25_p25": 0.03179695346750951,
+      "A25_p50": 0.058163889747220886,
+      "A25_p75": 0.08050172301915795,
+      "A26_mean": 0.12936379727454855,
+      "A26_p25": 0.1183766465427365,
+      "A26_p50": 0.12916461766821336,
+      "A26_p75": 0.13886248857084038,
+      "A27_mean": 0.09006464311868354,
+      "A27_p25": 0.07283398610664879,
+      "A27_p50": 0.09328020885287118,
+      "A27_p75": 0.11376494590743659,
+      "A28_mean": -0.014825148818854432,
+      "A28_p25": -0.036743304751081673,
+      "A28_p50": -0.013122442471440624,
+      "A28_p75": 0.009253508676807406,
+      "A29_mean": 0.18456213801219903,
+      "A29_p25": 0.1655566436711569,
+      "A29_p50": 0.1841980088509847,
+      "A29_p75": 0.20370995903502095,
+      "A30_mean": 0.03688309453073806,
+      "A30_p25": 0.02465735343706662,
+      "A30_p50": 0.03782960969427711,
+      "A30_p75": 0.050536206319807805,
+      "A31_mean": 0.08051780502604013,
+      "A31_p25": 0.05515622196591055,
+      "A31_p50": 0.07667451960831452,
+      "A31_p75": 0.10508631364442712,
+      "A32_mean": 0.037867027093578004,
+      "A32_p25": 0.0107217777327695,
+      "A32_p50": 0.036170133994047886,
+      "A32_p75": 0.06541488688977394,
+      "A33_mean": 0.053255244661547185,
+      "A33_p25": 0.02439188054352789,
+      "A33_p50": 0.0556502803288035,
+      "A33_p75": 0.08498217080059013,
+      "A34_mean": -0.01734734014248998,
+      "A34_p25": -0.03965162178070346,
+      "A34_p50": -0.015189004524724473,
+      "A34_p75": 0.007321539414510491,
+      "A35_mean": -0.13996634445045808,
+      "A35_p25": -0.15778088974179752,
+      "A35_p50": -0.14300730708167408,
+      "A35_p75": -0.12744712197676536,
+      "A36_mean": -0.1470970368919659,
+      "A36_p25": -0.16927618106065956,
+      "A36_p50": -0.14510660012788018,
+      "A36_p75": -0.1226226215454321,
+      "A37_mean": 0.01536054056201758,
+      "A37_p25": -0.004423336424150591,
+      "A37_p50": 0.018064846853774186,
+      "A37_p75": 0.03750495004695471,
+      "A38_mean": 0.1429071575266994,
+      "A38_p25": 0.12742768793118525,
+      "A38_p50": 0.1441623044391211,
+      "A38_p75": 0.1595060238535251,
+      "A39_mean": -0.07052814734316075,
+      "A39_p25": -0.08737199750202101,
+      "A39_p50": -0.06989865030623439,
+      "A39_p75": -0.05131182286891629,
+      "A40_mean": 0.09157635863069345,
+      "A40_p25": 0.07861090718481001,
+      "A40_p50": 0.09136327996967931,
+      "A40_p75": 0.10497633701797739,
+      "A41_mean": 0.07094588840897623,
+      "A41_p25": 0.039566192490067924,
+      "A41_p50": 0.07271625904671397,
+      "A41_p75": 0.09906042447937032,
+      "A42_mean": -0.1328057262744395,
+      "A42_p25": -0.14295059380565292,
+      "A42_p50": -0.1343776547851404,
+      "A42_p75": -0.12390089486540183,
+      "A43_mean": 0.3132562180606479,
+      "A43_p25": 0.28751155088798513,
+      "A43_p50": 0.3206582826532253,
+      "A43_p75": 0.3432237756351998,
+      "A44_mean": 0.06149901951780435,
+      "A44_p25": 0.042505759430783586,
+      "A44_p50": 0.05916088950125562,
+      "A44_p75": 0.08052532437583636,
+      "A45_mean": -0.007508992590772296,
+      "A45_p25": -0.032129212946704004,
+      "A45_p50": -0.012717101235233756,
+      "A45_p75": 0.012668636556395142,
+      "A46_mean": -0.06778356245163702,
+      "A46_p25": -0.08644367550941946,
+      "A46_p50": -0.07081462084922292,
+      "A46_p75": -0.05515965052370076,
+      "A47_mean": 0.1840166260474563,
+      "A47_p25": 0.13384331088539148,
+      "A47_p50": 0.19228362051891468,
+      "A47_p75": 0.24120660281953113,
+      "A48_mean": -0.08316740023761755,
+      "A48_p25": -0.0968759550074429,
+      "A48_p50": -0.08280530723692182,
+      "A48_p75": -0.06858988168620037,
+      "A49_mean": 0.0024730013742504105,
+      "A49_p25": -0.01899080767087454,
+      "A49_p50": 0.0034149440613402923,
+      "A49_p75": 0.02479398704549924,
+      "A50_mean": -0.06939015359924626,
+      "A50_p25": -0.08938201547108103,
+      "A50_p50": -0.0707717207771599,
+      "A50_p75": -0.05219146312229415,
+      "A51_mean": -0.013570378511248688,
+      "A51_p25": -0.031680738029876185,
+      "A51_p50": -0.014172607999883976,
+      "A51_p75": 0.0034556632442802986,
+      "A52_mean": 0.008776082809353292,
+      "A52_p25": -0.004389379925612958,
+      "A52_p50": 0.010230233791609636,
+      "A52_p75": 0.02301189308794604,
+      "A53_mean": -0.059797533863948225,
+      "A53_p25": -0.08938147332611,
+      "A53_p50": -0.05618956548598995,
+      "A53_p75": -0.029804766079287986,
+      "A54_mean": 0.1846218875174829,
+      "A54_p25": 0.1667282880018736,
+      "A54_p50": 0.1862666581844099,
+      "A54_p75": 0.2025791400666564,
+      "A55_mean": -0.07665117777422358,
+      "A55_p25": -0.08936964652358612,
+      "A55_p50": -0.07570415770164676,
+      "A55_p75": -0.06403977763963517,
+      "A56_mean": 0.028152525751666053,
+      "A56_p25": 0.006350366935127501,
+      "A56_p50": 0.030716217360988923,
+      "A56_p75": 0.05326327480883421,
+      "A57_mean": -0.03716620675923849,
+      "A57_p25": -0.052251040200515395,
+      "A57_p50": -0.03861050210232933,
+      "A57_p75": -0.020988645392797642,
+      "A58_mean": -0.06523555532805153,
+      "A58_p25": -0.07953946300655412,
+      "A58_p50": -0.06301747666054423,
+      "A58_p75": -0.04740393141049428,
+      "A59_mean": -0.09737582854855285,
+      "A59_p25": -0.13033290943325546,
+      "A59_p50": -0.0913441648748582,
+      "A59_p75": -0.06397012324108825,
+      "A60_mean": 0.05937940453055691,
+      "A60_p25": 0.044402872007028145,
+      "A60_p50": 0.061031204798081044,
+      "A60_p75": 0.07670453225189562,
+      "A61_mean": -0.1429202668738999,
+      "A61_p25": -0.15771543870195762,
+      "A61_p50": -0.14498117595053558,
+      "A61_p75": -0.12836988023050064,
+      "A62_mean": 0.057384295178972804,
+      "A62_p25": 0.03805010893246188,
+      "A62_p50": 0.05567417998928762,
+      "A62_p75": 0.07318661635830222,
+      "A63_mean": 0.07929949312022051,
+      "A63_p25": 0.06502648553974966,
+      "A63_p50": 0.08155890659338051,
+      "A63_p75": 0.09528382212736689
+     },
+     {
+      "cluster_id": 1,
+      "pixel_count": 5762,
+      "area_ha": 57.62,
+      "A00_mean": 0.06270372010652611,
+      "A00_p25": 0.04834814301730956,
+      "A00_p50": 0.06302501525503615,
+      "A00_p75": 0.07764832530474704,
+      "A01_mean": -0.06280251205374199,
+      "A01_p25": -0.07574793215838439,
+      "A01_p50": -0.05713330293357652,
+      "A01_p75": -0.043508328418157646,
+      "A02_mean": 0.17304039220689316,
+      "A02_p25": 0.15774470511871894,
+      "A02_p50": 0.17743932317291958,
+      "A02_p75": 0.19314556717237277,
+      "A03_mean": 0.017590034001642395,
+      "A03_p25": 0.0015281370774882404,
+      "A03_p50": 0.016126216055335874,
+      "A03_p75": 0.03171357712771534,
+      "A04_mean": -0.023565906949306218,
+      "A04_p25": -0.03391527359115685,
+      "A04_p50": -0.02417367241212295,
+      "A04_p75": -0.012488802778267045,
+      "A05_mean": -0.08742297978948371,
+      "A05_p25": -0.11076907933171268,
+      "A05_p50": -0.09033955954609424,
+      "A05_p75": -0.06786218386385434,
+      "A06_mean": -0.11349553009483672,
+      "A06_p25": -0.12838225684938762,
+      "A06_p50": -0.11183971861411286,
+      "A06_p75": -0.09813050292811543,
+      "A07_mean": 0.22149946807060789,
+      "A07_p25": 0.20148924269481772,
+      "A07_p50": 0.2182160588902265,
+      "A07_p75": 0.23943810361662485,
+      "A08_mean": -0.07389584711645163,
+      "A08_p25": -0.09517316487465728,
+      "A08_p50": -0.07562405377290135,
+      "A08_p75": -0.053221964646604426,
+      "A09_mean": 0.07095220551115282,
+      "A09_p25": 0.05711156010041529,
+      "A09_p50": 0.07180143835662722,
+      "A09_p75": 0.08544667110793207,
+      "A10_mean": 0.07440141530662013,
+      "A10_p25": 0.053246897302113794,
+      "A10_p50": 0.07568721881597494,
+      "A10_p75": 0.0951340214315993,
+      "A11_mean": 0.09035004363178482,
+      "A11_p25": 0.0659104822019039,
+      "A11_p50": 0.0912856437453251,
+      "A11_p75": 0.11176795249690287,
+      "A12_mean": -0.2761959292871494,
+      "A12_p25": -0.28893520442837795,
+      "A12_p50": -0.27658106417056605,
+      "A12_p75": -0.26323675043398226,
+      "A13_mean": -0.018333822153677543,
+      "A13_p25": -0.03460138605467325,
+      "A13_p50": -0.019976047109835134,
+      "A13_p75": -0.004398265525740274,
+      "A14_mean": -0.08225055066180391,
+      "A14_p25": -0.10302152897867935,
+      "A14_p50": -0.08548592468556394,
+      "A14_p75": -0.061999124603769724,
+      "A15_mean": 0.06647187775977369,
+      "A15_p25": 0.053230236104442684,
+      "A15_p50": 0.0649145890952571,
+      "A15_p75": 0.07957991525421645,
+      "A16_mean": -0.024533157091601396,
+      "A16_p25": -0.03856880722220611,
+      "A16_p50": -0.02687157340965306,
+      "A16_p75": -0.013170890007324305,
+      "A17_mean": 0.06460812892299383,
+      "A17_p25": 0.04546412423283747,
+      "A17_p50": 0.06886265431768128,
+      "A17_p75": 0.08843282663031303,
+      "A18_mean": -0.05969200479355769,
+      "A18_p25": -0.07958397936595754,
+      "A18_p50": -0.05911218924228842,
+      "A18_p75": -0.04055182934380981,
+      "A19_mean": -0.04362180525390976,
+      "A19_p25": -0.0868587694404505,
+      "A19_p50": -0.045758363964173286,
+      "A19_p75": -0.00510919403091648,
+      "A20_mean": -0.3381372109533549,
+      "A20_p25": -0.354304707879338,
+      "A20_p50": -0.3350400339093374,
+      "A20_p75": -0.31906303239696676,
+      "A21_mean": 0.32840711011402973,
+      "A21_p25": 0.3117369996161454,
+      "A21_p50": 0.3351397985325434,
+      "A21_p75": 0.35235226571190686,
+      "A22_mean": 0.2569751943388891,
+      "A22_p25": 0.2260852761935472,
+      "A22_p50": 0.25753850299320985,
+      "A22_p75": 0.28742331640792446,
+      "A23_mean": -0.07968451056059508,
+      "A23_p25": -0.09719179625873337,
+      "A23_p50": -0.08352593042995358,
+      "A23_p75": -0.06491565994683351,
+      "A24_mean": 0.04781433840047617,
+      "A24_p25": 0.0385489448815899,
+      "A24_p50": 0.048341925224157686,
+      "A24_p75": 0.058076456602750626,
+      "A25_mean": -0.009168982354592755,
+      "A25_p25": -0.039546731630766115,
+      "A25_p50": -0.010244073799986746,
+      "A25_p75": 0.0180559613823743,
+      "A26_mean": 0.1212196238575515,
+      "A26_p25": 0.10695632853948688,
+      "A26_p50": 0.11668168585361752,
+      "A26_p75": 0.13133582205528338,
+      "A27_mean": 0.09854310209450015,
+      "A27_p25": 0.0737313139214066,
+      "A27_p50": 0.10208019839542101,
+      "A27_p75": 0.12654127899525827,
+      "A28_mean": -0.057712786422841895,
+      "A28_p25": -0.07666034908458376,
+      "A28_p50": -0.057165782900056646,
+      "A28_p75": -0.035636618415058795,
+      "A29_mean": 0.14437724236311072,
+      "A29_p25": 0.12539939430571145,
+      "A29_p50": 0.14410385953386776,
+      "A29_p75": 0.16359306249733008,
+      "A30_mean": 0.045535451636158866,
+      "A30_p25": 0.027864362771345675,
+      "A30_p50": 0.04446851155580266,
+      "A30_p75": 0.06101551899261817,
+      "A31_mean": 0.10915317782294955,
+      "A31_p25": 0.08154377425555505,
+      "A31_p50": 0.10980352724297361,
+      "A31_p75": 0.13618635468918297,
+      "A32_mean": 0.02776788464794908,
+      "A32_p25": 0.0010225083964982597,
+      "A32_p50": 0.02243467671619928,
+      "A32_p75": 0.049700125480746864,
+      "A33_mean": 0.011626799574853488,
+      "A33_p25": -0.010213448031455383,
+      "A33_p50": 0.011220374119944355,
+      "A33_p75": 0.032670941721103686,
+      "A34_mean": -0.013042075570905906,
+      "A34_p25": -0.03367471584565657,
+      "A34_p50": -0.012210355110629234,
+      "A34_p75": 0.008288094322696404,
+      "A35_mean": -0.09840793879623062,
+      "A35_p25": -0.12200471269895384,
+      "A35_p50": -0.10250521200146548,
+      "A35_p75": -0.07715731700350036,
+      "A36_mean": -0.14592032769551225,
+      "A36_p25": -0.16569524204409047,
+      "A36_p50": -0.14411959011410153,
+      "A36_p75": -0.12357487436581474,
+      "A37_mean": -0.0656568851304265,
+      "A37_p25": -0.09853096286241796,
+      "A37_p50": -0.06541554806376969,
+      "A37_p75": -0.034228182922626006,
+      "A38_mean": 0.1376590566514644,
+      "A38_p25": 0.11969918387575675,
+      "A38_p50": 0.13918381722725726,
+      "A38_p75": 0.1585361659333969,
+      "A39_mean": -0.08045897834828175,
+      "A39_p25": -0.10009426625398724,
+      "A39_p50": -0.08246800032329059,
+      "A39_p75": -0.061957320642441756,
+      "A40_mean": 0.039524236756065825,
+      "A40_p25": 0.019981834714693582,
+      "A40_p50": 0.04148357136222601,
+      "A40_p75": 0.06296238892297147,
+      "A41_mean": 0.07713198400421367,
+      "A41_p25": 0.05706983446973561,
+      "A41_p50": 0.0786402780037422,
+      "A41_p75": 0.09724053136716779,
+      "A42_mean": -0.12638384409234182,
+      "A42_p25": -0.1383554992045024,
+      "A42_p50": -0.12679368819154269,
+      "A42_p75": -0.11505214714578699,
+      "A43_mean": 0.3289440793357683,
+      "A43_p25": 0.314667729452283,
+      "A43_p50": 0.3309551831763184,
+      "A43_p75": 0.3447933358964503,
+      "A44_mean": 0.048160595939017205,
+      "A44_p25": 0.03665367100246333,
+      "A44_p50": 0.04734888887677637,
+      "A44_p75": 0.058122096849411636,
+      "A45_mean": 0.06724844466824745,
+      "A45_p25": 0.036179146783665406,
+      "A45_p50": 0.06530951487235886,
+      "A45_p75": 0.10063297899808278,
+      "A46_mean": -0.044288556799314545,
+      "A46_p25": -0.06197308789567534,
+      "A46_p50": -0.042460292256845236,
+      "A46_p75": -0.025888164039872208,
+      "A47_mean": 0.06358785809715678,
+      "A47_p25": 0.022425150119475164,
+      "A47_p50": 0.04978390030920782,
+      "A47_p75": 0.10068605441899642,
+      "A48_mean": -0.13333353212353247,
+      "A48_p25": -0.1528280073251039,
+      "A48_p50": -0.1313858233280946,
+      "A48_p75": -0.11274820879716516,
+      "A49_mean": -0.002977372112586879,
+      "A49_p25": -0.024897575842567198,
+      "A49_p50": -0.0024318288148855657,
+      "A49_p75": 0.017093500707900968,
+      "A50_mean": -0.10240473941145693,
+      "A50_p25": -0.11771601989095788,
+      "A50_p50": -0.10304914036610005,
+      "A50_p75": -0.0893581303564613,
+      "A51_mean": -8.654757775796044e-06,
+      "A51_p25": -0.022467019443596994,
+      "A51_p50": 0.0028786517988118386,
+      "A51_p75": 0.024429700219542445,
+      "A52_mean": 0.014236113304642986,
+      "A52_p25": -0.0043980130564244945,
+      "A52_p50": 0.01419624483825121,
+      "A52_p75": 0.03566453038073653,
+      "A53_mean": -0.10953630307124201,
+      "A53_p25": -0.13340913814730343,
+      "A53_p50": -0.1137501698057158,
+      "A53_p75": -0.08942121818610825,
+      "A54_mean": 0.12920314877436334,
+      "A54_p25": 0.11171229539690913,
+      "A54_p50": 0.12844617492269575,
+      "A54_p75": 0.1481176591273585,
+      "A55_mean": -0.08633657219022438,
+      "A55_p25": -0.11280530271229612,
+      "A55_p50": -0.08545437858888022,
+      "A55_p75": -0.06008231227183849,
+      "A56_mean": -0.004025814491746603,
+      "A56_p25": -0.01800401789539471,
+      "A56_p50": -0.0024310500401635905,
+      "A56_p75": 0.012245467475913614,
+      "A57_mean": -0.014724665031542182,
+      "A57_p25": -0.028818206949121298,
+      "A57_p50": -0.012271313133387408,
+      "A57_p75": 0.0034093863053674383,
+      "A58_mean": -0.11184168253411618,
+      "A58_p25": -0.12567480852699747,
+      "A58_p50": -0.11384972865451952,
+      "A58_p75": -0.09909911366036123,
+      "A59_mean": -0.1343905766549063,
+      "A59_p25": -0.16164611702714227,
+      "A59_p50": -0.13725909729323932,
+      "A59_p75": -0.11178442977682593,
+      "A60_mean": 0.055471714951381895,
+      "A60_p25": 0.03951239842435675,
+      "A60_p50": 0.061028557190932996,
+      "A60_p75": 0.07667079076460596,
+      "A61_mean": -0.1258588656210389,
+      "A61_p25": -0.14987629192392066,
+      "A61_p50": -0.12838188122750754,
+      "A61_p75": -0.10408105571354524,
+      "A62_mean": 0.015841541342407364,
+      "A62_p25": -0.008763892450068901,
+      "A62_p50": 0.012748719533405364,
+      "A62_p75": 0.0400762492668905,
+      "A63_mean": 0.03156313798437547,
+      "A63_p25": 0.013183329294220546,
+      "A63_p50": 0.03270458234524977,
+      "A63_p75": 0.05222918289087487
+     },
+     {
+      "cluster_id": 2,
+      "pixel_count": 10320,
+      "area_ha": 103.2,
+      "A00_mean": 0.01886452660367978,
+      "A00_p25": 0.0024646829737842903,
+      "A00_p50": 0.01900612846604581,
+      "A00_p75": 0.03663568805453295,
+      "A01_mean": -0.10191365738183557,
+      "A01_p25": -0.12649328536149693,
+      "A01_p50": -0.10305085743549355,
+      "A01_p75": -0.0795947853513101,
+      "A02_mean": 0.1514566832075274,
+      "A02_p25": 0.128518999164976,
+      "A02_p50": 0.15202004309389747,
+      "A02_p75": 0.17531671602638743,
+      "A03_mean": 0.05012361270388499,
+      "A03_p25": 0.033674701144430705,
+      "A03_p50": 0.04933278757449616,
+      "A03_p75": 0.0659389395239249,
+      "A04_mean": -0.03628395140665002,
+      "A04_p25": -0.04736102205017087,
+      "A04_p50": -0.03563830499652185,
+      "A04_p75": -0.024904024249893478,
+      "A05_mean": -0.02922947115021389,
+      "A05_p25": -0.05756483380304211,
+      "A05_p50": -0.030221974799424803,
+      "A05_p75": -0.0029702725543734316,
+      "A06_mean": -0.08219235195236013,
+      "A06_p25": -0.09525339925676751,
+      "A06_p50": -0.08251396561647308,
+      "A06_p75": -0.06883605928195936,
+      "A07_mean": 0.17748204495252481,
+      "A07_p25": 0.15771813120815908,
+      "A07_p50": 0.17537106589328486,
+      "A07_p75": 0.1958170850607995,
+      "A08_mean": -0.0980013996851469,
+      "A08_p25": -0.11081498555751897,
+      "A08_p50": -0.09618209114796195,
+      "A08_p75": -0.08351945339943936,
+      "A09_mean": 0.037043849937717914,
+      "A09_p25": 0.0219857347048559,
+      "A09_p50": 0.03758200775235252,
+      "A09_p75": 0.05323198311363094,
+      "A10_mean": 0.09445216718725595,
+      "A10_p25": 0.07709004394289813,
+      "A10_p50": 0.09474511003531427,
+      "A10_p75": 0.11225766738873119,
+      "A11_mean": 0.05364272127777533,
+      "A11_p25": 0.03270174254805945,
+      "A11_p50": 0.055221428783091976,
+      "A11_p75": 0.0746848163565441,
+      "A12_mean": -0.3049963765233289,
+      "A12_p25": -0.31767609699247884,
+      "A12_p50": -0.3060297395701589,
+      "A12_p75": -0.2931724309560279,
+      "A13_mean": 0.03201994918625186,
+      "A13_p25": 0.016115228991491908,
+      "A13_p50": 0.030781295292441595,
+      "A13_p75": 0.047361989637449815,
+      "A14_mean": -0.02884402784021406,
+      "A14_p25": -0.047326729363540786,
+      "A14_p50": -0.029775258342141928,
+      "A14_p75": -0.010258380881461002,
+      "A15_mean": 0.0841150345154724,
+      "A15_p25": 0.06593688838093505,
+      "A15_p50": 0.08252209775694842,
+      "A15_p75": 0.10205960458763408,
+      "A16_mean": -0.029872343126533175,
+      "A16_p25": -0.04929984767128129,
+      "A16_p50": -0.03270462116684351,
+      "A16_p75": -0.013225180189186517,
+      "A17_mean": 0.05155099218929085,
+      "A17_p25": 0.026390401169039557,
+      "A17_p50": 0.0556385678858098,
+      "A17_p75": 0.07905584655618496,
+      "A18_mean": -0.08568654415902571,
+      "A18_p25": -0.10109133053619289,
+      "A18_p50": -0.08348712710582681,
+      "A18_p75": -0.06790330551436576,
+      "A19_mean": -0.014519116278098248,
+      "A19_p25": -0.03810321483240334,
+      "A19_p50": -0.012650792610219124,
+      "A19_p75": 0.010701876792855681,
+      "A20_mean": -0.3394233691626056,
+      "A20_p25": -0.3620971339309956,
+      "A20_p50": -0.34083484010575565,
+      "A20_p75": -0.31761859986352164,
+      "A21_mean": 0.3215017798856824,
+      "A21_p25": 0.29590956674077057,
+      "A21_p50": 0.32723290703310776,
+      "A21_p75": 0.3523640583089515,
+      "A22_mean": 0.26238069504664024,
+      "A22_p25": 0.23927248696155867,
+      "A22_p50": 0.2647589830367159,
+      "A22_p75": 0.2860883565577766,
+      "A23_mean": -0.05022216646770708,
+      "A23_p25": -0.06882188151333905,
+      "A23_p50": -0.05127810323753424,
+      "A23_p75": -0.03271409231508491,
+      "A24_mean": 0.040033489104998675,
+      "A24_p25": 0.029782076122561695,
+      "A24_p50": 0.040544787844498116,
+      "A24_p75": 0.051261052006556916,
+      "A25_mean": 0.03677645100504818,
+      "A25_p25": 0.010696920095363811,
+      "A25_p50": 0.038103123717632296,
+      "A25_p75": 0.06148391547243491,
+      "A26_mean": 0.13937063591486287,
+      "A26_p25": 0.12347043645918673,
+      "A26_p50": 0.13732206345733175,
+      "A26_p75": 0.15368346257861262,
+      "A27_mean": 0.014914173264583244,
+      "A27_p25": -0.00926285601669397,
+      "A27_p50": 0.014148740912705548,
+      "A27_p75": 0.03758757774547731,
+      "A28_mean": -0.0566038358112931,
+      "A28_p25": -0.06786249987224237,
+      "A28_p50": -0.057103751870976834,
+      "A28_p75": -0.04638257628496261,
+      "A29_mean": 0.1846933847153086,
+      "A29_p25": 0.16769815131253415,
+      "A29_p50": 0.18416655775875346,
+      "A29_p75": 0.20254755450223505,
+      "A30_mean": 0.032699675947197214,
+      "A30_p25": 0.018094193331876684,
+      "A30_p50": 0.03173805764079895,
+      "A30_p75": 0.04641177376672191,
+      "A31_mean": 0.07001327478211716,
+      "A31_p25": 0.05132760807431104,
+      "A31_p50": 0.06888356160710879,
+      "A31_p75": 0.08737691447020624,
+      "A32_mean": -0.017192968933698725,
+      "A32_p25": -0.05177824221972355,
+      "A32_p50": -0.020535117266295408,
+      "A32_p75": 0.012649781546795998,
+      "A33_mean": -0.011042350391982356,
+      "A33_p25": -0.02879363951146514,
+      "A33_p50": -0.013211576305531445,
+      "A33_p75": 0.0053767285300482795,
+      "A34_mean": 0.013158909697842414,
+      "A34_p25": -0.0033808477811357717,
+      "A34_p50": 0.015117771203698057,
+      "A34_p75": 0.03171173726412552,
+      "A35_mean": -0.07574328354420146,
+      "A35_p25": -0.09274558316102474,
+      "A35_p50": -0.07720021541787035,
+      "A35_p75": -0.05961364645933233,
+      "A36_mean": -0.15369560176521288,
+      "A36_p25": -0.17330145181674442,
+      "A36_p50": -0.15387768933501667,
+      "A36_p75": -0.134384889526818,
+      "A37_mean": 0.03387546892586981,
+      "A37_p25": 0.008815820292337993,
+      "A37_p50": 0.03417899329222698,
+      "A37_p75": 0.06153039752926793,
+      "A38_mean": 0.1572436022209267,
+      "A38_p25": 0.14019946697166838,
+      "A38_p50": 0.15950461700858956,
+      "A38_p75": 0.17645848711224024,
+      "A39_mean": -0.09845949547088692,
+      "A39_p25": -0.1181445441972433,
+      "A39_p50": -0.10067055666714389,
+      "A39_p75": -0.08104742652984882,
+      "A40_mean": 0.06712892123654243,
+      "A40_p25": 0.04539205006621386,
+      "A40_p50": 0.0678417766667696,
+      "A40_p75": 0.08935627289727353,
+      "A41_mean": 0.032893191386476804,
+      "A41_p25": 0.013185705974370613,
+      "A41_p50": 0.03174580390753763,
+      "A41_p75": 0.05224623747004019,
+      "A42_mean": -0.14999551624219504,
+      "A42_p25": -0.1656740865602784,
+      "A42_p50": -0.15002457358997615,
+      "A42_p75": -0.13435161736826437,
+      "A43_mean": 0.33287280358744487,
+      "A43_p25": 0.3161871136687176,
+      "A43_p50": 0.33257997293647457,
+      "A43_p75": 0.3508760627822086,
+      "A44_mean": 0.04684547658967696,
+      "A44_p25": 0.03028569475467251,
+      "A44_p50": 0.04395325554743964,
+      "A44_p75": 0.061588368024680144,
+      "A45_mean": 0.07859499499965247,
+      "A45_p25": 0.059084209282035956,
+      "A45_p50": 0.0786584109598678,
+      "A45_p75": 0.09816175146003325,
+      "A46_mean": -0.012400007232769714,
+      "A46_p25": -0.03169463967186774,
+      "A46_p50": -0.01412954019233268,
+      "A46_p75": 0.006355632013208755,
+      "A47_mean": 0.014493094902229952,
+      "A47_p25": -0.01658234573982523,
+      "A47_p50": 0.004891854805773632,
+      "A47_p75": 0.038032152624869996,
+      "A48_mean": -0.1402882904716648,
+      "A48_p25": -0.15665260519165872,
+      "A48_p50": -0.14209214983036703,
+      "A48_p75": -0.12550535866453402,
+      "A49_mean": 0.038276718085357216,
+      "A49_p25": 0.01664719667650078,
+      "A49_p50": 0.04201972105841079,
+      "A49_p75": 0.06343241942884209,
+      "A50_mean": -0.09599521773559774,
+      "A50_p25": -0.11272806836772521,
+      "A50_p50": -0.09713409912934592,
+      "A50_p75": -0.08056873804819818,
+      "A51_mean": 0.03193881302865853,
+      "A51_p25": 0.012680739615418716,
+      "A51_p50": 0.034246063519744366,
+      "A51_p75": 0.05181178648097237,
+      "A52_mean": -0.01740755608066023,
+      "A52_p25": -0.03760483091236256,
+      "A52_p50": -0.018078840613711438,
+      "A52_p75": 0.0014125443785346994,
+      "A53_mean": -0.05930639891008453,
+      "A53_p25": -0.08936864727769067,
+      "A53_p50": -0.060067112051640635,
+      "A53_p75": -0.02981899922834281,
+      "A54_mean": 0.18698829503408052,
+      "A54_p25": 0.17020229461301356,
+      "A54_p50": 0.18625798724644657,
+      "A54_p75": 0.20261198295653926,
+      "A55_mean": -0.08460368075169318,
+      "A55_p25": -0.10499846073178765,
+      "A55_p50": -0.08745153376955461,
+      "A55_p75": -0.06587558238446226,
+      "A56_mean": -0.029670977291517932,
+      "A56_p25": -0.04541328831231139,
+      "A56_p50": -0.029776259061286243,
+      "A56_p75": -0.014178923691759396,
+      "A57_mean": -0.033514033792671746,
+      "A57_p25": -0.050253492415735866,
+      "A57_p50": -0.033665724232907396,
+      "A57_p75": -0.017099896448778518,
+      "A58_mean": -0.1161833137085615,
+      "A58_p25": -0.13521855578145411,
+      "A58_p50": -0.11852655388809989,
+      "A58_p75": -0.10012707677670016,
+      "A59_mean": -0.16340641935921119,
+      "A59_p25": -0.1812473182463977,
+      "A59_p50": -0.16356942191741122,
+      "A59_p75": -0.14499112755375354,
+      "A60_mean": 0.03578712122304736,
+      "A60_p25": 0.01607614026687897,
+      "A60_p50": 0.03568130995262733,
+      "A60_p75": 0.05615692077793014,
+      "A61_mean": -0.07820519937902666,
+      "A61_p25": -0.09424453764798937,
+      "A61_p50": -0.0776704870846352,
+      "A61_p75": -0.06301423846526734,
+      "A62_mean": 0.08587504590303748,
+      "A62_p25": 0.06149808636724945,
+      "A62_p50": 0.086902033942621,
+      "A62_p75": 0.11030097519781358,
+      "A63_mean": 0.05655956595743545,
+      "A63_p25": 0.036638248242418965,
+      "A63_p50": 0.05612485878704398,
+      "A63_p75": 0.0766619479604733
+     },
+     {
+      "cluster_id": 3,
+      "pixel_count": 10497,
+      "area_ha": 104.97,
+      "A00_mean": 0.05357299710501047,
+      "A00_p25": 0.038567093182003555,
+      "A00_p50": 0.05612529762881332,
+      "A00_p75": 0.0708085820763846,
+      "A01_mean": -0.09594323845918856,
+      "A01_p25": -0.1117783787411933,
+      "A01_p50": -0.09719569335114388,
+      "A01_p75": -0.08057324423332364,
+      "A02_mean": 0.13353070473248618,
+      "A02_p25": 0.11284586612525874,
+      "A02_p50": 0.1342759725567856,
+      "A02_p75": 0.15298538048408095,
+      "A03_mean": 0.02670286902061767,
+      "A03_p25": 0.01318307481508554,
+      "A03_p50": 0.025892601070343867,
+      "A03_p75": 0.03952352245031409,
+      "A04_mean": -0.02552449361394072,
+      "A04_p25": -0.034426750323351185,
+      "A04_p50": -0.025141710973088774,
+      "A04_p75": -0.01585391836473151,
+      "A05_mean": -0.06847139468484822,
+      "A05_p25": -0.08886982985784596,
+      "A05_p50": -0.0712494858676662,
+      "A05_p75": -0.05178152193578682,
+      "A06_mean": -0.09601633413107495,
+      "A06_p25": -0.10595450971109373,
+      "A06_p50": -0.09521154826149002,
+      "A06_p75": -0.08448713360456697,
+      "A07_mean": 0.19589357207004637,
+      "A07_p25": 0.18218283095614968,
+      "A07_p50": 0.196858784314105,
+      "A07_p75": 0.2097031056431287,
+      "A08_mean": -0.0779612187307916,
+      "A08_p25": -0.09032968883672533,
+      "A08_p50": -0.07761768413057872,
+      "A08_p75": -0.06393695188304546,
+      "A09_mean": 0.059997247844884305,
+      "A09_p25": 0.04931907220088097,
+      "A09_p50": 0.062016238508544784,
+      "A09_p75": 0.07270704565573226,
+      "A10_mean": 0.1043481594266643,
+      "A10_p25": 0.09035445984828204,
+      "A10_p50": 0.10495691702286457,
+      "A10_p75": 0.11867186273056457,
+      "A11_mean": 0.07115475233180875,
+      "A11_p25": 0.05128513731355146,
+      "A11_p50": 0.0717962532259881,
+      "A11_p75": 0.09125418583186122,
+      "A12_mean": -0.30002329524189014,
+      "A12_p25": -0.3103860809184908,
+      "A12_p50": -0.30039920639488765,
+      "A12_p75": -0.2903568258672851,
+      "A13_mean": 0.009731624626014769,
+      "A13_p25": -0.004418273831470348,
+      "A13_p50": 0.009255073323271681,
+      "A13_p75": 0.02294370672686705,
+      "A14_mean": -0.05911623286635753,
+      "A14_p25": -0.07760998952958097,
+      "A14_p50": -0.061024656350263315,
+      "A14_p75": -0.04152985079361455,
+      "A15_mean": 0.06727704104613876,
+      "A15_p25": 0.05517480131988864,
+      "A15_p50": 0.06591475413554994,
+      "A15_p75": 0.07763601545193244,
+      "A16_mean": -0.018043120068572876,
+      "A16_p25": -0.03957145685959722,
+      "A16_p50": -0.01900602332436243,
+      "A16_p75": 0.0015253738510076285,
+      "A17_mean": 0.019299143658782568,
+      "A17_p25": -0.005336973250071586,
+      "A17_p50": 0.019058072652021963,
+      "A17_p75": 0.042500599819915524,
+      "A18_mean": -0.06009364493404099,
+      "A18_p25": -0.07273340781809964,
+      "A18_p50": -0.05618485606097469,
+      "A18_p75": -0.04345544268485933,
+      "A19_mean": -0.03405723822137263,
+      "A19_p25": -0.057616541061779096,
+      "A19_p50": -0.03418753810825948,
+      "A19_p75": -0.010794559159176313,
+      "A20_mean": -0.3262311065415028,
+      "A20_p25": -0.3461995998902297,
+      "A20_p50": -0.3265152789262059,
+      "A20_p75": -0.3073821490093984,
+      "A21_mean": 0.2971682442662647,
+      "A21_p25": 0.27038565062691305,
+      "A21_p50": 0.2997648366458667,
+      "A21_p75": 0.3272585628612286,
+      "A22_mean": 0.3047919649126141,
+      "A22_p25": 0.2847084973253834,
+      "A22_p50": 0.3088439573316575,
+      "A22_p75": 0.32946920835072135,
+      "A23_mean": -0.0823070544177259,
+      "A23_p25": -0.09326355290899142,
+      "A23_p50": -0.08446379683721335,
+      "A23_p75": -0.07373419839997772,
+      "A24_mean": 0.039480803118840266,
+      "A24_p25": 0.02953724626312271,
+      "A24_p50": 0.038821527283479915,
+      "A24_p75": 0.04908514902987239,
+      "A25_mean": 0.02558923975647122,
+      "A25_p25": 0.00437555973967987,
+      "A25_p50": 0.025882959090688246,
+      "A25_p75": 0.04640707225731747,
+      "A26_mean": 0.13057963016993757,
+      "A26_p25": 0.11566841998991272,
+      "A26_p50": 0.12834910474180558,
+      "A26_p75": 0.143152086702723,
+      "A27_mean": 0.0649942736679469,
+      "A27_p25": 0.04642232117045023,
+      "A27_p50": 0.06495665896253984,
+      "A27_p75": 0.08549737173193508,
+      "A28_mean": -0.04521537788487419,
+      "A28_p25": -0.055142506393934934,
+      "A28_p50": -0.04442741235749642,
+      "A28_p75": -0.03565354990790601,
+      "A29_mean": 0.16134307978757387,
+      "A29_p25": 0.1459907167071376,
+      "A29_p50": 0.15956363866067474,
+      "A29_p75": 0.17418504413373576,
+      "A30_mean": 0.03464616783174278,
+      "A30_p25": 0.0229606920149617,
+      "A30_p50": 0.03466059435759451,
+      "A30_p75": 0.04638643452937431,
+      "A31_mean": 0.09065424249701419,
+      "A31_p25": 0.07079482513103134,
+      "A31_p50": 0.08643025560810083,
+      "A31_p75": 0.10690445775611532,
+      "A32_mean": 0.027633077575726667,
+      "A32_p25": -0.00489603657736011,
+      "A32_p50": 0.024406153285739085,
+      "A32_p75": 0.05764863620770689,
+      "A33_mean": -0.025719502811916345,
+      "A33_p25": -0.045475842624631536,
+      "A33_p50": -0.026842995549673447,
+      "A33_p75": -0.00834789917859662,
+      "A34_mean": 0.020382330529633317,
+      "A34_p25": 0.009299407247897018,
+      "A34_p50": 0.02391619026956063,
+      "A34_p75": 0.03470206878572106,
+      "A35_mean": -0.10075721943746793,
+      "A35_p25": -0.11474887793226898,
+      "A35_p50": -0.10304380466774299,
+      "A35_p75": -0.09036156121183168,
+      "A36_mean": -0.18196519683345244,
+      "A36_p25": -0.20160724437804503,
+      "A36_p50": -0.18593542453505793,
+      "A36_p75": -0.16469219454694445,
+      "A37_mean": -0.0036790286274550267,
+      "A37_p25": -0.03082916826861462,
+      "A37_p50": -0.0014763118623777219,
+      "A37_p75": 0.026883979030714347,
+      "A38_mean": 0.15891789027205794,
+      "A38_p25": 0.1451542169194171,
+      "A38_p50": 0.16048848071123334,
+      "A38_p75": 0.17432322584958732,
+      "A39_mean": -0.11988440663998488,
+      "A39_p25": -0.13825980941878444,
+      "A39_p50": -0.12244039034470647,
+      "A39_p75": -0.10399674270579697,
+      "A40_mean": 0.05971193003104334,
+      "A40_p25": 0.04059979645354242,
+      "A40_p50": 0.061028208152225955,
+      "A40_p75": 0.08061137844657018,
+      "A41_mean": 0.031170941117304344,
+      "A41_p25": 0.012227448751594986,
+      "A41_p50": 0.03075561910701145,
+      "A41_p75": 0.04834177119253933,
+      "A42_mean": -0.1424355485207834,
+      "A42_p25": -0.15342422790804522,
+      "A42_p50": -0.1422810220396882,
+      "A42_p75": -0.13158608668881033,
+      "A43_mean": 0.35165688363072517,
+      "A43_p25": 0.3385490095259675,
+      "A43_p50": 0.35082271113217184,
+      "A43_p75": 0.364900433654692,
+      "A44_mean": 0.051676759743744693,
+      "A44_p25": 0.03368697946962265,
+      "A44_p50": 0.05029645932088447,
+      "A44_p75": 0.06695470529979884,
+      "A45_mean": 0.03666871279512088,
+      "A45_p25": 0.013193055773711436,
+      "A45_p50": 0.034678589500053425,
+      "A45_p75": 0.05712922602195958,
+      "A46_mean": -0.03609977878114041,
+      "A46_p25": -0.05610487232029428,
+      "A46_p50": -0.03859319998126304,
+      "A46_p75": -0.018058595296343703,
+      "A47_mean": 0.040508418975695876,
+      "A47_p25": 0.008868020540651618,
+      "A47_p50": 0.03414755038821264,
+      "A47_p75": 0.06341051185520506,
+      "A48_mean": -0.10842031912588952,
+      "A48_p25": -0.12641529532133644,
+      "A48_p50": -0.10594370810367777,
+      "A48_p75": -0.08935945467352534,
+      "A49_mean": 0.034945706928973023,
+      "A49_p25": 0.02097337871526309,
+      "A49_p50": 0.036636653962089004,
+      "A49_p75": 0.0513231181373497,
+      "A50_mean": -0.10005062041937686,
+      "A50_p25": -0.11387703521830711,
+      "A50_p50": -0.10112474569501159,
+      "A50_p75": -0.08839599332147705,
+      "A51_mean": 0.009436662500384798,
+      "A51_p25": -0.007290075948564503,
+      "A51_p50": 0.013166120490217334,
+      "A51_p75": 0.028822521320685527,
+      "A52_mean": -0.02268210662518311,
+      "A52_p25": -0.041487587961109657,
+      "A52_p50": -0.023953028958468774,
+      "A52_p75": -0.004412256814772562,
+      "A53_mean": -0.06727871540840667,
+      "A53_p25": -0.09328127616734745,
+      "A53_p50": -0.0678860312137723,
+      "A53_p75": -0.040555370275966486,
+      "A54_mean": 0.16475483795591264,
+      "A54_p25": 0.15004465320825136,
+      "A54_p50": 0.16356789210057002,
+      "A54_p75": 0.17838684023745638,
+      "A55_mean": -0.08373312267281317,
+      "A55_p25": -0.09909694881224275,
+      "A55_p50": -0.08249364744771025,
+      "A55_p75": -0.06694484089301367,
+      "A56_mean": -0.023259654619005178,
+      "A56_p25": -0.039492927685347595,
+      "A56_p50": -0.024905692953043856,
+      "A56_p75": -0.00831411994909149,
+      "A57_mean": -0.0293405822767234,
+      "A57_p25": -0.046388155553900336,
+      "A57_p50": -0.029761252650563678,
+      "A57_p75": -0.012204713624618455,
+      "A58_mean": -0.10213199082066896,
+      "A58_p25": -0.11669459626374458,
+      "A58_p50": -0.10295885413497083,
+      "A58_p75": -0.08835044538166173,
+      "A59_mean": -0.15360837432950236,
+      "A59_p25": -0.1723432883726461,
+      "A59_p50": -0.15477003046276572,
+      "A59_p75": -0.13522574799793757,
+      "A60_mean": 0.0665565435669698,
+      "A60_p25": 0.05227831964895634,
+      "A60_p50": 0.06888236806236761,
+      "A60_p75": 0.0824746590157092,
+      "A61_mean": -0.1129864746183119,
+      "A61_p25": -0.12453771628759741,
+      "A61_p50": -0.11477761126639499,
+      "A61_p75": -0.10400916691167048,
+      "A62_mean": 0.053698428608242824,
+      "A62_p25": 0.03471382200536436,
+      "A62_p50": 0.052259022255541604,
+      "A62_p75": 0.06977908852853006,
+      "A63_mean": 0.05916901579452696,
+      "A63_p25": 0.040502237155163295,
+      "A63_p50": 0.06006699194915441,
+      "A63_p75": 0.08056287058925037
+     },
+     {
+      "cluster_id": 4,
+      "pixel_count": 9714,
+      "area_ha": 97.14,
+      "A00_mean": 0.03080946128005017,
+      "A00_p25": 0.014161937716262977,
+      "A00_p50": 0.03273177837071665,
+      "A00_p75": 0.0493301179657601,
+      "A01_mean": -0.054983187547878044,
+      "A01_p25": -0.0737171076652371,
+      "A01_p50": -0.05420905417692737,
+      "A01_p75": -0.03663095425862451,
+      "A02_mean": 0.10648575092237221,
+      "A02_p25": 0.08147307445854163,
+      "A02_p50": 0.10113566510324874,
+      "A02_p75": 0.12567047462467007,
+      "A03_mean": 0.04685928967285765,
+      "A03_p25": 0.03275664998616305,
+      "A03_p50": 0.04831839659863862,
+      "A03_p75": 0.06200943260912558,
+      "A04_mean": -0.0246194854173705,
+      "A04_p25": -0.039533968753621286,
+      "A04_p50": -0.02687383097517491,
+      "A04_p75": -0.010246877275685698,
+      "A05_mean": -0.044516515922183135,
+      "A05_p25": -0.06789401784910878,
+      "A05_p50": -0.04636523221539718,
+      "A05_p75": -0.024874751276499595,
+      "A06_mean": -0.14139809830001904,
+      "A06_p25": -0.15864461207582006,
+      "A06_p50": -0.1411160321148493,
+      "A06_p75": -0.12448138607441668,
+      "A07_mean": 0.1912782311854225,
+      "A07_p25": 0.1763395269472348,
+      "A07_p50": 0.1921356337668184,
+      "A07_p75": 0.20543269311134507,
+      "A08_mean": -0.08653031534485855,
+      "A08_p25": -0.10306126716252376,
+      "A08_p50": -0.08834257094464705,
+      "A08_p75": -0.07274808131617302,
+      "A09_mean": 0.033594975887211984,
+      "A09_p25": 0.01712060302121195,
+      "A09_p50": 0.03273591974407219,
+      "A09_p75": 0.04830860898152547,
+      "A10_mean": 0.13544802701350256,
+      "A10_p25": 0.12350034515886713,
+      "A10_p50": 0.13922163338024535,
+      "A10_p75": 0.1519732900779195,
+      "A11_mean": 0.06826380737668612,
+      "A11_p25": 0.04053379769194874,
+      "A11_p50": 0.06784205582767401,
+      "A11_p75": 0.09811424510386445,
+      "A12_mean": -0.27641894173083204,
+      "A12_p25": -0.286223200892936,
+      "A12_p50": -0.27621945257217295,
+      "A12_p75": -0.2655024155885179,
+      "A13_mean": -0.014406706645482381,
+      "A13_p25": -0.032697343202790774,
+      "A13_p50": -0.015084681581006605,
+      "A13_p75": 0.0024300961858409057,
+      "A14_mean": -0.02810430241725902,
+      "A14_p25": -0.04641247968055474,
+      "A14_p50": -0.028823995892277014,
+      "A14_p75": -0.00829002786999405,
+      "A15_mean": 0.07413821469479596,
+      "A15_p25": 0.05908891794235708,
+      "A15_p50": 0.07474016706833711,
+      "A15_p75": 0.08738304023583927,
+      "A16_mean": 0.027034054799269427,
+      "A16_p25": 0.002424505788448671,
+      "A16_p50": 0.028749967170497392,
+      "A16_p75": 0.04929471243310915,
+      "A17_mean": -0.009967484814844517,
+      "A17_p25": -0.03172813840235735,
+      "A17_p50": -0.014180219708274926,
+      "A17_p75": 0.005396466945911491,
+      "A18_mean": -0.12860598672440055,
+      "A18_p25": -0.1559200930387426,
+      "A18_p50": -0.13141871328722543,
+      "A18_p75": -0.1039215384731363,
+      "A19_mean": -0.017910810607608334,
+      "A19_p25": -0.053612345696471546,
+      "A19_p50": -0.012714911935322993,
+      "A19_p75": 0.0243986426625211,
+      "A20_mean": -0.3340142175755518,
+      "A20_p25": -0.35079058865588686,
+      "A20_p50": -0.33244707875121543,
+      "A20_p75": -0.316074954137238,
+      "A21_mean": 0.20641325887677478,
+      "A21_p25": 0.1689277047752368,
+      "A21_p50": 0.20206807498833476,
+      "A21_p75": 0.2392594503065751,
+      "A22_mean": 0.27657713694741115,
+      "A22_p25": 0.25689888036360053,
+      "A22_p50": 0.27838078082009987,
+      "A22_p75": 0.29998862154888467,
+      "A23_mean": -0.091353008479812,
+      "A23_p25": -0.10392887071262305,
+      "A23_p50": -0.09230672347911487,
+      "A23_p75": -0.08054192317813974,
+      "A24_mean": 0.05481938590766965,
+      "A24_p25": 0.040502100581209385,
+      "A24_p50": 0.05614846080886156,
+      "A24_p75": 0.06985297955313977,
+      "A25_mean": 0.029152145200062575,
+      "A25_p25": 0.0005217717051627086,
+      "A25_p50": 0.03368067699354672,
+      "A25_p75": 0.059064938103306285,
+      "A26_mean": 0.1674858320773609,
+      "A26_p25": 0.1517828113102062,
+      "A26_p50": 0.17013683124676382,
+      "A26_p75": 0.1860590291748254,
+      "A27_mean": 0.03232666746670391,
+      "A27_p25": 0.015140330642060749,
+      "A27_p50": 0.032730423074901,
+      "A27_p75": 0.049306459705849785,
+      "A28_mean": -0.08120610352476547,
+      "A28_p25": -0.10402510126471094,
+      "A28_p50": -0.0795887481473141,
+      "A28_p75": -0.0591263193104319,
+      "A29_mean": 0.17631220789742244,
+      "A29_p25": 0.15951256312267392,
+      "A29_p50": 0.17743509238779243,
+      "A29_p75": 0.19307074644146616,
+      "A30_mean": 0.04280742198933657,
+      "A30_p25": 0.026872037363645553,
+      "A30_p50": 0.04155342256501247,
+      "A30_p75": 0.058123562942718025,
+      "A31_mean": 0.14406365965591547,
+      "A31_p25": 0.11431268674222846,
+      "A31_p50": 0.1455609747093776,
+      "A31_p75": 0.1768345280533716,
+      "A32_mean": 0.11491173518184332,
+      "A32_p25": 0.08102169285811332,
+      "A32_p50": 0.12006003152435617,
+      "A32_p75": 0.15526562874693903,
+      "A33_mean": -0.007090124070540246,
+      "A33_p25": -0.024927153493300352,
+      "A33_p50": -0.01024272382311453,
+      "A33_p75": 0.005359797287672591,
+      "A34_mean": -0.01749198245134677,
+      "A34_p25": -0.03662327586551652,
+      "A34_p50": -0.016129002269842145,
+      "A34_p75": 0.003391428736364718,
+      "A35_mean": -0.08590024046466925,
+      "A35_p25": -0.1117894615696995,
+      "A35_p50": -0.08741723726176164,
+      "A35_p75": -0.059090297654121916,
+      "A36_mean": -0.15828637724273642,
+      "A36_p25": -0.17439971419296227,
+      "A36_p50": -0.15757298127548264,
+      "A36_p75": -0.14217529135469587,
+      "A37_mean": -0.016003787733234576,
+      "A37_p25": -0.05571227753211876,
+      "A37_p50": -0.012688615511767906,
+      "A37_p75": 0.024410925257092632,
+      "A38_mean": 0.12074069979512907,
+      "A38_p25": 0.10007240804818657,
+      "A38_p50": 0.12159892213759237,
+      "A38_p75": 0.14116232319586505,
+      "A39_mean": -0.08890912254012517,
+      "A39_p25": -0.10982578925886975,
+      "A39_p50": -0.08939503190596747,
+      "A39_p75": -0.06685042492368763,
+      "A40_mean": 0.052068984872273315,
+      "A40_p25": 0.022961564899281164,
+      "A40_p50": 0.051273212616785906,
+      "A40_p75": 0.08052481156318421,
+      "A41_mean": 0.01376409388828181,
+      "A41_p25": -0.005428681276432143,
+      "A41_p50": 0.009281497533781014,
+      "A41_p75": 0.027847999990418263,
+      "A42_mean": -0.13347106811248904,
+      "A42_p25": -0.14509867704298185,
+      "A42_p50": -0.13342846433182465,
+      "A42_p75": -0.12142189179024418,
+      "A43_mean": 0.36194979401135313,
+      "A43_p25": 0.34787191480212826,
+      "A43_p50": 0.36496483527206525,
+      "A43_p75": 0.3776600642952954,
+      "A44_mean": 0.10854896534054274,
+      "A44_p25": 0.09228738224684353,
+      "A44_p50": 0.11071456551082047,
+      "A44_p75": 0.12757182448069238,
+      "A45_mean": 0.03601722156471744,
+      "A45_p25": 0.004444557410608489,
+      "A45_p50": 0.03364798660965471,
+      "A45_p75": 0.06794867011187605,
+      "A46_mean": -0.010235750541543185,
+      "A46_p25": -0.025909251267518828,
+      "A46_p50": -0.005345292087157324,
+      "A46_p75": 0.010278950285341164,
+      "A47_mean": 0.08854620507304896,
+      "A47_p25": 0.0536525137469978,
+      "A47_p50": 0.08686083428274469,
+      "A47_p75": 0.11625131219120213,
+      "A48_mean": -0.09014414057438977,
+      "A48_p25": -0.10398689906180074,
+      "A48_p50": -0.08740187525389062,
+      "A48_p75": -0.07468196408439426,
+      "A49_mean": 0.05220167420955309,
+      "A49_p25": 0.039533587455149205,
+      "A49_p50": 0.05419518945163906,
+      "A49_p75": 0.06789101014427423,
+      "A50_mean": -0.06858199028926264,
+      "A50_p25": -0.08354573008298022,
+      "A50_p50": -0.06785077148297021,
+      "A50_p75": -0.05224976148774689,
+      "A51_mean": -0.0558774475535482,
+      "A51_p25": -0.08253064695854108,
+      "A51_p50": -0.05911903541372976,
+      "A51_p75": -0.033686647467559776,
+      "A52_mean": -0.018596769712187145,
+      "A52_p25": -0.030534989218456984,
+      "A52_p50": -0.01928931095296812,
+      "A52_p75": -0.008573875859667478,
+      "A53_mean": -0.037042291154781644,
+      "A53_p25": -0.05224743823700889,
+      "A53_p50": -0.03370311918805463,
+      "A53_p75": -0.016132978423465064,
+      "A54_mean": 0.18884504407571093,
+      "A54_p25": 0.16354753795947985,
+      "A54_p50": 0.19104048271413349,
+      "A54_p75": 0.2145190958877781,
+      "A55_mean": -0.10378418939096735,
+      "A55_p25": -0.12056704468856973,
+      "A55_p50": -0.10696329090002653,
+      "A55_p75": -0.08735069811811023,
+      "A56_mean": 0.009714429479652193,
+      "A56_p25": -0.006375022103402305,
+      "A56_p50": 0.008285252471729372,
+      "A56_p75": 0.025913756506062643,
+      "A57_mean": -0.06757481634567211,
+      "A57_p25": -0.08351331633709291,
+      "A57_p50": -0.06883257992028868,
+      "A57_p75": -0.05222270936429458,
+      "A58_mean": -0.07943906332916263,
+      "A58_p25": -0.09423384546135839,
+      "A58_p50": -0.07860073541734439,
+      "A58_p75": -0.06494934502585206,
+      "A59_mean": -0.1752020497752706,
+      "A59_p25": -0.19597371056928223,
+      "A59_p50": -0.18031061245291083,
+      "A59_p75": -0.1606887506598531,
+      "A60_mean": 0.05426774521764965,
+      "A60_p25": 0.03958508153770499,
+      "A60_p50": 0.0541830211615685,
+      "A60_p75": 0.06981226519986274,
+      "A61_mean": -0.10574732781073361,
+      "A61_p25": -0.1225868978581492,
+      "A61_p50": -0.1059600794566192,
+      "A61_p75": -0.08836331393094685,
+      "A62_mean": 0.05842111438146458,
+      "A62_p25": 0.032696410434517965,
+      "A62_p50": 0.05710985576191756,
+      "A62_p75": 0.08156006362560404,
+      "A63_mean": 0.05252567891016561,
+      "A63_p25": 0.024926197839821806,
+      "A63_p50": 0.0532298383202904,
+      "A63_p75": 0.08148424282725052
+     }
+    ]
+   },
+   "cache_status": {},
+   "cache_key": null,
+   "export_tasks": [],
+   "transparency": {
+    "display_layers": [],
+    "summary_numbers": []
+   },
+   "input_images": {}
+  },
+  {
+   "name": "export",
+   "produced": [
+    "export_manifest"
+   ],
+   "warnings": [],
+   "metadata": {
+    "n_drive_tasks": 9,
+    "drive_task_ids": [
+     "2JMUND6VKEQQ7LNTECMQDV35",
+     "43ZRBJ4TZTKQCILWMEVMSHTG",
+     "7XH7WNE6KW7VH77KT3X57XUI",
+     "35ETSEZFFHC7LXLMQYZHNTM5",
+     "4HV3QI3ZRMJWCTKMAE73NJMG",
+     "CW4J7NQPERQJUHJDBZS4KZCT",
+     "D572DG5WU5MBF3Y4QFJEXID6",
+     "LCPO2IKLICCHNONG73Y4SZI7",
+     "5N4ELONPFK6W52RQEFVA6M5K"
+    ],
+    "n_vector_layers": 3,
+    "n_clusters": 5,
+    "n_cached_assets": 12,
+    "drive_folder": "fmu_exports_kept_land_s1desc",
+    "manifest": {
+     "config_name": "odisha_alphaearth_3ha_squares_angul_keptland_r9",
+     "pipeline_version": "1.2.0",
+     "git": {
+      "commit": "fcfc169564bff6b142ed1da34b800947edbade94",
+      "dirty": false,
+      "modified": [],
+      "modified_truncated": false,
+      "untracked": [
+       "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r9_raster_at_plots.csv",
+       "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r9_run.json",
+       "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r9_stands_dissolved.geojson",
+       "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r9_stands_merged.geojson",
+       "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r9_stands_snic.geojson",
+       "odisha_script/phase2_vectors/odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r9_raster_at_plots.csv",
+       "odisha_script/phase2_vectors/odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r9_run.json",
+       "odisha_script/phase2_vectors/odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r9_stands_dissolved.geojson",
+       "odisha_script/phase2_vectors/odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r9_stands_merged.geojson",
+       "odisha_script/phase2_vectors/odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r9_stands_snic.geojson",
+       "odisha_script/phase2_vectors/odisha_v120_3ha_squares_koraput_keptland_s1desc_r9_raster_at_plots.csv",
+       "odisha_script/phase2_vectors/odisha_v120_3ha_squares_koraput_keptland_s1desc_r9_run.json",
+       "odisha_script/phase2_vectors/odisha_v120_3ha_squares_koraput_keptland_s1desc_r9_stands_dissolved.geojson",
+       "odisha_script/phase2_vectors/odisha_v120_3ha_squares_koraput_keptland_s1desc_r9_stands_merged.geojson",
+       "odisha_script/phase2_vectors/odisha_v120_3ha_squares_koraput_keptland_s1desc_r9_stands_snic.geojson",
+       "odisha_script/phase2_vectors/sanjay_van_alphaearth_keptland_r9_raster_at_plots.csv",
+       "odisha_script/phase2_vectors/sanjay_van_alphaearth_keptland_r9_run.json",
+       "odisha_script/phase2_vectors/sanjay_van_alphaearth_keptland_r9_stands_dissolved.geojson",
+       "odisha_script/phase2_vectors/sanjay_van_alphaearth_keptland_r9_stands_merged.geojson",
+       "odisha_script/phase2_vectors/sanjay_van_alphaearth_keptland_r9_stands_snic.geojson",
+       "odisha_script/phase2_vectors/sanjay_van_baseline_keptland_r9_raster_at_plots.csv",
+       "odisha_script/phase2_vectors/sanjay_van_baseline_keptland_r9_run.json",
+       "odisha_script/phase2_vectors/sanjay_van_baseline_keptland_r9_stands_dissolved.geojson",
+       "odisha_script/phase2_vectors/sanjay_van_baseline_keptland_r9_stands_merged.geojson",
+       "odisha_script/phase2_vectors/sanjay_van_baseline_keptland_r9_stands_snic.geojson"
+      ],
+      "untracked_truncated": false,
+      "root": "/Users/karan/Desktop/phd-code/outputs/round10/run_tree",
+      "error": null
+     },
+     "environment": {
+      "python": "3.13.14",
+      "earthengine_api": "1.7.35",
+      "pip_freeze_sha256": "31aca07855862d34db7bcb31a6b60769d1785e80606cdaa23093cdf2a60bcc21",
+      "pip_freeze_packages": 232,
+      "pip_freeze_left_out": [
+       "-e git+https://github.com/sudo-karan/phd-code.git@fcfc169564bff6b142ed1da34b800947edbade94#egg=fmu"
+      ],
+      "error": null
+     },
+     "roi": {
+      "name": "odisha_squares_angul",
+      "area_km2": 6.039,
+      "geojson_path": "aois/odisha_squares_angul.geojson"
+     },
+     "config_snapshot": {
+      "name": "odisha_alphaearth_3ha_squares_angul_keptland_r9",
+      "description": "Odisha ANGUL, AlphaEarth embedding arm, stands capped at 3 ha, run on boxes around the villages' plots, on kept land only (mask before SNIC); otherwise the copied hand-crafted run, odisha_v120_3ha_squares_angul_keptland_s1desc_r9.",
+      "roi": {
+       "name": "odisha_squares_angul",
+       "roi_file": "aois/odisha_squares_angul.geojson",
+       "roi_asset": null
+      },
+      "dates": {
+       "phenology": {
+        "start": "2017-01-01",
+        "end": "2022-12-31"
+       },
+       "radar": {
+        "start": "2017-01-01",
+        "end": "2022-12-31"
+       },
+       "optical_composite": {
+        "start": "2017-01-01",
+        "end": "2022-12-31"
+       },
+       "climate": {
+        "start": "1991-01-01",
+        "end": "2020-12-31"
+       }
+      },
+      "datasets": {
+       "phenology_collection": "COPERNICUS/S2_SR_HARMONIZED",
+       "optical_composite_collection": "COPERNICUS/S2_SR_HARMONIZED",
+       "radar_collection": "COPERNICUS/S1_GRD",
+       "canopy_height": "users/nlang/ETH_GlobalCanopyHeight_2020_10m_v1",
+       "dem": "NASA/NASADEM_HGT/001",
+       "indiasat": "projects/corestack-trees/assets/LULC_v4",
+       "worldcover": "ESA/WorldCover/v200",
+       "water": "JRC/GSW1_4/GlobalSurfaceWater",
+       "climate": "UCSB-CHG/CHIRPS/PENTAD",
+       "embedding": "GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL"
+      },
+      "cloud_mask": {
+       "max_cloud_pct": 20.0,
+       "drop_scl_classes": [
+        3,
+        8,
+        9,
+        10
+       ]
+      },
+      "data_load": {
+       "s1_orbit": "DESCENDING",
+       "s1_polarizations": [
+        "VV",
+        "VH"
+       ],
+       "s1_instrument_mode": "IW",
+       "s2_composite_reducer": "median"
+      },
+      "masking": {
+       "indiasat_habitat_classes": [
+        6,
+        12
+       ],
+       "indiasat_class_band": "predicted_label",
+       "indiasat_year_min": 2017,
+       "indiasat_year_max": 2021,
+       "keep_worldcover_classes": [
+        10,
+        20,
+        30
+       ],
+       "jrc_water_occurrence_threshold": 50.0
+      },
+      "features_optical": {
+       "index": "ndvi",
+       "harmonic_mode": "single",
+       "include_trend": true,
+       "time_reference": "2017-01-01"
+      },
+      "features_radar": {
+       "percentiles": [
+        10,
+        50,
+        90
+       ],
+       "include_iqr": true,
+       "include_cross_pol_contrast": true
+      },
+      "features_structure": {
+       "include_neighborhood_stats": true,
+       "neighborhood_kernel_size": 3
+      },
+      "features_static": {
+       "include_climate": true,
+       "max_water_distance_pixels": 1000,
+       "cap_distance_to_water": true
+      },
+      "features_embedding": {
+       "collapse_reducer": "mean",
+       "band_names": null
+      },
+      "segmentation": {
+       "size": 6,
+       "compactness": 0.5,
+       "connectivity": 8,
+       "neighborhood_size": 128,
+       "normalize_inputs": true,
+       "normalize_distance_scale": true,
+       "input_bands": [
+        {
+         "source": "embedding_features",
+         "band": "*"
+        }
+       ],
+       "mask_before_snic": true,
+       "drop_kept_patches_below_min_area": false
+      },
+      "merge": {
+       "enabled": true,
+       "criteria": [
+        {
+         "source": "structure_features",
+         "band": "canopy_height",
+         "tolerance": 2.0
+        },
+        {
+         "source": "structure_features",
+         "band": "canopy_height_std",
+         "tolerance": 0.45
+        },
+        {
+         "source": "optical_features",
+         "band": "ndvi_amplitude_annual",
+         "tolerance": 0.03
+        }
+       ],
+       "relax_factor": 1.75,
+       "min_area_ha": 1.0,
+       "max_area_ha": 3.0,
+       "min_defined_criteria": 2,
+       "min_frac_valid": 0.5,
+       "tie_break": "shared_edge_length",
+       "max_pass2_iterations": 60,
+       "pass2_skip_at_min_area": true,
+       "pass2_soft_ceiling": true,
+       "max_superpixels": 50000
+      },
+      "clustering": {
+       "k": 5,
+       "seed": 42,
+       "feature_source": "embedding",
+       "skewness_threshold": 1.0,
+       "fit_excludes_stands_below_min_area": true
+      },
+      "normalization": {
+       "method": "robust"
+      },
+      "features": {
+       "optical_harmonic": true,
+       "radar": true,
+       "canopy_height": true,
+       "terrain": true
+      },
+      "export": {
+       "export_geotiff": true,
+       "export_gee_asset": false,
+       "analysis_scale_m": 10,
+       "drive_folder": "fmu_exports_kept_land_s1desc",
+       "export_vector_merged": true,
+       "export_vector_snic": true,
+       "export_vector_dissolved": true,
+       "vector_formats": [
+        "shp",
+        "geojson"
+       ],
+       "vector_min_stand_pixels": 4
+      },
+      "metrics": {
+       "reference_config_name": null,
+       "reference_config_file": null,
+       "n_comparison_samples": 10000,
+       "n_silhouette_samples_per_cluster": 833,
+       "r2_attributes": [
+        {
+         "source": "structure_features",
+         "band": "canopy_height",
+         "held_out": false
+        },
+        {
+         "source": "optical_features",
+         "band": "ndvi_trend",
+         "held_out": true
+        },
+        {
+         "source": "structure_features",
+         "band": "canopy_height_max",
+         "held_out": true
+        }
+       ]
+      },
+      "k_elbow": {
+       "k_min": 2,
+       "k_max": 12,
+       "seed": 42,
+       "n_init": 25
+      }
+     },
+     "asset_paths": {
+      "cluster_labels": "projects/replicating-paper/assets/fmu/odisha_alphaearth_3ha_squares_angul_keptland_r9/clustering/cluster_labels__s2e287b836a",
+      "feature_stack": "projects/replicating-paper/assets/fmu/odisha_alphaearth_3ha_squares_angul_keptland_r9/clustering/feature_stack__s2e287b836a",
+      "s2_composite": "projects/replicating-paper/assets/fmu/odisha_alphaearth_3ha_squares_angul_keptland_r9/data_load/s2_composite__s6aee5bb6e6",
+      "embedding_features": "projects/replicating-paper/assets/fmu/odisha_alphaearth_3ha_squares_angul_keptland_r9/features_embedding/embedding_features__s21b47a530b",
+      "optical_features": "projects/replicating-paper/assets/fmu/odisha_alphaearth_3ha_squares_angul_keptland_r9/features_optical/optical_features__sd8a42026e9",
+      "structure_features": "projects/replicating-paper/assets/fmu/odisha_alphaearth_3ha_squares_angul_keptland_r9/features_structure/structure_features__sc823e0cc39",
+      "habitat_mask": "projects/replicating-paper/assets/fmu/odisha_alphaearth_3ha_squares_angul_keptland_r9/masking/habitat_mask__s073c13df8c",
+      "landcover_summary": "projects/replicating-paper/assets/fmu/odisha_alphaearth_3ha_squares_angul_keptland_r9/masking/landcover_summary__s073c13df8c",
+      "mask_provenance": "projects/replicating-paper/assets/fmu/odisha_alphaearth_3ha_squares_angul_keptland_r9/masking/mask_provenance__s073c13df8c",
+      "water_mask": "projects/replicating-paper/assets/fmu/odisha_alphaearth_3ha_squares_angul_keptland_r9/masking/water_mask__s073c13df8c",
+      "snic_clusters": "projects/replicating-paper/assets/fmu/odisha_alphaearth_3ha_squares_angul_keptland_r9/segmentation/snic_clusters__s6123730adb",
+      "snic_means": "projects/replicating-paper/assets/fmu/odisha_alphaearth_3ha_squares_angul_keptland_r9/segmentation/snic_means__s6123730adb"
+     },
+     "clustering": {
+      "active_bands": [
+       "A00",
+       "A01",
+       "A02",
+       "A03",
+       "A04",
+       "A05",
+       "A06",
+       "A07",
+       "A08",
+       "A09",
+       "A10",
+       "A11",
+       "A12",
+       "A13",
+       "A14",
+       "A15",
+       "A16",
+       "A17",
+       "A18",
+       "A19",
+       "A20",
+       "A21",
+       "A22",
+       "A23",
+       "A24",
+       "A25",
+       "A26",
+       "A27",
+       "A28",
+       "A29",
+       "A30",
+       "A31",
+       "A32",
+       "A33",
+       "A34",
+       "A35",
+       "A36",
+       "A37",
+       "A38",
+       "A39",
+       "A40",
+       "A41",
+       "A42",
+       "A43",
+       "A44",
+       "A45",
+       "A46",
+       "A47",
+       "A48",
+       "A49",
+       "A50",
+       "A51",
+       "A52",
+       "A53",
+       "A54",
+       "A55",
+       "A56",
+       "A57",
+       "A58",
+       "A59",
+       "A60",
+       "A61",
+       "A62",
+       "A63"
+      ],
+      "area_ha_in_stands_below_min_area": 4.94,
+      "area_ha_in_stands_left_out_of_fit": 4.92,
+      "cyclic_decomposition_log": [],
+      "dropped_constant_bands": [],
+      "feature_source": "embedding",
+      "fit_excludes_stands_below_min_area": true,
+      "k": 5,
+      "log_offsets": {
+       "A15": -0.039621062904799935,
+       "A20": 0.40486518005895167,
+       "A24": 0.11276100360260301,
+       "A35": 0.17232071397353996,
+       "A39": 0.16051813405100604,
+       "A43": -0.17573202614379085,
+       "A47": 0.06612367038318596,
+       "A49": 0.12588530052543892,
+       "A50": 0.1279581751278836
+      },
+      "log_transformed_bands": [
+       "A15",
+       "A20",
+       "A24",
+       "A35",
+       "A39",
+       "A43",
+       "A47",
+       "A49",
+       "A50"
+      ],
+      "n_stands_below_min_area": 54,
+      "n_stands_left_out_of_fit": 52,
+      "n_training_units": 183,
+      "n_units_dropped_null_band": 2,
+      "n_units_in_habitat": 237,
+      "n_units_outside_habitat": 0,
+      "n_units_total": 237,
+      "normalization_method": "robust",
+      "raw_band_names": [
+       "A00",
+       "A01",
+       "A02",
+       "A03",
+       "A04",
+       "A05",
+       "A06",
+       "A07",
+       "A08",
+       "A09",
+       "A10",
+       "A11",
+       "A12",
+       "A13",
+       "A14",
+       "A15",
+       "A16",
+       "A17",
+       "A18",
+       "A19",
+       "A20",
+       "A21",
+       "A22",
+       "A23",
+       "A24",
+       "A25",
+       "A26",
+       "A27",
+       "A28",
+       "A29",
+       "A30",
+       "A31",
+       "A32",
+       "A33",
+       "A34",
+       "A35",
+       "A36",
+       "A37",
+       "A38",
+       "A39",
+       "A40",
+       "A41",
+       "A42",
+       "A43",
+       "A44",
+       "A45",
+       "A46",
+       "A47",
+       "A48",
+       "A49",
+       "A50",
+       "A51",
+       "A52",
+       "A53",
+       "A54",
+       "A55",
+       "A56",
+       "A57",
+       "A58",
+       "A59",
+       "A60",
+       "A61",
+       "A62",
+       "A63"
+      ],
+      "scaling": {
+       "A00": {
+        "center": 0.030994509653699702,
+        "spread": 0.04316057807109084
+       },
+       "A01": {
+        "center": -0.08528890751048396,
+        "spread": 0.04844704322928033
+       },
+       "A02": {
+        "center": 0.14681700847733967,
+        "spread": 0.045942708176140795
+       },
+       "A03": {
+        "center": 0.04150305785950809,
+        "spread": 0.03205788262047923
+       },
+       "A04": {
+        "center": -0.03153033924751943,
+        "spread": 0.018135342129907087
+       },
+       "A05": {
+        "center": -0.04726993919561743,
+        "spread": 0.046364490986081
+       },
+       "A06": {
+        "center": -0.09514456524953743,
+        "spread": 0.04303420614383914
+       },
+       "A07": {
+        "center": 0.19046329401296833,
+        "spread": 0.03902231348951754
+       },
+       "A08": {
+        "center": -0.08647232819540568,
+        "spread": 0.029519254609974302
+       },
+       "A09": {
+        "center": 0.045828279162346726,
+        "spread": 0.03394155743104748
+       },
+       "A10": {
+        "center": 0.09599374907173976,
+        "spread": 0.03420302920830173
+       },
+       "A11": {
+        "center": 0.05709259189852243,
+        "spread": 0.04188335712877994
+       },
+       "A12": {
+        "center": -0.29755075689047455,
+        "spread": 0.03341385826760379
+       },
+       "A13": {
+        "center": 0.01352568864126917,
+        "spread": 0.036255123590520355
+       },
+       "A14": {
+        "center": -0.03760377180295806,
+        "spread": 0.03904575205230167
+       },
+       "A15": {
+        "center": -3.264578400654665,
+        "spread": 0.746429652802842
+       },
+       "A16": {
+        "center": -0.022090543166048405,
+        "spread": 0.04947759960783487
+       },
+       "A17": {
+        "center": 0.041782510474075,
+        "spread": 0.06098206119368638
+       },
+       "A18": {
+        "center": -0.0863952667213409,
+        "spread": 0.036937566549911816
+       },
+       "A19": {
+        "center": -0.024938902059296046,
+        "spread": 0.052520214505997045
+       },
+       "A20": {
+        "center": -2.6107909000511693,
+        "spread": 0.4687764089961828
+       },
+       "A21": {
+        "center": 0.30988580758501877,
+        "spread": 0.07433137756507602
+       },
+       "A22": {
+        "center": 0.26580249188079563,
+        "spread": 0.048787558734582154
+       },
+       "A23": {
+        "center": -0.0727566355571706,
+        "spread": 0.05227220391782591
+       },
+       "A24": {
+        "center": -1.8589590690818782,
+        "spread": 0.15355457138882866
+       },
+       "A25": {
+        "center": 0.033667292368696804,
+        "spread": 0.04683535279947215
+       },
+       "A26": {
+        "center": 0.1372464350298182,
+        "spread": 0.028325926655629677
+       },
+       "A27": {
+        "center": 0.03754006625272144,
+        "spread": 0.07076163741254615
+       },
+       "A28": {
+        "center": -0.05716289478904197,
+        "spread": 0.028627790129535417
+       },
+       "A29": {
+        "center": 0.1753462100549198,
+        "spread": 0.02928212110544859
+       },
+       "A30": {
+        "center": 0.036845191544776446,
+        "spread": 0.02053817500635615
+       },
+       "A31": {
+        "center": 0.08462074909563815,
+        "spread": 0.04579256602488743
+       },
+       "A32": {
+        "center": 0.012561361565343895,
+        "spread": 0.08600134318444805
+       },
+       "A33": {
+        "center": -0.011253312785724901,
+        "spread": 0.03212244652447118
+       },
+       "A34": {
+        "center": 0.008469921383685408,
+        "spread": 0.03855395223031604
+       },
+       "A35": {
+        "center": -2.4208031421491034,
+        "spread": 0.4688338766400726
+       },
+       "A36": {
+        "center": -0.16001798065235207,
+        "spread": 0.03520127427475617
+       },
+       "A37": {
+        "center": 0.020570555491193666,
+        "spread": 0.07024622369397339
+       },
+       "A38": {
+        "center": 0.1509139317213603,
+        "spread": 0.03189158188521676
+       },
+       "A39": {
+        "center": -2.7669507139543033,
+        "spread": 0.529145597221309
+       },
+       "A40": {
+        "center": 0.06577040468025458,
+        "spread": 0.03619988841380614
+       },
+       "A41": {
+        "center": 0.028981446102351004,
+        "spread": 0.04023525176184579
+       },
+       "A42": {
+        "center": -0.14203515818553256,
+        "spread": 0.024406657674688997
+       },
+       "A43": {
+        "center": -1.8254473088651004,
+        "spread": 0.1865953877498423
+       },
+       "A44": {
+        "center": 0.05357478198522578,
+        "spread": 0.0353446750018333
+       },
+       "A45": {
+        "center": 0.06495153492564744,
+        "spread": 0.05978165942600486
+       },
+       "A46": {
+        "center": -0.019433854043226395,
+        "spread": 0.038779519336969506
+       },
+       "A47": {
+        "center": -2.2674060535849976,
+        "spread": 0.7457121376368112
+       },
+       "A48": {
+        "center": -0.1252917963705321,
+        "spread": 0.05186770000008589
+       },
+       "A49": {
+        "center": -1.7926895066606856,
+        "spread": 0.2165682219301357
+       },
+       "A50": {
+        "center": -3.2670540884725043,
+        "spread": 0.7825297967684746
+       },
+       "A51": {
+        "center": 0.012429570177099987,
+        "spread": 0.058963358352234055
+       },
+       "A52": {
+        "center": -0.015233703213140224,
+        "spread": 0.03122927018233496
+       },
+       "A53": {
+        "center": -0.05731624277799089,
+        "spread": 0.05176865829404232
+       },
+       "A54": {
+        "center": 0.18116665778724014,
+        "spread": 0.03887646074475962
+       },
+       "A55": {
+        "center": -0.08483445949868257,
+        "spread": 0.032298230533577554
+       },
+       "A56": {
+        "center": -0.016339972243855368,
+        "spread": 0.0377792400697159
+       },
+       "A57": {
+        "center": -0.03455086529252924,
+        "spread": 0.030477967967219008
+       },
+       "A58": {
+        "center": -0.1069201034807537,
+        "spread": 0.03861265360166102
+       },
+       "A59": {
+        "center": -0.16065211259562323,
+        "spread": 0.03917548539008228
+       },
+       "A60": {
+        "center": 0.04925011768466569,
+        "spread": 0.03347561813936674
+       },
+       "A61": {
+        "center": -0.09705750099798566,
+        "spread": 0.046941045651041444
+       },
+       "A62": {
+        "center": 0.06968075040687385,
+        "spread": 0.04023792761819137
+       },
+       "A63": {
+        "center": 0.056051324501946775,
+        "spread": 0.033972279633365944
+       }
+      },
+      "seed": 42,
+      "skewness_threshold": 1.0,
+      "training_unit_key": "stand_clusters",
+      "cluster_distribution": [
+       {
+        "cluster_id": 0,
+        "pixel_count": 4263,
+        "area_ha": 42.63,
+        "percent_of_habitat": 10.51
+       },
+       {
+        "cluster_id": 1,
+        "pixel_count": 5768,
+        "area_ha": 57.68,
+        "percent_of_habitat": 14.22
+       },
+       {
+        "cluster_id": 2,
+        "pixel_count": 10320,
+        "area_ha": 103.2,
+        "percent_of_habitat": 25.44
+       },
+       {
+        "cluster_id": 3,
+        "pixel_count": 10485,
+        "area_ha": 104.85,
+        "percent_of_habitat": 25.85
+       },
+       {
+        "cluster_id": 4,
+        "pixel_count": 9726,
+        "area_ha": 97.26,
+        "percent_of_habitat": 23.98
+       }
+      ]
+     },
+     "drive_exports": {
+      "raster_cluster_labels": {
+       "folder": "fmu_exports_kept_land_s1desc",
+       "filename": "odisha_alphaearth_3ha_squares_angul_keptland_r9_cluster_labels.tif",
+       "format": "GeoTIFF",
+       "task_id": "2JMUND6VKEQQ7LNTECMQDV35",
+       "task_submitted": true
+      },
+      "raster_features_raw": {
+       "folder": "fmu_exports_kept_land_s1desc",
+       "filename": "odisha_alphaearth_3ha_squares_angul_keptland_r9_features_raw.tif",
+       "format": "GeoTIFF",
+       "task_id": "43ZRBJ4TZTKQCILWMEVMSHTG",
+       "task_submitted": true
+      },
+      "raster_features_scaled": {
+       "folder": "fmu_exports_kept_land_s1desc",
+       "filename": "odisha_alphaearth_3ha_squares_angul_keptland_r9_features_scaled.tif",
+       "format": "GeoTIFF",
+       "task_id": "7XH7WNE6KW7VH77KT3X57XUI",
+       "task_submitted": true
+      },
+      "vector_stands_merged_shp": {
+       "folder": "fmu_exports_kept_land_s1desc",
+       "filename": "odisha_alphaearth_3ha_squares_angul_keptland_r9_stands_merged.zip",
+       "format": "SHP",
+       "task_id": "35ETSEZFFHC7LXLMQYZHNTM5",
+       "task_submitted": true
+      },
+      "vector_stands_merged_geojson": {
+       "folder": "fmu_exports_kept_land_s1desc",
+       "filename": "odisha_alphaearth_3ha_squares_angul_keptland_r9_stands_merged.geojson",
+       "format": "GEOJSON",
+       "task_id": "4HV3QI3ZRMJWCTKMAE73NJMG",
+       "task_submitted": true
+      },
+      "vector_stands_snic_shp": {
+       "folder": "fmu_exports_kept_land_s1desc",
+       "filename": "odisha_alphaearth_3ha_squares_angul_keptland_r9_stands_snic.zip",
+       "format": "SHP",
+       "task_id": "CW4J7NQPERQJUHJDBZS4KZCT",
+       "task_submitted": true
+      },
+      "vector_stands_snic_geojson": {
+       "folder": "fmu_exports_kept_land_s1desc",
+       "filename": "odisha_alphaearth_3ha_squares_angul_keptland_r9_stands_snic.geojson",
+       "format": "GEOJSON",
+       "task_id": "D572DG5WU5MBF3Y4QFJEXID6",
+       "task_submitted": true
+      },
+      "vector_stands_dissolved_shp": {
+       "folder": "fmu_exports_kept_land_s1desc",
+       "filename": "odisha_alphaearth_3ha_squares_angul_keptland_r9_stands_dissolved.zip",
+       "format": "SHP",
+       "task_id": "LCPO2IKLICCHNONG73Y4SZI7",
+       "task_submitted": true
+      },
+      "vector_stands_dissolved_geojson": {
+       "folder": "fmu_exports_kept_land_s1desc",
+       "filename": "odisha_alphaearth_3ha_squares_angul_keptland_r9_stands_dissolved.geojson",
+       "format": "GEOJSON",
+       "task_id": "5N4ELONPFK6W52RQEFVA6M5K",
+       "task_submitted": true
+      }
+     },
+     "vector_layers": {
+      "stands_merged": {
+       "description": "One polygon per merged stand -- the unit SNIC + merge delineate, and the pipeline's primary deliverable. Attributes include the raw merge label (stand_lbl), the assigned cluster_id, and per-stand means of every features_* band. Stands clustering could not type carry a null cluster_id and are KEPT: the stand exists whether or not a type label could be attached to it.",
+       "n_features": 235,
+       "n_stands": 235,
+       "n_stands_split_into_pieces": 0,
+       "max_pieces_per_stand": 1,
+       "roi_parts": 4,
+       "geometry_type": "Polygon",
+       "id_field": "stand_id",
+       "id_renumbering": "1..N, sorted by centroid latitude descending then longitude ascending. Deterministic pure function of the merged geometry.",
+       "unclustered_stands_retained": true,
+       "shp_attributes": [
+        "stand_id",
+        "stand_lbl",
+        "cluster_id",
+        "area_ha",
+        "perim_m",
+        "n_pixels",
+        "n_superpx",
+        "n_pass1",
+        "n_relaxed",
+        "n_fallback",
+        "below_min",
+        "below_why"
+       ],
+       "geojson_attributes": "all SHP attributes plus per-stand means of every features_* band",
+       "provenance_attributes": [
+        "n_superpx",
+        "n_pass1",
+        "n_relaxed",
+        "n_fallback",
+        "below_min",
+        "below_why"
+       ]
+      },
+      "stands_snic": {
+       "description": "One polygon per SNIC superpixel. Attributes include the raw SNIC label (snic_label), the assigned cluster_id, and per-superpixel means of every features_* band fed to clustering. Use for methodology / debugging.",
+       "n_features": 1204,
+       "roi_parts": 4,
+       "geometry_type": "Polygon",
+       "id_field": "stand_id",
+       "id_renumbering": "1..N, sorted by centroid latitude descending then longitude ascending. Deterministic pure function of the SNIC geometry; same inputs always produce the same numbering.",
+       "shp_attributes": [
+        "stand_id",
+        "snic_label",
+        "cluster_id",
+        "area_ha",
+        "perim_m",
+        "n_pixels"
+       ],
+       "geojson_attributes": "all SHP attributes plus per-superpixel means of every features_* band"
+      },
+      "stands_dissolved": {
+       "description": "One polygon per connected same-cluster region. Forester-facing management units. Filtered by vector_min_stand_pixels=4 to drop speckle from misclassification.",
+       "n_features": 79,
+       "roi_parts": 4,
+       "geometry_type": "Polygon",
+       "id_field": "unit_id",
+       "id_renumbering": "1..M, sorted by centroid latitude descending then longitude ascending, AFTER min-pixel filtering. Deterministic pure function of the cluster geometry.",
+       "min_stand_pixels": 4,
+       "shp_attributes": [
+        "unit_id",
+        "cluster_id",
+        "area_ha",
+        "perim_m",
+        "n_pixels"
+       ],
+       "geojson_attributes": "all SHP attributes plus profile_<band>_p50 columns from cluster_profiles.csv (median of each feature band over the unit's cluster, in original units)"
+      }
+     },
+     "decisions_source": "phd-notebook/decisions.md"
+    }
+   },
+   "cache_status": {},
+   "cache_key": null,
+   "export_tasks": [],
+   "transparency": {
+    "display_layers": [],
+    "summary_numbers": []
+   },
+   "input_images": {}
+  }
+ ],
+ "config": {
+  "name": "odisha_alphaearth_3ha_squares_angul_keptland_r9",
+  "description": "Odisha ANGUL, AlphaEarth embedding arm, stands capped at 3 ha, run on boxes around the villages' plots, on kept land only (mask before SNIC); otherwise the copied hand-crafted run, odisha_v120_3ha_squares_angul_keptland_s1desc_r9.",
+  "roi": {
+   "name": "odisha_squares_angul",
+   "roi_file": "aois/odisha_squares_angul.geojson",
+   "roi_asset": null
+  },
+  "dates": {
+   "phenology": {
+    "start": "2017-01-01",
+    "end": "2022-12-31"
+   },
+   "radar": {
+    "start": "2017-01-01",
+    "end": "2022-12-31"
+   },
+   "optical_composite": {
+    "start": "2017-01-01",
+    "end": "2022-12-31"
+   },
+   "climate": {
+    "start": "1991-01-01",
+    "end": "2020-12-31"
+   }
+  },
+  "datasets": {
+   "phenology_collection": "COPERNICUS/S2_SR_HARMONIZED",
+   "optical_composite_collection": "COPERNICUS/S2_SR_HARMONIZED",
+   "radar_collection": "COPERNICUS/S1_GRD",
+   "canopy_height": "users/nlang/ETH_GlobalCanopyHeight_2020_10m_v1",
+   "dem": "NASA/NASADEM_HGT/001",
+   "indiasat": "projects/corestack-trees/assets/LULC_v4",
+   "worldcover": "ESA/WorldCover/v200",
+   "water": "JRC/GSW1_4/GlobalSurfaceWater",
+   "climate": "UCSB-CHG/CHIRPS/PENTAD",
+   "embedding": "GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL"
+  },
+  "cloud_mask": {
+   "max_cloud_pct": 20.0,
+   "drop_scl_classes": [
+    3,
+    8,
+    9,
+    10
+   ]
+  },
+  "data_load": {
+   "s1_orbit": "DESCENDING",
+   "s1_polarizations": [
+    "VV",
+    "VH"
+   ],
+   "s1_instrument_mode": "IW",
+   "s2_composite_reducer": "median"
+  },
+  "masking": {
+   "indiasat_habitat_classes": [
+    6,
+    12
+   ],
+   "indiasat_class_band": "predicted_label",
+   "indiasat_year_min": 2017,
+   "indiasat_year_max": 2021,
+   "keep_worldcover_classes": [
+    10,
+    20,
+    30
+   ],
+   "jrc_water_occurrence_threshold": 50.0
+  },
+  "features_optical": {
+   "index": "ndvi",
+   "harmonic_mode": "single",
+   "include_trend": true,
+   "time_reference": "2017-01-01"
+  },
+  "features_radar": {
+   "percentiles": [
+    10,
+    50,
+    90
+   ],
+   "include_iqr": true,
+   "include_cross_pol_contrast": true
+  },
+  "features_structure": {
+   "include_neighborhood_stats": true,
+   "neighborhood_kernel_size": 3
+  },
+  "features_static": {
+   "include_climate": true,
+   "max_water_distance_pixels": 1000,
+   "cap_distance_to_water": true
+  },
+  "features_embedding": {
+   "collapse_reducer": "mean",
+   "band_names": null
+  },
+  "segmentation": {
+   "size": 6,
+   "compactness": 0.5,
+   "connectivity": 8,
+   "neighborhood_size": 128,
+   "normalize_inputs": true,
+   "normalize_distance_scale": true,
+   "input_bands": [
+    {
+     "source": "embedding_features",
+     "band": "*"
+    }
+   ],
+   "mask_before_snic": true,
+   "drop_kept_patches_below_min_area": false
+  },
+  "merge": {
+   "enabled": true,
+   "criteria": [
+    {
+     "source": "structure_features",
+     "band": "canopy_height",
+     "tolerance": 2.0
+    },
+    {
+     "source": "structure_features",
+     "band": "canopy_height_std",
+     "tolerance": 0.45
+    },
+    {
+     "source": "optical_features",
+     "band": "ndvi_amplitude_annual",
+     "tolerance": 0.03
+    }
+   ],
+   "relax_factor": 1.75,
+   "min_area_ha": 1.0,
+   "max_area_ha": 3.0,
+   "min_defined_criteria": 2,
+   "min_frac_valid": 0.5,
+   "tie_break": "shared_edge_length",
+   "max_pass2_iterations": 60,
+   "pass2_skip_at_min_area": true,
+   "pass2_soft_ceiling": true,
+   "max_superpixels": 50000
+  },
+  "clustering": {
+   "k": 5,
+   "seed": 42,
+   "feature_source": "embedding",
+   "skewness_threshold": 1.0,
+   "fit_excludes_stands_below_min_area": true
+  },
+  "normalization": {
+   "method": "robust"
+  },
+  "features": {
+   "optical_harmonic": true,
+   "radar": true,
+   "canopy_height": true,
+   "terrain": true
+  },
+  "export": {
+   "export_geotiff": true,
+   "export_gee_asset": false,
+   "analysis_scale_m": 10,
+   "drive_folder": "fmu_exports_kept_land_s1desc",
+   "export_vector_merged": true,
+   "export_vector_snic": true,
+   "export_vector_dissolved": true,
+   "vector_formats": [
+    "shp",
+    "geojson"
+   ],
+   "vector_min_stand_pixels": 4
+  },
+  "metrics": {
+   "reference_config_name": null,
+   "reference_config_file": null,
+   "n_comparison_samples": 10000,
+   "n_silhouette_samples_per_cluster": 833,
+   "r2_attributes": [
+    {
+     "source": "structure_features",
+     "band": "canopy_height",
+     "held_out": false
+    },
+    {
+     "source": "optical_features",
+     "band": "ndvi_trend",
+     "held_out": true
+    },
+    {
+     "source": "structure_features",
+     "band": "canopy_height_max",
+     "held_out": true
+    }
+   ]
+  },
+  "k_elbow": {
+   "k_min": 2,
+   "k_max": 12,
+   "seed": 42,
+   "n_init": 25
+  }
+ }
+}

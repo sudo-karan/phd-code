@@ -1,0 +1,153 @@
+{
+ "a": "run 1: odisha_v120_3ha_squares_kendujhar_keptland_s1desc_r9",
+ "b": "run 2: odisha_v120_3ha_squares_kendujhar_keptland_s1desc_r9_check",
+ "layers": {
+  "stands_merged": {
+   "byte_identical": false,
+   "sha256_a": "b2d1e7d1daab895c3512c1b0a8cd5e014c0a0abefb6619e79316ad5247e58002",
+   "sha256_b": "254b32265580398100a1531e8aa327ecf77596a5733b05769c7510bf65f1d989",
+   "counts_a": {
+    "polygons": 547,
+    "units": 545,
+    "polygons_per_type": {
+     "0": 120,
+     "1": 161,
+     "2": 115,
+     "3": 65,
+     "4": 86
+    }
+   },
+   "counts_b": {
+    "polygons": 547,
+    "units": 545,
+    "polygons_per_type": {
+     "0": 120,
+     "1": 161,
+     "2": 115,
+     "3": 65,
+     "4": 86
+    }
+   },
+   "compare": {
+    "polygons": {
+     "read_back": 547,
+     "in_the_file": 547
+    },
+    "numbers_only_in_one": 0,
+    "polygons_with_a_property_that_differs": 0,
+    "polygons_whose_outline_differs": 0,
+    "examples": [],
+    "equal": true
+   }
+  },
+  "stands_snic": {
+   "byte_identical": false,
+   "sha256_a": "60d5b90d7a363eea5ecb544b15ba03278abbc316bee970f486cec392dfaf338d",
+   "sha256_b": "69ef191486f3cfeebf6a1ef601971a35f1e96651ad1ef97b21611588d0148d0b",
+   "counts_a": {
+    "polygons": 2749,
+    "units": 2744,
+    "polygons_per_type": {
+     "0": 448,
+     "1": 724,
+     "2": 548,
+     "3": 434,
+     "4": 595
+    }
+   },
+   "counts_b": {
+    "polygons": 2749,
+    "units": 2744,
+    "polygons_per_type": {
+     "0": 448,
+     "1": 724,
+     "2": 548,
+     "3": 434,
+     "4": 595
+    }
+   },
+   "compare": {
+    "polygons": {
+     "read_back": 2749,
+     "in_the_file": 2749
+    },
+    "numbers_only_in_one": 0,
+    "polygons_with_a_property_that_differs": 0,
+    "polygons_whose_outline_differs": 0,
+    "examples": [],
+    "equal": true
+   }
+  },
+  "stands_dissolved": {
+   "byte_identical": false,
+   "sha256_a": "7bec818915e44ba41012c31eb23940952a8c294371ab04d4be0736fcd9ce1605",
+   "sha256_b": "db2bd1675a6b0a5380e8b2fa0cba455b58f16d5334b732a1486da8cfcb7e4104",
+   "counts_a": {
+    "polygons": 111,
+    "polygons_per_type": {
+     "0": 31,
+     "1": 34,
+     "2": 19,
+     "3": 15,
+     "4": 12
+    }
+   },
+   "counts_b": {
+    "polygons": 111,
+    "polygons_per_type": {
+     "0": 31,
+     "1": 34,
+     "2": 19,
+     "3": 15,
+     "4": 12
+    }
+   },
+   "compare": {
+    "polygons": {
+     "read_back": 111,
+     "in_the_file": 111
+    },
+    "numbers_only_in_one": 0,
+    "polygons_with_a_property_that_differs": 0,
+    "polygons_whose_outline_differs": 0,
+    "examples": [],
+    "equal": true,
+    "without_profile_columns": {
+     "polygons": {
+      "read_back": 111,
+      "in_the_file": 111
+     },
+     "numbers_only_in_one": 0,
+     "polygons_with_a_property_that_differs": 0,
+     "polygons_whose_outline_differs": 0,
+     "examples": [],
+     "equal": true
+    }
+   }
+  }
+ },
+ "merge_diagnostics_keys_that_differ": [],
+ "merge_diagnostics_a": {
+  "n_superpixels": 2747,
+  "n_stands": 547,
+  "pass1_merges": 1721,
+  "pass2_merges": 479,
+  "pass2_fallback_merges": 137,
+  "stands_below_min_area": 147
+ },
+ "merge_diagnostics_b": {
+  "n_superpixels": 2747,
+  "n_stands": 547,
+  "pass1_merges": 1721,
+  "pass2_merges": 479,
+  "pass2_fallback_merges": 137,
+  "stands_below_min_area": 147
+ },
+ "stand_attributes_equal": false,
+ "stand_provenance_equal": true,
+ "snic_distance_scale": [
+  null,
+  null
+ ],
+ "step_keys_equal": true
+}

@@ -7,7 +7,7 @@ import argparse
 import json
 
 from fmu.config import load_config
-from fmu.pipeline import Pipeline, segmentation_stage_names
+from fmu.pipeline import Pipeline, current_cache_key, segmentation_stage_names
 from fmu.stages.base import PipelineContext
 from fmu.stages.data_load import DataLoadStage  # noqa: F401
 from fmu.stages.features_embedding import FeaturesEmbeddingStage  # noqa: F401
@@ -17,7 +17,7 @@ from fmu.stages.features_static import FeaturesStaticStage  # noqa: F401
 from fmu.stages.features_structure import FeaturesStructureStage  # noqa: F401
 from fmu.stages.masking import MaskingStage  # noqa: F401
 from fmu.stages.segmentation import SegmentationStage  # noqa: F401
-from fmu.utils.caching import asset_exists, cached_asset_path, config_fingerprint
+from fmu.utils.caching import asset_exists, cached_asset_path
 from fmu.utils.gee import init_gee, load_roi_geometry, safe_get_info
 from fmu.utils.logging import init_logging
 
@@ -46,12 +46,8 @@ def main() -> None:
         use_cache=True,
     ).run(config=config, run_dir=run_dir, initial_context=ctx)
 
-    clusters_path = cached_asset_path(
-        config.name, "segmentation", "snic_clusters", config_fingerprint(config)
-    )
-    means_path = cached_asset_path(
-        config.name, "segmentation", "snic_means", config_fingerprint(config)
-    )
+    clusters_path = cached_asset_path(config.name, "segmentation", "snic_clusters", current_cache_key(config, "segmentation"))
+    means_path = cached_asset_path(config.name, "segmentation", "snic_means", current_cache_key(config, "segmentation"))
     clusters_cached = asset_exists(clusters_path)
     means_cached = asset_exists(means_path)
 

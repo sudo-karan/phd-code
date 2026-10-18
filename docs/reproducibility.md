@@ -904,6 +904,18 @@ All five ran to the end, with no request failing.
   pixels; every cached feature asset changes, so every config is re-run. Making segmentation
   always read the cache changes only the runs that segmented live, and the superpixels are
   then always drawn on resampled features. It is a question for Jaskaran in the PR.
+- **Decided and done in round 9 (17 Oct 2026):** the first of the two, for every config run
+  from then on. Such a config's cache is written on the analysis grid, under one key per step,
+  and its batch passes cache every feature stage before segmentation reads any of them; the
+  configs run before keep their assets and the old layout (register entries
+  `spec-cache-on-the-analysis-grid-with-per-step-keys` and
+  `spec-every-feature-stage-cached-before-the-first-pass-that-reads-one`; the round's test of it
+  is in `docs/handoff/2026-10-17-round9.md`, task D). Its result, passed under the brief's
+  criterion (Jaskaran, 18 Oct 2026): two runs of one config from empty caches give the same
+  superpixels, stands and stand types exactly, and a run read back from the cache gives exactly
+  what the run that wrote it gave; feature values reproduce to about 1e-13 (the optical features
+  of two batch evaluations differ by at most 4.6e-14), a stated property of the pipeline
+  (`docs/reproducibility/round9_cache_test/`).
 
 #### 5. Mask and merge provenance of the re-runs
 

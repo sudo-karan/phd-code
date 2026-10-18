@@ -2,14 +2,18 @@
 
     python odisha_script/odisha_keptland_score.py [--out-dir odisha_script/keptland_scores]
         [--stands-dir docs/reproducibility/keptland_runs] [--box-stands-dir outputs/squares_runs/phase2_vectors]
+        [--runs odisha_v120_3ha_squares_{district}_keptland_s1desc] [--stem keptland_s1desc]
 
 Offline; no Earth Engine. Numbers only: no chance test is run (the declaration defers it), so
 nothing here says that a score is more, or less, than chance would give, and nothing passes or
 fails.
 
-THE RUNS SCORED: the four descending-orbit kept-land runs,
+THE RUNS SCORED: by default the four descending-orbit kept-land runs,
 configs/odisha_v120_3ha_squares_<district>_keptland_s1desc.yaml (the declaration's change of 15 Oct
-2026, round 7), their merged stands (<run>_stands_merged.geojson). A stand layer kept off git for
+2026, round 7), their merged stands (<run>_stands_merged.geojson). --runs names other runs by a
+pattern with {district} (round 10: their _r9 re-runs, and the AlphaEarth arm of the amendment of
+18 Oct 2026), and --stem names the result files, so the files of one set of runs never overwrite
+another's. A stand layer kept off git for
 its size (docs/decisions.yaml, spec-files-over-5-mb-off-git) is read from where its record
 (<run>_files_off_git.json) says, after its SHA-256 is checked.
 
@@ -36,11 +40,11 @@ rule, left out) and every score again with only the plots a stand covers; beside
 descriptive only, the five scores of the 13 Oct box runs (their merged stands, by the Phase 2 rule)
 on the same plots as the primary analysis, with no test of the difference.
 
-WRITES, in --out-dir, results only (no dates): keptland_s1desc_joined.csv (per plot: its stand by
-each rule, how it joined, its distance), keptland_s1desc_scores.json and keptland_s1desc_scores.txt.
-The inputs' SHA-256 are in the JSON, so a re-run on other files cannot pass for this one. Beside
-them, keptland_s1desc_scores_run.json, the run's record: the command, the date, the git commit and
-whether the tree was dirty.
+WRITES, in --out-dir, results only (no dates): <stem>_joined.csv (per plot: its stand by each
+rule, how it joined, its distance), <stem>_scores.json and <stem>_scores.txt (stem by default
+keptland_s1desc). The inputs' SHA-256 are in the JSON, so a re-run on other files cannot pass for
+this one. Beside them, <stem>_scores_run.json, the run's record: the command, the date, the git
+commit and whether the tree was dirty.
 """
 
 from __future__ import annotations
@@ -82,8 +86,17 @@ STATS = (("delin_all", "drawing: ARI, all plots"),
          ("far_gap", "labelling: far-apart same-label rate, alike minus differ"))
 
 
-def run_id(district: str) -> str:
-    return f"odisha_v120_3ha_squares_{district}_keptland_s1desc"
+RUNS = "odisha_v120_3ha_squares_{district}_keptland_s1desc"   # the declaration's scored runs
+STEM = "keptland_s1desc"
+
+
+def run_id(district: str, runs: str = RUNS) -> str:
+    return runs.format(district=district)
+
+
+def runs_label(runs: str) -> str:
+    """How the analyses name the runs: as before for the declared runs."""
+    return "the _s1desc runs" if runs == RUNS else f"the runs {runs.format(district='<district>')}"
 
 
 def sha256(path: Path) -> str:
@@ -218,7 +231,8 @@ def five_scores(d: pd.DataFrame) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------- the analyses
-def analyses(plots: pd.DataFrame, joined: pd.DataFrame, box: pd.DataFrame) -> list[dict[str, Any]]:
+def analyses(plots: pd.DataFrame, joined: pd.DataFrame, box: pd.DataFrame,
+             runs: str = RUNS) -> list[dict[str, Any]]:
     """The primary analysis and the declared checks, each a row of numbers."""
     k4 = pd.read_csv(FIELD_TYPES_K4)[["plot_key", "field_type"]].rename(columns={"field_type": "ft_k4"})
     base = plots.merge(joined, on="plot_key", validate="1:1").merge(k4, on="plot_key", validate="1:1")
@@ -228,7 +242,7 @@ def analyses(plots: pd.DataFrame, joined: pd.DataFrame, box: pd.DataFrame) -> li
     def row(name: str, what: str, d: pd.DataFrame) -> None:
         rows.append({"analysis": name, "what": what, **five_scores(d)})
 
-    row("primary", "the _s1desc runs; the primary field types; the 30 m rule", base)
+    row("primary", f"{runs_label(runs)}; the primary field types; the 30 m rule", base)
     row("S1", "as the primary, field type 0 (no trees) left out", base[base.field_type != 0])
     row("S2", "as the primary, four field types (odisha_phase3_0_field_types_k4.csv)",
         base.assign(field_type=base.ft_k4))
@@ -252,9 +266,9 @@ def join_counts(plots: pd.DataFrame, joined: pd.DataFrame) -> dict[str, dict[str
     return out
 
 
-def text(result: dict[str, Any]) -> str:
+def text(result: dict[str, Any], runs: str = RUNS) -> str:
     lines = ["The field check of the Odisha kept-land runs (odisha_script/PHASE_KEPTLAND_PREDECLARED.md)",
-             "Runs: configs/odisha_v120_3ha_squares_<district>_keptland_s1desc.yaml. Numbers only: the",
+             f"Runs: configs/{runs.format(district='<district>')}.yaml. Numbers only: the",
              "chance test is not run, so no score here is said to be more, or less, than chance gives.",
              "", "How the plots join (per district)",
              f"  {'district':<11}{'inside':>8}{'on a stand':>12}{'by 30 m':>9}{'left out':>10}"]
@@ -281,20 +295,19 @@ def text(result: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def write_run_record(out_dir: Path, argv: list[str]) -> None:
+def write_run_record(out_dir: Path, argv: list[str], stem: str = STEM) -> None:
     import datetime
     import shlex
 
     sys.path.insert(0, str(REPO / "src"))
     from fmu.utils.provenance import git_state
 
-    run = {"result_files": ["keptland_s1desc_joined.csv", "keptland_s1desc_scores.json",
-                            "keptland_s1desc_scores.txt"],
+    run = {"result_files": [f"{stem}_joined.csv", f"{stem}_scores.json", f"{stem}_scores.txt"],
            "command_line": "python " + " ".join(shlex.quote(a) for a in
                                                 ["odisha_script/odisha_keptland_score.py", *argv]),
            "date": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
            "git": {k: v for k, v in git_state(HERE).items() if k != "root"}}
-    (out_dir / "keptland_s1desc_scores_run.json").write_text(json.dumps(run, indent=1) + "\n")
+    (out_dir / f"{stem}_scores_run.json").write_text(json.dumps(run, indent=1) + "\n")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -302,15 +315,20 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--stands-dir", type=Path, default=STANDS_DIR)
     ap.add_argument("--box-stands-dir", type=Path, default=BOX_STANDS_DIR)
     ap.add_argument("--out-dir", type=Path, default=OUT_DIR)
+    ap.add_argument("--runs", default=RUNS,
+                    help="the runs scored, a pattern with {district} (default: the declaration's)")
+    ap.add_argument("--stem", default=STEM, help="the result files' names begin with this")
     args = ap.parse_args(argv)
+    if "{district}" not in args.runs:
+        ap.error("--runs must hold {district}")
     plots = plots_in_boxes()
     inputs: dict[str, str] = {}
     joined, box = [], []
     for district in DISTRICTS:
         sub = plots[plots.box_district == district]
-        layer = stand_layer(run_id(district), args.stands_dir)
+        layer = stand_layer(run_id(district, args.runs), args.stands_dir)
         box_layer = args.box_stands_dir / f"odisha_v120_3ha_squares_{district}_stands_merged.geojson"
-        inputs[run_id(district)] = sha256(layer)
+        inputs[run_id(district, args.runs)] = sha256(layer)
         inputs[box_layer.stem.removesuffix("_stands_merged")] = sha256(box_layer)
         j = join(sub, layer, REACH_M)
         j = j.merge(join(sub, layer, None)[["plot_key", "sid"]].rename(columns={"sid": "sid_covered"}),
@@ -322,16 +340,16 @@ def main(argv: list[str] | None = None) -> int:
     result = {"what": "The field check of the Odisha kept-land runs, as "
                       "odisha_script/PHASE_KEPTLAND_PREDECLARED.md fixes it; numbers only, no chance test.",
               "inputs_sha256": inputs, "join": join_counts(plots, joined_df),
-              "analyses": analyses(plots, joined_df, box_df)}
+              "analyses": analyses(plots, joined_df, box_df, args.runs)}
     args.out_dir.mkdir(parents=True, exist_ok=True)
     table = plots.merge(joined_df, on="plot_key", validate="1:1").merge(
         box_df[["plot_key", "sid", "cluster"]].rename(columns={"sid": "box_sid", "cluster": "box_cluster"}),
         on="plot_key", validate="1:1")
-    table.drop(columns=["epsg"]).to_csv(args.out_dir / "keptland_s1desc_joined.csv", index=False)
-    (args.out_dir / "keptland_s1desc_scores.json").write_text(json.dumps(result, indent=1) + "\n")
-    (args.out_dir / "keptland_s1desc_scores.txt").write_text(text(result))
-    write_run_record(args.out_dir, list(sys.argv[1:] if argv is None else argv))
-    print(text(result))
+    table.drop(columns=["epsg"]).to_csv(args.out_dir / f"{args.stem}_joined.csv", index=False)
+    (args.out_dir / f"{args.stem}_scores.json").write_text(json.dumps(result, indent=1) + "\n")
+    (args.out_dir / f"{args.stem}_scores.txt").write_text(text(result, args.runs))
+    write_run_record(args.out_dir, list(sys.argv[1:] if argv is None else argv), args.stem)
+    print(text(result, args.runs))
     return 0
 
 

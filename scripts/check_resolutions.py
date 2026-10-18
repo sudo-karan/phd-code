@@ -16,8 +16,9 @@ import argparse
 import ee
 
 from fmu.config import load_config
+from fmu.pipeline import current_cache_key
 from fmu.settings import get_settings
-from fmu.utils.caching import asset_exists, cached_asset_path, config_fingerprint
+from fmu.utils.caching import asset_exists, cached_asset_path
 from fmu.utils.gee import init_gee, safe_get_info
 
 
@@ -124,7 +125,7 @@ def main() -> None:
     ]
 
     for label, stage_name, key in feature_assets:
-        path = cached_asset_path(config.name, stage_name, key, config_fingerprint(config))
+        path = cached_asset_path(config.name, stage_name, key, current_cache_key(config, stage_name))
         if not asset_exists(path):
             print(f"  {label:30s} [not cached]")
             continue
