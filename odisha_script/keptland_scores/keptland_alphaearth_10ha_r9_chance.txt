@@ -1,0 +1,121 @@
+========================================================================================================
+Chance test of the Odisha kept-land field check (PHASE_KEPTLAND_PREDECLARED.md)
+========================================================================================================
+  Runs: odisha_alphaearth_10ha_squares_angul_keptland_r9, odisha_alphaearth_10ha_squares_dhenkanal_keptland_r9, odisha_alphaearth_10ha_squares_kendujhar_keptland_r9, odisha_alphaearth_10ha_squares_koraput_keptland_r9.
+  Where the declaration is silent the village-outline test's rule is used (Q1-Q6 in the script's
+  docstring and in docs/handoff/2026-10-17-round9-chat.md).
+
+  HOW TO READ IT. Chance is positive in this design (plots and stands both cluster by village), so each
+  score is read against a rotation null: each box's plot cloud moved rigidly to a random position and
+  angle with every plot inside the box, each plot then joining by the declared rule (covered, else the
+  nearest stand within 30 m); a plot with no stand within 30 m is left out of that realisation only.
+  'pctile' is the mid-rank percentile of the observed score in the null; 'p' is (1 + #null >= obs) /
+  (1 + n), one-sided; Holm over the five tests; a test passes at Holm p <= 0.05. Fewer than 100 usable
+  realisations: NOT ESTIMABLE.
+
+  plots in the boxes 267: on a stand 252, by the 30 m rule 12, left out 3
+  rotations per null: 1999; seeds 'alphaearth_10ha_squares_keptland/stands_merged/phase3_ari' (drawing) and 'alphaearth_10ha_squares_keptland/stands_merged/phase3_ari_labelled' (labelling)
+  identity checks: the null's join at the real positions reproduces keptland_alphaearth_10ha_r9_joined.csv for every plot; the
+  observed scores equal keptland_alphaearth_10ha_r9_scores.json (|diff| < 1e-12)
+
+--------------------------------------------------------------------------------------------------------
+primary: the primary field types, every plot the join scores
+--------------------------------------------------------------------------------------------------------
+  plots scored: observed 264; per realisation, median [p5, p95]: drawing 212 [188, 234], labelling 212 [189, 235]
+  far-apart same-district pairs (> 2 km) from the real positions: 10433
+    score                                                    observed |        null median [p5, p95]  pctile      p  Holm p     n
+    drawing: ARI, all plots                                   +0.0170 |   +0.0132 [+0.0090, +0.0188]    86.1  0.139   0.695  1999
+    drawing: ARI, stands holding two or more plots            +0.0305 |   +0.0305 [+0.0197, +0.0454]    49.9  0.501   1.000  1999
+    drawing: same-stand pair precision                        +0.5729 |   +0.5269 [+0.4559, +0.6081]    83.0  0.170   0.695  1999
+    labelling: ARI, plot-weighted mean of the districts'      +0.0507 |   +0.0621 [+0.0295, +0.1002]    29.1  0.709   1.000  1999
+    labelling: far-apart same-label rate, alike minus differ  -0.0060 |   +0.0174 [-0.0175, +0.0608]    14.0  0.860   1.000  1999
+  districts in the labelling mean: observed 4; realisations: 3 districts in 436, 4 districts in 1563
+  labelling ARI by district (descriptive, not tests; against the conditional null, over the realisations
+  in which the district has 2 scored plots of 2 field types, n given):
+    angul                                                     +0.0733 |   +0.0765 [-0.0129, +0.1869]    47.7  0.523          1999
+    dhenkanal                                                 +0.1724 |   +0.1295 [+0.0657, +0.2097]    82.3  0.177          1999
+    kendujhar                                                 +0.0000 |   +0.0000 [-0.2500, +0.6196]    50.4  0.731          1563
+    koraput                                                   -0.0155 |   +0.0135 [-0.0166, +0.0591]     6.0  0.940          1999
+
+--------------------------------------------------------------------------------------------------------
+S1: field type 0 (no trees) left out, same realisations
+--------------------------------------------------------------------------------------------------------
+  plots scored: observed 248; per realisation, median [p5, p95]: drawing 201 [180, 221], labelling 200 [180, 222]
+  far-apart same-district pairs (> 2 km) from the real positions: 9147
+    score                                                    observed |        null median [p5, p95]  pctile      p  Holm p     n
+    drawing: ARI, all plots                                   +0.0145 |   +0.0122 [+0.0083, +0.0172]    77.3  0.228   1.000  1999
+    drawing: ARI, stands holding two or more plots            +0.0256 |   +0.0280 [+0.0186, +0.0416]    35.7  0.643   1.000  1999
+    drawing: same-stand pair precision                        +0.6032 |   +0.5730 [+0.5086, +0.6455]    75.8  0.242   1.000  1999
+    labelling: ARI, plot-weighted mean of the districts'      +0.0570 |   +0.0644 [+0.0320, +0.1056]    34.9  0.651   1.000  1999
+    labelling: far-apart same-label rate, alike minus differ  +0.0014 |   +0.0225 [-0.0149, +0.0671]    17.6  0.825   1.000  1999
+  districts in the labelling mean: observed 4; realisations: 3 districts in 738, 4 districts in 1261
+  labelling ARI by district (descriptive, not tests; against the conditional null, over the realisations
+  in which the district has 2 scored plots of 2 field types, n given):
+    angul                                                     +0.0684 |   +0.0861 [-0.0090, +0.2029]    40.0  0.601          1999
+    dhenkanal                                                 +0.1724 |   +0.1295 [+0.0657, +0.2097]    82.3  0.177          1999
+    kendujhar                                                 +0.0000 |   +0.0000 [-0.3333, +1.0000]    51.5  0.736          1261
+    koraput                                                   -0.0088 |   +0.0098 [-0.0157, +0.0569]    14.4  0.857          1999
+
+--------------------------------------------------------------------------------------------------------
+S2: four field types (odisha_phase3_0_field_types_k4.csv), same realisations
+--------------------------------------------------------------------------------------------------------
+  plots scored: observed 264; per realisation, median [p5, p95]: drawing 212 [188, 234], labelling 212 [189, 235]
+  far-apart same-district pairs (> 2 km) from the real positions: 10433
+    score                                                    observed |        null median [p5, p95]  pctile      p  Holm p     n
+    drawing: ARI, all plots                                   +0.0114 |   +0.0106 [+0.0072, +0.0150]    62.0  0.381   1.000  1999
+    drawing: ARI, stands holding two or more plots            +0.0215 |   +0.0242 [+0.0157, +0.0370]    32.3  0.677   1.000  1999
+    drawing: same-stand pair precision                        +0.6508 |   +0.6382 [+0.5707, +0.7117]    60.4  0.397   1.000  1999
+    labelling: ARI, plot-weighted mean of the districts'      +0.0319 |   +0.0471 [+0.0158, +0.0850]    21.9  0.781   1.000  1999
+    labelling: far-apart same-label rate, alike minus differ  -0.0138 |   +0.0212 [-0.0175, +0.0699]     6.8  0.932   1.000  1999
+  districts in the labelling mean: observed 4; realisations: 3 districts in 436, 4 districts in 1563
+  labelling ARI by district (descriptive, not tests; against the conditional null, over the realisations
+  in which the district has 2 scored plots of 2 field types, n given):
+    angul                                                     +0.0370 |   +0.0512 [-0.0305, +0.1715]    39.8  0.603          1999
+    dhenkanal                                                 +0.1480 |   +0.1129 [+0.0498, +0.1962]    77.2  0.229          1999
+    kendujhar                                                 +0.0000 |   +0.0000 [-0.2500, +0.6196]    50.4  0.731          1563
+    koraput                                                   -0.0276 |   +0.0004 [-0.0345, +0.0462]     8.9  0.911          1999
+
+--------------------------------------------------------------------------------------------------------
+Check C1 (PHASE_KEPTLAND_AMENDMENT_chance_checks.md): the labelling mean without kendujhar, on both sides
+--------------------------------------------------------------------------------------------------------
+  Beside the primary's labelling mean, not replacing it: outside the Holm correction, no pass or fail.
+  plots scored: observed 257; the conditional null's realisations, as the primary's
+    labelling ARI, plot-weighted mean, kendujhar left out     +0.0521 |   +0.0629 [+0.0303, +0.1004]    29.2  0.709          1999
+
+--------------------------------------------------------------------------------------------------------
+How far the null moves the plots (the box declaration's check; unconditional null, the plots the join scores)
+--------------------------------------------------------------------------------------------------------
+    box                                      plots  median m    p90 m  draws/realisation          sampler
+    angul:KANSAB                                10       380      792               4.44            plain
+    angul:GHANAJODI                             10       427     1604              26.02            plain
+    angul:JOGI BANDHA                           10       283      495               2.40            plain
+    angul:ANANDA PUR                             9       307      563               2.71            plain
+    dhenkanal:TULASIPASI                         7       648     1778              30.90            plain
+    dhenkanal:KANKANA                            7       305      571               2.95            plain
+    dhenkanal:Balikurma                         11       437      940               7.23            plain
+    dhenkanal:Kampulei                           9       679     1189               8.62            plain
+    dhenkanal:Adhapalli                         11       416      791               4.43            plain
+    dhenkanal:Mahabirod                          9       300      604               4.55            plain
+    dhenkanal:Kerijoli                          10       283      519               2.62            plain
+    dhenkanal:Pangatira                         10       361      739               4.78            plain
+    kendujhar:BHANRADI SAHI                      7      2001     4746               1.00  feasible-region
+    koraput:HANDAPUR                            20       337      671               4.14            plain
+    koraput:HATIMUNDA                           59       781     1574              21.73            plain
+    koraput:BARIGUDA                            10       314      570               2.74            plain
+    koraput:KONDASRIMUNDA                        5       242      372               1.41            plain
+    koraput:KHASUGUDA                           11      2862     4298               1.00  feasible-region
+    koraput:SAKIAGUDA                            9       244      384               1.72            plain
+    koraput:BARAKANTI                           30      7266    10213               1.00  feasible-region
+    median over the plots the join scores: 445 m
+
+--------------------------------------------------------------------------------------------------------
+WHAT THIS SAYS
+--------------------------------------------------------------------------------------------------------
+  * Primary: 0 of 5 estimable tests pass after Holm at 0.05.
+  * 5 of 5 estimable primary scores sit inside the null's central 90%.
+  * The null scores fewer plots than the observed join (median 212 of 264): plots that land off every
+    stand are left out of that realisation, as declared, so the null's scores rest on fewer plots.
+  * In 436 of 1999 realisations the labelling mean averages fewer districts than the observed
+    4, because a district then lacks 2 scored plots of 2 field types (kendujhar).
+  * NOT supported by this file: 'better than chance' from a score
+    above zero; a single p read without the Holm column.
