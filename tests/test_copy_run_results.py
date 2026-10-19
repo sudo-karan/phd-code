@@ -99,6 +99,36 @@ def test_a_recorded_drive_copy_survives_a_new_copy_of_the_same_file(mod, tmp_pat
     assert "drive" not in json.loads(record.read_text())["files"][0]
 
 
+def test_a_pass_kind_run_twice_keeps_both_manifests(mod, tmp_path):
+    """Review C35: a config needs a second wrapper pass when a later stage raised, and its retry
+    writes a second segmentation manifest (every asset a hit, no task). Only the last of each kind
+    was copied, so the manifest of the pass that computed the cache, with its export tasks and
+    miss-exported statuses, stayed off git."""
+    tree = _tree(tmp_path, big=10)
+    computing = {"name": "segmentation", "elapsed_sec": 2.0, "metadata": {"distance_scale": 1.25},
+                 "cache_status": {"snic_clusters": "miss-exported"}, "export_tasks": [{"task_id": "T1"}]}
+    retry = {"name": "segmentation", "elapsed_sec": 1.0, "metadata": {"source": "cache"},
+             "cache_status": {"snic_clusters": "hit"}, "export_tasks": []}
+    # After _tree's own segmentation pass (134100): three manifests of the kind, in this order.
+    for folder, stage in (("20261015_134120", computing), ("20261015_134150", retry)):
+        d = tree / "runs" / f"{RUN}_{folder}"
+        d.mkdir(parents=True)
+        (d / "manifest.json").write_text(json.dumps({"run_dir": str(d), "stages": [stage]}))
+    dest = tmp_path / "dest"
+    done = mod.copy(tree, RUN, dest, tmp_path / "off")
+    names = [n for n in done["in_repo"] if "_manifest_segmentation" in n]
+    assert names == [f"{RUN}_manifest_segmentation.json", f"{RUN}_manifest_segmentation_1.json",
+                     f"{RUN}_manifest_segmentation_2.json"]
+    copied = {n: json.loads((dest / n).read_text())["stages"][0] for n in names}
+    # The last one under the name it always had; the earlier ones numbered in the order they ran.
+    assert copied[f"{RUN}_manifest_segmentation.json"]["cache_status"] == {"snic_clusters": "hit"}
+    assert copied[f"{RUN}_manifest_segmentation_2.json"]["metadata"] == {"distance_scale": 1.25}
+    assert copied[f"{RUN}_manifest_segmentation_2.json"]["export_tasks"] == [{"task_id": "T1"}]
+    assert copied[f"{RUN}_manifest_segmentation_1.json"]["metadata"] == {"n": 0}  # _tree's own pass
+    # A kind run once is copied as before, under its one name.
+    assert [n for n in done["in_repo"] if "_manifest_clustering" in n] == [f"{RUN}_manifest_clustering.json"]
+
+
 def test_the_features_pass_of_a_round_9_run_is_copied_too(mod, tmp_path):
     """Since round 9 a run's first pass caches the feature stages and ends at one of them."""
     tree = _tree(tmp_path, big=10)

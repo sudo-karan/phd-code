@@ -13,7 +13,11 @@ What it copies, from the run tree (a clean clone a batch ran from):
     manifest ends at profiling is the read-back tool's own (odisha_script/odisha_read_back_export.py),
     not a pass, and is skipped, as is one with no manifest (a pass that failed before writing it). The
     features pass (round 9) is the one whose manifest ends at a feature stage; a run made before round
-    9 has none.
+    9 has none. A kind of pass with more than one manifest (a config that needed a second wrapper
+    pass, after a later stage raised, writes the earlier kinds again, every asset a hit) keeps the
+    last under <run>_manifest_<kind>.json, as before, and each earlier one as
+    <run>_manifest_<kind>_<n>.json, n = 1, 2, ... in the order they ran: the pass that computed the
+    cache, with its export tasks, is among them. Until round 13 only the last was copied (review C35).
 <run>_raster_at_plots.csv is not copied: it samples the stand rasters at the field plots, which joins
 plots to stands outside the declared field check.
 
@@ -75,9 +79,9 @@ def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def passes(tree: Path, run_id: str) -> dict[str, tuple[str, dict]]:
-    """The last manifest of each pass kind, by the stage it ends at."""
-    out = {}
+def passes(tree: Path, run_id: str) -> dict[str, list[tuple[str, dict]]]:
+    """Every manifest of each pass kind, by the stage it ends at, in the order the passes ran."""
+    out: dict[str, list[tuple[str, dict]]] = {}
     for d in sorted((tree / "runs").glob(f"{run_id}_2*")):
         if not (d / "manifest.json").exists():
             # A pass that failed before writing its manifest (the first-pass memory limit on a
@@ -92,7 +96,7 @@ def passes(tree: Path, run_id: str) -> dict[str, tuple[str, dict]]:
             last = "features"
         elif last not in PASSES:
             raise SystemExit(f"{d}: a pass ending at {last}")
-        out[last] = (d.name, strip(manifest))
+        out.setdefault(last, []).append((d.name, strip(manifest)))
     missing = [k for k in PASSES if k not in out]
     if missing:
         raise SystemExit(f"{run_id}: no {missing} pass in {tree / 'runs'}")
@@ -107,9 +111,14 @@ def copy(tree: Path, run_id: str, dest: Path, off_git: Path) -> dict[str, Any]:
         files[f"{run_id}_{layer}.geojson"] = (vec / f"{run_id}_{layer}.geojson").read_bytes()
     run = strip(json.loads((vec / f"{run_id}_run.json").read_text()))
     files[f"{run_id}_run.json"] = (json.dumps(run, indent=1, default=str) + "\n").encode()
-    for kind, (_, manifest) in passes(tree, run_id).items():
-        files[f"{run_id}_manifest_{kind}.json"] = (json.dumps(manifest, indent=1, default=str)
+    for kind, manifests in passes(tree, run_id).items():
+        # The last under the kind's own name, as before; the earlier ones numbered (review C35).
+        *earlier, (_, last) = manifests
+        files[f"{run_id}_manifest_{kind}.json"] = (json.dumps(last, indent=1, default=str)
                                                     + "\n").encode()
+        for n, (_, manifest) in enumerate(earlier, start=1):
+            files[f"{run_id}_manifest_{kind}_{n}.json"] = (json.dumps(manifest, indent=1, default=str)
+                                                            + "\n").encode()
     dest.mkdir(parents=True, exist_ok=True)
     off: list[dict[str, Any]] = []
     for name, data in files.items():
