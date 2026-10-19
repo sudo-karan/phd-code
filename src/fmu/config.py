@@ -115,11 +115,16 @@ class FeaturesOpticalParams(BaseModel):
     # multi-year greening or browning beyond seasonality.
     include_trend: bool = True
     # Reference date for the harmonic regression's time variable t.
-    # t = years since `time_reference`. Affects the numerical value of
-    # `phase_annual` (which is measured relative to this epoch) but NOT
-    # amplitude, trend, or clustering outcomes. Default 2017-01-01
-    # matches Sentinel-2's S2A+S2B full-constellation start, so cross-
-    # config phase values are comparable by default.
+    # t = years since `time_reference`. Moving it leaves amplitude and trend
+    # as they are and shifts `phase_annual` (measured relative to this
+    # epoch) by the same angle everywhere. With include_trend on it also
+    # changes `<index>_mean`, the intercept, by trend x the shift in years,
+    # since that band is the trend line's value on this date, not the mean
+    # over the window. So it can change the clustering: `<index>_mean` is a
+    # clustering band, and the phase's sin and cos are each scaled by their
+    # own spread (review C9, B13; corrected in round 13, comment only).
+    # Default 2017-01-01 matches Sentinel-2's S2A+S2B full-constellation
+    # start, so cross-config phase values are comparable by default.
     #
     # Important: do NOT auto-derive this from `dates.phenology.start`.
     # If two configs have different phenology windows, keeping a shared

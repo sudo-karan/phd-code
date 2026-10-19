@@ -318,10 +318,15 @@ for the full inventory.
 - `include_trend`: add a linear-in-time term to the regression.
 - `time_reference`: date (default `2017-01-01`). Reference epoch for the
   time variable `t` in the harmonic regression (`t` = years since this
-  date). Shifts the numeric value of `phase_*` features by a constant
-  but does **not** affect amplitudes, the trend coefficient, or any
-  clustering outcome. Keep identical across configs you intend to
-  compare phases between — the metrics stage relies on this.
+  date). Moving it leaves the amplitudes and the trend coefficient as they
+  are and shifts `phase_*` by the same angle at every pixel. With
+  `include_trend` on (every shipped config) it also changes `<index>_mean`
+  by trend × the shift in years, a different amount at each pixel: that
+  band is the intercept, the trend line's value on this date, not the mean
+  over the window. Both reach the clustering, so a different reference
+  date **can** change the stand types (review C9 and B13; until round 13
+  this entry said it could not). Keep identical across configs you intend
+  to compare — the metrics stage relies on this for phases.
 
 ### `features_radar`
 

@@ -591,8 +591,10 @@ Where `<band>` is each input feature band: `ndvi_mean`, `ndvi_amplitude_annual`,
 `vv_p50`, `canopy_height`, `elevation`, etc.
 
 **Critical: values are in ORIGINAL UNITS**, not the scaled values that
-went into k-means. So `ndvi_mean` for a cluster is a real NDVI between
--1 and 1; `elevation` is real meters; `canopy_height` is real meters.
+went into k-means. So `ndvi_mean` for a cluster is in NDVI units (the
+band is the harmonic fit's intercept: with the trend term, the trend line's
+value on `features_optical.time_reference`, not the mean NDVI over the
+window; review C9); `elevation` is real meters; `canopy_height` is real meters.
 This is what makes clusters interpretable: cluster 3 might be "dense
 canopy, low NDVI amplitude, high elevation". That's the ecological
 interpretation, and it comes from the original-unit profiles, not the

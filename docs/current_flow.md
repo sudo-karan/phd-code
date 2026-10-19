@@ -143,10 +143,10 @@ y(t) = a + b·cos(2π·t) + c·sin(2π·t)
      + [f·t]                          # if include_trend
 ```
 
-Where `y` is the vegetation index (NDVI or NIRv) and `t` is years since `features_optical.time_reference` (default 2017-01-01; configurable per DEC-???). The reference epoch shifts the numeric value of `phase_*` by a constant but does **not** affect amplitude, trend, or any clustering outcome. Cross-config phase comparability (which the metrics stage relies on) requires both configs use the same `time_reference`.
+Where `y` is the vegetation index (NDVI or NIRv) and `t` is years since `features_optical.time_reference` (default 2017-01-01; configurable per DEC-???). Moving the reference date by D years leaves amplitude, trend and the residual variance as they are, and shifts `phase_*` by the same angle at every pixel. With `include_trend` on (every shipped config) it also changes `<prefix>_mean` by trend × D, a different amount at each pixel, because `<prefix>_mean` is the intercept `a`: the de-seasonalised trend line's value on `time_reference`, not the average over the window (review C9). Both reach the clustering, which uses `<prefix>_mean` and scales the phase's sin and cos each by its own spread (review A2, B13), so the reference date **can** change the stand types. Until round 13 this paragraph said it could not. Cross-config phase comparability (which the metrics stage relies on) requires both configs use the same `time_reference`.
 
 **Derived metrics extracted from the coefficients** (per DEC-002):
-- `<prefix>_mean = a` (intercept)
+- `<prefix>_mean = a` (intercept): with `include_trend` on, the trend line's value on `time_reference`, not the mean over the window (review C9; the name is kept)
 - `<prefix>_amplitude_annual = sqrt(b² + c²)`
 - `<prefix>_phase_annual = atan2(c, b)`; radians, when peak greenness happens
 - `<prefix>_amplitude_semi`, `<prefix>_phase_semi`; dual harmonic only

@@ -3592,16 +3592,32 @@ decisions:
     so phase values are comparable across configs by default. If two configs have different phenology
     windows, a shared anchor keeps their phase values comparable, which the metrics stage relies on. Why
     the value was made configurable in v1.1.0 is not recorded in the source; the docs point to a decision
-    id written only as 'DEC-???'.
+    id written only as 'DEC-???'. Review C9 (19 Oct 2026; added here 20 Oct 2026, round 13) found
+    the claim about clustering outcomes false. With include_trend on (every config) the stage stores the
+    intercept a as <index>_mean, and a is the de-seasonalised trend line's value on time_reference, not the
+    mean over the window: moving the reference by D years changes <index>_mean by trend x D, a different
+    amount for each pixel, while amplitude and trend do not move and the phase moves by the same angle
+    everywhere. <index>_mean is a clustering band, and each sin and cos of the phase is scaled by its own
+    spread (reviews A2 and B13), so the reference date can change the stand types. In Kendujhar's 3 ha box
+    layer of record 3 x ndvi_trend, about how far ndvi_mean sits from the window's mean of the fitted
+    curve, runs from -0.054 to +0.083 (5th to 95th percentile) against an interquartile range of 0.142 for
+    ndvi_mean. Every config and manifest of record uses 2017-01-01, so the committed results agree with each
+    other. In round 13 the comments of config.py and features_optical.py, the docs and the comments of seven
+    configs were corrected, with no setting and no computation changed; whether the band changes (its name,
+    or t centred on the window) is a method decision, with A2, put to Jaskaran.
   evidence:
   - path: src/fmu/config.py
-    what: FeaturesOpticalParams.time_reference and the comment above it, lines 117-130
+    what: FeaturesOpticalParams.time_reference and the comment above it (corrected in round 13, review C9)
   - path: MODULES.md
-    what: row 9 (line 22) and the v1.1.0 paragraph (lines 45-48)
+    what: row 9 and the v1.1.0 paragraph
   - path: docs/configs.md
-    what: features_optical.time_reference, lines 303-308
+    what: features_optical.time_reference (corrected in round 13, review C9)
   - path: src/fmu/stages/features_optical.py
-    what: 'module docstring lines 12-15: ''configurable per DEC-???'''
+    what: >-
+      module docstring: 'configurable per DEC-???', and since round 13 what moving the reference changes
+      (review C9)
+  - path: docs/reviews/2026-10-19-review.md
+    what: C9
   papers: []
   status: adopted
   design_notes_section: null
@@ -6997,9 +7013,10 @@ decisions:
     suggested test, that moving time_reference leaves the pairwise distances unchanged, is not added: it cannot pass
     while each component is scaled by its own spread (A2) and while ndvi_mean is the trend line's value on the
     reference date (review C9). The clustering therefore still depends on the reference date through those two
-    routes, and the records that say it does not (spec-harmonic-time-reference-configurable, src/fmu/config.py,
-    src/fmu/stages/features_optical.py) stay wrong until A2 and C9 are settled. No paper was searched for this
-    decision.
+    routes. The records that said it does not (spec-harmonic-time-reference-configurable, src/fmu/config.py,
+    src/fmu/stages/features_optical.py, and the docs and config comments that repeated them) were corrected in
+    round 13, in their text only (review C9); the two routes stay until A2 and C9 are settled. No paper was
+    searched for this decision.
   evidence:
   - path: src/fmu/stages/clustering.py
     what: _phase_components; step 5 of ClusteringStage.run

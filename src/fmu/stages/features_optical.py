@@ -10,12 +10,20 @@ The regression model, per pixel, is:
          + ε
 
 where t is years since `features_optical.time_reference` (default
-2017-01-01; configurable per DEC-???). The reference epoch shifts the
-numerical value of `phase_*` by a constant but does NOT change
-amplitude, trend, or any clustering outcome.
+2017-01-01; configurable per DEC-???). Moving the reference by D years
+leaves amplitude, trend and the residual variance as they are and shifts
+`phase_*` by the same angle at every pixel. With `include_trend` on (every
+shipped config) it also changes `mean` by trend x D, by a different amount
+at each pixel, because `mean` is the intercept a: the value of the
+de-seasonalised trend line a + f·t on `time_reference`, not the average over
+the window (with the 2017-2022 window and the default reference, the window's
+average of the fitted curve is about a + 3f). `mean` is a clustering band,
+and each sin and cos of a phase is scaled by its own spread (review A2,
+B13), so the reference date can change the clustering. Corrected in round
+13 (review C9), in this text only; what the stage computes is unchanged.
 
 Derived metrics (per DEC-002; derived metrics, not raw coefficients):
-- mean = a
+- mean = a                           # the trend line's value on time_reference
 - amplitude_annual = sqrt(b² + c²)
 - phase_annual = atan2(c, b)        # radians, measured from time_reference
 - amplitude_semi = sqrt(d² + e²)    # dual only
@@ -253,7 +261,9 @@ def _derive_metrics(
     """Convert raw coefficients into the named per-pixel feature bands."""
     bands: list[ee.Image] = []
 
-    # Mean = intercept (constant term)
+    # Mean = intercept (constant term). With the trend term in the fit this is
+    # the trend line's value on time_reference (t = 0), not the window's
+    # average (review C9; the name is kept).
     mean = coefficients.select("constant").rename(f"{prefix}_mean")
     bands.append(mean)
 
