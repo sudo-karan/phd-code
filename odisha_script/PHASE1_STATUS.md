@@ -26,7 +26,7 @@ estimated.
 ### The ETH problem is dynamic range, not noise
 
 Field means run 3.45 → 37.75 m across the height bins. ETH runs **14.30 → 22.47 m**. Its
-entire span over a real 3–38 m range is about 8 m, with slope 0.30. So a 2.0 m tolerance
+entire span over the field's 3–38 m of bin means is about 8 m, with slope 0.30. So a 2.0 m tolerance
 is roughly a quarter of the product's whole usable range, not a fine structural
 distinction — and the Sanjay Van calibration (`tol 2.0 = p54.5 of pair differences`)
 looked reasonable only because the pair differences are small. The product is compressed;

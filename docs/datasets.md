@@ -82,8 +82,8 @@ features via a CNN (Lang et al., 2023).
   of the two merge criteria** that aggregate superpixels into stands.
 - **Field validation (Odisha, 274 plots) — read this before treating ETH canopy height
   as a measurement.** Against field Lorey's height it scores **R² = 0.207, slope 0.30**,
-  with its range compressed to **14.30–22.47 m against a real field span of
-  3.45–37.75 m** — a +10.85 m bias on the shortest plots and −15.29 m on the tallest.
+  with its height-bin means compressed to **14.30–22.47 m against the field's bin means of
+  3.45–37.75 m** (the plots span 0.16–45.52 m) — a +10.85 m bias in the shortest bin and −15.29 m in the tallest.
   It remains a default merge criterion and a default SNIC band, but a 2 m tolerance is
   roughly a quarter of the product's whole usable range, not a fine structural
   distinction. `canopy_height_std` was a default until the same validation measured it

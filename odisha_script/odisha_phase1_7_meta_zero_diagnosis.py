@@ -124,7 +124,9 @@ def part_a(df: pd.DataFrame) -> pd.Series:
     say("")
     say("  A 3x3 mean lands on exact ninths only if all nine inputs are integers. So the")
     say("  product is delivered as integer metres, and the entire observed range here is 16")
-    say("  levels, 0 to 15 m, against field Lorey's heights running to 37.75 m.")
+    # The plots' maximum, read from the data. It once said 37.75 m, the mean of Test 1's top
+    # height bin (30 to 60 m, 5 plots), not the maximum (review C3, round 13).
+    say(f"  levels, 0 to 15 m, against field Lorey's heights running to {df.loreys_h_m.max():.2f} m.")
     say("")
     say("  Consequences, both load-bearing for merge.criteria:")
     say("    - a Meta '0' means 'the model predicted under half a metre', which is NOT the")
