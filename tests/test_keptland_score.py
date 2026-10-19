@@ -137,6 +137,28 @@ def test_score_2_is_not_answerable_when_no_stand_holds_two_scored_plots():
     assert line.split()[2] == "n/a", line
 
 
+def test_a_plot_without_a_type_stops_the_analyses(tmp_path, monkeypatch):
+    """Review of 19 Oct 2026, B30: every box plot must have a field type in both typologies. A plot
+    missing from the four-type file used to drop out of every analysis, the primary too, with no
+    message (an inner merge); now the analyses stop, as odisha_keptland_chance.load_plots does."""
+    plots = pd.DataFrame({"plot_key": ["a", "b", "c", "d"], "lat6": [21.0, 21.01, 21.02, 21.03],
+                          "lon6": [85.0, 85.01, 85.02, 85.03], "district": ["angul"] * 4,
+                          "habitation": ["h"] * 4, "field_type": [0, 1, 1, 2], "box_district": ["angul"] * 4})
+    joined = pd.DataFrame({"plot_key": ["a", "b", "c", "d"], "sid": [1.0, 1.0, 2.0, 2.0],
+                           "cluster": [0.0, 0.0, 1.0, 1.0], "how": ["covered"] * 4, "dist_m": [0.0] * 4})
+    box = joined[["plot_key", "sid", "cluster"]]
+    k4 = tmp_path / "k4.csv"
+    monkeypatch.setattr(K, "FIELD_TYPES_K4", k4)
+    pd.DataFrame({"plot_key": ["a", "b", "c", "d"], "field_type": [0, 1, 2, 3]}).to_csv(k4, index=False)
+    assert [r["counts"]["plots"] for r in K.analyses(plots, joined, box)] == [4, 3, 4, 4, 4]
+    pd.DataFrame({"plot_key": ["a", "b", "c"], "field_type": [0, 1, 2]}).to_csv(k4, index=False)
+    with pytest.raises(SystemExit, match="no field type"):
+        K.analyses(plots, joined, box)
+    pd.DataFrame({"plot_key": ["a", "b", "c", "d"], "field_type": [0, 1, 2, 3]}).to_csv(k4, index=False)
+    with pytest.raises(SystemExit, match="no field type"):
+        K.analyses(plots.assign(field_type=[0, 1, None, 2]), joined, box)
+
+
 def test_the_run_record_is_named_by_the_stem(tmp_path, monkeypatch):
     K.write_run_record(tmp_path, ["--stem", "keptland_s1desc_r9"], "keptland_s1desc_r9")
     record = json.loads((tmp_path / "keptland_s1desc_r9_scores_run.json").read_text())

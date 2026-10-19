@@ -18,7 +18,7 @@ its size (docs/decisions.yaml, spec-files-over-5-mb-off-git) is read from where 
 (<run>_files_off_git.json) says, after its SHA-256 is checked.
 
 THE PLOTS: the 267 inside the boxes (aois/odisha_squares_<district>.geojson), each joined only to
-its own district's run.
+its own district's run. Each must have a field type in both typologies, or the script stops.
 
 THE JOIN, as declared. A plot takes the stand that covers it; where several do, the lowest stand id
 (the Phase 2 rule of odisha_phase2_3_join.py: stand id `stand_lbl`, `cluster_id` rounded, distances
@@ -237,7 +237,14 @@ def analyses(plots: pd.DataFrame, joined: pd.DataFrame, box: pd.DataFrame,
              runs: str = RUNS) -> list[dict[str, Any]]:
     """The primary analysis and the declared checks, each a row of numbers."""
     k4 = pd.read_csv(FIELD_TYPES_K4)[["plot_key", "field_type"]].rename(columns={"field_type": "ft_k4"})
-    base = plots.merge(joined, on="plot_key", validate="1:1").merge(k4, on="plot_key", validate="1:1")
+    base = plots.merge(joined, on="plot_key", validate="1:1").merge(k4, on="plot_key", how="left",
+                                                                    validate="1:1")
+    # A plot without a type would drop out of every analysis unseen; stop instead, as
+    # odisha_keptland_chance.load_plots does (review of 19 Oct 2026, B30).
+    if base.field_type.isna().any() or base.ft_k4.isna().any():
+        missing = sorted(base.plot_key[base.field_type.isna() | base.ft_k4.isna()])
+        raise SystemExit(f"a plot inside the boxes has no field type in {FIELD_TYPES.name} or "
+                         f"{FIELD_TYPES_K4.name}: {missing}")
     scored = base[base.sid.notna()]
     rows = []
 
