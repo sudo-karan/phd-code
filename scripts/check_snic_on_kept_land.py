@@ -36,8 +36,16 @@ measures:
   5. seed_grid_is_snics_own_grid: SNIC with its own seeds against SNIC given
      seedGrid(size), on the same stack with nothing masked. Expected no pixel to differ.
   6. size_matters_with_seeds: SNIC given seeds, at size and at twice size. If no pixel
-     differs, SNIC ignores `size` once it has seeds, and its spatial term is not scaled the
-     way it is without seeds.
+     differs, `size` does not change SNIC's result once it is given seeds. With check 5 this
+     says that `size` places the seed grid. It does not say how SNIC weights its spatial term
+     when the seeds are not its own grid, as kept-land seeds are not. Corrected 20 Oct 2026
+     (review C18): this said that then "its spatial term is not scaled the way it is without
+     seeds", which does not follow from checks 5 and 6. Check 5 (SNIC given seedGrid(size)
+     gives SNIC's own result) rules out a spatial term scaled by `size` only when SNIC places
+     its own seeds; a constant normaliser and one derived from the seeds present both pass
+     checks 5 and 6, and they weight kept-land seeds differently (the review's toy SNIC, not
+     run here). What compactness means with segmentation.mask_before_snic on is still open
+     (docs/handoff/2026-10-14-round3.md, question 13).
   7. connected_components_max_size: two squares of 15 x 15 and 9 x 9 pixels, labelled with
      maxSize 128. If the big one (225 pixels, 15 wide) is labelled, maxSize is an extent;
      if not, it is a number of pixels.
