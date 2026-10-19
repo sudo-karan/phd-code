@@ -177,3 +177,63 @@ AlphaEarth arm (`keptland_scores/keptland_alphaearth_r9_scores.*`). The scores o
 (`keptland_scores/keptland_s1desc_scores.*`) stay as history. Kept-land scores existed when this
 note was written: those of round 7, of the `_r9` re-runs and of the AlphaEarth arm, the chance test's
 rehearsal and its declared results on both arms. Nothing declared above is changed.
+
+## Change of 19 Oct 2026 (round 12): the 10 ha box runs, both arms
+
+Made by Claude Code on Jaskaran's instruction (the round 12 brief, Task 4, roadmap 3.3;
+`docs/handoff/2026-10-19-round12.md`). It applies everything above, and Claude (chat)'s amendment
+`PHASE_KEPTLAND_AMENDMENT_chance_checks.md`, unchanged to eight more runs: the 10 ha box runs of
+both arms. Nothing new is added and nothing above is changed. It is committed before any of the
+eight configs exists, so before any 10 ha stand or score on the boxes exists.
+
+- **The runs.** Eight configs, each a copy of one of the eight 3 ha `_r9` box runs above, named
+  with `10ha` in place of `3ha`: `configs/odisha_v120_10ha_squares_<district>_keptland_s1desc_r9.yaml`,
+  copies of the primary's re-runs, and `configs/odisha_alphaearth_10ha_squares_<district>_keptland_r9.yaml`,
+  copies of the AlphaEarth arm's runs. Each changes only `segmentation.size`, from 6 to 10, and
+  `merge.max_area_ha`, from 3 to 10, the values of the Sanjay Van 10 ha configs, besides its name
+  and description; `tests/test_r9_configs.py` checks that nothing else differs. So SNIC's seeds are
+  10 pixels apart and the stands are of 1 to 10 ha, with the soft ceiling (a piece still under 1 ha
+  may join a neighbour up to 11 ha). Everything else is the copied run: the 20 boxes, the kept-land
+  mask before SNIC, each arm's features and the merge's three criteria, k = 5 stand types per
+  district (the brief's; Phase 3's 10 ha arm and Sanjay Van have 6), seed 42, the stands under
+  1 ha left out of the fit.
+- **Scored as the 3 ha runs, arm by arm, on the same plots.** The field types
+  (`odisha_phase3_0_field_types.csv`), the 267 plots inside the boxes, the join (the covering
+  stand, the lowest stand id where several cover; the nearest stand whose edge lies within 30 m;
+  left out past 30 m, reported per district), the five scores and the checks (S1, S2, how the
+  plots join, with every score again on the covered plots only) are all as declared above. "Beside
+  the box runs" is unchanged too: each district's 13 Oct box run, the only box runs there are,
+  whose stands are of 3 ha. If a 10 ha run scores other plots than its 3 ha run, the difference is
+  reported as counts per district and the plots are named, and no further analysis is made of it.
+- **The chance test, as declared above and as run on the 3 ha `_r9` stands:** 1,999 realisations
+  per null; the unconditional null for scores 1 to 3 and the conditional one for 4 and 5; Holm over
+  the five tests within each analysis, a pass at a Holm-corrected p of at most 0.05; each placed
+  plot joined by the same rule, 30 m included, and a placed plot with no stand within 30 m left out
+  of that realisation; S1 and S2 on the same realisations; and C1 (the chance-check amendment)
+  beside score 4, outside Holm. Each set of runs draws its own placements, seeded by its name by
+  the chance script's rule (register entry `field-keptland-chance-each-arm-draws-its-own-placements`;
+  Phase 3 seeded its 3 ha and 10 ha arms on the village hulls each by its own name):
+  `v120_10ha_squares_keptland_s1desc` and `alphaearth_10ha_squares_keptland`.
+- **3 ha and 10 ha side by side, descriptive only.** In each arm the five scores and the chance
+  test's results at 10 ha are written next to those at 3 ha (the record: `keptland_s1desc_r9` and
+  `keptland_alphaearth_r9`), on the same plots; and, as the change of 18 Oct reports its arm beside
+  the primary, the AlphaEarth arm at 10 ha beside the hand-crafted arm at 10 ha. No test of any
+  difference, between the sizes or between the arms, and no pass or fail beyond each set's own
+  chance test.
+- **What the 10 ha scores are.** A size check beside the record, not a change of which scores are
+  the record (the note of 19 Oct 2026 above).
+- **One difference the brief did not choose.** The 10 ha runs are exported after round 12's change
+  to how a stand gets its type (register entry `spec-export-stand-type-from-its-fit-row`), the 3 ha
+  runs before it. On the analysis grid, where all of them lie, the change alters no stand of the
+  eight 3 ha box runs (`docs/reproducibility/r9_runs/stand_types_from_fit_rows.json`).
+- **Files.** New files only, beside the 3 ha ones in `odisha_script/keptland_scores/`:
+  `keptland_s1desc_10ha_r9_*` and `keptland_alphaearth_10ha_r9_*` (the joined tables, the scores,
+  the chance test's results) and the side-by-side tables; no older file is written over. The
+  commands are round 10's with the new run names and stems.
+- **The kept-land scores that existed when this was written:** round 7's (history); the `_r9`
+  record of both arms, with their declared chance tests and comparisons; the chance test's
+  rehearsal on round 7's stands. **No 10 ha stand or score on the boxes or on kept land existed.**
+  10 ha scores in Odisha on other stands did: Phase 2 and Phase 3 on the village hulls (k = 6, no
+  kept-land mask; `PHASE2_STATUS.md`, `PHASE3_STATUS.md`) and the demo set's AlphaEarth runs there
+  (round 2).
+- **What Claude (chat) expects**, above, was written for the 3 ha runs; nothing is added for 10 ha.
