@@ -16,7 +16,9 @@ metadata. The file was written from the stage as it was before the setting exist
 and the stage of today must reproduce the calls and the clustering_metadata exactly. Its
 stage metadata gains one key, fit_excludes_stands_below_min_area, false, and nothing else.
 A deliberate change to the default path rewrites the file the same way, from the new
-code, in the commit that makes it.
+code, in the commit that makes it (`--write src/fmu/stages/clustering.py`), still without
+that key in the stage metadata. Rewritten so in round 13 by review A5 (a flat cell's aspect
+pair is (0, 0): the calls of the two hand-crafted configs changed).
 """
 
 from __future__ import annotations
@@ -134,7 +136,9 @@ if __name__ == "__main__":
         raise SystemExit(__doc__)
     sys.path.insert(0, str(REPO / "src"))
     other = _load_other(Path(sys.argv[2]))
-    GOLDEN.write_text(
-        json.dumps({c: record(other, c) for c in CONFIGS}, indent=0, sort_keys=True) + "\n"
-    )
+    recorded = {c: record(other, c) for c in CONFIGS}
+    # As the file was first written, before the setting existed: the test adds the key.
+    for entry in recorded.values():
+        entry["stage_metadata"].pop("fit_excludes_stands_below_min_area", None)
+    GOLDEN.write_text(json.dumps(recorded, indent=0, sort_keys=True) + "\n")
     print(f"wrote {GOLDEN}")

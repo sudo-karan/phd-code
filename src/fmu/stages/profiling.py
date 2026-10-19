@@ -177,14 +177,22 @@ class ProfilingStage(Stage):
 def _decompose_cyclic_bands(image: ee.Image) -> tuple[ee.Image, list[str]]:
     """Replace cyclic bands (phase, aspect) with sin/cos pairs.
 
-    Same logic as clustering's _decompose_cyclic_bands. Duplicated here
-    instead of imported to keep the profiling stage standalone.
+    Same logic as clustering's _decompose_cyclic_bands, flat cells included:
+    where the slope is 0 the aspect pair is (0, 0), not the (0, 1) of a slope
+    facing due north (review A5), so the profiles describe what was clustered.
+    Duplicated here instead of imported to keep the profiling stage standalone.
     """
     band_names = safe_get_info(image.bandNames(), context="bands for cyclic check")
     cyclic_bands = [b for b in band_names if "_phase_" in b or b == "aspect"]
 
     if not cyclic_bands:
         return image, []
+    if "aspect" in cyclic_bands and "slope" not in band_names:
+        raise ValueError(
+            "The feature stack has an aspect band but no slope band, so the flat "
+            "cells, which have no aspect, cannot be told apart from slopes facing "
+            "due north. features_static emits slope and aspect together."
+        )
 
     new_bands: list[ee.Image] = []
     for cb in cyclic_bands:
@@ -195,12 +203,14 @@ def _decompose_cyclic_bands(image: ee.Image) -> tuple[ee.Image, list[str]]:
         else:
             # Phase bands from atan2 are already in radians ∈ [-π, π].
             radians = original
-        new_bands.extend(
-            [
-                radians.sin().rename(f"{cb}_sin"),
-                radians.cos().rename(f"{cb}_cos"),
-            ]
-        )
+        sin_band = radians.sin()
+        cos_band = radians.cos()
+        if cb == "aspect":
+            # No direction where the ground is flat.
+            flat = image.select("slope").eq(0)
+            sin_band = sin_band.where(flat, 0)
+            cos_band = cos_band.where(flat, 0)
+        new_bands.extend([sin_band.rename(f"{cb}_sin"), cos_band.rename(f"{cb}_cos")])
 
     kept_bands = [b for b in band_names if b not in cyclic_bands]
     return image.select(kept_bands).addBands(ee.Image.cat(new_bands)), cyclic_bands

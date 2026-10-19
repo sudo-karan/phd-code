@@ -111,6 +111,9 @@ meters.
   the clustering stage converts to `aspect_sin` / `aspect_cos`
   before k-means. Euclidean distance on raw degrees would treat 0 and
   359 as maximally different despite being identical compass directions.
+  A flat cell (slope 0) has no aspect (`ee.Terrain.products` gave it 0);
+  the clustering stage gives it no direction, `aspect_sin` = `aspect_cos` =
+  0 (review A5).
 
 ## CoRE Stack LULC (IndiaSAT)
 

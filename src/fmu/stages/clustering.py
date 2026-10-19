@@ -21,6 +21,7 @@ Pipeline (server-side throughout):
 
   2. Cyclic decomposition
        - Each *_phase_* and aspect band becomes a sin/cos pair. Original dropped.
+       - A flat cell (slope 0) has no aspect: its aspect pair is (0, 0).
 
   3. Per-unit means
        - reduceConnectedComponents with the stand (or superpixel) labels.
@@ -669,6 +670,14 @@ def _decompose_cyclic_bands(image: ee.Image) -> tuple[ee.Image, list[str]]:
     0 and 2π are maximally far apart in linear space despite being identical
     angles. sin/cos decomposition removes that artifact.
 
+    A flat cell has no aspect: ee.Terrain.products gave a cell with no gradient
+    an aspect of 0 (review A5), which as (sin, cos) is (0, 1), a slope facing
+    due north.
+    Where the slope is 0 the aspect pair is (0, 0) instead, so that a unit's
+    mean aspect vector holds only the directions of its sloping cells (review
+    A5). The slope is read from the same stack: features_static emits it with
+    aspect.
+
     Returns the new image plus a list of band names that were decomposed.
     """
     band_names = safe_get_info(image.bandNames(), context="bands for cyclic check")
@@ -676,9 +685,16 @@ def _decompose_cyclic_bands(image: ee.Image) -> tuple[ee.Image, list[str]]:
 
     if not cyclic_bands:
         return image, []
+    if "aspect" in cyclic_bands and "slope" not in band_names:
+        raise ValueError(
+            "The feature stack has an aspect band but no slope band, so the flat "
+            "cells, which have no aspect, cannot be told apart from slopes facing "
+            "due north. features_static emits slope and aspect together."
+        )
 
     # Phase bands are in radians (atan2 output ∈ [-π, π]).
-    # Aspect is in degrees [0, 360] from ee.Terrain.products; convert first.
+    # Aspect is in degrees [0, 360] from ee.Terrain.aspect (ee.Terrain.products
+    # until round 13); convert first.
     new_bands: list[ee.Image] = []
     for cb in cyclic_bands:
         original = image.select(cb)
@@ -688,9 +704,14 @@ def _decompose_cyclic_bands(image: ee.Image) -> tuple[ee.Image, list[str]]:
         else:
             # Phase bands from atan2 are already in radians ∈ [-π, π].
             radians = original
-        sin_band = radians.sin().rename(f"{cb}_sin")
-        cos_band = radians.cos().rename(f"{cb}_cos")
-        new_bands.extend([sin_band, cos_band])
+        sin_band = radians.sin()
+        cos_band = radians.cos()
+        if cb == "aspect":
+            # No direction where the ground is flat (see the docstring).
+            flat = image.select("slope").eq(0)
+            sin_band = sin_band.where(flat, 0)
+            cos_band = cos_band.where(flat, 0)
+        new_bands.extend([sin_band.rename(f"{cb}_sin"), cos_band.rename(f"{cb}_cos")])
 
     kept_bands = [b for b in band_names if b not in cyclic_bands]
     return image.select(kept_bands).addBands(ee.Image.cat(new_bands)), cyclic_bands

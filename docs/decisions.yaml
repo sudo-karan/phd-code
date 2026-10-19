@@ -6651,3 +6651,58 @@ decisions:
   status: adopted
   design_notes_section: 'features_static: terrain + distance + climate'
   source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-clustering-flat-cells-have-no-aspect
+  title: >-
+    A flat cell's aspect sin and cos are both 0 in the clustering and profiling stages, not the pair of a slope facing
+    due north
+  decision: >-
+    The clustering stage's _decompose_cyclic_bands (src/fmu/stages/clustering.py, a Locked module) gives every cell whose
+    slope is 0 the aspect pair (0, 0), per pixel and before the unit means, in place of (sin 0, cos 0) = (0, 1), the
+    pair of a slope facing due north. Every other cell keeps the sin and cos of its aspect, and the phase pairs are
+    unchanged. The slope is read from the same stack (features_static emits elevation, slope and aspect together); a
+    stack with aspect and no slope is refused with an error. The profiling stage's copy of the decomposition
+    (src/fmu/stages/profiling.py, a Locked module) applies the same rule, so that the profiles describe what was
+    clustered. A unit's mean aspect vector then holds the directions of its sloping cells only, shortened by its share
+    of flat cells. Clustering's revision is raised to 1 (STEP_REVISION in src/fmu/utils/caching.py), which moves the
+    clustering and k_elbow keys of every config and no other key.
+  alternatives_considered:
+  - >-
+    Weight each cell's aspect sin and cos by its slope, the review's second option: not chosen. The brief names the zero
+    vector, and a weight would change the pair of every sloping cell too
+  - >-
+    Leave a flat cell facing north: not chosen, it is the finding
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 2: "A5: compute the terrain on a float DEM; give flat cells no
+    aspect direction (zero vector)." This entry is the second half; the float DEM is features_static's. The review
+    (docs/reviews/2026-10-19-review.md, A5) found that a cell with no gradient gets aspect 0, which the sin/cos
+    decomposition encodes exactly like a slope facing north, (0, 1): all 9 one-pixel stands with slope 0 in the
+    committed _r9 and tile layers have aspect 0, and _decompose_cyclic_bands gives (0, 1) for a flat pixel and a due
+    north pixel alike. The new test fails on the code before the change with "assert (0.0, 1.0) != (0.0, 1.0)", in both
+    stages, and passes after it. With NASADEM's integer elevations the smallest gradients the review lists (0.93, 0.99
+    and 1.36 degrees) read 1 in whole degrees, so a slope of 0 is a cell with no gradient, in the whole degrees of the
+    runs before round 13 as in the fractional degrees of ee.Terrain.slope (spec-static-terrain-on-a-float-dem). Per
+    the review, flat cells barely reach the scored boxes (0 of 345 one-pixel stands) but occur in the 10 km tile (5 of
+    235) and Sanjay Van (4 of 109); how many stand types the rule moves needs Earth Engine and was not measured. The
+    embedding arm has no aspect band and computes the same as before, though its clustering and k_elbow keys move with
+    the step's revision. No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/clustering.py
+    what: _decompose_cyclic_bands, the flat-cell rule and the refusal of aspect without slope
+  - path: src/fmu/stages/profiling.py
+    what: _decompose_cyclic_bands, the same rule
+  - path: src/fmu/utils/caching.py
+    what: STEP_REVISION, clustering at 1
+  - path: tests/test_flat_cells_have_no_aspect.py
+    what: >-
+      A flat cell and a due north cell on numpy stand-ins for the images (tests/_ee_arrays.py); fails on the code before
+      the change
+  - path: tests/data/clustering_off_calls.json
+    what: The recorded calls of the two hand-crafted configs, rewritten from the new code
+  - path: docs/reviews/2026-10-19-review.md
+    what: A5
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 2, A5
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)

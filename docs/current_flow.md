@@ -339,7 +339,7 @@ Per-superpixel feature stack to preprocessing to k-means to per-pixel cluster la
 
 1. **Build raw feature stack**; in the handcrafted arm, auto-detect bands from each features_* asset (works for both `ndvi_*` and `nirv_*` configs) and drop `*_obs_count` (metadata), `*_residual_variance` (diagnostic-only, not a clustering feature), and `annual_rainfall` (constant in our ROI; kept in the static-features asset for cross-AOI generality). In the embedding arm the raw stack is simply the `embedding_features` image itself (every embedding dimension is a feature; nothing to concatenate or exclude). Everything from step 2 onward is band-name-agnostic and runs identically for both arms.
 
-2. **Cyclic decomposition**; every `*_phase_*` band and `aspect` is replaced with a sin/cos pair. Aspect is converted from degrees to radians first.
+2. **Cyclic decomposition**; every `*_phase_*` band and `aspect` is replaced with a sin/cos pair. Aspect is converted from degrees to radians first. A cell whose `slope` is 0 has no aspect (`ee.Terrain.products` gave it 0, which reads as due north), so its aspect pair is (0, 0) (review A5, round 13); a unit's mean aspect vector then holds only the directions of its sloping cells.
 
 3. **Per-unit averaging**; `reduceConnectedComponents(reducer=mean, labelBand=<unit labels>, maxSize=<measured neighbourhood>)` over stands (or superpixels when merge is off). Every pixel now holds its unit's mean for each feature. `maxSize` is an *extent*, and EE pads every tile by it, so memory grows with bands x `maxSize`: at the derived cap (1200 px at 10 ha / 10 m) a wide band stack runs out of memory. The stage first checks the pixel count against the cap (`assert_components_fit`). It then measures each label's pixel-coordinate extent in the feature band-0 grid and the label grid, and passes `ceil(widest x 1.2) + 2`, never above the cap. Every unit is still aggregated whole, so means agree with the cap version up to floating-point summation order. The manifest records `rcc_neighbourhood_px` and `widest_unit_extent_px`. See `_component_neighbourhood_px` for the argument and its precondition (evaluation at `analysis_scale_m` in the measured grids).
 
@@ -379,7 +379,7 @@ Per-cluster feature statistics in **original units** (un-scaled, un-log-transfor
 - `cluster_id`, `pixel_count`, `area_ha`
 - For each feature band: `<band>_mean`, `<band>_p25`, `<band>_p50`, `<band>_p75`
 
-Cyclic bands (phase, aspect) are decomposed to sin/cos first; circular mean can be recovered from `atan2(sin_mean, cos_mean)` if needed for interpretation.
+Cyclic bands (phase, aspect) are decomposed to sin/cos first, by the clustering stage's rule (a flat cell's aspect pair is (0, 0)); circular mean can be recovered from `atan2(sin_mean, cos_mean)` if needed for interpretation.
 
 Profile data lives in the `manifest.json` `metadata.profiles` block, so it's automatically saved alongside every run. The inspect script also writes `cluster_profiles.csv` to the run dir for easy pandas loading.
 
