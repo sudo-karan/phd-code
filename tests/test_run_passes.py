@@ -2,12 +2,16 @@
 
 Every feature stage a config needs is cached by a first pass of its own, before
 the first pass that reads any of them; each later pass refuses to start while any
-of them, or anything else upstream of it, is missing.
+of them, or anything else upstream of it, is missing. And the pass script starts
+only when the wrapper starts it (round 12, roadmap 3.6, issue #44 item 10).
 """
 
 from __future__ import annotations
 
+import os
 import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -76,3 +80,60 @@ def test_the_pass_scripts_run_the_features_pass_first():
     m = run_passes_safely.STAGE_EXIT.match(line)
     assert m and m.group(2) == "features"
     assert re.match(run_passes_safely.STAGE_EXIT, "--- PASS1 c export exit=3 ---")
+
+
+# ---------- the pass script starts only from the wrapper (round 12) ----------
+
+PASS_SCRIPT = REPO / "odisha_script" / "run_config_passes.sh"
+BASH = shutil.which("bash")
+needs_bash = pytest.mark.skipif(BASH is None, reason="needs bash")
+# Stands in for the interpreter: it records the runner's arguments and runs nothing.
+STAND_IN = '#!/bin/sh\necho "$*" >> "$STAND_IN_RECORD"\n'
+
+
+def _start_the_pass_script(tmp_path: Path, env: dict[str, str]) -> subprocess.CompletedProcess:
+    """The pass script on one made-up config, from an empty folder (no .env, no runner) and
+    with a stand-in for the interpreter, so that nothing can reach Earth Engine."""
+    python = tmp_path / "python"
+    python.write_text(STAND_IN)
+    python.chmod(0o755)
+    env = {**env, "PYTHON": str(python), "STAND_IN_RECORD": str(tmp_path / "calls.txt")}
+    return subprocess.run(
+        [BASH, str(PASS_SCRIPT), str(tmp_path / "batch.log"), "configs/x_r9.yaml"],
+        cwd=tmp_path, env=env, capture_output=True, text=True, timeout=120,
+    )
+
+
+@needs_bash
+def test_the_pass_script_refuses_to_start_unless_the_wrapper_started_it(tmp_path: Path):
+    """Without RUN_PASSES_SAFELY=1 it exits 96 before it reads an argument or writes
+    anything. Before round 12 it ran its passes."""
+    clean = {k: v for k, v in os.environ.items() if k != run_passes_safely.STARTED_BY_THE_WRAPPER}
+    for value in (None, "", "0", "yes"):
+        env = dict(clean, MAX_PASSES="1")
+        if value is not None:
+            env[run_passes_safely.STARTED_BY_THE_WRAPPER] = value
+        got = _start_the_pass_script(tmp_path, env)
+        assert got.returncode == 96, (value, got.stdout + got.stderr)
+        assert "REFUSING" in got.stderr and "run_passes_safely.py" in got.stderr
+        assert not (tmp_path / "batch.log").exists() and not (tmp_path / "calls.txt").exists()
+
+
+@needs_bash
+def test_the_pass_script_runs_in_the_environment_the_wrapper_gives_it(tmp_path: Path):
+    env = run_passes_safely.pass_env("<the interpreter>", tmp_path)
+    assert env[run_passes_safely.STARTED_BY_THE_WRAPPER] == "1" and env["MAX_PASSES"] == "1"
+    got = _start_the_pass_script(tmp_path, env)
+    assert got.returncode == 0, got.stdout + got.stderr
+    calls = (tmp_path / "calls.txt").read_text().splitlines()
+    assert [c.split("--through ")[1] for c in calls] == [
+        "features --wait", "segmentation --wait", "clustering --wait", "export"]
+    exits = [m.groups() for line in (tmp_path / "batch.log").read_text().splitlines()
+             if (m := run_passes_safely.STAGE_EXIT.match(line.strip()))]
+    assert exits == [("x_r9", s, "0") for s in ("features", "segmentation", "clustering", "export")]
+
+
+def test_the_pass_script_checks_the_variable_the_wrapper_sets():
+    text = PASS_SCRIPT.read_text()
+    assert f'"${{{run_passes_safely.STARTED_BY_THE_WRAPPER}:-}}" != "1"' in text
+    assert text.index("exit 96") < text.index("LOG=$1")

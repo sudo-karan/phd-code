@@ -9,13 +9,14 @@ run_config_passes.sh repeats a config until it completes, sleeping 60 s between 
 stage that fails partway through (the expected "User memory limit exceeded" on a cold
 cache) returns WITHOUT waiting for the exports it has already submitted, and the cache
 check looks only for finished assets. On a slow queue the next pass therefore submits a
-second copy of every export that is still running. The script's own header and CLAUDE.md
-say never to start it again while tasks from an earlier start are still queued; its pass
-loop can break that rule by itself.
+second copy of every export that is still running. CLAUDE.md says never to start it again
+while tasks from an earlier start are still queued; its pass loop can break that rule by
+itself.
 
 So this wrapper calls it with MAX_PASSES=1 and, before every pass, waits until Earth
 Engine has no queued or running task whose description starts with the name of a config it
-is about to run. It also:
+is about to run. It sets RUN_PASSES_SAFELY=1 for the script (`pass_env`), which refuses to
+start without it (round 12), so the script is started only from here. It also:
 
   - never re-runs a config that has finished. The export stage submits its Drive exports
     every time it runs, so re-running a finished config would duplicate them;
@@ -45,6 +46,15 @@ from pathlib import Path
 ACTIVE_STATES = ("PENDING", "RUNNING", "CANCELLING")
 STAGE_EXIT = re.compile(r"^--- PASS1 (\S+) (features|segmentation|clustering|export) exit=(\d+) ---$")
 POLL_S = 60
+# The variable run_config_passes.sh checks before it does anything (round 12).
+STARTED_BY_THE_WRAPPER = "RUN_PASSES_SAFELY"
+
+
+def pass_env(python: str, run_tree: Path) -> dict[str, str]:
+    """The environment run_config_passes.sh runs in: one pass, this interpreter, the run tree's
+    code, and RUN_PASSES_SAFELY=1, without which the script refuses to start."""
+    return dict(os.environ, PYTHON=python, MAX_PASSES="1", PYTHONPATH=str(run_tree / "src"),
+                **{STARTED_BY_THE_WRAPPER: "1"})
 
 
 def main() -> int:
@@ -147,7 +157,7 @@ def main() -> int:
     try:
         say(f"batch {args.label} started from commit {commit} (tracked files unmodified); "
             f"{len(args.configs)} config(s), up to {args.passes} pass(es)")
-        env = dict(os.environ, PYTHON=args.python, MAX_PASSES="1", PYTHONPATH=str(rt / "src"))
+        env = pass_env(args.python, rt)
         for p in range(1, args.passes + 1):
             names = [name_of[c] for c in remaining]
             wait_until_idle(names, f"before pass {p}")
