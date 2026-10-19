@@ -37,9 +37,12 @@ def _stages(inputs: str, snic: str = "miss-exported", fingerprint: str = FP, nam
     ]
 
 
-def _write(runs: Path, folder: str, stages, name: str = "site") -> None:
+def _write(runs: Path, folder: str, stages, name: str = "site", layout: str | None = None) -> None:
     (runs / folder).mkdir(parents=True)
-    (runs / folder / "manifest.json").write_text(json.dumps({"config_name": name, "stages": stages}))
+    record = {"config_name": name, "stages": stages}
+    if layout is not None:  # manifests since round 9 say which cache layout the run used
+        record["cache_layout"] = layout
+    (runs / folder / "manifest.json").write_text(json.dumps(record))
 
 
 def test_all_inputs_from_the_cache_is_cached_and_none_is_live():
@@ -167,3 +170,63 @@ def test_the_clustering_route_reads_the_fingerprint_of_the_labels_asset(tmp_path
     assert "stage" not in mod.routes("site", FP, [runs])
     (line,) = mod.describe(mod.routes("other", FP, [runs], "clustering", "cluster_labels"))
     assert "not recorded" in line and "`cluster_labels`" in line
+
+
+# ---------------------------------------------------------------------------
+# Runs in the per-step cache layout (round 9 on): assets are named by step keys
+# ---------------------------------------------------------------------------
+
+STEP_KEY = "s0123456789"
+
+
+def test_a_per_step_run_is_found_by_its_step_key_and_a_legacy_run_by_its_fingerprint(tmp_path: Path):
+    """Review C42: every run in the per-step layout was reported "not recorded". The asset name
+    was read as `__` and hex digits, and a step key is "s" and ten hex digits; and a run was
+    matched against the legacy fingerprint, which no per-step asset carries."""
+    mod = _load()
+    assert mod.exported_fingerprint(_stages("hit", fingerprint=STEP_KEY)) == STEP_KEY
+    runs = tmp_path / "runs"
+    _write(runs, "site_20261018_000001", _stages("hit", fingerprint=STEP_KEY), layout="per_step")
+    _write(runs, "site_20261018_000002", _stages("miss-exported", fingerprint="s9999999999"),
+           layout="per_step")  # made under an earlier step key
+    _write(runs, "site_20260102_000001", _stages("miss-exported"), layout="legacy")
+    result = mod.routes("site", FP, [runs], step_key=STEP_KEY)
+    assert [(r["run"], r["route"]) for r in result["runs"]] == [
+        ("site_20260102_000001", "live"), ("site_20261018_000001", "cached")]
+    assert result["route"] == "cached" and result["step_key"] == STEP_KEY
+    (line, _) = mod.describe(result)
+    assert FP in line and STEP_KEY in line
+    # A legacy fingerprint never matches a per-step run, nor a step key a legacy run.
+    assert mod.routes("site", STEP_KEY, [runs], step_key=FP)["runs"] == []
+
+
+def test_a_folder_of_legacy_runs_gives_the_record_it_gave_before(tmp_path: Path):
+    """The committed route files are of legacy runs; with no per-step run in the folders the
+    record has no `step_key`, so they regenerate as before."""
+    mod = _load()
+    runs = tmp_path / "runs"
+    _write(runs, "site_20260102_000001", _stages("hit"))
+    assert set(mod.routes("site", FP, [runs], step_key=STEP_KEY)) == {
+        "config", "fingerprint", "route", "runs", "unreadable_manifests"}
+
+
+def test_the_command_reads_a_per_step_run_of_a_config(tmp_path: Path, monkeypatch, capsys):
+    """The documented command, on a manifest that names the asset by the config's step key today."""
+    import sys
+
+    from fmu.config import load_config
+    from fmu.utils.caching import step_key
+
+    repo = Path(__file__).resolve().parent.parent
+    config = repo / "configs" / "odisha_alphaearth_3ha_squares_angul_keptland_r9.yaml"
+    monkeypatch.chdir(repo)  # the ROI file is read from the repo root, as the pipeline reads it
+    cfg = load_config(config)
+    key = step_key(cfg, "segmentation")
+    runs = tmp_path / "runs"
+    _write(runs, f"{cfg.name}_20261018_000001", _stages("hit", fingerprint=key, name=cfg.name),
+           name=cfg.name, layout="per_step")
+    monkeypatch.setattr(sys, "argv", ["segmentation_route.py", "--config", str(config),
+                                      "--runs-dir", str(runs)])
+    _load().main()
+    out = capsys.readouterr().out
+    assert f"cached in run {cfg.name}_20261018_000001" in out and key in out
