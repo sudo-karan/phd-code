@@ -16,49 +16,40 @@
     {}
    ],
    [
-    "ee.Terrain.products",
-    [
-     "ee.Image().select()"
-    ],
+    "ee.Image().select().toFloat",
+    [],
     {}
    ],
    [
-    "ee.Terrain.products().select",
+    "ee.Image().select().toFloat().rename",
     [
      "'elevation'"
     ],
     {}
    ],
    [
-    "ee.Terrain.products().select().rename",
+    "ee.Terrain.slope",
     [
-     "'elevation'"
+     "ee.Image().select().toFloat()"
     ],
     {}
    ],
    [
-    "ee.Terrain.products().select",
-    [
-     "'slope'"
-    ],
-    {}
-   ],
-   [
-    "ee.Terrain.products().select().rename",
+    "ee.Terrain.slope().rename",
     [
      "'slope'"
     ],
     {}
    ],
    [
-    "ee.Terrain.products().select",
+    "ee.Terrain.aspect",
     [
-     "'aspect'"
+     "ee.Image().select().toFloat()"
     ],
     {}
    ],
    [
-    "ee.Terrain.products().select().rename",
+    "ee.Terrain.aspect().rename",
     [
      "'aspect'"
     ],
@@ -174,9 +165,9 @@
     "ee.Image.cat",
     [
      [
-      "ee.Terrain.products().select().rename()",
-      "ee.Terrain.products().select().rename()",
-      "ee.Terrain.products().select().rename()",
+      "ee.Image().select().toFloat().rename()",
+      "ee.Terrain.slope().rename()",
+      "ee.Terrain.aspect().rename()",
       "ee.Image().select().clip().gte().unmask().fastDistanceTransform().sqrt().multiply().rename()",
       "ee.ImageCollection().filterDate().sum().divide().rename()"
      ]
@@ -228,49 +219,40 @@
     {}
    ],
    [
-    "ee.Terrain.products",
-    [
-     "ee.Image().select()"
-    ],
+    "ee.Image().select().toFloat",
+    [],
     {}
    ],
    [
-    "ee.Terrain.products().select",
+    "ee.Image().select().toFloat().rename",
     [
      "'elevation'"
     ],
     {}
    ],
    [
-    "ee.Terrain.products().select().rename",
+    "ee.Terrain.slope",
     [
-     "'elevation'"
+     "ee.Image().select().toFloat()"
     ],
     {}
    ],
    [
-    "ee.Terrain.products().select",
-    [
-     "'slope'"
-    ],
-    {}
-   ],
-   [
-    "ee.Terrain.products().select().rename",
+    "ee.Terrain.slope().rename",
     [
      "'slope'"
     ],
     {}
    ],
    [
-    "ee.Terrain.products().select",
+    "ee.Terrain.aspect",
     [
-     "'aspect'"
+     "ee.Image().select().toFloat()"
     ],
     {}
    ],
    [
-    "ee.Terrain.products().select().rename",
+    "ee.Terrain.aspect().rename",
     [
      "'aspect'"
     ],
@@ -386,9 +368,9 @@
     "ee.Image.cat",
     [
      [
-      "ee.Terrain.products().select().rename()",
-      "ee.Terrain.products().select().rename()",
-      "ee.Terrain.products().select().rename()",
+      "ee.Image().select().toFloat().rename()",
+      "ee.Terrain.slope().rename()",
+      "ee.Terrain.aspect().rename()",
       "ee.Image().select().clip().gte().unmask().fastDistanceTransform().sqrt().multiply().rename()",
       "ee.ImageCollection().filterDate().sum().divide().rename()"
      ]
@@ -440,49 +422,40 @@
     {}
    ],
    [
-    "ee.Terrain.products",
-    [
-     "ee.Image().select()"
-    ],
+    "ee.Image().select().toFloat",
+    [],
     {}
    ],
    [
-    "ee.Terrain.products().select",
+    "ee.Image().select().toFloat().rename",
     [
      "'elevation'"
     ],
     {}
    ],
    [
-    "ee.Terrain.products().select().rename",
+    "ee.Terrain.slope",
     [
-     "'elevation'"
+     "ee.Image().select().toFloat()"
     ],
     {}
    ],
    [
-    "ee.Terrain.products().select",
-    [
-     "'slope'"
-    ],
-    {}
-   ],
-   [
-    "ee.Terrain.products().select().rename",
+    "ee.Terrain.slope().rename",
     [
      "'slope'"
     ],
     {}
    ],
    [
-    "ee.Terrain.products().select",
+    "ee.Terrain.aspect",
     [
-     "'aspect'"
+     "ee.Image().select().toFloat()"
     ],
     {}
    ],
    [
-    "ee.Terrain.products().select().rename",
+    "ee.Terrain.aspect().rename",
     [
      "'aspect'"
     ],
@@ -598,9 +571,9 @@
     "ee.Image.cat",
     [
      [
-      "ee.Terrain.products().select().rename()",
-      "ee.Terrain.products().select().rename()",
-      "ee.Terrain.products().select().rename()",
+      "ee.Image().select().toFloat().rename()",
+      "ee.Terrain.slope().rename()",
+      "ee.Terrain.aspect().rename()",
       "ee.Image().select().clip().gte().unmask().fastDistanceTransform().sqrt().multiply().rename()",
       "ee.ImageCollection().filterDate().sum().divide().rename()"
      ]

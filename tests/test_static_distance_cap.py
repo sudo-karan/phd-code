@@ -6,9 +6,11 @@ pixels (463,409.5 m at 10 m), not a distance. With the setting on, the band is c
 reach, 10 km. Off, nothing is capped and the stage makes the calls
 tests/data/features_static_off_calls.json holds for three shipped configs. They were recorded from
 the stage at commit 6ad5055 (main at 3a51763), before the setting existed, and recorded again in
-round 13, when the fix of review A1 gave the transform its own water input (all three cases
-changed there, in the water input's calls and the names made from them only). Earth Engine is
-replaced by the recorder of tests/_ee_recorder.py.
+round 13: when the fix of review A1 gave the transform its own water input (all three cases
+changed, in the water input's calls and the names made from them only), and when the fix of
+review A5 took slope and aspect from ee.Terrain.slope and ee.Terrain.aspect on the DEM as float
+(all three changed, in the terrain calls and the names made from them only).
+Earth Engine is replaced by the recorder of tests/_ee_recorder.py.
 """
 
 from __future__ import annotations

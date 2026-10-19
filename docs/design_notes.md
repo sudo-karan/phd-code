@@ -360,7 +360,12 @@ variant comparison stays controlled at Module 18).
 Five bands: elevation, slope, aspect, distance_to_water, annual_rainfall.
 
 `ee.Terrain.products()` computes slope and aspect from elevation. NASADEM
-is in meters per pixel, so slope comes out in degrees correctly.
+is in meters per pixel, so slope comes out in degrees correctly. (Since round
+13, 20 Oct 2026: slope and aspect come from `ee.Terrain.slope()` and
+`ee.Terrain.aspect()` on the DEM cast to float, in fractional degrees.
+`ee.Terrain.products()` gives them as whole degrees, integer bands, on an
+integer and on a float DEM alike, read on Earth Engine in round 13; review A5
+had inferred NASADEM's integer elevation as the cause.)
 
 `distance_to_water` measures to the water masking defines (JRC occurrence at
 `masking.jrc_water_occurrence_threshold`), through one function,

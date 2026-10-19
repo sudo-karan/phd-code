@@ -470,7 +470,9 @@ _STEP_OMITTED_AT_DEFAULT: dict[tuple[str, str], Any] = {}
 # step at once. Each raise has a register entry (docs/decisions.yaml).
 STEP_REVISION: dict[str, int] = {
     "data_load": 1,  # A4, round 13: the date windows' end is inclusive
-    "features_static": 1,  # A1, round 13: water seen past the ROI, out to the transform's reach
+    # A1, round 13: water seen past the ROI, out to the transform's reach (1);
+    # A5, round 13: slope and aspect in fractional degrees, on the DEM as float (2)
+    "features_static": 2,
 }
 
 # Steps that read another step's output without having it upstream, and so take

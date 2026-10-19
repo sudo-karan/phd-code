@@ -100,8 +100,13 @@ features via a CNN (Lang et al., 2023).
 `NASA/NASADEM_HGT/001`. Reprocessed SRTM, 30 m global elevation in
 meters.
 
-- **Derived bands via `ee.Terrain.products()`:** `elevation`, `slope`
-  (degrees), `aspect` (degrees 0-360).
+- **Derived bands:** `elevation`, `slope` (degrees), `aspect` (degrees
+  0-360). Since round 13 slope and aspect come from `ee.Terrain.slope()` and
+  `ee.Terrain.aspect()` on the DEM cast to float, in fractional degrees. The
+  runs before took them from `ee.Terrain.products()`, which gives them as
+  whole degrees (integer bands) on an integer and on a float DEM alike (read
+  on Earth Engine in round 13; review A5 had inferred the integer `elevation`
+  band as the cause).
 - **Aspect is cyclic.** It's emitted as raw degrees in `features_static`;
   the clustering stage converts to `aspect_sin` / `aspect_cos`
   before k-means. Euclidean distance on raw degrees would treat 0 and

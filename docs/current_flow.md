@@ -227,8 +227,8 @@ Per-pixel features that don't change meaningfully over the analysis time window:
 
 **Bands (default):**
 - `elevation`; meters above sea level (NASADEM)
-- `slope`; degrees (derived from elevation via `ee.Terrain.products`)
-- `aspect`; degrees 0-360, cyclic raw (derived from elevation)
+- `slope`; degrees, fractional (`ee.Terrain.slope` on the DEM cast to float, since round 13; the runs before took slope and aspect from `ee.Terrain.products`, which gives them in whole degrees on an integer and on a float DEM alike, read on Earth Engine in round 13; review A5)
+- `aspect`; degrees 0-360, cyclic raw, fractional (`ee.Terrain.aspect`, likewise)
 - `distance_to_water`; meters to nearest JRC water pixel, via `fastDistanceTransform` (see below)
 - `annual_rainfall`; mm/year mean from CHIRPS PENTAD over 1991-2020 climatology
 

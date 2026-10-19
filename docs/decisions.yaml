@@ -6597,3 +6597,57 @@ decisions:
   status: adopted
   design_notes_section: 'features_static: terrain + distance + climate'
   source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-static-terrain-on-a-float-dem
+  title: >-
+    Slope and aspect are computed with ee.Terrain.slope and ee.Terrain.aspect on the DEM cast to float, in fractional
+    degrees, and features_static's step revision is raised to 2
+  decision: >-
+    src/fmu/stages/features_static.py (a Locked module) casts NASADEM's elevation band to float and takes slope from
+    ee.Terrain.slope and aspect from ee.Terrain.aspect on it, in fractional degrees; elevation is the DEM's band as
+    float, its values unchanged. ee.Terrain.products, which gave the three bands before round 13, is no longer used.
+    fmu.utils.caching (Locked) raises features_static's step revision to 2 (1 was review A1's, the same day): its key
+    moves in all 74 configs under configs/, and the clustering and k_elbow keys of the 52 hand-crafted ones; the
+    legacy fingerprints do not move. This is the first half of review A5's fix; the second half, a flat cell's aspect,
+    is spec-clustering-flat-cells-have-no-aspect.
+  alternatives_considered:
+  - >-
+    Give ee.Terrain.products the DEM cast to float, the review's inferred fix (and the fix as first written in round
+    13): not chosen. A read-only check on Earth Engine found that ee.Terrain.products gives slope and aspect as integer
+    bands on the float DEM too, so the cast alone changes nothing
+  - >-
+    Keep the terrain as it is and declare whole degrees: not chosen; the brief asks for the terrain on a float DEM
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 2: "A5: compute the terrain on a float DEM; give flat cells no
+    aspect direction (zero vector). One read-only bandTypes() call to confirm the type is allowed." Review A5
+    (docs/reviews/2026-10-19-review.md): in the committed _r9 and tile layers all 689 one-pixel stands have
+    whole-number slope, aspect and elevation, while the float bands of the same asset keep their decimals, so the three
+    smallest gradients (0.93, 0.99 and 1.36 degrees) all read 1; the review inferred NASADEM's integer elevation as the
+    cause. Two read-only calls on Earth Engine (calls 1 and 2 of the round 13 record, 19 Oct 2026) found the cause
+    elsewhere: ee.Terrain.products gives slope and aspect as int bands (slope 0 to 90, aspect 0 to 359) on the integer
+    DEM and on the DEM cast to float alike, while ee.Terrain.slope and ee.Terrain.aspect give float bands on both, with
+    the same values on both (at one Angul pixel slope 14.976821606934545 and aspect 244.93915812599607, where the
+    products give 15 and 245). So the stage casts the DEM, as the brief asks, and uses the two functions. In the Angul
+    _r9 hand-crafted layer seven stands share the rounded minimum slope of exactly 1, and all 18 one-pixel stands have
+    whole-number slope and aspect (checked from the committed layer). The new test (tests/test_static_terrain.py)
+    fails on the code before and on the cast alone (ee.Terrain.products on the DEM as float), and passes after. The
+    off-path golden of tests/test_static_distance_cap.py was recorded again: 3 of 3 cases changed, in the terrain
+    calls and the names made from them only. No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/features_static.py
+    what: ee.Terrain.slope and ee.Terrain.aspect on the DEM cast to float
+  - path: src/fmu/utils/caching.py
+    what: STEP_REVISION, features_static at revision 2
+  - path: tests/test_static_terrain.py
+    what: The terrain calls, on the DEM as float; ee.Terrain.products not used
+  - path: tests/data/features_static_off_calls.json
+    what: The off-path golden, recorded again
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Read-only Earth Engine calls 1 and 2, the band types of the terrain
+  - path: docs/design_notes.md
+    what: 'Section ''features_static: terrain + distance + climate'', paragraph 2'
+  - path: docs/reviews/2026-10-19-review.md
+    what: A5
+  papers: []
+  status: adopted
+  design_notes_section: 'features_static: terrain + distance + climate'
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)

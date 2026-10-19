@@ -6,8 +6,9 @@ clustering purposes, as are elevation/slope/aspect.
 
 Bands (with default config):
 - elevation: meters above sea level (NASADEM)
-- slope: degrees (derived from elevation)
-- aspect: degrees 0-360, cyclic (derived from elevation)
+- slope: degrees, fractional (ee.Terrain.slope on the DEM as float; whole
+  degrees from ee.Terrain.products until round 13, review A5)
+- aspect: degrees 0-360, cyclic, fractional (ee.Terrain.aspect, likewise)
 - distance_to_water: meters to nearest JRC water pixel, looked for within
   features_static.max_water_distance_pixels (10 km by default). Off the axes
   the search reaches a little past 10 km (real distances up to 12.3 km in the
@@ -114,12 +115,16 @@ class FeaturesStaticStage(Stage):
         roi = ctx.get("roi")
         params = config.features_static
 
-        # Terrain: elevation, slope, aspect from NASADEM
-        dem = ee.Image(config.datasets.dem).select("elevation")
-        terrain = ee.Terrain.products(dem)
-        elevation = terrain.select("elevation").rename("elevation")
-        slope = terrain.select("slope").rename("slope")
-        aspect = terrain.select("aspect").rename("aspect")
+        # Terrain: elevation, slope and aspect from NASADEM. Slope and aspect come
+        # from ee.Terrain.slope and ee.Terrain.aspect on the DEM cast to float, in
+        # fractional degrees. Until round 13 they came from ee.Terrain.products,
+        # which gives them as whole degrees (integer bands) on an integer and on a
+        # float DEM alike (read on Earth Engine in round 13; review A5). Elevation
+        # keeps the DEM's values, as a float band.
+        dem = ee.Image(config.datasets.dem).select("elevation").toFloat()
+        elevation = dem.rename("elevation")
+        slope = ee.Terrain.slope(dem).rename("slope")
+        aspect = ee.Terrain.aspect(dem).rename("aspect")
 
         # Distance to water: fast distance transform on JRC water, built over the
         # ROI buffered by the transform's reach so that water outside the ROI is
