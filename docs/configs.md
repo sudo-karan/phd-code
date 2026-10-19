@@ -63,7 +63,7 @@ directly. It's around 300 lines and self-documenting.
 | `masking` | Habitat class definition (IndiaSAT primary, WorldCover fallback) + water threshold | `masking`; the water threshold also `features_static` |
 | `features_*` | Per-feature-stage toggles and parameters | The matching `features_*` stage |
 | `segmentation` | SNIC parameters *and its input band stack* | `segmentation`, `pipeline.default_stage_names` |
-| `merge` | Stand-aggregation rules and area bounds | `merge`; also derives the `reduceConnectedComponents` cap used by `clustering` and `metrics` |
+| `merge` | Stand-aggregation rules and area bounds | `merge`; also derives the `reduceConnectedComponents` cap used by `metrics` (and by `clustering` until round 13) |
 | `clustering` | k-means hyperparameters and preprocessing | `clustering` |
 | `normalization` | `robust` vs `zscore` scaling | `clustering` |
 | `features` | High-level on/off toggles per feature family | Currently informational; future use |
@@ -496,7 +496,10 @@ now derived as `ceil(merge.max_area_ha × 10000 / analysis_scale_m²) × 1.2`
 (1200 px at the defaults), with `merge.max_area_ha + merge.min_area_ha` in place
 of `merge.max_area_ha` when `merge.pass2_soft_ceiling` is on (1320 px at the
 defaults), and asserted against the actual labels at stage entry, so an
-undersized cap raises instead of deleting stands.
+undersized cap raises instead of deleting stands. Since round 13 the clustering
+stage's unit means no longer call `reduceConnectedComponents` (review B14): it
+takes one mean per stand label with a grouped reduction, which has no size cap,
+so the cap is the metrics stage's alone.
 
 ### `merge`
 

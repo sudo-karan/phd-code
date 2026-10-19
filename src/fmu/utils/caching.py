@@ -434,9 +434,12 @@ STEP_SETTINGS: dict[str, tuple[str, ...]] = {
         "merge", "segmentation.mask_before_snic", "segmentation.connectivity",
         "segmentation.drop_kept_patches_below_min_area",
     ),
-    # merge.max_area_ha, min_area_ha and pass2_soft_ceiling through
-    # Config.max_component_pixels(), which clustering reads with the merge on
-    # or off (with it on, the merge's own key covers them too).
+    # merge.max_area_ha, min_area_ha and pass2_soft_ceiling for
+    # Config.max_component_pixels(), which clustering read, with the merge on or
+    # off, until round 13 (review B14 took its reduceConnectedComponents call
+    # out). They stay listed: taking them out would change every config's
+    # clustering key, which tests/test_step_keys_of_record.py pins with the
+    # revisions emptied; with the merge on, the merge's own key covers them too.
     "clustering": (
         "clustering", "normalization", "merge.enabled", "merge.max_area_ha",
         "merge.min_area_ha", "merge.pass2_soft_ceiling",
@@ -474,8 +477,9 @@ STEP_REVISION: dict[str, int] = {
     # A5, round 13: slope and aspect in fractional degrees, on the DEM as float (2)
     "features_static": 2,
     # Round 13. 1, A5: a flat cell's aspect sin and cos are both 0. 2, B13: a harmonic
-    # phase's sin and cos are kept out of the skew test and the log.
-    "clustering": 2,
+    # phase's sin and cos are kept out of the skew test and the log. 3, B14: one mean
+    # per unit label, not per connected piece.
+    "clustering": 3,
 }
 
 # Steps that read another step's output without having it upstream, and so take

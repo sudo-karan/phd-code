@@ -337,9 +337,10 @@ because all its cacheable outputs were cached. The stage's `run()`
 method didn't execute; the cached assets were loaded into the context
 and the stage was marked done.
 
-### Clustering stage metadata: unit sizes and the reduction neighbourhood
+### Clustering stage metadata: unit sizes and the reduction neighbourhood (until round 13)
 
-Recorded on every live clustering run, including when every check passes:
+Recorded on every live clustering run made before round 13, including when every
+check passed:
 
 | Key | Meaning |
 |---|---|
@@ -354,6 +355,11 @@ narrow the neighbourhood. That happens with an elongated stand, or a label
 reused across disjoint places, which logs a WARNING. A wide band stack may then
 run out of memory, as it did before the measurement existed. These keys are in
 the stage metadata only, not in `clustering_metadata`.
+
+Since round 13 the clustering stage takes one mean per unit label with a grouped
+reduction and calls `reduceConnectedComponents` no longer (review B14), so a run
+records none of the five keys; manifests of earlier runs keep them. The number of
+distinct unit labels is in `clustering_metadata` as `n_units_total`.
 
 The stage metadata also holds `fit_excludes_stands_below_min_area`, true or
 false, on every run that computes the clustering stage: whether the stands

@@ -50,13 +50,19 @@ def offline_ee():
 
 
 def _expanded(encoded: dict[str, Any]) -> dict[str, Any]:
-    """An encoded expression as one tree: each `valueReference` replaced by its value."""
+    """An encoded expression as one tree: each `valueReference` replaced by its value, and
+    the body of each function definition (a key of the same table) by the body itself. A
+    function is mapped over a list since review B14 (the unit means)."""
     values = encoded["values"]
 
     def expand(node: Any) -> Any:
         if isinstance(node, dict):
             if set(node) == {"valueReference"}:
                 return expand(values[node["valueReference"]])
+            if set(node) == {"functionDefinitionValue"}:
+                definition = node["functionDefinitionValue"]
+                body = expand(values[definition["body"]])
+                return {"functionDefinitionValue": {**definition, "body": body}}
             return {key: expand(value) for key, value in node.items()}
         if isinstance(node, list):
             return [expand(value) for value in node]
@@ -85,11 +91,12 @@ def _invocations(node: Any) -> list[tuple[str, dict[str, Any]]]:
 
 
 def _remaps(node: Any) -> list[tuple[Any, Any, Any]]:
-    """(from, to, defaultValue) of every Image.remap in a tree."""
+    """(from, to, defaultValue) of every Image.remap in a tree that masks stands: one with a
+    default value. The unit means remap the labels too (review B14), with no default."""
     return [
         (a["from"]["constantValue"], a["to"]["constantValue"], a["defaultValue"]["constantValue"])
         for name, a in _invocations(node)
-        if name == "Image.remap"
+        if name == "Image.remap" and "defaultValue" in a
     ]
 
 
@@ -125,11 +132,7 @@ def _run(ee: Any, monkeypatch: Any) -> tuple[Any, dict[str, list[Any]]]:
         requested.setdefault(context, []).append(encoded)
         return answer(obj, context)
 
-    def components_fit(labels: Any, roi: Any, scale: int, max_size: int, *, context: str) -> dict[str, int]:
-        return {"n_components": 25, "largest_component_px": 280, "max_component_px_cap": max_size}
-
     monkeypatch.setattr(clustering_module, "safe_get_info", get_info)
-    monkeypatch.setattr(clustering_module, "assert_components_fit", components_fit)
 
     ctx = PipelineContext()
     ctx.set("roi", ee.Geometry.Rectangle([82.80, 18.50, 82.85, 18.55]))

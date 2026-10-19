@@ -994,10 +994,11 @@ def _build_merged_feature_collection(
     by its share inside the polygon, and until round 13 the stands with no row
     and those left out of the fit still did. On the analysis grid a polygon
     touches only its own stand's pixels, so the vote and the row's type agree,
-    except on the pieces of a stand whose pieces carry different types, which now
-    all take one, and on a piece with no typed pixel of a stand that has a row
-    elsewhere, which was null and now takes the stand's type; on the legacy cache
-    layout the vote could take in slivers of a neighbour's pixels.
+    except on the pieces of a stand whose pieces carry different types (cluster
+    labels made before round 13), which now all take one, and on a piece with no
+    typed pixel of a stand that has a row elsewhere, which was null and now takes
+    the stand's type; on the legacy cache layout the vote could take in slivers of
+    a neighbour's pixels.
 
     `region` (default: the ROI) is the area vectorised: one part of the ROI when
     the layer is built a part at a time (`_layer_by_part`).
@@ -1057,19 +1058,21 @@ def _stand_row_types(
 ) -> ee.Dictionary:
     """{stand label as "%d": its row's type} for every stand with a typed pixel.
 
-    The clustering stage averages the features over each connected piece of a
-    stand (reduceConnectedComponents), trains k-means on one row per stand (the
-    means at one of its pixels inside the habitat mask where no band is
-    missing, drawn at random) and then types every pixel of the image those rows
-    were drawn from. A stand in one piece has the same means at each of its
-    pixels, so every typed pixel of it carries the type the fitted clusters give
-    its row, and on the analysis grid it has typed pixels exactly when it has a
-    row: the commonest type over its own typed pixels is its row's type. A stand
-    in several pieces can carry different types on different pieces, and its row
-    is on one of them; for it this gives the commonest type over its typed
-    pixels, which is its row's type unless the row was drawn on a piece of
-    another type (the clustering stage does not record which pixel it drew;
-    question 3 of docs/handoff/2026-10-19-round12.md). Grouped by label, not
+    The clustering stage averages the features over each stand, all of its
+    pieces together, trains k-means on one row per stand (the means at one of
+    its pixels inside the habitat mask where no band is missing, drawn at
+    random) and then types every pixel of the image those rows were drawn from.
+    A stand has the same means at each of its pixels, so every typed pixel of it
+    carries the type the fitted clusters give its row, and on the analysis grid
+    it has typed pixels exactly when it has a row: the commonest type over its
+    own typed pixels is its row's type. Until round 13 the clustering stage
+    averaged each connected piece of a stand on its own (reduceConnectedComponents;
+    review B14), so in its cluster labels a stand in several pieces can carry
+    different types on different pieces, with its row on one of them; for it
+    this gives the commonest type over its typed pixels, which is its row's type
+    unless the row was drawn on a piece of another type (the clustering stage
+    does not record which pixel it drew; question 3 of
+    docs/handoff/2026-10-19-round12.md). Grouped by label, not
     voted over the polygon: only the stand's own pixels count. On the legacy
     cache layout the type image lies on another grid than the labels, so a
     stand's pixels there are those whose centres it holds on the type grid: a

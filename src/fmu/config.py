@@ -967,9 +967,10 @@ class Config(BaseModel):
     def max_component_pixels(self) -> int:
         """Upper bound on `maxSize` for every `reduceConnectedComponents` call.
 
-        metrics passes it as is; clustering passes a measured unit extent at or
-        below it, because EE pads every tile by `maxSize` (see
-        `clustering._component_neighbourhood_px`).
+        metrics passes it as is (the confidence layer, and the explained variance
+        of `utils.components`). clustering passed a measured unit extent at or
+        below it until round 13, when its unit means stopped calling
+        reduceConnectedComponents (review B14).
 
         Derived rather than configured. This argument does not clamp -- it
         **masks any component larger than it**, silently deleting those regions

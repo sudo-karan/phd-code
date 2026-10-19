@@ -255,8 +255,9 @@ class MergeStage(Stage):
         # The cap is derived from merge.max_area_ha (plus merge.min_area_ha with
         # merge.pass2_soft_ceiling on), so checking it against the *input*
         # superpixels is the weaker half; the output stands are checked where
-        # they are reduced over, by clustering and metrics, which is where a
-        # violation would actually bite.
+        # they are reduced over with the cap, by metrics, which is where a
+        # violation would actually bite. (clustering did too until round 13,
+        # when its unit means stopped calling reduceConnectedComponents.)
         max_component_px = config.max_component_pixels()
         assert_components_fit(
             snic_clusters, roi, scale, max_component_px, context="merge input"

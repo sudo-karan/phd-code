@@ -1843,7 +1843,9 @@ decisions:
 - id: dn-cluster-on-unit-means-dec-001
   title: Average features per superpixel before clustering (DEC-001)
   decision: >-
-    Average each feature within a SNIC superpixel and cluster those means, not raw pixels.
+    Average each feature within a SNIC superpixel and cluster those means, not raw pixels. (Round 13: the means
+    are taken per unit label over all of its pixels, spec-clustering-one-mean-per-unit-label; the test the evidence
+    names, test_run_passes_measured_neighbourhood_to_superpixel_means, was removed with the measured neighbourhood.)
   alternatives_considered:
   - clustering on raw pixels
   rationale: >-
@@ -2966,7 +2968,8 @@ decisions:
     Before averaging features per unit, the stage measures the widest unit extent in pixels in two grids
     (the feature image's and the label image's) and passes min(cap, ceil(widest x 1.2) + 2) as maxSize.
     If the measurement returns nothing while labels exist, the stage raises an error and does not fall
-    back to the cap.
+    back to the cap. (Superseded in round 13: the stage no longer calls reduceConnectedComponents, so the
+    measured neighbourhood is removed; one mean per unit label, spec-clustering-one-mean-per-unit-label.)
   alternatives_considered:
   - >-
     Passing the derived cap (1200 px) directly, as before: ran out of memory on the 64-band AlphaEarth
@@ -3013,7 +3016,7 @@ decisions:
   - path: tests/test_components_guard.py
     what: Tests of the size guard.
   papers: []
-  status: adopted
+  status: superseded
   design_notes_section: null
   source: >-
     docs/pending_decisions/clustering_rcc_neighbourhood.md; src/fmu/stages/clustering.py _component_neighbourhood_px()
@@ -6884,6 +6887,109 @@ decisions:
     what: B13, and C9
   - path: docs/handoff/2026-10-20-round13.md
     what: Task 4, B13
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-clustering-one-mean-per-unit-label
+  title: >-
+    The clustering stage takes one mean per unit label over all of its pixels, not one per connected piece, and no
+    longer calls reduceConnectedComponents
+  decision: >-
+    The clustering stage's _compute_superpixel_means (src/fmu/stages/clustering.py, a Locked module) takes one mean per
+    unit label (a stand, or a superpixel when the merge is off) over every pixel the label has in the ROI, whether the
+    unit is in one piece or in several: one grouped reduction of the decomposed stack by the label image
+    (ee.Reducer.sum().unweighted().forEachBand(...).group(...), in the label image's grid at the analysis scale,
+    maxPixels 1e9, no bestEffort), then each band painted back on the label image with remap, server-side, so that no
+    mean is read back. A band's mean is over the unit's pixels where that band has data, and every pixel of the unit
+    holds it: each band goes into the reduction unmasked, 0 where it has no data, beside a band of 1 where it has
+    data, and the mean is the one sum over the other, since Earth Engine's grouped unweighted reducers add a band's
+    masked pixels into the sum they give a group. A unit with no data in a band is masked in that band and so has no
+    k-means row (reduceConnectedComponents gave it 0 there, read on Earth Engine on synthetic images). The stage no
+    longer calls reduceConnectedComponents, which averaged each 8-connected piece of a label on its own, and what
+    existed only for its maxSize is removed: the measured neighbourhood (_component_neighbourhood_px,
+    _neighbourhood_from_groups and their three constants), the stage's check of the labels against the cap
+    (assert_components_fit, which stays in src/fmu/utils/components.py for the merge and metrics stages), and the five
+    stage-metadata keys that described them (n_components, largest_component_px, max_component_px_cap,
+    rcc_neighbourhood_px, widest_unit_extent_px). clustering_metadata is unchanged. Comments and docstrings that the
+    change made untrue are corrected in src/fmu/config.py (max_component_pixels), src/fmu/utils/caching.py (why
+    clustering's key still lists merge.max_area_ha, merge.min_area_ha and merge.pass2_soft_ceiling: taking them out
+    would change every recorded key), src/fmu/stages/merge.py (which stage checks the output stands against the cap)
+    and src/fmu/stages/export.py (_stand_row_types), all Locked; none of them changes a computation. Clustering's
+    revision is raised to 3 (STEP_REVISION), which moves the clustering and k_elbow keys of every config and no other
+    key.
+  alternatives_considered:
+  - >-
+    Relabel each piece as a unit of its own before clustering, the review's other suggestion: not chosen. The brief
+    asks for one mean per stand, and the merge, the export and the fit's rows all treat a label as one stand
+  - >-
+    Keep reduceConnectedComponents: not chosen, since it averages per connected piece by definition
+  - >-
+    ee.Reducer.mean().repeat(n), with each band's means taken out of the list by position: not chosen. A unit with
+    no data in a band would leave a gap in that list, and how Earth Engine leaves it was not checked; forEachBand
+    names each sum by its band, so the units without data in a band are filtered out by name
+  - >-
+    A grouped unweighted mean of the masked bands (ee.Reducer.mean().unweighted().forEachBand(...).group(...)), the
+    change as first written in round 13: not chosen. Its live test, run read-only on 20 Oct 2026, failed: Earth
+    Engine's grouped unweighted reducers add a band's masked pixels into the group's sum, though their count leaves
+    them out, so a band with data on 16 of a unit's 32 pixels came out 83.25 where the mean of its data is 82.5 (its
+    sum 2,664 against 1,320), and a unit with no data in a band got a mean of 0
+  - >-
+    A grouped weighted mean (no unweighted): masks each band rightly (82.5, and no mean for a unit with no data, read
+    on Earth Engine), but at the ROI's edge it takes in every pixel the ROI touches, weighted by the share of it
+    inside, where the merge's counts take the pixels whose centre is inside, each once (review B17): not chosen
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 4: "B14 (one mean per stand, not per piece)". The review
+    (docs/reviews/2026-10-19-review.md, B14) found that reduceConnectedComponents aggregates per 8-connected piece, not
+    per label, so a stand in several pieces had one mean per piece, its k-means row came from one random piece, and it
+    could get two types, while the docstrings said every pixel holds the mean of its unit. The new test fails on the
+    code before the change with "assert {1.0, 6.0} == {2.0}" (a stand in two pieces held two means) and passes after
+    it; for each stand in one piece it gives the means reduceConnectedComponents gives on the same numpy stand-in
+    stack. The reduction is unweighted, so that each pixel whose centre is in the ROI counts once, as in
+    reduceConnectedComponents, not by the share of it the ROI covers, and it is taken in the label image's own grid,
+    so that the pixels averaged are the unit's own (every cached image of a per-step run is on the analysis grid).
+    tests/test_clustering_unit_means_live.py checks the calls on Earth Engine, read-only, on synthetic images. Run on
+    20 Oct 2026 against the change as first written (a grouped unweighted mean of the masked bands) it failed, and the
+    read-only checks recorded in docs/handoff/2026-10-20-round13.md found why: a grouped unweighted sum of a band with
+    data on 16 of a unit's 32 pixels came out 2,664 where its 16 values sum to 1,320, while a weighted one, an
+    ungrouped unweighted one and a grouped unweighted sum of an unmasked band came out right (an edge that cuts pixels
+    gave the sum of the 12 pixels whose centre is inside, 138). With the bands summed unmasked beside their bands of
+    data the live test passes: one mean over unit 1's two pieces (54.5); the mean of unit 3's pixels with data in band
+    b (82.5) on all of its pixels; unit 4 masked in b; the means of reduceConnectedComponents for every unit in one
+    piece where both give one; double precision. On the same images reduceConnectedComponents gave unit 4, which has
+    no data in b, the value 0 in b on all of its pixels, unmasked: before round 13 such a unit had a k-means row with a
+    0 it never measured, where now it has none, as the stage's warning about units without a row describes. Whether a
+    unit of the runs of record had no data in a band was not checked; their manifests count 1 to 10 units per run
+    dropped for a null band, so some came through masked. The offline stand-ins (tests/_ee_arrays.py) now refuse a
+    band masked on part of a group in an unweighted grouped reduction, so the first version fails offline too. In the
+    committed runs 0 to 5 stands per 3 ha _r9 run and 0 to 7 per 10 ha round 12 run are in several
+    pieces, two at most each (n_stands_split_into_pieces in their export manifests): their means change, and through
+    the fit the types of other stands may move; this needs Earth Engine and was not measured. A label that SNIC
+    reuses in two places (review B3) is now one unit in the clustering, as it already was in the merge. At district
+    scale (out of scope this round: B1 to B3) the grouped reduction holds one dictionary of means per unit and each
+    remap a list as long as the units, which may meet Earth Engine's memory limits; not measured. No paper was
+    searched for this decision.
+  evidence:
+  - path: src/fmu/stages/clustering.py
+    what: _compute_superpixel_means; step 3 of ClusteringStage.run; the stage metadata
+  - path: src/fmu/utils/caching.py
+    what: STEP_REVISION, clustering at 3; the comment on clustering's settings
+  - path: tests/test_clustering_one_mean_per_unit.py
+    what: >-
+      A stand in two pieces has one mean, and a stand in one piece the means reduceConnectedComponents gave, on numpy
+      stand-ins (tests/_ee_arrays.py); fails on the code before the change
+  - path: tests/test_clustering_unit_means_live.py
+    what: >-
+      The same on Earth Engine, on synthetic images, read-only (live tier); passes on the sums, failed on the grouped
+      unweighted mean of the masked bands
+  - path: tests/data/clustering_off_calls.json
+    what: The recorded calls of the three configs, and their stage metadata without the five keys
+  - path: docs/outputs.md
+    what: Clustering stage metadata, the five keys recorded until round 13
+  - path: docs/reviews/2026-10-19-review.md
+    what: B14
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 4, B14
   papers: []
   status: adopted
   design_notes_section: null
