@@ -9,7 +9,8 @@ link to this checkout's package, so the wrapper reads the configs with the real 
 
 `start()` runs the real wrapper's main() in a process of its own, with POLL_S made small by setting
 the module attribute before main() runs, and with a `sleep` on PATH that sleeps 0.05 s whatever it
-is asked, for the shell script's `sleep 60`. Neither script is changed. HOME is a temporary folder.
+is asked, for the shell script's `sleep 60`. Neither script is changed. HOME is a temporary folder,
+and SIGTERM, SIGHUP and SIGINT are as a terminal leaves them (or SIGHUP ignored, as under nohup).
 
 The stand-ins share one folder (`self.ee`, $FAKE_EE_DIR):
 
@@ -203,11 +204,17 @@ if __name__ == "__main__":
 assert "FEATURE_OUTPUTS = (" in FAKE_RUNNER and "DRIVE_FILES = (" in FAKE_RUNNER
 
 # Runs the real wrapper's main(), with POLL_S set first. argv: the wrapper's path, then its arguments.
+# The signals are first set as a terminal leaves them, or as nohup does (SIGHUP ignored), whatever
+# they were in the process that runs the tests.
 DRIVER = '''
 import importlib.util
 import os
+import signal
 import sys
 
+signal.signal(signal.SIGTERM, signal.SIG_DFL)
+signal.signal(signal.SIGHUP, signal.SIG_IGN if os.environ["HARNESS_NOHUP"] else signal.SIG_DFL)
+signal.signal(signal.SIGINT, signal.default_int_handler)
 path = sys.argv[1]
 spec = importlib.util.spec_from_file_location("run_passes_safely", path)
 wrapper = importlib.util.module_from_spec(spec)
@@ -287,10 +294,13 @@ class Harness:
 
     # ---------- the wrapper ----------
 
-    def start(self, *args: str, label: str = "batch", import_s: float = 0.0) -> subprocess.Popen:
-        """The real wrapper's main() in a process group of its own, as a terminal starts it."""
+    def start(self, *args: str, label: str = "batch", import_s: float = 0.0,
+              nohup: bool = False) -> subprocess.Popen:
+        """The real wrapper's main() in a process group of its own, as a terminal starts it (or
+        with SIGHUP ignored, as nohup starts it)."""
         env = {**os.environ, "HOME": str(self.home), "FAKE_EE_DIR": str(self.ee),
                "FAKE_EE_IMPORT_S": str(import_s), "HARNESS_POLL_S": "0.1",
+               "HARNESS_NOHUP": "1" if nohup else "",
                "PATH": f"{self.bin}{os.pathsep}{os.environ.get('PATH', '')}"}
         # Its output goes to a file, not a pipe: the shell script and the runner inherit it, and a
         # pipe would stay open for as long as they run.

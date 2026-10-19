@@ -28,7 +28,13 @@ start without it (round 12), so the script is started only from here. It also:
   - allows one batch at a time on this machine: before anything else it takes an exclusive
     lock (fcntl.flock) on ~/.fmu/run_passes_safely.lock, whatever the run tree or the log
     folder, and refuses to start (exit 90) while another batch holds it. The kernel lets go
-    of the lock when the batch ends, however it ends (round 13, review B6 and B7);
+    of the lock when the batch ends, however it ends (round 13, review B6 and B7). The shell
+    script and the runner hold it too, so it is free only once every process of the batch
+    has ended, even if this wrapper is killed with kill -9 (B5);
+  - passes SIGTERM, SIGHUP and SIGINT (Ctrl-C) on to the shell script and the runner, which
+    run in a process group of their own, waits for them to end, records the pass and stops
+    (exit 128 plus the signal's number). A signal that was ignored when the batch started
+    (nohup, or SIGINT in a background job) stays ignored (round 13, review B5);
   - runs from a "run tree": a checkout whose tracked files are unmodified. A multi-hour run
     started from a working tree that is being edited executes whatever half-finished code
     is on disk when each stage starts. Use a clean clone pinned to one commit;
@@ -42,12 +48,15 @@ directory). NEEDS LIVE EARTH ENGINE and submits tasks.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import fcntl
 import json
 import os
 import re
+import signal
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -58,6 +67,8 @@ POLL_S = 60
 STARTED_BY_THE_WRAPPER = "RUN_PASSES_SAFELY"
 # One batch at a time on this machine, whatever its run tree and log folder (review B7).
 LOCK_FILE = Path(".fmu") / "run_passes_safely.lock"  # under the home folder
+# Passed on to the shell script and the runner (review B5).
+STOP_SIGNALS = (signal.SIGTERM, signal.SIGHUP, signal.SIGINT)
 
 
 def pass_env(python: str, run_tree: Path) -> dict[str, str]:
@@ -85,6 +96,18 @@ def take_lock(path: Path) -> int | None:
     os.ftruncate(fd, 0)
     os.write(fd, str(os.getpid()).encode())
     return fd
+
+
+def wait_for_group(pgid: int) -> None:
+    """Until no process of the group is left: the runner can outlive the shell script. macOS
+    refuses to signal a group of which only zombies are left (EPERM); they run nothing and hold
+    no file, so the group has ended."""
+    while True:
+        try:
+            os.killpg(pgid, 0)
+        except (ProcessLookupError, PermissionError):
+            return
+        time.sleep(0.1)
 
 
 def main() -> int:
@@ -173,22 +196,43 @@ def main() -> int:
                 out.append(d)
         return out
 
-    def wait_until_idle(names: list[str], why: str) -> None:
+    stop = threading.Event()  # set by a signal: no pass starts after it
+    stopped_by: list[int] = []
+    child: list[subprocess.Popen] = []  # the shell script, while a pass runs
+
+    def on_signal(signum: int, frame: object) -> None:
+        # Passed on to the shell script and the runner (review B5): they run in a process group of
+        # their own, so a Ctrl-C in the terminal reaches this process only, and the pass loop
+        # waits for them to end before it records the pass and stops. Nothing is raised here, so
+        # no write of the log or the state file is cut short.
+        stopped_by.append(signum)
+        stop.set()
+        if child:
+            with contextlib.suppress(ProcessLookupError):
+                os.killpg(child[0].pid, signum)
+
+    for s in STOP_SIGNALS:
+        if signal.getsignal(s) is not signal.SIG_IGN:  # one ignored at the start stays so (nohup)
+            signal.signal(s, on_signal)
+
+    def wait_until_idle(names: list[str], why: str) -> bool:
+        """True once no task of `names` is queued or running; False if the batch is stopped first."""
         last_said = 0.0
-        while True:
+        while not stop.is_set():
             try:
                 a = active(names)
             except Exception as e:  # noqa: BLE001 - a failed poll is retried, never read as "idle"
                 say(f"queue check failed ({str(e)[:120]}); retrying in {POLL_S} s")
-                time.sleep(POLL_S)
+                stop.wait(POLL_S)
                 continue
             if not a:
-                return
+                return True
             if time.time() - last_said > 600:
                 say(f"{why}: {len(a)} task(s) of these configs still queued or running; "
                     f"waiting (for example {a[0]})")
                 last_said = time.time()
-            time.sleep(POLL_S)
+            stop.wait(POLL_S)
+        return False
 
     remaining = [c for c in args.configs if c not in skipped]
     done: list[str] = []
@@ -235,16 +279,25 @@ def main() -> int:
             say(f"{name_of[c]}: skipped, {why}")
         env = pass_env(args.python, rt)
         for p in range(1, args.passes + 1):
-            if not remaining:
+            if not remaining or stop.is_set():
                 break
             names = [name_of[c] for c in remaining]
-            wait_until_idle(names, f"before pass {p}")
+            if not wait_until_idle(names, f"before pass {p}"):
+                break
             n0 = len(log_path.read_text().splitlines())
             say(f"pass {p}: {' '.join(names)}")
             running[:] = [p, n0]
-            rc = subprocess.run(
+            # A process group of its own, and the lock's descriptor, which the runner inherits
+            # too: the lock stays held for as long as any of them runs (review B5).
+            child[:] = [subprocess.Popen(
                 ["bash", "odisha_script/run_config_passes.sh", str(log_path), *remaining],
-                cwd=rt, env=env).returncode
+                cwd=rt, env=env, start_new_session=True, pass_fds=(lock_fd,))]
+            if stop.is_set():  # a signal while the pass was starting
+                with contextlib.suppress(ProcessLookupError):
+                    os.killpg(child[0].pid, stopped_by[0])
+            rc = child[0].wait()
+            wait_for_group(child[0].pid)
+            child.clear()
             running.clear()
             read_pass(p, rc, n0)
             say(f"pass {p} exit={rc}; finished: {[name_of[c] for c in done]}; "
@@ -252,10 +305,14 @@ def main() -> int:
                 f"needs attention: {[name_of[c] for c in attention]}")
         held_back = [c for c in skipped if name_of[c] not in done_before]
         ok = not remaining and not attention and not held_back
+        if stopped_by:
+            say(f"batch {args.label} ended: NOT ALL COMPLETE "
+                f"(stopped by {signal.Signals(stopped_by[0]).name})")
+            return 128 + stopped_by[0]
         say(f"batch {args.label} ended: {'ALL CONFIGS COMPLETE' if ok else 'NOT ALL COMPLETE'}")
         return 0 if ok else 1
     finally:
-        if running:  # a pass cut short (Ctrl-C): the configs it finished are done all the same
+        if running:  # a pass cut short by an error here: what it finished is done all the same
             read_pass(running[0], None, running[1])
         save()
         os.close(lock_fd)  # lets go of the lock; the file stays, as removing it would open a race

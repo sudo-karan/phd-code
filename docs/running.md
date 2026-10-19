@@ -373,7 +373,13 @@ finished, so do not list a finished config in it. It does not retry a config
 whose export stage failed, allows one batch at a time on the machine (before
 anything else it takes a lock on `~/.fmu/run_passes_safely.lock`, whatever the
 run tree or the log folder, and refuses to start, exit 90, while another batch
-holds it), and refuses a run tree with modified tracked files. Config paths are
+holds it), and refuses a run tree with modified tracked files. Ctrl-C, SIGTERM
+and SIGHUP reach the shell script and the runner too: the wrapper passes them
+on, waits for both to end, records the pass and stops (exit 128 plus the
+signal's number). The two run in a process group of their own and hold the lock
+as well, so if the wrapper itself is killed (`kill -9`) they run on, and no new
+batch starts until they have ended. A signal ignored when the batch started
+(under `nohup`) stays ignored. Config paths are
 relative to the run tree, which needs its own `.env`. It writes
 `<log-dir>/<label>.log` and `<label>.state.json` (the commit it ran from and
 each pass's per-stage exit codes); `--log-dir` defaults to `<run-tree>/logs`,

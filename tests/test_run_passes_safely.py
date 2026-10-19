@@ -18,7 +18,7 @@ from pathlib import Path
 
 import pytest
 
-from _wrapper_harness import Harness, wait_for
+from _wrapper_harness import Harness, alive, wait_for
 
 pytestmark = pytest.mark.skipif(shutil.which("bash") is None or shutil.which("git") is None,
                                 reason="needs bash and git")
@@ -143,3 +143,86 @@ def test_the_queue_poll_has_a_request_deadline(h):
     rc, out = h.finish(w)
     assert rc == 0, out
     assert h.ee_calls(w.pid)[:3] == ["Initialize", "setDeadline 120000", "listOperations"]
+
+
+# ---------- B5: a signal to the wrapper reaches the shell script and the runner ----------
+
+
+@pytest.mark.parametrize("sig", [signal.SIGTERM, signal.SIGHUP, signal.SIGINT],
+                         ids=["SIGTERM", "SIGHUP", "SIGINT"])
+def test_a_signal_to_the_wrapper_ends_the_shell_script_and_the_runner_first(h, sig):
+    """Review B5: SIGTERM, SIGHUP or SIGINT to the wrapper's pid left run_config_passes.sh and the
+    runner running (SIGINT killed the shell only), and the next start ran beside them."""
+    a = h.config(A)
+    h.commit()
+    h.scenario(hold=[f"{A}:features"])
+    w = h.start(a)
+    assert wait_for(h.holding)
+    ((runner, shell, _, _),) = h.runners()
+    os.kill(w.pid, sig)
+    rc, out = h.finish(w)
+    assert [alive(shell), alive(runner)] == [False, False]
+    assert rc == 128 + sig, out
+    assert h.log().splitlines()[-1].endswith(
+        f"batch batch ended: NOT ALL COMPLETE (stopped by {signal.Signals(sig).name})")
+    assert h.state()["not_finished"] == [A]
+
+
+def test_a_start_while_the_runner_of_a_stopped_batch_still_ends_is_refused(h):
+    """SIGTERM reaches the runner, which takes a while to end (here 5 s); the wrapper waits for it
+    before it lets go of the lock, so a start in the meantime is refused."""
+    a = h.config(A)
+    h.commit()
+    h.scenario(hold=[f"{A}:features"], linger_on_term_s=5.0)
+    w = h.start(a)
+    assert wait_for(h.holding)
+    ((runner, shell, _, _),) = h.runners()
+    os.kill(w.pid, signal.SIGTERM)
+    wait_for(lambda: h.ended(w) or list(h.ee.glob("terminating_*")), timeout=10)
+    second = h.start(a)
+    wait_for(lambda: second.poll() is not None or len(h.holding()) == 2)
+    h.release()
+    rc2, out2 = h.finish(second)
+    assert rc2 == 90, out2
+    h.finish(w)
+    assert [alive(shell), alive(runner)] == [False, False]
+    assert (h.drive_exports(A), h.second_copies_while_running()) == ([0] * 9, [])
+
+
+def test_the_lock_is_held_while_the_children_of_a_killed_wrapper_run(h):
+    """SIGKILL cannot be caught: the shell script and the runner run on, and hold the lock (they
+    were given its descriptor), so a new start is refused until they have ended."""
+    a = h.config(A)
+    h.commit()
+    h.scenario(hold=[f"{A}:features"])
+    w = h.start(a)
+    assert wait_for(h.holding)
+    ((runner, shell, _, _),) = h.runners()
+    os.kill(w.pid, signal.SIGKILL)
+    h.finish(w)
+    second = h.start(a)
+    wait_for(lambda: second.poll() is not None or len(h.holding()) == 2)
+    for pid in (runner, shell):  # the killed batch's children end
+        os.kill(pid, signal.SIGKILL)
+    h.release()
+    rc2, out2 = h.finish(second)
+    assert rc2 == 90, out2
+    assert wait_for(lambda: not alive(runner) and not alive(shell))
+    rc3, out3 = h.finish(h.start(a))  # the children have ended, so the lock is free
+    assert rc3 == 0, out3
+
+
+def test_a_signal_ignored_when_the_batch_started_stays_ignored(h):
+    """A batch started under nohup ignores SIGHUP, as before: closing the terminal it was started
+    from does not stop it. A guard, for the handlers B5 adds."""
+    a = h.config(A)
+    h.commit()
+    h.scenario(hold=[f"{A}:features"])
+    w = h.start(a, nohup=True)
+    assert wait_for(h.holding)
+    os.kill(w.pid, signal.SIGHUP)
+    time.sleep(1.0)
+    h.release()
+    rc, out = h.finish(w)
+    assert rc == 0, out
+    assert h.drive_exports(A) == [1] * 9
