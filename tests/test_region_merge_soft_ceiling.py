@@ -29,7 +29,12 @@ Four things are pinned here:
     before the setting existed (the file says how it was written, as
     tests/test_segmentation_off_golden.py does for segmentation). With the
     setting off, today's merge has to reproduce each one: the stands, their
-    attributes and provenance, and the diagnostics key for key.
+    attributes and provenance, and the diagnostics key for key. Five graphs
+    are the exception: review B18 (round 13) changed the merge on them, by
+    comparing its area bounds in whole pixels, and they are pinned to the
+    digests it gives since (`OFF_DIGESTS_SINCE_B18`). When B18 was made,
+    today's merge with the setting off gave on every graph what the merge at
+    363ea6d gives with B18's comparison put in it.
 """
 
 from __future__ import annotations
@@ -128,11 +133,11 @@ def assert_soft_ceiling_invariants(
     Reads only the result, the graph and the settings, never the merge's
     internals. Takes the keyword arguments of `merge_superpixels`.
 
-    First the provenance invariants of tests/test_region_merge_provenance.py,
-    given the ceiling that applies to a stand below the minimum. That checker
-    reads `max_area_ha` for one thing only, to file such a stand as
-    area_blocked when no neighbour could take it under it, and with the soft
-    ceiling on the ceiling for such a stand is `max_area_ha + min_area_ha`.
+    First the provenance invariants of tests/test_region_merge_provenance.py.
+    That checker files a stand below the minimum as area_blocked when no
+    neighbour could take it under the ceiling that applies to it, which it reads
+    from the settings: `max_area_ha`, or with the soft ceiling on, `max_area_ha +
+    min_area_ha`, in whole pixels as the merge counts them (review B18).
 
     Then the cap: a stand built by merging (more than one superpixel) is at
     most the ceiling, in pixels and in hectares as reported (6 decimals, so
@@ -149,7 +154,7 @@ def assert_soft_ceiling_invariants(
     on = settings.get("pass2_soft_ceiling", False)
     max_ha, min_ha = settings["max_area_ha"], settings["min_area_ha"]
     ceiling = max_ha + min_ha if on else max_ha
-    assert_provenance_invariants(result, graph, **{**settings, "max_area_ha": ceiling})
+    assert_provenance_invariants(result, graph, **settings)
     if graph.n_regions == 0:
         return
 
@@ -825,6 +830,20 @@ def off_digest(results: list[Any]) -> str:
     return _sha256([_full_outputs(r) for r in results])[:16]
 
 
+# The graphs on which review B18 (round 13: the merge's area bounds compared in whole
+# pixels, not on a float sum of two areas) changed what the merge does with the
+# setting off, and the digest each gives since. On no other graph did it change
+# anything: when B18 was made, today's merge with the setting off gave on every graph
+# what the merge at 363ea6d gives with only that comparison changed.
+OFF_DIGESTS_SINCE_B18: dict[str, str] = {
+    "random 3": "496dfacd5dd6a773",
+    "random 53": "5b1179874670fff3",
+    "random 98": "8c866d021b869719",
+    "tight 53": "10ad930826bae6c7",
+    "tight 98": "fb3e2f9386e8fc50",
+}
+
+
 @pytest.fixture(scope="module")
 def off_golden() -> dict[str, Any]:
     return json.loads(GOLDEN_PATH.read_text())
@@ -847,15 +866,17 @@ def test_with_the_setting_off_the_merge_is_the_one_before_the_setting(off_golden
     """Off, the merge must give on every graph, under both values of
     pass2_skip_at_min_area, exactly what it gave at the commit named in the
     fixture: the stands, their attributes and provenance, and the diagnostics,
-    key for key and in order."""
-    changed = [
-        run.name for run in runs if off_digest(run.off) != off_golden["digests"][run.name]
-    ]
+    key for key and in order. On the five graphs of `OFF_DIGESTS_SINCE_B18` it
+    must give what is pinned there."""
+    assert all(off_golden["digests"][n] != d for n, d in OFF_DIGESTS_SINCE_B18.items())
+    expected = {**off_golden["digests"], **OFF_DIGESTS_SINCE_B18}
+    changed = [run.name for run in runs if off_digest(run.off) != expected[run.name]]
     assert not changed, (
         f"with merge.pass2_soft_ceiling off, merge_superpixels no longer gives what it gave "
-        f"at {off_golden['made_from']['commit'][:7]} on {len(changed)} of {len(runs)} graphs "
-        f"({changed[:10]}). Off has to change nothing; if this was meant, say so in the "
-        f"commit and regenerate the fixture (see its 'how')."
+        f"at {off_golden['made_from']['commit'][:7]} (or since review B18, where pinned) on "
+        f"{len(changed)} of {len(runs)} graphs ({changed[:10]}). Off has to change nothing; "
+        f"if this was meant, say so in the commit and pin the new digests, as "
+        f"OFF_DIGESTS_SINCE_B18 does."
     )
 
 

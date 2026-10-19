@@ -7142,3 +7142,67 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-merge-area-bounds-in-whole-pixels
+  title: >-
+    The merge holds each merge to its ceilings in whole pixels: the two regions' pixels added, against the ceiling in
+    pixels worked out exactly
+  decision: >-
+    fmu.utils.region_merge (Locked, part of the merge stage) judges a merge against max_area_ha, and with
+    merge.pass2_soft_ceiling on against max_area_ha + min_area_ha, by adding the two regions' pixel counts and comparing
+    the sum with the most whole pixels within the ceiling, worked out exactly from the ceiling as written
+    (_whole_pixels_within: the shortest decimal each bound prints as, in fractions). It does so at every such
+    comparison: pass 1's candidates and their re-check, pass 2's neighbours under and over max_area_ha, and the cause
+    filed for a stand left below the minimum. The minimum is compared as before, a region's area (its pixels times
+    hectares per pixel) against min_area_ha. The merge's revision (STEP_REVISION in fmu.utils.caching) is raised to 2,
+    which moves the merge, clustering and k_elbow keys of all 74 configs under configs/. Three of the 200 golden graphs
+    of tests/test_region_merge_provenance.py (seeds 3, 53 and 98) and five of the 516 graphs of
+    tests/test_region_merge_soft_ceiling.py (random 3, 53 and 98; tight 53 and 98) give new digests, pinned in those
+    tests; the two fixture files keep what the merge gave at their commits.
+  alternatives_considered:
+  - >-
+    Compare (n_a + n_b) * px_to_ha with the bound, adding the pixels first: not chosen. It is exact at the configs'
+    bounds (3, 4, 10 and 11 ha at 10 m) and gives the same merges on every test graph, but the product is itself a
+    float, and 35 * 0.01 is a hair over 0.35: at 13,929 of the two-decimal bounds from 0.01 to 1000 ha at 10 m (3,477
+    at 20 m, none at 30 m) it would judge every merge ending exactly on the bound as over it
+  - >-
+    Turn the bound into pixels by float division: not chosen; 0.29 / 0.01 is 28.999999999999996, so a 29 px stand would
+    be over a 0.29 ha bound
+  - >-
+    Compare the minimum in whole pixels too: not done. The review lists the sums only, and its fix for B19 has
+    Config.kept_patch_min_pixels() follow the merge's own arithmetic for the minimum; left as a question for Jaskaran
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 4: "B18 (area bounds compared in whole pixels)", and "Regenerate
+    golden files only where the fix requires it, and say how many cases changed." The review
+    (docs/reviews/2026-10-19-review.md, B18): "area(a) + area(b) <= max_area_ha, with area = n_pixels × 0.01, misjudges
+    some exact splits as over the bound. At 3 ha that is 10 of 299 splits, at 10 ha 32 of 999, and at 1 or 4 ha none.
+    Pass 1 then refuses the merge, and pass 2 demotes it." The new tests of tests/test_region_merge.py fail on the code
+    before with those counts (pass 1 refused splits 20, 22, 45, 47, 70, 230, 253, 255, 278 and 280 of 300 px, 32 splits
+    of 1000 px, and 8 of the 34 splits of 35 px at a 0.35 ha bound), and at each comparison of pass 2: a region filling
+    10 ha exactly was left area-blocked, a join landing exactly on the 11 ha soft ceiling was refused, and a stand left
+    by the iteration cap beside a neighbour it fits exactly was filed as area-blocked. When the change was made, the
+    merge gave on all 200 golden graphs what the merge at 1da0614 gives with only this comparison changed, and with the
+    soft ceiling off on all 516 graphs what the merge at 363ea6d gives with it changed, so the provenance and the soft
+    ceiling still change nothing else. The review found that summing pixel counts first changes no stand on rebuilt
+    graphs of the tile pilot, the Angul box and the Sanjay Van baseline; that was not checked here. No paper was
+    searched for this decision.
+  evidence:
+  - path: src/fmu/utils/region_merge.py
+    what: _whole_pixels_within, and max_px, soft_ceiling_px and joined_px in merge_superpixels
+  - path: src/fmu/utils/caching.py
+    what: STEP_REVISION, the merge at revision 2
+  - path: tests/test_region_merge.py
+    what: The area bounds in whole pixels; these tests fail on the code before
+  - path: tests/test_region_merge_provenance.py
+    what: DIGESTS_SINCE_B18, and the check of below_why in whole pixels
+  - path: tests/test_region_merge_soft_ceiling.py
+    what: OFF_DIGESTS_SINCE_B18
+  - path: docs/outputs.md
+    what: merge.pass2_relaxed_merges_over_max_area, decided in whole pixels
+  - path: docs/reviews/2026-10-19-review.md
+    what: B18
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 4, B18
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)

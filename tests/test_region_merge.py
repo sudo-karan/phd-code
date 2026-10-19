@@ -271,6 +271,78 @@ def test_pass2_fallback_also_respects_max_area():
         assert attrs["area_ha"] <= 10.0
 
 
+# ---------- area bounds in whole pixels (review B18) ----------
+#
+# A merge ending exactly on a bound is within it. The merge used to add two float
+# areas, and n * 0.01 + (N - n) * 0.01 comes out a hair over N * 0.01 for some n:
+# 10 of the 299 ways to split 300 px (3 ha), 32 of the 999 ways to split 1000 px
+# (10 ha) and 38 of the 1099 ways to split 1100 px (11 ha). It now adds the pixels
+# and compares them with the bound in whole pixels.
+
+
+@pytest.mark.parametrize("max_area_ha", [3.0, 10.0, 0.35])
+def test_a_pair_that_adds_up_to_exactly_max_area_merges_in_pass_1(max_area_ha):
+    """However the pixels are split between two alike regions. At 0.35 ha (35 px)
+    adding the pixels first is not enough: 35 * 0.01 is itself a hair over 0.35 in
+    floats, so the bound is turned into whole pixels exactly."""
+    total = round(max_area_ha * PX_PER_HA)
+    refused = []
+    for n in range(1, total):
+        px = [n, total - n]
+        means, counts = _attrs([{"ch": 10.0, "std": 0.5}, {"ch": 10.1, "std": 0.5}], px)
+        r = _run(
+            _graph(px, {(0, 1): 1}), means, counts, {"ch": 2.0, "std": 0.45},
+            max_area_ha=max_area_ha, min_area_ha=0.01,
+        )
+        if r.diagnostics["pass1_merges"] != 1:
+            refused.append(n)
+    assert refused == []
+
+
+def test_a_region_that_fits_exactly_under_max_area_is_not_area_blocked():
+    """Pass 2: a 0.05 ha region unlike its only neighbour (9.95 ha) joins it by the
+    fallback, at exactly 10 ha. 0.05 + 9.95 is over 10.0 in floats, so it was left
+    below the minimum, filed as area-blocked."""
+    px = [995, 5]
+    means, counts = _attrs([{"ch": 10.0, "std": 0.5}, {"ch": 30.0, "std": 3.0}], px)
+    r = _run(_graph(px, {(0, 1): 5}), means, counts, {"ch": 2.0, "std": 0.45})
+    assert r.n_stands == 1
+    assert r.diagnostics["orphans_area_blocked"] == 0
+    assert r.stand_attributes[0]["area_ha"] == 10.0
+
+
+def test_a_join_that_lands_exactly_on_the_soft_ceiling_is_within_it():
+    """With merge.pass2_soft_ceiling on, a region below the minimum may join a
+    neighbour up to max_area_ha + min_area_ha, 11 ha here: 5 px and 1095 px make
+    exactly 1100 px. 0.05 + 10.95 is over 11.0 in floats."""
+    px = [1095, 5]
+    means, counts = _attrs([{"ch": 10.0, "std": 0.5}, {"ch": 30.0, "std": 3.0}], px)
+    r = _run(
+        _graph(px, {(0, 1): 5}), means, counts, {"ch": 2.0, "std": 0.45},
+        pass2_soft_ceiling=True,
+    )
+    assert r.n_stands == 1
+    assert r.stand_attributes[0]["area_ha"] == 11.0
+
+
+def test_a_stand_left_by_the_iteration_cap_beside_a_neighbour_it_fits_is_not_area_blocked():
+    """The causes of a stand below the minimum. A chain X - U - R - V of 8, 10, 12 and
+    970 px, none alike. In the one sweep allowed, X joins U (18 px), and U, now
+    larger than R, takes R: that used U's turn, and the sweep ends with U at 30 px
+    beside V. Together they are exactly 1000 px, max_area_ha, so U is below the
+    minimum for want of a sweep, not for want of room. 0.3 + 9.7 is over 10.0 in
+    floats."""
+    px = [8, 10, 12, 970]
+    means, counts = _attrs([{"ch": 5.0 + 20.0 * i, "std": 0.5} for i in range(4)], px)
+    r = _run(
+        _graph(px, {(0, 1): 2, (1, 2): 2, (2, 3): 2}), means, counts,
+        {"ch": 2.0, "std": 0.45}, max_pass2_iterations=1,
+    )
+    assert r.assignment == [0, 0, 0, 1]
+    assert r.diagnostics["orphans_area_blocked"] == 0
+    assert r.diagnostics["orphans_no_attribute_match"] == 1
+
+
 # ---------- pass 2 ----------
 
 

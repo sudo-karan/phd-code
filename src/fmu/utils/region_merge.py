@@ -6,7 +6,8 @@ Engine; the stage wrapper turns the result back into an `ee.Image` with
 `snic_clusters.remap(...)`.
 
 Pass 1 -- merge homogeneous neighbours, iterating to convergence:
-  - a pair is eligible if their areas sum to at most `max_area_ha`;
+  - a pair is eligible if their areas sum to at most `max_area_ha`, judged in
+    whole pixels (`_whole_pixels_within`);
   - a **hard gate**, not a weighted sum: reject if *any* shared criterion
     exceeds its tolerance. This is Xiong's design and it keeps thresholds
     interpretable in physical units;
@@ -102,6 +103,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
+from fractions import Fraction
 from typing import Any
 
 from fmu.utils.adjacency import SuperpixelGraph
@@ -180,6 +182,19 @@ class MergeResult:
     # `stand_attributes`, and one entry per stand. The fields are documented in
     # the module docstring.
     stand_provenance: dict[int, dict[str, Any]] = field(default_factory=dict)
+
+
+def _whole_pixels_within(scale_m: int, *bounds_ha: float) -> int:
+    """The most whole pixels whose area is at most the sum of `bounds_ha`.
+
+    Worked out exactly, so that a bound of exactly N pixels admits N pixels at
+    any scale (review B18): each bound is taken as the decimal it prints as
+    (`str` gives the shortest decimal that reads back as the same float, so a
+    bound written in a config as 0.35 is 0.35) and the arithmetic is on
+    fractions. Floats would not do: 35 * 0.01 is a hair over 0.35.
+    """
+    total_ha = sum((Fraction(str(b)) for b in bounds_ha), Fraction(0))
+    return math.floor(total_ha * 10_000 / (scale_m * scale_m))
 
 
 class _UnionFind:
@@ -271,6 +286,18 @@ def merge_superpixels(
     def area(root: int) -> float:
         return regions[root].n_pixels * px_to_ha
 
+    # The ceilings a merge is held to, in whole pixels (review B18): a merge adds
+    # the two regions' pixels and compares the sum with these. Adding two float
+    # areas judged some merges that end exactly on a ceiling as over it (at 3 ha,
+    # 10 of the 299 ways to split 300 px). The minimum is compared as before, a
+    # region's area against min_area_ha.
+    max_px = _whole_pixels_within(graph.scale_m, max_area_ha)
+    soft_ceiling_px = _whole_pixels_within(graph.scale_m, max_area_ha, min_area_ha)
+
+    def joined_px(a: int, b: int) -> int:
+        """The pixels of two regions together."""
+        return regions[a].n_pixels + regions[b].n_pixels
+
     def order_key(root: int) -> tuple[float, float, int]:
         """Deterministic tie-break: centroid, then dense index.
 
@@ -337,7 +364,7 @@ def merge_superpixels(
             a, b = uf.find(i), uf.find(j)
             if a == b:
                 continue
-            if area(a) + area(b) > max_area_ha:
+            if joined_px(a, b) > max_px:
                 blocked_area += 1
                 continue
             ok, d, n_defined = compare(a, b, criteria)
@@ -365,7 +392,7 @@ def merge_superpixels(
             # Re-check: earlier merges this round may have grown one side past
             # the cap. Skipping is correct -- the pair gets reconsidered next
             # round against the grown region.
-            if area(ra) + area(rb) > max_area_ha:
+            if joined_px(ra, rb) > max_px:
                 continue
             keep, gone = (ra, rb) if order_key(ra) <= order_key(rb) else (rb, ra)
             merges_made.append((keep, "n_pass1"))  # provenance only
@@ -390,19 +417,18 @@ def merge_superpixels(
     relaxed = {b: t * relax_factor for b, t in criteria.items()}
     # With pass2_soft_ceiling on: the most a pass-2 merge of a region below
     # min_area_ha may make, and what Config.max_component_pixels() is derived
-    # from. It is checked on the result of each merge, not assumed from "below
-    # the minimum plus at most max_area_ha": a neighbour already over
-    # max_area_ha after an earlier such merge could otherwise take a second
-    # region and pass it.
+    # from. It is checked, in whole pixels (soft_ceiling_px), on the result of
+    # each merge, not assumed from "below the minimum plus at most max_area_ha":
+    # a neighbour already over max_area_ha after an earlier such merge could
+    # otherwise take a second region and pass it.
     soft_ceiling_ha = max_area_ha + min_area_ha
     pass2_merges = 0
     pass2_fallback_merges = 0
     # With pass2_soft_ceiling on: the merges that took a region over
     # max_area_ha, by a relaxed match and by the shared-edge fallback. "Over"
-    # is decided as the hard ceiling decides it, on the sum of the two areas,
-    # so a merge that ends exactly on max_area_ha can come out a hair over it
-    # and is then ranked and counted as over; stands_over_max_area, which
-    # compares to 6 decimals, does not count the stand it makes.
+    # is decided as the hard ceiling decides it, in whole pixels, so a merge
+    # that ends exactly on max_area_ha is not over it, as stands_over_max_area,
+    # which compares to 6 decimals, does not count the stand it makes.
     pass2_relaxed_over_max = 0
     pass2_fallback_over_max = 0
     pass2_iterations = 0
@@ -476,9 +502,9 @@ def merge_superpixels(
         fitting: list[int] = []
         over: list[int] = []
         for nb in sorted(root_neighbours(r), key=order_key):
-            if area(r) + area(nb) <= max_area_ha:
+            if joined_px(r, nb) <= max_px:
                 fitting.append(nb)
-            elif soft and area(r) + area(nb) <= soft_ceiling_ha:
+            elif soft and joined_px(r, nb) <= soft_ceiling_px:
                 over.append(nb)
         for candidates, over_max in ((fitting, False), (over, True)):
             scored = []
@@ -572,9 +598,9 @@ def merge_superpixels(
     root_to_stand = {root: sid for sid, root in enumerate(roots)}
     assignment = [root_to_stand[uf.find(i)] for i in range(n)]
 
-    # The ceiling a stand below the minimum had to join a neighbour under:
-    # max_area_ha, or with pass2_soft_ceiling on, soft_ceiling_ha.
-    ceiling_below_min = soft_ceiling_ha if pass2_soft_ceiling else max_area_ha
+    # The ceiling a stand below the minimum had to join a neighbour under, in
+    # whole pixels: max_area_ha, or with pass2_soft_ceiling on, soft_ceiling_ha.
+    ceiling_below_min_px = soft_ceiling_px if pass2_soft_ceiling else max_px
     orphans_isolated = 0
     orphans_area_blocked = 0
     orphans_no_attribute_match = 0
@@ -592,7 +618,7 @@ def merge_superpixels(
         if not nbrs:
             orphans_isolated += 1
             why_below_min[root] = "isolated"
-        elif not any(area(root) + area(nb) <= ceiling_below_min for nb in nbrs):
+        elif not any(joined_px(root, nb) <= ceiling_below_min_px for nb in nbrs):
             # Every neighbour is already too big to absorb this one under the
             # ceiling. This is the signal that max_area_ha is too tight, and it
             # is what stranded 163 of 388 regions in the min-3/max-4 prototype.
