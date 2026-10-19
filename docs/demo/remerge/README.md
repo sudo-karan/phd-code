@@ -173,3 +173,13 @@ The files here were written by `--all` at commit `5c8dcad`; their `old_rule_chec
 rewritten by `--recheck` and `--saved-fit` with the comparisons of the stand types added in the
 commit after it. `tests/test_remerge_demo_set.py` checks that the tables above are the tables
 the tool prints from these files.
+
+Note of 20 Oct 2026 (round 13, review C44): the last column of section 3's table ("Agreement over
+pixels") and `type_pixels_against_the_saved_type_raster` in every summary are `--recheck`'s
+values, which compare every pixel of the saved type rasters (each ROI part's bounding box, widened
+by three superpixel cells) typed in both. A run with `--run` or `--all` compares only the pixels
+whose centre lies in a stand of the old rule, and so gives other values: over the 14 runs the
+adjusted Rand index differs by at most 0.0122, and at two decimals only in
+`odisha_alphaearth_angul_repro` (0.42 here; 0.43, or 0.4289 against 0.4167, over a full run's
+pixels). Recomputed offline from the saved rasters under `outputs/demo/remerge/`; the files here
+are unchanged.
