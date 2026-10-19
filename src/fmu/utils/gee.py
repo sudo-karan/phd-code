@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import Any, TypeVar
 
 import ee
+from shapely.geometry import mapping, shape
+from shapely.geometry.polygon import orient
 
 from fmu.settings import get_settings
 from fmu.utils.logging import get_logger
@@ -129,7 +131,22 @@ def load_roi_geometry(roi_file: Path) -> ee.Geometry:
         # Python lists. GEE constructs the geometry from them server-side.
         if len(feats) == 1:
             return ee.Geometry(feats[0]["geometry"])
-        polys = [feat["geometry"]["coordinates"] for feat in feats]
+        # Several features: one MultiPolygon under the left-inside rule
+        # (evenOdd=False), where a clockwise shell is the rest of the globe. GEOS
+        # buffers and GDAL's shapefile conversion write clockwise shells, so each
+        # polygon is oriented first: shell counter-clockwise, holes clockwise.
+        # Each part of a MultiPolygon feature is one polygon (B33, round 13).
+        polys = []
+        for feat in feats:
+            geom = shape(feat["geometry"])
+            for part in getattr(geom, "geoms", [geom]):
+                if part.geom_type != "Polygon":
+                    raise ValueError(
+                        f"ROI file {roi_file}: a feature of a {geom.geom_type}; "
+                        "a ROI of several features takes polygons only."
+                    )
+                coords = mapping(orient(part, sign=1.0))["coordinates"]
+                polys.append([[list(pt) for pt in ring] for ring in coords])
         return ee.Geometry.MultiPolygon(polys, proj="EPSG:4326", evenOdd=False)
     if gtype == "Feature":
         return ee.Geometry(gj["geometry"])

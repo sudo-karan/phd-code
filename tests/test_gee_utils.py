@@ -265,6 +265,88 @@ def test_load_real_sanjay_van_geojson():
         assert mock_geom.called
 
 
+def _signed_area(ring: list) -> float:
+    """Shoelace area of a closed ring: positive if counter-clockwise (lon east, lat north)."""
+    return sum(x0 * y1 - x1 * y0 for (x0, y0), (x1, y1) in zip(ring, ring[1:], strict=False)) / 2
+
+
+def _feature(geometry_type: str, coordinates: list) -> dict:
+    return {"type": "Feature", "properties": {},
+            "geometry": {"type": geometry_type, "coordinates": coordinates}}
+
+
+def test_a_multi_feature_roi_is_sent_with_counter_clockwise_shells(tmp_path):
+    """B33 (review 2026-10-19): a ROI file of several features is built with evenOdd=False,
+    where the left-inside rule makes a clockwise shell (GEOS buffers, GDAL's shapefile
+    conversion) the rest of the globe. Every shell must reach Earth Engine counter-clockwise
+    and every hole clockwise; the second feature here is a clockwise square, and the first
+    has a hole given counter-clockwise."""
+    from fmu.utils.gee import load_roi_geometry
+
+    ccw_with_ccw_hole = [
+        [[0, 0], [4, 0], [4, 4], [0, 4], [0, 0]],
+        [[1, 1], [2, 1], [2, 2], [1, 2], [1, 1]],
+    ]
+    cw = [[[10, 0], [10, 1], [11, 1], [11, 0], [10, 0]]]
+    gj = {"type": "FeatureCollection",
+          "features": [_feature("Polygon", ccw_with_ccw_hole), _feature("Polygon", cw)]}
+    p = tmp_path / "two.geojson"
+    p.write_text(json.dumps(gj))
+
+    with patch.object(ee.Geometry, "MultiPolygon") as mp:
+        load_roi_geometry(p)
+    (polys,), kwargs = mp.call_args
+    assert kwargs["evenOdd"] is False
+    assert [_signed_area(poly[0]) for poly in polys] == [16.0, 1.0]
+    assert _signed_area(polys[0][1]) == -1.0
+
+
+def test_a_multi_polygon_feature_of_a_multi_feature_roi_gives_one_polygon_per_part(tmp_path):
+    """Each committed AOI is one MultiPolygon feature, so a file of several of them is the
+    likely multi-feature ROI: each part is one polygon of the ROI, not a level deeper."""
+    from fmu.utils.gee import load_roi_geometry
+
+    a = [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]
+    b = [[[5, 0], [6, 0], [6, 1], [5, 1], [5, 0]]]
+    c = [[[9, 0], [10, 0], [10, 1], [9, 1], [9, 0]]]
+    gj = {"type": "FeatureCollection",
+          "features": [_feature("MultiPolygon", [a, b]), _feature("Polygon", c)]}
+    p = tmp_path / "multi.geojson"
+    p.write_text(json.dumps(gj))
+
+    with patch.object(ee.Geometry, "MultiPolygon") as mp:
+        load_roi_geometry(p)
+    (polys,), _ = mp.call_args
+    assert [[list(map(list, ring)) for ring in poly] for poly in polys] == [a, b, c]
+
+
+def test_a_multi_feature_roi_with_a_point_is_refused(tmp_path):
+    from fmu.utils.gee import load_roi_geometry
+
+    gj = {"type": "FeatureCollection",
+          "features": [_feature("Polygon", [[[0, 0], [1, 0], [1, 1], [0, 0]]]), _feature("Point", [3, 3])]}
+    p = tmp_path / "point.geojson"
+    p.write_text(json.dumps(gj))
+    with pytest.raises(ValueError, match="polygons only"):
+        load_roi_geometry(p)
+
+
+@pytest.mark.parametrize(
+    "roi_file", sorted((Path(__file__).parent.parent / "aois").glob("*.geojson")), ids=lambda p: p.name
+)
+def test_every_committed_aoi_is_sent_as_its_one_feature_unchanged(roi_file):
+    """B33's fix touches only ROI files of several features. Every committed AOI has one,
+    and its geometry dict is passed to ee.Geometry as the file holds it."""
+    from fmu.utils.gee import load_roi_geometry
+
+    feats = json.loads(roi_file.read_text())["features"]
+    assert len(feats) == 1
+    with patch.object(ee, "Geometry") as mock_geom:
+        load_roi_geometry(roi_file)
+    mock_geom.assert_called_once_with(feats[0]["geometry"])
+    mock_geom.MultiPolygon.assert_not_called()
+
+
 # ---------- asset_path ----------
 
 

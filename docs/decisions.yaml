@@ -7293,3 +7293,49 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-multi-feature-roi-shells-counter-clockwise
+  title: >-
+    A ROI file of several features is sent to Earth Engine with every shell counter-clockwise and every hole clockwise
+  decision: >-
+    fmu.utils.gee.load_roi_geometry (a Locked module) builds a ROI file of more than one feature as before, one
+    MultiPolygon under the left-inside rule (evenOdd=False), but first orients each polygon with
+    shapely.geometry.polygon.orient (sign 1.0: shell counter-clockwise, holes clockwise), and takes each part of a
+    MultiPolygon feature as one polygon of the ROI. A feature that is not a Polygon or MultiPolygon is refused. A ROI
+    file of one feature, as every committed AOI is, takes the path it took before, unchanged: its geometry dict goes to
+    ee.Geometry as the file holds it.
+  alternatives_considered:
+  - >-
+    Refuse a ROI file of more than one feature: not chosen; aois/README.md gives an ogr2ogr recipe that can write
+    one, and the fix keeps that file usable instead of sending the person to dissolve it by hand
+  - >-
+    Dissolve the features locally (shapely union) and send one geometry: not chosen; it changes the vertices sent,
+    and orienting is the smallest change that makes the left-inside rule read each shell as its inside
+  - >-
+    Build the several features with evenOdd=True: not chosen; where two features overlap the even-odd rule makes the
+    overlap a hole
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 5, names B33 among the tools to fix; the review
+    (docs/reviews/2026-10-19-review.md, B33): "Under the left-inside rule a clockwise shell (GEOS buffers, and GDAL's
+    shapefile conversion) means the rest of the globe. Every committed AOI has one feature, so the path is unused",
+    with the suggested fix "Orient shells counter-clockwise (shapely.geometry.polygon.orient), dissolve locally, or
+    refuse more than one feature." Orienting was chosen because it changes nothing for a one-feature ROI (that code
+    path is not touched) and keeps a multi-feature file usable. The new test fails on the code before the fix (a
+    clockwise second shell reached ee.Geometry.MultiPolygon with signed area -1.0) and passes after it; a test over
+    all 12 committed AOIs (aois/*.geojson, one feature each) checks that each is sent as ee.Geometry of its one
+    geometry dict, unchanged, and never as a MultiPolygon. No cached step computes anything different for any config,
+    so no step revision is raised and no cache key moves. No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/utils/gee.py
+    what: load_roi_geometry, the multi-feature branch
+  - path: tests/test_gee_utils.py
+    what: >-
+      test_a_multi_feature_roi_is_sent_with_counter_clockwise_shells, and
+      test_every_committed_aoi_is_sent_as_its_one_feature_unchanged over aois/*.geojson
+  - path: docs/reviews/2026-10-19-review.md
+    what: B33
+  - path: aois/README.md
+    what: The ogr2ogr recipe that can write a ROI file of several features
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
