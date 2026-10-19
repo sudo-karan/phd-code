@@ -21,10 +21,28 @@ the agreement is visible rather than hidden behind one figure.
 Truth = the structural field types from odisha_phase3_0 (k chosen by elbow from
 the field data alone, before any stand label was read).
 
-Delineation is scored on plots that share a stand at all -- the question "are
-alike plots put together" is only answerable where the partition puts anything
-together. Labelling is scored on pairs over 2 km apart, so "same type" cannot be
-explained by the two plots simply being neighbours.
+Stands are keyed by (district, stand id) and stand types are compared within a
+district only, since each district is its own run and fit. The five measures,
+as the code below computes them (the five that odisha_phase3_3_significance.py
+tests):
+  1. Delineation, all plots: the ARI of stand against field type over every plot
+     with a stand. The headline drawing score.
+  2. Delineation, multi-plot stands: the same ARI over the plots whose stand holds
+     two or more of them -- "are alike plots put together" is only answerable
+     where the partition puts anything together.
+  3. Same-stand pair precision: of the pairs of plots in the same stand, the share
+     that are field-alike (the "precision" of measure 1's table; every such pair is
+     also in measure 2's table, which therefore prints the same precision).
+  4. Labelling: the plot-weighted mean of the per-district ARIs of field type
+     against stand type, over every plot with a stand type, in each district with
+     two or more such plots of two or more field types. The headline labelling
+     score. Its table is over the same-district pairs of typed plots.
+  5. Far-apart labelling: the same-district pairs more than 2 km apart, both plots
+     typed, so that "same type" cannot be explained by the two plots being
+     neighbours. Only their table is printed (an ARI is not defined on a subset of
+     pairs; printed when there are more than 30 such pairs); the significance
+     script's statistic, the same-stand-type rate of the field-alike pairs minus that of
+     the others, follows from its counts.
 
 Sensitivity runs (PHASE3_PREDECLARED.md). --field-types scores against another
 typology file (the forced-k or the all-rows one); --exclude-types drops every
