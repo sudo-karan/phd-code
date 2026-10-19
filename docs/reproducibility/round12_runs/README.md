@@ -17,6 +17,7 @@ changing only `segmentation.size` (6 to 10) and `merge.max_area_ha` (3 to 10)
 | `odisha_v120_10ha_squares_angul_keptland_s1desc_r9` | `odisha_v120_3ha_squares_angul_keptland_s1desc_r9` | `3db501b` | 466 | 136 | 134 |
 | `odisha_v120_10ha_squares_koraput_keptland_s1desc_r9` | `odisha_v120_3ha_squares_koraput_keptland_s1desc_r9` | `3db501b` | 3,332 | 988 | 990 (983 stands) |
 | `odisha_v120_10ha_squares_dhenkanal_keptland_s1desc_r9` | `odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r9` | `3db501b` | 1,119 | 334 | 330 (329 stands) |
+| `odisha_alphaearth_10ha_squares_kendujhar_keptland_r9` | `odisha_alphaearth_3ha_squares_kendujhar_keptland_r9` | `3db501b` | 1,088 | 352 | 350 |
 
 | File | What |
 |---|---|
