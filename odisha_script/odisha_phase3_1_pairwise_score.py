@@ -202,9 +202,10 @@ def main() -> int:
     say("")
     say("  READ ARI AGAINST ITS CHANCE LEVEL, NOT AGAINST ZERO. In this design chance-level")
     say("  ARI is positive: villages cluster both the field types and the stands, so a")
-    say("  rotated stand map scores ~0.005-0.022 on delineation and ~0.04-0.06 on labelling.")
-    say("  Whether a value beats chance is tested with the spatial rotation null in")
-    say("  odisha_phase3_3_significance.py, not read off this file.")
+    say("  stand map that knows nothing of the forest still scores above zero. This file runs")
+    say("  no null and so gives no chance level: each statistic's chance level (the median of")
+    say("  the spatial rotation null) and whether a value beats it are in the results file of")
+    say("  odisha_phase3_3_significance.py (odisha_phase3_3_results*.txt), not read off this file.")
     say("")
 
     i, j = map(np.array, zip(*combinations(range(len(d)), 2)))
