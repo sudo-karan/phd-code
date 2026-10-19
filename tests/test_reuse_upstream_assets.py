@@ -386,6 +386,33 @@ def test_a_copy_that_stops_part_way_leaves_a_true_record_and_can_be_resumed(monk
     assert json.loads((tmp_path / "keptland_reuse_run.json").read_text())["completed"] is True
 
 
+def test_a_resume_with_other_configs_keeps_what_the_record_holds_for_the_others(monkeypatch, tmp_path):
+    """Review C43: --execute --resume rebuilt the record from the configs of the call only, so a
+    resume with another --config set (or with the default record, the committed round-5 one)
+    dropped the copies recorded for the others, and the run record of the resume replaced the
+    earlier one."""
+    import ee
+
+    record, run_record = tmp_path / "keptland_reuse.json", tmp_path / "keptland_reuse_run.json"
+    copied: set[str] = set()
+    copies, _ = _fake_ee(monkeypatch, exists=lambda p: "_keptland/" not in p or p in copied)
+    monkeypatch.setattr(ee.data, "copyAsset", lambda s, d: (copies.append((s, d)), copied.add(d)))
+    first, second = ROUND3[:4], ROUND3[4:6]  # the two Sanjay Van configs (8 and 7), then a box one
+    assert mod.main(["--execute", "--record", str(record), *first]) == 0
+    recorded_first = json.loads(record.read_text())["copies"]
+    run_first = json.loads(run_record.read_text())
+    assert len(recorded_first) == 15 and run_first["completed"] is True
+    assert mod.main(["--execute", "--resume", "--record", str(record), *second]) == 0
+    recorded = json.loads(record.read_text())["copies"]
+    assert (len(recorded), len(copies)) == (23, 23)
+    assert recorded[:15] == recorded_first
+    assert [(c["source"], c["destination"]) for c in recorded] == copies
+    run = json.loads(run_record.read_text())
+    assert run_first.pop("earlier_runs") == []  # kept one level deep, not nested
+    assert run["completed"] is True and run["earlier_runs"] == [run_first]
+    assert "--resume" in run["command_line"] and "--resume" not in run_first["command_line"]
+
+
 def test_execute_copies_the_round_7_assets_from_the_round_6_runs(monkeypatch, capsys, tmp_path):
     """Round 7: the round-6 kept-land assets exist (they are the sources), the _s1desc ones do not."""
     copies, folders = _fake_ee(monkeypatch, exists=lambda p: "_s1desc/" not in p)
