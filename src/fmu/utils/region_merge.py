@@ -309,6 +309,18 @@ def merge_superpixels(
         Not SNIC labels: the two arms' tessellations diverge run to run, so
         label order is not a stable thing to sort by. Rounded to 7 decimal
         places (~1 cm) so float noise cannot reorder otherwise-equal stands.
+
+        What the code does, recorded 20 Oct 2026 (review C12): the dense index
+        is the rank of the root superpixel's SNIC label (`fmu.utils.adjacency`
+        numbers the sorted labels 0 to n - 1), so where two centroids agree to
+        7 decimals this key falls back on SNIC label order. And the shared-edge
+        fallback of `pass2_partner` does not use this key: a tie there, two
+        neighbours sharing boundaries of the same length, goes to the lower
+        root index, which is SNIC label order
+        (tests/test_region_merge.py::test_a_fallback_tie_goes_to_the_lower_root_index_the_snic_label_order).
+        The register entry spec-merge-runs-client-side-uncached says ties are
+        broken by centroid; whether the code or the entry is to change is a
+        question for Jaskaran.
         """
         lon, lat = regions[root].centroid()
         return (round(lon, 7), round(lat, 7), root)
@@ -501,7 +513,9 @@ def merge_superpixels(
         Otherwise `over` is empty and this is the rule of every earlier run:
         steps 1 and 3 over the fitting neighbours. Closest is `d` under the
         relaxed tolerances, ties broken by order_key; the longest boundary is
-        Xiong's eliminate-pass fallback, ties broken by the lower root index.
+        Xiong's eliminate-pass fallback, ties broken by the lower root index:
+        SNIC label order, not the centroid order_key gives (review C12; see
+        order_key).
         """
         soft = pass2_soft_ceiling and area(r) < min_area_ha
         fitting: list[int] = []

@@ -397,6 +397,32 @@ def test_shared_edge_fallback_picks_the_longest_boundary():
     assert r.assignment[1] != r.assignment[0]
 
 
+def test_a_fallback_tie_goes_to_the_lower_root_index_the_snic_label_order():
+    """Pins what the code does (review C12; a question for Jaskaran). A fragment
+    between two stands it shares boundaries of the same length with, and matches
+    neither: the fallback takes the neighbour with the lower root index. Dense
+    indices follow the sorted SNIC labels, so the same ground labelled the other
+    way round sends the fragment to the other side: the tie is broken by label
+    order, not by centroid as spec-merge-runs-client-side-uncached says. A tie
+    broken by `order_key` (centroid first) would send it west both times, and
+    this test would fail."""
+
+    def side_taken(west: int, east: int) -> str:
+        # West to east: a 2 ha stand, a 0.2 ha fragment (index 1), a 2 ha stand.
+        lon = {west: 77.000, 1: 77.001, east: 77.002}
+        ch = {west: 30.0, 1: 10.0, east: 50.0}  # over the relaxed 3.5 m either way
+        px = [20 if i == 1 else 200 for i in range(3)]
+        means, counts = _attrs([{"ch": ch[i], "std": 0.5} for i in range(3)], px)
+        edges = {tuple(sorted((west, 1))): 5, tuple(sorted((1, east))): 5}
+        r = _run(_graph(px, edges), means, counts, {"ch": 2.0, "std": 0.45},
+                 centroids={i: (lon[i], 28.5) for i in range(3)})
+        assert r.diagnostics["pass2_fallback_merges"] == 1 and r.n_stands == 2
+        return "west" if r.assignment[1] == r.assignment[west] else "east"
+
+    assert side_taken(west=0, east=2) == "west"  # the western stand has the lower index
+    assert side_taken(west=2, east=0) == "east"  # now the eastern one has it
+
+
 def test_isolated_undersized_region_is_reported_not_merged():
     px = [500, 20]
     means, counts = _attrs([{"ch": 10.0, "std": 0.5}, {"ch": 10.0, "std": 0.5}], px)

@@ -95,7 +95,10 @@ log = get_logger(__name__)
 # pixelLonLat()'s band names. Carried through the attribute reduction so stand
 # centroids come free, and used as the merge's deterministic tie-break: the two
 # arms' tessellations diverge run to run, so SNIC label order is not a stable
-# thing to sort by, but a centroid is.
+# thing to sort by, but a centroid is. One tie does not use them (review C12,
+# 20 Oct 2026): two neighbours sharing equally long boundaries in the pass-2
+# shared-edge fallback go to the lower root index, which is SNIC label order
+# (`order_key` in fmu.utils.region_merge).
 _LON_BAND = "longitude"
 _LAT_BAND = "latitude"
 

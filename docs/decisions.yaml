@@ -2832,7 +2832,13 @@ decisions:
   decision: >-
     The stage downloads the superpixel adjacency graph (a few thousand rows), merges it in pure Python
     with union-find, and sends the result back as a relabel of the SNIC image (remap). The stand image
-    is not cached as an asset. Ties are broken by stand centroid, not by SNIC label.
+    is not cached as an asset. Ties are broken by stand centroid, not by SNIC label. Recorded 20 Oct 2026
+    (round 13, review C12): one tie in the code is not broken by centroid. In pass 2's shared-edge fallback,
+    two neighbours sharing boundaries of the same length go to the lower root index (pass2_partner in
+    fmu.utils.region_merge), and the dense index is the rank of the SNIC label (fmu.utils.adjacency numbers
+    the sorted labels 0 to n - 1), so that tie follows SNIC label order; order_key also ends on the dense
+    index, for two centroids equal to 7 decimals. Whether the code or this entry is to change is a question
+    for Jaskaran (round 13); until it is answered, the code is as it was.
   alternatives_considered:
   - 'Caching stand_clusters like other stage outputs: named and rejected'
   - 'Ordering by SNIC label: named and rejected'
@@ -2846,9 +2852,12 @@ decisions:
   evidence:
   - path: src/fmu/stages/merge.py
     what: >-
-      docstring lines 20-29; tie-break comment lines 94-97; cacheable_outputs comment lines 160-166
+      docstring lines 20-29; tie-break comment lines 94-97 (since round 13 it names the fallback's tie);
+      cacheable_outputs comment lines 160-166
   - path: src/fmu/utils/region_merge.py
-    what: 'order_key(), lines 240-248: centroid rounded to 7 decimals'
+    what: >-
+      order_key(): centroid rounded to 7 decimals, then the dense index; pass2_partner(): the fallback's ties to
+      the lower root index (both docstrings say so since round 13)
   - path: src/fmu/utils/adjacency.py
     what: docstring lines 1-8; note on run-to-run differences at line 454
   - path: src/fmu/config.py
@@ -2856,14 +2865,20 @@ decisions:
   - path: tests/test_merge_stage.py
     what: test_merge_is_not_cached
   - path: tests/test_region_merge.py
-    what: test_result_is_deterministic_across_runs
+    what: >-
+      test_result_is_deterministic_across_runs, which reruns identical input and so cannot see a dependence on
+      label order (review C12); test_a_fallback_tie_goes_to_the_lower_root_index_the_snic_label_order (round 13),
+      which pins the fallback's tie by label order and fails on a version that breaks it by centroid
   - path: README.md
     what: 'line 209: why merge is not cached'
+  - path: docs/reviews/2026-10-19-review.md
+    what: C12
   papers: []
   status: adopted
   design_notes_section: null
   source: >-
-    src/fmu/stages/merge.py docstring ('How it runs') and comments at lines 94-97 and 160-166
+    src/fmu/stages/merge.py docstring ('How it runs') and comments at lines 94-97 and 160-166; the sentence of 20 Oct
+    2026 from review C12 (round 13 brief, Task 6)
 - id: spec-analysis-grid-utm-from-roi
   title: 'All raster measurements use one grid: the UTM zone of the region of interest'
   decision: >-
