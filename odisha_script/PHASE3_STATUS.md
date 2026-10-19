@@ -201,7 +201,7 @@ one easy contrast, which is why check S1 exists.
 | Number of stand types (`clustering.k`) | 6 | 5 |
 | Stands in the four districts | 1,039 | 1,954 |
 | Median stand size | 3.09 hectares | 2.35 hectares |
-| Stands larger than 3 hectares | 529 of 1,039 (50.9%) | 41 of 1,954 (2.1%), each by at most 0.04 hectares |
+| Stands larger than 3 hectares | 529 of 1,039 (50.9%) | 41 of 1,954 (2.1%), each by at most 0.04 hectares (see the note of 20 Oct 2026 at the end) |
 | Stands holding at least one plot | 144 | 198 |
 | Stands holding two or more plots | 61, holding 184 plots | 44, holding 113 plots |
 
@@ -706,3 +706,22 @@ Re-joining the plots after a new run:
 | `phase2_vectors/odisha_v120_3ha_*` | The 3 hectare stand files, now with 5 stand types |
 | `odisha_phase3_stands_unchanged.txt`, `check_stands_unchanged.py` | The outline by outline comparison of the stand files before and after the regroup (the script's printed output, saved from a run with `--ref main` before this branch was merged), and the script |
 | `copy_upstream_cache.py`, `run_config_passes.sh` | The two helpers for Earth Engine runs |
+
+---
+
+## Note of 20 Oct 2026 (round 13, review A6): stand areas
+
+The median stand sizes and the stands larger than 3 hectares in the table of the two stand sizes,
+and the stands over 10 hectares in the sentence under it, come from `area_ha` in the stand files,
+which Earth Engine's `area()` gave; for a polygon whose hole touches its outer ring at a vertex,
+`area()` added the hole instead of subtracting it. With the holes subtracted (recomputed offline
+from `phase2_vectors/`), 37 of the 1,954 3 hectare stands are larger than 3 hectares (1.9%), not
+41; the other figures there do not change. Since round 13 the export gives a polygon's area as its
+pixel count on the analysis grid times 0.01 hectares, which for these stands is also 0.2% to 0.3%
+below `area()`. On that measure the medians are 3.08 and 2.34 hectares; 528 of the 1,039 10
+hectare stands (50.8%) and 7 of the 1,954 3 hectare stands (0.4%) are larger than 3 hectares, the
+7 by at most 0.03 hectares (3 pixels); and 3 of the 10 hectare stands exceed 10 hectares, by at
+most 0.05 (5 pixels). 30 of the 41 are stands of exactly 300 pixels, 3 hectares on the grid. The
+3 hectare plot table, `phase3_3ha/phase2_plots_joined_districts.csv`, holds 23 area cells that the
+holes change (19 of `v120_3ha_merged_area_ha`, 4 of `v120_3ha_snic_area_ha`); no score reads them.
+The numbers above are as first written.

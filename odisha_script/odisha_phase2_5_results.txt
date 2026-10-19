@@ -969,3 +969,17 @@ ARMS (pre-registered): difference in excess over own rotation null, stands_merge
     n_species              0.022            [-0.180, 0.142]   inside              [-0.195, 0.133]   inside  inside both
     dbh_mean_cm           -0.235            [-0.145, 0.134]  OUTSIDE              [-0.156, 0.130]  OUTSIDE  inside neither
     h_top5_m              -0.029            [-0.126, 0.128]   inside              [-0.127, 0.126]   inside  inside both
+
+  NOTE ADDED 20 Oct 2026 (round 13, review A6; the numbers above are as first written): the areas
+  above sum area_ha of the stand layers in phase2_vectors/, which Earth Engine's area() gave, and
+  for a polygon whose hole touches its outer ring at a vertex area() added the hole instead of
+  subtracting it. With the holes subtracted (recomputed offline from those layers) line 149 reads
+  22.40 ha of 914.72 ha, line 272 873.43 ha, line 410 18.43 ha of 914.72 ha, line 533 878.05 ha
+  and line 671 16.18 ha of 914.72 ha; no other line changes, and no statistic of this file reads
+  area_ha. Since round 13 the export gives area_ha as the polygon's pixel count on the analysis
+  grid times 0.01 ha, for these layers also 0.2% to 0.3% below area() for every polygon: on that
+  measure line 148 reads median 3.92 / p90 9.36, line 149 22.33 ha of 911.98 ha, line 271 p90
+  2.06, line 272 870.81 ha, line 409 median 4.26 / p90 9.44, line 410 18.37 ha of 911.98 ha, line
+  532 p90 1.98, line 533 875.42 ha, line 670 median 4.78 / p90 9.08, line 671 16.13 ha of 911.98
+  ha and line 794 862.98 ha. The stands_dissolved lines do not change with the holes subtracted;
+  those layers lie on a geographic grid in these runs (docs/outputs.md, "Areas and pixel counts").

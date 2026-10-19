@@ -139,7 +139,7 @@ adequately powered where the pilot's 13 stands holding 35 plots were not.
 
 Primary partition: `stands_merged` from `odisha_v120_handcrafted`. **1039 stands**, area p10 1.22 /
 median 3.09 / p90 9.18 ha, all 267 plots assigned, **61 multi-plot stands holding 184 of the 267
-plots** (the pilot had 13 holding 35). 187 of 1068 polygons (486.81 of 4313.70 ha) carry no
+plots** (the pilot had 13 holding 35). 187 of 1068 polygons (486.81 of 4313.70 ha; see the note of 20 Oct 2026 at the end) carry no
 `cluster_id`. Rotation null: 1999 realisations, seed `crc32('v120/stands_merged')`, 184 s, every
 AOI part placed. Figures: `odisha_phase2_5_{primary_r2_null,arms_excess,pairwise_bands}_districts.png`.
 
@@ -1373,3 +1373,24 @@ The first run's output can be compared with the corrected one without re-running
 ```bash
 git show 8d4c2ed:odisha_script/odisha_phase2_5_results.txt
 ```
+
+---
+
+## Note of 20 Oct 2026 (round 13, review A6): stand areas
+
+The areas quoted in this file come from `area_ha` in the stand layers of `phase2_vectors/`, which
+Earth Engine's `area()` gave; for a polygon whose hole touches its outer ring at a vertex, `area()`
+added the hole instead of subtracting it. With the holes subtracted (recomputed offline from those
+layers), the full set's primary partition has a p90 of 9.16 ha, not 9.18, and its 187 polygons
+with no `cluster_id` hold 486.63 of 4,311.31 ha, not 486.81 of 4,313.70 (under "PRIMARY RESULT —
+the full set"); in the pilot the polygons with no `cluster_id` hold 22.40 of 914.72 ha (v120),
+18.43 of 914.72 ha (current) and 16.18 of 914.72 ha (AlphaEarth), not of 915.02, 915.38 and
+914.76 ha. No other area quoted here changes (the notes at the end of
+`odisha_phase2_5_results_districts.txt` and `odisha_phase2_5_results.txt` give every line that
+changes there), and no statistic reads `area_ha`. The plot tables
+`phase2_plots_joined_districts.csv` and `phase2_plots_joined.csv` hold 23 and 10 area cells that
+the holes change. Since round 13 the export gives a polygon's area as its pixel count on the
+analysis grid times 0.01 ha, which for these layers is also 0.2% to 0.3% below `area()` for every
+polygon, so on that measure every area here moves by about that much (the full set's primary
+partition: p10 1.22 / median 3.08 / p90 9.13 ha, and 485.22 of 4,299.05 ha). The numbers above
+are as first written.
