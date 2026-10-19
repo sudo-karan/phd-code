@@ -1,4 +1,4 @@
-# Round 12's runs (Task 4: the 10 ha box runs; Task 5: the 30 km tile)
+# Round 12's runs (Task 4: the 10 ha box runs; Task 5, the 30 km tile, was not run)
 
 The runs of round 12 (`docs/handoff/2026-10-19-round12.md`), each from an empty cache in the
 per-step cache layout, one config at a time, through `odisha_script/run_passes_safely.py`, from
