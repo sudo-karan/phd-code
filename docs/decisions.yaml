@@ -6994,3 +6994,67 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-clustering-exact-quartiles-for-the-robust-scaling
+  title: >-
+    The robust scaling's median and IQR are exact quartiles of the one-row-per-unit sample, for the constant-band test
+    and the scaling alike
+  decision: >-
+    In the clustering stage (src/fmu/stages/clustering.py, a Locked module), _apply_scaling with method robust reads
+    each band's column of the one-row-per-unit sample back (aggregate_array, one request per band) and takes its 25th,
+    50th and 75th percentiles exactly (_exact_quartiles): linear interpolation between order statistics, numpy's
+    default, that is v[j] + (h - j)(v[j+1] - v[j]) with h = q(n - 1) and j = floor(h), the n values sorted. The centre
+    is that median and the spread that IQR, and the drop test (a spread of at most 1e-9 is a constant band) and the
+    scaling, (x - centre) / spread, use the same two numbers. The method is unchanged: median and IQR, as DEC-003
+    declares (dn-median-iqr-scaling-dec-003); until round 13 the centre and spread were those of Earth Engine's
+    percentile reducer, which falls back to histogram buckets. The zscore method is unchanged. Clustering's revision is
+    raised to 4 (STEP_REVISION in src/fmu/utils/caching.py), which moves the clustering and k_elbow keys of every
+    config and no other key.
+  alternatives_considered:
+  - >-
+    ee.Reducer.percentile with maxRaw above the row count, the review's other suggestion: not chosen. The quartiles
+    would still be Earth Engine's, whose interpolation could not be stated or tested offline
+  - >-
+    Exact quartiles for the drop test only, histogram quartiles for the scaling: not chosen. A band kept by the exact
+    test could then be divided by a histogram spread of 0
+  - >-
+    The quartiles computed on Earth Engine from the sorted column: not chosen, since the arithmetic could then be tested
+    on Earth Engine only
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 4: "B16 (exact quartiles for the constant-band test)". The review
+    (docs/reviews/2026-10-19-review.md, B16) found that the recorded centre and spread are histogram-bucket values,
+    0.57 to 1.52 times the exact IQR in the _r9 runs, and that where p25 and p75 share a bucket the spread is exactly 0
+    and a band with spread is dropped as constant, as distance_to_water was in round 7's two Koraput runs. The new test
+    fails on the code before the change with "assert 'distance_to_water' not in ['distance_to_water']" (a band whose
+    exact IQR is 0.1 and whose histogram quartiles coincide) and passes after it. Under review A2 wekaKMeans
+    min-max-normalises every band over the fit rows, which cancels a per-band (x - centre) / spread with a positive
+    spread, so the exact values change the fitted types only through the drop decision, up to floating-point rounding.
+    In the runs of record the bands dropped as constant are exactly constant over the stands (distance_to_water at
+    10,000 m in the Angul hand-crafted _r9 and round 12 runs, at the fill value 463,409.5 m in Sanjay Van's _r9 run),
+    and no other raw band has an exact IQR of 0 over the typed stands of the committed _r9 and round 12 stands_merged
+    layers, so this changes no drop decision of record that could be checked offline (the check is over stands rather
+    than the stage's units, and leaves out the sin and cos pairs; the Koraput 3 ha _r9 and 10 km tile layers are off
+    git and were not checked); the recorded centres and spreads do change. In round 7's Koraput run
+    (docs/reproducibility/keptland_runs) distance_to_water spreads over about 510 m across the stands and would have
+    been kept. The k elbow step (src/fmu/stages/k_elbow.py) reads the scaled rows into scikit-learn with no min-max, so
+    its inertia, and possibly its elbow, move. Reading a column back costs one request per band of a few hundred to a
+    few thousand numbers per run; at district scale (out of scope this round) a column is as long as the units. No
+    paper was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/clustering.py
+    what: _apply_scaling and _exact_quartiles
+  - path: src/fmu/utils/caching.py
+    what: STEP_REVISION, clustering at 4
+  - path: tests/test_clustering_exact_quartiles.py
+    what: >-
+      A band whose exact IQR is 0.1 and whose histogram quartiles coincide is kept, and scaled by that IQR; the
+      quartiles' definition; fails on the code before the change
+  - path: tests/data/clustering_off_calls.json
+    what: The recorded calls of the three configs, a column read per band in place of a percentile reducer
+  - path: docs/reviews/2026-10-19-review.md
+    what: B16, and A2
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 4, B16
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)

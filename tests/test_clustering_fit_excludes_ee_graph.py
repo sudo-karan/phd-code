@@ -172,11 +172,12 @@ def test_the_requests_with_the_setting_on_are_valid_and_mask_the_right_stands(of
     alone = _sampled_image(their_rows)["functionInvocationValue"]
     assert alone["arguments"]["image"] == training_image
 
-    # No statistic of the preprocessing is taken over a masked sample.
+    # No statistic of the preprocessing is taken over a masked sample. (The scaling read
+    # Earth Engine's "p25/p50/p75 of" a band until review B16; it reads its "values of".)
     statistics = [
         _expanded(e)
         for context, encoded in requested.items()
-        if context.startswith(("skew of ", "min of ", "p25/p50/p75 of "))
+        if context.startswith(("skew of ", "min of ", "values of "))
         for e in encoded
     ]
     assert len(statistics) > 40

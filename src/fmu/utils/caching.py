@@ -478,8 +478,9 @@ STEP_REVISION: dict[str, int] = {
     "features_static": 2,
     # Round 13. 1, A5: a flat cell's aspect sin and cos are both 0. 2, B13: a harmonic
     # phase's sin and cos are kept out of the skew test and the log. 3, B14: one mean
-    # per unit label, not per connected piece.
-    "clustering": 3,
+    # per unit label, not per connected piece. 4, B16: the robust scaling's median and
+    # IQR are exact quartiles, for the constant-band test as for the scaling.
+    "clustering": 4,
 }
 
 # Steps that read another step's output without having it upstream, and so take

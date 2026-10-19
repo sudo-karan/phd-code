@@ -5496,1923 +5496,1027 @@
 }
 ],
 [
-"ee.Reducer.percentile",
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
 [
-[
-"25",
-"50",
-"75"
-]
-],
-{}
-],
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
-{
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
 "'A00'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A00'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A00'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A01'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A01'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A01'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A02'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A02'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A02'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A03'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A03'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A03'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A04'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A04'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A04'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A05'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A05'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A05'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A06'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A06'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A06'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A07'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A07'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A07'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A08'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A08'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A08'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A09'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A09'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A09'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A10'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A10'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A10'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A11'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A11'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A11'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A12'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A12'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A12'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A13'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A13'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A13'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A14'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A14'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A14'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A15'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A15'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A15'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A16'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A16'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A16'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A17'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A17'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A17'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A18'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A18'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A18'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A19'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A19'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A19'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A20'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A20'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A20'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A21'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A21'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A21'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A22'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A22'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A22'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A23'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A23'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A23'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A24'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A24'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A24'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A25'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A25'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A25'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A26'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A26'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A26'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A27'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A27'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A27'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A28'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A28'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A28'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A29'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A29'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A29'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A30'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A30'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A30'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A31'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A31'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A31'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A32'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A32'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A32'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A33'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A33'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A33'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A34'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A34'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A34'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A35'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A35'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A35'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A36'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A36'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A36'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A37'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A37'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A37'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A38'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A38'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A38'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A39'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A39'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A39'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A40'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A40'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A40'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A41'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A41'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A41'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A42'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A42'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A42'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A43'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A43'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A43'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A44'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A44'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A44'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A45'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A45'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A45'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A46'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A46'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A46'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A47'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A47'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A47'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A48'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A48'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A48'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A49'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A49'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A49'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A50'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A50'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A50'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A51'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A51'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A51'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A52'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A52'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A52'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A53'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A53'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A53'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A54'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A54'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A54'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A55'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A55'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A55'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A56'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A56'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A56'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A57'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A57'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A57'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A58'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A58'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A58'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A59'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A59'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A59'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A60'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A60'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A60'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A61'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A61'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of A61'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'A62'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of A62'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
-"'A63'"
-]
+"context": "'values of A62'"
 }
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
+"'A63'"
+],
+{}
 ],
 [
 "getInfo",
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
 ],
 {
-"context": "'p25/p50/p75 of A63'"
+"context": "'values of A63'"
 }
 ],
 [
@@ -12279,663 +11383,355 @@
 }
 ],
 [
-"ee.Reducer.percentile",
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
 [
-[
-"25",
-"50",
-"75"
-]
-],
-{}
-],
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
-{
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
 "'ndvi_mean'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of ndvi_mean'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of ndvi_mean'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'ndvi_amplitude_annual'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of ndvi_amplitude_annual'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of ndvi_amplitude_annual'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'ndvi_trend'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of ndvi_trend'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of ndvi_trend'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'vv_p10'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of vv_p10'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of vv_p10'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'vh_p10'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of vh_p10'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of vh_p10'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'vv_p50'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of vv_p50'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of vv_p50'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'vh_p50'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of vh_p50'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of vh_p50'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'vv_p90'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of vv_p90'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of vv_p90'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'vh_p90'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of vh_p90'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of vh_p90'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'vv_iqr'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of vv_iqr'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of vv_iqr'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'vh_iqr'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of vh_iqr'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of vh_iqr'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'vv_minus_vh_median'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of vv_minus_vh_median'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of vv_minus_vh_median'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'canopy_height'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of canopy_height'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of canopy_height'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'canopy_height_std'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of canopy_height_std'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of canopy_height_std'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'canopy_height_max'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of canopy_height_max'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of canopy_height_max'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'elevation'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of elevation'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of elevation'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'slope'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of slope'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of slope'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'distance_to_water'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of distance_to_water'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of distance_to_water'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'ndvi_phase_annual_sin'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of ndvi_phase_annual_sin'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of ndvi_phase_annual_sin'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'ndvi_phase_annual_cos'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of ndvi_phase_annual_cos'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of ndvi_phase_annual_cos'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'aspect_sin'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of aspect_sin'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
-"'aspect_cos'"
-]
+"context": "'values of aspect_sin'"
 }
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
+"'aspect_cos'"
+],
+{}
 ],
 [
 "getInfo",
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
 ],
 {
-"context": "'p25/p50/p75 of aspect_cos'"
+"context": "'values of aspect_cos'"
 }
 ],
 [
@@ -16291,663 +15087,355 @@
 }
 ],
 [
-"ee.Reducer.percentile",
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
 [
-[
-"25",
-"50",
-"75"
-]
-],
-{}
-],
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
-{
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
 "'ndvi_mean'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of ndvi_mean'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of ndvi_mean'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'ndvi_amplitude_annual'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of ndvi_amplitude_annual'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of ndvi_amplitude_annual'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'ndvi_trend'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of ndvi_trend'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of ndvi_trend'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'vv_p10'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of vv_p10'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of vv_p10'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'vh_p10'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of vh_p10'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of vh_p10'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'vv_p50'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of vv_p50'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of vv_p50'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'vh_p50'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of vh_p50'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of vh_p50'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'vv_p90'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of vv_p90'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of vv_p90'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'vh_p90'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of vh_p90'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of vh_p90'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'vv_iqr'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of vv_iqr'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of vv_iqr'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'vh_iqr'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of vh_iqr'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of vh_iqr'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'vv_minus_vh_median'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of vv_minus_vh_median'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of vv_minus_vh_median'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'canopy_height'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of canopy_height'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of canopy_height'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'canopy_height_std'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of canopy_height_std'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of canopy_height_std'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'canopy_height_max'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of canopy_height_max'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of canopy_height_max'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'elevation'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of elevation'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of elevation'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'slope'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of slope'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of slope'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'distance_to_water'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of distance_to_water'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of distance_to_water'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'ndvi_phase_annual_sin'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of ndvi_phase_annual_sin'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of ndvi_phase_annual_sin'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'ndvi_phase_annual_cos'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of ndvi_phase_annual_cos'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
+"context": "'values of ndvi_phase_annual_cos'"
+}
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
 "'aspect_sin'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'p25/p50/p75 of aspect_sin'"
-}
-],
-[
-"ee.Reducer.percentile",
-[
-[
-"25",
-"50",
-"75"
-]
 ],
 {}
 ],
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns",
-[],
+"getInfo",
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
+],
 {
-"reducer": "ee.Reducer.percentile()",
-"selectors": [
-"'aspect_cos'"
-]
+"context": "'values of aspect_sin'"
 }
+],
+[
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array",
+[
+"'aspect_cos'"
+],
+{}
 ],
 [
 "getInfo",
 [
-"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().reduceColumns()"
+"ee.Image.cat().updateMask().select().addBands().addBands().stratifiedSample().aggregate_array()"
 ],
 {
-"context": "'p25/p50/p75 of aspect_cos'"
+"context": "'values of aspect_cos'"
 }
 ],
 [

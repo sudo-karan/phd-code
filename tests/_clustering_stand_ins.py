@@ -1,9 +1,10 @@
 """Stand-ins for what the clustering stage asks of Earth Engine, for the offline tests.
 
 `answers()` gives a `safe_get_info` that answers every request `ClusteringStage.run()`
-makes by the context it names, the same way every time: the band lists, the skewness,
-minimum and percentiles of each band, the training row count and the label histograms of
-`_count_units`. Each request is also written into the call log, so a recording shows what
+makes by the context it names, the same way every time: the band lists, the skewness and
+minimum of each band and its column of values (whose exact quartiles the scaling takes; until
+review B16 it asked Earth Engine's percentiles), the training row count and the label
+histograms of `_count_units`. Each request is also written into the call log, so a recording shows what
 was asked as well as what was built. `run_stage()` runs `ClusteringStage().run()` of a given
 copy of the stage module on the stand-ins of tests/_ee_recorder.py. (Until round 13 the stage
 also checked the labels with `assert_components_fit` and measured the unit extents for
@@ -104,10 +105,10 @@ def answers(
             return {"skew": SKEW.get(context.removeprefix("skew of "), 0.3)}
         if context.startswith("min of "):
             return {"min": -1.5}
-        if context.startswith("p25/p50/p75 of "):
-            if context.removeprefix("p25/p50/p75 of ") in NO_SPREAD:
-                return {"p25": 5.0, "p50": 5.0, "p75": 5.0}
-            return {"p25": 0.25, "p50": 0.5, "p75": 1.0}
+        if context.startswith("values of "):
+            if context.removeprefix("values of ") in NO_SPREAD:
+                return [5.0] * 5
+            return [0.0, 0.25, 0.5, 1.0, 1.5]  # quartiles 0.25, 0.5 and 1.0
         if context.startswith("mean/stdDev of "):
             flat = context.removeprefix("mean/stdDev of ") in NO_SPREAD
             return {"mean": 0.5, "stdDev": 0.0 if flat else 0.4}

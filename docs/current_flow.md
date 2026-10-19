@@ -349,7 +349,7 @@ Per-superpixel feature stack to preprocessing to k-means to per-pixel cluster la
 
 6. **Log-transform**; `log(x − band_min + 1e-3)` so log is defined even for zero/negative values (some bands like `trend` and `vv_minus_vh_median` include both).
 
-7. **Robust scaling**; per band: `(x − median) / IQR`. Bands with zero IQR (true constants) are dropped; they contribute nothing to clustering and would cause division-by-zero.
+7. **Robust scaling**; per band: `(x − median) / IQR`. Bands with zero IQR (true constants) are dropped; they contribute nothing to clustering and would cause division-by-zero. The median and IQR are exact: each band's column of the one-row-per-unit sample is read back (`aggregate_array`) and its quartiles taken by linear interpolation between order statistics, numpy's default; the drop test and the scaling use the same centre and spread (review B16, round 13). Earth Engine's percentile reducer, used before, falls back to histogram buckets, so a band whose p25 and p75 shared a bucket got a spread of exactly 0 and was dropped although it had spread (`distance_to_water` in round 7's two Koraput runs).
 
 8. **K-means**; one row per unit and *every* unit (`stratifiedSample(numPoints=1, classBand=<unit>)`), train `ee.Clusterer.wekaKMeans(k=6, init=KMeansPlusPlus, seed=42)`, apply to all habitat pixels. No pixel sampling: the stack is constant within a unit, so a pixel sample drew each unit once per pixel and area-weighted every statistic computed from it. With `clustering.fit_excludes_stands_below_min_area` on, the stands the merge left below `merge.min_area_ha` are left out of the rows the fit is trained on, and typed with every other unit when the clusterer is applied (config knobs below).
 

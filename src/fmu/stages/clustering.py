@@ -44,7 +44,8 @@ Pipeline (server-side throughout):
 
   7. Robust scaling (DEC-003, method=robust in config)
        - Per band: (x - median) / IQR. Drop bands with IQR near 0 (constant).
-       - Median/IQR computed over the habitat-masked sample.
+       - Median/IQR computed over the habitat-masked sample, exactly: each
+         band's column is read back (see _exact_quartiles).
 
   8. Train k-means
        - ONE row per unit, and every unit -- no pixel sampling. The stack is
@@ -77,6 +78,7 @@ import math
 from typing import Any
 
 import ee
+import numpy as np
 
 from fmu.config import Config
 from fmu.stages.base import (
@@ -870,32 +872,29 @@ def _apply_scaling(
     method="zscore":           center=mean,   spread=stdDev.
 
     Scaling parameters are derived from the sample (FeatureCollection),
-    not the full image. Sidesteps GEE memory limits on percentile reducers.
+    not the full image. With method="robust" each band's column of the sample
+    is read back and its median and IQR are exact (_exact_quartiles, review
+    B16): Earth Engine's percentile reducer, used before round 13, falls back to
+    histogram buckets, so a band whose p25 and p75 shared a bucket got a spread
+    of exactly 0 and was dropped as constant although it had spread.
 
     Drops bands with spread ≤ epsilon (constant features can't be scaled
-    and contribute nothing to clustering).
+    and contribute nothing to clustering). The drop test and the scaling read
+    the same center and spread.
     """
     scaling_params: dict[str, dict[str, float]] = {}
 
     if method == "robust":
         for band in band_names:
-            result = safe_get_info(
-                sample.reduceColumns(
-                    reducer=ee.Reducer.percentile([25, 50, 75]),
-                    selectors=[band],
-                ),
-                context=f"p25/p50/p75 of {band}",
+            values = safe_get_info(
+                sample.aggregate_array(band), context=f"values of {band}"
             )
-            if result is None:
+            if not values:
                 continue
-            p25 = result.get("p25")
-            p50 = result.get("p50")
-            p75 = result.get("p75")
-            if p25 is None or p50 is None or p75 is None:
-                continue
+            p25, p50, p75 = _exact_quartiles(values)
             scaling_params[band] = {
-                "center": float(p50),
-                "spread": float(p75) - float(p25),  # IQR
+                "center": p50,
+                "spread": p75 - p25,  # IQR
             }
     elif method == "zscore":
         for band in band_names:
@@ -941,6 +940,18 @@ def _apply_scaling(
         )
 
     return ee.Image.cat(scaled_bands), scaling_params, active_bands
+
+
+def _exact_quartiles(values: list[float]) -> tuple[float, float, float]:
+    """The 25th, 50th and 75th percentiles of `values`, exactly (review B16).
+
+    Linear interpolation between order statistics, numpy's default: with the n
+    values sorted, v[0] <= ... <= v[n-1], the q-th quantile is
+    v[j] + (h - j) * (v[j+1] - v[j]), where h = q * (n - 1) and j = floor(h).
+    Pure Python and numpy, no Earth Engine.
+    """
+    p25, p50, p75 = np.percentile(np.asarray(values, dtype=float), [25, 50, 75])
+    return float(p25), float(p50), float(p75)
 
 
 def _sample_one_point_per_unit(

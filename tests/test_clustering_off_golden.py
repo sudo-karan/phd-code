@@ -19,10 +19,11 @@ A deliberate change to the default path rewrites the file the same way, from the
 code, in the commit that makes it (`--write src/fmu/stages/clustering.py`), still without
 that key in the stage metadata. Rewritten so in round 13 by review A5 (a flat cell's aspect
 pair is (0, 0): the calls of the two hand-crafted configs changed), B13 (a phase's sin and
-cos are not tested for skew: the same two configs ask two skews fewer) and B14 (one mean per
+cos are not tested for skew: the same two configs ask two skews fewer), B14 (one mean per
 unit label, with no reduceConnectedComponents, from grouped sums of the bands unmasked over
 their pixels with data: the calls of all three configs changed, and their stage metadata lost
-the five keys that described its maxSize).
+the five keys that described its maxSize) and B16 (each band's column is read back for exact
+quartiles, in place of Earth Engine's percentiles: the calls of all three configs).
 """
 
 from __future__ import annotations
