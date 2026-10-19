@@ -50,9 +50,12 @@ class _Result:
         self.context = context
         self.stages = [
             types.SimpleNamespace(name="segmentation", cache_status={"snic_clusters": "hit"},
-                                  metadata={"source": "cache"}),
-            types.SimpleNamespace(name="merge", cache_status={}, metadata={}),
+                                  metadata={"source": "cache"}, cache_key=SNIC_KEY),
+            types.SimpleNamespace(name="merge", cache_status={}, metadata={}, cache_key=None),
         ]
+
+
+SNIC_KEY = "d09789d9ab"  # the key the superpixels were read under (a legacy fingerprint here)
 
 
 @pytest.fixture
@@ -156,6 +159,22 @@ def test_the_export_stages_counts_come_from_the_newest_manifest_whose_export_sta
     assert tool_module.export_stage_counts(manifests)["stands_snic"] == {
         "n_features": 4, "n_stands": None, "n_stands_split_into_pieces": None}
     assert tool_module.export_stage_counts(manifests[1:]) is None
+
+
+def test_the_record_gives_the_scale_of_the_pass_that_drew_the_superpixels(tool, monkeypatch):
+    """Review C36: snic_distance_scale was null in every record the tool wrote, as in the runner's:
+    segmentation is read from the cache there; the pass that made the superpixels recorded it."""
+    tool_module, vectors, runs = tool
+    d = runs / f"{NAME}_20261015_100000"
+    d.mkdir()
+    (d / "manifest.json").write_text(json.dumps({"config_name": NAME, "stages": [
+        {"name": "segmentation", "metadata": {"distance_scale": 0.9957681733771848},
+         "cache_status": {"snic_clusters": "miss-exported"},
+         "export_tasks": [{"asset_path": f"projects/p/assets/fmu/{NAME}/segmentation/snic_clusters__{SNIC_KEY}"}]}]}))
+    assert _main(tool_module, vectors, runs, monkeypatch) == 0
+    record = json.loads((vectors / f"{NAME}_run.json").read_text())
+    assert record["snic_distance_scale"] == 0.9957681733771848
+    assert record["snic_distance_scale_from"].endswith(f"segmentation/snic_clusters__{SNIC_KEY}")
 
 
 def test_without_an_export_manifest_the_export_stages_counts_are_not_made_up(tool, monkeypatch):

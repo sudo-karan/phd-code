@@ -1192,6 +1192,13 @@ stand layers it pulls down. Keys: `config`, `fingerprint`, `git`, `run_dir`,
 - `stand_provenance` maps each stand id (the `stand_lbl` of `stands_merged`, the
   same ids as `stand_attributes`) to the six provenance fields listed under
   `stands_merged`.
+- `snic_distance_scale` is SNIC's distance normaliser for the superpixels the run
+  used. The export pass reads segmentation from the cache, so since round 13 the
+  value is read from the manifest of the segmentation pass that exported the
+  superpixel asset the export pass read, and `snic_distance_scale_from` says so
+  (or that no such manifest was found). Every record committed before round 13
+  holds null there (review C36); the value is in the segmentation pass's
+  manifest, `<run>_manifest_segmentation.json` where it is committed.
 
 The run records committed so far were written before these two keys existed and
 have neither. A record written from the current code has both.

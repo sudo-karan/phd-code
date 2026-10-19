@@ -181,6 +181,36 @@ def export_stage_counts(manifests: list[tuple[str, dict[str, Any]]]) -> dict[str
     return None
 
 
+def segmentation_distance_scale(segmentation: Any, manifests: list[tuple[str, dict[str, Any]]],
+                                config_name: str) -> tuple[float | None, str]:
+    """SNIC's distance normaliser for the superpixels a pass used, and where it was read.
+
+    `segmentation` is the pass's own record of the stage (a StageRecord). A pass that ran the
+    stage has the scale in its metadata. A pass that read the superpixels from the cache (every
+    export pass, and this tool) has only {'source': 'cache'} there, so the scale is taken from the
+    newest manifest of the config whose segmentation stage computed `snic_clusters` and exported
+    it under the key this pass read it under (the stage record's cache_key). Until round 13 the
+    run records took it from the pass's own metadata, and so held null (review C36).
+    """
+    metadata = getattr(segmentation, "metadata", None) or {}
+    if "distance_scale" in metadata:
+        return metadata["distance_scale"], "this pass, which ran the segmentation stage"
+    key = getattr(segmentation, "cache_key", None)
+    asset = f"segmentation/snic_clusters__{key}"
+    if key:
+        for _folder, manifest in reversed(manifests):
+            for stage in manifest.get("stages") or []:
+                if stage.get("name") != "segmentation":
+                    continue
+                if (stage.get("cache_status") or {}).get("snic_clusters") != "miss-exported":
+                    continue
+                paths = [str(t.get("asset_path", "")) for t in stage.get("export_tasks") or []]
+                if any(p.endswith(f"/{config_name}/{asset}") for p in paths):
+                    return ((stage.get("metadata") or {}).get("distance_scale"),
+                            f"the manifest of the segmentation pass that exported {asset}")
+    return None, f"not found: no run folder of the config holds the manifest of the pass that exported {asset}"
+
+
 # ---------------------------------------------------------------------------
 # Earth Engine side
 # ---------------------------------------------------------------------------
@@ -358,7 +388,9 @@ def main() -> int:
         for log in sorted(args.runs_dir.glob(f"{cfg.name}_2*/fmu.log")):
             submitted.update(drive_exports_in_log(log.read_text(errors="replace")))
         by_name = {s.name: s for s in result.stages}
-        stage_counts = export_stage_counts(run_manifests(args.runs_dir, cfg.name))
+        manifests = run_manifests(args.runs_dir, cfg.name)
+        stage_counts = export_stage_counts(manifests)
+        scale, scale_from = segmentation_distance_scale(by_name["segmentation"], manifests, cfg.name)
         record = {
             "config": cfg.name,
             "fingerprint": fingerprint,
@@ -381,7 +413,9 @@ def main() -> int:
             # The export stage's own counts, as the runner records them (C30).
             "export_vector_layers": stage_counts,
             "drive_exports": submitted,
-            "snic_distance_scale": by_name["segmentation"].metadata.get("distance_scale"),
+            # From the pass that drew the superpixels (C36): segmentation is read from the cache here.
+            "snic_distance_scale": scale,
+            "snic_distance_scale_from": scale_from,
             "merge_diagnostics": ctx.get("merge_diagnostics"),
             "stand_attributes": ctx.get("stand_attributes"),
             "stand_provenance": ctx.get("stand_provenance"),

@@ -42,7 +42,11 @@ WHAT IT WRITES (export pass only), under odisha_script/phase2_vectors/:
                                      the plot points -- a cross-check on the vector join, which
                                      is done by geometry in the next script
   <config>_run.json                  merge diagnostics, stand attributes, SNIC distance scale,
-                                     export stage vector-layer counts, asset fingerprint
+                                     export stage vector-layer counts, asset fingerprint. The
+                                     scale is the segmentation pass's, read from its manifest in
+                                     the run folders (this pass reads segmentation from the
+                                     cache); `snic_distance_scale_from` says where. Until round
+                                     13 it was null in every record (review C36)
 
 The vector layers are the export stage's `_build_*_feature_collection` functions evaluated with
 getInfo, i.e. the same FeatureCollections the stage submits to Drive, without needing Drive
@@ -101,7 +105,12 @@ from fmu.utils.provenance import environment_state, git_state
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from odisha_phase2_0_aois import load_plot_points  # noqa: E402
-from odisha_read_back_export import read_layer, renumber  # noqa: E402
+from odisha_read_back_export import (  # noqa: E402
+    read_layer,
+    renumber,
+    run_manifests,
+    segmentation_distance_scale,
+)
 
 VECTOR_DIR = HERE / "phase2_vectors"
 POLL_S = 30
@@ -291,6 +300,10 @@ def main() -> int:
         sample_rasters_at_plots(cfg, ctx)
         by_name = {s.name: s for s in result.stages}
         export_meta = by_name["export"].metadata["manifest"]
+        # This pass read segmentation from the cache, so the scale is the pass's that drew the
+        # superpixels, from its manifest in the run folders beside this one (review C36).
+        scale, scale_from = segmentation_distance_scale(
+            by_name["segmentation"], run_manifests(Path(run_dir).parent, cfg.name), cfg.name)
         run = {
             "config": cfg.name,
             "fingerprint": config_fingerprint(cfg),
@@ -305,7 +318,8 @@ def main() -> int:
                                                                   "n_stands_split_into_pieces")}
                                      for k, v in export_meta["vector_layers"].items()},
             "drive_exports": export_meta["drive_exports"],
-            "snic_distance_scale": by_name["segmentation"].metadata.get("distance_scale"),
+            "snic_distance_scale": scale,
+            "snic_distance_scale_from": scale_from,
             "merge_diagnostics": ctx.get("merge_diagnostics"),
             "stand_attributes": ctx.get("stand_attributes"),
             # Per stand: superpixels, merges by kind, and whether and why it ended below the minimum size.
