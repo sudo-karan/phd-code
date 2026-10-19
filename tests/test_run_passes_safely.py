@@ -129,3 +129,17 @@ def test_the_label_names_the_log_and_the_state_file_not_the_lock():
     label = " ".join(out.split("--label LABEL")[-1].split())
     assert label.startswith("names the log and the state file"), label
     assert "lock" not in label.split("--run-tree")[0]
+
+
+# ---------- B9: a request deadline on the queue poll ----------
+
+
+def test_the_queue_poll_has_a_request_deadline(h):
+    """Review B9: the client's default deadline is none, so a poll caught by a network drop (the
+    laptop asleep) never returned and the batch stalled with no log line. The runner sets one."""
+    a = h.config(A)
+    h.commit()
+    w = h.start(a)
+    rc, out = h.finish(w)
+    assert rc == 0, out
+    assert h.ee_calls(w.pid)[:3] == ["Initialize", "setDeadline 120000", "listOperations"]

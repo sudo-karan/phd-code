@@ -159,6 +159,10 @@ def main() -> int:
 
     from fmu.settings import get_settings
     ee.Initialize(project=get_settings().gee_project_id)
+    # A deadline on every request, as the runner sets on its own polls (review B9): the client has
+    # none by default, so a queue poll made during a network drop (the laptop asleep) would never
+    # return, and the batch would stall with no log line. A poll that times out is retried.
+    ee.data.setDeadline(120_000)
 
     def active(names: list[str]) -> list[str]:
         out = []
