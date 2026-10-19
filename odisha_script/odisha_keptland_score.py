@@ -304,18 +304,32 @@ def text(result: dict[str, Any], runs: str = RUNS) -> str:
     return "\n".join(lines) + "\n"
 
 
-def write_run_record(out_dir: Path, argv: list[str], stem: str = STEM) -> None:
+def git_block(now: bool = False) -> dict[str, Any]:
+    """This checkout's git state as a run record holds it: as the process found it first, or read
+    again now (`now`). main() asks first, before it writes anything (review C32)."""
+    sys.path.insert(0, str(REPO / "src"))
+    from fmu.utils.provenance import git_state, git_state_now
+
+    state = git_state_now(HERE) if now else git_state(HERE)
+    return {k: v for k, v in state.items() if k != "root"}
+
+
+def write_run_record(out_dir: Path, argv: list[str], stem: str = STEM,
+                     git: dict[str, Any] | None = None) -> None:
+    """The run record beside the results. `git` is the state the run started from (main() reads it
+    first); `git_at_end` is read now, after the results were written."""
     import datetime
     import shlex
 
     sys.path.insert(0, str(REPO / "src"))
-    from fmu.utils.provenance import environment_state, git_state
+    from fmu.utils.provenance import environment_state
 
     run = {"result_files": [f"{stem}_joined.csv", f"{stem}_scores.json", f"{stem}_scores.txt"],
            "command_line": "python " + " ".join(shlex.quote(a) for a in
                                                 ["odisha_script/odisha_keptland_score.py", *argv]),
            "date": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
-           "git": {k: v for k, v in git_state(HERE).items() if k != "root"},
+           "git": git if git is not None else git_block(),
+           "git_at_end": git_block(now=True),
            # The Python environment, as the pipeline's manifests record it (review C37).
            "environment": environment_state()}
     (out_dir / f"{stem}_scores_run.json").write_text(json.dumps(run, indent=1) + "\n")
@@ -332,6 +346,7 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
     if "{district}" not in args.runs:
         ap.error("--runs must hold {district}")
+    started = git_block()  # before any result is written (review C32)
     plots = plots_in_boxes()
     inputs: dict[str, str] = {}
     joined, box = [], []
@@ -359,7 +374,7 @@ def main(argv: list[str] | None = None) -> int:
     table.drop(columns=["epsg"]).to_csv(args.out_dir / f"{args.stem}_joined.csv", index=False)
     (args.out_dir / f"{args.stem}_scores.json").write_text(json.dumps(result, indent=1) + "\n")
     (args.out_dir / f"{args.stem}_scores.txt").write_text(text(result, args.runs))
-    write_run_record(args.out_dir, list(sys.argv[1:] if argv is None else argv), args.stem)
+    write_run_record(args.out_dir, list(sys.argv[1:] if argv is None else argv), args.stem, git=started)
     print(text(result, args.runs))
     return 0
 

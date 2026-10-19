@@ -22,9 +22,14 @@ _MAX_LISTED = 50
 _TIMEOUT_S = 10
 
 # One answer per checkout per process. The code a process runs is the code it
-# imported when it started, so the state at first asking is the state that
-# describes the run; it also keeps a test suite that writes hundreds of
-# manifests from starting hundreds of git processes.
+# imported when it started, so the state at first asking describes the run only
+# if the run asks before it does anything: the pipeline asks when Pipeline.run
+# starts, and each script that writes a run record asks at the start of main(),
+# before it writes a result (review C32, round 13; until then the first asking
+# came after the stages, or after the results were written). It also keeps a
+# test suite that writes hundreds of manifests from starting hundreds of git
+# processes. `git_state_now` reads the state again, for a record of how the
+# tree stood at the end, and remembers nothing.
 _cache: dict[str, dict[str, Any]] = {}
 
 
@@ -68,6 +73,21 @@ def git_state(start: Path | None = None, *, refresh: bool = False) -> dict[str, 
     if refresh or key not in _cache:
         _cache[key] = _read_git_state(Path(key))
     return copy.deepcopy(_cache[key])
+
+
+def git_state_now(start: Path | None = None) -> dict[str, Any]:
+    """The state of the same checkout as `git_state`, read again now and not remembered.
+
+    For a record of how the tree stood when a run ended, beside `git_state()`,
+    how it stood when the run started: a commit made, or a file edited, while the
+    run ran shows as a difference between the two. The keys are those of
+    `git_state`. Never raises.
+    """
+    if start is None:
+        import fmu
+
+        start = Path(fmu.__file__).resolve().parent
+    return _read_git_state(Path(start).resolve())
 
 
 def _read_git_state(start: Path) -> dict[str, Any]:

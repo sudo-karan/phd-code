@@ -176,6 +176,11 @@ def main() -> int:
     ap.add_argument("--offline", action="store_true", help="analyse the saved sample; no Earth Engine")
     args = ap.parse_args()
 
+    from fmu.utils.provenance import git_state, git_state_now
+
+    # Which code: read before the sample or a result is written (review C32), and again at the end.
+    started = {k: v for k, v in git_state().items() if k != "root"}
+
     if args.offline:
         desc = pd.read_csv(SAMPLE)
         per_district = json.loads(RUN.read_text())["images_per_district"]
@@ -220,15 +225,14 @@ def main() -> int:
     RESULTS.write_text("\n".join(lines) + "\n")
     print("\n".join(lines))
 
-    from fmu.utils.provenance import git_state
-
     run = {
         "result_file": RESULTS.name,
         "sample_file": SAMPLE.name,
         "declaration": "odisha_script/PHASE1_RADAR_DESCENDING_PREDECLARED.md",
         "command_line": "python " + " ".join(shlex.quote(x) for x in sys.argv),
         "date": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
-        "git": {k: v for k, v in git_state().items() if k != "root"},
+        "git": started,
+        "git_at_end": {k: v for k, v in git_state_now().items() if k != "root"},
         "images_per_district": per_district,
     }
     # The Earth Engine sampling run's own record (its command, date and git block) is kept by

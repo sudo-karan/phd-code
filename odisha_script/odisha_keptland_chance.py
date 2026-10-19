@@ -822,18 +822,31 @@ def report(res: dict[str, Any], plots: pd.DataFrame, how0: np.ndarray) -> None:
     say("    above zero; a single p read without the Holm column.")
 
 
-def write_run_record(out_dir: Path, stem: str, argv: list[str]) -> None:
+def git_block(now: bool = False) -> dict[str, Any]:
+    """This checkout's git state as a run record holds it: as the process found it first, or read
+    again now (`now`). main() asks first, before the run writes anything (review C32)."""
+    sys.path.insert(0, str(REPO / "src"))
+    from fmu.utils.provenance import git_state, git_state_now
+
+    state = git_state_now(HERE) if now else git_state(HERE)
+    return {k: v for k, v in state.items() if k != "root"}
+
+
+def write_run_record(out_dir: Path, stem: str, argv: list[str], git: dict[str, Any] | None = None) -> None:
+    """The run record beside the results. `git` is the state the run started from (main() reads it
+    first); `git_at_end` is read now, after the results were written."""
     import datetime
     import shlex
 
     sys.path.insert(0, str(REPO / "src"))
-    from fmu.utils.provenance import environment_state, git_state
+    from fmu.utils.provenance import environment_state
 
     rec = {"result_files": [f"{stem}.txt", f"{stem}.json"],
            "command_line": "python " + " ".join(shlex.quote(a) for a in
                                                 ["odisha_script/odisha_keptland_chance.py", *argv]),
            "date": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
-           "git": {k: v for k, v in git_state(HERE).items() if k != "root"},
+           "git": git if git is not None else git_block(),
+           "git_at_end": git_block(now=True),
            # The Python environment, as the pipeline's manifests record it (review C37): the null
            # draws from a seeded numpy Generator and places plots with shapely.
            "environment": environment_state()}
@@ -862,11 +875,12 @@ def main(argv: list[str] | None = None) -> int:
                     help="the declared test, not a rehearsal: needs --stands-from geojson, and stops if any "
                          "stand file is a pre-fix run's file (by SHA-256)")
     args = ap.parse_args(argv)
+    started = git_block()  # before the run writes anything (review C32)
     res = run(args.rotations, args.out_dir, stands_from=args.stands_from, stands_dir=args.stands_dir,
               run_suffix=args.run_suffix, scored_stem=args.scored_stem, scores_dir=args.scores_dir,
               declared=args.declared, runs_pattern=args.runs, arm=args.arm)
     write_run_record(args.out_dir, out_stem(args.scored_stem, res["rehearsal"], args.rotations),
-                     list(sys.argv[1:] if argv is None else argv))
+                     list(sys.argv[1:] if argv is None else argv), git=started)
     return 0
 
 

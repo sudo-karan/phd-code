@@ -148,7 +148,8 @@ everything needed to know what happened:
 | `use_cache` | The `use_cache` argument given to `Pipeline()` |
 | `submit_exports` | The `submit_exports` argument given to `Pipeline()`. `false` means the run read the cache and submitted no cache export. It has no effect unless `use_cache` is on |
 | `summaries` | The `summaries` argument given to `Pipeline()`. `false` means no stage's summary numbers were computed |
-| `git` | Which code ran: commit and uncommitted changes. See "The `git` block" below |
+| `git` | Which code ran: commit and uncommitted changes, as the run started. See "The `git` block" below |
+| `git_at_end` | The same block read again as the manifest is written (round 13): a commit or an edit made while the run ran shows as a difference from `git` |
 | `stages[].name` | Stage name (matches the `@register_stage` decorator) |
 | `stages[].elapsed_sec` | Wall-clock time for this stage |
 | `stages[].produced` | Sorted list of context keys this stage actually wrote |
@@ -178,6 +179,16 @@ checkout the `fmu` package was imported from, not the working directory. The
 same block is in `export_manifest_<config>.json`, in the Odisha
 `<config>_run.json` records, in `docs/transparency/<config>/run_record.json`
 and in `evaluation_manifest.json`. Result files do not carry it.
+
+`git_state()` remembers its first answer for the life of the process, so the
+block describes the tree as it was when the process first asked. Since round 13
+the pipeline asks when `Pipeline.run` starts, before any stage, and the kept-land
+scorer and chance test and Phase 1 step 12 ask at the start of `main()`, before
+they write a result; each also records `git_at_end`, the block read again
+(`git_state_now()`) when the record is written (review C32). Before round 13 the
+first asking came after the stages, or after the results were written: a commit
+made during a run was recorded as the run's commit, and a script that rewrote a
+tracked result recorded its own output as a dirty tree.
 
 | Key | Meaning |
 |---|---|

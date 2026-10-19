@@ -7596,3 +7596,54 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 19 Oct 2026 (round 13 brief), Task 6; review C14
+- id: spec-run-records-read-the-git-state-when-the-run-starts
+  title: >-
+    Run records give the git state as the run started, read before any stage or result is written, and again at the
+    end
+  decision: >-
+    src/fmu/pipeline.py (a Locked module): Pipeline.run asks fmu.utils.provenance.git_state() before any stage runs.
+    git_state remembers its first answer for the life of the process, so the manifest's git block, the export
+    stage's, and a runner record written after the run in the same process describe the tree the run started from.
+    The manifest adds git_at_end, the same checkout read again, when the manifest is written, by the new
+    git_state_now(), which remembers nothing. odisha_script/odisha_keptland_score.py, odisha_keptland_chance.py and
+    odisha_phase1_12_radar_descending.py read the git state at the start of main(), before they write a result or a
+    sample, record it as git, and add git_at_end. scripts/eecu_by_stage.py records git_state of its own checkout,
+    read before it writes, in place of git run in the working directory after (review C38). The dirty flag still counts
+    tracked files only. No computation and no cache key changes.
+  alternatives_considered:
+  - >-
+    Read git when the record is written (the state before round 13): not kept; a commit made during a run was recorded
+    as the run's commit, and a script that rewrote a tracked result recorded its own output as a dirty tree (review
+    C32)
+  - >-
+    Record the state at the start only, without git_at_end: not chosen; a commit or an edit made while a run ran would
+    then leave no trace in its record
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 6: "The C list: fix what is a documentation or record error." The
+    review (docs/reviews/2026-10-19-review.md), C32: the provenance comment says the state at first asking describes
+    the run, but nothing asked at start-up; its fix is to read the git state at process start and again at the end, and
+    record both. C38: the cost script read git in the working directory after writing its result. The tests of
+    tests/test_git_state_read_first.py and tests/test_eecu_by_stage.py fail on the code before (the manifest named a
+    commit made during the run; the scripts' records said dirty, read after their results were written; the cost
+    record named another repository's commit) and pass after. The legacy fingerprint and the eleven step keys of all 74 configs under configs/ and
+    configs/experiments/ are the same before and after, and tests/test_every_config_fingerprint.py and
+    tests/test_step_keys_of_record.py pass. No committed record is rewritten; dated notes in the folders' READMEs say
+    which are affected. No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/pipeline.py
+    what: Pipeline.run (git_state asked first) and Pipeline._write_manifest (git, git_at_end)
+  - path: src/fmu/utils/provenance.py
+    what: git_state and git_state_now
+  - path: tests/test_git_state_read_first.py
+    what: The pipeline's manifest, and the records of the kept-land scorer, the chance test and Phase 1 step 12
+  - path: tests/test_eecu_by_stage.py
+    what: >-
+      test_the_run_record_names_the_scripts_checkout_as_it_was_before_the_result_was_written
+  - path: docs/outputs.md
+    what: The manifest's keys and the git block
+  - path: docs/reviews/2026-10-19-review.md
+    what: C32 and C38
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
