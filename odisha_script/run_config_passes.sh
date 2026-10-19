@@ -45,7 +45,9 @@ for pass in $(seq 1 "$MAX_PASSES"); do
   for cfg in "$@"; do
     name=$(basename "$cfg" .yaml)
     for stage in features segmentation clustering export; do
-      echo "" >> "$LOG"; echo "##### PASS$pass $name :: $stage :: $(date +%H:%M:%S) #####" >> "$LOG"
+      # The date as well as the time (round 13): scripts/eecu_by_stage.py reads each stage's span
+      # from these lines, and a batch can run past midnight.
+      echo "" >> "$LOG"; echo "##### PASS$pass $name :: $stage :: $(date '+%Y-%m-%d %H:%M:%S') #####" >> "$LOG"
       if [ "$stage" = "export" ]; then
         "$PY" "$RUNNER" --config "$cfg" --through export >> "$LOG" 2>&1
       else

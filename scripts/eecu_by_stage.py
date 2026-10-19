@@ -5,15 +5,19 @@
 Read-only: it reads the task list and Cloud Monitoring and submits nothing. Round 9's Task I (run
 in round 10) measures with it what one config costs per 1,000 ha (docs/handoff/2026-10-18-round10.md).
 
-- Batch: every task in ee.data.listOperations() whose description begins with CONFIG_NAME + "_",
-  failed ones included, summed by the stage its description names: <config>_<stage>_<output> for
-  the cache exports, and for the export stage's Drive files <config>_features_raw,
-  _features_scaled, _cluster_labels and <config>_stands_*.
+- Batch: every task in ee.data.listOperations() whose description is CONFIG_NAME + "_" and one
+  of the names the config's tasks take, failed ones included, summed by the stage the name
+  belongs to: <stage>_<output> for the cache exports (CACHED), and for the export stage's Drive
+  files features_raw, features_scaled, cluster_labels and stands_<layer>_<format>. A task of
+  another config whose name begins with this one's (<config>_repro, <config>_r9_check) is left
+  out (round 13, review B26: a bare prefix charged it to this one).
 - Online: Cloud Monitoring's online series (earthengine.googleapis.com/project/cpu/usage_time,
-  compute_type online) over each pass's span: from the pass's start line in the wrapper log
-  (odisha_script/run_passes_safely.py) to the next pass's start, the last pass to the batch's end
-  line. It is all of the project's online use in that span, whoever made it, and it cannot be
-  split between the stages of one pass.
+  compute_type online) over each pass's span: from the pass's stage header in the wrapper log
+  (odisha_script/run_passes_safely.py) to the next stage header of any config, or to the end of
+  its batch, whichever comes first. Each header carries its date since round 13; a header of an
+  older log carries the time of day only, and is dated by the line before it (B26: every pass
+  took the date of the log's first line). It is all of the project's online use in that span,
+  whoever made it, and it cannot be split between the stages of one pass.
 
 OUT.json holds results only (no dates or times); OUT_run.json beside it holds the pass spans,
 when the figures were read and the git commit, as a run record does.
@@ -35,36 +39,80 @@ from typing import Any
 
 PROJECT = "replicating-paper"
 IST = timedelta(hours=5, minutes=30)  # the wrapper log's clock is the Mac's, IST
-STAGES = ("masking", "data_load", "features_optical", "features_radar", "features_structure",
-          "features_static", "features_embedding", "segmentation", "clustering", "k_elbow")
-EXPORT_FILES = ("features_raw", "features_scaled", "cluster_labels")
+# What each step caches, by stage: its tasks are described "<config>_<stage>_<output>"
+# (fmu.pipeline), and tests/test_eecu_by_stage.py checks this against the stages' cacheable outputs.
+CACHED = {
+    "masking": ("habitat_mask", "landcover_summary", "mask_provenance", "water_mask"),
+    "data_load": ("s2_composite",),
+    "features_optical": ("optical_features",),
+    "features_radar": ("radar_features",),
+    "features_structure": ("structure_features",),
+    "features_static": ("static_features",),
+    "features_embedding": ("embedding_features",),
+    "segmentation": ("snic_clusters", "snic_means"),
+    "clustering": ("cluster_labels", "feature_stack"),
+    "k_elbow": ("k_elbow",),
+}
+# The export stage's Drive files, "<config>_<file>": three rasters, and each vector layer in each format.
+EXPORT_FILES = ("features_raw", "features_scaled", "cluster_labels") + tuple(
+    f"stands_{layer}_{fmt}" for layer in ("merged", "snic", "dissolved") for fmt in ("shp", "geojson"))
+OUTPUTS = {f"{stage}_{key}": stage for stage, keys in CACHED.items() for key in keys} | {
+    f: "export" for f in EXPORT_FILES}
+# A stage header of run_config_passes.sh: with the date since round 13, the time of day only before.
+HEADER = re.compile(r"##### PASS\d+ (\S+) :: (\w+) :: (?:(\d{4}-\d{2}-\d{2}) )?(\d\d:\d\d:\d\d) #####")
+WRAPPER_LINE = re.compile(r"\[run_passes_safely (\d{4}-\d{2}-\d{2} \d\d:\d\d:\d\d)\] (.*)")
+BATCH_EDGE = re.compile(r"batch \S+ (started|ended)\b")
 
 
-def stage_of(output: str) -> str:
-    """The stage a task belongs to, from its description after '<config>_'."""
-    if output in EXPORT_FILES or output.startswith("stands_"):
-        return "export"
-    for stage in STAGES:
-        if output.startswith(stage + "_"):
-            return stage
-    return "other: " + output
+def stage_of(output: str) -> str | None:
+    """The stage a task belongs to, from its description after '<config>_'; None if that is no
+    name a task of the config takes (a task of a config whose name begins with this one's)."""
+    return OUTPUTS.get(output)
 
 
 def pass_spans(log_text: str, config: str) -> list[tuple[str, datetime, datetime]]:
-    """(pass, start, end) in UTC for each pass of CONFIG in a wrapper log, in order."""
-    day = re.search(r"\[run_passes_safely (\d{4}-\d{2}-\d{2}) ", log_text)
-    if not day:
+    """(pass, start, end) in UTC for each pass of CONFIG in a wrapper log, in order.
+
+    A pass runs from its stage header to the next stage header of any config, or to the end of its
+    batch (the wrapper's "batch ... ended" line, or a later batch's "started" line), whichever comes
+    first. A header without a date is dated by the line before it, a day later past midnight.
+    """
+    events: list[tuple[str | None, str, datetime]] = []  # (config, pass, when); None: a batch's edge
+    last: datetime | None = None
+    for line in log_text.splitlines():
+        line = line.strip()
+        if m := WRAPPER_LINE.fullmatch(line):
+            last = datetime.strptime(m.group(1), "%Y-%m-%d %H:%M:%S")
+            if BATCH_EDGE.match(m.group(2)):
+                events.append((None, m.group(2), last))
+        elif m := HEADER.fullmatch(line):
+            name, stage, day, clock = m.groups()
+            if day:
+                when = datetime.strptime(f"{day} {clock}", "%Y-%m-%d %H:%M:%S")
+            elif last is None:
+                raise ValueError("not a run_passes_safely log")
+            else:
+                when = datetime.combine(last.date(), datetime.strptime(clock, "%H:%M:%S").time())
+                if when < last:
+                    when += timedelta(days=1)
+            last = when
+            events.append((name, stage, when))
+    if last is None:
         raise ValueError("not a run_passes_safely log")
-    starts = re.findall(rf"##### PASS\d+ {re.escape(config)} :: (\w+) :: (\d\d:\d\d:\d\d) #####", log_text)
-    ends = re.findall(r"\[run_passes_safely (\d{4}-\d{2}-\d{2} \d\d:\d\d:\d\d)\] batch \S+ ended", log_text)
-    if not starts or not ends:
-        raise ValueError(f"no pass of {config}, or no end line, in the log")
 
-    def utc(stamp: str) -> datetime:
-        return (datetime.strptime(stamp, "%Y-%m-%d %H:%M:%S") - IST).replace(tzinfo=UTC)
+    def utc(local: datetime) -> datetime:
+        return (local - IST).replace(tzinfo=UTC)
 
-    bounds = [utc(f"{day.group(1)} {t}") for _, t in starts] + [utc(ends[-1])]
-    return [(name, bounds[i], bounds[i + 1]) for i, (name, _) in enumerate(starts)]
+    spans = []
+    for i, (name, stage, when) in enumerate(events):
+        if name != config:
+            continue
+        if i + 1 == len(events):
+            raise ValueError(f"no line after {config}'s {stage} pass ends it in the log")
+        spans.append((stage, utc(when), utc(events[i + 1][2])))
+    if not spans:
+        raise ValueError(f"no pass of {config} in the log")
+    return spans
 
 
 def batch_by_stage(operations: list[dict], config: str) -> tuple[dict[str, float], dict[str, list[dict]]]:
@@ -77,6 +125,8 @@ def batch_by_stage(operations: list[dict], config: str) -> tuple[dict[str, float
             continue
         output = desc[len(config) + 1:]
         stage = stage_of(output)
+        if stage is None:
+            continue
         eecu = float(md.get("batchEecuUsageSeconds", 0) or 0) / 3600.0
         hours[stage] += eecu
         tasks[stage].append({"output": output, "state": md.get("state"), "eecu_h": round(eecu, 4)})
