@@ -745,6 +745,15 @@ grouping against the other; 1 means every plot shares its stand with the same pl
 - The full output for each arm is in `docs/reproducibility/odisha_repro/<arm>/`: the results
   file, the new plot table, the new score files (primary analysis and the three declared checks)
   and one table per district and layer of every stand's best match.
+- The re-run's own files stay off git, in `outputs/repro_runs/phase2_vectors/` on the Mac. Each
+  arm's `_manifest.json` hashes three of the five per district (`stands_merged`, `stands_snic`,
+  `run.json`); the join also reads `stands_dissolved.geojson` and `raster_at_plots.csv`. Since
+  19 Oct 2026 (round 13, review C29) `odisha_repro_compare_<arm>_files_off_git.json` beside each
+  manifest gives the name, size and SHA-256 of all five per district. The 36 hashes the
+  manifests hold matched the files on the Mac, and `odisha_repro_compare.py`, run again on those
+  files at `c368eb7` into a scratch folder, wrote the committed plot tables, join reports, score
+  files and per-stand tables byte for byte; its results files differed from the committed ones
+  in one line only, the folder it was given.
 
 #### 4. Superpixels depend on whether the features were cached when SNIC ran
 
