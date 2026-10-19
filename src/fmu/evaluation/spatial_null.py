@@ -221,7 +221,10 @@ def rigid_move(xy: npt.ArrayLike, angle: float, centre: tuple[float, float]) -> 
     o_y cos a)`. So the points turn about their own mean and the mean lands on
     `centre`. All distances between the points are kept. This is the move the
     rotation null makes; its closest published relative is the torus
-    translation of Harms et al. (2001), which slides without turning.
+    translation of Harms et al. (2001), which slides the map. Kyle Harms's own
+    script of 2011 slides it without turning; whether the 2001 paper also
+    turned or mirrored it is UNVERIFIED (review C5, 20 Oct 2026; see
+    `fmu.evaluation.torus_shift`).
 
     Returns an array of shape `(n, 2)`.
 
@@ -443,8 +446,9 @@ def rotation_null(
     and the map itself are untouched; only where the layout sits on the map is
     random. Moving the plots over a fixed map is the same as moving the map
     under fixed plots by the inverse motion. The closest published relative is
-    the torus translation of Harms et al. (2001); this version also turns the
-    layout and does not wrap the map round.
+    the torus translation of Harms et al. (2001); this version turns the layout,
+    which Kyle Harms's own 2011 script does not (whether the 2001 paper turned or
+    mirrored the map is UNVERIFIED), and does not wrap the map round.
 
     Arguments: `coords` `(n, 2)` in metres; `groups` integer codes (`-1`: in
     no group); `stand_maps` one map for all groups or a mapping from group

@@ -483,7 +483,8 @@ rates.
 **What can make it mislead**
 
 - **No paper validates this exact procedure.** Its nearest published relatives are the torus
-  translation with 180-degree rotation and mirroring (Harms et al. 2001), a random shift null
+  translation (Harms et al. 2001; that it also uses 180-degree rotation and mirroring is
+  UNVERIFIED, see the paper's entry below), a random shift null
   with rotation and reflection (Deblauwe et al. 2012) and random rotation of brain maps on a
   sphere (Alexander-Bloch et al. 2018). None is the same as rotating scattered field plots over a
   stand map. **Only this project's own check on generated data stands behind it.**
@@ -515,9 +516,10 @@ rates.
 - **Torus translation** was built for complete maps on a regular grid (Harms et al. 2001). The
   wrap joins opposite edges of the map, a seam that does not exist on the ground. Periodic
   boundaries are called "highly unrealistic for geographical observations" (Deblauwe et al.
-  2012). The module's version uses translations only, not the mirror images and half-turns of
-  the published test. It is offered for comparison with the published method. The rotation null
-  is the default.
+  2012). The module's version uses translations only, as Kyle Harms's own script of 2011 does;
+  whether the 2001 paper also used mirror images and half-turns is UNVERIFIED (the paper's entry
+  below). It is offered for comparison with the published method. The rotation null is the
+  default.
 - **Permutation inside villages** is the published way to test inside strata (Somerfield,
   Clarke and Gorley 2021). It is exact only when plots inside a village can be swapped freely
   (the exchangeability assumption, Anderson 2001). They cannot when nearby plots are alike. Whether it
@@ -540,6 +542,20 @@ is a correction, not a metric.
   test gave 171 significant species-habitat associations against 317 from tests that treat stems
   as independent, and the authors call their methods more conservative. It was built for fully
   mapped plots, not scattered sample plots.
+  *Note added 20 Oct 2026 (round 13, review C5).* Crossref, checked again on 20 Oct 2026, gives
+  the title "Habitat associations of trees and shrubs in a 50-ha neotropical forest plot", first
+  author Kyle E. Harms (with Condit, Hubbell and Foster), *Journal of Ecology* 89(6), 947-959,
+  issued December 2001; every record in the repo cites it so. The records disagree on what was
+  read. This entry (13 Oct 2026) says the full text was read, and this section stated the
+  rotations and mirror images as the paper's in two places, marked UNVERIFIED since 20 Oct.
+  `src/fmu/evaluation/spatial_null.py` said the opposite, that the paper's test slides the map
+  without turning it. `src/fmu/evaluation/torus_shift.py`
+  and `docs/handoff/2026-10-17-round9-chat.md` (17 Oct 2026) say the full text was not read there;
+  they take the procedure from Kyle Harms's own R script of 2011, which translates the map only,
+  and leave open whether the 2001 paper also turned and mirrored it (that handoff's question 11,
+  waiting for the PDF). The full text could not be read on 20 Oct 2026 either: the publisher's
+  page refused the request. Until it is read, that the paper uses rotations and mirror images is
+  UNVERIFIED, and so is the 171 against 317, which was not checked again after 13 Oct.
 - Deblauwe, Kennel and Couteron 2012, doi:10.1371/journal.pone.0048766, verified. *Used*, as a
   limit of shift-type nulls. Read: full text. The authors propose a rival method (wavelet-based
   surrogates, for gridded data), so their comparison is not an independent one. Fully random reassignment gave false association
@@ -1132,7 +1148,7 @@ the paper was actually read.
 | Anderson 2001, Austral Ecol. 26, 32-46 | 10.1111/j.1442-9993.2001.01070.pp.x | yes | full text | 1.5 |
 | Anderson and Walsh 2013, Ecol. Monogr. 83, 557-574 | 10.1890/12-2010.1 | yes | abstract | 1.3, 1.4, 1.5 |
 | Anderson and ter Braak 2003, J. Stat. Comput. Simul. 73, 85-113 | 10.1080/00949650215733 | yes | abstract | 1.4, 1.5 |
-| Harms et al. 2001, J. Ecol. 89, 947-959 | 10.1111/j.1365-2745.2001.00615.x | yes | full text | 1.6 |
+| Harms et al. 2001, J. Ecol. 89, 947-959 | 10.1111/j.1365-2745.2001.00615.x | yes | full text, 13 Oct; not read again on 17 or 20 Oct (section 1.6, note of 20 Oct) | 1.6 |
 | Deblauwe, Kennel and Couteron 2012, PLoS ONE 7, e48766 | 10.1371/journal.pone.0048766 | yes | full text | 1.6 |
 | Alexander-Bloch et al. 2018, NeuroImage 178, 540-551 | 10.1016/j.neuroimage.2018.05.070 | yes | abstract | 1.6 |
 | Markello and Misic 2021, NeuroImage 236, 118052 | 10.1016/j.neuroimage.2021.118052 | yes | abstract | 1.6 |
