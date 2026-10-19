@@ -6201,3 +6201,49 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 19 Oct 2026 (round 12 brief)
+- id: spec-per-step-keys-leave-out-a-new-field-at-its-default
+  title: >-
+    A field added to a block a per-step key hashes is left out of the key while it holds its default, and the step
+    keys the runs recorded are pinned
+  decision: >-
+    fmu.utils.caching (a Locked module) gets _STEP_OMITTED_AT_DEFAULT, the per-step layout's counterpart of
+    _OMITTED_AT_DEFAULT: a field listed there, keyed (block, field) with its default, is left out of every step key
+    that hashes it while it holds that default, and hashed otherwise. The block may be a sub-block (dates.phenology),
+    and a field that a step's STEP_SETTINGS names on its own (merge.x) is left out the same way. The table is empty,
+    so no key moves. A field added later to a block that both layouts hash goes in both tables.
+    tests/test_step_keys_of_record.py pins the step keys of every per-step run of record, the 21 _run.json records (11
+    in docs/reproducibility/r9_runs, 8 in round12_runs, 2 in round9_cache_test) and each stage's key in their 87
+    manifests, and checks block by block that a listed field at its default moves no key and, switched on, moves the
+    steps that hash it and those downstream.
+  alternatives_considered:
+  - >-
+    Leave the per-step keys hashing every field as dumped and rely on the legacy table: not chosen. That table protects
+    the legacy fingerprint only; in the per-step layout, which every config run since round 9 uses, a field listed in
+    it still moved six step keys of every kept-land config (review B11)
+  - >-
+    Raise STEP_KEY_VERSION whenever a field is added: not chosen, since it would move every key of every config at once
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 3: "B11: an omit-at-default table for the per-step keys (empty
+    today, so no key moves), and a test that pins the step keys recorded in docs/reproducibility/r9_runs/*_run.json."
+    The review (docs/reviews/2026-10-19-review.md, B11) added a field at its default to the masking block and listed it
+    in _OMITTED_AT_DEFAULT: every legacy fingerprint kept its value, but the masking, features_static, segmentation,
+    merge, clustering and k_elbow keys of every kept-land record moved, and no test noticed. The new test shows the
+    same on the code before the change (36 of its 148 cases fail there; for the Angul hand-crafted _r9 config, those
+    six keys move) and passes after it. The test of the keys of record also pins the graph of steps (step_upstream),
+    which no test pinned (review C52); round 12's records and the cache test's are pinned beside those of
+    docs/reproducibility/r9_runs because a later run will meet the assets of all three. The legacy table lists
+    top-level blocks only, so a new field of a sub-block still moves the legacy fingerprint; the configs that use the
+    legacy layout are the runs made before round 9. No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/utils/caching.py
+    what: _STEP_OMITTED_AT_DEFAULT and _omit_step_defaults, read by _step_key
+  - path: tests/test_step_keys_of_record.py
+    what: The step keys of record pinned; a field added at its default and listed moves no key
+  - path: docs/reviews/2026-10-19-review.md
+    what: B11, and C52
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 3, B11
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)

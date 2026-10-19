@@ -445,6 +445,20 @@ STEP_SETTINGS: dict[str, tuple[str, ...]] = {
     ),
 }
 
+# Settings added after round 9 to a block or field that STEP_SETTINGS lists, keyed
+# (block, field) -> default, where the block may be a sub-block ("dates.phenology").
+# The per-step layout's counterpart of `_OMITTED_AT_DEFAULT` (review B11): a step's
+# key hashes what STEP_SETTINGS lists for it as dumped, defaults included, so a
+# field added to one of those blocks would move the key of that step and of every
+# step downstream of it, in every config at once, and the assets they cached could
+# no longer be found by name. A field listed here is left out of the hash while it
+# holds its default, which must be the behaviour the saved assets were made with;
+# any other value is hashed. A field added to a block both layouts hash goes in
+# both tables. Empty: no field has been added since round 9, so no key moves;
+# tests/test_step_keys_of_record.py pins the keys the runs recorded.
+_STEP_OMITTED_AT_DEFAULT: dict[tuple[str, str], Any] = {}
+
+
 # Which step produces each context key that a SNIC input band or a merge
 # criterion can name (SnicInputBand.source, MergeCriterion.source).
 SOURCE_STEP: dict[str, str] = {
@@ -541,16 +555,35 @@ def step_key(config: Any, step: str) -> str:
     return _step_key(config, dumped, step, {})
 
 
+def _omit_step_defaults(settings: dict[str, Any]) -> dict[str, Any]:
+    """`settings` without the fields `_STEP_OMITTED_AT_DEFAULT` lists, while each holds its default.
+
+    A field is found inside its block, where a step's settings list the whole
+    block ("masking"), or as a setting of its own ("masking.new_field").
+    """
+    out = dict(settings)
+    for (block, field), default in _STEP_OMITTED_AT_DEFAULT.items():
+        values = out.get(block)
+        if isinstance(values, dict) and field in values and values[field] == default:
+            out[block] = {k: v for k, v in values.items() if k != field}
+        path = f"{block}.{field}"
+        if path in out and out[path] == default:
+            del out[path]
+    return out
+
+
 def _step_key(config: Any, dumped: dict[str, Any], step: str, memo: dict[str, str]) -> str:
     if step in memo:
         return memo[step]
     if step in STEP_SETTINGS:
-        settings = {p: _setting(dumped, p) for p in (*_EVERY_STEP, *STEP_SETTINGS[step])}
+        settings = _omit_step_defaults(
+            {p: _setting(dumped, p) for p in (*_EVERY_STEP, *STEP_SETTINGS[step])}
+        )
         upstream = {u: _step_key(config, dumped, u, memo) for u in step_upstream(config, step)}
     else:
         settings = {"legacy_fingerprint_payload": _legacy_payload(config)}
         upstream = {}
-    payload = {
+    payload: dict[str, Any] = {
         "layout": PER_STEP_LAYOUT,
         "version": STEP_KEY_VERSION,
         "step": step,
