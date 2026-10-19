@@ -465,7 +465,9 @@ _STEP_OMITTED_AT_DEFAULT: dict[tuple[str, str], Any] = {}
 # step not listed is at revision 0 and its payload carries none, so its key is the
 # one it had before round 13; STEP_KEY_VERSION, above, would move every key of every
 # step at once. Each raise has a register entry (docs/decisions.yaml).
-STEP_REVISION: dict[str, int] = {}
+STEP_REVISION: dict[str, int] = {
+    "data_load": 1,  # A4, round 13: the date windows' end is inclusive
+}
 
 # Steps that read another step's output without having it upstream, and so take
 # that step's revision with their own: k_elbow reads clustering's cached scaled

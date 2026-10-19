@@ -114,6 +114,7 @@ Loads Sentinel-2 and Sentinel-1 collections, applies S2 cloud masking (SCL-based
 - S2 collection: filter by ROI + phenology window + `CLOUDY_PIXEL_PERCENTAGE ≤ max_cloud_pct`. Per-image SCL masking drops classes 3 (cloud shadow), 8 (cloud medium prob), 9 (cloud high prob), 10 (thin cirrus).
 - S1 collection: filter by IW mode, single orbit direction (default ASCENDING), VV+VH polarizations. **No dB conversion needed**; `COPERNICUS/S1_GRD` is already in dB ([source](https://developers.google.com/earth-engine/guides/sentinel1)).
 - S2 composite: re-filter S2 by the optical_composite window, apply SCL mask, reduce by `s2_composite_reducer` (default median).
+- Each window includes its end date: `filterDate`'s end is exclusive, so the stage passes the day after it (`advance(1, "day")`, as `features_embedding` does). Before round 13 it passed the end date itself, and the three windows stopped on 30 Dec 2022 (review A4).
 - Empty windows to `RuntimeError` (fail-loud per ENG-012).
 
 **Config knobs** (in `configs/*.yaml`):

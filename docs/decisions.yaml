@@ -6464,3 +6464,57 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 19 Oct 2026 (round 12, answer to question 4)
+- id: spec-data-load-windows-include-their-end-date
+  title: >-
+    data_load's three date windows include their end date, as features_embedding's does, and data_load's step revision
+    is raised to 1
+  decision: >-
+    src/fmu/stages/data_load.py (a Locked module) gives filterDate the day after each window's end date
+    (ee.Date(end).advance(1, "day"), the helper _day_after), for the Sentinel-2 phenology collection, the Sentinel-1
+    collection and the Sentinel-2 composite (_composite_window, which input_collections reads too, so the record of
+    the composite's images names the images used). filterDate's end is exclusive, so each window now holds every day
+    the config gives, 2017-01-01 to 2022-12-31 in all 74 configs, and the window strings the stage records are the
+    days it used. fmu.utils.caching (Locked) raises data_load's step revision to 1 (STEP_REVISION): the data_load key
+    moves, and with it the features_optical, features_radar, merge, clustering and k_elbow keys of all 74 configs under
+    configs/, and the segmentation key of the 52 whose superpixels are drawn on the hand-crafted stack (the 22
+    embedding configs segment on the embedding). The legacy fingerprints do not move. The only other filterDate in
+    src/fmu, the CHIRPS climatology window of features_static, is unchanged: the review found it sound (pentads are
+    dated by their first day, the 1st, 6th, 11th, 16th, 21st or 26th of a month, so an exclusive end of 31 December
+    leaves none out); not checked against Earth Engine here.
+  alternatives_considered:
+  - >-
+    Keep the shorter window and write 2017-01-01 to 2022-12-30 in the register, the docs and the manifests (the
+    review's second option): not chosen; the brief asks for the end to be made inclusive
+  - >-
+    Compute the day after in Python and pass it as a date string: not chosen, so that data_load filters the same way
+    features_embedding does
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 2: "A4: make the date windows' end inclusive in data_load, as
+    features_embedding does." Review A4 (docs/reviews/2026-10-19-review.md): the configs' end, 2022-12-31, went to
+    filterDate as an exclusive end, so the S2 phenology collection, the S2 composite and the S1 collection stopped on
+    30 Dec 2022, while the register (dn-date-windows-one-shared-window), docs/datasets.md and the manifests give 31
+    Dec; Phase 1's descending S1 sample counts 189 scenes at the plots of the Angul, Dhenkanal and Kendujhar boxes,
+    where those runs' manifests record 188. The new test (tests/test_data_load_windows.py) fails on the code before:
+    each window kept the days up to the day before its end (2017-01-01 to 2022-12-30 against the recorded 2017-01-01
+    to 2022-12-31). A read-only check on Earth Engine (call 4 of the round 13 record) found the images of 31 Dec 2022
+    the exclusive end left out of the _r9 runs' collections: one Sentinel-1 scene over the Angul, Dhenkanal and
+    Kendujhar boxes and the Angul 10 km tile, two Sentinel-2 scenes passing the cloud filter over the Koraput boxes,
+    and none at Sanjay Van. The revision follows the brief's rule 4: a fix that changes what a step computes must
+    change that step's cache key. No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/data_load.py
+    what: _day_after, read by _load_s2, _load_s1 and _composite_window
+  - path: src/fmu/utils/caching.py
+    what: STEP_REVISION, data_load at revision 1
+  - path: tests/test_data_load_windows.py
+    what: The days each filter keeps, against the window the stage records; the composite named in the record
+  - path: docs/current_flow.md
+    what: The data_load stage, Logic
+  - path: docs/reviews/2026-10-19-review.md
+    what: A4
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Read-only Earth Engine calls, call 4, the images of 31 Dec 2022 each run left out
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
