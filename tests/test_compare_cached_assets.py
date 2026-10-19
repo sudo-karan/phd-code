@@ -77,3 +77,50 @@ def test_the_run_record_sits_beside_the_result_and_holds_the_commit():
     assert '"date"' in record_part and "git_state()" in record_part and '"command_line"' in record_part
     # The rows themselves stay results only: no date and no commit goes into them.
     assert "datetime.datetime.now" not in rows_part
+
+
+def test_old_fingerprint_names_the_old_assets_even_when_none_sit_under_todays(monkeypatch):
+    """B27 (review 2026-10-19): `--old-fingerprint` is the fingerprint the earlier run's
+    assets were made under. When no asset of the old config sits under today's fingerprint
+    (the case the flag exists for), its assets must still be asked for under the given one,
+    not under per-step keys. Offline: Earth Engine is stubbed and no asset exists, so the
+    script asks for each pair of paths and writes a "not cached" row for each."""
+    import fmu.pipeline
+    import fmu.utils.caching
+    import fmu.utils.gee
+    from fmu.config import load_config
+    from fmu.pipeline import Pipeline, default_stage_names
+    from fmu.settings import get_settings
+    from fmu.stages.base import get_stage_class
+
+    root = Path(__file__).parent.parent
+    monkeypatch.chdir(root)
+    monkeypatch.setenv("GEE_PROJECT_ID", "test-project")
+    get_settings(force_reload=True)
+    asked: list[str] = []
+
+    def exists(path: str) -> bool:
+        asked.append(path)
+        return False
+
+    monkeypatch.setattr(fmu.utils.caching, "asset_exists", exists)
+    monkeypatch.setattr(fmu.pipeline, "asset_exists", exists)
+    monkeypatch.setattr(fmu.utils.gee, "init_gee", lambda *a, **k: None)
+    monkeypatch.setattr(fmu.utils.gee, "load_roi_geometry", lambda *a, **k: object())
+
+    old_cfg = root / "configs" / "sanjay_van_baseline.yaml"
+    new_cfg = root / "configs" / "sanjay_van_baseline_repro.yaml"
+    rows = _load().compare(old_cfg, new_cfg, "bbc3e3d624", None)
+
+    expected = [
+        f"{stage}/{key}"
+        for stage in default_stage_names(load_config(new_cfg), through="clustering")
+        for key in sorted(Pipeline._resolve_cacheable_outputs(get_stage_class(stage)()))
+    ]
+    assert [f"{r['stage']}/{r['key']}" for r in rows] == expected
+    old_name = load_config(old_cfg).name
+    of_old = [p for p in asked if f"/{old_name}/" in p]
+    # Each request about the old config is under the given fingerprint (no probe of its
+    # cache layout under today's), one per compared asset.
+    assert [p for p in of_old if not p.endswith("__bbc3e3d624")] == []
+    assert len(of_old) == len(expected)

@@ -23,10 +23,12 @@ scripts/compare_stand_runs.py to say how far apart the two partitions are.
 
 `--old-fingerprint` is for comparing against assets cached before a config's content
 changed (the fingerprint in the asset name is then not the one the config gives today).
-Only compare stages whose settings did not change between the two.
+When it is given, the old config's assets are always named in the legacy layout under that
+fingerprint. Only compare stages whose settings did not change between the two.
 
-Each config's assets are named in the cache layout it uses (fmu.pipeline.cache_layout_for):
-by its fingerprint in the legacy layout, by each stage's key in the per-step one (round 9).
+Otherwise each config's assets are named in the cache layout it uses
+(fmu.pipeline.cache_layout_for): by its fingerprint in the legacy layout, by each stage's key
+in the per-step one (round 9).
 When both configs are in the per-step layout, their assets are on the analysis grid, and the
 pixels are compared on the grid of the old run's asset when the two share it; otherwise on a
 geographic grid at the analysis scale, as before round 9.
@@ -100,20 +102,27 @@ def compare(
     from fmu.config import load_config
     from fmu.pipeline import Pipeline, cache_layout_for, default_stage_names
     from fmu.stages.base import get_stage_class
-    from fmu.utils.caching import PER_STEP_LAYOUT, asset_exists, cache_key, cached_asset_path
+    from fmu.utils.caching import (
+        LEGACY_LAYOUT,
+        PER_STEP_LAYOUT,
+        asset_exists,
+        cache_key,
+        cached_asset_path,
+    )
     from fmu.utils.gee import init_gee, load_roi_geometry, safe_get_info
 
     old, new = load_config(old_config), load_config(new_config)
     init_gee()
     roi = load_roi_geometry(new.roi.roi_file)
-    layout_old, layout_new = cache_layout_for(old)[0], cache_layout_for(new)[0]
+    # A given old fingerprint names the earlier run's assets: the legacy layout under that
+    # fingerprint, whatever cache_layout_for finds under today's (B27, round 13).
+    layout_old = LEGACY_LAYOUT if old_fingerprint else cache_layout_for(old)[0]
+    layout_new = cache_layout_for(new)[0]
     on_asset_grid = layout_old == layout_new == PER_STEP_LAYOUT
     print(f"cache layouts: old {layout_old}, new {layout_new}", flush=True)
 
     def key_old(stage: str) -> str:
-        if old_fingerprint and layout_old != PER_STEP_LAYOUT:
-            return old_fingerprint
-        return cache_key(old, stage, layout_old)
+        return old_fingerprint or cache_key(old, stage, layout_old)
 
     scale = new.export.analysis_scale_m
     names = stages or default_stage_names(new, through="clustering")
