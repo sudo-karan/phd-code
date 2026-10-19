@@ -6255,10 +6255,13 @@ decisions:
     payload when it is 1 or more and left out at 0, so a step not listed keeps the key it had. A fix that changes what
     a step computes for configs whose settings do not change raises that step's revision in the same commit, with a
     register entry; its key then moves, and through step_upstream the key of every step downstream of it, and no
-    other. The table is empty in this commit, so no key moves. tests/test_step_keys_of_record.py checks that the
-    configs of the 21 per-step runs of record give their recorded keys exactly for the steps no revision reaches, a
-    new key for each step one reaches, and every recorded key again with the table emptied. The legacy fingerprint
-    has no revision: a config whose cache holds legacy assets (the runs before round 9) still reads the assets it made.
+    other. The k_elbow step also takes clustering's revision (_REVISION_ALSO_FROM): it reads clustering's cached
+    scaled feature stack, but its key leaves k out and so cannot hash clustering's key; added the same evening, after
+    the table, with a test that fails without it (a revision of clustering moved clustering only). The table is empty
+    when added, so no key moves. tests/test_step_keys_of_record.py checks that the configs of the 21 per-step runs of
+    record give their recorded keys exactly for the steps no revision reaches, a new key for each step one reaches,
+    and every recorded key again with the table emptied. The legacy fingerprint has no revision: a config whose cache
+    holds legacy assets (the runs before round 9) still reads the assets it made.
   alternatives_considered:
   - >-
     Raise STEP_KEY_VERSION: not chosen; it moves every key of every step and config at once, so assets no fix touched
@@ -6276,7 +6279,7 @@ decisions:
     paper was searched for this decision.
   evidence:
   - path: src/fmu/utils/caching.py
-    what: STEP_REVISION, read by _step_key
+    what: STEP_REVISION and _REVISION_ALSO_FROM, read by _step_key
   - path: tests/test_step_keys_of_record.py
     what: >-
       test_a_revision_moves_its_step_and_every_step_downstream_and_no_other; the records' keys checked against the

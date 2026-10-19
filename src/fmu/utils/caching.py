@@ -467,6 +467,12 @@ _STEP_OMITTED_AT_DEFAULT: dict[tuple[str, str], Any] = {}
 # step at once. Each raise has a register entry (docs/decisions.yaml).
 STEP_REVISION: dict[str, int] = {}
 
+# Steps that read another step's output without having it upstream, and so take
+# that step's revision with their own: k_elbow reads clustering's cached scaled
+# feature stack (fmu.stages.k_elbow.training_rows), but its key leaves k out, so
+# clustering's key cannot be one of its inputs.
+_REVISION_ALSO_FROM: dict[str, tuple[str, ...]] = {"k_elbow": ("clustering",)}
+
 
 # Which step produces each context key that a SNIC input band or a merge
 # criterion can name (SnicInputBand.source, MergeCriterion.source).
@@ -600,9 +606,12 @@ def _step_key(config: Any, dumped: dict[str, Any], step: str, memo: dict[str, st
         "roi_file_sha256": _roi_file_sha256(config),
         "upstream": upstream,
     }
-    revision = STEP_REVISION.get(step, 0)
-    if revision:
-        payload["revision"] = revision
+    also = _REVISION_ALSO_FROM.get(step, ())
+    if not also:
+        if STEP_REVISION.get(step, 0):
+            payload["revision"] = STEP_REVISION[step]
+    elif any(STEP_REVISION.get(s, 0) for s in (step, *also)):
+        payload["revision"] = {s: STEP_REVISION.get(s, 0) for s in (step, *also)}
     encoded = json.dumps(payload, sort_keys=True, default=str).encode()
     memo[step] = STEP_KEY_PREFIX + hashlib.sha256(encoded).hexdigest()[:10]
     return memo[step]

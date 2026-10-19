@@ -74,10 +74,18 @@ class _ConfigWithAField:
 
 
 def _downstream(cfg: Any, revised: set[str]) -> set[str]:
-    """The steps in `revised` and every step that reads one of them, directly or not."""
+    """The steps in `revised` and every step that reads one of them, directly or not.
+
+    k_elbow reads clustering's scaled feature stack without having clustering
+    upstream (its key leaves k out), so a revision of clustering reaches it too.
+    """
 
     def reaches(step: str) -> bool:
-        return step in revised or any(reaches(u) for u in caching.step_upstream(cfg, step))
+        return (
+            step in revised
+            or (step == "k_elbow" and reaches("clustering"))
+            or any(reaches(u) for u in caching.step_upstream(cfg, step))
+        )
 
     return {s for s in STEP_SETTINGS if reaches(s)}
 
@@ -253,6 +261,24 @@ def test_a_revision_moves_its_step_and_every_step_downstream_and_no_other(monkey
     assert _moved_by(handcrafted, {"features_static": 1}, monkeypatch) == {
         "features_static", "clustering", "k_elbow",
     }
+
+
+def test_a_revision_of_clustering_moves_the_elbow_too(monkeypatch):
+    """k_elbow reads clustering's cached feature stack (fmu.stages.k_elbow.training_rows),
+    so a change to what clustering computes must move the elbow's key, whose
+    settings leave k out and so do not include clustering's key."""
+    monkeypatch.chdir(REPO)
+    for path in (HANDCRAFTED, ALPHAEARTH):
+        cfg = load_config(path)
+        assert _moved_by(cfg, {"clustering": 1}, monkeypatch) == {"clustering", "k_elbow"}
+        assert _moved_by(cfg, {"k_elbow": 1}, monkeypatch) == {"k_elbow"}
+    # And k still moves clustering only, whatever the revisions.
+    monkeypatch.setattr(caching, "STEP_REVISION", {"clustering": 1}, raising=False)
+    a = step_keys(load_config(HANDCRAFTED))
+    other = load_config(HANDCRAFTED).model_copy(deep=True)
+    other.clustering.k = 7
+    b = step_keys(other)
+    assert {s for s in a if a[s] != b[s]} == {"clustering"}
 
 
 def test_each_raise_gives_a_new_key_and_revision_zero_is_no_revision(monkeypatch):
