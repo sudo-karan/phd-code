@@ -7058,3 +7058,87 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-merge-pixel-counts-on-one-inclusion-rule
+  title: >-
+    The merge's pixel counts, boundary counts and valid counts are all taken by one rule: whole pixels whose centre is
+    in the ROI
+  decision: >-
+    fmu.utils.adjacency (Locked, part of the merge stage) hands Earth Engine an unweighted reducer in each of the
+    merge's four reductions: the label histogram (each superpixel's pixel count), the two pair histograms (the shared
+    boundary counts) and a grouped reduction per criterion band (the valid counts and the means). Each then counts the
+    whole pixels whose centre is in the ROI. The histogram counts are rounded to the nearest whole number, not
+    truncated, and a valid count above its superpixel's pixel count raises ValueError, so frac_valid is at most 1. Two
+    things Earth Engine's unweighted reducers do that its guide does not say, read on Earth Engine in round 13 on
+    synthetic images, shape the code: a frequencyHistogram counts the region's masked pixels under the key "null",
+    which the graph leaves out of both histograms; and a grouped reducer adds a band's masked pixels into the sum (and
+    so the mean) it gives a group, though its count leaves them out, so each criterion band goes in unmasked (0 where
+    it has no data) beside a band of 1 where it has data, both summed per superpixel, and a mean is the one sum over
+    the other.
+    Inside the ROI the counts are as before. At its edge a superpixel's pixel count is now its pixels whose centre is
+    inside, the means are over the pixels counted, and a superpixel with no pixel whose centre is inside is no longer
+    in the graph, so its pixels, all outside the ROI by that rule, get no stand (remap masks a label it is not given).
+    The merge's revision (fmu.utils.caching.STEP_REVISION) is raised to 1, which moves the merge, clustering and k_elbow
+    keys of every config with the merge on: all 74 under configs/.
+  alternatives_considered:
+  - >-
+    Make the valid counts weighted instead, sums of weights like the histogram: not chosen. The counts would be
+    fractions, so the merge's pixel counts and area bounds would no longer be whole pixels
+  - >-
+    Make only the three histograms unweighted and leave the grouped mean weighted: not chosen. Earth Engine does not
+    document how it admits pixels to a reducer that combines a weighted mean with count(), so the valid counts could
+    still take pixels the histogram leaves out; with the whole reducer unweighted, both follow one documented rule
+  - >-
+    The change as first written in round 13: the three histograms read with every key, and a grouped unweighted mean
+    and count of each criterion band as it is. Not chosen: run read-only on synthetic images on 20 Oct 2026, the graph
+    stopped on the histogram's "null" key, and the grouped reducer gave a band with data on 16 of a superpixel's 32
+    pixels a mean of 83.25 where its 16 values average 82.5
+  - >-
+    Check frac_valid <= 1 in merge_superpixels instead: not chosen. The merge is a pure function that its tests feed
+    valid counts above the pixel count on purpose (98 of the 200 golden graphs of tests/test_region_merge_provenance.py
+    do), and the check belongs where the two Earth Engine counts meet
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 4: "B17 (one inclusion rule for pixel counts)". The review
+    (docs/reviews/2026-10-19-review.md, B17) found the label histogram coverage-weighted and truncated with int(), while
+    the valid counts count whole pixels: at the ROI edge frac_valid, documented as a fraction, is above 1 in every
+    committed run record (up to 5.0 on the tile), 21 of 23 records have stands of zero pixels, and six edge stands of
+    the _r9 runs were counted at 1 ha or more by the merge while holding 97 to 99 whole pixels. Earth Engine's guide
+    ("Pixels in the region", developers.google.com/earth-engine/guides/reducers_reduce_region) takes a pixel into an
+    unweighted reduction when its centre is in the region, with weight 1, and into a weighted one when about 1/256 of
+    it is, weighted by the smaller of its mask and the fraction inside; the algorithm reference bundled with
+    earthengine-api describes frequencyHistogram as "a (weighted) frequency table" and Reducer.unweighted as giving
+    "the same inputs and outputs as the given Reducer, but with no weighted inputs". tests/test_adjacency_edge_pixels.py
+    follows those rules on a scene the ROI's edge cuts. On the code before, it gives two superpixels 3 and 0 pixels
+    where 4 and 1 have their centre inside, counts boundaries at the edge as 0, and finds valid counts above the pixel
+    count; with the real client, offline, it checks that each reduction is handed Reducer.unweighted itself. Earth
+    Engine itself departs from the guide's rule in two ways, found when the change as first written was run read-only
+    on synthetic images (the round 13 record, read-only calls 7, 11 and 12): an unweighted frequencyHistogram of a
+    label image masked on 104 of a region's 200 pixels gave the four labels' counts and "null": 104 (a weighted one
+    gave no "null"), and at an edge that cuts pixels the unweighted counts were those of the pixels whose centre is
+    inside (12, where the weighted histogram gave 11.70); a grouped unweighted sum of a band with data on 16 of a
+    superpixel's 32 pixels gave 2,664 where its values sum to 1,320, while its count gave 16. The test file models the
+    "null" key, and a new test checks that no masked band goes into the grouped reduction; on the change as first
+    written both fail. tests/test_adjacency_attributes_live.py runs extract_superpixel_graph and
+    extract_superpixel_attributes on Earth Engine on synthetic images (read-only): on the change as first written it
+    stopped on the "null" key; on this one the pixel counts, the valid counts and the means over the pixels with data
+    are as worked out by hand, a band with no data read as None. No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/utils/adjacency.py
+    what: extract_superpixel_graph and extract_superpixel_attributes, the four unweighted reductions and the check
+  - path: src/fmu/utils/caching.py
+    what: STEP_REVISION, the merge at revision 1
+  - path: tests/test_adjacency_edge_pixels.py
+    what: >-
+      The counts at the ROI edge on a fake Earth Engine that follows the documented rules and the "null" key; no masked
+      band into the grouped reduction; fails on the code before and on the change as first written
+  - path: tests/test_adjacency_attributes_live.py
+    what: The counts and means on Earth Engine, on synthetic images, read-only (live tier)
+  - path: tests/test_step_keys_of_record.py
+    what: The recorded keys downstream of the merge move, and no other
+  - path: docs/reviews/2026-10-19-review.md
+    what: B17
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 4, B17
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)

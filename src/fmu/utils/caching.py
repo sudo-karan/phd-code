@@ -481,6 +481,7 @@ STEP_REVISION: dict[str, int] = {
     # per unit label, not per connected piece. 4, B16: the robust scaling's median and
     # IQR are exact quartiles, for the constant-band test as for the scaling.
     "clustering": 4,
+    "merge": 1,  # B17, round 13: the superpixel pixel counts on one inclusion rule
 }
 
 # Steps that read another step's output without having it upstream, and so take

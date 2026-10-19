@@ -16,6 +16,24 @@ Server round-trips, all small:
   3. one grouped `reduceRegion` per criterion band -> per-superpixel means and
      valid-pixel counts.
 
+**Every one of these reductions is unweighted, so they all count the same
+pixels.** Earth Engine takes a pixel into an unweighted reduction over the ROI
+when its centre is in the ROI, with weight 1, and into a weighted one (a reducer
+as it comes) when about 1/256 of it is, weighted by the fraction inside. The
+histograms used to be weighted and the valid counts were not, so at the ROI edge
+a superpixel's pixel count was a sum of fractions, truncated, while its valid
+counts were whole pixels: some superpixels got 0 pixels, and `frac_valid` came
+out above 1 (review B17, round 13). Each count is now of whole pixels whose
+centre is in the ROI, and a valid count above its superpixel's pixel count stops
+the merge (`extract_superpixel_attributes`).
+
+Two things Earth Engine's unweighted reducers do that its guide does not say,
+read on Earth Engine in round 13 on synthetic images: a frequencyHistogram counts
+the region's masked pixels under the key "null", which the graph leaves out; and
+a grouped reducer adds a band's masked pixels into the sum it gives a group,
+though its count leaves them out, so each criterion band goes in unmasked beside
+a band of where it has data, and a mean is the one sum over the other.
+
 **Adjacency is 4-connected, deliberately, even though SNIC runs
 `connectivity: 8`.** A diagonal contact between two superpixels has zero shared
 boundary length, so counting it would inflate the pass-2 shared-edge tie-break
@@ -50,6 +68,14 @@ log = get_logger(__name__)
 # synthesises a label band -- see `fmu.utils.gee.LABEL_BAND` for why there is
 # exactly one of these now.
 _GROUP_BAND = LABEL_BAND
+# The two bands summed per region for a criterion band's mean and valid count
+# (extract_superpixel_attributes): the band with 0 where it has no data, and a
+# band of 1 where it has data.
+_SUM_OF_VALUES = "value"
+_PIXELS_WITH_DATA = "has_data"
+# The key under which an unweighted frequencyHistogram counts the masked pixels of
+# the region (read on Earth Engine in round 13; a weighted one leaves them out).
+_MASKED_KEY = "null"
 
 
 class TooManySuperpixelsError(RuntimeError):
@@ -123,7 +149,9 @@ def extract_superpixel_graph(
     hist = (
         safe_get_info(
             label_image.reduceRegion(
-                reducer=ee.Reducer.frequencyHistogram(),
+                # Unweighted: whole pixels whose centre is in the ROI, the pixels the
+                # valid counts of extract_superpixel_attributes count (review B17).
+                reducer=ee.Reducer.frequencyHistogram().unweighted(),
                 geometry=roi,
                 scale=scale,
                 # No bestEffort: a downsampled histogram would invent and drop
@@ -134,7 +162,11 @@ def extract_superpixel_graph(
         ).get(band)
         or {}
     )
-    # Histogram keys are the label values as strings ("1234" or "1234.0").
+    # Histogram keys are the label values as strings ("1234" or "1234.0"). An
+    # unweighted histogram also counts the region's masked pixels, under the key
+    # "null" (read on Earth Engine in round 13, on synthetic images): they are no
+    # superpixel's, and are left out.
+    hist = {k: v for k, v in hist.items() if k != _MASKED_KEY}
     raw_labels = sorted(int(float(k)) for k in hist)
     n = len(raw_labels)
     if n > max_superpixels:
@@ -149,7 +181,8 @@ def extract_superpixel_graph(
         log.warning("  %s: no labels found in the ROI", context)
         return SuperpixelGraph(raw_labels=[], n_pixels=[], scale_m=scale)
 
-    n_pixels = [int(float(hist[k])) for k in sorted(hist, key=lambda x: int(float(x)))]
+    # Whole numbers, read as floats: rounded, so float noise cannot lose a pixel.
+    n_pixels = [round(float(hist[k])) for k in sorted(hist, key=lambda x: int(float(x)))]
 
     # Dense 0..n-1 relabel. Raw SNIC labels are a sparse spatial hash, so the
     # pair encoding below would need a modulus far larger than necessary and
@@ -194,7 +227,9 @@ def extract_superpixel_graph(
         pair_hist = (
             safe_get_info(
                 pair.reduceRegion(
-                    reducer=ee.Reducer.frequencyHistogram(),
+                    # Unweighted, as the label histogram: each boundary pixel pair
+                    # whose first pixel's centre is in the ROI, counted once.
+                    reducer=ee.Reducer.frequencyHistogram().unweighted(),
                     geometry=roi,
                     scale=scale,
                     maxPixels=1e9,
@@ -204,10 +239,14 @@ def extract_superpixel_graph(
             or {}
         )
         for key, count in pair_hist.items():
+            # The masked pixels: a pixel and its neighbour of one superpixel, or one
+            # of them with no superpixel (see the label histogram).
+            if key == _MASKED_KEY:
+                continue
             code = int(float(key))
             a, b = divmod(code, n)
             edge = (a, b) if a < b else (b, a)
-            edges[edge] = edges.get(edge, 0) + int(float(count))
+            edges[edge] = edges.get(edge, 0) + round(float(count))
 
     graph = SuperpixelGraph(
         raw_labels=raw_labels, n_pixels=n_pixels, edges=edges, scale_m=scale
@@ -252,6 +291,20 @@ def extract_superpixel_attributes(
     total pixel count. Weighting by total lets a null-canopy region merging into
     a defined-canopy one inherit a canopy height for territory that never
     measured one.
+
+    The reduction is unweighted, as the histograms of `extract_superpixel_graph`
+    are, so a valid count and `graph.n_pixels` count the same pixels and their
+    ratio, `frac_valid`, is at most 1 (review B17). It sums, per region, the band
+    unmasked (0 where it has no data) and a band of 1 where it has data, and a
+    mean is the one sum over the other: Earth Engine's grouped unweighted
+    reducers add a band's masked pixels into the sum (and so the mean) they give
+    a group, though their count leaves them out (read on Earth Engine in round
+    13, on synthetic images), so a masked band does not go in.
+
+    Raises:
+        ValueError: a band's valid count is above its superpixel's pixel count.
+            The two reductions then counted different pixels, and every
+            `frac_valid` the merge reports would be wrong.
     """
     band_names = safe_get_info(features.bandNames(), context=f"{context} bands")
     label_band = safe_get_info(labels.bandNames(), context=f"{context} label band")[0]
@@ -280,13 +333,23 @@ def extract_superpixel_attributes(
     # [value, label] groups return {label, mean, count} unambiguously, and there
     # are only three or four criteria bands.
     for band in band_names:
+        band_image = features.select([band])
+        # No masked band into the grouped unweighted reduction (see the docstring):
+        # the band with 0 where it has no data, and a band of where it has data.
+        summed = (
+            band_image.unmask(0)
+            .rename(_SUM_OF_VALUES)
+            .addBands(band_image.mask().gt(0).rename(_PIXELS_WITH_DATA))
+        )
         grouped = safe_get_info(
-            features.select([band])
-            .addBands(label_image)
+            summed.addBands(label_image)
             .reduceRegion(
-                reducer=ee.Reducer.mean()
-                .combine(ee.Reducer.count(), sharedInputs=True)
-                .group(groupField=1, groupName="label"),
+                # Unweighted as a whole, as the histograms are: the counts are then
+                # of the pixels graph.n_pixels counts, and each mean is over them.
+                reducer=ee.Reducer.sum()
+                .forEachBand(summed)
+                .group(groupField=2, groupName="label")
+                .unweighted(),
                 geometry=roi,
                 scale=scale,
                 crs=crs,
@@ -296,14 +359,24 @@ def extract_superpixel_attributes(
         ).get("groups")
 
         for row in grouped or []:
-            # A label the histogram did not see: different reductions can
-            # disagree at the very edge of the ROI. Skip rather than index out
-            # of range.
+            # A label the histogram did not see. Both reductions take the same
+            # pixels, so this should not happen; skip rather than index out of
+            # range if it does.
             dense = label_to_dense.get(int(row["label"]))
             if dense is None:
                 continue
-            value = row.get("mean")
-            count = int(row.get("count") or 0)
+            # Whole numbers, read as floats: rounded, as the histograms' counts are.
+            count = round(float(row.get(_PIXELS_WITH_DATA) or 0))
+            value = float(row[_SUM_OF_VALUES]) / count if count else None
+            if count > graph.n_pixels[dense]:
+                raise ValueError(
+                    f"{context}: superpixel {int(row['label'])} has {count} valid "
+                    f"{band} pixels but {graph.n_pixels[dense]} pixels in the label "
+                    f"histogram, so its frac_valid would be above 1. The two "
+                    f"reductions must count the same pixels: both unweighted, on the "
+                    f"label image's grid. One of them is weighted, or they ran on "
+                    f"different grids."
+                )
             # count == 0 means the region has no valid pixel for this band. That
             # is a real state, not a zero -- leave the band out of `means`
             # entirely so a caller cannot mistake "no data" for a measurement.
