@@ -10,7 +10,8 @@ Sampling is READ-ONLY on Earth Engine: one sampleRegions over the 274 plots and 
 per district; no task. It writes odisha_plots_sampled_s1desc.csv. The analysis reads that file
 and Phase 1's own ascending sample (odisha_plots_sampled_v2.csv), and writes
 odisha_phase1_12_radar_descending_results.txt (results only: no date, no run time) and, beside
-it, odisha_phase1_12_radar_descending_run.json (the command, the date, the commit).
+it, odisha_phase1_12_radar_descending_run.json (the command, the date, the commit; and, under
+`sampling_run`, those of the run that sampled, which an --offline run keeps as it found them).
 
 Run from the repo root (fmu reads .env from the working directory).
 """
@@ -230,10 +231,17 @@ def main() -> int:
         "git": {k: v for k, v in git_state().items() if k != "root"},
         "images_per_district": per_district,
     }
+    # The Earth Engine sampling run's own record (its command, date and git block) is kept by
+    # every later --offline run, beside that run's own. Until round 13 an --offline run kept only
+    # 'sampled' and 'images_per_district', so the sampling run's git block was lost (review C26).
     if args.offline and RUN.exists():
-        run["sampled"] = json.loads(RUN.read_text()).get("sampled", run["date"])
+        previous = json.loads(RUN.read_text())
+        run["sampled"] = previous.get("sampled", run["date"])
+        if "sampling_run" in previous:
+            run["sampling_run"] = previous["sampling_run"]
     else:
         run["sampled"] = run["date"]
+        run["sampling_run"] = {k: run[k] for k in ("command_line", "date", "git")}
     RUN.write_text(json.dumps(run, indent=1) + "\n")
     print(f"\nwrote {RESULTS.name}, {SAMPLE.name if not args.offline else ''} and {RUN.name}")
     return 0

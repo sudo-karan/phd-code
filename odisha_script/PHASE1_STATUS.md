@@ -450,6 +450,29 @@ Each of these five writes `odisha_phase1_<n>_results.txt` beside itself; step 8 
 `odisha_phase1_8_separation_null.png`. Step 10 imports `pick_plots` from step 7 rather than
 reimplementing the selection, so the two cannot drift apart.
 
+Step 12 (round 9, Task E: Test 5 on the descending orbit, declared in
+`PHASE1_RADAR_DESCENDING_PREDECLARED.md`) is the exception to "from inside `odisha_script/`":
+run it from the repo root, since its sampling reads `.env` there through `fmu`.
+
+```bash
+python odisha_script/odisha_phase1_12_radar_descending.py            # needs GEE; read-only: one sampleRegions and four counts, no task; rewrites odisha_plots_sampled_s1desc.csv, then analyses
+python odisha_script/odisha_phase1_12_radar_descending.py --offline  # fully offline; analyses the committed sample
+```
+
+Both write `odisha_phase1_12_radar_descending_results.txt` and the run record
+`odisha_phase1_12_radar_descending_run.json`. The sampling run overwrites the committed sample,
+so, as for steps 1, 3 and 5, run it in a copy and compare. **Which commit sampled.** The
+committed run record is that of an `--offline` run (10:46 IST, 18 Oct 2026, from `453d338` with
+three files modified; committed in `5bd4a7f`). Until round 13 an `--offline` run kept only the
+sampling run's date (`sampled`, 23:42:30 IST, 17 Oct 2026) and its image counts, so the sampling
+run's own command line, commit and dirty flag are in no committed record. The round 9 brief
+(`docs/handoff/2026-10-17-round9.md`, Task E) records that it sampled from `4c4bc97`, the commit
+of the declaration (23:41:56 IST). The first committed record (`212b4f9`), of an `--offline` run
+40 seconds after the sampling (23:43:10 IST), was made at that same commit with no tracked file
+modified and only the run's three outputs untracked; whether the sampling run's own tree was
+clean is not recorded. Since round 13 the script writes the sampling run's command line, date
+and git block under `sampling_run`, and an `--offline` run keeps that block as it found it.
+
 The verdict figures above can be re-derived from the committed artifacts without Earth
 Engine:
 

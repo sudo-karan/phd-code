@@ -4,12 +4,16 @@
   top height bin; the plots run to 45.52 m.
 - C22: the close-out correlated site means rounded to 2 dp; it must correlate the unrounded
   means and round only when printing.
+- C26: step 12's --offline mode rewrote the run record, so the git block of the Earth Engine
+  sampling run was lost; it must keep the sampling run's command, date and git block.
 
-No Earth Engine call: step 7's part B is not run.
+No Earth Engine call: step 7's part B is not run, and step 12's `sample` is replaced by the
+committed sample.
 """
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -22,6 +26,7 @@ SCRIPTS = REPO / "odisha_script"
 sys.path.insert(0, str(SCRIPTS))
 
 import odisha_phase1_7_meta_zero_diagnosis as step7  # noqa: E402
+import odisha_phase1_12_radar_descending as step12  # noqa: E402
 
 # --------------------------------------------------------------------------- C3
 
@@ -61,3 +66,47 @@ def test_closeout_correlates_unrounded_site_means(tmp_path):
     # the table of site means is still printed to 2 dp
     s0 = next(s for s in out if s.startswith("S0 "))
     assert s0.split()[2] == "1.00" and float(s0.split()[3]) == 0.10
+
+
+# --------------------------------------------------------------------------- C26
+
+
+def _fake_git(commit: str, dirty: bool):
+    def git_state(*_a, **_k):
+        return {"commit": commit, "dirty": dirty, "modified": [], "modified_truncated": False,
+                "untracked": [], "untracked_truncated": False, "root": "/x", "error": None}
+    return git_state
+
+
+def test_step12_offline_keeps_the_sampling_runs_git_block(tmp_path, monkeypatch):
+    committed_run = json.loads((SCRIPTS / "odisha_phase1_12_radar_descending_run.json").read_text())
+    committed_sample = pd.read_csv(SCRIPTS / "odisha_plots_sampled_s1desc.csv")
+    monkeypatch.setattr(step12, "RESULTS", tmp_path / "results.txt")
+    monkeypatch.setattr(step12, "RUN", tmp_path / "run.json")
+    monkeypatch.setattr(step12, "SAMPLE", tmp_path / "sample.csv")
+    monkeypatch.setattr(step12, "sample",
+                        lambda: (committed_sample.copy(), dict(committed_run["images_per_district"])))
+    import fmu.utils.provenance as prov
+
+    # 1. the sampling run (Earth Engine replaced by the committed sample)
+    monkeypatch.setattr(prov, "git_state", _fake_git("a" * 40, False))
+    monkeypatch.setattr(sys, "argv", ["odisha_phase1_12_radar_descending.py"])
+    assert step12.main() == 0
+    sampled = json.loads((tmp_path / "run.json").read_text())
+
+    # 2. an offline re-analysis, from another commit with a dirty tree
+    monkeypatch.setattr(prov, "git_state", _fake_git("b" * 40, True))
+    monkeypatch.setattr(sys, "argv", ["odisha_phase1_12_radar_descending.py", "--offline"])
+    assert step12.main() == 0
+    rec = json.loads((tmp_path / "run.json").read_text())
+
+    assert rec["git"]["commit"] == "b" * 40          # this run's own block
+    assert rec["sampled"] == sampled["date"]
+    sampling = rec.get("sampling_run", {})
+    assert sampling.get("git", {}).get("commit") == "a" * 40
+    assert sampling.get("git", {}).get("dirty") is False
+    assert sampling.get("command_line", "").endswith("odisha_phase1_12_radar_descending.py")
+    assert sampling.get("date") == sampled["date"]
+    # the offline run analyses the same sample into the committed result file
+    assert (tmp_path / "results.txt").read_text() == \
+        (SCRIPTS / "odisha_phase1_12_radar_descending_results.txt").read_text()
