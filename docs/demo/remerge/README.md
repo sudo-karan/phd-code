@@ -129,7 +129,8 @@ would lose the type the vote gave them, which was their row's. The counts above 
 The two fits made here, on the old stands and on the new, share their inputs and differ only
 in the 1.9% to 16.5% of stand area that changed stand. Over the pixels typed in both, their
 agreement (adjusted Rand index) runs from 0.31 (`sanjay_van_alphaearth_repro`) to 0.94
-(`odisha_v120_handcrafted_dhenkanal_repro`), with a median of 0.53.
+(`odisha_v120_handcrafted_dhenkanal_repro`), with a median of 0.52 (`types_old_against_new` in
+the 14 summaries; the median is 0.5216).
 
 ## 6. k and the elbow
 

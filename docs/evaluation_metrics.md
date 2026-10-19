@@ -726,7 +726,7 @@ variance alone always prefers smaller stands, and Moran's I pulls the other way.
 
 **How to read a value.** Only as a ranking inside one declared set of candidates. On generated
 data the planted map scored best (0.17), then the map cut in two (0.66), merged (1.12), unrelated
-(1.48) and shifted (1.89). Moran's I is what caught the needless boundaries: 0.16 for the cut map against -0.02 for
+(1.48) and shifted (1.89). Moran's I is what caught the needless boundaries: 0.155 for the cut map against -0.024 for
 the planted one.
 
 **What can make it mislead**
