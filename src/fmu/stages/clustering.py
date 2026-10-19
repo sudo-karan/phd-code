@@ -798,10 +798,15 @@ def _identify_skewed_bands(
 ) -> list[str]:
     """Return bands whose |skewness| over the sample exceeds threshold.
 
-    Operates on a FeatureCollection sample (typically 10k features) rather
-    than the full image to stay within GEE's user memory limit. Per-band
-    skewness uses `reduceColumns`: one server call per band, small payload.
-    Skewness estimates are stable with n=10k.
+    The sample is one row per unit (`_sample_one_point_per_unit`, a unit with
+    no data in a band left out), not a pixel sample: 219 to 3,738 rows in the
+    `_r9` runs of record (`n_units_in_habitat` less
+    `n_units_dropped_null_band` in their manifests). Per-band skewness uses
+    `reduceColumns`: one server call per band, small payload.
+
+    Corrected 20 Oct 2026 (review C19): this said the sample was "typically
+    10k features" and that skewness estimates are stable at that size, which
+    described the 10,000-pixel sample used before one row per unit.
     """
     skewed: list[str] = []
     for band in band_names:
@@ -828,9 +833,15 @@ def _apply_log_transform(
 
     The offset min comes from the same sample used for skew detection
     (avoids re-scanning the full image just for one statistic per band).
-    epsilon=1e-3 keeps log() defined exactly at the sample minimum; if
-    a real pixel value is below the sample min, the log is still defined
-    (just produces a small negative number).
+    epsilon=1e-3 keeps log() defined at the sample minimum, where the band
+    becomes log(0.001), about -6.91. A value below the sample minimum by
+    less than epsilon gives a value below -6.91; a value below it by epsilon
+    or more gives the log of zero or of a negative number, which is not a
+    real number. What Earth Engine puts in such a pixel was not checked.
+
+    Corrected 20 Oct 2026 (review C19; round 2's item B3 had listed it): this
+    said that below the sample minimum the log "is still defined" and gives
+    a small negative number.
 
     Returns the transformed image plus a dict of per-band log offsets.
     """
