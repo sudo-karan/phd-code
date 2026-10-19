@@ -198,7 +198,8 @@ def torus_shift_test(
         n_gt = n_lt = n_eq = 0
     else:
         # ties within the tolerance permutation_p_value uses, so the counts and p agree on what a tie is
-        tol = P_VALUE_ATOL + P_VALUE_RTOL * abs(observed)
+        # (none for an infinite value: inf - inf is NaN, and every map would count as a tie)
+        tol = 0.0 if np.isinf(observed) else P_VALUE_ATOL + P_VALUE_RTOL * abs(observed)
         n_gt = int(np.count_nonzero(defined < observed - tol))
         n_lt = int(np.count_nonzero(defined > observed + tol))
         n_eq = int(defined.size) - n_gt - n_lt + 1
