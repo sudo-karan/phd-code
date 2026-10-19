@@ -7206,3 +7206,49 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-kept-patch-minimum-by-the-merges-arithmetic
+  title: >-
+    The smallest kept patch SNIC sees is the fewest pixels the merge does not count as below merge.min_area_ha, by the
+    merge's own arithmetic
+  decision: >-
+    Config.kept_patch_min_pixels() (src/fmu/config.py, a Locked module) returns, with
+    segmentation.drop_kept_patches_below_min_area on, the smallest n for which n * (scale^2 / 10_000), in floats as
+    fmu.utils.region_merge computes a region's area, is not below merge.min_area_ha, instead of rounding up
+    min_area_ha * 10_000 / scale^2. With the setting off it still returns 0. No config under configs/ has the setting
+    on, and every one has min_area_ha 1.0 at 10 m, which gives 100 px either way, so the value of no config changes, no
+    step computes differently and no revision is raised.
+  alternatives_considered:
+  - >-
+    Round up a decimal-exact quotient: not chosen. It disagrees with the merge at 30 m, where 5 * 0.09 is
+    0.44999999999999996, so the merge counts 5 px as below a 0.45 ha minimum that the exact quotient puts at 5 px (54 of
+    the two-decimal minima from 0.01 to 20.00 ha at 30 m)
+  - >-
+    Make the merge's own minimum exact in whole pixels, so that both follow the decimal: not done; a question for
+    Jaskaran (spec-merge-area-bounds-in-whole-pixels compares the ceilings so, not the minimum)
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 4: "B19 (the kept-patch minimum)". The review
+    (docs/reviews/2026-10-19-review.md, B19): "1.11 ha at 10 m gives 111.00000000000001 px, which rounds up to 112. With
+    drop_kept_patches_below_min_area on, an isolated patch of exactly the minimum (111 px) is removed before SNIC,
+    although the merge counts it as a legal stand", against the method's docstring and
+    spec-segmentation-mask-before-snic; at 10 m 116 of the 2,000 two-decimal minima from 0.01 to 20.00 ha came out one
+    pixel high, and the tests pinned exact values only. The new test in tests/test_mask_before_snic.py fails on the code
+    before with assert (112, 57, 5) == (111, 56, 6) (1.11 and 0.56 ha at 10 m, 0.45 ha at 30 m, where the rule before
+    was one pixel low), and checks against merge_superpixels itself that the value is the smallest the merge counts as
+    a stand for every two-decimal minimum from 0.01 to 5.00 ha at 10, 20 and 30 m (the rule before differed on 51 of
+    those 1,500). Latent, as the review says: no committed or planned run has the setting on. No paper was searched
+    for this decision.
+  evidence:
+  - path: src/fmu/config.py
+    what: Config.kept_patch_min_pixels
+  - path: tests/test_mask_before_snic.py
+    what: test_the_smallest_patch_is_the_smallest_the_merge_counts_as_a_stand; fails on the code before
+  - path: src/fmu/utils/region_merge.py
+    what: The merge's arithmetic, a region's area against min_area_ha
+  - path: docs/reviews/2026-10-19-review.md
+    what: B19
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 4, B19
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)

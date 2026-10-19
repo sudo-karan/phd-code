@@ -1010,14 +1010,27 @@ class Config(BaseModel):
         """Smallest patch of kept land SNIC sees, in pixels; 0 when none is left out.
 
         Nonzero only with segmentation.drop_kept_patches_below_min_area, and then
-        merge.min_area_ha at the analysis scale, rounded up: a patch of fewer
-        pixels is below the smallest stand the merge allows. Segmentation and
-        merge both read it, so they agree on what kept land is.
+        the fewest pixels the merge does not count as below merge.min_area_ha: a
+        patch of fewer pixels is below the smallest stand the merge allows.
+        Segmentation and merge both read it, so they agree on what kept land is.
+
+        Worked out with the merge's own arithmetic (fmu.utils.region_merge): n
+        pixels are n * (scale^2 / 10_000) ha, in floats, against min_area_ha.
+        Rounding up min_area_ha * 10_000 / scale^2 was one pixel more for some
+        minima (1.11 ha at 10 m is 111.00000000000001 px, so 112, though the merge
+        counts 111 px as a stand) and one fewer for others (0.45 ha at 30 m gave
+        5 px, which the merge counts as below it): review B19.
         """
         if not self.segmentation.drop_kept_patches_below_min_area:
             return 0
         scale = self.export.analysis_scale_m
-        return int(math.ceil(self.merge.min_area_ha * 10_000 / (scale * scale)))
+        px_to_ha = scale * scale / 10_000.0
+        n = math.ceil(self.merge.min_area_ha / px_to_ha)
+        while n > 0 and (n - 1) * px_to_ha >= self.merge.min_area_ha:
+            n -= 1
+        while n * px_to_ha < self.merge.min_area_ha:
+            n += 1
+        return n
 
     @model_validator(mode="after")
     def _optical_band_prefixes_match_index(self) -> Config:
