@@ -348,11 +348,11 @@ large area of many parts neither times out on the count nor passes Earth
 Engine's 5,000 elements a request (round 9; an ROI of one polygon is one part).
 `odisha_script/run_config_passes.sh` loops over them, and a first pass on an
 empty cache often hits Earth Engine's memory limit; the next pass completes
-from cache. The shell script must never be started again while tasks from an
-earlier start are still queued, or it submits a second copy of each, and its
-own pass loop can break that rule on a slow queue: a stage that fails partway
-returns without waiting for the exports it has already submitted. So run it
-through the wrapper:
+from cache. Started on its own, its pass loop could submit a second copy of
+every export still queued from an earlier start (a stage that fails partway
+returns without waiting for the exports it has already submitted), so it
+refuses to start (exit 96) unless `odisha_script/run_passes_safely.py` starts
+it. Start every batch with the wrapper:
 
 ```bash
 python odisha_script/run_passes_safely.py --label <name> \
@@ -362,10 +362,13 @@ python odisha_script/run_passes_safely.py --label <name> \
 
 The wrapper runs one pass at a time and, before each, waits until Earth Engine
 has no queued or running task whose description starts with the name of a
-config it is about to run. It never re-runs a config that has finished (the
-export stage would submit its Drive exports again), does not retry a config
-whose export stage failed, allows one batch at a time (a lock file in the log
-folder), and refuses a run tree with modified tracked files. Config paths are
+config it is about to run. It calls the shell script with `MAX_PASSES=1` and
+`RUN_PASSES_SAFELY=1`. Within a batch it never re-runs a config that has
+finished (the export stage would submit its Drive exports again); a new batch
+does not know what an earlier one finished, so do not list a finished config in
+it. It does not retry a config whose export stage failed, allows one batch at a
+time (a lock file in the log folder), and refuses a run tree with modified
+tracked files. Config paths are
 relative to the run tree, which needs its own `.env`. It writes
 `<log-dir>/<label>.log` and `<label>.state.json` (the commit it ran from and
 each pass's per-stage exit codes); `--log-dir` defaults to `<run-tree>/logs`,
