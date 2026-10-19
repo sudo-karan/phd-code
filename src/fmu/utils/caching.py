@@ -420,8 +420,11 @@ STEP_SETTINGS: dict[str, tuple[str, ...]] = {
     "features_optical": ("features_optical",),
     "features_radar": ("features_radar",),
     "features_structure": ("datasets.canopy_height", "features_structure"),
+    # The water settings: features_static builds its own water input since round 13
+    # (review A1), with masking's definition, and reads no masking output.
     "features_static": (
-        "dates.climate", "datasets.dem", "datasets.climate", "features_static",
+        "dates.climate", "datasets.dem", "datasets.climate", "datasets.water",
+        "masking.jrc_water_occurrence_threshold", "features_static",
     ),
     "features_embedding": ("dates.phenology", "datasets.embedding", "features_embedding"),
     "segmentation": (
@@ -467,6 +470,7 @@ _STEP_OMITTED_AT_DEFAULT: dict[tuple[str, str], Any] = {}
 # step at once. Each raise has a register entry (docs/decisions.yaml).
 STEP_REVISION: dict[str, int] = {
     "data_load": 1,  # A4, round 13: the date windows' end is inclusive
+    "features_static": 1,  # A1, round 13: water seen past the ROI, out to the transform's reach
 }
 
 # Steps that read another step's output without having it upstream, and so take
@@ -504,12 +508,15 @@ def step_upstream(config: Any, step: str) -> tuple[str, ...]:
     it. The k_elbow step reads what clustering reads (it re-samples clustering's
     scaled feature image, which does not depend on k).
     """
-    if step in ("masking", "data_load", "features_structure", "features_embedding"):
+    # features_static read masking's water_mask until round 13; it now builds its
+    # own water input (review A1), so a masking setting it does not read (the
+    # habitat classes, say) no longer moves its key.
+    if step in (
+        "masking", "data_load", "features_structure", "features_static", "features_embedding",
+    ):
         return ()
     if step in ("features_optical", "features_radar"):
         return ("data_load",)
-    if step == "features_static":
-        return ("masking",)
     ups: set[str]
     if step == "segmentation":
         ups = {SOURCE_STEP[s] for s in config.segmentation.input_sources()}

@@ -146,10 +146,11 @@ used where IndiaSAT has no data (coverage gaps, or AOIs outside its
 footprint). IndiaSAT covers all of India, so in practice the fallback
 rarely fires. No WorldCover class is used for water.
 
-**JRC Global Surface Water** is still loaded, but only to build
-`water_mask` for the downstream distance-to-water feature (see
-`features_static`). It plays no part in habitat masking. `water_mask` is
-JRC occurrence ≥ threshold; nothing else is OR'd in.
+**JRC Global Surface Water** is still loaded, but only to define water:
+`water_mask` here, and the input of the distance-to-water feature, which
+`features_static` builds with the same function over a wider region (see
+`features_static`). It plays no part in habitat masking. Water is JRC
+occurrence ≥ threshold; nothing else is OR'd in.
 
 There is no built-up mask any more, so the old concern about deriving that
 layer from a source independent of the S2 features we later cluster on is
@@ -361,11 +362,14 @@ Five bands: elevation, slope, aspect, distance_to_water, annual_rainfall.
 `ee.Terrain.products()` computes slope and aspect from elevation. NASADEM
 is in meters per pixel, so slope comes out in degrees correctly.
 
-`distance_to_water` is the first stage that *requires* the masking stage's
-output (it consumes `water_mask`). This is a deliberate dependency; using
-the same water source for both exclusion (masking) and feature (here)
-keeps the two notions consistent. The alternative (compute water freshly
-inside this stage) would risk drift between the two definitions.
+`distance_to_water` measures to the water masking defines (JRC occurrence at
+`masking.jrc_water_occurrence_threshold`), through one function,
+`fmu.stages.masking.jrc_water_mask`, so the two definitions cannot drift.
+Until round 13 it read masking's `water_mask` itself, but that ends at the
+ROI, so the transform never saw water outside it (review A1). The stage now
+builds its own input over the ROI buffered by the transform's reach, the
+corner of its square neighbourhood, ceil(sqrt(2) x
+`max_water_distance_pixels`) pixels, and clips only the result to the ROI.
 
 `fastDistanceTransform` returns squared-euclidean distance in pixels. Take
 sqrt and multiply by analysis scale (10 m) to get distance in meters.

@@ -8,7 +8,11 @@ lists for the step, as dumped, defaults included. Two things are pinned here.
    in its `_run.json` and, stage by stage, in its manifests. The configs must
    still give those keys, or a later batch, resume or read-only script would
    miss the assets the runs cached. This also pins the graph of steps
-   (`step_upstream`), which no other test pins (review C52).
+   (`step_upstream`), which no other test pins (review C52). A round 13 fix
+   moves the keys of the steps it changes on purpose (a revision, and for
+   features_static the water settings of review A1): those steps get a new key,
+   and with the fixes' changes undone (`_keyed_as_the_records_were`) every
+   recorded key comes back.
 2. A field added to a block a step hashes. Listed in `_STEP_OMITTED_AT_DEFAULT`
    (and in `_OMITTED_AT_DEFAULT` for the legacy fingerprint), it moves no key
    while it holds its default, and moves the steps that hash it when it does not.
@@ -94,6 +98,26 @@ def _moved_by_revisions(cfg: Any) -> set[str]:
     return _downstream(cfg, {s for s, r in caching.STEP_REVISION.items() if r})
 
 
+# What features_static's key hashed when the runs of record were made, before round 13's fix
+# of review A1: the stage read masking's water_mask, so masking was upstream of it, and it
+# listed no water setting of its own. The fix moved its key on purpose (with its revision).
+_STATIC_SETTINGS_OF_RECORD = ("dates.climate", "datasets.dem", "datasets.climate", "features_static")
+_STATIC_SETTINGS_ADDED_BY_A1 = ("datasets.water", "masking.jrc_water_occurrence_threshold")
+
+
+def _keyed_as_the_records_were(monkeypatch) -> None:
+    """Undo the round's deliberate changes to the keys: every revision, and A1's re-keying of
+    features_static. The configs must then give exactly the keys the runs recorded."""
+    monkeypatch.setattr(caching, "STEP_REVISION", {})
+    monkeypatch.setitem(caching.STEP_SETTINGS, "features_static", _STATIC_SETTINGS_OF_RECORD)
+    upstream = caching.step_upstream
+    monkeypatch.setattr(
+        caching,
+        "step_upstream",
+        lambda cfg, step: ("masking",) if step == "features_static" else upstream(cfg, step),
+    )
+
+
 # ---------------------------------------------------------------------
 # 1. The keys of record
 # ---------------------------------------------------------------------
@@ -116,7 +140,7 @@ def test_a_config_still_has_the_step_keys_its_run_recorded(record: Path, monkeyp
     keys = step_keys(cfg)
     # A step raised in STEP_REVISION moves, with every step downstream of it; no other.
     assert {s for s in keys if keys[s] != rec["step_keys"][s]} == _moved_by_revisions(cfg)
-    monkeypatch.setattr(caching, "STEP_REVISION", {})
+    _keyed_as_the_records_were(monkeypatch)
     assert step_keys(cfg) == rec["step_keys"]
 
 
@@ -133,8 +157,19 @@ def test_each_stage_of_a_manifest_still_has_its_recorded_key(manifest: Path, mon
     moved = _moved_by_revisions(cfg)
     now = {s: step_key(cfg, s) for s in recorded}
     assert {s for s in recorded if now[s] != recorded[s]} == moved & set(recorded)
-    monkeypatch.setattr(caching, "STEP_REVISION", {})
+    _keyed_as_the_records_were(monkeypatch)
     assert {s: step_key(cfg, s) for s in recorded} == recorded
+
+
+def test_a1_re_keyed_features_static_by_the_water_settings_only(monkeypatch):
+    """What _keyed_as_the_records_were undoes is A1's change and nothing else."""
+    monkeypatch.chdir(REPO)
+    assert sorted(STEP_SETTINGS["features_static"]) == sorted(
+        (*_STATIC_SETTINGS_OF_RECORD, *_STATIC_SETTINGS_ADDED_BY_A1)
+    )
+    for path in (HANDCRAFTED, ALPHAEARTH):
+        assert caching.step_upstream(load_config(path), "features_static") == ()
+    assert caching.STEP_REVISION.get("features_static", 0) >= 1
 
 
 # ---------------------------------------------------------------------
@@ -196,8 +231,10 @@ def test_switched_on_it_moves_the_steps_that_hash_its_block_and_what_follows(mon
     on = step_keys(_ConfigWithAField(cfg, "masking", "new_option", True))
     moved = {s for s in keys if keys[s] != on[s]}
     # The kept-land mask is read by segmentation and the merge too (mask_before_snic).
+    # features_static reads no masking output and only the water threshold of the block,
+    # by name, since round 13 (review A1), so a new masking field does not move it.
     assert moved == {
-        "masking", "features_static", "segmentation", "merge", "clustering", "k_elbow",
+        "masking", "segmentation", "merge", "clustering", "k_elbow",
     }
     assert config_fingerprint(_ConfigWithAField(cfg, "masking", "new_option", True)) != (
         config_fingerprint(cfg)

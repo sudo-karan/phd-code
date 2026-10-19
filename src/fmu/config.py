@@ -241,8 +241,9 @@ class MaskingParams(BaseModel):
         default=[10, 20, 30], min_length=1
     )
     # JRC GSW occurrence is 0-100 (% of months observed as water). >= this =
-    # "permanent" water. Used ONLY to build water_mask for the downstream
-    # distance-to-water feature, NOT for habitat masking.
+    # "permanent" water. Used ONLY to define water, NOT for habitat masking:
+    # masking's water_mask, and the water features_static measures
+    # distance_to_water to (fmu.stages.masking.jrc_water_mask).
     jrc_water_occurrence_threshold: float = Field(default=50.0, ge=0.0, le=100.0)
 
 

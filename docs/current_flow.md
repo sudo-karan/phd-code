@@ -74,13 +74,13 @@ Builds the habitat mask, water mask, and labeled landcover summary. IndiaSAT-pri
 **Datasets:**
 - CoRE Stack LULC (`projects/corestack-trees/assets/LULC_v4`, a folder of per-year images `lulc_v4_YYYY_YYYY`, class band `predicted_label`); primary habitat source, 30 m annual maps, hydrological-year window `masking.indiasat_year_min/max` (default 2017-2021). Mirror of the private `projects/ee-indiasat/...` product
 - ESA WorldCover v200 (`ESA/WorldCover/v200`); habitat fallback where IndiaSAT has no data
-- JRC Global Surface Water 1.4 (`JRC/GSW1_4/GlobalSurfaceWater`); permanent water from occurrence, for the downstream distance-to-water feature only
+- JRC Global Surface Water 1.4 (`JRC/GSW1_4/GlobalSurfaceWater`); permanent water from occurrence, for `water_mask` only, not for habitat (features_static builds the distance-to-water input from the same definition)
 
 **Logic:**
 - `veg_indiasat` = per-pixel **majority vote** of the yearly habitat indicator (IndiaSAT class ∈ `indiasat_habitat_classes`, default 6 = Trees, 12 = Shrubs/Scrubs) over the usable (non-masked) year images in the window — habitat if more usable years were Trees/Shrubs than not. A **tie** is broken by the **most recent usable year** (sorted by the year parsed from each asset id, since the images carry no `system:time_start`; cascading to the next-latest where the newest is no-data). Masked where IndiaSAT has no usable year.
 - `veg_wc` = WorldCover class ∈ `keep_worldcover_classes` (fallback)
 - `habitat_mask` = `veg_indiasat` where IndiaSAT has data, else `veg_wc`. Single-phase: no water or built-up subtraction — those classes are simply not in the habitat set.
-- `water_mask` = JRC occurrence ≥ threshold. Built for the distance-to-water feature; NOT used for habitat exclusion.
+- `water_mask` = JRC occurrence ≥ threshold, over the ROI (`jrc_water_mask`). Drawn in `landcover_summary`; NOT used for habitat exclusion. Since round 13 the distance-to-water feature does not read it: features_static builds its own input with the same function over the ROI buffered by the transform's reach, since this one ends at the ROI (review A1).
 - `landcover_summary` = labeled image: `6` / `12` for the IndiaSAT habitat classes kept, `80` for JRC water (water wins where they overlap), `0` for other/excluded.
 - `mask_provenance` = why each pixel is in or out of `habitat_mask`. Band `reason`: `1` kept, `2` removed as cropland, `3` built-up, `4` water, `5` other non-habitat, `0` no land-cover data in either map. Band `source`: `1` IndiaSAT decided, `2` WorldCover decided, `0` neither has data. `reason == 1` exactly where `habitat_mask == 1`; a pixel IndiaSAT removed takes the reason of its most recent non-habitat year. Derived beside the mask, never fed back into it.
 
@@ -90,7 +90,7 @@ Builds the habitat mask, water mask, and labeled landcover summary. IndiaSAT-pri
 - `indiasat_habitat_classes`; IndiaSAT classes kept as habitat (default `[6, 12]`)
 - `indiasat_class_band`; band holding the IndiaSAT class label (default `null` = first band of each annual image)
 - `keep_worldcover_classes`; WorldCover fallback classes, used only where IndiaSAT has no data (default `[10, 20, 30]`)
-- `jrc_water_occurrence_threshold`; % months water observed (default 50.0); builds `water_mask` for the distance-to-water feature only
+- `jrc_water_occurrence_threshold`; % months water observed (default 50.0); defines water for `water_mask` and for the distance-to-water feature (read by features_static too), never for habitat
 
 **Why these data sources** (see also `docs/design_notes.md`):
 IndiaSAT is a purpose-built Indian LULC (Bansal et al. 2021) whose Trees/Shrubs classes give a habitat definition tailored to Indian landscapes; the majority vote across the usable 2017-2022 years (ties broken by the most recent usable year) makes that definition robust to single-year misclassification. WorldCover is a global 10 m fallback for the rare pixels IndiaSAT doesn't cover.
@@ -221,7 +221,7 @@ When `include_neighborhood_stats` is false, only `canopy_height` is emitted (not
 
 Per-pixel features that don't change meaningfully over the analysis time window: terrain, distance to water, long-term rainfall climatology.
 
-**Reads from context:** `roi`, `water_mask`
+**Reads from context:** `roi`
 **Writes to context:** `static_features` (single multi-band image)
 **Cacheable:** yes
 
@@ -229,21 +229,22 @@ Per-pixel features that don't change meaningfully over the analysis time window:
 - `elevation`; meters above sea level (NASADEM)
 - `slope`; degrees (derived from elevation via `ee.Terrain.products`)
 - `aspect`; degrees 0-360, cyclic raw (derived from elevation)
-- `distance_to_water`; meters to nearest water pixel (uses `water_mask` from masking stage, via `fastDistanceTransform`)
+- `distance_to_water`; meters to nearest JRC water pixel, via `fastDistanceTransform` (see below)
 - `annual_rainfall`; mm/year mean from CHIRPS PENTAD over 1991-2020 climatology
 
 When `include_climate` is false, only the first 4 bands are emitted.
 
 **On aspect:** emitted as raw degrees (0-360). Cyclic, so 0° and 359° look maximally different to a Euclidean clusterer despite being identical. Future improvement: emit `aspect_sin`, `aspect_cos` instead. Left as raw to match notebook approach (ENG-006).
 
-**On distance to water:** uses `water_mask` from masking, not a fresh JRC pull, so the water source is consistent between exclusion (masking) and feature (here). The transform looks for water within `max_water_distance_pixels` × analysis scale (default 10 km), and off the axes a little further (real distances up to 12.3 km in the Odisha box runs). Where it finds none, it returns its fill value, sqrt(2^31 − 1) pixels (463,409.5 m at 10 m), not a distance, unless `features_static.cap_distance_to_water` is on, which caps the band there (register entry `spec-static-cap-distance-to-water`; on in the four Odisha kept-land configs of round 6).
+**On distance to water:** water is masking's definition, JRC occurrence ≥ `masking.jrc_water_occurrence_threshold` (one function, `fmu.stages.masking.jrc_water_mask`), but built here over the ROI buffered by the transform's reach, `water_reach_m`: ceil(sqrt(2) × `max_water_distance_pixels`) pixels, the corner of the square neighbourhood the transform searches (14,150 m by default); the result is clipped to the ROI. Until round 13 the transform read masking's `water_mask`, which ends at the ROI, so it saw no water outside the ROI and every value was at most the distance to water inside it (all 219 stands of the Angul `_r9` box layer read 10,000 m; review A1). The transform looks for water within `max_water_distance_pixels` × analysis scale (default 10 km), and off the axes a little further (real distances up to 12.3 km in the Odisha box runs). Where it finds none, it returns its fill value, sqrt(2^31 − 1) pixels (463,409.5 m at 10 m), not a distance, unless `features_static.cap_distance_to_water` is on, which caps the band there (register entry `spec-static-cap-distance-to-water`; on in the four Odisha kept-land configs of round 6).
 
 **On rainfall:** 30-year standard climatology (1991-2020). Long enough to smooth out year-to-year variation. For a small AOI like Sanjay Van, this band will be nearly constant; included for cross-AOI generality.
 
 **Config knobs:**
 - `features_static.include_climate`; bool (default `true`)
 - `features_static.max_water_distance_pixels`; int 100-10000 (default 1000)
-- `features_static.cap_distance_to_water`; bool (default `false`, every earlier run; left out of the fingerprint while false). On: `distance_to_water` is capped at `max_water_distance_pixels` × analysis scale. Off, the stage makes the calls it made before (`tests/test_static_distance_cap.py`).
+- `features_static.cap_distance_to_water`; bool (default `false`, every earlier run; left out of the fingerprint while false). On: `distance_to_water` is capped at `max_water_distance_pixels` × analysis scale. Off, nothing is capped (`tests/test_static_distance_cap.py`).
+- `masking.jrc_water_occurrence_threshold`, `datasets.water`; the water the distance is measured to (read here since round 13)
 - `datasets.climate`; CHIRPS pentad path (default `UCSB-CHG/CHIRPS/PENTAD`)
 - `dates.climate`; climatology window (default 1991-01-01 to 2020-12-31)
 

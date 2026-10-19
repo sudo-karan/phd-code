@@ -163,11 +163,16 @@ use.
 
 - **In masking:** builds `water_mask` only
   (`occurrence >= jrc_water_occurrence_threshold`, default 50%, = permanent
-  water). This mask is **not** used for habitat exclusion — habitat comes
-  from the IndiaSAT classes alone. `water_mask` exists solely to feed the
-  downstream distance-to-water feature.
-- **In features_static:** `water_mask` from masking is reused as the
-  source for `distance_to_water`. `fastDistanceTransform` returns
+  water, over the ROI; `jrc_water_mask`). This mask is **not** used for
+  habitat exclusion — habitat comes from the IndiaSAT classes alone.
+  `water_mask` is drawn in `landcover_summary`.
+- **In features_static:** the source for `distance_to_water`, built with the
+  same definition (`jrc_water_mask`) but over the ROI buffered by the
+  transform's reach, ceil(sqrt(2) x `max_water_distance_pixels`) pixels
+  (14,150 m by default), so that water outside the ROI counts; only the result
+  is clipped to the ROI. Until round 13 it was masking's `water_mask`, which
+  ends at the ROI, so water outside the ROI was never seen (review A1).
+  `fastDistanceTransform` returns
   squared-euclidean distance in pixels; we sqrt and multiply by scale
   to get meters. It looks within `max_water_distance_pixels *
   analysis_scale_m` (default 10 km), and off the axes a little further (real

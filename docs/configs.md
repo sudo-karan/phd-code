@@ -60,7 +60,7 @@ directly. It's around 300 lines and self-documenting.
 | `datasets` | GEE dataset IDs | All stages that hit a specific collection |
 | `cloud_mask` | S2 cloud filtering | `data_load` |
 | `data_load` | S1 acquisition geometry, S2 composite reducer | `data_load` |
-| `masking` | Habitat class definition (IndiaSAT primary, WorldCover fallback) + water threshold | `masking` |
+| `masking` | Habitat class definition (IndiaSAT primary, WorldCover fallback) + water threshold | `masking`; the water threshold also `features_static` |
 | `features_*` | Per-feature-stage toggles and parameters | The matching `features_*` stage |
 | `segmentation` | SNIC parameters *and its input band stack* | `segmentation`, `pipeline.default_stage_names` |
 | `merge` | Stand-aggregation rules and area bounds | `merge`; also derives the `reduceConnectedComponents` cap used by `clustering` and `metrics` |
@@ -305,9 +305,11 @@ for the full inventory.
   **fallback**, applied only where IndiaSAT has no data (default
   `[10, 20, 30]` = tree cover, shrubland, grassland).
 - `jrc_water_occurrence_threshold`: minimum % of months a pixel was
-  water for it to count as permanent water (default 50.0). Builds
-  `water_mask` for the **distance-to-water feature only**; it does not
-  affect the habitat mask.
+  water for it to count as permanent water (default 50.0). Defines the
+  water of masking's `water_mask` and of the **distance-to-water
+  feature**, which `features_static` builds itself over the ROI buffered by
+  the transform's reach (round 13, review A1); it does not affect the
+  habitat mask.
 
 ### `features_optical`
 

@@ -215,7 +215,7 @@ and default to `configs/sanjay_van_baseline.yaml`.
 | 3. features_optical | `python scripts/inspect_features_optical.py` | masking, data_load | `optical_features` |
 | 4. features_radar | `python scripts/inspect_features_radar.py` | masking, data_load | `radar_features` |
 | 5. features_structure | `python scripts/inspect_features_structure.py` | (uses ROI only) | `structure_features` |
-| 6. features_static | `python scripts/inspect_features_static.py` | masking (for `water_mask`) | `static_features` |
+| 6. features_static | `python scripts/inspect_features_static.py` | masking (the script runs it, though since round 13 features_static reads no masking output: it builds its own water input) | `static_features` |
 | 6b. features_embedding (embedding arm) | no dedicated script — runs via `inspect_metrics.py` / `inspect_clustering.py` with an embedding config (`clustering.feature_source: embedding`) | (uses ROI only) | `embedding_features` |
 | 7. segmentation | `python scripts/inspect_segmentation.py` | masking, data_load, features_optical, features_radar, features_structure — config-driven via `segmentation.input_bands`, so the real list follows the config rather than this row | `snic_clusters`, `snic_means` |
 | 8. merge | `python scripts/inspect_merge.py` (read-only by default: submits no export) | all of 1-7 | not cached: thresholds are the iteration variable, so a cached stand map would hide the thing being tuned |

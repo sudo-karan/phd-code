@@ -1177,7 +1177,9 @@ decisions:
   decision: >-
     distance_to_water is computed from the masking stage's water_mask, so this stage depends on masking.
     fastDistanceTransform gives squared distance in pixels; the stage takes the square root and multiplies
-    by the analysis scale (10 m) to get metres.
+    by the analysis scale (10 m) to get metres. (Superseded in round 13: features_static builds its own water input
+    with masking's definition, one function read by both stages, over the ROI buffered by the transform's reach, and
+    no longer depends on masking; spec-static-water-input-over-the-transforms-reach.)
   alternatives_considered:
   - Computing water freshly inside the static stage
   rationale: >-
@@ -1199,7 +1201,7 @@ decisions:
   - path: tests/test_stage_graph.py
     what: Stage dependency graph tests
   papers: []
-  status: adopted
+  status: superseded
   design_notes_section: 'features_static: terrain + distance + climate'
   source: docs/design_notes.md lines 346-353
 - id: dn-static-rainfall-chirps-30-year-mean
@@ -6517,4 +6519,81 @@ decisions:
   papers: []
   status: adopted
   design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-static-water-input-over-the-transforms-reach
+  title: >-
+    distance_to_water measures to water built over the ROI buffered by the distance transform's reach, not to masking's
+    water_mask, which ends at the ROI; features_static's step revision is raised to 1
+  decision: >-
+    src/fmu/stages/features_static.py (a Locked module) builds its own water input: masking's definition, JRC occurrence
+    at least masking.jrc_water_occurrence_threshold, unmasked to 0 (fmu.stages.masking.jrc_water_mask, one function now
+    read by both stages), over the ROI buffered by water_reach_m = ceil(sqrt(2) x max_water_distance_pixels) x
+    export.analysis_scale_m, 14,150 m at the default 1,000 pixels of 10 m. fastDistanceTransform searches a square of
+    half-width max_water_distance_pixels, whose corners are sqrt(2) times as far, so every water pixel that
+    neighbourhood holds for any pixel of the ROI is in the input. The buffer is given maxError 1 m, since by default
+    Geometry.buffer may fall short by 1% of the distance (141.5 m), more than the 7.9 m the ceil leaves at 1,000
+    pixels. Only the result is clipped to the ROI, as before. The stage reads no masking output any more:
+    required_inputs is {"roi"}. src/fmu/stages/masking.py (Locked) builds water_mask with the same function over the
+    ROI; its calls are the same as before for all 74 configs (recorded offline and compared), so masking's output and
+    key do not change, and landcover_summary still reads it. fmu.utils.caching (Locked): STEP_SETTINGS lists
+    datasets.water and masking.jrc_water_occurrence_threshold for features_static, step_upstream no longer puts masking
+    upstream of it, and STEP_REVISION raises features_static to 1. Its key moves in all 74 configs under configs/, and
+    the clustering and k_elbow keys of the 52 hand-crafted ones; the 22 embedding configs' clustering does not read the
+    static features. The legacy fingerprints do not move. src/fmu/config.py (Locked) changes in a comment only. This
+    supersedes dn-static-distance-to-water-reuses-masking-water-mask (distance to water read from masking's
+    water_mask); the drift between two definitions of water that entry guarded against is prevented by the one
+    function.
+  alternatives_considered:
+  - >-
+    Keep masking upstream of features_static: not chosen. The stage reads no masking output, step_upstream is
+    documented as the steps whose outputs a step reads, and a change to a masking setting it does not read (the habitat
+    classes, say) would recompute the distance transform over the buffered ROI for nothing
+  - >-
+    Cache masking's water_mask over the buffered region instead (the review's wording, "and cache it over that
+    region"): not chosen. water_mask is a masking output that landcover_summary and the display read over the ROI, and
+    the brief keeps it as it is
+  - >-
+    Leave the water input unclipped: not chosen; the brief asks for it to be built over the ROI buffered by the
+    transform's reach
+  - >-
+    Buffer by max_water_distance_pixels x analysis_scale_m (the review's figure): not chosen, as it leaves out the
+    corners of the square neighbourhood, where the transform still finds water up to sqrt(2) times as far
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 2: "A1: build the distance-to-water input over the ROI buffered by
+    the transform's reach, and clip only the result." Review A1 (docs/reviews/2026-10-19-review.md): masking clipped
+    the JRC layer to the ROI before the threshold, unmask(0) kept the clipped footprint, and features_static's 10 km
+    fastDistanceTransform never saw water outside the ROI, so every value was min(distance to water inside the ROI, 10
+    km); all 219 stands of the Angul _r9 box layer read exactly 10,000 m, while the 10 km tile run puts the 178 box
+    stands it covers 847 to 3,567 m from water. The new test (tests/test_static_water_input.py) fails on the code
+    before (the transform's input was the context's water_mask) and passes after. The revision follows the brief's
+    rule 4. The off-path golden of tests/test_static_distance_cap.py was recorded again: all 3 of its cases changed, in
+    the water input's calls and the names made from them only. tests/test_step_keys_of_record.py now undoes this
+    re-keying, beside the revisions, before it checks the recorded keys, and its test of a new masking field expects
+    features_static to stay. The claim that the buffer leaves every distance as an unclipped input would give rests
+    on the square neighbourhood the repo already describes (real distances up to 12.3 km in the Odisha box runs); it
+    was not checked against Earth Engine. No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/features_static.py
+    what: water_reach_m and the water input of distance_to_water; required_inputs
+  - path: src/fmu/stages/masking.py
+    what: jrc_water_mask, read by both stages
+  - path: src/fmu/utils/caching.py
+    what: STEP_SETTINGS["features_static"], step_upstream, STEP_REVISION
+  - path: tests/test_static_water_input.py
+    what: The transform's input, its buffer and reach, and masking's water_mask unchanged
+  - path: tests/test_static_distance_cap.py
+    what: The off-path golden, recorded again
+  - path: tests/data/features_static_off_calls.json
+    what: The golden
+  - path: tests/test_step_keys_of_record.py
+    what: _keyed_as_the_records_were; a new masking field no longer moves features_static
+  - path: docs/current_flow.md
+    what: masking and features_static, on distance to water
+  - path: docs/design_notes.md
+    what: 'Section ''features_static: terrain + distance + climate'', paragraph 3'
+  - path: docs/reviews/2026-10-19-review.md
+    what: A1
+  papers: []
+  status: adopted
+  design_notes_section: 'features_static: terrain + distance + climate'
   source: Jaskaran, 19 Oct 2026 (round 13 brief)

@@ -8,8 +8,10 @@ other class excluded. Where IndiaSAT has no data, ESA WorldCover v200 (classes
 This is a SINGLE-PHASE habitat mask (deck v3.0, Stage 1): water, cropland, and
 built-up are removed simply because their classes are not in the habitat set —
 there is no separate water or built-up subtraction. JRC Global Surface Water is
-loaded only to build `water_mask` for the downstream distance-to-water feature,
-not for habitat masking.
+loaded only to build `water_mask`, not for habitat masking. The distance-to-water
+feature (features_static) builds its own water input with the same definition
+(`jrc_water_mask`), over the ROI buffered by the distance transform's reach,
+since water_mask ends at the ROI (review A1).
 
 IndiaSAT is an annual collection (2017-2022). Habitat is decided per pixel by a
 MAJORITY VOTE over the usable (non-cloud / non-masked) years: a pixel is habitat
@@ -22,7 +24,8 @@ and ecologically meaningful instead of falling to an arbitrary class-code order.
 Output context keys:
   - habitat_mask: binary, 1 where the pixel is IndiaSAT Trees/Shrubs
     (WorldCover 10/20/30 where IndiaSAT is unavailable)
-  - water_mask: binary, 1 where JRC permanent water; feeds distance-to-water
+  - water_mask: binary, 1 where JRC permanent water, over the ROI; drawn in
+    landcover_summary
   - landcover_summary: labeled image for visualization
       6 / 12 = IndiaSAT habitat classes kept
       80     = JRC permanent water
@@ -158,6 +161,18 @@ _HABITAT_NOTE = (
     "behind it are in docs/design_notes.md, section \"Masking: "
     "IndiaSAT-primary, single-phase habitat\"."
 )
+
+
+def jrc_water_mask(jrc: ee.Image, threshold: float, region: ee.Geometry) -> ee.Image:
+    """1 where the JRC image's occurrence is at least `threshold` (per cent of months), 0 elsewhere.
+
+    Clipped to `region` before the threshold, and unmask keeps that footprint, so
+    the image has no water outside `region`. One definition of water, read by this
+    stage's water_mask (over the ROI) and by features_static's distance to water
+    (over the ROI buffered by the distance transform's reach; review A1). Each
+    caller loads the JRC image (`datasets.water`) itself.
+    """
+    return jrc.select("occurrence").clip(region).gte(threshold).unmask(0)
 
 
 def _reason_from_classes(
@@ -465,13 +480,12 @@ class MaskingStage(Stage):
         )
         mask_provenance = reason.addBands(source).toUint8().clip(roi)
 
-        # ----- JRC water: distance-to-water feature only, NOT masking -----
-        gsw = ee.Image(ds.water).select("occurrence").clip(roi)
-        water_mask = (
-            gsw.gte(params.jrc_water_occurrence_threshold)
-            .unmask(0)
-            .rename("water_mask")
-        )
+        # ----- JRC water: landcover_summary and the display, NOT masking -----
+        # features_static builds its own over a wider region, with the same
+        # definition (jrc_water_mask): this one ends at the ROI (review A1).
+        water_mask = jrc_water_mask(
+            ee.Image(ds.water), params.jrc_water_occurrence_threshold, roi
+        ).rename("water_mask")
 
         # ----- landcover_summary: labeled output for visualization -----
         # Colour habitat by the most-recent usable IndiaSAT class, then water
