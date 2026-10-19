@@ -431,7 +431,7 @@ stands hold 186 plots. 6.1 percentiles 60.4 / 61.9 / 21.7 / 84.3 / 54.8 / 53.2 /
   condition fails from the other side.
 
 **`stands_snic`.** v120: 3596 stands, 265 of 267 plots assigned, 38 multi-plot superpixels holding
-93 plots. 6.1 percentiles 30.3 / 36.3 / 20.6 / 69.2 / **2.8** / 23.6 / 14.6. **6.2 Bray–Curtis
+93 plots. 6.1 percentiles 30.3 / 36.3 / 20.6 / 69.2 / **2.8** / 23.6 / 14.6 (before the A8 fix; see the note of 20 Oct 2026 at the end). **6.2 Bray–Curtis
 `beta_same` +0.0304, percentile 38.7** on 76 same-stand pairs — **the ~1 ha layer, which is far too
 small to express a village, shows nothing in the primary arm.** That is the cleanest corroboration
 that the merged layer's composition exceedance is a village-scale contrast. current gives 97.5 and
@@ -1397,3 +1397,35 @@ analysis grid times 0.01 ha, which for these layers is also 0.2% to 0.3% below `
 polygon, so on that measure every area here moves by about that much (the full set's primary
 partition: p10 1.22 / median 3.08 / p90 9.13 ha, and 485.22 of 4,299.05 ha). The numbers above
 are as first written.
+
+## Note of 20 Oct 2026 (round 13): the 6.1 null scored on the observed-assigned plots (review A8)
+
+The review of 19 Oct 2026 (`docs/reviews/2026-10-19-review.md`, A8) found that the statistics
+script scored the 6.1 rotation null, and its null structure, on every plot a realisation put on a
+stand, while the observed value leaves out a plot the observed map leaves unassigned. The null
+forces only the observed-assigned plots onto a stand, so the other plots could enter the null but
+never the observed value. Since commit `390c5fb` the script scores the null on the
+observed-assigned plots only, as Phase 3 does, and ends every name it writes with `_r13`. The files
+without `_r13` are kept as written before the fix.
+
+- **What moves: one secondary layer.** On the full set, v120 `stands_snic` (265 of 267 plots
+  assigned). Its 6.1 percentiles, given above in "SECONDARY arms and layers, full set" as
+  30.3 / 36.3 / 20.6 / 69.2 / **2.8** / 23.6 / 14.6, are 30.4 / 36.6 / 20.6 / 69.2 / **2.9** /
+  23.6 / 14.7 with the fix. `loreys_h_tree_m`'s excess is −0.026 (it was −0.027); the other
+  excesses print as before. The null structure's percentiles are k 78.6 (was 77.7), n 91.8
+  (91.2), largest multi-plot group 25.1 (24.9) and same-stand pairs 90.2 (89.6). No observed value
+  changes. `odisha_phase2_5_summary_districts.csv` and `odisha_phase2_5_summary_districts_r13.csv`
+  differ in 26 cells, all in the seven 6.1 rows of this layer (null median, p5, p95, excess and
+  percentile).
+- **What does not move.** AlphaEarth `stands_snic` also leaves a plot unassigned (266 of 267), but
+  none of its numbers changes. The three `stands_dissolved` layers leave 14 or 15 plots unassigned
+  and have no null (NOT BUILT). The merged layers assign every plot, so the primary result, the
+  arms comparison and the three figures are as before, and so is every 6.2 and 6.3 value. The
+  pilot assigns all 60 plots on every layer: its five `_r13` files are the same bytes as the files
+  without `_r13`.
+- **No conclusion moves.** `n_species` stays in the low tail (2.9: below 5, above 2.5), no other
+  percentile moves by more than 0.9, and the reading of this layer above rests on 6.2, which is
+  unchanged.
+
+Every changed line and cell, before and after: `odisha_phase2_5_r13_vs_before.md`. The results file
+from before the fix, `odisha_phase2_5_results_districts.txt`, carries a dated note at its end.

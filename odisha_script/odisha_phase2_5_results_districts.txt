@@ -1186,3 +1186,14 @@ ARMS (pre-registered): difference in excess over own rotation null, stands_merge
   line 770 median 3.10 / p90 8.60, line 771 573.52 ha of 4299.05 ha and line 990 3538.69 ha. The
   stands_dissolved lines do not change with the holes subtracted; those layers lie on a
   geographic grid in these runs (docs/outputs.md, "Areas and pixel counts").
+
+  NOTE ADDED 20 Oct 2026 (round 13, review A8; the numbers above are as first written): in SECONDARY — v120 /
+  stands_snic (lines 259 to 325) 265 of 267 plots are assigned, and the rotation null was scored on every plot a
+  realisation put on a stand, the 2 unassigned plots among them, while the observed values leave those 2 out.
+  Since round 13 the script scores the null on the observed-assigned plots only and writes
+  odisha_phase2_5_results_districts_r13.txt beside this file. There no observed value changes, and: 6.1
+  percentiles loreys_h_m 30.4 (30.3 here), loreys_h_tree_m 36.6 (36.3; its excess -0.026, -0.027 here), n_species
+  2.9 (2.8), h_top5_m 14.7 (14.6); null structure percentiles k 78.6 (77.7), n 91.8 (91.2), largest multi-plot
+  group 25.1 (24.9), same-stand pairs 90.2 (89.6), and E's null median 0.420 (0.419); the E-slope bias of
+  sal_ba_frac +0.004 (+0.003). No other number in this file changes. Every line and cell that differs, before
+  and after: odisha_phase2_5_r13_vs_before.md.

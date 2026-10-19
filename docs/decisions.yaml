@@ -3948,14 +3948,24 @@ decisions:
     pre-registered 999, gave no percentile to cells with 3 or fewer pairs on either side, and labelled
     the naive within-band permutation p INVALID. It also restricted the type-agreement test (6.3) to rotations
     that keep every typed plot on a typed polygon, and computed the arms prediction as a differenced null.
-    None changes an observed value.
+    None changes an observed value. Round 13 (20 Oct 2026, review A8) made one more change, which changes no
+    observed value either: the rotation null of 6.1 and of its null structure is scored on the plots the observed
+    statistic is computed on, the observed-assigned ones, as Phase 3 scores its null. Until then a realisation
+    that put a plot the observed map leaves unassigned on a stand scored it there. On the full set this moves the
+    null of v120 stands_snic only (265 of 267 plots assigned; n_species percentile 2.8 to 2.9) and no conclusion;
+    the pilot assigns every plot and does not change. The statistics script writes _r13 files since, and the
+    files from before the change keep their names.
   alternatives_considered: []
   alternatives_note: not recorded in the source
   rationale: >-
     PHASE2_STATUS.md: each was introduced in the corrected run, after the first run's statistics existed,
     and is listed for that reason. Reasons given for individual changes: the naive permutation p pools
     sites and its pairs are not independent; thin cells are uninformative. The reason for 1,999 rather
-    than 999 is not recorded in the source.
+    than 999 is not recorded in the source. The round 13 change: an observed value and its null must be computed
+    on the same plots (review A8). The pre-registered null redraws a realisation that puts a plot off every
+    stand; the script applies that to the observed-assigned plots only (forcing the others onto a stand too would
+    rule out the observed placement itself), but it then scored the others wherever a realisation put them.
+    tests/test_phase2_5_null_scoring.py fails on the code before the change and passes after it.
   evidence:
   - path: odisha_script/PHASE2_STATUS.md
     what: '''Corrections to earlier figures (pilot)'', lines 1104-1210'
@@ -3965,12 +3975,21 @@ decisions:
     what: the statistics script the corrections were made in
   - path: odisha_script/PHASE2_PREDICTIONS.md
     what: the pre-registered values departed from
+  - path: odisha_script/odisha_phase2_5_results_districts_r13.txt
+    what: The full set's statistics with the null scored on the observed-assigned plots (round 13, review A8)
+  - path: odisha_script/odisha_phase2_5_r13_vs_before.md
+    what: Every line and cell the round 13 change moves, before and after
+  - path: tests/test_phase2_5_null_scoring.py
+    what: The null is scored on the plots the observed statistic is computed on
+  - path: docs/reviews/2026-10-19-review.md
+    what: A8
   papers: []
   status: adopted
   design_notes_section: null
   source: >-
     odisha_script/PHASE2_STATUS.md 'Departures from PHASE2_PREDICTIONS.md made after seeing the first
-    run'
+    run'; the round 13 change: docs/reviews/2026-10-19-review.md, A8, and the round 13 brief (Jaskaran, 19 Oct
+    2026), Task 6
 - id: field-forest-types-from-structure
   title: Field forest types are built from structure, not species
   decision: >-
