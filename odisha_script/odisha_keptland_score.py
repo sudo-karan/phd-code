@@ -197,7 +197,9 @@ def five_scores(d: pd.DataFrame) -> dict[str, Any]:
     out: dict[str, Any] = {"delin_all": float(ari(d.skey, d.field_type))}
     multi = d.groupby("skey").skey.transform("size").to_numpy() > 1
     sub = d[multi]
-    out["delin_multi"] = float(ari(sub.skey, sub.field_type))
+    # No stand holding two plots: not answerable (NaN, as multi_ari gives), where scikit-learn
+    # would give 1.0 for the two empty labelings (review of 19 Oct 2026, B21).
+    out["delin_multi"] = float(ari(sub.skey, sub.field_type)) if len(sub) >= 2 else float("nan")
     sizes = d.groupby("skey").size()
     alike = d.groupby(["skey", "field_type"]).size()
     out["prec"] = float((alike * (alike - 1) / 2).sum() / (sizes * (sizes - 1) / 2).sum())

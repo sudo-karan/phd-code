@@ -117,6 +117,26 @@ def test_the_runs_scored_are_named_by_a_pattern_and_default_to_the_declared_ones
         K.main(["--runs", "no_placeholder"])
 
 
+def test_score_2_is_not_answerable_when_no_stand_holds_two_scored_plots():
+    """Review of 19 Oct 2026, B21: with every scored plot in a stand of its own, score 2 (ARI on
+    the stands holding two or more plots) has no plots to score. scikit-learn gives 1.0 for two
+    empty labelings; the declaration computes score 2 as odisha_phase3_1_pairwise_score.py does,
+    which says "not answerable", and the chance test's array path (multi_ari) gives NaN. So NaN,
+    printed n/a as the other scores that cannot be computed are."""
+    d = pd.DataFrame({"district": ["angul"] * 3 + ["koraput"] * 2,
+                      "lat6": [21.0, 21.01, 21.02, 19.0, 19.01], "lon6": [85.0, 85.01, 85.02, 83.0, 83.01],
+                      "field_type": [0, 1, 2, 1, 2], "sid": [1.0, 2.0, 3.0, 1.0, 2.0],
+                      "cluster": [0.0, 1.0, 1.0, 0.0, 1.0]})
+    s = K.five_scores(d)
+    assert s["counts"]["plots_in_multi_plot_stands"] == 0
+    assert math.isnan(G.multi_ari(d.field_type.to_numpy(), d.sid.to_numpy() + (d.district == "koraput") * 100)[0])
+    assert math.isnan(s["delin_multi"]), s["delin_multi"]
+    result = {"join": {"angul": {"inside_the_boxes": 3, "on_a_stand": 3, "by_the_30_m_rule": 0, "left_out": 0}},
+              "analyses": [{"analysis": "primary", "what": "a check", **s}]}
+    line = next(ln for ln in K.text(result).splitlines() if ln.startswith("  primary "))
+    assert line.split()[2] == "n/a", line
+
+
 def test_the_run_record_is_named_by_the_stem(tmp_path, monkeypatch):
     K.write_run_record(tmp_path, ["--stem", "keptland_s1desc_r9"], "keptland_s1desc_r9")
     record = json.loads((tmp_path / "keptland_s1desc_r9_scores_run.json").read_text())
