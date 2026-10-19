@@ -82,9 +82,11 @@ OTHER RUNS, ANOTHER ARM (round 10, 18 Oct 2026). --runs names the runs scored by
 {district}, as odisha_keptland_score.py's --runs does, for runs that are not the default name plus
 a --run-suffix: the AlphaEarth arm's odisha_alphaearth_3ha_squares_{district}_keptland_r9. --arm
 names the arm in the seed strings; by default it is the runs' own name without "odisha_", the
-district or a round 9 run suffix (_r9, _r9_check), which for the default runs, with or without
-_r9, is v120_3ha_squares_keptland_s1desc as before (Q6), and for the AlphaEarth arm
-alphaearth_3ha_squares_keptland: each arm its own seeds, as the village test seeds each arm.
+district or the run suffixes _r9, _r9_check and _repro (CLAUDE.md's from-scratch copy, so a
+_repro re-run draws its source's placements; review of 19 Oct 2026, B22), which for the default
+runs, with or without _r9, is v120_3ha_squares_keptland_s1desc as before (Q6), and for the
+AlphaEarth arm alphaearth_3ha_squares_keptland: each arm its own seeds, as the village test seeds
+each arm.
 
 WRITES, in --out-dir: keptland_s1desc_chance_rehearsal.txt and .json for the pre-fix runs, or
 <scored-stem>_chance.txt and .json for runs with a suffix; results only (no dates, no run times; the
@@ -139,8 +141,9 @@ ANALYSES = (("primary", "the primary field types, every plot the join scores"),
             ("S1", "field type 0 (no trees) left out, same realisations"),
             ("S2", "four field types (odisha_phase3_0_field_types_k4.csv), same realisations"))
 
-#: round 9's run suffixes, which the seed strings do not take (Q6)
-RUN_SUFFIXES = ("_r9_check", "_r9")
+#: the run suffixes the seed strings do not take (Q6): round 9's, and _repro, CLAUDE.md's
+#: from-scratch copy of a config (review of 19 Oct 2026, B22)
+RUN_SUFFIXES = ("_repro", "_r9_check", "_r9")
 
 _lines: list[str] = []
 _timings: list[str] = []
@@ -148,11 +151,12 @@ _timings: list[str] = []
 
 def arm_from_runs(pattern: str) -> str:
     """The arm's name in the seed strings, from the runs' name pattern: without "odisha_", the
-    district and a round 9 run suffix. The default runs give ARM, with or without _r9."""
+    district and the trailing run suffixes (RUN_SUFFIXES, as many as there are: _r9_repro, a
+    from-scratch copy of an _r9 run, is seeded as the _r9 run). The default runs give ARM, with or
+    without _r9 or _repro."""
     arm = pattern.removeprefix("odisha_").replace("{district}_", "").replace("_{district}", "")
-    for sfx in RUN_SUFFIXES:
-        if arm.endswith(sfx):
-            return arm[: -len(sfx)]
+    while sfx := next((s for s in RUN_SUFFIXES if arm.endswith(s)), None):
+        arm = arm[: -len(sfx)]
     return arm
 
 
@@ -841,7 +845,7 @@ def main(argv: list[str] | None = None) -> int:
                          "(e.g. odisha_alphaearth_3ha_squares_{district}_keptland_r9)")
     ap.add_argument("--arm", default=None,
                     help="the arm's name in the seed strings (default: the runs' name without odisha_, the district "
-                         "and a round 9 run suffix)")
+                         "and the run suffixes _r9, _r9_check and _repro)")
     ap.add_argument("--scored-stem", default="keptland_s1desc",
                     help="stem of the field check's <stem>_joined.csv and <stem>_scores.json in --scores-dir")
     ap.add_argument("--scores-dir", type=Path, default=SCORES_DIR)
