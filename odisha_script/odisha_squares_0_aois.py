@@ -35,6 +35,28 @@ Engine's 1 bn-pixel export cap. Plots from habitations with fewer than 5 plots t
 box are listed by name: they are in the mapped area, and PHASE_SQUARES_PREDECLARED.md says
 how they are scored.
 
+THREE BOXES SET BY ONE PLOT EACH (note added 20 Oct 2026, round 13, review C8)
+-------------------------------------------------------------------------------
+In three habitations one plot lies far from all the others, and the box, which holds every plot
+of its habitation, stretches to reach it:
+  KORAPUT    BARAKANTI       18.69107_82.868956   9.34 km from the habitation's nearest other plot
+  KORAPUT    KHASUGUDA       18.624624_82.933586  3.91 km
+  KENDUJHAR  BHANRADI SAHI   21.614841_85.407242  4.70 km
+(every other plot of the three habitations is within 360 m of another). With the plot the three
+boxes are 2,579.6, 1,365.6 and 1,330.4 ha; without it they would be 426.8, 178.7 and 71.4 ha. So
+these three plots add 4,598.7 ha (2,152.8 + 1,186.9 + 1,259.0) of the 8,248.0 ha of boxes. IndiaSAT
+classes each of the three positions as built-up (BARAKANTI, BHANRADI SAHI: class 1) or cropland
+(KHASUGUDA: class 11) in every year from 2017 to 2021 (odisha_phase2_1_mask_retention.csv). In the
+kept-land join (keptland_scores/keptland_s1desc_r9_joined.csv) the BARAKANTI and BHANRADI SAHI
+plots have no stand within 30 m (67.6 and 40.9 m) and are not scored; the KHASUGUDA plot joins a
+stand 22.7 m away by the 30 m rule and is scored. The stretched boxes are the three on the
+kept-land chance tests' feasible-region sampler, and the boxes with the largest moves of their
+plots (the "How far the null moves the plots" table of keptland_scores/*_chance.txt, which carries
+a note on it); the same three parts of the Phase 2 hulls have a plain geometric acceptance of
+0.000, 0.001 and 0.000 (odisha_phase2_5_results_districts.txt). Whether these three fixes are
+misplaced is a field-data question, put to Jaskaran in round 13; nothing here is changed by it.
+Measured offline with this script's plot_box and area_ha on load_plot_points' plots.
+
 Run:  python odisha_script/odisha_squares_0_aois.py
 Writes: aois/odisha_squares_{district}.geojson, odisha_script/odisha_squares_0_results.txt
 """

@@ -108,6 +108,18 @@ How far the null moves the plots (the box declaration's check; unconditional nul
     koraput:BARAKANTI                           30      7147    10181               1.00  feasible-region
     median over the plots the join scores: 440 m
 
+  NOTE ADDED 20 Oct 2026 (round 13, review C8; the rest of this file is as first written): the three
+  feasible-region boxes above, BHANRADI SAHI, KHASUGUDA and BARAKANTI, are long because one plot of
+  each habitation lies 4.70, 3.91 and 9.34 km from the habitation's other plots, on built-up land or
+  cropland per IndiaSAT (measured in the docstring of odisha_squares_0_aois.py). Those three plots
+  add 4,599 of the 8,248 ha of boxes, and these three boxes have the largest median and p90 moves in
+  this table. For them the median move is not a stable summary, so read the p90 beside it: here
+  BARAKANTI's median move is 7,147 m and its p90 10,181 m, and over the four declared runs (each
+  with its own seed and its own stands) its median runs from 1,063 to 7,266 m while its p90 stays at
+  10,170 to 10,213 m. The share of moves over 2 km would need each realisation's moves, which the
+  .json does not keep (it holds each box's median and p90 only); a re-run of the null that kept them
+  would give it. No number in this file is changed.
+
 --------------------------------------------------------------------------------------------------------
 WHAT THIS SAYS
 --------------------------------------------------------------------------------------------------------
