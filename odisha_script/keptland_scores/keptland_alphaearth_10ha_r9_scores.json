@@ -1,0 +1,227 @@
+{
+ "what": "The field check of the Odisha kept-land runs, as odisha_script/PHASE_KEPTLAND_PREDECLARED.md fixes it; numbers only, no chance test.",
+ "inputs_sha256": {
+  "odisha_alphaearth_10ha_squares_angul_keptland_r9": "dedcacf09be04e03aaa1c58b7e04a3b7085d3ef1f4000eba763cfc3822b3bc90",
+  "odisha_v120_3ha_squares_angul": "8f9eb3efd28df919a3c037256851f95e817e799b843f7a4cd19d67d1ce8dcb06",
+  "odisha_alphaearth_10ha_squares_dhenkanal_keptland_r9": "25f9c7fafc7e917753c55c39155c4459aeebe7b916b415dd5bc9a5243af45164",
+  "odisha_v120_3ha_squares_dhenkanal": "a2afbc6481abb455c6d5d4a4698ff4d335541895796012acab4e9364d2ffb771",
+  "odisha_alphaearth_10ha_squares_kendujhar_keptland_r9": "77797f387a72ec59a196e4187b65c942c519e9b5f1ba18f401252404d6510f1d",
+  "odisha_v120_3ha_squares_kendujhar": "5d2b1d2d61d115bd18214931027a5c5967bfbe78f91f9c2ffb5b5ef42fb8615e",
+  "odisha_alphaearth_10ha_squares_koraput_keptland_r9": "9598b423c76b2a296380dc45cfc5d683f9347c8a7e09155d8cde7326679d35f7",
+  "odisha_v120_3ha_squares_koraput": "6d9ebeb5689219d1ef86722c8479a4465f8c18f68e470ff5ed5555024f089fc1"
+ },
+ "join": {
+  "angul": {
+   "inside_the_boxes": 39,
+   "on_a_stand": 37,
+   "by_the_30_m_rule": 2,
+   "left_out": 0
+  },
+  "dhenkanal": {
+   "inside_the_boxes": 75,
+   "on_a_stand": 72,
+   "by_the_30_m_rule": 2,
+   "left_out": 1
+  },
+  "kendujhar": {
+   "inside_the_boxes": 8,
+   "on_a_stand": 7,
+   "by_the_30_m_rule": 0,
+   "left_out": 1
+  },
+  "koraput": {
+   "inside_the_boxes": 145,
+   "on_a_stand": 136,
+   "by_the_30_m_rule": 8,
+   "left_out": 1
+  },
+  "all": {
+   "inside_the_boxes": 267,
+   "on_a_stand": 252,
+   "by_the_30_m_rule": 12,
+   "left_out": 3
+  }
+ },
+ "analyses": [
+  {
+   "analysis": "primary",
+   "what": "the runs odisha_alphaearth_10ha_squares_<district>_keptland_r9; the primary field types; the 30 m rule",
+   "delin_all": 0.016959838971991742,
+   "delin_multi": 0.030463046650150528,
+   "prec": 0.5728813559322034,
+   "lab_wmean": 0.050698841135127015,
+   "far_gap": -0.00601198558018981,
+   "counts": {
+    "plots": 264,
+    "stands_holding_them": 133,
+    "multi_plot_stands": 57,
+    "plots_in_multi_plot_stands": 188,
+    "plots_without_a_type": 0,
+    "far_apart_pairs_alike": 3646,
+    "far_apart_pairs_differ": 6787
+   },
+   "labelling_by_district": {
+    "ANGUL": {
+     "n": 39,
+     "ari": 0.07326588516389158
+    },
+    "DHENKANAL": {
+     "n": 74,
+     "ari": 0.1723863799491984
+    },
+    "KENDUJHAR": {
+     "n": 7,
+     "ari": 0.0
+    },
+    "KORAPUT": {
+     "n": 144,
+     "ari": -0.015482413735825836
+    }
+   }
+  },
+  {
+   "analysis": "S1",
+   "what": "as the primary, field type 0 (no trees) left out",
+   "delin_all": 0.014521386588737742,
+   "delin_multi": 0.02561535032024665,
+   "prec": 0.6031746031746031,
+   "lab_wmean": 0.05695738725455353,
+   "far_gap": 0.001400212204332063,
+   "counts": {
+    "plots": 248,
+    "stands_holding_them": 131,
+    "multi_plot_stands": 54,
+    "plots_in_multi_plot_stands": 171,
+    "plots_without_a_type": 0,
+    "far_apart_pairs_alike": 3604,
+    "far_apart_pairs_differ": 5543
+   },
+   "labelling_by_district": {
+    "ANGUL": {
+     "n": 37,
+     "ari": 0.06838553731493605
+    },
+    "DHENKANAL": {
+     "n": 74,
+     "ari": 0.1723863799491984
+    },
+    "KENDUJHAR": {
+     "n": 5,
+     "ari": 0.0
+    },
+    "KORAPUT": {
+     "n": 132,
+     "ari": -0.008798673922454836
+    }
+   }
+  },
+  {
+   "analysis": "S2",
+   "what": "as the primary, four field types (odisha_phase3_0_field_types_k4.csv)",
+   "delin_all": 0.011369140359921284,
+   "delin_multi": 0.021503950797403356,
+   "prec": 0.6508474576271186,
+   "lab_wmean": 0.031895500644301675,
+   "far_gap": -0.0137540833109919,
+   "counts": {
+    "plots": 264,
+    "stands_holding_them": 133,
+    "multi_plot_stands": 57,
+    "plots_in_multi_plot_stands": 188,
+    "plots_without_a_type": 0,
+    "far_apart_pairs_alike": 5580,
+    "far_apart_pairs_differ": 4853
+   },
+   "labelling_by_district": {
+    "ANGUL": {
+     "n": 39,
+     "ari": 0.0369864108376829
+    },
+    "DHENKANAL": {
+     "n": 74,
+     "ari": 0.1479641675066292
+    },
+    "KENDUJHAR": {
+     "n": 7,
+     "ari": 0.0
+    },
+    "KORAPUT": {
+     "n": 144,
+     "ari": -0.027579210056003833
+    }
+   }
+  },
+  {
+   "analysis": "covered_only",
+   "what": "as the primary, only the plots a stand covers (no 30 m rule)",
+   "delin_all": 0.017291371014943907,
+   "delin_multi": 0.030525725043503368,
+   "prec": 0.5703703703703704,
+   "lab_wmean": 0.046548835992701966,
+   "far_gap": -0.011824616676749167,
+   "counts": {
+    "plots": 252,
+    "stands_holding_them": 128,
+    "multi_plot_stands": 55,
+    "plots_in_multi_plot_stands": 179,
+    "plots_without_a_type": 0,
+    "far_apart_pairs_alike": 3331,
+    "far_apart_pairs_differ": 6163
+   },
+   "labelling_by_district": {
+    "ANGUL": {
+     "n": 37,
+     "ari": 0.0568275426262991
+    },
+    "DHENKANAL": {
+     "n": 72,
+     "ari": 0.16293282820199245
+    },
+    "KENDUJHAR": {
+     "n": 7,
+     "ari": 0.0
+    },
+    "KORAPUT": {
+     "n": 136,
+     "ari": -0.015466735570261956
+    }
+   }
+  },
+  {
+   "analysis": "box_runs",
+   "what": "beside it, descriptive only: the 13 Oct box runs' merged stands (the Phase 2 rule) on the plots the primary scores",
+   "delin_all": 0.005077660080053375,
+   "delin_multi": 0.022483447708788788,
+   "prec": 0.5185185185185185,
+   "lab_wmean": 0.050356467640373326,
+   "far_gap": -0.016487625429970176,
+   "counts": {
+    "plots": 264,
+    "stands_holding_them": 196,
+    "multi_plot_stands": 44,
+    "plots_in_multi_plot_stands": 112,
+    "plots_without_a_type": 1,
+    "far_apart_pairs_alike": 3590,
+    "far_apart_pairs_differ": 6727
+   },
+   "labelling_by_district": {
+    "ANGUL": {
+     "n": 39,
+     "ari": 0.12543921293042867
+    },
+    "DHENKANAL": {
+     "n": 74,
+     "ari": 0.13623343313725475
+    },
+    "KENDUJHAR": {
+     "n": 7,
+     "ari": 0.2
+    },
+    "KORAPUT": {
+     "n": 143,
+     "ari": -0.02188568088828939
+    }
+   }
+  }
+ ]
+}
