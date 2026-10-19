@@ -7534,54 +7534,6 @@
 {
 "reducer": "ee.Reducer.skew()",
 "selectors": [
-"'ndvi_phase_annual_sin'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().select().select().addBands().addBands().reduceConnectedComponents().select().updateMask().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'skew of ndvi_phase_annual_sin'"
-}
-],
-[
-"ee.Reducer.skew",
-[],
-{}
-],
-[
-"ee.Image.cat().select().select().addBands().addBands().reduceConnectedComponents().select().updateMask().addBands().stratifiedSample().reduceColumns",
-[],
-{
-"reducer": "ee.Reducer.skew()",
-"selectors": [
-"'ndvi_phase_annual_cos'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().select().select().addBands().addBands().reduceConnectedComponents().select().updateMask().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'skew of ndvi_phase_annual_cos'"
-}
-],
-[
-"ee.Reducer.skew",
-[],
-{}
-],
-[
-"ee.Image.cat().select().select().addBands().addBands().reduceConnectedComponents().select().updateMask().addBands().stratifiedSample().reduceColumns",
-[],
-{
-"reducer": "ee.Reducer.skew()",
-"selectors": [
 "'aspect_sin'"
 ]
 }
@@ -10482,54 +10434,6 @@
 ],
 {
 "context": "'skew of distance_to_water'"
-}
-],
-[
-"ee.Reducer.skew",
-[],
-{}
-],
-[
-"ee.Image.cat().select().select().addBands().addBands().reduceConnectedComponents().select().updateMask().addBands().stratifiedSample().reduceColumns",
-[],
-{
-"reducer": "ee.Reducer.skew()",
-"selectors": [
-"'ndvi_phase_annual_sin'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().select().select().addBands().addBands().reduceConnectedComponents().select().updateMask().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'skew of ndvi_phase_annual_sin'"
-}
-],
-[
-"ee.Reducer.skew",
-[],
-{}
-],
-[
-"ee.Image.cat().select().select().addBands().addBands().reduceConnectedComponents().select().updateMask().addBands().stratifiedSample().reduceColumns",
-[],
-{
-"reducer": "ee.Reducer.skew()",
-"selectors": [
-"'ndvi_phase_annual_cos'"
-]
-}
-],
-[
-"getInfo",
-[
-"ee.Image.cat().select().select().addBands().addBands().reduceConnectedComponents().select().updateMask().addBands().stratifiedSample().reduceColumns()"
-],
-{
-"context": "'skew of ndvi_phase_annual_cos'"
 }
 ],
 [

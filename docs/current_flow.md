@@ -345,7 +345,7 @@ Per-superpixel feature stack to preprocessing to k-means to per-pixel cluster la
 
 4. **Habitat filter**; `updateMask(habitat_mask)`. Non-habitat pixels excluded from training and labelling.
 
-5. **Skewness detection**; `ee.Reducer.skew()` per band. Bands with `|skew| > 1.0` are marked for log-transform.
+5. **Skewness detection**; `ee.Reducer.skew()` per band. Bands with `|skew| > 1.0` are marked for log-transform. The sin and cos of a harmonic phase (`*_phase_*_sin`, `*_phase_*_cos`) are not tested and never logged (review B13, round 13): they are the coordinates of a point on a circle, and their skew across units says where the units' phases sit on it, which moves with the harmonic's reference date. Aspect's pair is tested like every other band.
 
 6. **Log-transform**; `log(x − band_min + 1e-3)` so log is defined even for zero/negative values (some bands like `trend` and `vv_minus_vh_median` include both).
 

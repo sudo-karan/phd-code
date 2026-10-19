@@ -18,7 +18,8 @@ stage metadata gains one key, fit_excludes_stands_below_min_area, false, and not
 A deliberate change to the default path rewrites the file the same way, from the new
 code, in the commit that makes it (`--write src/fmu/stages/clustering.py`), still without
 that key in the stage metadata. Rewritten so in round 13 by review A5 (a flat cell's aspect
-pair is (0, 0): the calls of the two hand-crafted configs changed).
+pair is (0, 0): the calls of the two hand-crafted configs changed) and B13 (a phase's sin
+and cos are not tested for skew: the same two configs ask two skews fewer).
 """
 
 from __future__ import annotations

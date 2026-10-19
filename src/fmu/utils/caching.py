@@ -473,7 +473,9 @@ STEP_REVISION: dict[str, int] = {
     # A1, round 13: water seen past the ROI, out to the transform's reach (1);
     # A5, round 13: slope and aspect in fractional degrees, on the DEM as float (2)
     "features_static": 2,
-    "clustering": 1,  # A5, round 13: a flat cell's aspect sin and cos are both 0
+    # Round 13. 1, A5: a flat cell's aspect sin and cos are both 0. 2, B13: a harmonic
+    # phase's sin and cos are kept out of the skew test and the log.
+    "clustering": 2,
 }
 
 # Steps that read another step's output without having it upstream, and so take

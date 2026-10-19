@@ -459,7 +459,8 @@ decks — that number was always 10,000 pixels.
   is band-name-agnostic and runs identically for both, so the two arms are
   directly comparable through the metrics stage.
 - `skewness_threshold`: bands with `|skew|` above this get log-transformed
-  (default 1.0 per DEC-004).
+  (default 1.0 per DEC-004). The sin and cos of a harmonic phase band are not
+  tested and never logged (review B13).
 - `fit_excludes_stands_below_min_area`: whether the stands the merge leaves
   below `merge.min_area_ha` are rows of the k-means fit. `false` (default, and
   the behaviour of every run made before the setting existed): every stand is a

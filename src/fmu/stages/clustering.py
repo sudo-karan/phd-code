@@ -38,6 +38,7 @@ Pipeline (server-side throughout):
   5. Skewness detection (DEC-004)
        - For each band, compute skewness over habitat-masked sample.
        - Mark bands with |skew| > skewness_threshold for log-transform.
+       - Not the sin and cos of a harmonic phase, which are never logged.
 
   6. Log-transform marked bands
        - log(x - min + 1e-3) so x can include zero/negative values safely.
@@ -478,10 +479,12 @@ class ClusteringStage(Stage):
             context=f"preprocessing stats per {unit_key}",
         )
 
-        # 5. Skewness detection (sample-based)
+        # 5. Skewness detection (sample-based). Not of a harmonic phase's sin and
+        #    cos: see _phase_components.
+        phase_components = _phase_components(decomposition_log)
         skewed_bands = _identify_skewed_bands(
             preprocessing_sample,
-            candidate_bands,
+            [b for b in candidate_bands if b not in phase_components],
             threshold=params.skewness_threshold,
         )
         log.info(
@@ -715,6 +718,20 @@ def _decompose_cyclic_bands(image: ee.Image) -> tuple[ee.Image, list[str]]:
 
     kept_bands = [b for b in band_names if b not in cyclic_bands]
     return image.select(kept_bands).addBands(ee.Image.cat(new_bands)), cyclic_bands
+
+
+def _phase_components(decomposed: list[str]) -> list[str]:
+    """The sin and cos bands _decompose_cyclic_bands made of a harmonic phase band.
+
+    `decomposed` is the list of bands it decomposed. These components are never
+    candidates for the skew test or the log (review B13): they are the two
+    coordinates of a point on the unit circle, so their skew across units says
+    where the units' phases sit on it, which moves with the harmonic's reference
+    date, not that a band has a long tail. Logged one by one, they bent the
+    circle. Aspect's pair is not among them, and every other band is tested as
+    before.
+    """
+    return [f"{b}_{part}" for b in decomposed if "_phase_" in b for part in ("sin", "cos")]
 
 
 # reduceConnectedComponents masks an object only when it is strictly LARGER than

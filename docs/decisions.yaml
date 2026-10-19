@@ -6834,3 +6834,57 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-clustering-phase-pair-not-logged
+  title: >-
+    The sin and cos of a harmonic phase band are kept out of the clustering stage's skew test and log transform
+  decision: >-
+    In the clustering stage (src/fmu/stages/clustering.py, a Locked module) the sin and cos bands that
+    _decompose_cyclic_bands makes of a harmonic phase band (a band with "_phase_" in its name, such as
+    ndvi_phase_annual) are never candidates for the skew test (_identify_skewed_bands), and so are never logged
+    (_apply_log_transform); they go to the scaling as the decomposition gives them (_phase_components). Every other
+    band is tested exactly as before: the same |skew| > skewness_threshold rule (review A3, unchanged) and the same
+    offset (review B12, unchanged). Aspect's sin and cos are tested as before. The scaling of the pair, each component
+    by its own median and IQR, is unchanged (review A2). Clustering's revision is raised to 2 (STEP_REVISION in
+    src/fmu/utils/caching.py), which moves the clustering and k_elbow keys of every config and no other key.
+  alternatives_considered:
+  - >-
+    Keep aspect's sin and cos out of the skew test and the log too: not chosen, since the brief names the phase only.
+    Put to Jaskaran under Questions; no committed run logged an aspect component
+  - >-
+    Scale each pair with one shared spread, or not at all, as the review also suggests: not chosen; that is the
+    scaling, a method decision left out of this round (review A2)
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 4: "B13 (the phase's sin and cos kept out of the skew test and
+    the log)". The review (docs/reviews/2026-10-19-review.md, B13) found that the decomposition runs before the skew
+    test, so ndvi_phase_annual_cos is logged in every hand-crafted _r9 run and Angul also logs _sin, and that a log
+    taken of one coordinate of the circle makes the distance between two stands depend on where on the circle their
+    phases sit, which moves with the harmonic's reference date. The committed run records agree: every hand-crafted
+    run in docs/reproducibility (keptland_runs, r9_runs, round12_runs, round9_cache_test) logged
+    ndvi_phase_annual_cos, and the Angul runs ndvi_phase_annual_sin too; none logged an aspect component. The new test
+    fails on the code before the change with "assert 'ndvi_phase_annual_sin' not in ['vh_iqr', 'canopy_height_max',
+    'slope', 'ndvi_phase_annual_sin', 'ndvi_phase_annual_cos', 'aspect_cos']" and passes after it. The review's
+    suggested test, that moving time_reference leaves the pairwise distances unchanged, is not added: it cannot pass
+    while each component is scaled by its own spread (A2) and while ndvi_mean is the trend line's value on the
+    reference date (review C9). The clustering therefore still depends on the reference date through those two
+    routes, and the records that say it does not (spec-harmonic-time-reference-configurable, src/fmu/config.py,
+    src/fmu/stages/features_optical.py) stay wrong until A2 and C9 are settled. No paper was searched for this
+    decision.
+  evidence:
+  - path: src/fmu/stages/clustering.py
+    what: _phase_components; step 5 of ClusteringStage.run
+  - path: src/fmu/utils/caching.py
+    what: STEP_REVISION, clustering at 2
+  - path: tests/test_phase_pair_not_logged.py
+    what: >-
+      A phase component above the threshold is neither tested nor logged, while vh_iqr and aspect_cos with the same
+      skew are; fails on the code before the change
+  - path: tests/data/clustering_off_calls.json
+    what: The recorded calls of the two hand-crafted configs, two skew requests fewer
+  - path: docs/reviews/2026-10-19-review.md
+    what: B13, and C9
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 4, B13
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
