@@ -16,7 +16,8 @@ Three deliverable classes, all driven by toggles in `config.export`:
      deliverable. Toggled via `export_vector_merged`; written only when
      `merge.enabled`, since without merge the stand *is* the superpixel and
      `stands_snic` already is that layer. Unlike `stands_snic`, stands that
-     clustering could not type are kept with a null `cluster_id`.
+     clustering could not type are kept with a null `cluster_id`. A stand with
+     a row in the k-means fit takes that row's type (round 12).
 
   3. **SNIC superpixel vectors** (`stands_snic`): one polygon per SNIC
      superpixel with all per-superpixel feature means attached. The
@@ -980,6 +981,18 @@ def _build_merged_feature_collection(
     So `cluster_id` is null on exactly those stands, which makes the coverage gap
     visible in the layer itself rather than only in the log.
 
+    How a stand gets its `cluster_id` (round 12, register entry
+    `spec-export-stand-type-from-its-fit-row`): a stand whose row the k-means fit
+    was trained on takes that row's type (`_fit_row_types`). Every other stand
+    gets the vote it got before: the commonest type among the typed pixels its
+    polygon touches, each weighted by its share inside the polygon. On the
+    analysis grid a polygon touches only its own stand's pixels, so the two give
+    the same type, except on the pieces of a stand whose pieces carry different
+    types (`_stand_row_types`), which now all take one, and on a piece with no
+    typed pixel of a stand that has a row elsewhere, which was null and now takes
+    the stand's type; on the legacy cache layout the vote could take in slivers
+    of a neighbour's pixels.
+
     `region` (default: the ROI) is the area vectorised: one part of the ROI when
     the layer is built a part at a time (`_layer_by_part`).
     """
@@ -1019,7 +1032,12 @@ def _build_merged_feature_collection(
         reducer=ee.Reducer.mode(),
         scale=scale,
     )
-    polygons_typed = polygons_with_cluster.map(_rename_mode_to_cluster_id)
+    # Then a stand with a row in the k-means fit takes that row's type instead
+    # of the vote (round 12). A stand with no row in the fit keeps the vote.
+    polygons_typed = _take_the_fit_rows_types(
+        polygons_with_cluster.map(_rename_mode_to_cluster_id),
+        _fit_row_types(ctx, config, cluster_labels, stand_clusters, roi, scale),
+    )
 
     # Steps 4-5: geometry attributes, drop bookkeeping, renumber by centroid.
     polygons_with_geom = polygons_typed.map(
@@ -1030,6 +1048,124 @@ def _build_merged_feature_collection(
 
     # Step 6: merge provenance, added last so that nothing above sees it.
     return _attach_stand_provenance(renumbered, ctx)
+
+
+def _stand_row_types(
+    cluster_labels: ee.Image, unit_labels: ee.Image, region: ee.Geometry, scale: int
+) -> ee.Dictionary:
+    """{stand label as "%d": its row's type} for every stand with a typed pixel.
+
+    The clustering stage averages the features over each connected piece of a
+    stand (reduceConnectedComponents), trains k-means on one row per stand (the
+    means at one of its pixels inside the habitat mask where no band is
+    missing, drawn at random) and then types every pixel of the image those rows
+    were drawn from. A stand in one piece has the same means at each of its
+    pixels, so every typed pixel of it carries the type the fitted clusters give
+    its row, and on the analysis grid it has typed pixels exactly when it has a
+    row: the commonest type over its own typed pixels is its row's type. A stand
+    in several pieces can carry different types on different pieces, and its row
+    is on one of them; for it this gives the commonest type over its typed
+    pixels, which is its row's type unless the row was drawn on a piece of
+    another type (the clustering stage does not record which pixel it drew;
+    question 3 of docs/handoff/2026-10-19-round12.md). Grouped by label, not
+    voted over the polygon: only the stand's own pixels count. On the legacy
+    cache layout the type image lies on another grid than the labels, so a
+    stand's pixels there are those whose centres it holds on the type grid: a
+    stand with a row may then have none (it keeps the vote), and a stand with
+    no row may have some. The clusterer itself is not kept, so the type is read
+    from the typed pixels.
+
+    One reduction over `region`, in the grid of `cluster_labels`. A stand whose
+    pixels are all untyped still forms a group, but one without a "mode" (seen
+    on Earth Engine, 19 Oct 2026); those groups are dropped, so a stand with no
+    typed pixel is not in the dictionary.
+    """
+    grouped = (
+        cluster_labels.toInt()
+        .rename("cluster_id")
+        .addBands(unit_labels.toInt().rename("stand_lbl"))
+        .reduceRegion(
+            reducer=ee.Reducer.mode().group(groupField=1, groupName="stand_lbl"),
+            geometry=region,
+            scale=scale,
+            maxPixels=int(1e9),
+        )
+    )
+    typed = ee.List(grouped.get("groups")).map(
+        lambda g: ee.Algorithms.If(ee.Dictionary(g).contains("mode"), g, None), True
+    )
+    return ee.Dictionary.fromLists(
+        typed.map(lambda g: ee.Number(ee.Dictionary(g).get("stand_lbl")).format("%d")),
+        typed.map(lambda g: ee.Dictionary(g).get("mode")),
+    )
+
+
+def _fit_row_types(
+    ctx: PipelineContext,
+    config: Config,
+    cluster_labels: ee.Image,
+    unit_labels: ee.Image,
+    region: ee.Geometry,
+    scale: int,
+) -> ee.Dictionary | None:
+    """{stand label as "%d": its row's type} for every stand whose row the fit was trained on.
+
+    Every stand with a row (`_stand_row_types`) but, with
+    clustering.fit_excludes_stands_below_min_area on, not the stands the merge
+    left below merge.min_area_ha: k-means was not trained on their rows
+    (clustering's `_stands_below_min_area`, from the same `stand_provenance`).
+    Whether those count as having "a row in the fit" is question 2 of
+    docs/handoff/2026-10-19-round12.md; until it is answered they keep the vote,
+    as they did before. So does a stand with no row at all (question 1).
+
+    None when the setting is on and the context holds no `stand_provenance`, so
+    the fit's rows cannot be told from the others: then every stand keeps the
+    vote. A pipeline run always has it (the merge stage writes it).
+    """
+    excludes = config.clustering.fit_excludes_stands_below_min_area
+    if excludes and not ctx.has("stand_provenance"):
+        log.warning(
+            "  stands_merged: clustering.fit_excludes_stands_below_min_area is on but "
+            "the context has no stand_provenance, so the stands left out of the fit "
+            "cannot be told apart; every stand keeps the type its polygon's pixels give it."
+        )
+        return None
+    row_types = _stand_row_types(cluster_labels, unit_labels, region, scale)
+    if not excludes:
+        return row_types
+    left_out = sorted(
+        str(sid) for sid, record in ctx.get("stand_provenance").items() if record["below_min"]
+    )
+    return row_types.remove(left_out, True) if left_out else row_types
+
+
+def _take_the_fit_rows_types(
+    fc: ee.FeatureCollection, fit_row_types: ee.Dictionary | None
+) -> ee.FeatureCollection:
+    """Set each polygon's `cluster_id` to its stand's row type, where the stand has one.
+
+    Looked up by `stand_lbl`, as the provenance is, so every piece of a stand in
+    several pieces takes the same type. A polygon whose stand is not in
+    `fit_row_types` keeps the `cluster_id` it has. With `fit_row_types` None, the
+    collection is returned untouched.
+    """
+    if fit_row_types is None:
+        return fc
+
+    def retype(feature: ee.Feature) -> ee.Feature:
+        key = ee.Number(feature.get("stand_lbl")).format("%d")
+        # The lookup has a default (-1), so that the branch is safe to compute when the
+        # key is missing: Earth Engine may evaluate both cases of If(). The branch is
+        # chosen only when the key is there, so -1 never reaches the layer.
+        return ee.Feature(
+            ee.Algorithms.If(
+                fit_row_types.contains(key),
+                feature.set("cluster_id", fit_row_types.get(key, -1)),
+                feature,
+            )
+        )
+
+    return fc.map(retype)
 
 
 def _stand_provenance_fields(ctx: PipelineContext) -> tuple[str, ...]:

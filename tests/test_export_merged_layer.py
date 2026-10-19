@@ -179,6 +179,17 @@ def fake_ee(monkeypatch):
     monkeypatch.setattr(
         export_mod, "_renumber_by_centroid", lambda fc, *, id_field: fc
     )
+    # Nor is the type each stand takes from its row in the fit (round 12), which
+    # tests/test_export_stand_type_from_fit_row.py runs on a fake raster. Here it
+    # is recorded where the builder asks for it, and gives no row types, so each
+    # stand keeps the vote.
+    monkeypatch.setattr(
+        export_mod,
+        "_fit_row_types",
+        lambda ctx, config, cluster_labels, unit_labels, region, scale: cluster_labels.calls.append(
+            "fit_row_types"
+        ),
+    )
     return _FakeEE
 
 
@@ -289,11 +300,14 @@ def test_export_does_not_require_the_provenance():
     ExportStage().validate(_ctx(_INVARIANT | _HANDCRAFTED), cfg)
 
 
-def test_without_provenance_the_merged_layer_is_built_exactly_as_before(
+def test_without_provenance_the_builder_makes_these_calls_and_no_more(
     fake_ee, monkeypatch
 ):
     """The builder's calls with no `stand_provenance` in the context: the two
-    renames, the vectorisation and three maps, and nothing after them."""
+    renames, the vectorisation, the map that names the vote cluster_id, the
+    request for the fit's row types (round 12; the fake gives none, so no stand
+    is retyped here) and the two maps of geometry and bookkeeping, and nothing
+    after them: no provenance step."""
     calls: list = []
     _run_builder(export_mod._build_merged_feature_collection, calls, monkeypatch)
     assert calls == [
@@ -301,6 +315,7 @@ def test_without_provenance_the_merged_layer_is_built_exactly_as_before(
         ("labelProperty", "stand_lbl"),
         ("rename", "cluster_id"),
         "map",
+        "fit_row_types",
         "map",
         "map",
     ]

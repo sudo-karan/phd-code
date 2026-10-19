@@ -40,12 +40,18 @@ from one folder. Its features were computed by a features pass of its own before
 ran (`_manifest_features_computed.json`), so the wrapper's features pass found them cached.
 
 The stands and stand polygons are from each run's record (`merge_diagnostics` and
-`export_vector_layers`): a stand under `export.vector_min_stand_pixels` (4) pixels has no polygon.
+`export_vector_layers`). Corrected on 19 Oct 2026 (round 12): this said that a stand under
+`export.vector_min_stand_pixels` (4) pixels has no polygon, but that setting filters
+`stands_dissolved` only. The stands with no polygon (2 to 10 per run) are fragments of one
+superpixel, each isolated, with no pixel, or one or two, inside the ROI on the analysis grid
+(`stand_attributes`); in Angul's hand-crafted run 27 of the 29 stands under 4 pixels have a
+polygon.
 
 | File | What |
 |---|---|
 | `<run>_stands_merged.geojson`, `_stands_snic.geojson`, `_stands_dissolved.geojson` | the run's stands, superpixels and same-type regions, as its export pass wrote them |
 | `<run>_files_off_git.json` | where a run has a layer over 5 MB: its size, SHA-256 and where it is on the Mac (`outputs/round10/results/`; Kendujhar's in `outputs/round9/results/`) |
+| `stand_types_from_fit_rows.json` | Round 12, Task 2: per run, the stands whose type would change under round 12's export (a stand with a row in the k-means fit takes that row's type), counted offline (`scripts/stand_types_from_fit_rows.py`) |
 | `cost_<run>.json` (and `_run.json`) | Task I: the run's EECU-hours, batch by stage and online by pass, and per 1,000 ha (`scripts/eecu_by_stage.py`); the record holds the pass spans and when they were read |
 | `<run>_run.json` | the run record: merge diagnostics, per-stand attributes and provenance, export counts, cache layout, step keys, git, environment |
 | `<run>_manifest_features.json`, `_segmentation`, `_clustering`, `_export` | the manifests of the wrapper's four passes; the features pass computed and exported every feature asset |

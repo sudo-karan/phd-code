@@ -279,7 +279,9 @@ of which 269 carry a type; `odisha_alphaearth_angul_repro`: 102 and 86, against
 100 and 92). Three causes are known (`docs/demo/remerge/README.md`): a stand in
 several pieces is several polygons; the export stage types a stand from the
 typed pixels its polygon touches, weighted by the share of each pixel inside
-it, so a stand with no habitat pixel of its own can take a neighbour's type;
+it, so a stand with no habitat pixel of its own can take a neighbour's type
+(round 12 leaves such a stand, which has no row in the fit, on that vote:
+question 1 of `docs/handoff/2026-10-19-round12.md`);
 and the merge is not cached, so the pass that fits the types and the pass that
 exports the stands each merge again, and where one of them computed a merge
 criterion live they did not get the same stands (`odisha_alphaearth_angul_repro`:
@@ -834,7 +836,7 @@ SHP attributes (capped at 10-char field-name limit):
 |---|---|---|
 | `stand_id` | int | Sequential 1..N. Sorted by centroid lat desc / lon asc. **Deterministic** — the same merged geometry always produces the same numbering. |
 | `stand_lbl` | int | Raw merge label. Use to cross-reference with the `stand_clusters` raster. `stand_id` is a renumbering and cannot be joined back to the raster; this can. |
-| `cluster_id` | int | The k-means cluster (0 to k-1) assigned to this stand. **May be null** — see below. |
+| `cluster_id` | int | The k-means cluster (0 to k-1) assigned to this stand: since round 12, for a stand whose row the fit was trained on, the commonest type over the stand's own typed pixels, which on the analysis grid is the type the fit gives its row (for a stand whose pieces carry different types, see question 3 of `docs/handoff/2026-10-19-round12.md`); for any other stand, the commonest type among the typed pixels its polygon touches. **May be null** — see below. |
 | `area_ha` | float | Polygon area in hectares. |
 | `perim_m` | float | Polygon perimeter in metres. |
 | `n_pixels` | int | `area_m² / (analysis_scale_m)²`. Derived from area, consistent with `area_ha`. |
@@ -886,7 +888,14 @@ outside the habitat mask, or at least one active feature band has no data
 over it. The clustering stage logs the split, and the counts are in the run
 manifest as `n_units_outside_habitat` and `n_units_dropped_null_band`. Note
 that SHP cannot represent a null integer — read the GeoJSON if you need to
-tell null from 0.
+tell null from 0. Such a stand has no row in the k-means fit, so it keeps the
+commonest type among the typed pixels its polygon touches: null on the analysis
+grid (every run since round 9), but on the legacy cache layout, where the types
+lay on another grid, its polygon could take in slivers of a neighbour's pixels and
+so a neighbour's type (`docs/demo/remerge/README.md`, section 4; whether it
+should be null in every layout is question 1 of
+`docs/handoff/2026-10-19-round12.md`; register entry
+`spec-export-stand-type-from-its-fit-row`).
 
 #### `stands_snic`
 

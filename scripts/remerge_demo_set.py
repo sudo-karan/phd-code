@@ -62,6 +62,10 @@ the polygons are drawn on the UTM grid of the superpixels, so a polygon also tou
 its neighbours' pixels. A stand with no habitat pixel of its own, which the fit never typed, can
 take a neighbour's type that way. The demo keeps the export's types, because they are what a
 run writes; each summary counts the stands this happens to (`stands_typed_by_the_export_only`).
+(Note of 19 Oct 2026, round 12: since then the export gives a stand with a row in the fit its
+row's type, register entry spec-export-stand-type-from-its-fit-row, so a run of this script now
+writes that type for the stands with a row whose vote differed; the stands with no row are
+counted as before.)
 
 A run already made under the new rule (its config sets merge.pass2_skip_at_min_area: the box runs
 of docs/demo/demo_set_boxes.json, given with --demo-set) is not re-merged. For such a run the tool

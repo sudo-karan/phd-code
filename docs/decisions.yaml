@@ -6127,3 +6127,77 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 19 Oct 2026 (round 12 brief)
+- id: spec-export-stand-type-from-its-fit-row
+  title: >-
+    In the exported stand layer a stand with a row in the k-means fit takes that row's type, not a vote of its
+    polygon's pixels
+  decision: >-
+    The export stage (src/fmu/stages/export.py, a Locked module) gives each stand of stands_merged whose row the
+    k-means fit was trained on the type the fit gives that row, read as the type most of the stand's own typed pixels
+    carry: the type image (cluster_labels) grouped by the stand label image, with the commonest type per stand
+    (_stand_row_types). Every piece of a stand in several pieces takes that one type (which type for a stand whose
+    pieces carry different types is question 3 of docs/handoff/2026-10-19-round12.md). Every other stand keeps the
+    type it had: the commonest type among the typed pixels its polygon touches, each weighted by its share inside the
+    polygon. They are the stands with no row at all (no pixel in the habitat mask, or a feature band with no data
+    over the stand) and, with clustering.fit_excludes_stands_below_min_area on, the stands left out of the fit;
+    whether either should change is questions 1 and 2 of docs/handoff/2026-10-19-round12.md. stands_snic and
+    stands_dissolved are typed as before.
+  alternatives_considered:
+  - >-
+    Keep the vote for every stand (the export before round 12): not chosen, as the brief asks
+  - >-
+    Draw each stand's row again (the same stratified sample, with the fit's seed, as the k elbow step does) and read
+    the type at that pixel: not chosen for now. The clustering stage does not record which pixel it drew, so a repeat
+    of the draw could not be checked; for a stand in one piece both give the same type. Open with the stands whose
+    pieces carry different types (question 3 of docs/handoff/2026-10-19-round12.md)
+  - >-
+    Make a stand with no row null in every layout, and let the stands left out of the fit take their rows' types:
+    open, questions 1 and 2 of docs/handoff/2026-10-19-round12.md
+  rationale: >-
+    The round 12 brief, Task 2 (roadmap 3.2, issue #44 item 12; Jaskaran, 19 Oct 2026): "The export types a stand from
+    the typed pixels its polygon touches, so some stands take a neighbour's type (3 to 33 per run). Change it so that a
+    stand with a row in the fit takes that row's type." The clustering stage averages the features over each connected
+    piece of a stand, trains k-means on one row per stand drawn at one of its typed pixels, and types every pixel, so a
+    stand in one piece carries its row's type at each of its typed pixels and the grouped commonest type is exactly the
+    row's type, on the analysis grid; a stand in several pieces can carry different types on different pieces, and for
+    it the commonest type over its typed pixels is the row's type unless the row was drawn on a piece of another type.
+    On the legacy cache layout a stand's pixels on the type grid are those whose centres it holds there, so a stand
+    with a row may hold none (one stand in the demo set's re-merge, which keeps the vote) and a stand with no row may
+    hold some. The vote went wrong where
+    the polygons and the type image lay on different grids (the legacy cache layout): a polygon took in slivers of its
+    neighbours' pixels. The "3 to 33 per run" are stands with no row at all, which took a neighbour's type that way
+    in the demo set's re-merge of the 13 Oct runs (docs/demo/remerge/README.md, section 4; 3 to 32 under the old merge
+    rule); the change as worded leaves them as they are. In the _r9 runs the stands with no row are fragments of one
+    superpixel with no pixel, or one or two, inside the ROI, and have no polygon. Among
+    stands with a row, the demo set's re-merge found the vote and the row's type differing in 0 to 4 stands per run.
+    On the analysis grid (every run since round 9) a polygon covers whole pixels of its own stand only: in the eleven
+    _r9 runs every vertex of the stand, superpixel and type layers lies on the 10 m grid, and the change alters no
+    stand of the ten box and Sanjay Van runs and one piece of one stand in the 10 km tile (a one-pixel piece of type 3
+    in a stand whose other 344 pixels are type 4), counted offline (scripts/stand_types_from_fit_rows.py). The five
+    _r9 runs were not exported again, as the brief says. On Earth Engine, a grouped reduction gives a stand whose
+    pixels are all untyped a group without a "mode" (seen live on 19 Oct 2026); it is dropped. The lookup inside
+    ee.Algorithms.If has a default, since Earth Engine may compute both of its cases. No paper was searched for this
+    decision.
+  evidence:
+  - path: src/fmu/stages/export.py
+    what: _build_merged_feature_collection, step 3; _stand_row_types, _fit_row_types, _take_the_fit_rows_types
+  - path: tests/test_export_stand_type_from_fit_row.py
+    what: >-
+      The rule on a fake raster; test_a_stand_with_a_row_in_the_fit_takes_its_rows_type_not_the_vote fails on the
+      export before round 12
+  - path: tests/test_export_stand_type_from_fit_row_live.py
+    what: The Earth Engine calls on synthetic images (live tier)
+  - path: tests/test_export_merged_layer.py
+    what: The builder's calls, with the request for the fit's row types
+  - path: scripts/stand_types_from_fit_rows.py
+    what: The offline count per run
+  - path: docs/reproducibility/r9_runs/stand_types_from_fit_rows.json
+    what: The count for the eleven _r9 runs
+  - path: docs/demo/remerge/README.md
+    what: Section 4, the stands with no row that took a neighbour's type on the legacy layout
+  - path: docs/handoff/2026-10-19-round12.md
+    what: Task 2, what a stand with no row gets, written before the change, and the record
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 12 brief)
