@@ -518,19 +518,27 @@ class MergeParams(BaseModel):
     two-tier threshold scheme (strict in the homogeneous pass, relaxed in the
     eliminate pass) so undersized fragments always find a home.
 
-    Two of Xiong's three axes are covered, using the closest analogue FMU
-    has without ALS or a species map:
+    Xiong's merging rule (Eq. 1) has five conditions: the pair's area under
+    the maximum, the same dominant species, canopy closure within 0.2,
+    dominant-species proportion within TP1 and mean height within SH1; the
+    eliminating rule (Eq. 2) drops closure and relaxes TP and SH. FMU has
+    analogues of three: max_area_ha for the area bound, canopy_height for the
+    stand height and ndvi_amplitude_annual for the species proportion. It has
+    none for closure or for the same species.
 
-      canopy_height          <- his stand height (same quantity, modelled source)
-      ndvi_amplitude_annual  <- his dominant-species proportion (seasonal swing
+    The two criteria are the closest analogues FMU has without ALS or a
+    species map:
+
+      canopy_height          <- stand height (same quantity, modelled source)
+      ndvi_amplitude_annual  <- dominant-species proportion (seasonal swing
                                 is the deciduous/evergreen axis, the only
                                 composition-like signal available at 10 m)
 
-    His third axis, canopy closure, is NOT covered. It was carried by
-    canopy_height_std, which the Odisha field validation measured at R2=0.000
-    against crown cover over 274 plots (r=-0.011) -- so the axis was nominal,
-    not real, and asserting it was worse than admitting the gap. Replacing it
-    is an open question, not an oversight; see odisha_script/PHASE1_STATUS.md.
+    Closure was carried by canopy_height_std, which the Odisha field
+    validation measured at R2=0.000 against crown cover over 274 plots
+    (r=-0.011) -- so the analogue was nominal, not real, and asserting it was
+    worse than admitting the gap. Replacing it is an open question, not an
+    oversight; see odisha_script/PHASE1_STATUS.md.
 
     `elevation` is deliberately excluded even though it is the rank-3 separator
     (0.52). Sanjay Van has ~20 m of total relief and the within-cluster

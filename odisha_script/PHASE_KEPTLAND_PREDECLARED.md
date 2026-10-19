@@ -177,3 +177,45 @@ AlphaEarth arm (`keptland_scores/keptland_alphaearth_r9_scores.*`). The scores o
 (`keptland_scores/keptland_s1desc_scores.*`) stay as history. Kept-land scores existed when this
 note was written: those of round 7, of the `_r9` re-runs and of the AlphaEarth arm, the chance test's
 rehearsal and its declared results on both arms. Nothing declared above is changed.
+
+## Change of 19 Oct 2026 (round 12): the 10 ha box runs, both arms
+
+Made by Claude Code on Jaskaran's instruction (the round 12 brief, Task 4, roadmap 3.3;
+`docs/handoff/2026-10-19-round12.md`), before any 10 ha run on the boxes. First committed as
+`071fbee`; this shorter form, also before any such run, drops what that one added beyond the brief
+(the last point). Nothing above is changed and nothing new is added.
+
+- **The runs.** Eight copies of the eight 3 ha `_r9` box runs above, named with `10ha` in place of
+  `3ha` (`configs/odisha_v120_10ha_squares_<district>_keptland_s1desc_r9.yaml` and
+  `configs/odisha_alphaearth_10ha_squares_<district>_keptland_r9.yaml`), each changing only
+  `segmentation.size` from 6 to 10 and `merge.max_area_ha` from 3 to 10, the Sanjay Van 10 ha
+  configs' values; k stays 5 (`tests/test_r9_configs.py`).
+- **Scored as declared above, unchanged, arm by arm.** Everything above, and Claude (chat)'s
+  `PHASE_KEPTLAND_AMENDMENT_chance_checks.md`, applies to each arm's 10 ha runs as to its 3 ha
+  runs: the five scores, the plots, the join with the 30 m rule, the checks S1 and S2, how the
+  plots join, the 13 Oct box runs beside (the runs on the boxes without the kept-land mask,
+  `configs/odisha_v120_3ha_squares_<district>.yaml`; there is no 10 ha one), and the chance test
+  as declared, 1,999 realisations per null with Holm, and C1.
+- **The chance test's placements.** Given the 10 ha run names, the chance script names the two
+  sets `v120_10ha_squares_keptland_s1desc` and `alphaearth_10ha_squares_keptland` and seeds each by
+  its name, so each draws placements of its own. Whether they should instead draw their arm's
+  3 ha placements is question 5 of the round 12 brief. The 10 ha chance test runs as the answer
+  says; with no answer by then, with the script's names, and its results file says so.
+- **3 ha and 10 ha side by side**, arm by arm, descriptive only, with no test of the difference.
+- **Files.** New files only, in `odisha_script/keptland_scores/` (`keptland_s1desc_10ha_r9_*`,
+  `keptland_alphaearth_10ha_r9_*` and the side-by-side tables); nothing older is written over.
+- **What existed when this was written.** On the boxes: round 7's kept-land scores (history), the
+  `_r9` record of both arms with their declared chance tests and comparisons, and the rehearsal.
+  **No 10 ha stand or score on the Odisha boxes or on kept land in Odisha.** At Sanjay Van, 10 ha
+  stands on kept land (its kept-land runs, k = 6), which has no field plots to score. In Odisha, 10
+  ha scores on other stands, all on the village hulls without the kept-land mask (k = 6): Phase 2
+  and Phase 3 (`PHASE2_STATUS.md`, `PHASE3_STATUS.md`; in Phase 3 no test survived Holm at either
+  size), and the demo set's runs of 13 Oct, scored then (`docs/reproducibility/odisha_repro/`) and
+  tested against chance in round 2, where the hand-crafted 10 ha arm's two drawing tests passed
+  after Holm (Holm p 0.010 and 0.027; the log is on the Mac, in `odisha_script/phase3_demo/`); the
+  demo set's AlphaEarth runs there were scored in round 2 (`PHASE3_ALPHAEARTH_PREDECLARED.md`).
+- **Corrected before any run.** `071fbee` also set the AlphaEarth arm at 10 ha beside the
+  hand-crafted at 10 ha, added a rule naming the plots a 10 ha run scores unlike its 3 ha run, and
+  fixed the chance test's seed names: none is in the brief. It also said that no 10 ha stand
+  existed on kept land, which Sanjay Van's runs contradict, and left the demo set's chance test
+  out of what existed.

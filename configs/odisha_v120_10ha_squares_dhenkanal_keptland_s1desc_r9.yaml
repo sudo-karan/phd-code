@@ -1,0 +1,173 @@
+# Round 12, Task 4 (roadmap 3.3, 19 Oct 2026): the 10 ha size check on the boxes. A copy of
+# configs/odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r9.yaml
+# changing only:
+#
+# 1. name and description;
+# 2. segmentation.size: 10, not 6 (SNIC's seed spacing);
+# 3. merge.max_area_ha: 10.0, not 3.0 (the stand ceiling; with the soft ceiling a piece still under
+#    1 ha may join a neighbour up to 11 ha),
+#
+# the values of the Sanjay Van 10 ha configs (tests/test_r9_configs.py checks which keys differ).
+# k stays 5. The field check that scores it is the change of 19 Oct 2026 to
+# odisha_script/PHASE_KEPTLAND_PREDECLARED.md. The notes below are those of the config it copies,
+# written for 3 ha.
+#
+# Round 9 task G (run in round 10, 18 Oct 2026): a copy of configs/odisha_v120_3ha_squares_dhenkanal_keptland_s1desc.yaml with only `name` changed
+# (tests/test_r9_configs.py). The notes below are those of the config it copies.
+#
+# KEPT LAND ONLY, DESCENDING RADAR ORBIT. ODISHA ON BOXES, DHENKANAL district, 3 ha stand ceiling,
+# feature vector (v120).
+#
+# Copy of configs/odisha_v120_3ha_squares_dhenkanal_keptland.yaml (round 6). THREE things differ
+# (tests/test_s1desc_configs.py); everything else is identical, kept land only, the soft ceiling,
+# the fit without the small stands and the distance cap included:
+#
+# 1. name and description.
+# 2. data_load.s1_orbit: DESCENDING, not ASCENDING. Over the boxes of Koraput, Kendujhar and Angul
+#    the ascending Sentinel-1 orbit has 1 to 3 IW VV+VH images in the radar window, 2017 to 2022,
+#    against 188 to 204 descending (Dhenkanal 174 against 188), so the ascending radar statistics
+#    rest on one to three dates (docs/handoff/2026-10-15-round6.md, step 5 b). Chosen by image
+#    count, not by any score: no kept-land score existed (spec-odisha-keptland-s1-orbit-descending;
+#    Jaskaran, 15 Oct 2026, round 7, his answer (b) to round 6's question 4).
+# 3. export.drive_folder: fmu_exports_kept_land_s1desc, so these files do not mix with the
+#    round-6 runs' exports.
+#
+# The orbit gives this config its own cache fingerprint. Its masking, data-load (the S2 composite),
+# optical, structure and static assets can be copied from the round-6 run of the config it copies
+# (scripts/reuse_upstream_assets.py): data_load reads the orbit only to load the radar collection,
+# which it does not cache and only features_radar reads. The radar features are computed afresh,
+# as are segmentation and everything after it.
+#
+# These are the runs the field check of odisha_script/PHASE_KEPTLAND_PREDECLARED.md scores.
+
+name: odisha_v120_10ha_squares_dhenkanal_keptland_s1desc_r9
+description: Odisha DHENKANAL, v120 hand-crafted method, stands capped at 10 ha, run on boxes around the villages' plots, on kept land only (mask before SNIC), radar from the descending Sentinel-1 orbit.
+
+roi:
+  name: odisha_squares_dhenkanal
+  roi_file: aois/odisha_squares_dhenkanal.geojson
+
+dates:
+  phenology:
+    start: 2017-01-01
+    end: 2022-12-31
+  radar:
+    start: 2017-01-01
+    end: 2022-12-31
+  optical_composite:
+    start: 2017-01-01
+    end: 2022-12-31
+  climate:
+    start: 1991-01-01
+    end: 2020-12-31
+
+datasets:
+  phenology_collection: COPERNICUS/S2_SR_HARMONIZED
+  optical_composite_collection: COPERNICUS/S2_SR_HARMONIZED
+  radar_collection: COPERNICUS/S1_GRD
+  canopy_height: users/nlang/ETH_GlobalCanopyHeight_2020_10m_v1
+  dem: NASA/NASADEM_HGT/001
+  indiasat: "projects/corestack-trees/assets/LULC_v4"
+  worldcover: ESA/WorldCover/v200
+  water: JRC/GSW1_4/GlobalSurfaceWater
+  climate: UCSB-CHG/CHIRPS/PENTAD
+
+cloud_mask:
+  max_cloud_pct: 20.0
+  drop_scl_classes: [3, 8, 9, 10]
+
+data_load:
+  s1_orbit: DESCENDING
+  s1_polarizations: [VV, VH]
+  s1_instrument_mode: IW
+  s2_composite_reducer: median
+
+masking:
+  indiasat_habitat_classes: [6, 12]
+  indiasat_class_band: predicted_label
+  indiasat_year_min: 2017
+  indiasat_year_max: 2021
+  keep_worldcover_classes: [10, 20, 30]
+  jrc_water_occurrence_threshold: 50.0
+
+features_optical:
+  index: ndvi
+  harmonic_mode: single
+  include_trend: true
+  time_reference: 2017-01-01
+
+features_radar:
+  percentiles: [10, 50, 90]
+  include_iqr: true
+  include_cross_pol_contrast: true
+
+features_structure:
+  include_neighborhood_stats: true
+  neighborhood_kernel_size: 3
+
+features_static:
+  include_climate: true
+  max_water_distance_pixels: 1000
+  cap_distance_to_water: true
+
+# The pre-Odisha six-band stack.
+segmentation:
+  size: 10
+  compactness: 0.5
+  connectivity: 8
+  neighborhood_size: 128
+  normalize_inputs: true
+  normalize_distance_scale: true
+  mask_before_snic: true
+  input_bands:
+    - {source: s2_composite,       band: B4_median}
+    - {source: s2_composite,       band: B8_median}
+    - {source: structure_features, band: canopy_height}
+    - {source: structure_features, band: canopy_height_std}
+    - {source: optical_features,   band: ndvi_amplitude_annual}
+    - {source: radar_features,     band: vv_minus_vh_median}
+
+# The pre-Odisha three-criterion merge. Tolerances are the Sanjay Van values.
+merge:
+  enabled: true
+  criteria:
+    - {source: structure_features, band: canopy_height,         tolerance: 2.00}
+    - {source: structure_features, band: canopy_height_std,     tolerance: 0.45}
+    - {source: optical_features,   band: ndvi_amplitude_annual, tolerance: 0.030}
+  min_defined_criteria: 2
+  min_area_ha: 1.0
+  max_area_ha: 10.0
+  relax_factor: 1.75
+  pass2_skip_at_min_area: true
+  pass2_soft_ceiling: true
+
+clustering:
+  k: 5
+  seed: 42
+  skewness_threshold: 1.0
+  fit_excludes_stands_below_min_area: true
+
+normalization:
+  method: robust
+
+features:
+  optical_harmonic: true
+  radar: true
+  canopy_height: true
+  terrain: true
+
+export:
+  export_geotiff: true
+  export_gee_asset: false
+  analysis_scale_m: 10
+  drive_folder: fmu_exports_kept_land_s1desc
+  export_vector_merged: true
+  export_vector_snic: true
+  export_vector_dissolved: true
+  vector_formats: [shp, geojson]
+  vector_min_stand_pixels: 4
+
+metrics:
+  reference_config_name: null
+  n_comparison_samples: 10000
+  n_silhouette_samples_per_cluster: 833

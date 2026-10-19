@@ -109,6 +109,11 @@ take a neighbour's type that way: between 3 of 475 stands (`odisha_v120_3ha_dhen
 637 (`odisha_v120_handcrafted_koraput_repro`) under the new rule (`stands_typed_by_the_export_only` in each file). The
 demo keeps the export's types, because they are what a run writes.
 
+Note of 19 Oct 2026 (round 12): the first sentence of this section describes the export as it was. Since round 12
+a stand with a row in the k-means fit takes its row's type (register entry
+`spec-export-stand-type-from-its-fit-row`); the stands counted here have no row, keep the vote, and are counted as
+before (question 1 of `docs/handoff/2026-10-19-round12.md`).
+
 ## 5. The type map moves a great deal when the stands move a little
 
 The two fits made here, on the old stands and on the new, share their inputs and differ only
