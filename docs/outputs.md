@@ -827,6 +827,20 @@ old and new runs stay comparable, not because it is a second answer.
 For a typical Sanjay Van run: ~330 merged stands, ~1,200 SNIC polygons,
 ~460 dissolved polygons. All three layers in EPSG:4326.
 
+**Areas and pixel counts.** Since round 13 (review A6) `n_pixels` is each
+polygon's pixel count at the analysis scale, the `count` `reduceToVectors`
+gives it, and `area_ha` is that count × `analysis_scale_m`² / 10,000: the area
+on the analysis grid. Until then both came from the geometry's area
+(`n_pixels` = area / `analysis_scale_m`²), and Earth Engine's `area()` adds
+instead of subtracting the hole of some polygons whose hole touches the outer
+ring at a vertex (`sanjay_van_alphaearth_keptland_r9`, stand 83: 18.27 ha and
+1,827 pixels in its layer, 8.23 ha and 823 pixels on the grid); the layers
+exported before round 13 carry those values. `perim_m` and the centroid are the
+geometry's. On the legacy cache layout `stands_dissolved` is vectorised from a
+type image on a geographic grid, whose pixels are smaller than
+`analysis_scale_m`² away from the equator (about 93 m² at 10 m and 21° N), so
+there its `area_ha` overstates the area (by about 7.5% at 21° N).
+
 ### Attribute schemas
 
 #### `stands_merged`
@@ -838,9 +852,9 @@ SHP attributes (capped at 10-char field-name limit):
 | `stand_id` | int | Sequential 1..N. Sorted by centroid lat desc / lon asc. **Deterministic** — the same merged geometry always produces the same numbering. |
 | `stand_lbl` | int | Raw merge label. Use to cross-reference with the `stand_clusters` raster. `stand_id` is a renumbering and cannot be joined back to the raster; this can. |
 | `cluster_id` | int | The k-means cluster (0 to k-1) assigned to this stand: the commonest type over the stand's own typed pixels, which on the analysis grid is the type the fitted clusters give its row (since round 12; for a stand whose pieces carry different types, see question 3 of `docs/handoff/2026-10-19-round12.md`). Since round 13 this holds for a stand left out of the fit too (`clustering.fit_excludes_stands_below_min_area`), and a stand with no typed pixel of its own has a null type; until then both took the commonest type among the typed pixels their polygon touches. **May be null** — see below. |
-| `area_ha` | float | Polygon area in hectares. |
+| `area_ha` | float | Polygon area in hectares on the analysis grid: `n_pixels × (analysis_scale_m)² / 10,000` (since round 13; see "Areas and pixel counts" above). |
 | `perim_m` | float | Polygon perimeter in metres. |
-| `n_pixels` | int | `area_m² / (analysis_scale_m)²`. Derived from area, consistent with `area_ha`. |
+| `n_pixels` | int | The polygon's pixels at the analysis scale: the `count` `reduceToVectors` gives it (since round 13; until then `area_m² / (analysis_scale_m)²` from the geometry's area). |
 | `n_superpx` | int | Superpixels the stand is made of (1 = it never merged). |
 | `n_pass1` | int | Merges inside the stand made by the first pass: every criterion within its configured tolerance. |
 | `n_relaxed` | int | Merges inside the stand made by the second pass under tolerances multiplied by `merge.relax_factor`. |
@@ -910,9 +924,9 @@ SHP attributes (capped at 10-char field-name limit):
 | `stand_id` | int | Sequential 1..N. Sorted by centroid lat desc / lon asc. **Deterministic** — same SNIC geometry always produces the same numbering. Use as a stable ID across runs of the same config. |
 | `snic_label` | int | Raw SNIC superpixel hash. Use to cross-reference with the `snic_clusters` raster asset. |
 | `cluster_id` | int | The k-means cluster (0 to k-1) that this superpixel was assigned to. |
-| `area_ha` | float | Polygon area in hectares. |
+| `area_ha` | float | As in `stands_merged`: `n_pixels × (analysis_scale_m)² / 10,000` (since round 13). |
 | `perim_m` | float | Polygon perimeter in metres. |
-| `n_pixels` | int | `area_m² / (analysis_scale_m)²`. Derived from area, consistent with `area_ha`. |
+| `n_pixels` | int | As in `stands_merged`: the `count` `reduceToVectors` gives the polygon (since round 13). |
 
 GeoJSON attributes: every SHP attribute, **plus** per-superpixel means
 of every features_* band (ndvi_mean, ndvi_amplitude_annual, vv_p50,
@@ -927,9 +941,9 @@ SHP attributes:
 |---|---|---|
 | `unit_id` | int | Sequential 1..M, after `vector_min_stand_pixels` filtering. Same lat-desc/lon-asc renumbering as stand_id; deterministic. |
 | `cluster_id` | int | The k-means cluster ID this unit corresponds to. |
-| `area_ha` | float | Polygon area in hectares. |
+| `area_ha` | float | As in `stands_merged` (since round 13; on the legacy cache layout see "Areas and pixel counts" above). |
 | `perim_m` | float | Polygon perimeter in metres. |
-| `n_pixels` | int | Used by the min-pixel filter. |
+| `n_pixels` | int | As in `stands_merged` (since round 13). Used by the min-pixel filter. |
 
 GeoJSON attributes: every SHP attribute, **plus** `profile_<band>_p50`
 columns for every feature band, looked up from `cluster_profiles.csv`

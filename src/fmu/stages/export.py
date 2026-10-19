@@ -1208,9 +1208,10 @@ def _build_snic_feature_collection(
          clustered polygons back to SNIC, so unclustered SNIC has no
          place here. Typical drop rate: ~40-50% for an AOI with
          significant non-habitat (water, built).
-      5. Add geometry-derived attributes (area_ha, perim_m, n_pixels,
-         centroid_lat, centroid_lon). Drop GEE's auto-added 'count'
-         and reducer-leftover 'mode' via explicit property selection.
+      5. Add n_pixels and area_ha from reduceToVectors' 'count', and
+         perim_m, centroid_lat and centroid_lon from the geometry. Then
+         drop 'count' and the reducer-leftover 'mode' via explicit
+         property selection.
       6. Sort by centroid (lat desc, lon asc) and renumber stand_id 1..N.
 
     Returns a FeatureCollection with all attributes attached. The caller
@@ -1271,9 +1272,10 @@ def _build_snic_feature_collection(
         ee.Filter.notNull(["mode"])
     ).map(_rename_mode_to_cluster_id)
 
-    # Step 5: geometry-derived attributes, then drop bookkeeping properties
-    # we don't want to ship (GEE's auto-added 'count' from reduceToVectors,
-    # plus 'mode' which is now a duplicate of cluster_id).
+    # Step 5: size and geometry attributes (n_pixels and area_ha from the
+    # 'count' reduceToVectors added), then drop bookkeeping properties we
+    # don't want to ship ('count', now n_pixels, plus 'mode' which is now a
+    # duplicate of cluster_id).
     polygons_with_geom = polygons_clustered.map(
         lambda f: _add_geom_attrs(f, scale)
     ).map(_drop_internal_properties)
@@ -1294,7 +1296,8 @@ def _build_dissolved_feature_collection(
     Steps (all server-side except cluster_profiles lookup table construction):
       1. Vectorize cluster_labels via reduceToVectors with eightConnected=True;
          each polygon = one connected same-cluster region.
-      2. Add geometry-derived attributes (area_ha, perim_m, n_pixels, centroid).
+      2. Add n_pixels and area_ha from reduceToVectors' 'count', and perim_m
+         and the centroid from the geometry.
       3. Filter by vector_min_stand_pixels (drops speckle).
       4. Attach profile_<band>_p50 columns from the cluster_profiles list of
          dicts, joined by cluster_id.
@@ -1319,9 +1322,9 @@ def _build_dissolved_feature_collection(
         maxPixels=int(1e9),
     )
 
-    # Step 2: geometry-derived attributes, then drop GEE's auto-added
-    # 'count' bookkeeping property (duplicates our 'n_pixels' but uses a
-    # subtly different counting method; we ship n_pixels for consistency).
+    # Step 2: size and geometry attributes, then drop GEE's auto-added
+    # 'count' bookkeeping property, which _add_geom_attrs has copied to
+    # 'n_pixels' (round 13, review A6).
     polygons_with_geom = polygons.map(
         lambda f: _add_geom_attrs(f, scale)
     ).map(_drop_internal_properties)
@@ -1372,22 +1375,31 @@ def _build_dissolved_feature_collection(
 def _add_geom_attrs(feature: ee.Feature, scale: int) -> ee.Feature:
     """Server-side: attach area_ha, perim_m, n_pixels, centroid_lat, centroid_lon.
 
-    `n_pixels` is computed from area at the analysis scale (area_m² / scale²),
-    not from a separate pixel count, so it stays consistent with area_ha for
-    consumers who derive one from the other.
+    `n_pixels` is the 'count' reduceToVectors puts on every polygon it makes, its
+    pixels at the analysis scale, and `area_ha` is that count at the analysis
+    scale (n_pixels x scale² / 10,000): the area on the analysis grid, consistent
+    with n_pixels. Until round 13 both came from the geometry's area(), which for
+    some polygons with a hole that touches the outer ring at a vertex adds the
+    hole instead of subtracting it (review A6: stand 83 of
+    sanjay_van_alphaearth_keptland_r9, 823 pixels, read 1,827 pixels and
+    18.27 ha). The perimeter and the centroid are still the geometry's. So the
+    builders run this before `_drop_internal_properties` drops 'count', and no
+    reduction in between writes a property of that name. On the legacy cache
+    layout `stands_dissolved` vectorises a type image on a geographic grid, whose
+    pixels are not scale² in area, so there its area_ha is the pixel count at
+    the nominal scale.
     """
     geom = feature.geometry()
-    area_m2 = geom.area(maxError=1)
     perimeter_m = geom.perimeter(maxError=1)
     centroid_coords = geom.centroid(maxError=1).coordinates()
-    pixel_area_m2 = scale * scale
+    n_pixels = ee.Number(feature.get("count"))
     # ee.Feature(...) is a cast: Element.set() is typed as returning Element, and
     # every one of these helpers is annotated -> ee.Feature because it is handed to
     # FeatureCollection.map(). Same wrap at the three sites below.
     return ee.Feature(feature.set({
-        "area_ha": area_m2.divide(10000),
+        "area_ha": n_pixels.multiply(scale * scale).divide(10000),
         "perim_m": perimeter_m,
-        "n_pixels": area_m2.divide(pixel_area_m2).round(),
+        "n_pixels": n_pixels,
         "centroid_lat": centroid_coords.get(1),
         "centroid_lon": centroid_coords.get(0),
     }))
@@ -1408,7 +1420,7 @@ def _rename_mode_to_cluster_id(feature: ee.Feature) -> ee.Feature:
 
 # Properties to strip from the SNIC feature collection before export.
 # - 'count' is auto-added by reduceToVectors (it's the source pixel count
-#   per polygon, which we already expose as 'n_pixels' from the geometry).
+#   per polygon, which _add_geom_attrs has already copied to 'n_pixels').
 # - 'mode' is the leftover from reduceRegions(mode); we already copied its
 #   value to 'cluster_id' via _rename_mode_to_cluster_id.
 # Listing these explicitly is more robust than feature.set(k, None), which

@@ -6706,3 +6706,71 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-export-area-and-pixels-from-the-pixel-count
+  title: >-
+    Each exported polygon's n_pixels is the pixel count reduceToVectors gives it, and its area_ha that count on the
+    analysis grid
+  decision: >-
+    The export stage (src/fmu/stages/export.py, a Locked module), _add_geom_attrs, used by all three vector layers
+    (stands_merged, stands_snic, stands_dissolved): n_pixels is the 'count' reduceToVectors puts on every polygon it
+    makes (its default reducer, countEvery, over the polygon's pixels at the analysis scale), and area_ha is n_pixels x
+    analysis_scale_m² / 10,000, the area on the analysis grid. perim_m and the centroid are still the geometry's. The
+    three builders compute these before _drop_internal_properties drops 'count', and no reduction in between writes a
+    property of that name (the feature means are named after their bands, the vote 'mode'); a test pins that order for
+    the three builders. On the legacy cache layout stands_dissolved is vectorised from a type image on a geographic grid,
+    whose pixels are smaller than analysis_scale_m² away from the equator, so there its area_ha overstates the area
+    (about 7.5% at 21° N); stands_merged and stands_snic lie on a UTM grid in both layouts.
+  alternatives_considered:
+  - >-
+    Keep the geometry's area() for area_ha, and n_pixels derived from it (the export before round 13): not chosen;
+    review A6
+  - >-
+    Subtract the holes from area() (the exterior's area minus the holes'): not chosen. It keeps Earth Engine's
+    measure, which in the committed layers is the area on a sphere of radius 6,371,008.8 m, 0.11% (Sanjay Van) to
+    0.31% (Odisha) more than the planar area on the run's grid, and n_pixels would still be derived from an area
+  - >-
+    Sum ee.Image.pixelArea() over each polygon in reduceToVectors: exact on any grid, the legacy layout's geographic
+    type grid included, at the cost of a second band and reducer in every vectorisation; not what the brief asks
+    (question for Jaskaran in the round 13 record)
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 2: "A6: take n_pixels from reduceToVectors' count, and area_ha
+    from it." Review A6 (docs/reviews/2026-10-19-review.md): "For some polygons with a hole that touches the outer ring
+    at a vertex, Earth Engine's area() adds the holes instead of subtracting them. So area_ha and n_pixels of those
+    stands are too large." Stand 83 of sanjay_van_alphaearth_keptland_r9 is 18.27 ha and 1,827 pixels in its committed
+    layer; its planar area with its 5.01 ha hole subtracted is 8.23 ha, and its merge record gives 823 pixels. The new
+    test fails on the export before the fix (assert 1827 == 823). Checked offline on the committed layers: every
+    polygon's area_ha is its area on a sphere of radius 6,371,008.8 m within 1 part in 10^6, with its holes subtracted
+    or, for the polygons A6 describes, added; 52 of the 3,816 polygons of the eight committed _r9 stands_merged layers
+    are off by more than 1% (15.97 ha, as the review found), 104 of 10,381 in all 22 committed layers of
+    docs/reproducibility/r9_runs, 137 of 9,951 in the 22 of docs/reproducibility/round12_runs and 404 of 31,254 in the
+    57 of odisha_script/phase2_vectors. Every vertex of the stands_merged and stands_snic layers there lies on the 10 m
+    grid of the run's UTM zone, so their planar area is a whole number of pixels, the count the export now reads; the
+    _r9 and round 12 stands_dissolved layers lie on it too. That area is 0.2% to 0.3% below area() at the Odisha sites
+    and 0.11% at Sanjay Van for every polygon, so a re-export gives slightly smaller areas throughout, closer to the
+    WGS84 ellipsoidal area (within 0.07% of it at the Odisha sites). No scored statistic reads area_ha (review A6);
+    the committed descriptive numbers it changes carry dated notes. The export is not cached, so no step key moves.
+    No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/export.py
+    what: _add_geom_attrs, and the three builders' order of operations
+  - path: tests/test_export_area_from_pixel_count.py
+    what: >-
+      Stand 83's numbers on a fake feature (fails on the export before the fix with assert 1827 == 823), and the count
+      reaching _add_geom_attrs in all three builders
+  - path: docs/reproducibility/r9_runs/sanjay_van_alphaearth_keptland_r9_stands_merged.geojson
+    what: Stand 83 (stand_lbl 83, stand_id 223), 18.27 ha and 1,827 pixels
+  - path: docs/reproducibility/r9_runs/sanjay_van_alphaearth_keptland_r9_run.json
+    what: Stand 83's merge record, 823 pixels and 8.23 ha
+  - path: docs/outputs.md
+    what: '"Areas and pixel counts", and area_ha and n_pixels of the three layers'
+  - path: odisha_script/odisha_phase2_5_results_districts.txt
+    what: >-
+      The dated note at its end (20 Oct 2026): the committed areas with the holes subtracted, and on the grid; the
+      same in odisha_phase2_5_results.txt, both odisha_phase2_3_results_districts.txt, PHASE2_STATUS.md and
+      PHASE3_STATUS.md
+  - path: docs/reviews/2026-10-19-review.md
+    what: A6
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
