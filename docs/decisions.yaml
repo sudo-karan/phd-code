@@ -7529,3 +7529,53 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-merge-calibration-admit-rate-applies-the-floor
+  title: >-
+    The merge's joint admit rate counts only the pairs its gate admits, the two-criterion floor included
+  decision: >-
+    calibrate_thresholds (fmu.utils.region_merge, Locked, part of the merge stage) takes min_defined_criteria, a
+    required keyword, and counts a pair as admitted only when every criterion defined on both sides is within its
+    tolerance and at least min_defined_criteria of them are defined on both sides, the rule of the merge's gate
+    (compare in merge_superpixels). The merge stage passes merge.min_defined_criteria. joint_admit_rate_pct is that
+    count over n_pairs_with_any_defined_criterion, the pairs with at least one criterion defined on both sides, as
+    before, and the per-band figures are unchanged. Before 20 Oct 2026 the rate also counted a pair with fewer criteria
+    defined that passed the ones it had, which the gate rejects. Nothing reads the rate to merge, type or export a
+    stand: it goes into merge_diagnostics and the stage metadata, and scripts print it. The merge is not cached, so no
+    step key moves and no revision is raised.
+  alternatives_considered:
+  - >-
+    Keep the count and say in the docstring and docs/outputs.md how it differs from the gate (the review's other
+    fix): not chosen; the docstring says the rate is the share of pairs the gate admits
+  - >-
+    Count the pairs with no criterion defined on both sides in the denominator as well: not done; the denominator
+    stays n_pairs_with_any_defined_criterion, so a rate recorded before the fix differs from the fixed one only by the
+    pairs the gate rejects
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 6, the C list. The review (docs/reviews/2026-10-19-review.md,
+    C14): "Pairs below min_defined_criteria count as admitted", with the fix "Pass min_defined_criteria in, or document
+    the difference". In odisha_script/gate_effect_results.txt such pairs are 323 of 3,601 in arms A and B and 370 of
+    3,632 in arm C, so its printed rates are up to 8.97 and 10.19 points above the gate's (its dated note); in the 122
+    committed run records the bound (round-1 pairs blocked by undefined criteria or by area, over the pairs with a
+    criterion defined) is 0 in 83 and at most 0.38 points in the others (docs/outputs.md). The new test in
+    tests/test_merge_stage.py runs the stage with Earth Engine stubbed out and fails on the code before (assert 100.0
+    == 66.67). No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/utils/region_merge.py
+    what: calibrate_thresholds and its docstring
+  - path: src/fmu/stages/merge.py
+    what: run() passes merge.min_defined_criteria to calibrate_thresholds
+  - path: tests/test_merge_stage.py
+    what: >-
+      test_the_recorded_joint_admit_rate_is_the_share_of_pairs_the_gate_admits; fails on the code before
+  - path: tests/test_region_merge.py
+    what: test_the_joint_rate_leaves_out_pairs_short_of_the_floor
+  - path: odisha_script/gate_effect_results.txt
+    what: The dated note of 20 Oct 2026 at its end
+  - path: docs/outputs.md
+    what: The row for merge.threshold_calibration.joint_admit_rate_pct, with the bound for the committed records
+  - path: docs/reviews/2026-10-19-review.md
+    what: C14
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief), Task 6; review C14

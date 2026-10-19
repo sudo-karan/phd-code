@@ -201,7 +201,9 @@ def _merge_context():
         {
             **result.diagnostics,
             "adjacency": graph.summary(),
-            "threshold_calibration": calibrate_thresholds(graph, means, criteria),
+            "threshold_calibration": calibrate_thresholds(
+                graph, means, criteria, min_defined_criteria=2
+            ),
             "warnings": [],
         },
     )

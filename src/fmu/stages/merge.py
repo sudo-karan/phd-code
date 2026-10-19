@@ -327,7 +327,9 @@ class MergeStage(Stage):
         }
 
         tolerances = params.tolerances()
-        calibration = calibrate_thresholds(graph, means, tolerances)
+        calibration = calibrate_thresholds(
+            graph, means, tolerances, min_defined_criteria=params.min_defined_criteria
+        )
         _log_calibration(calibration)
 
         result = merge_superpixels(

@@ -123,3 +123,12 @@ their run records) touch another stand at a corner only, 10 of 578 in the 10 km 
 along an edge. No result changes: no step of the pipeline reads `below_why` (the fit leaves out
 stands by `below_min`, whatever the cause). Since round 13 the merge stage writes "isolated: it
 shares no edge with another stand (no 4-connected neighbour; it may meet one at a corner)".
+
+**Note added 20 Oct 2026 (round 13, review C14; the records here are as first written).**
+`threshold_calibration.joint_admit_rate_pct` in the run records and manifests here was computed
+before round 13's fix: it counted as admitted a pair with fewer than `merge.min_defined_criteria`
+criteria defined on both sides that passed the ones it had, a pair the gate rejects. A record's
+rate is above the fixed one by at most `pass1_pairs_blocked_by_undefined_criteria_round1` plus
+`pass1_pairs_blocked_by_area_round1` over `n_pairs_with_any_defined_criterion`, all from the same
+record: 0, the same rate, in 21 of the 33 records here, and at most 0.16 points in the others
+(Sanjay Van baseline, 3 of 1,890 pairs).

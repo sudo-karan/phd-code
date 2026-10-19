@@ -760,6 +760,8 @@ def calibrate_thresholds(
     graph: SuperpixelGraph,
     means: dict[int, dict[str, float | None]],
     criteria: dict[str, float],
+    *,
+    min_defined_criteria: int,
 ) -> dict[str, Any]:
     """Where the configured tolerances land in this AOI's own difference
     distribution, and what fraction of pairs the gate actually admits.
@@ -770,10 +772,20 @@ def calibrate_thresholds(
       - `percentile_of_threshold`: per band, the share of adjacent pairs whose
         difference falls at or below the tolerance. This is the number the spec
         originally described as "p60-p75", and taken alone it is misleading.
-      - `joint_admit_rate`: the share of pairs passing *all* criteria at once.
-        The gate is conjunctive, so per-band marginals do not describe it: three
-        criteria at ~54%, ~76% and ~79% marginal admit 38.7% jointly, not the
-        32.4% independence would predict and not any of the marginals.
+      - `joint_admit_rate`: the share of pairs the gate admits, of the
+        `n_pairs_with_any_defined_criterion` pairs with at least one criterion
+        defined on both sides. The gate admits a pair when every criterion
+        defined on both sides is within its tolerance and at least
+        `min_defined_criteria` of them are defined on both sides, as in
+        `merge_superpixels`. The gate is conjunctive, so per-band marginals do
+        not describe it: three criteria at ~54%, ~76% and ~79% marginal admit
+        38.7% jointly, not the 32.4% independence would predict and not any of
+        the marginals.
+
+    Before 20 Oct 2026 (review C14) the joint rate also counted as admitted a
+    pair with fewer than `min_defined_criteria` criteria defined that passed the
+    ones it had, which the gate rejects; the joint rates recorded before then
+    are from before the fix.
 
     A low joint rate is **not** a reason to loosen a threshold. Pass rate is a
     diagnostic, not an objective; tuning to a target admit rate is exactly the
@@ -788,19 +800,19 @@ def calibrate_thresholds(
     for i, j in graph.edges:
         mi, mj = means.get(i, {}), means.get(j, {})
         passes_all = True
-        any_defined = False
+        n_defined = 0
         for band in bands:
             a, b = mi.get(band), mj.get(band)
             if a is None or b is None:
                 continue
-            any_defined = True
+            n_defined += 1
             delta = abs(a - b)
             diffs[band].append(delta)
             if delta > criteria[band]:
                 passes_all = False
-        if any_defined:
+        if n_defined:
             joint_total += 1
-            joint_pass += int(passes_all)
+            joint_pass += int(passes_all and n_defined >= min_defined_criteria)
 
     def pct(sorted_vals: list[float], threshold: float) -> float:
         if not sorted_vals:

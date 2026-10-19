@@ -68,3 +68,12 @@ records) touch another stand at a corner only, and none along an edge; in Sanjay
 (no kept-land neighbour)"). No result changes: no step of the pipeline reads `below_why`. Since round 13 the
 merge stage writes "isolated: it shares no edge with another stand (no 4-connected neighbour; it
 may meet one at a corner)".
+
+**Note added 20 Oct 2026 (round 13, review C14; the records here are as first written).**
+`threshold_calibration.joint_admit_rate_pct` in the run records and manifests here was computed
+before round 13's fix: it counted as admitted a pair with fewer than `merge.min_defined_criteria`
+criteria defined on both sides that passed the ones it had, a pair the gate rejects. A record's
+rate is above the fixed one by at most `pass1_pairs_blocked_by_undefined_criteria_round1` plus
+`pass1_pairs_blocked_by_area_round1` over `n_pairs_with_any_defined_criterion`, all from the same
+record: 0, the same rate, in 15 of the 30 records here, and at most 0.22 points in the others
+(Dhenkanal's round 6 run, 1 + 14 of 6,809 pairs). The copies in `ui_data/` are left as they are.

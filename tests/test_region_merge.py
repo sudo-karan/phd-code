@@ -529,11 +529,28 @@ def test_calibration_reports_the_joint_rate_not_just_marginals():
     ]
     means, _ = _attrs(rows, px)
     graph = _graph(px, {(0, 1): 5, (2, 3): 5})
-    report = calibrate_thresholds(graph, means, {"ch": 2.0, "std": 0.45})
+    report = calibrate_thresholds(graph, means, {"ch": 2.0, "std": 0.45}, min_defined_criteria=2)
     assert report["per_band"]["ch"]["percentile_of_threshold"] == 50.0
     assert report["per_band"]["std"]["percentile_of_threshold"] == 50.0
     # Each criterion admits half the pairs; together they admit none.
     assert report["joint_admit_rate_pct"] == 0.0
+
+
+def test_the_joint_rate_leaves_out_pairs_short_of_the_floor():
+    """Review C14: a pair with fewer than min_defined_criteria criteria defined on both
+    sides is one the gate rejects, however alike the one it has; with the floor at 1 the
+    gate would take it. Pair (0, 1) has no canopy height on one side."""
+    px = [100] * 4
+    means = {0: {"ch": None, "std": 0.5}, 1: {"ch": 10.0, "std": 0.5},
+             2: {"ch": 10.0, "std": 0.5}, 3: {"ch": 10.5, "std": 0.55}}
+    graph = _graph(px, {(0, 1): 5, (1, 2): 5, (2, 3): 5})
+    criteria = {"ch": 2.0, "std": 0.45}
+    floor_2 = calibrate_thresholds(graph, means, criteria, min_defined_criteria=2)
+    floor_1 = calibrate_thresholds(graph, means, criteria, min_defined_criteria=1)
+    assert floor_2["n_pairs_with_any_defined_criterion"] == 3
+    assert floor_2["joint_admit_rate_pct"] == 66.67
+    assert floor_1["joint_admit_rate_pct"] == 100.0
+    assert floor_2["per_band"] == floor_1["per_band"]  # the floor changes the joint rate only
 
 
 def test_calibration_reports_quantiles_of_the_difference_distribution():
@@ -541,7 +558,7 @@ def test_calibration_reports_quantiles_of_the_difference_distribution():
     rows = [{"ch": float(v)} for v in (10, 11, 13, 16, 20)]
     means, _ = _attrs(rows, px)
     graph = _graph(px, {(i, i + 1): 5 for i in range(4)})
-    report = calibrate_thresholds(graph, means, {"ch": 2.0})
+    report = calibrate_thresholds(graph, means, {"ch": 2.0}, min_defined_criteria=1)
     band = report["per_band"]["ch"]
     assert band["n_pairs_defined"] == 4
     assert band["p50"] is not None
@@ -551,7 +568,9 @@ def test_calibration_reports_quantiles_of_the_difference_distribution():
 def test_calibration_skips_pairs_with_undefined_bands():
     px = [100, 100]
     means = {0: {"ch": None}, 1: {"ch": 10.0}}
-    report = calibrate_thresholds(_graph(px, {(0, 1): 5}), means, {"ch": 2.0})
+    report = calibrate_thresholds(
+        _graph(px, {(0, 1): 5}), means, {"ch": 2.0}, min_defined_criteria=1
+    )
     assert report["per_band"]["ch"]["n_pairs_defined"] == 0
     assert report["n_pairs_with_any_defined_criterion"] == 0
 
