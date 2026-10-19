@@ -79,3 +79,11 @@ as first written, the record from before the fixes. No number is changed. The ro
 - **From before the fixes too:** the 13 Oct box runs that the `box_runs` analysis of every scores
   file reads (hand-crafted; A1 and A5 reach them), and round 7's files and the rehearsal, which stay
   as history (the notes above).
+
+**Note of 20 Oct 2026 (round 13, review C37): the ten run records here name no Python
+environment.** Each `*_scores_run.json` and `*_chance*_run.json` (five of each) was written before
+round 13. It holds the command, the date and the git block, but no package versions and no
+pip-freeze hash, so which numpy and shapely made the committed results is not recorded. Since
+round 13, `odisha_keptland_score.py` and `odisha_keptland_chance.py` add the pipeline manifests'
+environment block (`fmu.utils.provenance.environment_state`) to the records they write. The ten
+records are kept as written, and no number changed.
