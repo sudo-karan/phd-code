@@ -83,3 +83,14 @@ were drawn with is in `<run>_manifest_segmentation.json` beside its record (the 
 stage's `metadata.distance_scale`), and it is there for all eight. Since round 13 the runner reads
 it from that pass's manifest, and `snic_distance_scale_from` says where. The records are kept as
 written; no number changed.
+
+**Note of 20 Oct 2026 (round 13, review C38): the git block of the eight cost records.** Until
+round 13 `scripts/eecu_by_stage.py` read git in the working directory, after it had written the
+cost file, as `{commit, tracked_files_modified}`. For the eight cost records here that did no
+harm: each command line gives relative paths, so it was run from the repo root, and each cost
+file was new when it was written (first committed after its `read_at`), so writing it changed no
+tracked file. Two of them, Dhenkanal and Koraput of the AlphaEarth arm, hold
+`tracked_files_modified: true`: other tracked files of the checkout were modified when they were
+read, and the record does not say which. Since round 13 the script records the block every run
+record has (`fmu.utils.provenance.git_state` of its own checkout, read before it writes). The
+records are kept as written; no number changed.
