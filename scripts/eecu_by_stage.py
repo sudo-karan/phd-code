@@ -22,7 +22,12 @@ in round 10) measures with it what one config costs per 1,000 ha (docs/handoff/2
   whoever made it, and it cannot be split between the stages of one pass.
 
 OUT.json holds results only (no dates or times); OUT_run.json beside it holds the pass spans,
-when the figures were read and the git commit, as a run record does.
+when the figures were read and the git block of every run record (fmu.utils.provenance.git_state:
+the commit of the checkout this script is in, whether tracked files were modified, and which),
+read before anything is written. Until round 13 it read git in the working directory after
+writing OUT.json, as `tracked_files_modified` (review C38): run from another repository it named
+that one's commit, and measured again into a committed cost file it counted the new numbers as a
+modified tracked file.
 """
 
 from __future__ import annotations
@@ -31,7 +36,6 @@ import argparse
 import collections
 import json
 import re
-import subprocess
 import sys
 import urllib.parse
 import urllib.request
@@ -193,6 +197,11 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - Earth Engi
     ap.add_argument("out", type=Path)
     args = ap.parse_args(argv)
 
+    # Which code: this script's checkout, as it is before anything is written (review C38).
+    from fmu.utils.provenance import git_state
+
+    git = {k: v for k, v in git_state(Path(__file__).resolve().parent).items() if k != "root"}
+
     import ee
     import google.auth.transport.requests
 
@@ -204,15 +213,12 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - Earth Engi
     online = [(name, online_hours(creds.token, a, b)) for name, a, b in spans]
     result = summary(args.config, args.area_ha, batch, online, tasks)
     args.out.write_text(json.dumps(result, indent=1) + "\n")
-    commit = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
-    dirty = bool(subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"],
-                                capture_output=True, text=True).stdout.strip())
     record = {
         "result_file": args.out.name,
-        "command_line": " ".join(["python", "scripts/eecu_by_stage.py", *sys.argv[1:]]),
+        "command_line": " ".join(["python", "scripts/eecu_by_stage.py", *(sys.argv[1:] if argv is None else argv)]),
         "read_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "pass_spans_utc": [{"pass": n, "from": a.isoformat(), "to": b.isoformat()} for n, a, b in spans],
-        "git": {"commit": commit, "tracked_files_modified": dirty},
+        "git": git,
     }
     args.out.with_name(args.out.stem + "_run.json").write_text(json.dumps(record, indent=1) + "\n")
     print(json.dumps({k: v for k, v in result.items() if k != "tasks"}, indent=1))

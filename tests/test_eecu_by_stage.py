@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import importlib.util
 import inspect
+import json
 import os
 import re
 import shutil
@@ -237,3 +238,59 @@ def test_the_tasks_of_a_config_whose_name_extends_this_one_are_not_charged_to_it
     hours, tasks = E.batch_by_stage(ops, CFG)
     assert hours == {"data_load": 1.0, "export": 0.1}
     assert sum(len(t) for t in tasks.values()) == 2
+
+
+def _git(repo: Path, *args: str) -> str:
+    return subprocess.run(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@example.org",
+                           "-c", "commit.gpgsign=false", *args],
+                          capture_output=True, text=True, check=True).stdout.strip()
+
+
+@pytest.mark.skipif(shutil.which("git") is None, reason="needs git")
+@pytest.mark.parametrize("started_in", ["the script's checkout", "another repository"])
+def test_the_run_record_names_the_scripts_checkout_as_it_was_before_the_result_was_written(
+        tmp_path: Path, monkeypatch, started_in):
+    """Review C38: the record read git in the working directory, after OUT.json was written. Run
+    from another repository it named that one's commit, and measured again into a committed cost
+    file it recorded tracked files as modified (the new numbers), though no code had changed."""
+    import sys
+    import types
+
+    checkout, other = tmp_path / "checkout", tmp_path / "other"
+    (checkout / "scripts").mkdir(parents=True)
+    shutil.copy2(REPO / "scripts" / "eecu_by_stage.py", checkout / "scripts" / "eecu_by_stage.py")
+    out = checkout / "cost.json"
+    out.write_text('{"total": 1.0}\n')
+    for repo in (checkout, other):
+        repo.mkdir(exist_ok=True)
+        _git(repo, "init", "-q")
+        (repo / "README").write_text(repo.name)
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-q", "-m", repo.name)
+    log = tmp_path / "batch.log"
+    log.write_text("")
+
+    class _Creds:
+        token = "t"
+
+        def refresh(self, request):
+            return None
+
+    fake_ee = types.ModuleType("ee")
+    fake_ee.Initialize = lambda **kwargs: None
+    fake_ee.data = types.SimpleNamespace(get_persistent_credentials=_Creds, listOperations=lambda: [])
+    monkeypatch.setitem(sys.modules, "ee", fake_ee)
+    spec = importlib.util.spec_from_file_location("eecu_copy", checkout / "scripts" / "eecu_by_stage.py")
+    assert spec and spec.loader
+    copy = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(copy)
+    monkeypatch.setattr(copy, "pass_spans", lambda text, config: [])
+    monkeypatch.setattr(copy, "online_hours", lambda *a: 0.0)
+    monkeypatch.chdir(checkout if started_in == "the script's checkout" else other)
+    assert copy.main([CFG, str(log), "100", str(out)]) == 0
+    assert json.loads(out.read_text())["total"] == 0.0  # the committed file now holds new numbers
+    record = json.loads((checkout / "cost_run.json").read_text())
+    assert record["git"]["commit"] == _git(checkout, "rev-parse", "HEAD")
+    # Called tracked_files_modified before round 13; now the block every run record has.
+    assert record["git"].get("dirty", record["git"].get("tracked_files_modified")) is False
+    assert record["git"]["modified"] == []
