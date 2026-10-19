@@ -4,7 +4,8 @@ Round 9 (17 Oct 2026) re-runs configs from scratch as copies named `<name>_r9`, 
 test (task D) a second copy `<name>_r9_check`, each changing nothing but the name. A copy has
 its source's fingerprint and per-step keys, under a new name, so its cache starts empty, and
 having no legacy asset it runs in the per-step layout. Copies that change more than the name
-(task H's AlphaEarth configs) are listed with what they change.
+(task H's AlphaEarth configs, task I's tile, round 12's 10 ha copies) are listed with what they
+change.
 """
 
 from __future__ import annotations
@@ -37,9 +38,32 @@ ALPHAEARTH: dict[str, tuple[str, set[tuple[str, ...]]]] = {
 # Task I: the district cost pilot, the Angul _r9 config on one 10 km tile; only the ROI changes.
 TILE = "odisha_v120_3ha_tile10km_angul_keptland_s1desc_r9"
 TILE_SOURCE = "odisha_v120_3ha_squares_angul_keptland_s1desc_r9"
+# Round 12, Task 4 (roadmap 3.3): the 10 ha size check, both arms. Each a copy of one of the eight
+# 3 ha box runs above, with `10ha` in place of `3ha` in its name, changing only SNIC's seed spacing
+# and the stand ceiling, to the values of the Sanjay Van 10 ha configs; k stays 5.
+TEN_HA: dict[str, tuple[str, set[tuple[str, ...]]]] = {
+    f"odisha_{arm}_10ha_squares_{d}_{tail}": (
+        f"odisha_{arm}_3ha_squares_{d}_{tail}",
+        {("description",), ("segmentation", "size"), ("merge", "max_area_ha")},
+    )
+    for d in DISTRICTS
+    for arm, tail in (("v120", "keptland_s1desc_r9"), ("alphaearth", "keptland_r9"))
+}
+# Their cache fingerprints, pinned when they were written (19 Oct 2026, before any of them ran).
+TEN_HA_FINGERPRINTS = {
+    "odisha_v120_10ha_squares_angul_keptland_s1desc_r9": "c230b262ce",
+    "odisha_v120_10ha_squares_dhenkanal_keptland_s1desc_r9": "879eabddfb",
+    "odisha_v120_10ha_squares_kendujhar_keptland_s1desc_r9": "1ddfa918d6",
+    "odisha_v120_10ha_squares_koraput_keptland_s1desc_r9": "63a41cd802",
+    "odisha_alphaearth_10ha_squares_angul_keptland_r9": "d97075ecc6",
+    "odisha_alphaearth_10ha_squares_dhenkanal_keptland_r9": "40d1ca66ca",
+    "odisha_alphaearth_10ha_squares_kendujhar_keptland_r9": "25cf53de23",
+    "odisha_alphaearth_10ha_squares_koraput_keptland_r9": "810308c138",
+}
 NOT_NAME_ONLY: dict[str, tuple[str, set[tuple[str, ...]]]] = {
     **ALPHAEARTH,
     TILE: (TILE_SOURCE, {("description",), ("roi", "name"), ("roi", "roi_file")}),
+    **TEN_HA,
 }
 
 
@@ -146,3 +170,37 @@ def test_the_tile_is_the_declared_square():
     assert abs(x1 - x0 - 10_000) < 0.01 and abs(y1 - y0 - 10_000) < 0.01
     assert abs(tile.area - 1e8) < 1e2  # a square, not a rotated or bent one
     assert abs((x0 + x1) / 2 - centre.x) < 0.01 and abs((y0 + y1) / 2 - centre.y) < 0.01
+
+
+def test_the_10ha_copies_exist():
+    assert set(TEN_HA) <= {p.stem for p in R9}
+    assert set(TEN_HA) == set(TEN_HA_FINGERPRINTS)
+
+
+@pytest.mark.parametrize("stem", sorted(TEN_HA))
+def test_a_10ha_copy_changes_only_the_stand_size_to_sanjay_vans(stem: str):
+    source, _ = TEN_HA[stem]
+    assert _loaded_difference(CONFIGS / f"{source}.yaml", CONFIGS / f"{stem}.yaml") == {
+        ("name",), ("description",), ("segmentation", "size"), ("merge", "max_area_ha")}
+    copy, original = load_config(CONFIGS / f"{stem}.yaml"), load_config(CONFIGS / f"{source}.yaml")
+    sanjay = load_config(CONFIGS / "sanjay_van_baseline_keptland_r9.yaml")
+    assert (original.segmentation.size, original.merge.max_area_ha) == (6, 3.0)
+    assert (copy.segmentation.size, copy.merge.max_area_ha) == (sanjay.segmentation.size, sanjay.merge.max_area_ha)
+    assert (copy.segmentation.size, copy.merge.max_area_ha) == (10, 10.0)
+    assert copy.clustering.k == 5 and copy.clustering.seed == 42
+
+
+@pytest.mark.parametrize("stem", sorted(TEN_HA))
+def test_a_10ha_copy_has_its_pinned_fingerprint(stem: str):
+    assert config_fingerprint(load_config(CONFIGS / f"{stem}.yaml")) == TEN_HA_FINGERPRINTS[stem]
+
+
+@pytest.mark.parametrize("stem", sorted(TEN_HA))
+def test_a_10ha_copy_shares_the_steps_before_segmentation(stem: str):
+    """The same step keys as its 3 ha source up to the features; under its own name, so its
+    cache is its own and it computes them afresh."""
+    source, _ = TEN_HA[stem]
+    mine, theirs = step_keys(load_config(CONFIGS / f"{stem}.yaml")), step_keys(load_config(CONFIGS / f"{source}.yaml"))
+    before = [s for s in theirs if s == "masking" or s == "data_load" or s.startswith("features_")]
+    assert before and all(mine[s] == theirs[s] for s in before)
+    assert mine["segmentation"] != theirs["segmentation"]
