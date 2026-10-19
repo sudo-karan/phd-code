@@ -32,7 +32,7 @@ distinction — and the Sanjay Van calibration (`tol 2.0 = p54.5 of pair differe
 looked reasonable only because the pair differences are small. The product is compressed;
 the forest is not homogeneous.
 
-Aggregation does not rescue it. Plot-level R² 0.207 → site-level 0.100 → **0.013** with
+Aggregation does not rescue it. Plot-level R² 0.207 → site-level 0.100 → **0.014** with
 Meta-zero plots excluded. Of every product tested, ETH is the one aggregation destroys.
 
 ### Meta is quantised to integer metres — new this session
@@ -261,9 +261,9 @@ that the stands are *structurally meaningful* rests on the measurement, not the 
 
    Both acceptance checks pass: `gedi_n_50m > 0` holds for exactly the 89 rows carrying an
    `rh98`, and the coverage line equals the regression's n. All 10 previously-published rows
-   are still covered and their values barely move (e.g. 21.30 → 21.84, 12.13 → 11.73), so the
-   old column was a 10-row *subset*, not a set of wrong values — the defect suppressed
-   coverage, it did not corrupt what little it returned. Coverage is uneven by district:
+   are still covered; nine move by at most 0.92 m (e.g. 21.30 → 21.84, 12.13 → 11.73) and one
+   by 3.42 m (16.11 → 12.69), so the old column was mainly a 10-row *subset*: the defect
+   suppressed coverage, and one of the ten values it returned moved too. Coverage is uneven by district:
    ANGUL 23/40, DHENKANAL 30/76, KENDUJHAR 4/12, KORAPUT 32/146.
 
    **This makes the structural conclusion stronger, not weaker.** R²=0.404 at n=10 was the

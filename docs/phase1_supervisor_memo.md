@@ -64,8 +64,8 @@ search never executed: Earth Engine's `reduceNeighborhood` masks its output wher
 centre pixel is masked, so only plots whose own 25 m cell contained a shot ever received a
 value. That produced 10 plots, R²=0.404 — the best-looking number in the study. Re-sampled
 with an explicit buffered reduction, true coverage is **89 of 274** and R² is **0.088**.
-The ten original rows all survive with values essentially unchanged, so the defect
-suppressed coverage rather than corrupting values.
+The ten original rows all survive; nine move by at most 0.92 m and one from 16.11 to 12.69 m,
+so the defect mainly suppressed coverage.
 
 ## 3. Why these failures are not independent
 
