@@ -65,7 +65,11 @@ run writes; each summary counts the stands this happens to (`stands_typed_by_the
 (Note of 19 Oct 2026, round 12: since then the export gives a stand with a row in the fit its
 row's type, register entry spec-export-stand-type-from-its-fit-row, so a run of this script now
 writes that type for the stands with a row whose vote differed; the stands with no row are
-counted as before.)
+counted as before.) (Note of 20 Oct 2026, round 13: since then a stand with no typed pixel of
+its own gets a null type in every layout, register entry
+spec-export-stand-type-from-its-own-row-or-null, so a run of this script would now count only a
+stand with no row in the fit that holds typed pixel centres of its own on the type grid (one in
+the 14 runs); docs/demo/remerge/README.md, section 4.)
 
 A run already made under the new rule (its config sets merge.pass2_skip_at_min_area: the box runs
 of docs/demo/demo_set_boxes.json, given with --demo-set) is not re-merged. For such a run the tool

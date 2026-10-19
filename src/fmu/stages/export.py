@@ -16,8 +16,9 @@ Three deliverable classes, all driven by toggles in `config.export`:
      deliverable. Toggled via `export_vector_merged`; written only when
      `merge.enabled`, since without merge the stand *is* the superpixel and
      `stands_snic` already is that layer. Unlike `stands_snic`, stands that
-     clustering could not type are kept with a null `cluster_id`. A stand with
-     a row in the k-means fit takes that row's type (round 12).
+     clustering could not type are kept with a null `cluster_id`. A stand takes
+     its own row's type (round 12), a stand left out of the k-means fit too,
+     and a stand with no row a null type (round 13).
 
   3. **SNIC superpixel vectors** (`stands_snic`): one polygon per SNIC
      superpixel with all per-superpixel feature means attached. The
@@ -981,17 +982,22 @@ def _build_merged_feature_collection(
     So `cluster_id` is null on exactly those stands, which makes the coverage gap
     visible in the layer itself rather than only in the log.
 
-    How a stand gets its `cluster_id` (round 12, register entry
-    `spec-export-stand-type-from-its-fit-row`): a stand whose row the k-means fit
-    was trained on takes that row's type (`_fit_row_types`). Every other stand
-    gets the vote it got before: the commonest type among the typed pixels its
-    polygon touches, each weighted by its share inside the polygon. On the
-    analysis grid a polygon touches only its own stand's pixels, so the two give
-    the same type, except on the pieces of a stand whose pieces carry different
-    types (`_stand_row_types`), which now all take one, and on a piece with no
-    typed pixel of a stand that has a row elsewhere, which was null and now takes
-    the stand's type; on the legacy cache layout the vote could take in slivers
-    of a neighbour's pixels.
+    How a stand gets its `cluster_id` (register entries
+    `spec-export-stand-type-from-its-fit-row`, round 12, and
+    `spec-export-stand-type-from-its-own-row-or-null`, round 13): a stand with a
+    row takes that row's type, read as the type most of its own typed pixels
+    carry (`_stand_row_types`), and so does a stand left out of the k-means fit
+    with clustering.fit_excludes_stands_below_min_area on, whose row the fitted
+    clusters type too. A stand with no typed pixel of its own has no row and gets
+    a null type, in every cache layout. Until round 12 every stand got a vote,
+    the commonest type among the typed pixels its polygon touches, each weighted
+    by its share inside the polygon, and until round 13 the stands with no row
+    and those left out of the fit still did. On the analysis grid a polygon
+    touches only its own stand's pixels, so the vote and the row's type agree,
+    except on the pieces of a stand whose pieces carry different types, which now
+    all take one, and on a piece with no typed pixel of a stand that has a row
+    elsewhere, which was null and now takes the stand's type; on the legacy cache
+    layout the vote could take in slivers of a neighbour's pixels.
 
     `region` (default: the ROI) is the area vectorised: one part of the ROI when
     the layer is built a part at a time (`_layer_by_part`).
@@ -1024,19 +1030,15 @@ def _build_merged_feature_collection(
         scale=scale,
     )
 
-    # Step 3: attach cluster_id via mode. Null where clustering never reached
-    # the stand -- non-habitat, or a band with no data over it. Not filtered.
-    cluster_id_img = cluster_labels.toInt().rename("cluster_id")
-    polygons_with_cluster = cluster_id_img.reduceRegions(
-        collection=polygons_with_features,
-        reducer=ee.Reducer.mode(),
-        scale=scale,
-    )
-    # Then a stand with a row in the k-means fit takes that row's type instead
-    # of the vote (round 12). A stand with no row in the fit keeps the vote.
+    # Step 3: attach cluster_id, the type of the stand's own row (round 12), read
+    # from its own typed pixels. Null where the stand has no typed pixel of its
+    # own -- clustering never reached it: non-habitat, or a band with no data over
+    # it (on the legacy cache layout, see _stand_row_types) -- in every cache
+    # layout, with no vote over the pixels its polygon touches (round 13). Not
+    # filtered.
     polygons_typed = _take_the_fit_rows_types(
-        polygons_with_cluster.map(_rename_mode_to_cluster_id),
-        _fit_row_types(ctx, config, cluster_labels, stand_clusters, roi, scale),
+        polygons_with_features,
+        _stand_row_types(cluster_labels, stand_clusters, roi, scale),
     )
 
     # Steps 4-5: geometry attributes, drop bookkeeping, renumber by centroid.
@@ -1071,9 +1073,9 @@ def _stand_row_types(
     voted over the polygon: only the stand's own pixels count. On the legacy
     cache layout the type image lies on another grid than the labels, so a
     stand's pixels there are those whose centres it holds on the type grid: a
-    stand with a row may then have none (it keeps the vote), and a stand with
-    no row may have some. The clusterer itself is not kept, so the type is read
-    from the typed pixels.
+    stand with a row may then have none (it then gets a null type, round 13),
+    and a stand with no row may have some (it then takes their type). The
+    clusterer itself is not kept, so the type is read from the typed pixels.
 
     One reduction over `region`, in the grid of `cluster_labels`. A stand whose
     pixels are all untyped still forms a group, but one without a "mode" (seen
@@ -1100,57 +1102,19 @@ def _stand_row_types(
     )
 
 
-def _fit_row_types(
-    ctx: PipelineContext,
-    config: Config,
-    cluster_labels: ee.Image,
-    unit_labels: ee.Image,
-    region: ee.Geometry,
-    scale: int,
-) -> ee.Dictionary | None:
-    """{stand label as "%d": its row's type} for every stand whose row the fit was trained on.
-
-    Every stand with a row (`_stand_row_types`) but, with
-    clustering.fit_excludes_stands_below_min_area on, not the stands the merge
-    left below merge.min_area_ha: k-means was not trained on their rows
-    (clustering's `_stands_below_min_area`, from the same `stand_provenance`).
-    Whether those count as having "a row in the fit" is question 2 of
-    docs/handoff/2026-10-19-round12.md; until it is answered they keep the vote,
-    as they did before. So does a stand with no row at all (question 1).
-
-    None when the setting is on and the context holds no `stand_provenance`, so
-    the fit's rows cannot be told from the others: then every stand keeps the
-    vote. A pipeline run always has it (the merge stage writes it).
-    """
-    excludes = config.clustering.fit_excludes_stands_below_min_area
-    if excludes and not ctx.has("stand_provenance"):
-        log.warning(
-            "  stands_merged: clustering.fit_excludes_stands_below_min_area is on but "
-            "the context has no stand_provenance, so the stands left out of the fit "
-            "cannot be told apart; every stand keeps the type its polygon's pixels give it."
-        )
-        return None
-    row_types = _stand_row_types(cluster_labels, unit_labels, region, scale)
-    if not excludes:
-        return row_types
-    left_out = sorted(
-        str(sid) for sid, record in ctx.get("stand_provenance").items() if record["below_min"]
-    )
-    return row_types.remove(left_out, True) if left_out else row_types
-
-
 def _take_the_fit_rows_types(
-    fc: ee.FeatureCollection, fit_row_types: ee.Dictionary | None
+    fc: ee.FeatureCollection, fit_row_types: ee.Dictionary
 ) -> ee.FeatureCollection:
-    """Set each polygon's `cluster_id` to its stand's row type, where the stand has one.
+    """Set each polygon's `cluster_id` to its stand's row type, or to null where the stand has none.
 
-    Looked up by `stand_lbl`, as the provenance is, so every piece of a stand in
-    several pieces takes the same type. A polygon whose stand is not in
-    `fit_row_types` keeps the `cluster_id` it has. With `fit_row_types` None, the
-    collection is returned untouched.
+    `fit_row_types` is `_stand_row_types`: every stand with a typed pixel of its
+    own, the stands left out of the k-means fit among them, whose rows the fitted
+    clusters type too (round 13, question 2 of docs/handoff/2026-10-19-round12.md
+    answered (b)). Looked up by `stand_lbl`, as the provenance is, so every piece
+    of a stand in several pieces takes the same type. A polygon whose stand is not
+    in `fit_row_types` gets a null `cluster_id`, whatever typed pixels it touches
+    (round 13, question 1 answered (b)).
     """
-    if fit_row_types is None:
-        return fc
 
     def retype(feature: ee.Feature) -> ee.Feature:
         key = ee.Number(feature.get("stand_lbl")).format("%d")
@@ -1161,7 +1125,7 @@ def _take_the_fit_rows_types(
             ee.Algorithms.If(
                 fit_row_types.contains(key),
                 feature.set("cluster_id", fit_row_types.get(key, -1)),
-                feature,
+                feature.set({"cluster_id": None}),
             )
         )
 

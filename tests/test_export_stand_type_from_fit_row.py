@@ -1,18 +1,21 @@
-"""Non-live tests: a stand with a row in the k-means fit takes that row's type (round 12).
+"""Non-live tests: a stand takes its row's type, and a stand with no row a null type (rounds 12, 13).
 
 Before round 12 the export typed each stand polygon by a vote: the commonest type among the
 typed pixels the polygon touches, each weighted by its share inside the polygon. Where the
 polygons and the type image lie on different grids (the legacy cache layout) a polygon also
 touches slivers of its neighbours' pixels, so a small stand could be outvoted by a neighbour,
 and a stand with no typed pixel of its own could take a neighbour's type (issue #44 item 12;
-docs/demo/remerge/README.md, section 4). Now a stand whose row the fit was trained on takes
-that row's type, read from its own typed pixels grouped by its label; every other stand keeps
-the vote, as questions 1 and 2 of docs/handoff/2026-10-19-round12.md leave it.
+docs/demo/remerge/README.md, section 4). Round 12 gave a stand whose row the fit was trained on
+that row's type, read from its own typed pixels grouped by its label, and left every other stand
+on the vote. Round 13 (Jaskaran's answers (b) to questions 1 and 2 of
+docs/handoff/2026-10-19-round12.md) drops the vote: a stand left out of the fit takes its own
+row's type like any stand with a row, and a stand with no row (no typed pixel of its own) gets a
+null type, whatever its polygon touches.
 
 The builder runs here on a fake Earth Engine that holds a one-row raster in Python: each pixel
 has a stand label and a type (None where it is untyped), and a polygon may be given slivers of
-other pixels, with weights, to stand for a grid that does not match. Register entry
-`spec-export-stand-type-from-its-fit-row`.
+other pixels, with weights, to stand for a grid that does not match. Register entries
+`spec-export-stand-type-from-its-fit-row` and `spec-export-stand-type-from-its-own-row-or-null`.
 """
 
 from __future__ import annotations
@@ -295,30 +298,33 @@ def test_a_stand_with_a_row_in_the_fit_takes_its_rows_type_not_the_vote(fake):
     assert {s: types[s] for s in ROW_TYPE} == ROW_TYPE
 
 
-def test_a_stand_with_no_row_keeps_the_vote(fake):
-    """Question 1 of round 12, left as it is: a stand with no typed pixel of its own keeps
-    whatever the vote gives it, a neighbour's type (40) or null (50)."""
+def test_a_stand_with_no_row_gets_a_null_type_whatever_its_polygon_touches(fake):
+    """Question 1 of round 12, answered (b) in round 13: a stand with no typed pixel of its
+    own gets a null type in every layout. Stand 40's polygon touches a sliver of stand 30's
+    type 2, which the vote gave it until round 13; stand 50 touches nothing typed."""
     types = _types(excludes=False, provenance=True)
-    assert types[40] == 2
+    assert types[40] is None
     assert types[50] is None
 
 
-def test_a_stand_left_out_of_the_fit_keeps_the_vote(fake):
-    """Question 2 of round 12, left as it is: with fit_excludes_stands_below_min_area on,
-    stand 60 (below the minimum, so left out of the fit) keeps its vote, 3; the other
-    stands with a row still take their row's type."""
+def test_a_stand_left_out_of_the_fit_takes_its_own_rows_type(fake):
+    """Question 2 of round 12, answered (b) in round 13: with
+    fit_excludes_stands_below_min_area on, stand 60 (below the minimum, so left out of the
+    fit) takes its own row's type, 0, like any stand with a row, not its vote, 3."""
     types = _types(excludes=True, provenance=True)
-    assert types[60] == 3
-    assert {s: types[s] for s in ROW_TYPE if s != 60} == {s: t for s, t in ROW_TYPE.items() if s != 60}
+    assert types[60] == ROW_TYPE[60] == 0
+    assert types == {**ROW_TYPE, 40: None, 50: None}
 
 
-def test_with_the_setting_on_and_no_provenance_every_stand_keeps_the_vote(fake, caplog):
-    """Without stand_provenance the stands left out of the fit cannot be told apart, so no
-    stand is retyped, with a warning. A pipeline run always has the provenance."""
+@pytest.mark.parametrize("excludes, provenance", [(False, True), (False, False), (True, True), (True, False)])
+def test_the_types_depend_neither_on_the_setting_nor_on_the_provenance(fake, caplog, excludes, provenance):
+    """Until round 13, with the setting on and no stand_provenance, no stand was retyped (the
+    stands left out of the fit could not be told apart), with a warning. Since round 13 they
+    are typed like every other stand, so neither the setting nor the provenance is read."""
     with caplog.at_level(logging.WARNING):
-        types = _types(excludes=True, provenance=False)
-    assert types == _votes()
-    assert "cannot be told apart" in caplog.text
+        types = _types(excludes=excludes, provenance=provenance)
+    assert types == {**ROW_TYPE, 40: None, 50: None}
+    assert "cannot be told apart" not in caplog.text
 
 
 def test_the_row_types_leave_out_stands_with_no_typed_pixel(fake):
@@ -350,6 +356,8 @@ def test_every_piece_of_a_stand_takes_the_same_type(fake):
     assert [f.props["cluster_id"] for f in out.features] == [1, 1]
 
 
-def test_without_row_types_the_collection_is_returned_untouched():
-    fc = _FC([_Feature({"stand_lbl": 20, "cluster_id": 2}, [])])
-    assert export_mod._take_the_fit_rows_types(fc, None) is fc
+def test_a_polygon_whose_stand_has_no_row_type_is_set_to_null(fake):
+    """Whatever cluster_id it had: the vote is not kept (round 13)."""
+    fc = _FC([_Feature({"stand_lbl": 40, "cluster_id": 2}, []), _Feature({"stand_lbl": 20, "cluster_id": 2}, [])])
+    out = export_mod._take_the_fit_rows_types(fc, _Dict({"20": 1}))
+    assert [f.props["cluster_id"] for f in out.features] == [None, 1]

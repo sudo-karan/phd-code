@@ -114,6 +114,16 @@ a stand with a row in the k-means fit takes its row's type (register entry
 `spec-export-stand-type-from-its-fit-row`); the stands counted here have no row, keep the vote, and are counted as
 before (question 1 of `docs/handoff/2026-10-19-round12.md`).
 
+Note of 20 Oct 2026 (round 13): since round 13 they no longer keep the vote. A stand with no typed pixel of its own
+gets a null type in every layout (question 1, answered (b); register entry
+`spec-export-stand-type-from-its-own-row-or-null`). Counted offline from the re-merge's per-stand files (off git,
+`outputs/demo/remerge/<run>/clustering_new.json`, `stand_type_by_pixel_centres`), a re-export would give every
+stand counted here a null type but one of the 33 of `odisha_v120_handcrafted_koraput_repro`, which holds typed pixel
+centres of its own and keeps the type it had; and two stands with a row in the fit that hold no typed pixel centre
+on the type grid, one in `odisha_v120_3ha_dhenkanal_repro` and one in `odisha_v120_handcrafted_dhenkanal_repro`,
+would lose the type the vote gave them, which was their row's. The counts above are of the layers as built at
+`5c8dcad`, and stay as they are.
+
 ## 5. The type map moves a great deal when the stands move a little
 
 The two fits made here, on the old stands and on the new, share their inputs and differ only

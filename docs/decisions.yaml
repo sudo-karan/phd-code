@@ -5845,7 +5845,8 @@ decisions:
     round 10's 10 km cost pilot in Angul (docs/handoff/2026-10-18-round10.md, Task I, "The rule, written before the
     run"; odisha_script/odisha_tile_0_aoi.py): a square north-up in EPSG:32645, the UTM zone of the Angul boxes,
     centred on the centroid of the union of the four Angul boxes, wherever the rule puts it. It runs in the next
-    round; round 11 has no Earth Engine work.
+    round; round 11 has no Earth Engine work. (Round 13: it was not run in round 12, and it is not yet scheduled;
+    spec-district-step-30-km-tile-not-run-in-round-12.)
   alternatives_considered:
   - >-
     A whole district (option (b) of question 2 of docs/handoff/2026-10-18-round10.md): not chosen
@@ -5910,7 +5911,8 @@ decisions:
     placements of each arm by that arm's name, as the village test seeds each arm: v120_3ha_squares_keptland_s1desc for
     the hand-crafted runs, with or without _r9 (so the declared run on the re-run stands draws the rehearsal's
     placements), and alphaearth_3ha_squares_keptland for the AlphaEarth arm. The AlphaEarth arm is not read against the
-    hand-crafted arm's placements, and its declared run of 18 Oct 2026 stands as run.
+    hand-crafted arm's placements, and its declared run of 18 Oct 2026 stands as run. (Round 13: each 10 ha
+    set draws its own placements too, field-keptland-chance-10ha-sets-draw-their-own-placements.)
   alternatives_considered:
   - >-
     Read the AlphaEarth arm against the hand-crafted arm's placements (--arm v120_3ha_squares_keptland_s1desc), so that
@@ -6141,7 +6143,9 @@ decisions:
     polygon. They are the stands with no row at all (no pixel in the habitat mask, or a feature band with no data
     over the stand) and, with clustering.fit_excludes_stands_below_min_area on, the stands left out of the fit;
     whether either should change is questions 1 and 2 of docs/handoff/2026-10-19-round12.md. stands_snic and
-    stands_dissolved are typed as before.
+    stands_dissolved are typed as before. (Superseded in part in round 13: a stand with no row gets a null type in
+    every cache layout, and a stand left out of the fit takes its own row's type, with no vote;
+    spec-export-stand-type-from-its-own-row-or-null.)
   alternatives_considered:
   - >-
     Keep the vote for every stand (the export before round 12): not chosen, as the brief asks
@@ -6198,7 +6202,7 @@ decisions:
   - path: docs/handoff/2026-10-19-round12.md
     what: Task 2, what a stand with no row gets, written before the change, and the record
   papers: []
-  status: adopted
+  status: superseded
   design_notes_section: null
   source: Jaskaran, 19 Oct 2026 (round 12 brief)
 - id: spec-per-step-keys-leave-out-a-new-field-at-its-default
@@ -6292,3 +6296,171 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-export-stand-type-from-its-own-row-or-null
+  title: >-
+    In the exported stand layer a stand left out of the k-means fit takes its own row's type, and a stand with no row
+    gets a null type in every cache layout
+  decision: >-
+    The export stage (src/fmu/stages/export.py, a Locked module) types each stand of stands_merged from its own row
+    only. Every stand with a typed pixel of its own takes the type most of its own typed pixels carry (_stand_row_types,
+    as since round 12), the stands left out of the k-means fit with clustering.fit_excludes_stands_below_min_area on
+    among them, whose rows the fitted clusters type too; every other stand gets a null cluster_id, whatever typed
+    pixels its polygon touches (_take_the_fit_rows_types). The vote over a polygon's pixels (reduceRegions with
+    ee.Reducer.mode()) is no longer made for stands_merged, and the stage no longer reads the setting or
+    stand_provenance to type a stand (_fit_row_types, and its warning when the setting is on without provenance, are
+    gone). "Has a row" is read as round 12 reads it: the stand has a typed pixel of its own. On the legacy cache layout
+    these are the type-grid pixels whose centres it holds, so a stand with a row in the fit that holds none gets a null
+    type too, and a stand with no row in the fit that holds some takes their type. A stand whose pieces carry different
+    types takes the commonest type over its typed pixels, as coded (question 3, answered (a): no change).
+    stands_snic and stands_dissolved are typed as before.
+  alternatives_considered:
+  - >-
+    Keep the vote for the stands with no row and for the stands left out of the fit (round 12's export): not chosen;
+    Jaskaran answered (b) to questions 1 and 2 of docs/handoff/2026-10-19-round12.md
+  - >-
+    Keep the vote and set it to null afterwards for the stands with no row: not chosen, since the vote would then be
+    computed over every polygon for nothing
+  - >-
+    On the legacy layout, keep the vote for a stand with a row in the fit that holds no typed pixel centre on the type
+    grid: not chosen. The export cannot tell such a stand from one with no row (the clustering stage keeps neither the
+    clusterer nor which pixel each row was drawn at), and the vote is what question 1's answer drops
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 1: "Jaskaran's answers: 1 (b), 2 (b), 3 (a), 5 (a). ... Implement
+    1 and 2 in the export, with tests: a stand with no row in the fit gets a null type in every layout, and a stand
+    left out of the fit takes its own row's type. Add the register entry the Locked module needs." Question 1's (b) in
+    docs/handoff/2026-10-19-round12.md: "Make them null in every layout, as docs/outputs.md ("Null cluster_id is
+    meaningful") and the export's comment say is intended." Question 2's (b): "Yes: they take their row's type too.
+    For: it is the type the fit gives them, which is what the kept-land declaration says they get ("the type of the
+    nearest fitted cluster")." On round 12's export the new tests fail: a stand with no typed pixel whose polygon
+    touches a sliver of a neighbour's type 2 got 2 (assert 2 is None), and a stand left out of the fit whose vote was
+    3 and whose row is 0 got 3 (assert 3 == 0). On the analysis grid (every _r9 and round 12 run) nothing changes: in
+    the eleven _r9 runs and the eight round 12 runs every stand of the layer has a typed superpixel of its own (the
+    stands with no row have no polygon) and no stand left out of the fit carries a type other than its own (round 12's
+    count, docs/reproducibility/r9_runs/stand_types_from_fit_rows.json, and the same script run again on the round 12
+    runs' layers in round 13, offline, not kept). On the legacy layout, counted offline from the demo set's re-merge
+    (its per-stand files, off git, built at 5c8dcad), a re-export would give a null type to every one of the 3 to 33
+    stands per run that took a neighbour's type through the vote (docs/demo/remerge/README.md, section 4) but one stand
+    of odisha_v120_handcrafted_koraput_repro, which holds typed pixel centres of its own; and to two stands with a row
+    in the fit that hold no typed pixel centre on the type grid, one each in odisha_v120_3ha_dhenkanal_repro and
+    odisha_v120_handcrafted_dhenkanal_repro, whose vote was their row's type. The export is not cached, so no step key
+    moves (the fingerprint and the eleven step keys of all 74 configs under configs/ are the same before and after).
+    No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/export.py
+    what: _build_merged_feature_collection, step 3; _take_the_fit_rows_types
+  - path: tests/test_export_stand_type_from_fit_row.py
+    what: >-
+      The rule on a fake raster; test_a_stand_with_no_row_gets_a_null_type_whatever_its_polygon_touches and
+      test_a_stand_left_out_of_the_fit_takes_its_own_rows_type fail on round 12's export
+  - path: tests/test_export_stand_type_from_fit_row_live.py
+    what: The Earth Engine calls on synthetic images, with the null type of a stand without a row (live tier)
+  - path: tests/test_export_merged_layer.py
+    what: The builder's calls, with no vote
+  - path: docs/outputs.md
+    what: cluster_id of stands_merged, and the note on null types
+  - path: docs/demo/remerge/README.md
+    what: Section 4, the note of round 13 on what a re-export of the legacy-layout runs would give
+  - path: docs/reproducibility/r9_runs/stand_types_from_fit_rows.json
+    what: Round 12's count on the analysis grid, the stands left out of the fit counted apart
+  - path: docs/handoff/2026-10-19-round12.md
+    what: Task 2, what a stand with no row gets, and questions 1 to 3
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-export-stand-whose-pieces-differ-takes-its-commonest-type
+  title: >-
+    A stand whose pieces carry different types takes, on every piece, the commonest type over its typed pixels
+  decision: >-
+    In stands_merged, a stand in several pieces whose pieces carry different types takes on every piece the commonest
+    type over the stand's own typed pixels (src/fmu/stages/export.py, _stand_row_types), as round 12 coded it. Nothing
+    changes. In the eleven _r9 runs this is one stand, in the 10 km tile (344 pixels of type 4 and one pixel of type
+    3, the one-pixel piece taking type 4).
+  alternatives_considered:
+  - >-
+    Each piece keeps the type of its own pixels (option (b) of question 3 of docs/handoff/2026-10-19-round12.md): not
+    chosen
+  - >-
+    Draw the stand's row again with the fit's seed and take the type at that pixel (option (c)): not chosen
+  rationale: >-
+    Jaskaran's answer (a) to question 3 of docs/handoff/2026-10-19-round12.md, 19 Oct 2026 (the round 13 brief):
+    "Jaskaran's answers: 1 (b), 2 (b), 3 (a), 5 (a)." One type per stand, as for every other stand; it is the row's
+    type whenever the row fell on a piece of that type; deterministic and cheap. The case arises because the
+    clustering stage averages each connected piece of a stand apart (review B14), which round 13's Task 4 is to change
+    to one mean per stand; after that change every piece of a stand carries one type, and this rule picks it. No
+    paper was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/export.py
+    what: _stand_row_types, the commonest type per stand label
+  - path: docs/handoff/2026-10-19-round12.md
+    what: Question 3, with its three options; marked answered
+  - path: docs/handoff/2026-10-20-round13.md
+    what: The brief, Task 1
+  - path: docs/reproducibility/r9_runs/stand_types_from_fit_rows.json
+    what: The one stand whose pieces carry different types (10 km tile, stand 2874)
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: field-keptland-chance-10ha-sets-draw-their-own-placements
+  title: >-
+    In the kept-land chance test each 10 ha set draws its own placements, seeded by its set's name
+  decision: >-
+    The declared chance test of the 10 ha box runs (round 12, Task 4) seeds each set's placements by the set's own
+    name, as the script does for those run names (v120_10ha_squares_keptland_s1desc and alphaearth_10ha_squares_keptland),
+    as Phase 3 seeded its 3 ha and 10 ha arms apart. The two 10 ha results of round 12 stand as run
+    (odisha_script/keptland_scores/, each results file naming its seed). Nothing changes.
+  alternatives_considered:
+  - >-
+    Each 10 ha set draws its arm's 3 ha placements (--arm v120_3ha_squares_keptland_s1desc, --arm
+    alphaearth_3ha_squares_keptland; option (b) of question 5 of docs/handoff/2026-10-19-round12.md): not chosen
+  rationale: >-
+    Jaskaran's answer (a) to question 5 of docs/handoff/2026-10-19-round12.md, 19 Oct 2026 (the round 13 brief):
+    "Jaskaran's answers: 1 (b), 2 (b), 3 (a), 5 (a)." It extends the rule of field-keptland-chance-each-arm-draws-its-own-placements
+    (each arm seeded by its arm's name) to the 10 ha sets, treating the stand size as part of the arm, as Phase 3 did;
+    a 3 ha and a 10 ha result of one arm then differ by their placements as well as by their stands, and nothing in
+    the test compares them (3 ha beside 10 ha is descriptive only). No paper was searched for this decision.
+  evidence:
+  - path: odisha_script/odisha_keptland_chance.py
+    what: arm_from_runs, which names each set's seed from its runs
+  - path: docs/handoff/2026-10-19-round12.md
+    what: Question 5, with its two options; Task 4 part 5, the run as (a)
+  - path: docs/handoff/2026-10-20-round13.md
+    what: The brief, Task 1
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-district-step-30-km-tile-not-run-in-round-12
+  title: >-
+    The 30 km tile was not run in round 12, and is not yet scheduled
+  decision: >-
+    The 30 km tile of spec-district-step-next-one-30-km-tile was not run in round 12: nothing of it was committed or
+    submitted. It is not yet scheduled. The round 13 brief leaves district scale (review B1 to B3: the merge's
+    50,000-superpixel guard, the export pass's read-back cost, SNIC label collisions) to a later round, and the tile,
+    run as round 12's brief specified it, would stop at that guard.
+  alternatives_considered:
+  - >-
+    Run it as specified, knowing it stops at the merge (option (a) of question 4 of docs/handoff/2026-10-19-round12.md):
+    not chosen
+  - >-
+    Raise merge.max_superpixels in the tile's config (option (b)): not chosen
+  rationale: >-
+    Jaskaran's answer (c) to question 4 of docs/handoff/2026-10-19-round12.md, read at 13:33 IST on 19 Oct 2026:
+    "Question 4: (c). Do not run Task 5 this round. A read-only review found that the 30 km tile stops at the merge
+    (max_superpixels) and that the feature steps it would cache are about to change. Finish Task 4 (the AlphaEarth 10
+    ha runs and their scoring), write the record, and stop. Start no other Earth Engine work." A read-only count in
+    round 12 put about 170,600 superpixels on the tile's kept land, 3.4 times the guard. The feature steps did change
+    in round 13 (Task 2, the step revisions). Entered in the register in round 13, as round 12's record asked. No paper
+    was searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-19-round12.md
+    what: Question 4, with its three options and the answer as given; "Task 5 (roadmap 3.4a) not run"
+  - path: docs/reviews/2026-10-19-review.md
+    what: B1 to B3
+  - path: docs/handoff/2026-10-20-round13.md
+    what: The brief, "Out of scope"
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 12, answer to question 4)

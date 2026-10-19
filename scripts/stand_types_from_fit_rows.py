@@ -29,6 +29,11 @@ polygon, and every superpixel lies inside one stand. So, per run:
      (question 2 of docs/handoff/2026-10-19-round12.md), and they are counted apart. A stand none
      of whose superpixels is in the layer is UNCHECKED.
 
+(Note of 20 Oct 2026, round 13: this counts round 12's export. Since round 13 a stand left out
+of the fit takes its own row's type too, and a stand with no typed pixel of its own gets a null
+type (register entry spec-export-stand-type-from-its-own-row-or-null); so under round 13's export
+the stands left out whose type is not their own, counted apart here, would change as well.)
+
 Layers over 5 MB are read where the run's <run>_files_off_git.json says, after checking their
 SHA-256. Results only, no dates; nothing is written over. Earth Engine is not used.
 """
