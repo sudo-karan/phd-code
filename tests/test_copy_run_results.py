@@ -129,6 +129,18 @@ def test_a_pass_kind_run_twice_keeps_both_manifests(mod, tmp_path):
     assert [n for n in done["in_repo"] if "_manifest_clustering" in n] == [f"{RUN}_manifest_clustering.json"]
 
 
+def test_the_read_back_tools_comparison_is_copied_when_there_is_one(mod, tmp_path):
+    """Since round 13 (review C30) the read-back tool writes <run>_read_back.json beside a run
+    record the run wrote itself."""
+    tree = _tree(tmp_path, big=10)
+    dest = tmp_path / "dest"
+    assert f"{RUN}_read_back.json" not in mod.copy(tree, RUN, dest, tmp_path / "off")["in_repo"]
+    vec = tree / "odisha_script" / "phase2_vectors"
+    (vec / f"{RUN}_read_back.json").write_text(json.dumps({"config": RUN, "read_back": {"by": "tool"}}))
+    assert f"{RUN}_read_back.json" in mod.copy(tree, RUN, dest, tmp_path / "off")["in_repo"]
+    assert json.loads((dest / f"{RUN}_read_back.json").read_text())["read_back"] == {"by": "tool"}
+
+
 def test_the_features_pass_of_a_round_9_run_is_copied_too(mod, tmp_path):
     """Since round 9 a run's first pass caches the feature stages and ends at one of them."""
     tree = _tree(tmp_path, big=10)

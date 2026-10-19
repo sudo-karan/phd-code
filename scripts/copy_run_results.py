@@ -7,6 +7,8 @@ What it copies, from the run tree (a clean clone a batch ran from):
   - odisha_script/phase2_vectors/<run>_stands_merged.geojson, _stands_snic.geojson,
     _stands_dissolved.geojson: as they are;
   - <run>_run.json: the run record, without "run_dir" (a path holding the run's date and time);
+  - <run>_read_back.json, if there is one: what odisha_script/odisha_read_back_export.py read back
+    against the layers of a run that wrote its own record (round 13, review C30);
   - runs/<run>_<date>_<time>/manifest.json of each pass, as <run>_manifest_<features|segmentation|
     clustering|export>.json, without "run_dir", "total_elapsed_sec", each stage's "elapsed_sec", the
     export manifest's "run_timestamp" and each Drive export's "submitted_at". A run folder whose
@@ -111,6 +113,10 @@ def copy(tree: Path, run_id: str, dest: Path, off_git: Path) -> dict[str, Any]:
         files[f"{run_id}_{layer}.geojson"] = (vec / f"{run_id}_{layer}.geojson").read_bytes()
     run = strip(json.loads((vec / f"{run_id}_run.json").read_text()))
     files[f"{run_id}_run.json"] = (json.dumps(run, indent=1, default=str) + "\n").encode()
+    read_back = vec / f"{run_id}_read_back.json"
+    if read_back.exists():
+        files[read_back.name] = (json.dumps(strip(json.loads(read_back.read_text())), indent=1,
+                                            default=str) + "\n").encode()
     for kind, manifests in passes(tree, run_id).items():
         # The last under the kind's own name, as before; the earlier ones numbered (review C35).
         *earlier, (_, last) = manifests
