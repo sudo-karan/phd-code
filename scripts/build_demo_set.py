@@ -55,9 +55,11 @@ RUNS = REPO / "outputs" / "repro_runs"
 MASKS = REPO / "outputs" / "transparency_repro"
 # The second set: the four box runs. Same record, other folders.
 def box_config_paths() -> list[Path]:
-    """The four box configs: configs/odisha_v120_3ha_squares_<district>.yaml. The kept-land copies
-    of round 3 (*_keptland.yaml) match the same glob but are configs of their own, not box runs."""
-    return sorted(p for p in (REPO / "configs").glob(BOXES["glob"]) if not p.stem.endswith("_keptland"))
+    """The four box configs: configs/odisha_v120_3ha_squares_<district>.yaml. The kept-land configs
+    match the same glob but are configs of their own, not box runs: round 3's *_keptland.yaml and
+    every later one with _keptland in its name (_keptland_s1desc, _r9, _r9_check). Until round 13
+    only *_keptland.yaml was left out, so `--set boxes` took 13 configs and stopped (review C42)."""
+    return sorted(p for p in (REPO / "configs").glob(BOXES["glob"]) if "_keptland" not in p.stem)
 
 
 BOXES = {

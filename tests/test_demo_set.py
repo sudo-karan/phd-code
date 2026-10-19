@@ -175,6 +175,19 @@ def test_the_box_runs_are_the_four_box_configs_under_their_own_fingerprints():
                 f"{BOXES['asset_root']}/{cfg.name}/{asset['stage']}/{asset['key']}__{run['fingerprint']}")
 
 
+def test_the_builder_takes_the_four_box_configs_as_this_file_does():
+    """Review C42: `build_demo_set.py --set boxes` left out only `*_keptland.yaml`, so the nine later
+    kept-land configs that match the same glob (`_keptland_s1desc`, `_r9`, `_r9_check`) were taken
+    for box runs too, and the build stopped: the listing has no entry for them."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("build_demo_set", REPO / "scripts" / "build_demo_set.py")
+    assert spec is not None and spec.loader is not None
+    builder = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(builder)
+    assert [p.stem for p in builder.box_config_paths()] == sorted(BOX_RUNS)
+
+
 def test_a_box_run_whose_export_pass_ended_early_says_what_was_read_back():
     assert BOXES["merge_rule"] == DEMO["merge_rule"] and f"`{BOXES['merge_rule']}`" in BOXES["label"]
     for run_id, run in BOX_RUNS.items():
