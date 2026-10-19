@@ -6774,3 +6774,63 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-batch-wrapper-resumes-a-label-and-holds-one-lock-per-machine
+  title: >-
+    The batch wrapper resumes a label without re-running what it finished, holds one lock per machine that its
+    children hold too, passes signals on to them, knows a config by its name and puts a deadline on its queue poll
+  decision: >-
+    odisha_script/run_passes_safely.py, the one way to start an Earth Engine batch run (CLAUDE.md;
+    night-repro-copies-and-safe-passes), gets four guards against a second copy of a task, and one against a hang
+    (review B4 to B9). (1) A batch started again under the same label reads <label>.state.json first and skips, with
+    a log line, every config an earlier batch of the label finished or put under needs attention; the state file
+    keeps every key it had, and adds the earlier batches' records (earlier_batches) and the configs skipped
+    (skipped); the exit lines of a pass cut short are read all the same. (2) One lock per machine,
+    ~/.fmu/run_passes_safely.lock: an fcntl.flock taken before git, `import ee` and ee.Initialize, and held to the
+    end; a start is refused (exit 90) while another batch holds it, whatever its run tree or log folder. (3) The
+    shell script and the runner run in a process group of their own and are given the lock's descriptor:
+    SIGTERM, SIGHUP and SIGINT are passed on to them, and the wrapper waits for them to end, records the pass and
+    stops (exit 128 plus the signal's number); a signal ignored when the batch started stays ignored; if the
+    wrapper is killed outright they keep the lock until they end. (4) Each config is read with the run tree's
+    fmu.config and known by its name:, after which the pipeline names its tasks; a config whose name: differs from
+    its file stem, a path that does not end in .yaml, or a name listed twice is refused (exit 93). (5) The
+    wrapper's queue polls have a deadline of 120 s (ee.data.setDeadline, set right after ee.Initialize), as the
+    runner's polls have; a poll that times out is retried. Within a batch, as night-repro-copies-and-safe-passes
+    records, a finished config is never re-run and a config whose export stage failed is not retried; that entry is
+    not changed. A batch under another label still does not know what an earlier one finished.
+  alternatives_considered:
+  - >-
+    A lock file holding a pid, checked for a live pid and kept in the log folder (the wrapper before round 13): two
+    starts seconds apart both passed the check, a batch with another log folder did not see it, and the children of
+    a killed wrapper ran on while the lock read as stale (review B5 to B7)
+  - >-
+    Refuse a batch whose label's state file lists a finished config, rather than skip the config: not chosen; the
+    brief asks for a resume, and with it the same command finishes a batch that was cut short
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 3: "B4 to B9, as the review suggests: resume from the state file
+    and skip finished configs; a held lock at one fixed path, taken first; signals forwarded to the children; configs
+    keyed by name:, refusing a name that differs from the file stem, a non-.yaml file or a repeat; a request deadline
+    on the queue poll. Test each with a fake Earth Engine, as the review did." The review
+    (docs/reviews/2026-10-19-review.md, B4 to B9) found these ways for the wrapper to submit a second copy of a task,
+    and for its poll to hang, in a harness that ran the real wrapper and shell script against a modelled Earth
+    Engine. tests/test_run_passes_safely.py is such a harness (tests/_wrapper_harness.py), and each of its tests of a
+    finding fails on the wrapper before that finding's fix: the state file of a batch cut short read "done": [], and
+    the same command again sent every Drive export twice (B4); two starts 0.3 s apart, or with two log folders, both
+    ran (B6, B7); after SIGTERM, SIGHUP or SIGINT the runner was still running, and a new start was not refused (B5);
+    a .yml path, a name: unlike the file stem or a config listed twice ran (B8); no deadline was set before the first
+    poll (B9). All 74 configs under configs/ have a name: equal to their file stem, so none is refused. No paper was
+    searched for this decision.
+  evidence:
+  - path: odisha_script/run_passes_safely.py
+    what: The wrapper; its docstring lists the guards and the exit codes
+  - path: tests/test_run_passes_safely.py
+    what: The real wrapper and shell script against a modelled Earth Engine, a test or more per finding
+  - path: tests/_wrapper_harness.py
+    what: The run tree, the stand-in ee package and the stand-in runner
+  - path: docs/running.md
+    what: The wrapper's paragraph
+  - path: docs/reviews/2026-10-19-review.md
+    what: B4 to B9
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)

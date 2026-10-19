@@ -363,7 +363,11 @@ python odisha_script/run_passes_safely.py --label <name> \
 The wrapper runs one pass at a time and, before each, waits until Earth Engine
 has no queued or running task whose description starts with the name of a
 config it is about to run. It calls the shell script with `MAX_PASSES=1` and
-`RUN_PASSES_SAFELY=1`. It never re-runs a config that has finished (the export
+`RUN_PASSES_SAFELY=1`. A config is known by its `name:`, after which the
+pipeline names its tasks; the shell script names its exit lines after the file
+name less `.yaml`. So the wrapper refuses (exit 93) a config whose `name:`
+differs from its file name, a path that does not end in `.yaml`, and a name
+listed twice (round 13). It never re-runs a config that has finished (the export
 stage would submit its Drive exports again): a batch started again with the
 same `--label` reads `<label>.state.json` first and skips, with a log line,
 every config an earlier batch of that label finished or put under needs

@@ -15,9 +15,14 @@ itself.
 
 So this wrapper calls it with MAX_PASSES=1 and, before every pass, waits until Earth
 Engine has no queued or running task whose description starts with the name of a config it
-is about to run. It sets RUN_PASSES_SAFELY=1 for the script (`pass_env`), which refuses to
-start without it (round 12), so the script is started only from here. It also:
+is about to run (its name:, after which the pipeline names every task of it). It sets
+RUN_PASSES_SAFELY=1 for the script (`pass_env`), which refuses to start without it (round
+12), so the script is started only from here. It also:
 
+  - knows each config by its name:, which it reads with the run tree's fmu.config, and
+    refuses (exit 93) a config whose name: differs from its file stem (run_config_passes.sh
+    names the exit lines after the stem), a path that does not end in .yaml, and a name
+    listed twice (round 13, review B8);
   - never re-runs a config that has finished. The export stage submits its Drive exports
     every time it runs, so re-running a finished config would duplicate them. A batch started
     again under the same label reads <label>.state.json first, and skips, with a log line,
@@ -41,6 +46,11 @@ start without it (round 12), so the script is started only from here. It also:
   - writes the commit it ran from, and each pass's per-stage exit codes, to
     <log-dir>/<label>.state.json beside the log, after the record of the label's earlier
     batches. A pass cut short (Ctrl-C) still records the configs it finished.
+
+Exit codes: 0 every config complete; 1 not all complete (one not finished, or one needing
+attention); 90 another batch holds the lock; 92 the run tree has modified tracked files; 93 a
+config refused (B8); 94 a config missing from the run tree; 128 + n stopped by signal n (129
+SIGHUP, 130 Ctrl-C, 143 SIGTERM).
 
 Run from anywhere; the run tree needs its own .env (the pipeline reads .env from the working
 directory). NEEDS LIVE EARTH ENGINE and submits tasks.
@@ -153,7 +163,27 @@ def main() -> int:
         if not (rt / c).exists():
             print(f"REFUSING: {c} does not exist in the run tree at {commit[:7]}")
             return 94
-    name_of = {c: Path(c).stem for c in args.configs}
+    sys.path.insert(0, str(rt / "src"))  # the run tree's code, not an editable install elsewhere
+    from fmu.config import load_config
+
+    # A config is known by its name: (review B8): the pipeline names every task of it after it,
+    # so the wait before a pass, the state file and the skip of an earlier batch's configs go by
+    # it. run_config_passes.sh names the exit lines after the file stem, so the two must agree.
+    name_of: dict[str, str] = {}
+    for c in args.configs:
+        if Path(c).suffix != ".yaml":
+            print(f"REFUSING: {c} is not a .yaml file (run_config_passes.sh takes a config's "
+                  f"name from its file name less .yaml)")
+            return 93
+        name = load_config(rt / c).name
+        if name != Path(c).stem:
+            print(f"REFUSING: {c} has name: {name}, not its file stem {Path(c).stem}; its tasks "
+                  f"are named after name:, its exit lines after the file stem")
+            return 93
+        if name in name_of.values():
+            print(f"REFUSING: {name} is listed twice")
+            return 93
+        name_of[c] = name
     # The earlier batches of this label (review B4): a config one of them finished, or put under
     # needs attention, is not run again. Read before anything is written, so that a state file
     # that cannot be read stops the batch here and is left as it is.
@@ -177,7 +207,6 @@ def main() -> int:
                           f"({attention_before[name_of[c]]})")
 
     os.chdir(rt)  # fmu reads .env from the working directory
-    sys.path.insert(0, str(rt / "src"))  # the run tree's code, not an editable install elsewhere
     import ee
 
     from fmu.settings import get_settings

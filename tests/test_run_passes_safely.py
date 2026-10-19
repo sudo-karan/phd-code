@@ -18,7 +18,7 @@ from pathlib import Path
 
 import pytest
 
-from _wrapper_harness import Harness, alive, wait_for
+from _wrapper_harness import FEATURE_OUTPUTS, Harness, alive, wait_for
 
 pytestmark = pytest.mark.skipif(shutil.which("bash") is None or shutil.which("git") is None,
                                 reason="needs bash and git")
@@ -226,3 +226,54 @@ def test_a_signal_ignored_when_the_batch_started_stays_ignored(h):
     rc, out = h.finish(w)
     assert rc == 0, out
     assert h.drive_exports(A) == [1] * 9
+
+
+# ---------- B8: a config is its name:, which names its tasks ----------
+
+
+def test_a_config_path_that_does_not_end_in_yaml_is_refused(h):
+    """Review B8: a .yml copy was never recognised as finished, so its export pass, and its
+    Drive exports, ran again in every pass."""
+    yml = h.config(A, path=f"configs/{A}.yml")
+    h.commit()
+    rc, out = h.finish(h.start(yml))
+    assert (rc, len(h.tasks())) == (93, 0), out
+    assert f"REFUSING: {yml} is not a .yaml file" in out
+
+
+def test_a_config_whose_name_is_not_its_file_stem_is_refused(h):
+    """Review B8: a copy whose name: was not edited names its tasks after A, while the wrapper
+    waited on its file stem: after a failed features pass the next pass started at once and sent
+    a second copy of every export still running."""
+    copy = h.config(A, path=f"configs/{A}_copy.yaml")
+    h.commit()
+    h.scenario(fail_once=[f"{A}:features"], task_s=6.0)
+    rc, out = h.finish(h.start(copy))
+    assert (rc, len(h.second_copies_while_running())) == (93, 0), out
+    assert f"REFUSING: {copy} has name: {A}, not its file stem {A}_copy" in out
+    assert h.tasks() == []
+
+
+@pytest.mark.parametrize("again", [None, f"configs/again/{A}.yaml"], ids=["same path", "same name"])
+def test_a_config_listed_twice_is_refused(h, again):
+    """Review B8: a config listed twice ran twice in every pass and sent its Drive exports twice."""
+    a = h.config(A)
+    other = a if again is None else h.config(A, path=again)
+    h.commit()
+    rc, out = h.finish(h.start(a, other))
+    assert (rc, len(h.tasks())) == (93, 0), out
+    assert f"REFUSING: {A} is listed twice" in out
+
+
+def test_the_wait_before_a_pass_matches_the_tasks_named_after_the_config(h):
+    """The features pass fails once with its exports still running; the next pass waits for them
+    (they are named after the config's name:), and then finds every one in the cache. A guard:
+    this held before round 13 too, for a config whose name: is its file stem."""
+    a = h.config(A)
+    h.commit()
+    h.scenario(fail_once=[f"{A}:features"], task_s=5.0)
+    rc, out = h.finish(h.start(a))
+    assert rc == 0, out
+    assert h.second_copies_while_running() == []
+    assert [h.submitted(f"{A}_{o}") for o in FEATURE_OUTPUTS] == [1] * 9
+    assert "before pass 2: 9 task(s) of these configs still queued or running" in h.log()
