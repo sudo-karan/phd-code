@@ -7252,3 +7252,42 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-merge-pair-code-cast-before-it-is-computed
+  title: >-
+    The merge's boundary pair code is computed in int64: both dense indices are cast before the code is made
+  decision: >-
+    fmu.utils.adjacency (Locked, part of the merge stage) makes the code of each boundary pixel pair as
+    dense.toInt64().multiply(n).add(neighbour.toInt64()), the cast first, where it made dense.multiply(n).add(neighbour)
+    and cast the result. The code a * n + b reaches n^2 - 1, past 2^31 once n is over 46,340. For n up to 46,340 the
+    codes are the same numbers, and every run of record had fewer superpixels (the largest, the 10 km tile, 21,263), so
+    no step computes differently for any config and no revision is raised. The bandTypes() call the review suggests
+    belongs with raising merge.max_superpixels (review B1, out of round 13) and was not made.
+  alternatives_considered:
+  - >-
+    Leave it, since no run comes near: not chosen; the brief lists B34, and merge.max_superpixels (50,000) allows n past
+    46,340
+  - >-
+    Confirm the pixel type Earth Engine gives with one bandTypes() call: not done this round; it belongs with B1
+    (raising the guard), out of round 13
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 5, which lists B34. The review (docs/reviews/2026-10-19-review.md,
+    B34, low confidence): "Codes reach n² − 1, which is above 2³¹ once n > 46,340. A correct graph then depends on Earth
+    Engine widening integer multiply/add. If it wraps, the result is a loud KeyError; if it saturates, edges are
+    silently wrong", with the fix "Cast first". The algorithm reference bundled with earthengine-api says of
+    Image.multiply and Image.add: "The type of the output pixels is the union of the input types." The new test in
+    tests/test_adjacency.py records the calls with a stand-in for Earth Engine (tests/_ee_recorder.py) and fails on the
+    code before, where the multiply was made on the dense image itself and the cast came last. What Earth Engine
+    computes was not checked: no Earth Engine call was made. No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/utils/adjacency.py
+    what: extract_superpixel_graph, the pair code
+  - path: tests/test_adjacency.py
+    what: test_the_pair_code_is_computed_in_int64; fails on the code before
+  - path: docs/reviews/2026-10-19-review.md
+    what: B34
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 5, B34
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)

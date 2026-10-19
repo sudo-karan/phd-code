@@ -217,11 +217,14 @@ def extract_superpixel_graph(
     # Right and down only: 4-connectivity, each boundary pixel-pair counted once.
     for dx, dy, direction in ((-1, 0, "right"), (0, -1, "down")):
         neighbour = dense.translate(x=dx, y=dy, units="pixels", proj=proj)
+        # The code reaches n^2 - 1, past 2^31 once n is over 46,340, and Earth
+        # Engine gives multiply and add "the union of the input types": both
+        # indices are cast to int64 before it is computed (review B34).
         pair = (
-            dense.multiply(n)
-            .add(neighbour)
+            dense.toInt64()
+            .multiply(n)
+            .add(neighbour.toInt64())
             .updateMask(dense.neq(neighbour))
-            .toInt64()
             .rename("pair")
         )
         pair_hist = (

@@ -17,6 +17,7 @@ from __future__ import annotations
 import pytest
 
 import fmu.utils.adjacency as adj
+from _ee_recorder import Rec, calls, made_by
 from fmu.utils.adjacency import (
     SuperpixelGraph,
     TooManySuperpixelsError,
@@ -143,6 +144,9 @@ class _FakeImage:
 class _Shift:
     def __init__(self, dx: int, dy: int) -> None:
         self.dx, self.dy = dx, dy
+
+    def toInt64(self):  # noqa: N802 - mirrors the ee API
+        return self
 
 
 class _Pair(_FakeImage):
@@ -633,3 +637,41 @@ def test_a_label_the_histogram_never_saw_is_skipped(attribute_server):
         record,
     )
     assert set(means) == {0}
+
+
+# ---------- the pair code (review B34) ----------
+
+
+def test_the_pair_code_is_computed_in_int64(monkeypatch):
+    """The code a * n + b reaches n^2 - 1, past 2^31 once there are more than 46,340
+    superpixels, and Earth Engine gives multiply and add "the union of the input
+    types". So both dense indices are cast to int64 before the code is computed, not
+    the code after. The calls are recorded (tests/_ee_recorder.py), so the order is
+    what is checked, not what Earth Engine computes."""
+    log: list = []
+    monkeypatch.setattr(adj, "ee", Rec("ee", log))
+
+    def fake_get_info(obj, *, context: str = ""):
+        if context.endswith("band name"):
+            return ["snic_clusters"]
+        if context.endswith("label histogram"):
+            return {"snic_clusters": {"1": 4.0, "2": 4.0, "3": 4.0}}
+        if context.endswith("projection scale"):
+            return 10.0
+        if context.endswith("-neighbour pairs"):
+            return {"pair": {}}
+        raise AssertionError(f"unexpected getInfo context: {context!r}")
+
+    monkeypatch.setattr(adj, "safe_get_info", fake_get_info)
+    extract_superpixel_graph(Rec("labels", log), Rec("roi", log), 10, context="merge adjacency")
+
+    multiplies = calls(log, ".multiply")
+    assert len(multiplies) == 2  # the right and the down neighbour
+    for multiply in multiplies:
+        assert multiply.args == (3,)
+        cast = made_by(log, multiply.owner)
+        assert (cast.attr, made_by(log, cast.owner).attr) == ("toInt64", "reproject")
+        (add,) = [c for c in log if c.attr == "add" and c.owner is multiply.out]
+        (neighbour,) = add.args
+        cast = made_by(log, neighbour)
+        assert (cast.attr, made_by(log, cast.owner).attr) == ("toInt64", "translate")
