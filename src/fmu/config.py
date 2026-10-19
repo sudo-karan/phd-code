@@ -609,12 +609,17 @@ class MergeParams(BaseModel):
     min_area_ha: float = Field(default=1.0, gt=0.0)
     max_area_ha: float = Field(default=10.0, gt=0.0)
 
-    # A pass-1 merge on a single criterion is too weak a similarity test to
-    # justify, so a pair needs at least this many criteria *defined on both
-    # sides*. Pairs that fall short drop to pass 2, which is the right
-    # destination. (14 of 1249 superpixels in the committed run have no
-    # canopy_height at all -- ETH no-data. Demo set, 13 Oct 2026: 107 of
-    # 1,298; why it is more has not been looked into.)
+    # A merge on a single criterion is too weak a similarity test to justify,
+    # so a pair needs at least this many criteria *defined on both sides*, in
+    # pass 1 and under pass 2's relaxed tolerances alike. A pair that falls
+    # short never merges on its attributes: a region below min_area_ha whose
+    # neighbours all fall short (or fail the relaxed tolerances) joins one only
+    # by the pass-2 shared-edge fallback, which ignores attributes, and two
+    # regions both at or above the minimum do not merge. (14 of 1249
+    # superpixels in the committed run have no canopy_height at all -- ETH
+    # no-data. Demo set, 13 Oct 2026: 107 of 1,298; why it is more has not been
+    # looked into.) Corrected 20 Oct 2026 (review C13): this said that pairs
+    # that fall short "drop to pass 2, which is the right destination".
     #
     # Read this against `len(criteria)`, because the default list is now two
     # long and 2 == 2: **every criterion is currently mandatory**, where three
@@ -622,9 +627,9 @@ class MergeParams(BaseModel):
     # below rejects only floor > len(criteria), the impossible case; equality
     # is legal and is the case that changes behaviour. Concretely, those 14
     # no-canopy_height superpixels could previously clear pass 1 on the other
-    # two criteria and now cannot. Pass 2 is still the right destination for
-    # them -- but if a criterion is ever added back, note that doing so
-    # *loosens* the pass-1 gate rather than tightening it.
+    # two criteria and now cannot; in pass 2 they can join a neighbour only by
+    # the shared-edge fallback. If a criterion is ever added back, note that
+    # doing so *loosens* the gate rather than tightening it.
     min_defined_criteria: int = Field(default=2, ge=1)
 
     # A stand whose fraction of valid pixels for a band falls below this gets a

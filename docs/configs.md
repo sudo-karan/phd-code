@@ -558,9 +558,13 @@ a two-tier threshold scheme.
   what the component-size cap above is derived from, so the pass-2 fallback
   respects it too. The one exception is `pass2_soft_ceiling`, below, and the cap
   then allows for it.
-- `min_defined_criteria`: a pass-1 merge needs at least this many criteria
-  defined on both sides (default 2). One criterion is too weak a similarity
-  test; pairs that fall short drop to pass 2.
+- `min_defined_criteria`: a merge needs at least this many criteria defined on
+  both sides (default 2), in pass 1 and under pass 2's relaxed tolerances
+  alike. One criterion is too weak a similarity test. A pair that falls short
+  never merges on its attributes: a region below `min_area_ha` can still join
+  such a neighbour by the shared-edge fallback, which ignores attributes, and
+  two regions both at or above the minimum do not merge. (Corrected 20 Oct
+  2026, review C13: this said that pairs that fall short drop to pass 2.)
 - `min_frac_valid`: below this fraction of valid pixels for a band, profiling
   emits null for that band rather than a mean over territory that has none
   (default 0.5).

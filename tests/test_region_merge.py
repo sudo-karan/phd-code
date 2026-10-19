@@ -138,9 +138,10 @@ def test_non_adjacent_regions_never_merge():
 
 
 def test_pair_with_one_defined_criterion_does_not_merge_in_pass1():
-    """One criterion is too weak a similarity test. The pair falls to pass 2 --
-    the right destination, since refusing outright would leave it to the blinder
-    shared-edge rule anyway."""
+    """One criterion is too weak a similarity test, so the pair does not merge in
+    pass 1. Both are over the minimum here, so pass 2 does not take them up
+    either: a pair short of the floor never merges on its attributes (the
+    next-but-one test has one of them below the minimum)."""
     px = [200, 200]
     means = {0: {"ch": None, "std": 0.5}, 1: {"ch": 10.0, "std": 0.52}}
     counts = {0: {"ch": 0, "std": 200}, 1: {"ch": 200, "std": 200}}
@@ -167,6 +168,26 @@ def test_lowering_min_defined_criteria_lets_that_pair_merge():
         min_defined_criteria=1,
     )
     assert r.n_stands == 1
+
+
+def test_a_pair_short_of_the_floor_merges_in_pass_2_by_the_fallback_only():
+    """The floor holds under pass 2's relaxed tolerances too (review C13). A 0.2 ha
+    region with no canopy height beside a 2 ha one: the one criterion they share is
+    identical, yet pass 2 joins them only by the shared-edge fallback, which ignores
+    attributes. With the floor at 1 the same pair merges in pass 1, on that criterion."""
+    px = [20, 200]
+    means = {0: {"ch": None, "std": 0.5}, 1: {"ch": 10.0, "std": 0.5}}
+    counts = {0: {"ch": 0, "std": 20}, 1: {"ch": 200, "std": 200}}
+    graph = _graph(px, {(0, 1): 10})
+    criteria = {"ch": 2.0, "std": 0.45}
+    r = _run(graph, means, counts, criteria)
+    d = r.diagnostics
+    assert r.n_stands == 1
+    assert d["pass1_merges"] == 0
+    assert d["pass2_merges"] == d["pass2_fallback_merges"] == 1
+    assert r.stand_provenance[0]["n_fallback"] == 1 and r.stand_provenance[0]["n_relaxed"] == 0
+    one = _run(graph, means, counts, criteria, min_defined_criteria=1).diagnostics
+    assert (one["pass1_merges"], one["pass2_merges"]) == (1, 0)
 
 
 # ---------- valid-pixel weighting ----------

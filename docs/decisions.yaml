@@ -2774,43 +2774,58 @@ decisions:
     How the merge handles missing data: valid-pixel weights, a two-criterion floor, nulls below half coverage
   decision: >-
     Stand means are weighted by the number of valid pixels for each criterion, not by total pixels. A
-    pass-1 merge needs at least min_defined_criteria (2) criteria defined on both sides; pairs that fall
-    short go to pass 2. A stand with a band valid on under min_frac_valid (0.5) of its pixels reports
-    null for that band.
+    merge needs at least min_defined_criteria (2) criteria defined on both sides, in pass 1 and under pass 2's
+    relaxed tolerances alike, so a pair that falls short never merges on its attributes: in pass 2 a region below
+    min_area_ha whose neighbours all fall short, or fail the relaxed tolerances, can join one only by the
+    shared-edge fallback, which ignores attributes, and two regions both at or above the minimum do not merge. A
+    stand with a band valid on under min_frac_valid (0.5) of its pixels reports null for that band. Reworded 20 Oct
+    2026 (round 13, review C13): this said that pairs that fall short "go to pass 2", and the rationale that
+    refusing them outright would leave them to the blinder shared-edge rule, as if pass 2 could still match them
+    on their attributes; compare() applies the floor under the relaxed tolerances too (at the review's commit
+    5caae3f and now), so the shared-edge fallback is the only way such a pair merges. Nothing in the code changed.
   alternatives_considered:
   - 'Weighting by total pixels: named and rejected'
-  - 'Refusing to merge pairs with too few defined criteria at all: named and rejected'
+  - >-
+    Refusing to merge pairs with too few defined criteria at all: named and rejected. The code refuses them in the
+    attribute tests of both passes, and the shared-edge fallback still takes them
   - >-
     Lowering min_defined_criteria to fit a shorter criteria list: ruled out in PHASE1_STATUS.md
   rationale: >-
     region_merge.py: weighting by total pixels would let a region with no canopy height inherit one from
     its neighbour for land that was never measured, so the merge would invent data; 14 of the 1249 superpixels
     in the committed baseline run have no canopy height at all (ETH no-data). One criterion is too weak
-    a test to justify a pass-1 merge. Refusing such pairs outright does not avoid a weak merge; it leaves
-    them to the blinder shared-edge rule.
+    a test to justify a merge on attributes, in either pass; the shared-edge fallback still lets a region below the
+    minimum join such a neighbour.
   evidence:
   - path: src/fmu/utils/region_merge.py
     what: >-
-      docstring lines 25-39; _Region (class starts at line 120); compare() (starts at line 250); null
-      below the floor lines 527-533
+      module docstring, the two properties (the floor in both passes, said so since round 13); _Region; compare();
+      null below the floor
   - path: src/fmu/config.py
     what: >-
-      min_defined_criteria lines 516-531; min_frac_valid lines 533-538; validator lines 580-589
+      min_defined_criteria and its comment (corrected in round 13); min_frac_valid; the validator
   - path: tests/test_region_merge.py
     what: >-
       test_merged_mean_is_weighted_by_valid_pixels_not_total, test_band_below_min_frac_valid_is_reported_as_null,
-      test_pair_with_one_defined_criterion_does_not_merge_in_pass1
+      test_pair_with_one_defined_criterion_does_not_merge_in_pass1,
+      test_a_pair_short_of_the_floor_merges_in_pass_2_by_the_fallback_only (round 13: the relaxed tier applies the
+      floor too)
   - path: tests/test_merge_config.py
     what: >-
       test_pass1_needs_at_least_two_defined_criteria, test_rejects_min_defined_criteria_above_criterion_count
   - path: odisha_script/PHASE1_STATUS.md
     what: >-
       lines 274-303 and 389-392: the floor 'must not be lowered'; what the two-criterion list changes
+  - path: docs/configs.md
+    what: min_defined_criteria (corrected in round 13)
+  - path: docs/reviews/2026-10-19-review.md
+    what: C13
   papers: []
   status: adopted
   design_notes_section: null
   source: >-
-    src/fmu/utils/region_merge.py module docstring (lines 25-39); src/fmu/config.py lines 516-538
+    src/fmu/utils/region_merge.py module docstring (lines 25-39); src/fmu/config.py lines 516-538; reworded from
+    review C13 (round 13 brief, Task 6)
 - id: spec-merge-runs-client-side-uncached
   title: >-
     The merge runs on the client as plain Python, is not cached, and orders ties by centroid

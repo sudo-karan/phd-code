@@ -44,11 +44,16 @@ a canopy height for territory that never measured one -- the merge would invent
 data. 14 of the 1249 superpixels in the committed baseline run have no
 `canopy_height` at all (ETH no-data), so this is not hypothetical.
 
-**A pair needs at least `min_defined_criteria` criteria defined on both sides.**
-One criterion is too weak a similarity test to justify a pass-1 merge. Pairs
-that fall short drop to pass 2, which is the right destination -- refusing to
-merge them at all does not avoid a weak merge, it just leaves them to the
-blinder shared-edge rule.
+**A pair needs at least `min_defined_criteria` criteria defined on both sides,
+in both passes.** One criterion is too weak a similarity test to justify a
+merge. `compare` applies this floor under pass 2's relaxed tolerances as well,
+so a pair that falls short never merges on its attributes: in pass 2 a region
+below `min_area_ha` whose neighbours all fall short of the floor, or fail the
+relaxed tolerances, joins one only by the shared-edge fallback, which ignores
+attributes; and two regions that are both at or above the minimum and fall
+short do not merge at all. Corrected 20 Oct 2026 (review C13): this said that
+such pairs "drop to pass 2, which is the right destination", as if pass 2
+could still match them on their attributes.
 
 Provenance -- what each stand is made of. It is recorded beside the merge and
 never read back by it: no merge decision depends on anything described here.
