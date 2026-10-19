@@ -39,3 +39,19 @@ RECOMMENDATION
   pooled elbow:        5
   -> median across district and pooled elbows: k = 6
   (the pipeline currently uses k = 6)
+
+  NOTE ADDED 20 Oct 2026 (round 13, review A7; the numbers above are as first written): the
+  preprocessing above is this script's own (--space script), not the clustering stage's, as the
+  script said. It keeps annual_rainfall and ndvi_residual_variance, which the stage leaves out;
+  it logs only non-negative bands, by log1p, where the stage logs every band with |skew| > 1, by
+  log(x - min + 0.001); it keeps bands with no spread, which the stage drops; and it fits all
+  1,068 polygons, where the stage fits one row per stand with a type (866 in these files). Nor
+  is it the geometry wekaKMeans fits in, which min-max normalises each band (review A2). In the
+  stage's space, by district (Angul, Dhenkanal, Kendujhar, Koraput) and pooled, rebuilt from the
+  same stand files: 5, 6, 7, 5 and 5 with (x - median)/IQR, and 6, 6, 5, 5 and 5 min-max, so
+  the rule above would give 5 in either (odisha_phase3_2_k_elbow_odisha_v120_handcrafted_stage.txt).
+  The rebuild takes sin and cos of the layers' mean angles, as this file does, where the stage
+  takes them per pixel (review C10). On the stage's own rows of the _repro stands, by district:
+  6, 5, 6, 5 as the stage scaled them, and 5, 6, 6, 5 min-max
+  (odisha_phase3_2_k_elbow_odisha_v120_handcrafted_stage_rows.txt). k stays 6, as
+  PHASE3_PREDECLARED.md fixed it, and no score changes. See odisha_phase3_2_k_elbow_comparison.md.

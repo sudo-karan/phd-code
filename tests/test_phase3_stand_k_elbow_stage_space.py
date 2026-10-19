@@ -284,6 +284,18 @@ def _run_copy(tmp_path: Path, *args: str) -> Path:
     return here
 
 
+def _as_the_script_wrote_it(committed: bytes) -> bytes:
+    """A committed elbow file without the dated note added at its end (round 13, review A7),
+    which the script does not write."""
+    return committed.split(b"\n\n  NOTE ADDED ", 1)[0].rstrip(b"\n") + b"\n"
+
+
+def test_a_dated_note_is_all_that_is_left_out():
+    text = b"  (the pipeline currently uses k = 6)\n"
+    assert _as_the_script_wrote_it(text) == text
+    assert _as_the_script_wrote_it(text + b"\n  NOTE ADDED 20 Oct 2026 (round 13, ...): x\n  y\n") == text
+
+
 @pytest.mark.slow
 @pytest.mark.parametrize("space,suffix", [("script", ""), ("stage", "_stage"), ("stage-rows", "_stage_rows")])
 @pytest.mark.parametrize("arm", ["odisha_v120_handcrafted", "odisha_v120_3ha"])
@@ -295,4 +307,4 @@ def test_the_committed_elbow_files_are_written_again_byte_for_byte(tmp_path, arm
     if space == "stage-rows" and not (REPO / "outputs" / "demo").exists():
         pytest.skip("the stage's own rows are off git, in outputs/demo")
     here = _run_copy(tmp_path, "--arm", arm, "--space", space)
-    assert (here / name).read_bytes() == committed.read_bytes()
+    assert (here / name).read_bytes() == _as_the_script_wrote_it(committed.read_bytes())

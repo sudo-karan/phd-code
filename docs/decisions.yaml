@@ -4058,18 +4058,49 @@ decisions:
     Choosing the number by agreement 'would manufacture the result'. The elbow rule is the one the supervisor
     named. For the 3 ha stands the elbow gives 5 in every district and pooled, so by the rule 6 was the
     wrong number. For the 10 ha stands, 6 was already in the Phase 2 configs; the elbow was run ten days
-    later (6, 6, 6 and 5 by district, 5 pooled) and 6 was kept.
+    later (6, 6, 6 and 5 by district, 5 pooled) and 6 was kept. Review A7 (19 Oct 2026; added here 20 Oct
+    2026, round 13) found that both elbows come from the elbow script's own preprocessing. That
+    preprocessing departs from the clustering stage's in five ways: it keeps annual_rainfall and
+    ndvi_residual_variance; it logs only non-negative bands, by log1p; it keeps bands with no spread; it
+    fits every polygon; and it takes sin and cos of mean angles. Neither elbow is in the geometry
+    wekaKMeans fits in (A2). Recomputed in the stage's space, with both geometries side by side and
+    neither named as the one of record, and rebuilt from the same stand files: the 3 ha elbows by
+    district are 6, 6, 6 and 5 (5 pooled) with (x - median)/IQR, and 5, 6, 6 and 6 (5 pooled)
+    min-max; the 10 ha ones are 5, 6, 7 and 5 and 6, 6, 5 and 5 (5 pooled in both). On the stage's
+    own rows of the _repro stands, by district: at 3 ha, 5, 6, 6 and 5 as the stage scaled them,
+    and 5, 6, 6 and 5 min-max; at 10 ha, 6, 5, 6 and 5, and 5, 6, 6 and 5. So "the elbow gives 5 in
+    every district" at 3 ha holds only in the script's own space. The rebuild from the stand files
+    is approximate: they hold mean angles (review C10), and on the _repro stands it gives the stage's
+    own elbow in 9 of 16 cases. The order of the rows alone moves 4 of the 60 elbows given in both
+    orders. k is unchanged, 5 and 6 as PHASE3_PREDECLARED.md declared them, and no score changes;
+    which geometry is of record waits on A2.
   evidence:
   - path: odisha_script/PHASE3_STATUS.md
-    what: lines 111-116, 171-190, 225-242 and 407-442
+    what: lines 111-116, 171-190, 225-242 and 407-442; the note of 20 Oct 2026 at the end
   - path: odisha_script/PHASE3_PREDECLARED.md
-    what: lines 18-26 and 34-39
+    what: lines 18-26 and 34-39; the note of 20 Oct 2026 at the end
   - path: odisha_script/odisha_phase3_2_stand_k_elbow.py
     what: 'docstring lines 1-20: the integrity rule'
   - path: odisha_script/odisha_phase3_2_k_elbow_odisha_v120_3ha.txt
-    what: elbow for the 3 ha stands
+    what: elbow for the 3 ha stands, in the script's own space (dated note of 20 Oct 2026 at the end)
   - path: odisha_script/odisha_phase3_2_k_elbow_odisha_v120_handcrafted.txt
-    what: elbow for the 10 ha stands
+    what: elbow for the 10 ha stands, in the script's own space (dated note of 20 Oct 2026 at the end)
+  - path: odisha_script/odisha_phase3_2_k_elbow_comparison.md
+    what: >-
+      The committed elbows beside the elbow in the clustering stage's space, both geometries, both routes,
+      and the limits of each (round 13, review A7)
+  - path: odisha_script/odisha_phase3_2_k_elbow_odisha_v120_3ha_stage.txt
+    what: elbow for the 3 ha stands in the stage's space, rebuilt from the stand files of record
+  - path: odisha_script/odisha_phase3_2_k_elbow_odisha_v120_handcrafted_stage.txt
+    what: elbow for the 10 ha stands in the stage's space, rebuilt from the stand files of record
+  - path: odisha_script/odisha_phase3_2_k_elbow_odisha_v120_3ha_stage_rows.txt
+    what: >-
+      elbow on the stage's own rows of the 3 ha _repro stands (off git, SHA-256 listed), and the rebuild's
+      rules checked on them
+  - path: odisha_script/odisha_phase3_2_k_elbow_odisha_v120_handcrafted_stage_rows.txt
+    what: the same for the 10 ha _repro stands
+  - path: docs/reviews/2026-10-19-review.md
+    what: A7
   - path: odisha_script/odisha_phase3_0_field_structure_types.py
     what: docstring lines 14-18
   - path: configs/odisha_v120_3ha_dhenkanal.yaml
