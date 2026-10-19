@@ -19,7 +19,10 @@ is about to run. It sets RUN_PASSES_SAFELY=1 for the script (`pass_env`), which 
 start without it (round 12), so the script is started only from here. It also:
 
   - never re-runs a config that has finished. The export stage submits its Drive exports
-    every time it runs, so re-running a finished config would duplicate them;
+    every time it runs, so re-running a finished config would duplicate them. A batch started
+    again under the same label reads <label>.state.json first, and skips, with a log line,
+    every config an earlier batch of the label finished or put under needs attention (round
+    13, review B4). To run one of those again, use another label;
   - does not retry a config whose EXPORT stage failed: Drive exports may already have been
     submitted, so a person should read the log first;
   - allows one batch at a time (a lock file holding a live pid);
@@ -27,7 +30,8 @@ start without it (round 12), so the script is started only from here. It also:
     started from a working tree that is being edited executes whatever half-finished code
     is on disk when each stage starts. Use a clean clone pinned to one commit;
   - writes the commit it ran from, and each pass's per-stage exit codes, to
-    <log-dir>/<label>.state.json beside the log.
+    <log-dir>/<label>.state.json beside the log, after the record of the label's earlier
+    batches. A pass cut short (Ctrl-C) still records the configs it finished.
 
 Run from anywhere; the run tree needs its own .env (the pipeline reads .env from the working
 directory). NEEDS LIVE EARTH ENGINE and submits tasks.
@@ -102,6 +106,28 @@ def main() -> int:
         if not (rt / c).exists():
             print(f"REFUSING: {c} does not exist in the run tree at {commit[:7]}")
             return 94
+    name_of = {c: Path(c).stem for c in args.configs}
+    # The earlier batches of this label (review B4): a config one of them finished, or put under
+    # needs attention, is not run again. Read before anything is written, so that a state file
+    # that cannot be read stops the batch here and is left as it is.
+    earlier: list[dict] = []
+    if state_path.exists():
+        last = json.loads(state_path.read_text())
+        earlier = [*last.pop("earlier_batches", []), last]
+    done_before: dict[str, str] = {}  # config -> the commit of the batch that finished it
+    attention_before: dict[str, str] = {}  # config -> why it needs attention
+    for b in earlier:
+        c7 = str((b.get("git") or {}).get("commit") or b.get("commit") or "")[:7]
+        done_before.update({n: c7 for n in b.get("done", [])})
+        attention_before.update(b.get("needs_attention", {}))
+    skipped: dict[str, str] = {}
+    for c in args.configs:
+        if name_of[c] in done_before:
+            skipped[c] = (f"an earlier batch of label {args.label} finished it "
+                          f"(commit {done_before[name_of[c]]})")
+        elif name_of[c] in attention_before:
+            skipped[c] = (f"an earlier batch of label {args.label} put it under needs attention "
+                          f"({attention_before[name_of[c]]})")
 
     os.chdir(rt)  # fmu reads .env from the working directory
     sys.path.insert(0, str(rt / "src"))  # the run tree's code, not an editable install elsewhere
@@ -136,11 +162,11 @@ def main() -> int:
                 last_said = time.time()
             time.sleep(POLL_S)
 
-    name_of = {c: Path(c).stem for c in args.configs}
-    remaining = list(args.configs)
+    remaining = [c for c in args.configs if c not in skipped]
     done: list[str] = []
     attention: dict[str, str] = {}
     history: list[dict] = []
+    running: list[int] = []  # the pass whose exit lines are not yet read, and its first log line
 
     def save() -> None:
         state_path.write_text(json.dumps({
@@ -151,45 +177,59 @@ def main() -> int:
             "needs_attention": {name_of[c]: why for c, why in attention.items()},
             "not_finished": [name_of[c] for c in remaining],
             "passes": history,
+            "skipped": {name_of[c]: why for c, why in skipped.items()},
+            "earlier_batches": earlier,
         }, indent=1))
+
+    def read_pass(p: int, rc: int | None, n0: int) -> None:
+        """The pass's exit lines, from line n0 of the log on: a config whose export stage exited 0
+        is done, one whose export stage failed needs attention."""
+        exits: dict[str, dict[str, int]] = {}
+        for line in log_path.read_text().splitlines()[n0:]:
+            m = STAGE_EXIT.match(line.strip())
+            if m:
+                exits.setdefault(m.group(1), {})[m.group(2)] = int(m.group(3))
+        history.append({"pass": p, "exit": rc, "stage_exits": exits})
+        for c in list(remaining):
+            st = exits.get(name_of[c], {})
+            if st.get("export") == 0:
+                done.append(c)
+                remaining.remove(c)
+            elif "export" in st:
+                attention[c] = f"export stage exited {st['export']} in pass {p}; not retried"
+                remaining.remove(c)
+        save()
 
     lock.write_text(str(os.getpid()))
     try:
         say(f"batch {args.label} started from commit {commit} (tracked files unmodified); "
             f"{len(args.configs)} config(s), up to {args.passes} pass(es)")
+        for c, why in skipped.items():
+            say(f"{name_of[c]}: skipped, {why}")
         env = pass_env(args.python, rt)
         for p in range(1, args.passes + 1):
+            if not remaining:
+                break
             names = [name_of[c] for c in remaining]
             wait_until_idle(names, f"before pass {p}")
             n0 = len(log_path.read_text().splitlines())
             say(f"pass {p}: {' '.join(names)}")
+            running[:] = [p, n0]
             rc = subprocess.run(
                 ["bash", "odisha_script/run_config_passes.sh", str(log_path), *remaining],
                 cwd=rt, env=env).returncode
-            exits: dict[str, dict[str, int]] = {}
-            for line in log_path.read_text().splitlines()[n0:]:
-                m = STAGE_EXIT.match(line.strip())
-                if m:
-                    exits.setdefault(m.group(1), {})[m.group(2)] = int(m.group(3))
-            history.append({"pass": p, "exit": rc, "stage_exits": exits})
-            for c in list(remaining):
-                st = exits.get(name_of[c], {})
-                if st.get("export") == 0:
-                    done.append(c)
-                    remaining.remove(c)
-                elif "export" in st:
-                    attention[c] = f"export stage exited {st['export']} in pass {p}; not retried"
-                    remaining.remove(c)
-            save()
+            running.clear()
+            read_pass(p, rc, n0)
             say(f"pass {p} exit={rc}; finished: {[name_of[c] for c in done]}; "
                 f"not finished: {[name_of[c] for c in remaining]}; "
                 f"needs attention: {[name_of[c] for c in attention]}")
-            if not remaining:
-                break
-        ok = not remaining and not attention
+        held_back = [c for c in skipped if name_of[c] not in done_before]
+        ok = not remaining and not attention and not held_back
         say(f"batch {args.label} ended: {'ALL CONFIGS COMPLETE' if ok else 'NOT ALL COMPLETE'}")
         return 0 if ok else 1
     finally:
+        if running:  # a pass cut short (Ctrl-C): the configs it finished are done all the same
+            read_pass(running[0], None, running[1])
         save()
         lock.unlink(missing_ok=True)
 

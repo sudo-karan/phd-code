@@ -363,10 +363,14 @@ python odisha_script/run_passes_safely.py --label <name> \
 The wrapper runs one pass at a time and, before each, waits until Earth Engine
 has no queued or running task whose description starts with the name of a
 config it is about to run. It calls the shell script with `MAX_PASSES=1` and
-`RUN_PASSES_SAFELY=1`. Within a batch it never re-runs a config that has
-finished (the export stage would submit its Drive exports again); a new batch
-does not know what an earlier one finished, so do not list a finished config in
-it. It does not retry a config whose export stage failed, allows one batch at a
+`RUN_PASSES_SAFELY=1`. It never re-runs a config that has finished (the export
+stage would submit its Drive exports again): a batch started again with the
+same `--label` reads `<label>.state.json` first and skips, with a log line,
+every config an earlier batch of that label finished or put under needs
+attention, so a batch cut short is resumed by giving the same command again
+(round 13). A batch under another label does not know what an earlier one
+finished, so do not list a finished config in it. It does not retry a config
+whose export stage failed, allows one batch at a
 time (a lock file in the log folder), and refuses a run tree with modified
 tracked files. Config paths are
 relative to the run tree, which needs its own `.env`. It writes
