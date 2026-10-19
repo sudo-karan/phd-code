@@ -28,7 +28,12 @@ It writes `synthetic_validation.csv` and `synthetic_validation.md` into
 `--out-dir` (default `docs/evaluation/`). The files hold results only: no run
 times, no dates. Timings go to the log (standard error). The run is
 deterministic: the same arguments give the same two files byte for byte,
-whatever `--jobs` and `--cache-dir` are.
+whatever `--jobs` and `--cache-dir` are. Beside them goes
+`synthetic_validation_run.json`, the run's record: the command, the date, the
+git block (`fmu.utils.provenance.git_state`, read before the run starts) and
+the Python environment (`environment_state`), as the pipeline's manifests and
+the Odisha scripts' run records have. Before round 13 it wrote no record of its
+own (review C37).
 """
 
 from __future__ import annotations
@@ -1616,7 +1621,31 @@ def write_outputs(results: dict[str, Any], out_dir: Path, command: str) -> tuple
     return csv_path, md_path
 
 
+def write_run_record(out_dir: Path, result_files: Sequence[Path], argv: Sequence[str],
+                     git: dict[str, Any]) -> Path:
+    """`synthetic_validation_run.json` beside the results: what made them (review C37)."""
+    import datetime
+    import shlex
+
+    from fmu.utils.provenance import environment_state
+
+    path = out_dir / "synthetic_validation_run.json"
+    command = ["scripts/evaluation_synthetic_validation.py", *argv]
+    path.write_text(json.dumps({
+        "result_files": [p.name for p in result_files],
+        "command_line": "python " + " ".join(shlex.quote(a) for a in command),
+        "date": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
+        "git": git,
+        "environment": environment_state(),
+    }, indent=1) + "\n")
+    return path
+
+
 def main(argv: Sequence[str] | None = None) -> int:
+    from fmu.utils.provenance import git_state
+
+    # Which code ran: read before the run, which takes long enough for the tree to change.
+    started = {k: v for k, v in git_state().items() if k != "root"}
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--quick", action="store_true", help="a small run, to check the script")
     parser.add_argument(
@@ -1642,7 +1671,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         design, seed=args.seed, jobs=args.jobs, cache_dir=args.cache_dir, log=sys.stderr
     )
     csv_path, md_path = write_outputs(results, args.out_dir, command)
-    print(f"wrote {csv_path} and {md_path}", file=sys.stderr)
+    record = write_run_record(args.out_dir, (csv_path, md_path),
+                              list(sys.argv[1:] if argv is None else argv), started)
+    print(f"wrote {csv_path} and {md_path}, and their run record {record}", file=sys.stderr)
     return 0
 
 

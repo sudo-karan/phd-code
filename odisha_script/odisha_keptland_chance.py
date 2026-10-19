@@ -827,13 +827,16 @@ def write_run_record(out_dir: Path, stem: str, argv: list[str]) -> None:
     import shlex
 
     sys.path.insert(0, str(REPO / "src"))
-    from fmu.utils.provenance import git_state
+    from fmu.utils.provenance import environment_state, git_state
 
     rec = {"result_files": [f"{stem}.txt", f"{stem}.json"],
            "command_line": "python " + " ".join(shlex.quote(a) for a in
                                                 ["odisha_script/odisha_keptland_chance.py", *argv]),
            "date": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
-           "git": {k: v for k, v in git_state(HERE).items() if k != "root"}}
+           "git": {k: v for k, v in git_state(HERE).items() if k != "root"},
+           # The Python environment, as the pipeline's manifests record it (review C37): the null
+           # draws from a seeded numpy Generator and places plots with shapely.
+           "environment": environment_state()}
     (out_dir / f"{stem}_run.json").write_text(json.dumps(rec, indent=1) + "\n")
 
 

@@ -309,13 +309,15 @@ def write_run_record(out_dir: Path, argv: list[str], stem: str = STEM) -> None:
     import shlex
 
     sys.path.insert(0, str(REPO / "src"))
-    from fmu.utils.provenance import git_state
+    from fmu.utils.provenance import environment_state, git_state
 
     run = {"result_files": [f"{stem}_joined.csv", f"{stem}_scores.json", f"{stem}_scores.txt"],
            "command_line": "python " + " ".join(shlex.quote(a) for a in
                                                 ["odisha_script/odisha_keptland_score.py", *argv]),
            "date": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
-           "git": {k: v for k, v in git_state(HERE).items() if k != "root"}}
+           "git": {k: v for k, v in git_state(HERE).items() if k != "root"},
+           # The Python environment, as the pipeline's manifests record it (review C37).
+           "environment": environment_state()}
     (out_dir / f"{stem}_scores_run.json").write_text(json.dumps(run, indent=1) + "\n")
 
 

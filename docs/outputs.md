@@ -1215,7 +1215,10 @@ Written to `--out-dir`. The script has not been run on any real site; see
   arguments, library versions, and the sha256 of the results file.
 
 `scripts/evaluation_synthetic_validation.py` writes
-`docs/evaluation/synthetic_validation.md` and `.csv` (committed).
+`docs/evaluation/synthetic_validation.md` and `.csv` (committed), and since round 13
+`synthetic_validation_run.json` beside them: the command, the date, the `git` block (read
+before the run) and the `environment` block, as a run record (review C37). The committed
+`.md` and `.csv` were written before that, so no run record of theirs is committed.
 
 ## Run times go to logs
 
