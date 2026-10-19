@@ -13,8 +13,11 @@ There are **170 committed result files** under `odisha_script/`.
   demonstrated for each, with one part left open: why the one Phase 1 figure, identical in
   every pixel, is stored in a different number of bytes.
   - 6 text files differ only in lines that record run times: the Phase 2 pilot and full-set
-    statistics and the four Phase 3 chance-test files. Every statistic in them is identical. (The four
-    chance-test files have since been regenerated without their run times; see Problem 5.)
+    statistics and the four Phase 3 chance-test files. Every statistic in them is identical. (All
+    six have since been regenerated without their run times: the four chance-test files in
+    `a4a29b9` and the two Phase 2 statistics files in `2cfac8f`, both on 13 Oct 2026; see
+    Problem 5. The two Phase 2 files then came back byte for byte from a clean clone at
+    `c368eb7` in round 13, on 19 and 20 Oct 2026; see their rows.)
   - 1 Phase 1 text file was never regenerated after its script was changed to print a warning.
     No number differs.
   - 1 Phase 2 text file (the mask retention results) differs in the wording of its last line
@@ -47,6 +50,28 @@ facts" below.
 figures, the fact sheet, the four figure scripts, their style file and the deck builder.
 "Figures and deck facts" says what was deleted, why, and how to find the commit. The counts
 and tables in this report are those of the check and still include the deleted files.
+
+## What the inventory covers
+
+Added 19 Oct 2026 (round 13, review C25). The tables have one row for each result file under
+`odisha_script/` at commit `a477ab1` (13 Oct 2026). Rows were updated afterwards only where one
+of those files was replaced or given a dated note. Result files committed under `odisha_script/`
+after `a477ab1` have **no row and were not checked by this report**. At `c368eb7` (19 Oct 2026)
+there are 46 (`git diff --name-only --diff-filter=A a477ab1 c368eb7 -- odisha_script`, less the
+scripts, the write-ups and the READMEs):
+
+- Phase 1 step 12: `odisha_script/odisha_plots_sampled_s1desc.csv`,
+  `odisha_script/odisha_phase1_12_radar_descending_results.txt` and
+  `odisha_script/odisha_phase1_12_radar_descending_run.json`, written by
+  `odisha_phase1_12_radar_descending.py` (the sample needs Earth Engine).
+- `odisha_script/odisha_squares_0_results.txt`, written by `odisha_squares_0_aois.py`.
+- 42 files in `odisha_script/keptland_scores/`, written by `odisha_keptland_score.py`,
+  `odisha_keptland_chance.py`, `odisha_keptland_compare.py` and
+  `odisha_keptland_chance_compare.py`:
+  `keptland_alphaearth_10ha_r9_beside_3ha_r9.md`, `keptland_alphaearth_10ha_r9_chance.json`, `keptland_alphaearth_10ha_r9_chance.txt`, `keptland_alphaearth_10ha_r9_chance_beside_3ha_r9.md`, `keptland_alphaearth_10ha_r9_chance_run.json`, `keptland_alphaearth_10ha_r9_joined.csv`, `keptland_alphaearth_10ha_r9_scores.json`, `keptland_alphaearth_10ha_r9_scores.txt`, `keptland_alphaearth_10ha_r9_scores_run.json`, `keptland_alphaearth_r9_beside_s1desc_r9.md`, `keptland_alphaearth_r9_chance.json`, `keptland_alphaearth_r9_chance.txt`, `keptland_alphaearth_r9_chance_run.json`, `keptland_alphaearth_r9_joined.csv`, `keptland_alphaearth_r9_scores.json`, `keptland_alphaearth_r9_scores.txt`, `keptland_alphaearth_r9_scores_run.json`, `keptland_chance_r9_both_arms.md`, `keptland_s1desc_10ha_r9_beside_3ha_r9.md`, `keptland_s1desc_10ha_r9_chance.json`, `keptland_s1desc_10ha_r9_chance.txt`, `keptland_s1desc_10ha_r9_chance_beside_3ha_r9.md`, `keptland_s1desc_10ha_r9_chance_run.json`, `keptland_s1desc_10ha_r9_joined.csv`, `keptland_s1desc_10ha_r9_scores.json`, `keptland_s1desc_10ha_r9_scores.txt`, `keptland_s1desc_10ha_r9_scores_run.json`, `keptland_s1desc_chance_rehearsal.json`, `keptland_s1desc_chance_rehearsal.txt`, `keptland_s1desc_chance_rehearsal_run.json`, `keptland_s1desc_joined.csv`, `keptland_s1desc_r9_chance.json`, `keptland_s1desc_r9_chance.txt`, `keptland_s1desc_r9_chance_run.json`, `keptland_s1desc_r9_joined.csv`, `keptland_s1desc_r9_scores.json`, `keptland_s1desc_r9_scores.txt`, `keptland_s1desc_r9_scores_run.json`, `keptland_s1desc_r9_vs_s1desc.md`, `keptland_s1desc_scores.json`, `keptland_s1desc_scores.txt`, `keptland_s1desc_scores_run.json`.
+
+Records committed outside `odisha_script/` (for example under `docs/reproducibility/`) are not
+part of this inventory.
 
 ## How the check was done
 
@@ -169,12 +194,12 @@ Commands are run from the repo root.
 | `odisha_phase2_3_results_districts.txt` | `python odisha_script/odisha_phase2_3_join.py --set districts` | **reproduced exactly** | Since 20 Oct 2026 (round 13) the committed file also holds a dated note at its end on the stand areas (review A6), which the script does not write. |
 | `phase2_plots_joined_districts.csv` | `python odisha_script/odisha_phase2_3_join.py --set districts` | **reproduced exactly** |  |
 | `odisha_phase2_4_results.txt` | `python odisha_script/odisha_phase2_4_noise_null.py --size-check 3` | **not run** | Needs Earth Engine, which this check was not allowed to touch. |
-| `odisha_phase2_5_results.txt` | `python odisha_script/odisha_phase2_5_stats.py --set pilot` | **differs** | Every statistic identical. 10 lines differ and all 10 are run times: the nine `rotation null: 1999 realisations ...; N s; ...` lines (one per stand layer) and the last line, `total runtime N s`. With the seconds masked the two files are the same. Since 20 Oct 2026 (round 13) the committed file also holds a dated note at its end on the stand areas (review A6), which the script does not write. |
+| `odisha_phase2_5_results.txt` | `python odisha_script/odisha_phase2_5_stats.py --set pilot` | **differs** | Every statistic identical. 10 lines differ and all 10 are run times: the nine `rotation null: 1999 realisations ...; N s; ...` lines (one per stand layer) and the last line, `total runtime N s`. With the seconds masked the two files are the same. **Replaced on 13 Oct 2026 (commit `2cfac8f`)** by the output of the script as changed in `f956fac`, which writes its run times to a `.log` that is not committed: the nine `rotation null:` lines lost their seconds and the closing blank line and `total runtime` line are gone; no other line changed. Run again on 19 Oct 2026 (round 13, review C25) in a clean clone at `c368eb7`, with `--jobs 4`, writing into that clone: the results file, the summary CSV and the three figures came back byte for byte. Since 20 Oct 2026 (round 13) the committed file also holds a dated note at its end on the stand areas (review A6), which the script does not write. |
 | `odisha_phase2_5_summary.csv` | `python odisha_script/odisha_phase2_5_stats.py --set pilot` | **reproduced exactly** |  |
 | `odisha_phase2_5_primary_r2_null.png` | `python odisha_script/odisha_phase2_5_stats.py --set pilot` | **reproduced exactly** |  |
 | `odisha_phase2_5_arms_excess.png` | `python odisha_script/odisha_phase2_5_stats.py --set pilot` | **reproduced exactly** |  |
 | `odisha_phase2_5_pairwise_bands.png` | `python odisha_script/odisha_phase2_5_stats.py --set pilot` | **reproduced exactly** |  |
-| `odisha_phase2_5_results_districts.txt` | `python odisha_script/odisha_phase2_5_stats.py --set districts --jobs 4` | **differs** | Run-time fields only: the nine `rotation null:` lines carry the seconds each null took and the last line the total. With the seconds masked the file is the same as the committed one, so every statistic is identical. Run here with `--jobs 3`; the partitions are seeded by name, so the number of workers does not change a result. Since 20 Oct 2026 (round 13) the committed file also holds a dated note at its end on the stand areas (review A6), which the script does not write. |
+| `odisha_phase2_5_results_districts.txt` | `python odisha_script/odisha_phase2_5_stats.py --set districts --jobs 4` | **differs** | Run-time fields only: the nine `rotation null:` lines carry the seconds each null took and the last line the total. With the seconds masked the file is the same as the committed one, so every statistic is identical. Run here with `--jobs 3`; the partitions are seeded by name, so the number of workers does not change a result. **Replaced on 13 Oct 2026 (commit `2cfac8f`)** by the output of the script as changed in `f956fac`, which writes its run times to a `.log` that is not committed: the nine `rotation null:` lines lost their seconds and the closing blank line and `total runtime` line are gone; no other line changed. Run again on 19-20 Oct 2026 (round 13, review C25) in a clean clone at `c368eb7`, with `--jobs 4`, writing into that clone: the results file, the summary CSV and the three figures came back byte for byte. Since 20 Oct 2026 (round 13) the committed file also holds a dated note at its end on the stand areas (review A6), which the script does not write. |
 | `odisha_phase2_5_summary_districts.csv` | `python odisha_script/odisha_phase2_5_stats.py --set districts --jobs 4` | **reproduced exactly** | Same run as the row above (`--jobs 3`). |
 | `odisha_phase2_5_primary_r2_null_districts.png` | `python odisha_script/odisha_phase2_5_stats.py --set districts --jobs 4` | **reproduced exactly** | Same run as the row above (`--jobs 3`). |
 | `odisha_phase2_5_arms_excess_districts.png` | `python odisha_script/odisha_phase2_5_stats.py --set districts --jobs 4` | **reproduced exactly** | Same run as the row above (`--jobs 3`). |
@@ -208,7 +233,7 @@ Commands are run from the repo root, as in `PHASE3_STATUS.md`, "Reproducing".
 | `odisha_phase3_3_results_excl0.txt` | `python odisha_script/odisha_phase3_3_significance.py --exclude-types 0` | **differs** | Every statistic identical. Two lines differ and both are run times, as in the primary file. |
 | `odisha_phase3_3_results_ft-k4.txt` | `python odisha_script/odisha_phase3_3_significance.py --field-types odisha_script/odisha_phase3_0_field_types_k4.csv` | **differs** | Every statistic identical. Two lines differ and both are run times, as in the primary file. |
 | `odisha_phase3_3_results_ft-allrows.txt` | `python odisha_script/odisha_phase3_3_significance.py --field-types odisha_script/odisha_phase3_0_field_types_allrows.csv` | **differs** | Every statistic identical. Two lines differ and both are run times, as in the primary file. |
-| `odisha_phase3_stands_unchanged.txt` | `python odisha_script/check_stands_unchanged.py --ref cff45d9 --expect-new-run  (the script prints; the file is that print saved by hand)` | **differs** | Every comparison line is identical. Five lines differ because the committed file was saved from a run with `--ref main` (they name the reference and the folder), and the committed file ends with a blank line and a hand-added line that carries a date and time (quoted under Problems). `main` has moved since, so `--ref cff45d9` is the command that still means the same thing. **Replaced on 14 Oct 2026 (commit `37aed39`)** by the output of the command in this row, with `--ref cff45d9`; the hand-added dated line is gone. |
+| `odisha_phase3_stands_unchanged.txt` | `python odisha_script/check_stands_unchanged.py --ref cff45d9 --expect-new-run  (the script prints; the file is that print saved by hand)` | **differs** | Every comparison line is identical. Five lines differ because the committed file was saved from a run with `--ref main` (they name the reference and the folder), and the committed file ends with a blank line and a hand-added line that carries a date and time (quoted under Problems). `main` has moved since, so `--ref cff45d9` is the command that still means the same thing. **Replaced on 14 Oct 2026 (commit `37aed39`)** by the output of the command in this row, with `--ref cff45d9`; the hand-added dated line is gone. Run again on 19 Oct 2026 (round 13, review C25) in a clean clone at `c368eb7`: identical to the committed file except line 1, which names the clone's folder. |
 | `phase3_3ha/phase2_plots_joined_districts.csv` | `python odisha_script/odisha_phase2_3_join.py --set districts --arms v120_3ha --out-dir odisha_script/phase3_3ha/` | **reproduced exactly** | Run three times tonight in three clean clones; the same each time. |
 | `phase3_3ha/odisha_phase2_3_results_districts.txt` | `python odisha_script/odisha_phase2_3_join.py --set districts --arms v120_3ha --out-dir odisha_script/phase3_3ha/` | **reproduced exactly** | Run three times tonight in three clean clones; the same each time. Since 20 Oct 2026 (round 13) the committed file also holds a dated note at its end on the stand areas (review A6), which the script does not write. |
 | `phase3_before_regroup/odisha_phase3_3_results.txt` | `python odisha_script/odisha_phase3_3_significance.py  (on PR #40's 3 hectare stand files, which f4ca143 replaced)` | **not run** | A record of runs made on stand files that are no longer in the tree (see its README). Not a current result, so it was not re-run. It carries two run-time lines, like the files it was copied from. |
@@ -955,7 +980,7 @@ Each with its evidence and what should happen next.
 4. **`odisha_phase1_tests456_results.txt` is older than its script.** Evidence: the Phase 1
    row. The committed file lacks the warning that the GEDI row is withdrawn, which the script
    has printed since `36a0c73`. Next: commit the regenerated file, in its own commit, saying
-   that no number changed.
+   that no number changed. DONE on 14 Oct 2026 (commit `354b6b9`; see the Phase 1 row).
 5. **Run times in result files.** `CLAUDE.md` says result files hold results only.
    - `odisha_phase3_3_results*.txt` (4 files): two run-time lines each. The script has been changed (commit `20727c1`) so that these two lines no longer carry seconds; the timings go to a `.log` beside the results file (git-ignored). Confirmed for all four files: re-run with the edited script in a clean clone, the diff against each committed file is exactly those two lines (`2 2` in `git diff --numstat`), with every statistic identical; for example `[10 ha] rotation nulls: unconditional 1999 in 235 s, failures 0; ...` becomes `[10 ha] rotation nulls: unconditional 1999, failures 0; ...`. The four regenerated files are committed in `a4a29b9`; they are byte for byte the files that run wrote. Done.
    - `odisha_phase2_5_results.txt` and `odisha_phase2_5_results_districts.txt`: FIXED. The script
@@ -963,6 +988,7 @@ Each with its evidence and what should happen next.
      full set). In each file the only lines that changed are the nine `rotation null:` lines,
      which lose their seconds, and the closing blank line and `total runtime N s` line, which
      are gone. Every statistic is identical; the summary CSVs and figures are byte-identical.
+     (Commit `2cfac8f`; both regenerate byte for byte at `c368eb7`, round 13: see their rows.)
    - `odisha_script/gate_effect_results.txt`: five lines such as
      `segmentation for gate_effect_arm_a took 94.8s`, written by `scripts/gate_effect.py`.
      That script needs Earth Engine, so the fix cannot be confirmed by a re-run tonight.
@@ -971,9 +997,10 @@ Each with its evidence and what should happen next.
    - `odisha_script/phase3_before_regroup/*.txt` (4 files): two run-time lines each. They are a
      record and were not edited (see Questions).
 6. **Dates in result files that are not data.**
-   - `odisha_phase3_stands_unchanged.txt` ends with a hand-added line
-     "(written 2026-10-08 15:40 by: ...)". Its first line also holds a folder path on the
-     machine it was run on.
+   - `odisha_phase3_stands_unchanged.txt` ended with a hand-added line
+     "(written 2026-10-08 15:40 by: ...)". That line is gone since 14 Oct 2026 (commit
+     `37aed39`, Problem 7); the file now ends with the script's `RESULT:` line. Its first line
+     still holds a folder path on the machine it was run on.
    - The 19 `phase2_vectors/*_run.json` run records hold `run_dir`, a folder name with the run's
      date and time in it (for example `runs/odisha_v120_3ha_angul_20261008_144007`). A re-run
      will always change that line.
@@ -984,6 +1011,7 @@ Each with its evidence and what should happen next.
 7. **`odisha_phase3_stands_unchanged.txt` cannot be reproduced by the command written in it.**
    It records `--ref main`; `main` has moved. Evidence: the Phase 3 row. Next: regenerate with
    `--ref cff45d9`, the command `PHASE3_STATUS.md` already gives, and drop the dated line.
+   DONE on 14 Oct 2026 (commit `37aed39`; see the Phase 3 row).
 8. **`PHASE1_STATUS.md`, "Reproducing", covers only steps 7 to 11.** Steps 0 to 6 write eight
    of the committed files and had no listed command. FIXED (the decision on question 10 of
    PR #42): the section now lists the commands for steps 0 to 6, what each reads and writes,
@@ -1000,7 +1028,7 @@ Each with its evidence and what should happen next.
 
 Every offline job has finished and is in the tables above. Not started, and needed before the report is complete:
 
-1. Decide how to stop a config's superpixels depending on whether its features were cached when it segmented ("Earth Engine re-runs", section 4): write the cache on the UTM grid, or make segmentation always read the cache. Either moves stands, so the configs it touches are then re-run. Re-run the chance tests on re-run stands if the stand-level differences are to be carried into Phase 3.
+1. Decide how to stop a config's superpixels depending on whether its features were cached when it segmented ("Earth Engine re-runs", section 4): write the cache on the UTM grid, or make segmentation always read the cache. Either moves stands, so the configs it touches are then re-run. Re-run the chance tests on re-run stands if the stand-level differences are to be carried into Phase 3. The decision is DONE (round 9, 17 Oct 2026; section 4, "Decided and done in round 9"): the cache is written on the analysis grid for every config run from then on. As section 4 says, the configs run before keep their assets and the old layout; this report does not record them as re-run, nor the chance tests re-run on re-run stands.
 2. Nothing left to do: the figure scripts, `phase3_figstyle.py`, the eleven figures and `deck_facts.md` were deleted, not fixed (Problems 1 to 3).
 3. Move run times out of `scripts/gate_effect.py` and regenerate `gate_effect_results.txt` at the next Earth Engine run (Problem 5).
-4. Regenerate `odisha_phase1_tests456_results.txt` and `odisha_phase3_stands_unchanged.txt` in their own commits (Problems 4 and 7).
+4. Regenerate `odisha_phase1_tests456_results.txt` and `odisha_phase3_stands_unchanged.txt` in their own commits (Problems 4 and 7). DONE on 14 Oct 2026: commits `354b6b9` and `37aed39`.

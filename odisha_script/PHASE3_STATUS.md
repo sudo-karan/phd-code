@@ -704,7 +704,7 @@ Re-joining the plots after a new run:
 | `phase3_3ha/` | The 3 hectare stands joined to the plots |
 | `phase3_before_regroup/` | Chance tests run on 2026-10-07 on PR #40's stand files (6 stand types at 3 hectares). Not results; see its README |
 | `phase2_vectors/odisha_v120_3ha_*` | The 3 hectare stand files, now with 5 stand types |
-| `odisha_phase3_stands_unchanged.txt`, `check_stands_unchanged.py` | The outline by outline comparison of the stand files before and after the regroup (the script's printed output, saved from a run with `--ref main` before this branch was merged), and the script |
+| `odisha_phase3_stands_unchanged.txt`, `check_stands_unchanged.py` | The outline by outline comparison of the stand files before and after the regroup (the script's printed output of `--ref cff45d9 --expect-new-run`, saved as printed: commit `37aed39`, 14 Oct 2026; the first copy, committed in `f4ca143`, was saved from a run with `--ref main` before this branch was merged and ended with a hand-added dated line), and the script |
 | `copy_upstream_cache.py`, `run_config_passes.sh` | The two helpers for Earth Engine runs |
 
 ---
