@@ -26,8 +26,10 @@ odisha_phase3_3_significance (multi_ari, pair_precision, lab_wmean); the observe
 match the committed keptland_s1desc_scores.json to 1e-12 or the script stops.
 
 WHERE THE DECLARATION IS SILENT, the village-outline test's rule (odisha_phase3_3_significance.py,
-odisha_phase2_5_stats.rotation_null) is used, and each point is listed under "Questions" in
-docs/handoff/2026-10-17-round9-chat.md:
+odisha_phase2_5_stats.rotation_null) is used. Each point but Q3 and Q5 is asked under "Questions" in
+docs/handoff/2026-10-17-round9-chat.md, under its own numbers: Q1 is its question 1, Q2 its 4, Q4
+its 5, Q6 its 6, Q7 its 2 and Q8 its 7 (review C7, 20 Oct 2026: this said each point is listed
+there, and the report cited "Q1-Q6" in both places):
   Q1  which plots are scored in a realisation: the plots the observed join scores (264), each left
       out of a realisation in which it has no stand within 30 m. The 3 plots with no stand within
       30 m at their real position move with their box's cloud but are never scored, as plots
@@ -706,8 +708,9 @@ def report(res: dict[str, Any], plots: pd.DataFrame, how0: np.ndarray) -> None:
         say("Chance test of the Odisha kept-land field check (PHASE_KEPTLAND_PREDECLARED.md)")
         say("=" * w)
         say(f"  Runs: {', '.join(res['runs'])}.")
-    say("  Where the declaration is silent the village-outline test's rule is used (Q1-Q6 in the script's")
-    say("  docstring and in docs/handoff/2026-10-17-round9-chat.md).")
+    say("  Where the declaration is silent the village-outline test's rule is used (Q1-Q8 in the script's")
+    say("  docstring). docs/handoff/2026-10-17-round9-chat.md asks them under its own numbers: Q1 is its")
+    say("  question 1, Q2 its 4, Q4 its 5, Q6 its 6, Q7 its 2 and Q8 its 7; Q3 and Q5 are not asked there.")
     say("")
     say("  HOW TO READ IT. Chance is positive in this design (plots and stands both cluster by village), so each")
     say("  score is read against a rotation null: each box's plot cloud moved rigidly to a random position and")
