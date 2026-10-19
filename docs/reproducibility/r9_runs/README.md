@@ -132,3 +132,11 @@ rate is above the fixed one by at most `pass1_pairs_blocked_by_undefined_criteri
 `pass1_pairs_blocked_by_area_round1` over `n_pairs_with_any_defined_criterion`, all from the same
 record: 0, the same rate, in 21 of the 33 records here, and at most 0.16 points in the others
 (Sanjay Van baseline, 3 of 1,890 pairs).
+
+**Note of 20 Oct 2026 (round 13, review C36): `snic_distance_scale` is null in all eleven run
+records here.** The record is written by the export pass, which reads the superpixels from the
+cache, so the segmentation stage's metadata there holds no scale. The scale each run's superpixels
+were drawn with is in `<run>_manifest_segmentation.json` beside its record (the segmentation
+stage's `metadata.distance_scale`), and it is there for all eleven. Since round 13 the runner reads
+it from that pass's manifest, and `snic_distance_scale_from` says where. The records are kept as
+written; no number changed.

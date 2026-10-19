@@ -54,3 +54,13 @@ counts shared edges only, so a stand that meets another stand only at a corner i
 In these two Kendujhar runs none does: 0 of the 143 stands filed `isolated` that have a polygon in
 each layer (145 in each run record). Since round 13 the merge stage writes "isolated: it shares
 no edge with another stand (no 4-connected neighbour; it may meet one at a corner)".
+
+**Note of 20 Oct 2026 (round 13, review C36): the scale comparison compared two nulls.**
+`snic_distance_scale` is null in both run records here: the record is written by the export pass,
+which reads the superpixels from the cache, so the segmentation stage's metadata there holds no
+scale. So `cache_test_layers_r9_vs_r9_check.json`'s `"snic_distance_scale": [null, null]` compared
+nothing. The two runs' segmentation manifests (`<run>_manifest_segmentation.json`, the
+segmentation stage's `metadata.distance_scale`) give 1.23244545317568 for run 1 (`_r9`) and
+1.2324454531756805 for run 2 (`_r9_check`): they differ by 4.4e-16, two units in the last place
+of a double. Since round 13 the runner reads the scale from that pass's manifest. The records and
+the comparison are kept as written; no number changed.

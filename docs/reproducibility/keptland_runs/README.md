@@ -91,3 +91,11 @@ stage's. Checked against the export stage's manifest beside each record
 the export stage never makes: its manifest has none there, and a record the runner writes holds
 null. Since round 13 the tool writes the export stage's counts under `export_vector_layers` and
 its own under `read_back.layer_counts`. The two records are kept as written; no number changed.
+
+**Note of 20 Oct 2026 (round 13, review C36): `snic_distance_scale` is null in all ten run records
+here.** The record is written by the export pass (or the read-back tool), which reads the
+superpixels from the cache, so the segmentation stage's metadata there holds no scale. The scale
+each run's superpixels were drawn with is in `<run>_manifest_segmentation.json` beside its record
+(the segmentation stage's `metadata.distance_scale`), and it is there for all ten. Since round 13
+the runner and the read-back tool read it from that pass's manifest, and `snic_distance_scale_from`
+says where. The records are kept as written; no number changed.

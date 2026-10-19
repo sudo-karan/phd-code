@@ -75,3 +75,11 @@ Counted from the merged layers here: 7 of the 1,283 stands filed `isolated` that
 No result changes: no step of the pipeline reads `below_why` (the fit leaves out stands by
 `below_min`, whatever the cause). Since round 13 the merge stage writes "isolated: it shares no
 edge with another stand (no 4-connected neighbour; it may meet one at a corner)".
+
+**Note of 20 Oct 2026 (round 13, review C36): `snic_distance_scale` is null in all eight run
+records here.** The record is written by the export pass, which reads the superpixels from the
+cache, so the segmentation stage's metadata there holds no scale. The scale each run's superpixels
+were drawn with is in `<run>_manifest_segmentation.json` beside its record (the segmentation
+stage's `metadata.distance_scale`), and it is there for all eight. Since round 13 the runner reads
+it from that pass's manifest, and `snic_distance_scale_from` says where. The records are kept as
+written; no number changed.
