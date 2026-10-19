@@ -14,3 +14,22 @@ the plots", which `odisha_keptland_chance.py` does not write: a re-run writes ea
 The note says why three boxes (BHANRADI SAHI, KHASUGUDA, BARAKANTI) have the largest moves: each is
 stretched by one plot that lies 3.9 to 9.3 km from the rest of its habitation (measured in the docstring
 of `odisha_script/odisha_squares_0_aois.py`). No number in the five files changed.
+
+**Note of 20 Oct 2026 (round 13, review C27): the rehearsal's files.**
+`keptland_s1desc_chance_rehearsal.{txt,json}` (the chance test on round 7's pre-fix stands,
+committed in `647a133`) are kept as committed; the brief of round 13 forbids overwriting a
+committed result. Two facts about them:
+- **The `.json` differs from a regeneration in 23 descriptive values.** Regenerated on 20 Oct 2026
+  (`python odisha_script/odisha_keptland_chance.py --out-dir <scratch folder>`, 1,999 rotations,
+  offline), the `.txt` is byte-identical to the committed one (before its round 13 note), and in the
+  `.json` 23 values differ, all of them `median_m` or `p90_m` under `null_moves_plots/by_box`, by at
+  most 8.5e-13 relative (`dhenkanal:Balikurma`'s median, 453.0367430899039 committed against
+  453.0367430895191). Every score, null, percentile, p, Holm p and check C1 is identical. The
+  regenerated `null_moves_plots` equal those of the declared `keptland_s1desc_r9_chance.json`
+  exactly, as the script's Q6 says they should (the same placements); the committed rehearsal's do
+  not, by these last-digit differences. The review of 19 Oct 2026 found the same at `5caae3f`.
+- **Its run record's `"dirty": true` does not show an edited source tree.** The record
+  (`keptland_s1desc_chance_rehearsal_run.json`, commit `42896a8`) lists as modified only the run's
+  own two output files: the script reads the git state after writing its results (review C32), so
+  rewriting a tracked result marks the tree dirty. The commit that holds them (`647a133`) says the
+  run was made at `42896a8` on a clean tree.
