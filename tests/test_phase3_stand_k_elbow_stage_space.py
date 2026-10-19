@@ -172,6 +172,17 @@ def test_skewness_estimators():
     assert E.skewness(np.full(5, 463409.50001051987)) == 0.0
 
 
+def test_elbow_of_is_the_knee_of_the_sweep():
+    """elbow_of, which the two new spaces use for the rows in reverse order, is the knee of the
+    sweep's own inertia curve; on well-separated groups the order of the rows does not matter."""
+    rng = np.random.default_rng(3)
+    centres = np.array([[0.0, 0.0], [10.0, 0.0], [0.0, 10.0], [10.0, 10.0]])
+    rows = np.vstack([c + rng.normal(0, 0.3, size=(30, 2)) for c in centres])
+    sweep = E.sweep_numbers(rows)
+    assert E.elbow_of(rows) == sweep["elbow"] == E.knee(sweep["table"].k.tolist(), sweep["table"].inertia.tolist())
+    assert E.elbow_of(rows[::-1]) == E.elbow_of(rows) == 4
+
+
 def test_the_log_by_either_skewness_estimator():
     layer = _layer()
     stands, bands = E.stage_stands(layer), E.stage_bands(layer.columns)

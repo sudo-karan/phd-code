@@ -34,7 +34,8 @@ files, odisha_phase3_2_k_elbow_<arm>.txt, are its output.
 (stage_stands, stage_space) and gives the elbow in two geometries side by side,
 naming neither as the one of record: (i) the declared one, the stage's
 preprocessing then (x - median)/IQR (DEC-003); (ii) the one wekaKMeans fits
-in, each band min-max normalised over the fit rows (review A2). It writes
+in, each band min-max normalised over the fit rows (review A2). Each elbow is
+also given with the same rows in reverse order (elbow_of). It writes
 odisha_phase3_2_k_elbow_<arm>_stage.txt. The layers hold arithmetic means of
 aspect and ndvi_phase_annual (review C10), while the stage takes sin and cos per
 pixel before the mean, so the last of the five departures above is one no
@@ -146,6 +147,14 @@ def sweep_numbers(x: np.ndarray) -> dict:
     return {"n": len(x), "elbow": ke,
             "sil": int(r.loc[r.sil.idxmax(), "k"]), "ch": int(r.loc[r.ch.idxmax(), "k"]),
             "db": int(r.loc[r.db.idxmin(), "k"]), "table": r}
+
+
+def elbow_of(x: np.ndarray) -> int:
+    """The knee of sweep_numbers' inertia curve alone. k-means' best of 25 starts, and so the
+    knee, can depend on the order of the rows; the two new spaces give each elbow again with
+    the same rows in reverse order (elbow_of(x[::-1]))."""
+    ks = [k for k in K_RANGE if k < len(x)]
+    return knee(ks, [KMeans(n_clusters=k, random_state=SEED, n_init=25).fit(x).inertia_ for k in ks])
 
 
 def sweep(X: np.ndarray, label: str, width: int = 14) -> dict:
@@ -385,13 +394,15 @@ def main_stage(arm: str) -> int:
     say("       rows, as wekaKMeans does (review A2)")
     say("-" * 100)
     results = {name: (sweep(s["declared"], f"{name} (i)", WIDE),
-                      sweep(s["fit_geometry"], f"{name} (ii)", WIDE))
+                      {"elbow": elbow_of(s["declared"][::-1])},
+                      sweep(s["fit_geometry"], f"{name} (ii)", WIDE),
+                      {"elbow": elbow_of(s["fit_geometry"][::-1])})
                for name, s in spaces.items()}
     say("")
     say("  pooled, by k:")
     say(f"  {'k':>3}  {'(i) inertia':>12}  {'(ii) inertia':>12}")
     for (_, a), (_, b) in zip(results["pooled"][0]["table"].iterrows(),
-                              results["pooled"][1]["table"].iterrows(), strict=True):
+                              results["pooled"][2]["table"].iterrows(), strict=True):
         say(f"  {int(a.k):>3}  {a.inertia:>12.1f}  {b.inertia:>12.3f}")
     differ = [name for name, s in spaces.items() if s["skew_estimators_disagree"]]
     if differ:
@@ -405,9 +416,11 @@ def main_stage(arm: str) -> int:
             sweep(alt["fit_geometry"], f"{name} (ii) g1", WIDE)
     say("")
     say("-" * 100)
-    say("ELBOWS SIDE BY SIDE")
+    say("ELBOWS SIDE BY SIDE (each also with the same rows in reverse order: k-means' best of 25")
+    say("starts, and so the knee, can depend on the order of the rows)")
     say("-" * 100)
-    _say_side_by_side(results, [("(i) declared", 0), ("(ii) the fit's (min-max)", 1)])
+    _say_side_by_side(results, [("(i) declared", 0), ("  in reverse order", 1),
+                                ("(ii) the fit's (min-max)", 2), ("  in reverse order", 3)])
     say(f"  k in the configs: {', '.join(str(k) for k in _configured_k(arm, per))}. No k is chosen here.")
 
     out = HERE / f"odisha_phase3_2_k_elbow_{arm}_stage.txt"
@@ -602,16 +615,22 @@ def main_stage_rows(arm: str, demo_dir: Path) -> int:
                if rebuilt["skew_estimators_disagree"] else ""))
         layer_i = sweep(rebuilt["declared"], f"{d} layer (i)", WIDE)
         layer_ii = sweep(rebuilt["fit_geometry"], f"{d} layer (ii)", WIDE)
-        results[d] = (as_scaled, exact, minmax, layer_i, layer_ii)
+        lines = (as_scaled, exact, minmax, layer_i, layer_ii)
+        rows_of = (stage[d]["scaled"], _exact_declared(post), _min_max(post),
+                   rebuilt["declared"], rebuilt["fit_geometry"])
+        results[d] = tuple(item for line, x in zip(lines, rows_of, strict=True)
+                           for item in (line, {"elbow": elbow_of(x[::-1])}))
     say("  (i)s: as the stage scaled them; (i)x: exact quantiles. Each (i)s line gives the inertia and")
     say("  the elbow committed in docs/demo/remerge/<run>.json (elbow.old), checked to 6 decimals.")
     say("")
     say("-" * 100)
-    say("ELBOWS SIDE BY SIDE (pooled: none; the stage scales each district's rows on their own)")
+    say("ELBOWS SIDE BY SIDE (each also with the same rows in reverse order; pooled: none, the")
+    say("stage scales each district's rows on their own)")
     say("-" * 100)
-    _say_side_by_side(results, [("stage rows (i) as scaled", 0), ("stage rows (i) exact", 1),
-                                ("stage rows (ii) min-max", 2), ("rebuilt from layer (i)", 3),
-                                ("rebuilt from layer (ii)", 4)])
+    labels = ("stage rows (i) as scaled", "stage rows (i) exact", "stage rows (ii) min-max",
+              "rebuilt from layer (i)", "rebuilt from layer (ii)")
+    _say_side_by_side(results, [row for i, label in enumerate(labels)
+                                for row in ((label, 2 * i), ("  in reverse order", 2 * i + 1))])
     say(f"  k in the configs: {', '.join(str(k) for k in _configured_k(arm, DISTRICTS))}. "
         f"No k is chosen here.")
 
