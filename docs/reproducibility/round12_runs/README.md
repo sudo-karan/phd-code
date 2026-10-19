@@ -14,6 +14,7 @@ changing only `segmentation.size` (6 to 10) and `merge.max_area_ha` (3 to 10)
 | Run | Copy of | Run tree at | Superpixels | Stands | Stand polygons |
 |---|---|---|---|---|---|
 | `odisha_v120_10ha_squares_kendujhar_keptland_s1desc_r9` | `odisha_v120_3ha_squares_kendujhar_keptland_s1desc_r9` | `3db501b` | 1,088 | 354 | 355 (352 stands) |
+| `odisha_v120_10ha_squares_angul_keptland_s1desc_r9` | `odisha_v120_3ha_squares_angul_keptland_s1desc_r9` | `3db501b` | 466 | 136 | 134 |
 
 | File | What |
 |---|---|
