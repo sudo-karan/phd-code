@@ -111,3 +111,15 @@ to Jaskaran there. Which fixes reach which run:
   13's Task 1 changes no type of these runs. The cost files record what the runs cost and are not
   affected. The review's method questions (A2, A3, B12, B15) are not fixes of this round and are not
   covered here.
+
+**Note added 20 Oct 2026 (round 13, review C16; the manifests here are as first written).** Each
+`_manifest_*.json` here glosses the summary number `stands_below_min_area_by_cause` as "isolated:
+it touches no other stand". `isolated` means no 4-connected neighbour in the merge's graph, which
+counts shared edges only, so a stand that meets another stand only at a corner is isolated too.
+Counted from the merged layers here and the off-git ones their records name (hash-checked), of
+the stands filed `isolated` that have a polygon: 21 of 1,293 in the eight box runs (1,321 in
+their run records) touch another stand at a corner only, 10 of 578 in the 10 km tile (588), 1 of
+387 in Sanjay Van baseline (392) and 0 of 386 in Sanjay Van AlphaEarth (391); none touches one
+along an edge. No result changes: no step of the pipeline reads `below_why` (the fit leaves out
+stands by `below_min`, whatever the cause). Since round 13 the merge stage writes "isolated: it
+shares no edge with another stand (no 4-connected neighbour; it may meet one at a corner)".

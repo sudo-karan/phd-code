@@ -46,3 +46,11 @@ README). What reaches both runs (the round 13 brief, `docs/handoff/2026-10-20-ro
   run), counted offline as the brief counts the other run folders, and every other polygon's area
   moves by 0.1% to 0.3% on the export's new measure.
 - How far any fix moves a stand, a type or a score was not measured; it needs Earth Engine.
+
+**Note added 20 Oct 2026 (round 13, review C16; the manifests here are as first written).** Each
+manifest here glosses the summary number `stands_below_min_area_by_cause` as "isolated: it
+touches no other stand". `isolated` means no 4-connected neighbour in the merge's graph, which
+counts shared edges only, so a stand that meets another stand only at a corner is isolated too.
+In these two Kendujhar runs none does: 0 of the 143 stands filed `isolated` that have a polygon in
+each layer (145 in each run record). Since round 13 the merge stage writes "isolated: it shares
+no edge with another stand (no 4-connected neighbour; it may meet one at a corner)".

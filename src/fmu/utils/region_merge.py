@@ -71,7 +71,12 @@ longer without saying so:
                    which ignores attributes
   below_min   int  1 if the stand ended below `min_area_ha`, else 0
   below_why   str  why, when below_min is 1; "" when it is 0. One of:
-                     "isolated"       it touches no other stand
+                     "isolated"       it shares no edge with another stand:
+                                      no 4-connected neighbour in the graph
+                                      (`fmu.utils.adjacency`), so a stand that
+                                      meets another only at a corner is
+                                      isolated too (review C16; this said "it
+                                      touches no other stand")
                      "area_blocked"   every neighbouring stand is too big to
                                       take it under the ceiling: `max_area_ha`,
                                       or `max_area_ha + min_area_ha` with

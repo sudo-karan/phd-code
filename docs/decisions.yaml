@@ -5151,7 +5151,13 @@ decisions:
     isolated ones (question 2, (a)); the stands left out leave the k-means rows only and still take part in the
     skewness test, the log offsets and the scaling, as built, to be looked at again in the review of the method
     decisions (question 3); and the sixth summary number (question 4, (b)), because with the setting on the five
-    numbers no longer add up without it.
+    numbers no longer add up without it. Recorded 20 Oct 2026 (round 13, review C16): below_why 'isolated' means
+    no 4-connected neighbour in the merge's graph, which counts shared edges only, so with mask_before_snic, whose
+    kept patches are 8-connected, a stand that meets another only at a corner is isolated too, though it is not an
+    isolated patch of kept land: 21 of the 1,293 isolated stands with a polygon in the eight 3 ha box runs of round
+    9, 10 of 578 in the 10 km tile and 1 of 387 in Sanjay Van baseline, counted offline from the committed layers
+    (docs/reproducibility/r9_runs/README.md). The setting takes every stand below the minimum whatever below_why
+    says, so this changes nothing it does.
   evidence:
   - path: src/fmu/stages/clustering.py
     what: >-
@@ -5202,6 +5208,10 @@ decisions:
       number
   - path: docs/handoff/2026-10-14-round3.md
     what: Jaskaran's decision D3, as he gave it (section 1), and the notes on it (section 6)
+  - path: docs/reproducibility/r9_runs/README.md
+    what: >-
+      The note of 20 Oct 2026 (review C16): what isolated means, and the stands filed isolated that meet another at
+      a corner
   papers: []
   status: adopted
   design_notes_section: null

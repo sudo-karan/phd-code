@@ -870,7 +870,7 @@ SHP attributes (capped at 10-char field-name limit):
 | `n_relaxed` | int | Merges inside the stand made by the second pass under tolerances multiplied by `merge.relax_factor`. |
 | `n_fallback` | int | Merges inside the stand made by the second pass's shared-edge fallback: no criterion justified them, even relaxed. These are the merges to look at first. |
 | `below_min` | int (0/1) | 1 if the stand ended below `merge.min_area_ha`. |
-| `below_why` | string | Empty unless `below_min` is 1; then `isolated` (touches no other stand), `area_blocked` (every neighbour is too big to take it under `merge.max_area_ha`, or under `merge.max_area_ha + merge.min_area_ha` with `merge.pass2_soft_ceiling` on) or `iteration_cap` (it still had a neighbour it could have joined when the second pass stopped at `merge.max_pass2_iterations`). |
+| `below_why` | string | Empty unless `below_min` is 1; then `isolated` (shares no edge with another stand: no 4-connected neighbour in the merge's graph, so a stand that meets another only at a corner is isolated too; corrected 20 Oct 2026, review C16, from "touches no other stand"), `area_blocked` (every neighbour is too big to take it under `merge.max_area_ha`, or under `merge.max_area_ha + merge.min_area_ha` with `merge.pass2_soft_ceiling` on) or `iteration_cap` (it still had a neighbour it could have joined when the second pass stopped at `merge.max_pass2_iterations`). |
 
 The last six are the merge provenance (`PROVENANCE_FIELDS` in
 `src/fmu/utils/region_merge.py`). A stand of m superpixels contains exactly

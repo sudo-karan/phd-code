@@ -126,6 +126,15 @@ def test_where_to_look_first_names_the_fallback_stands_and_the_causes(rows):
     assert "merge_provenance.merge_kind" in text
 
 
+def test_the_advice_on_an_isolated_stand_says_no_4_connected_neighbour(rows):
+    """Review C16: `isolated` means no 4-connected neighbour in the merge's graph, so a
+    stand that meets another only at a corner is isolated too; the printed advice must not
+    say it touches no other stand."""
+    line = next(t for t in im.where_to_look_first(rows) if "minimum size, isolated" in t)
+    assert "touches no other stand" not in line
+    assert "4-connected" in line and "corner" in line
+
+
 def test_where_to_look_first_on_a_clean_merge_and_on_none():
     clean = im.provenance_rows({0: ATTRS[0]}, {0: _prov(3, pass1=2)})
     text = "\n".join(im.where_to_look_first(clean))

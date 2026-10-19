@@ -56,3 +56,15 @@ plots without any comparison; the field check declared for these runs
 files are on the Mac, in the run tree's `odisha_script/phase2_vectors/`.
 
 `python scripts/describe_keptland_runs.py` prints each run's descriptive numbers from these files.
+
+**Note added 20 Oct 2026 (round 13, review C16; the manifests here are as first written).** Each
+`_manifest_*.json` here glosses the summary number `stands_below_min_area_by_cause` as "isolated:
+it touches no other stand". `isolated` means no 4-connected neighbour in the merge's graph, which
+counts shared edges only, so a stand that meets another stand only at a corner is isolated too.
+Counted from the merged layers here and Koraput's `_s1desc` layer off git (hash-checked against
+its record): 23 of the 2,065 stands filed `isolated` that have a polygon (2,091 in the ten run
+records) touch another stand at a corner only, and none along an edge; in Sanjay Van baseline,
+2 of 388 (390 in its record, which `docs/handoff/2026-10-15-round5.md` calls "all isolated
+(no kept-land neighbour)"). No result changes: no step of the pipeline reads `below_why`. Since round 13 the
+merge stage writes "isolated: it shares no edge with another stand (no 4-connected neighbour; it
+may meet one at a corner)".

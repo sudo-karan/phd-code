@@ -249,6 +249,20 @@ def test_isolated_orphans_are_reported_separately():
     assert "no 4-connected neighbour" in w[0]
 
 
+def test_the_isolated_gloss_in_the_manifest_says_no_4_connected_neighbour():
+    """Review C16. The merge's graph is 4-connected (tests/test_adjacency.py,
+    test_diagonal_contacts_are_not_edges), so a stand that meets another only at a
+    corner, as two stands of one 8-connected kept patch can, is filed `isolated`. The
+    gloss every run writes into its manifest says that, not that the stand touches no
+    other stand."""
+    gloss = {s.name: s.description for s in MergeStage.summary_numbers}[
+        "stands_below_min_area_by_cause"
+    ]
+    isolated = gloss.split("isolated:")[1].split("area_blocked:")[0]
+    assert "touches no other stand" not in isolated
+    assert "4-connected" in isolated and "corner" in isolated
+
+
 def test_iteration_cap_is_reported_as_such():
     w = _warnings_from({**_CLEAN, "orphans_no_attribute_match": 2}, _Params())
     assert "ran out of its 60 iterations" in w[0]
