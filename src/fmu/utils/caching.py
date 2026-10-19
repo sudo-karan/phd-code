@@ -458,6 +458,15 @@ STEP_SETTINGS: dict[str, tuple[str, ...]] = {
 # tests/test_step_keys_of_record.py pins the keys the runs recorded.
 _STEP_OMITTED_AT_DEFAULT: dict[tuple[str, str], Any] = {}
 
+# A step's revision, raised when what the step computes changes for configs whose
+# settings do not (round 13): its key, and through `step_upstream` the key of every
+# step downstream of it, then moves, so that the assets cached before the change
+# are not read back. Review A4 notes that its fix would otherwise move no key. A
+# step not listed is at revision 0 and its payload carries none, so its key is the
+# one it had before round 13; STEP_KEY_VERSION, above, would move every key of every
+# step at once. Each raise has a register entry (docs/decisions.yaml).
+STEP_REVISION: dict[str, int] = {}
+
 
 # Which step produces each context key that a SNIC input band or a merge
 # criterion can name (SnicInputBand.source, MergeCriterion.source).
@@ -591,6 +600,9 @@ def _step_key(config: Any, dumped: dict[str, Any], step: str, memo: dict[str, st
         "roi_file_sha256": _roi_file_sha256(config),
         "upstream": upstream,
     }
+    revision = STEP_REVISION.get(step, 0)
+    if revision:
+        payload["revision"] = revision
     encoded = json.dumps(payload, sort_keys=True, default=str).encode()
     memo[step] = STEP_KEY_PREFIX + hashlib.sha256(encoded).hexdigest()[:10]
     return memo[step]

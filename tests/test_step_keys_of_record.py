@@ -73,6 +73,19 @@ class _ConfigWithAField:
         return getattr(self._config, name)
 
 
+def _downstream(cfg: Any, revised: set[str]) -> set[str]:
+    """The steps in `revised` and every step that reads one of them, directly or not."""
+
+    def reaches(step: str) -> bool:
+        return step in revised or any(reaches(u) for u in caching.step_upstream(cfg, step))
+
+    return {s for s in STEP_SETTINGS if reaches(s)}
+
+
+def _moved_by_revisions(cfg: Any) -> set[str]:
+    return _downstream(cfg, {s for s, r in caching.STEP_REVISION.items() if r})
+
+
 # ---------------------------------------------------------------------
 # 1. The keys of record
 # ---------------------------------------------------------------------
@@ -92,6 +105,10 @@ def test_a_config_still_has_the_step_keys_its_run_recorded(record: Path, monkeyp
     cfg = load_config(CONFIGS / f"{rec['config']}.yaml")
     assert cfg.name == rec["config"]
     assert config_fingerprint(cfg) == rec["fingerprint"]
+    keys = step_keys(cfg)
+    # A step raised in STEP_REVISION moves, with every step downstream of it; no other.
+    assert {s for s in keys if keys[s] != rec["step_keys"][s]} == _moved_by_revisions(cfg)
+    monkeypatch.setattr(caching, "STEP_REVISION", {})
     assert step_keys(cfg) == rec["step_keys"]
 
 
@@ -105,6 +122,10 @@ def test_each_stage_of_a_manifest_still_has_its_recorded_key(manifest: Path, mon
     recorded = {s["name"]: s["cache_key"] for s in rec["stages"] if s.get("cache_key")}
     assert recorded, "no stage of the manifest recorded a key"
     # step_key, not step_keys: a stage with no settings of its own (profiling) is keyed too.
+    moved = _moved_by_revisions(cfg)
+    now = {s: step_key(cfg, s) for s in recorded}
+    assert {s for s in recorded if now[s] != recorded[s]} == moved & set(recorded)
+    monkeypatch.setattr(caching, "STEP_REVISION", {})
     assert {s: step_key(cfg, s) for s in recorded} == recorded
 
 
@@ -200,3 +221,55 @@ def test_an_unlisted_field_still_moves_the_keys(monkeypatch):
 
 def test_the_table_is_empty_so_no_key_has_moved():
     assert caching._STEP_OMITTED_AT_DEFAULT == {}
+
+
+# ---------------------------------------------------------------------
+# 3. A step's revision (round 13)
+# ---------------------------------------------------------------------
+
+
+def _moved_by(cfg: Any, revision: dict[str, int], monkeypatch) -> set[str]:
+    monkeypatch.setattr(caching, "STEP_REVISION", {}, raising=False)
+    before = step_keys(cfg)
+    monkeypatch.setattr(caching, "STEP_REVISION", revision, raising=False)
+    after = step_keys(cfg)
+    return {s for s in before if before[s] != after[s]}
+
+
+def test_a_revision_moves_its_step_and_every_step_downstream_and_no_other(monkeypatch):
+    """What a fix that changes a step's output, with no setting changed, must do (review A4)."""
+    monkeypatch.chdir(REPO)
+    handcrafted, alphaearth = load_config(HANDCRAFTED), load_config(ALPHAEARTH)
+    assert _moved_by(handcrafted, {"data_load": 1}, monkeypatch) == {
+        "data_load", "features_optical", "features_radar", "segmentation", "merge",
+        "clustering", "k_elbow",
+    }
+    # The AlphaEarth arm draws its superpixels on the embedding, and merges on the
+    # hand-crafted optical and structure features.
+    assert _moved_by(alphaearth, {"data_load": 1}, monkeypatch) == {
+        "data_load", "features_optical", "features_radar", "merge", "clustering", "k_elbow",
+    }
+    assert _moved_by(alphaearth, {"features_static": 1}, monkeypatch) == {"features_static"}
+    assert _moved_by(handcrafted, {"features_static": 1}, monkeypatch) == {
+        "features_static", "clustering", "k_elbow",
+    }
+
+
+def test_each_raise_gives_a_new_key_and_revision_zero_is_no_revision(monkeypatch):
+    monkeypatch.chdir(REPO)
+    cfg = load_config(HANDCRAFTED)
+    monkeypatch.setattr(caching, "STEP_REVISION", {}, raising=False)
+    plain = step_keys(cfg)["data_load"]
+    seen = {plain}
+    for revision in (1, 2, 3):
+        monkeypatch.setattr(caching, "STEP_REVISION", {"data_load": revision}, raising=False)
+        seen.add(step_keys(cfg)["data_load"])
+    assert len(seen) == 4
+    monkeypatch.setattr(caching, "STEP_REVISION", {"data_load": 0}, raising=False)
+    assert step_keys(cfg)["data_load"] == plain
+
+
+def test_each_revision_is_of_a_cached_step_and_at_least_one():
+    for step, revision in caching.STEP_REVISION.items():
+        assert step in STEP_SETTINGS, step
+        assert isinstance(revision, int) and not isinstance(revision, bool) and revision >= 1

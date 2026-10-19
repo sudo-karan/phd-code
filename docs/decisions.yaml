@@ -6247,3 +6247,45 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-per-step-key-revision-of-a-step
+  title: >-
+    A step whose computation a fix changes gets a revision, which moves its per-step key and those downstream of it
+  decision: >-
+    fmu.utils.caching (a Locked module) gets STEP_REVISION, a step's revision number, put in that step's per-step key
+    payload when it is 1 or more and left out at 0, so a step not listed keeps the key it had. A fix that changes what
+    a step computes for configs whose settings do not change raises that step's revision in the same commit, with a
+    register entry; its key then moves, and through step_upstream the key of every step downstream of it, and no
+    other. The table is empty in this commit, so no key moves. tests/test_step_keys_of_record.py checks that the
+    configs of the 21 per-step runs of record give their recorded keys exactly for the steps no revision reaches, a
+    new key for each step one reaches, and every recorded key again with the table emptied. The legacy fingerprint
+    has no revision: a config whose cache holds legacy assets (the runs before round 9) still reads the assets it made.
+  alternatives_considered:
+  - >-
+    Raise STEP_KEY_VERSION: not chosen; it moves every key of every step and config at once, so assets no fix touched
+    (the masks, the canopy height, the embedding) would be computed again
+  - >-
+    Add a setting for each fix, off by default and left out of the keys at its default: not chosen; the configs of
+    record would then keep the old behaviour unless edited, while the brief asks for the fix itself ("make the date
+    windows' end inclusive in data_load")
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), "How to fix each finding", rule 4: "If the fix changes what a step
+    computes, it must change that step's cache key, so cached assets are not reused (A4 notes that its fix would
+    not)." A per-step key hashes the settings and the upstream keys only, so a change of code with no change of
+    setting moves no key (review A4: making data_load's end inclusive leaves the data_load and features_radar keys as
+    they are). The new test fails on the code before the change (a revision moved no key) and passes after it. No
+    paper was searched for this decision.
+  evidence:
+  - path: src/fmu/utils/caching.py
+    what: STEP_REVISION, read by _step_key
+  - path: tests/test_step_keys_of_record.py
+    what: >-
+      test_a_revision_moves_its_step_and_every_step_downstream_and_no_other; the records' keys checked against the
+      revisions
+  - path: docs/reviews/2026-10-19-review.md
+    what: A4, its note on the step keys
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 2, the per-step revision
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
