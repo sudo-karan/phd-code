@@ -370,9 +370,10 @@ every config an earlier batch of that label finished or put under needs
 attention, so a batch cut short is resumed by giving the same command again
 (round 13). A batch under another label does not know what an earlier one
 finished, so do not list a finished config in it. It does not retry a config
-whose export stage failed, allows one batch at a
-time (a lock file in the log folder), and refuses a run tree with modified
-tracked files. Config paths are
+whose export stage failed, allows one batch at a time on the machine (before
+anything else it takes a lock on `~/.fmu/run_passes_safely.lock`, whatever the
+run tree or the log folder, and refuses to start, exit 90, while another batch
+holds it), and refuses a run tree with modified tracked files. Config paths are
 relative to the run tree, which needs its own `.env`. It writes
 `<log-dir>/<label>.log` and `<label>.state.json` (the commit it ran from and
 each pass's per-stage exit codes); `--log-dir` defaults to `<run-tree>/logs`,

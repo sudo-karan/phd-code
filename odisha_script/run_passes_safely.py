@@ -25,7 +25,10 @@ start without it (round 12), so the script is started only from here. It also:
     13, review B4). To run one of those again, use another label;
   - does not retry a config whose EXPORT stage failed: Drive exports may already have been
     submitted, so a person should read the log first;
-  - allows one batch at a time (a lock file holding a live pid);
+  - allows one batch at a time on this machine: before anything else it takes an exclusive
+    lock (fcntl.flock) on ~/.fmu/run_passes_safely.lock, whatever the run tree or the log
+    folder, and refuses to start (exit 90) while another batch holds it. The kernel lets go
+    of the lock when the batch ends, however it ends (round 13, review B6 and B7);
   - runs from a "run tree": a checkout whose tracked files are unmodified. A multi-hour run
     started from a working tree that is being edited executes whatever half-finished code
     is on disk when each stage starts. Use a clean clone pinned to one commit;
@@ -39,6 +42,7 @@ directory). NEEDS LIVE EARTH ENGINE and submits tasks.
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import os
 import re
@@ -52,6 +56,8 @@ STAGE_EXIT = re.compile(r"^--- PASS1 (\S+) (features|segmentation|clustering|exp
 POLL_S = 60
 # The variable run_config_passes.sh checks before it does anything (round 12).
 STARTED_BY_THE_WRAPPER = "RUN_PASSES_SAFELY"
+# One batch at a time on this machine, whatever its run tree and log folder (review B7).
+LOCK_FILE = Path(".fmu") / "run_passes_safely.lock"  # under the home folder
 
 
 def pass_env(python: str, run_tree: Path) -> dict[str, str]:
@@ -61,10 +67,30 @@ def pass_env(python: str, run_tree: Path) -> dict[str, str]:
                 **{STARTED_BY_THE_WRAPPER: "1"})
 
 
+def take_lock(path: Path) -> int | None:
+    """The descriptor of an exclusive lock on `path`, or None if another batch holds it.
+
+    The lock is held, not written (review B6): taking it is one step, so two starts cannot both
+    pass a check before either writes, and the kernel lets go of it when the last process holding
+    the descriptor ends, so a batch that dies leaves no stale lock behind. The pid written into
+    the file is only for the message of a start that is refused.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(path, os.O_RDWR | os.O_CREAT, 0o644)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        os.close(fd)
+        return None
+    os.ftruncate(fd, 0)
+    os.write(fd, str(os.getpid()).encode())
+    return fd
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("configs", nargs="+", help="config paths, relative to the run tree")
-    ap.add_argument("--label", required=True, help="names the log, the state file and the lock")
+    ap.add_argument("--label", required=True, help="names the log and the state file")
     ap.add_argument("--run-tree", type=Path, default=Path(__file__).resolve().parent.parent,
                     help="checkout to run from (default: the one holding this script)")
     ap.add_argument("--log-dir", type=Path, default=None,
@@ -73,12 +99,17 @@ def main() -> int:
     ap.add_argument("--python", default=sys.executable)
     args = ap.parse_args()
 
+    # Taken first, before git, `import ee` and ee.Initialize (review B6), and held to the end.
+    lock = Path.home() / LOCK_FILE
+    lock_fd = take_lock(lock)
+    if lock_fd is None:
+        print(f"REFUSING: a batch with pid {lock.read_text().strip()} is still running")
+        return 90
     rt = args.run_tree.resolve()
     log_dir = (args.log_dir or rt / "logs").resolve()
     log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / f"{args.label}.log"
     state_path = log_dir / f"{args.label}.state.json"
-    lock = log_dir / "run_passes_safely.lock"
 
     def say(msg: str) -> None:
         line = f"[run_passes_safely {time.strftime('%Y-%m-%d %H:%M:%S')}] {msg}"
@@ -86,13 +117,6 @@ def main() -> int:
         with log_path.open("a") as f:
             f.write(line + "\n")
 
-    if lock.exists():
-        try:
-            os.kill(int(lock.read_text().strip()), 0)
-            print(f"REFUSING: a batch with pid {lock.read_text().strip()} is still running")
-            return 90
-        except (ProcessLookupError, ValueError):
-            pass  # a stale lock from a batch that has ended
     # Tracked files only: finished runs leave untracked outputs behind, and those are not code.
     modified = subprocess.run(
         ["git", "-C", str(rt), "status", "--porcelain", "--untracked-files=no"],
@@ -200,7 +224,6 @@ def main() -> int:
                 remaining.remove(c)
         save()
 
-    lock.write_text(str(os.getpid()))
     try:
         say(f"batch {args.label} started from commit {commit} (tracked files unmodified); "
             f"{len(args.configs)} config(s), up to {args.passes} pass(es)")
@@ -231,7 +254,7 @@ def main() -> int:
         if running:  # a pass cut short (Ctrl-C): the configs it finished are done all the same
             read_pass(running[0], None, running[1])
         save()
-        lock.unlink(missing_ok=True)
+        os.close(lock_fd)  # lets go of the lock; the file stays, as removing it would open a race
 
 
 if __name__ == "__main__":
