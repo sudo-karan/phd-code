@@ -1361,6 +1361,9 @@ python odisha_script/odisha_phase2_5_stats.py --set districts --jobs 4
 Steps 0, 1, 3, 5 and 6, and step 4 with `--size-check`, write `odisha_phase2_<n>_results.txt`
 beside themselves. Step 2 writes `phase2_vectors/<config>_*`. Step 5 also writes
 `odisha_phase2_5_summary.csv` and the three figures. The first run used `--rotations 999`.
+Since round 13, step 5 ends every name it writes with `_r13` (`odisha_phase2_5_results_r13.txt`,
+`odisha_phase2_5_summary_districts_r13.csv` and so on): the review's finding A8 changed what its
+rotation null is scored on, and the files without `_r13` are kept as written before that fix.
 
 `--set districts` writes the same outputs with a `_districts` suffix and computes the nine
 arm × layer partitions in parallel, checkpointing each to `phase2_5_checkpoints/districts/` as it
