@@ -77,3 +77,17 @@ rate is above the fixed one by at most `pass1_pairs_blocked_by_undefined_criteri
 `pass1_pairs_blocked_by_area_round1` over `n_pairs_with_any_defined_criterion`, all from the same
 record: 0, the same rate, in 15 of the 30 records here, and at most 0.22 points in the others
 (Dhenkanal's round 6 run, 1 + 14 of 6,809 pairs). The copies in `ui_data/` are left as they are.
+
+**Note of 20 Oct 2026 (round 13, review C30): the two Koraput records written by the read-back
+tool.** `odisha_v120_3ha_squares_koraput_keptland_run.json` and
+`odisha_v120_3ha_squares_koraput_keptland_s1desc_run.json` were written by
+`odisha_script/odisha_read_back_export.py`, as their `read_back` block says: each export pass ended
+after it wrote the stands layer (`read_back.layers_the_run_wrote` lists `stands_merged` only). In
+both, `export_vector_layers` holds the tool's own counts of what it read back, not the export
+stage's. Checked against the export stage's manifest beside each record
+(`<run>_manifest_export.json`, `vector_layers`): every `n_features`, and the stands layer's
+`n_stands` and `n_stands_split_into_pieces`, are equal to the export stage's. But under
+`stands_snic`, `n_stands` (8,723 in both) and `n_stands_split_into_pieces` (14 and 19) are counts
+the export stage never makes: its manifest has none there, and a record the runner writes holds
+null. Since round 13 the tool writes the export stage's counts under `export_vector_layers` and
+its own under `read_back.layer_counts`. The two records are kept as written; no number changed.
