@@ -98,9 +98,6 @@ MAPS: tuple[str, ...] = ("planted", "shifted", "merged", "split", "unrelated")
 # Experiment numbers, used in the seed of every data set.
 E_RECOVERY, E_SIZE, E_POWER, E_REFERENCE, E_NO_REFERENCE = 0, 1, 2, 3, 4
 
-# Bump when the code of a worker changes, so cached data sets are not reused.
-CACHE_VERSION = 2
-
 
 @dataclass(frozen=True)
 class Design:
@@ -451,9 +448,27 @@ def _work(job: tuple[Any, ...]) -> tuple[dict[str, Any], float]:
     return result, time.process_time() - started
 
 
+def _source_files() -> list[tuple[str, Path]]:
+    """The code a cached data set depends on: this script (the workers) and every module of
+    `fmu.evaluation` (the only part of `fmu` it imports), each with a name for the hash."""
+    package = Path(agreement.__file__).parent
+    return [("script", Path(__file__))] + [
+        (f"fmu/evaluation/{f.name}", f) for f in sorted(package.glob("*.py"))
+    ]
+
+
+def _source_hash() -> str:
+    digest = hashlib.sha256()
+    for name, path in _source_files():
+        digest.update(name.encode() + b"\0" + path.read_bytes() + b"\0")
+    return digest.hexdigest()
+
+
 def _fingerprint(design: Design, root: int, layout: Any, params: Any) -> str:
+    # the sources' hash keys the cache by the code too: a run resumed after any change to the
+    # workers or to fmu.evaluation recomputes every data set instead of reading the old results
     payload = json.dumps(
-        [CACHE_VERSION, asdict(design), root, sorted(layout.items()), asdict(params), BAND_EDGES],
+        [_source_hash(), asdict(design), root, sorted(layout.items()), asdict(params), BAND_EDGES],
         sort_keys=True,
         default=str,
     )
@@ -474,8 +489,9 @@ def run_validation(
 
     The result does not depend on `jobs` or `cache_dir`. `cache_dir` keeps one
     file per finished data set, so a run that was cut off continues where it
-    stopped; the files of a different design, seed, layout or parameter set
-    go to a different folder.
+    stopped; the files of a different design, seed, layout or parameter set,
+    or of different code (this script or any module of `fmu.evaluation`), go
+    to a different folder.
     """
     layout = {int(k): tuple(int(s) for s in v) for k, v in layout.items()}
     tasks = _tasks(design)
