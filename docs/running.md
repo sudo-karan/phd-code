@@ -582,7 +582,10 @@ python scripts/fetch_drive_vectors.py                                  # all con
 python scripts/fetch_drive_vectors.py --configs sanjay_van_alphaearth  # just one
 ```
 It keeps only the newest `<config>_stands_<layer>.geojson` (normalizing the `(n)`
-suffixes) and skips the SHP/DBF.
+suffixes) and skips the SHP/DBF. It stops if several Drive folders carry the name, and
+if a layer's polygon count is not the `n_features` that the config's newest run manifest
+(`outputs/runs/<config>_2*/manifest.json`, or `--runs-root`) records for it; such a layer
+is not saved.
 
 Once the configs have run (their `cluster_profiles.csv`, `metrics_<config>.json`,
 and exported `stands_*` vectors are on disk), `scripts/report.py` turns them into
