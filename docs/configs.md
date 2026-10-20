@@ -66,7 +66,7 @@ directly. It's around 300 lines and self-documenting.
 | `merge` | Stand-aggregation rules and area bounds | `merge`; also derives the `reduceConnectedComponents` cap used by `metrics` (and by `clustering` until round 13) |
 | `clustering` | k-means hyperparameters and preprocessing | `clustering` |
 | `normalization` | `robust` vs `zscore` scaling | `clustering` |
-| `features` | High-level on/off toggles per feature family | Currently informational; future use |
+| `features` | High-level on/off toggles per feature family | Read by nothing: a `false` changes no stage and no per-step key, only the legacy fingerprint (review C20) |
 | `export` | Whether to export GeoTIFF, target scale | `export` |
 | `metrics` | Reference config to compare against, sampling sizes | `metrics` |
 
@@ -627,8 +627,16 @@ a two-tier threshold scheme.
 
 ### `features`
 
-High-level on/off toggles. Currently informational. All four are read
-by the stage code but with `true` defaults rarely changed:
+High-level on/off toggles, read by nothing. No stage, script or test reads
+`Config.features` except the test of its defaults (`tests/test_config.py`).
+Which feature stages run is set by `clustering.feature_source`,
+`segmentation.input_bands` and `merge.criteria`. A `false` loads without a
+warning and changes no stage and no per-step cache key; it moves only the
+legacy fingerprint, which hashes the block (all four `false` on the 10 km tile
+config: `5772fb6133` becomes `7a438bf989`, every per-step key the same). Every
+config that sets them sets all four `true`. Until round 13 this section said
+all four are read by the stage code (review C20). Removing the block would move
+every legacy fingerprint, the 14 pinned `_repro` ones among them.
 
 - `optical_harmonic`, `radar`, `canopy_height`, `terrain`
 

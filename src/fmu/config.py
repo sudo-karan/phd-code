@@ -790,6 +790,12 @@ class KElbowParams(BaseModel):
         return self
 
 
+# Read by nothing (review C20): which feature stages run is set by
+# clustering.feature_source, segmentation.input_bands and merge.criteria, and a
+# toggle set to false changes no stage and no per-step key. The legacy
+# fingerprint hashes the block, so a false moves it, and removing the block, or
+# a toggle, would move every legacy fingerprint, the 14 pinned _repro ones among
+# them.
 class FeatureToggles(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
