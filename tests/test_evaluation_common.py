@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -24,16 +25,13 @@ from fmu.evaluation import _common as common
 def test_package_imports_without_its_other_modules():
     pkg = importlib.import_module("fmu.evaluation")
     assert pkg.__doc__
-    for module in (
-        "agreement",
-        "pairs",
-        "permutation",
-        "spatial_null",
-        "segmentation_accuracy",
-        "unsupervised",
-        "synthetic",
-    ):
-        assert f"`{module}`" in pkg.__doc__
+    # Every module of the package is described, those added later included (review C24:
+    # reference_height, stand_overlap and torus_shift were not); _common by name.
+    folder = Path(importlib.util.find_spec("fmu.evaluation").origin).parent
+    modules = sorted(p.stem for p in folder.glob("*.py") if p.stem != "__init__")
+    assert {"agreement", "reference_height", "stand_overlap", "torus_shift"} <= set(modules)
+    missing = [m for m in modules if f"`{m}`" not in pkg.__doc__]
+    assert not missing, f"not described in fmu/evaluation/__init__.py: {missing}"
     # Nothing is imported eagerly: the package file holds a docstring only, so
     # it imports whichever of its modules exist.
     source = importlib.util.find_spec("fmu.evaluation").origin
