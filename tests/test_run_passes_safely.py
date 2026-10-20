@@ -8,6 +8,7 @@ B4 to B8 are ways for the wrapper to submit a second copy of a task, B9 a way fo
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import signal
@@ -82,6 +83,48 @@ def test_a_batch_started_again_skips_what_an_earlier_one_finished_or_left_for_a_
     assert list(second["skipped"]) == [A, B] and second["earlier_batches"] == [first]
     assert (second["done"], second["needs_attention"], second["not_finished"]) == ([], {}, [])
     assert h.log().splitlines()[-1].endswith("batch batch ended: NOT ALL COMPLETE")
+
+
+@pytest.mark.parametrize("sig", [signal.SIGTERM, signal.SIGHUP, signal.SIGINT],
+                         ids=["SIGTERM", "SIGHUP", "SIGINT"])
+def test_a_stop_during_the_export_stage_leaves_the_config_for_a_person(h, sig):
+    """A check of the B4 fix (round 13): a signal while the export stage ran, after it had sent its
+    Drive exports, left no exit line for the stage, so the config was recorded as not finished and
+    the same command again sent all nine Drive exports a second time. Now it needs attention, as a
+    config whose export stage failed does."""
+    a = h.config(A)
+    h.commit()
+    h.scenario(hold_after_submit=[f"{A}:export"])
+    w = h.start(a)
+    assert wait_for(h.holding), h.log()
+    assert h.drive_exports(A) == [1] * 9
+    os.kill(w.pid, sig)
+    rc, out = h.finish(w)
+    assert rc == 128 + sig, out
+    state = h.state()
+    assert (state["done"], state["not_finished"], list(state["needs_attention"])) == ([], [], [A])
+
+    h.scenario()
+    rc, out = h.finish(h.start(a))
+    assert h.drive_exports(A) == [1] * 9
+    assert rc == 1, out
+    assert f"{A}: skipped, an earlier batch of label batch put it under needs attention" in h.log()
+
+
+def test_a_save_cut_short_leaves_the_earlier_state_whole(h):
+    """A check of the B4 fix (round 13): the state file, which a batch started again reads first,
+    was rewritten in place, so a save cut short (here every write of it stops halfway, as on a
+    full disk) left it half written, and every later start of the label stopped on it. Now the
+    earlier batch's record is left as it was."""
+    a, b = h.config(A), h.config(B)
+    h.commit()
+    rc, out = h.finish(h.start(a))
+    assert rc == 0, out
+    before = h.state()
+    rc, out = h.finish(h.start(a, b, save_fails=True))
+    assert rc == 1 and "No space left on device (the harness)" in out, out
+    assert h.state() == before
+    assert not list((h.rt / "logs").glob("*.tmp"))
 
 
 # ---------- B6, B7: one lock per machine, taken first ----------
@@ -210,6 +253,27 @@ def test_the_lock_is_held_while_the_children_of_a_killed_wrapper_run(h):
     assert wait_for(lambda: not alive(runner) and not alive(shell))
     rc3, out3 = h.finish(h.start(a))  # the children have ended, so the lock is free
     assert rc3 == 0, out3
+
+
+def test_a_signal_while_the_wrapper_waits_on_the_queue_is_acted_on(h):
+    """A check of the B5 fix (round 13): the handler set a threading.Event, whose lock
+    Event.wait holds for a moment on each call, and a signal that came in that moment left the
+    handler waiting for the lock forever, the wrapper hung and holding the batch lock. The harness
+    widens the moment to the whole wait, so the signal comes in it every time."""
+    a = h.config(A)
+    h.commit()
+    now = time.time()
+    (h.ee / "tasks.json").write_text(json.dumps([{
+        "id": "T0001", "description": f"{A}_features_static_static_features", "submitted": now,
+        "done_at": now + 3600, "pid": 0}]))
+    w = h.start(a, poll_s=5.0, wide_event_wait=True)
+    assert wait_for(lambda: "before pass 1: 1 task(s) of these configs still queued" in h.log())
+    time.sleep(0.5)  # into the wait after the poll
+    os.kill(w.pid, signal.SIGTERM)
+    assert wait_for(lambda: h.ended(w), timeout=10), "the wrapper is stuck in its signal handler"
+    rc, out = h.finish(w)
+    assert rc == 128 + signal.SIGTERM, out
+    assert h.runners() == []
 
 
 def test_a_signal_ignored_when_the_batch_started_stays_ignored(h):

@@ -372,7 +372,9 @@ stage would submit its Drive exports again): a batch started again with the
 same `--label` reads `<label>.state.json` first and skips, with a log line,
 every config an earlier batch of that label finished or put under needs
 attention, so a batch cut short is resumed by giving the same command again
-(round 13). A batch under another label does not know what an earlier one
+(round 13). A config whose export stage was running when the batch was cut short
+is put under needs attention, as one whose export stage failed is: its Drive
+exports may have been sent, so read the log first. A batch under another label does not know what an earlier one
 finished, so do not list a finished config in it. It does not retry a config
 whose export stage failed, allows one batch at a time on the machine (before
 anything else it takes a lock on `~/.fmu/run_passes_safely.lock`, whatever the

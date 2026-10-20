@@ -6851,7 +6851,14 @@ decisions:
     wrapper's queue polls have a deadline of 120 s (ee.data.setDeadline, set right after ee.Initialize), as the
     runner's polls have; a poll that times out is retried. Within a batch, as night-repro-copies-and-safe-passes
     records, a finished config is never re-run and a config whose export stage failed is not retried; that entry is
-    not changed. A batch under another label still does not know what an earlier one finished.
+    not changed. A batch under another label still does not know what an earlier one finished. Corrected in round
+    13 after a check of the fix (a review of the round's own changes): a config whose export stage started and has
+    no exit line, because a signal or an error cut the pass short while it ran, is put under needs attention, as one
+    whose export stage failed is, since its Drive exports may have been sent; the state file is written beside
+    itself, flushed and moved over the old one (os.replace), so a save cut short leaves the earlier record whole;
+    and the signal handler only records the signal and passes it on (it set a threading.Event, whose lock it waited
+    for forever if the signal came while the main thread held it), the waits between polls sleeping in steps of at
+    most a second.
   alternatives_considered:
   - >-
     A lock file holding a pid, checked for a live pid and kept in the log folder (the wrapper before round 13): two
@@ -6872,8 +6879,11 @@ decisions:
     the same command again sent every Drive export twice (B4); two starts 0.3 s apart, or with two log folders, both
     ran (B6, B7); after SIGTERM, SIGHUP or SIGINT the runner was still running, and a new start was not refused (B5);
     a .yml path, a name: unlike the file stem or a config listed twice ran (B8); no deadline was set before the first
-    poll (B9). All 74 configs under configs/ have a name: equal to their file stem, so none is refused. No paper was
-    searched for this decision.
+    poll (B9). All 74 configs under configs/ have a name: equal to their file stem, so none is refused. The check's
+    three tests fail on the wrapper as first fixed: after a signal during the export stage the config read as not
+    finished and the same command sent its nine Drive exports again; a save that stopped halfway left the state file
+    unreadable; a signal during a wait whose lock was held hung the wrapper. No paper was searched for this
+    decision.
   evidence:
   - path: odisha_script/run_passes_safely.py
     what: The wrapper; its docstring lists the guards and the exit codes

@@ -11,6 +11,9 @@ link to this checkout's package, so the wrapper reads the configs with the real 
 the module attribute before main() runs, and with a `sleep` on PATH that sleeps 0.05 s whatever it
 is asked, for the shell script's `sleep 60`. Neither script is changed. HOME is a temporary folder,
 and SIGTERM, SIGHUP and SIGINT are as a terminal leaves them (or SIGHUP ignored, as under nohup).
+Two things can be made to go wrong in the wrapper's process, as checks of the round 13 fixes: every
+write of its state file stops halfway, as on a full disk (`save_fails`), and threading.Event.wait
+holds the event's lock for the whole wait, not for a moment (`wide_event_wait`).
 
 The stand-ins share one folder (`self.ee`, $FAKE_EE_DIR):
 
@@ -21,7 +24,8 @@ The stand-ins share one folder (`self.ee`, $FAKE_EE_DIR):
   - runners.txt     one line per runner started: pid, the shell script's pid, config name, pass.
   - scenario.json   what the runner does (`scenario()`): how long a task runs, a pass that fails
                     once (as on a cold cache, after submitting its exports), an export pass that
-                    fails, a pass that holds until `release()`, a runner slow to end on SIGTERM.
+                    fails, a pass that holds until `release()` (before it submits anything, or an
+                    export pass after it submits its Drive exports), a runner slow to end on SIGTERM.
 
 The runner names every task after the config's `name:`, as the pipeline does
 (`f"{config.name}_{stage.name}_{key}"`), and does what the real runner does that matters here: each
@@ -146,6 +150,14 @@ def linger(signum, frame):
     sys.exit(128 + signum)
 
 
+def hold(name, stage):
+    if SCENARIO.get("linger_on_term_s"):
+        signal.signal(signal.SIGTERM, linger)
+    (D / f"holding_{name}_{stage}_{os.getpid()}").write_text("")
+    while not (D / "release").exists():
+        time.sleep(0.05)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", required=True)
@@ -159,11 +171,7 @@ def main():
     print("  cache layout: per_step (its cache holds no asset of the legacy layout)", flush=True)
     me = f"{name}:{a.through}"
     if me in SCENARIO.get("hold", []):
-        if SCENARIO.get("linger_on_term_s"):
-            signal.signal(signal.SIGTERM, linger)
-        (D / f"holding_{name}_{a.through}_{os.getpid()}").write_text("")
-        while not (D / "release").exists():
-            time.sleep(0.05)
+        hold(name, a.through)
     gaps = [f"{name}_{o}" for s in UPSTREAM[a.through] for o in CACHED[s] if not exists(f"{name}_{o}")]
     if gaps:
         print(f"  REFUSING: {len(gaps)} upstream cache asset(s) missing; run the earlier pass first:")
@@ -173,6 +181,8 @@ def main():
     if a.through == "export":
         for tid, f in zip(submit([f"{name}_{f}" for f in DRIVE]), DRIVE):
             print(f"  submitted Drive export: task_id={tid}, file='{name}_{f}'")
+        if me in SCENARIO.get("hold_after_submit", []):
+            hold(name, a.through)
         if me in SCENARIO.get("fail", []):
             print("ee.ee_exception.EEException: Computation timed out.")
             return 1
@@ -215,6 +225,54 @@ import sys
 signal.signal(signal.SIGTERM, signal.SIG_DFL)
 signal.signal(signal.SIGHUP, signal.SIG_IGN if os.environ["HARNESS_NOHUP"] else signal.SIG_DFL)
 signal.signal(signal.SIGINT, signal.default_int_handler)
+if os.environ["HARNESS_SAVE_FAILS"]:
+    # Every write of the state file stops halfway, as on a full disk.
+    import builtins
+    import errno
+    import io
+
+    _open = io.open
+
+    class _HalfWrite:
+        def __init__(self, f):
+            self._f = f
+
+        def write(self, text):
+            self._f.write(text[: len(text) // 2])
+            self._f.flush()
+            raise OSError(errno.ENOSPC, "No space left on device (the harness)")
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            self._f.close()
+            return False
+
+        def __getattr__(self, name):
+            return getattr(self._f, name)
+
+    def _cut_open(file, mode="r", *args, **kwargs):
+        f = _open(file, mode, *args, **kwargs)
+        named = isinstance(file, (str, os.PathLike)) and ".state.json" in os.fspath(file)
+        if named and set(mode) & set("wax"):
+            return _HalfWrite(f)
+        return f
+
+    io.open = builtins.open = _cut_open
+if os.environ["HARNESS_WIDE_EVENT_WAIT"]:
+    # Event.wait holds the event's lock for a moment on each call; here for the whole wait, so that
+    # a signal that comes during a wait comes while it is held.
+    import threading
+    import time
+
+    def _wide_wait(self, timeout=None):
+        with self._cond:
+            if not self._flag:
+                time.sleep(3600 if timeout is None else timeout)
+            return self._flag
+
+    threading.Event.wait = _wide_wait
 path = sys.argv[1]
 spec = importlib.util.spec_from_file_location("run_passes_safely", path)
 wrapper = importlib.util.module_from_spec(spec)
@@ -295,12 +353,15 @@ class Harness:
     # ---------- the wrapper ----------
 
     def start(self, *args: str, label: str = "batch", import_s: float = 0.0,
-              nohup: bool = False) -> subprocess.Popen:
+              nohup: bool = False, poll_s: float = 0.1, save_fails: bool = False,
+              wide_event_wait: bool = False) -> subprocess.Popen:
         """The real wrapper's main() in a process group of its own, as a terminal starts it (or
         with SIGHUP ignored, as nohup starts it)."""
         env = {**os.environ, "HOME": str(self.home), "FAKE_EE_DIR": str(self.ee),
-               "FAKE_EE_IMPORT_S": str(import_s), "HARNESS_POLL_S": "0.1",
+               "FAKE_EE_IMPORT_S": str(import_s), "HARNESS_POLL_S": str(poll_s),
                "HARNESS_NOHUP": "1" if nohup else "",
+               "HARNESS_SAVE_FAILS": "1" if save_fails else "",
+               "HARNESS_WIDE_EVENT_WAIT": "1" if wide_event_wait else "",
                "PATH": f"{self.bin}{os.pathsep}{os.environ.get('PATH', '')}"}
         # Its output goes to a file, not a pipe: the shell script and the runner inherit it, and a
         # pipe would stay open for as long as they run.

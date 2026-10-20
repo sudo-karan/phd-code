@@ -29,7 +29,9 @@ RUN_PASSES_SAFELY=1 for the script (`pass_env`), which refuses to start without 
     every config an earlier batch of the label finished or put under needs attention (round
     13, review B4). To run one of those again, use another label;
   - does not retry a config whose EXPORT stage failed: Drive exports may already have been
-    submitted, so a person should read the log first;
+    submitted, so a person should read the log first. The same holds for an export stage that
+    started and has no exit line, because a signal or an error cut the pass short while it ran
+    (round 13, a check of the B4 fix);
   - allows one batch at a time on this machine: before anything else it takes an exclusive
     lock (fcntl.flock) on ~/.fmu/run_passes_safely.lock, whatever the run tree or the log
     folder, and refuses to start (exit 90) while another batch holds it. The kernel lets go
@@ -66,12 +68,13 @@ import re
 import signal
 import subprocess
 import sys
-import threading
 import time
 from pathlib import Path
 
 ACTIVE_STATES = ("PENDING", "RUNNING", "CANCELLING")
 STAGE_EXIT = re.compile(r"^--- PASS1 (\S+) (features|segmentation|clustering|export) exit=(\d+) ---$")
+# The line run_config_passes.sh writes as it starts a stage.
+STAGE_START = re.compile(r"^##### PASS1 (\S+) :: (features|segmentation|clustering|export) :: .* #####$")
 POLL_S = 60
 # The variable run_config_passes.sh checks before it does anything (round 12).
 STARTED_BY_THE_WRAPPER = "RUN_PASSES_SAFELY"
@@ -225,17 +228,17 @@ def main() -> int:
                 out.append(d)
         return out
 
-    stop = threading.Event()  # set by a signal: no pass starts after it
-    stopped_by: list[int] = []
+    stopped_by: list[int] = []  # the signals received: no pass starts after the first
     child: list[subprocess.Popen] = []  # the shell script, while a pass runs
 
     def on_signal(signum: int, frame: object) -> None:
         # Passed on to the shell script and the runner (review B5): they run in a process group of
         # their own, so a Ctrl-C in the terminal reaches this process only, and the pass loop
         # waits for them to end before it records the pass and stops. Nothing is raised here, so
-        # no write of the log or the state file is cut short.
+        # no write of the log or the state file is cut short. Nor is a lock taken: the handler runs
+        # in the main thread, and one that waited for a lock the main thread held when the signal
+        # came (a threading.Event takes one) would wait forever.
         stopped_by.append(signum)
-        stop.set()
         if child:
             with contextlib.suppress(ProcessLookupError):
                 os.killpg(child[0].pid, signum)
@@ -244,15 +247,21 @@ def main() -> int:
         if signal.getsignal(s) is not signal.SIG_IGN:  # one ignored at the start stays so (nohup)
             signal.signal(s, on_signal)
 
+    def pause(seconds: float) -> None:
+        """Sleeps for `seconds`, or less once a signal has come: in steps of at most a second."""
+        end = time.monotonic() + seconds
+        while not stopped_by and (left := end - time.monotonic()) > 0:
+            time.sleep(min(left, 1.0))
+
     def wait_until_idle(names: list[str], why: str) -> bool:
         """True once no task of `names` is queued or running; False if the batch is stopped first."""
         last_said = 0.0
-        while not stop.is_set():
+        while not stopped_by:
             try:
                 a = active(names)
             except Exception as e:  # noqa: BLE001 - a failed poll is retried, never read as "idle"
                 say(f"queue check failed ({str(e)[:120]}); retrying in {POLL_S} s")
-                stop.wait(POLL_S)
+                pause(POLL_S)
                 continue
             if not a:
                 return True
@@ -260,7 +269,7 @@ def main() -> int:
                 say(f"{why}: {len(a)} task(s) of these configs still queued or running; "
                     f"waiting (for example {a[0]})")
                 last_said = time.time()
-            stop.wait(POLL_S)
+            pause(POLL_S)
         return False
 
     remaining = [c for c in args.configs if c not in skipped]
@@ -270,7 +279,9 @@ def main() -> int:
     running: list[int] = []  # the pass whose exit lines are not yet read, and its first log line
 
     def save() -> None:
-        state_path.write_text(json.dumps({
+        # Written beside the state file and moved over it (os.replace), so that a save cut short
+        # (the disk full, the machine down) leaves the earlier state whole: B4's resume reads it.
+        text = json.dumps({
             "label": args.label,
             "git": {"commit": commit, "dirty": False},
             "configs": [name_of[c] for c in args.configs],
@@ -280,16 +291,30 @@ def main() -> int:
             "passes": history,
             "skipped": {name_of[c]: why for c, why in skipped.items()},
             "earlier_batches": earlier,
-        }, indent=1))
+        }, indent=1)
+        tmp = state_path.with_name(f"{state_path.name}.tmp")
+        try:
+            with tmp.open("w") as f:
+                f.write(text)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp, state_path)
+        finally:
+            tmp.unlink(missing_ok=True)
 
     def read_pass(p: int, rc: int | None, n0: int) -> None:
-        """The pass's exit lines, from line n0 of the log on: a config whose export stage exited 0
-        is done, one whose export stage failed needs attention."""
+        """The pass's stage lines, from line n0 of the log on: a config whose export stage exited 0
+        is done; one whose export stage failed, or started and has no exit line (the pass was cut
+        short while it ran, after it may have submitted its Drive exports), needs attention."""
         exits: dict[str, dict[str, int]] = {}
+        exports_started: set[str] = set()
         for line in log_path.read_text().splitlines()[n0:]:
             m = STAGE_EXIT.match(line.strip())
             if m:
                 exits.setdefault(m.group(1), {})[m.group(2)] = int(m.group(3))
+            m = STAGE_START.match(line.strip())
+            if m and m.group(2) == "export":
+                exports_started.add(m.group(1))
         history.append({"pass": p, "exit": rc, "stage_exits": exits})
         for c in list(remaining):
             st = exits.get(name_of[c], {})
@@ -298,6 +323,10 @@ def main() -> int:
                 remaining.remove(c)
             elif "export" in st:
                 attention[c] = f"export stage exited {st['export']} in pass {p}; not retried"
+                remaining.remove(c)
+            elif name_of[c] in exports_started:
+                attention[c] = (f"export stage started in pass {p} and has no exit line (the pass "
+                                f"was cut short while it ran); not retried")
                 remaining.remove(c)
         save()
 
@@ -308,7 +337,7 @@ def main() -> int:
             say(f"{name_of[c]}: skipped, {why}")
         env = pass_env(args.python, rt)
         for p in range(1, args.passes + 1):
-            if not remaining or stop.is_set():
+            if not remaining or stopped_by:
                 break
             names = [name_of[c] for c in remaining]
             if not wait_until_idle(names, f"before pass {p}"):
@@ -321,7 +350,7 @@ def main() -> int:
             child[:] = [subprocess.Popen(
                 ["bash", "odisha_script/run_config_passes.sh", str(log_path), *remaining],
                 cwd=rt, env=env, start_new_session=True, pass_fds=(lock_fd,))]
-            if stop.is_set():  # a signal while the pass was starting
+            if stopped_by:  # a signal while the pass was starting
                 with contextlib.suppress(ProcessLookupError):
                     os.killpg(child[0].pid, stopped_by[0])
             rc = child[0].wait()
