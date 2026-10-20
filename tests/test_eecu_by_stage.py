@@ -150,6 +150,24 @@ def test_a_header_with_its_date_is_read_so_and_a_batch_stopped_ends_its_last_pas
         ("features", 0.01), ("segmentation", 0.07), ("clustering", 0.08), ("export", 0.04)]
 
 
+def test_a_pass_whose_batch_has_no_end_line_is_refused():
+    """A check of the B26 fix (round 13): a batch that ended with no "batch ... ended" line (the
+    wrapper killed outright, or a crash) ran its last pass to the next batch's "started" line in
+    the label's log, ten hours later here, and charged it the project's online use over the gap."""
+    log = "\n".join([
+        "[run_passes_safely 2026-10-20 22:00:00] batch b started from commit abc1234",
+        "##### PASS1 x :: features :: 2026-10-20 22:00:03 #####",
+        "##### PASS1 x :: segmentation :: 2026-10-20 22:20:00 #####",
+        "##### PASS1 x :: clustering :: 2026-10-20 22:30:00 #####",
+        "##### PASS1 x :: export :: 2026-10-20 22:40:00 #####",
+        "[run_passes_safely 2026-10-21 09:00:00] batch b started from commit abc1234",
+        "[run_passes_safely 2026-10-21 09:00:01] b: skipped, an earlier batch of label b finished it",
+        "[run_passes_safely 2026-10-21 09:00:02] batch b ended: ALL CONFIGS COMPLETE",
+    ])
+    with pytest.raises(ValueError, match="no line of its own batch ends x's export pass"):
+        E.pass_spans(log, "x")
+
+
 def test_a_log_without_the_config_is_refused():
     with pytest.raises(ValueError):
         E.pass_spans("[run_passes_safely 2026-10-18 16:29:54] batch x ended", CFG)

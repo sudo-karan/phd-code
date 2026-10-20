@@ -14,7 +14,9 @@ in round 10) measures with it what one config costs per 1,000 ha (docs/handoff/2
 - Online: Cloud Monitoring's online series (earthengine.googleapis.com/project/cpu/usage_time,
   compute_type online) over each pass's span: from the pass's stage header in the wrapper log
   (odisha_script/run_passes_safely.py) to the next stage header of any config, or to the end of
-  its batch, whichever comes first. Each header carries its date since round 13; a header of an
+  its batch, whichever comes first. A batch whose wrapper left no "batch ... ended" line (killed
+  outright, or a crash) has no end in the log, and its last pass is refused rather than run to the
+  next batch's start (round 13). Each header carries its date since round 13; a header of an
   older log carries the time of day only, and is dated by the line before it (B26: every pass
   took the date of the log's first line). It is all of the project's online use in that span,
   whoever made it, and it cannot be split between the stages of one pass.
@@ -74,8 +76,10 @@ def pass_spans(log_text: str, config: str) -> list[tuple[str, datetime, datetime
     """(pass, start, end) in UTC for each pass of CONFIG in a wrapper log, in order.
 
     A pass runs from its stage header to the next stage header of any config, or to the end of its
-    batch (the wrapper's "batch ... ended" line, or a later batch's "started" line), whichever comes
-    first. A header without a date is dated by the line before it, a day later past midnight.
+    batch (the wrapper's "batch ... ended" line), whichever comes first. A pass that the next
+    batch's "started" line would end is refused: its batch has no end line, and the gap to the next
+    batch can be hours. A header without a date is dated by the line before it, a day later past
+    midnight.
     """
     events: list[tuple[str | None, str, datetime]] = []  # (config, pass, when); None: a batch's edge
     last: datetime | None = None
@@ -109,7 +113,11 @@ def pass_spans(log_text: str, config: str) -> list[tuple[str, datetime, datetime
             continue
         if i + 1 == len(events):
             raise ValueError(f"no line after {config}'s {stage} pass ends it in the log")
-        spans.append((stage, utc(when), utc(events[i + 1][2])))
+        after, what, end = events[i + 1]
+        if after is None and (edge := BATCH_EDGE.match(what)) and edge.group(1) == "started":
+            raise ValueError(f"no line of its own batch ends {config}'s {stage} pass: the batch has "
+                             f"no 'ended' line (its wrapper was killed or crashed)")
+        spans.append((stage, utc(when), utc(end)))
     if not spans:
         raise ValueError(f"no pass of {config} in the log")
     return spans
