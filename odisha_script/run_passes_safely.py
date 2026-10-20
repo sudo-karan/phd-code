@@ -53,7 +53,13 @@ RUN_PASSES_SAFELY=1 for the script (`pass_env`), which refuses to start without 
   - writes the run tree's state as the batch started, each pass's per-stage exit codes and
     the tree's state before and after it, and the change that stopped the batch if one did,
     to <log-dir>/<label>.state.json beside the log, after the record of the label's earlier
-    batches. A pass cut short (Ctrl-C) still records the configs it finished.
+    batches. A pass cut short (Ctrl-C) still records the configs it finished;
+  - counts a config as finished ("done" in the state file, and "ALL CONFIGS COMPLETE" in the
+    log once every config is) when its export stage exits 0. That means its Drive exports were
+    submitted, not that they completed: nothing in the batch waits on them or records how they
+    ended, since the runner's --wait covers cache exports only and the export call is not given
+    it (review C39, round 13). Their task ids are in the config's run record (drive_exports);
+    their states are on the Earth Engine task list.
 
 Exit codes: 0 every config complete; 1 not all complete (one not finished, or one needing
 attention); 90 another batch holds the lock; 92 the run tree has modified tracked files; 93 a

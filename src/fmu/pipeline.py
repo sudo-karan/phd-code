@@ -263,6 +263,9 @@ class StageRecord:
     # key -> "hit" (read from the cache) / "miss-exported" (computed live, export
     # submitted) / "miss" (computed live, nothing submitted). Empty with caching off.
     cache_status: dict[str, str] = field(default_factory=dict)
+    # The cache exports the orchestrator submitted for this stage's outputs. Tasks a
+    # stage submits itself (the export stage's Drive files) are not here: they are in
+    # its metadata, and nothing waits on them (review C39).
     export_tasks: list[dict[str, str]] = field(default_factory=list)
     # The stage's transparency declaration, filled in: its display layers (with
     # the cache asset each belongs at, when caching is on) and its summary numbers.

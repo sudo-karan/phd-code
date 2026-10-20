@@ -161,6 +161,10 @@ class ExportStage(Stage):
         "cluster_profiles",
     }
     produces = {"export_manifest"}
+    # Nothing cached, so the orchestrator submits no export for this stage and its
+    # StageRecord.export_tasks is empty. The Drive tasks it submits itself are in its
+    # metadata (drive_task_ids) and the manifest (drive_exports); nothing waits on
+    # them, the pass runner's --wait included (review C39).
     cacheable_outputs: ClassVar[set[str]] = set()  # always run; no GEE asset
 
     def validate(self, ctx: PipelineContext, config: Config) -> None:

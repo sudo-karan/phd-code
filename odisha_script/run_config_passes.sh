@@ -17,7 +17,11 @@
 # Phase 2 documented this as "three cache passes per config"; in September 2026 the
 # 3 ha arm needed two.
 #
-# Each stage call waits for its own export tasks (--wait) before the next stage starts.
+# Each stage call but the export one is given --wait, and waits for the cache exports it
+# submitted before the next stage starts. The export call submits the Drive files and returns
+# without waiting on them, and nothing waits on them later: the runner's --wait covers cache
+# exports only (review C39, round 13). So its exit=0, and ALL CONFIGS COMPLETE below, mean the
+# Drive tasks were submitted, not that they finished.
 # Every call but the first refuses to run while an upstream asset is missing (exit 3), so a
 # pass that races Earth Engine fails safely and is repaired by the following pass. The first
 # call, "features" (round 9), caches every feature image the config needs before segmentation

@@ -32,7 +32,13 @@ previous one cached, and refuses to start (exit 3) while any of them is missing:
 Asset paths follow the config's cache layout (fmu.pipeline.cache_layout_for): the legacy one for
 a config run before round 9, the per-step one otherwise.
 
-`--wait` polls the tasks the pass submitted and returns when they finish.
+`--wait` polls the cache exports the pass submitted (each stage's `export_tasks` in the pipeline's
+result) and returns when they finish. It does not wait on the export stage's Drive tasks: their
+ids are only in that stage's metadata (`drive_task_ids`) and in `<config>_run.json`
+(`drive_exports`). In the export pass every cacheable output is a cache hit, so `--wait` there
+would wait on nothing and print "no export tasks submitted by this pass", and run_config_passes.sh
+does not give it there. The export pass's exit 0 means the Drive tasks were submitted, not that
+they finished; their states are on the Earth Engine task list (review C39, round 13).
 
 WHAT IT WRITES (export pass only), under odisha_script/phase2_vectors/:
   <config>_stands_merged.geojson     the deliverable; stand identity is `stand_lbl`
@@ -289,6 +295,8 @@ def main() -> int:
     result = Pipeline(stage_names=names, use_cache=True, cache_layout=layout).run(
         config=cfg, run_dir=run_dir, initial_context=ctx)
 
+    # The orchestrator's cache exports only. The export stage's Drive tasks are not among them
+    # (their ids are in its metadata, drive_task_ids), so --wait never waits on them (review C39).
     tasks = [t["task_id"] for s in result.stages for t in s.export_tasks]
     status = {s.name: s.cache_status for s in result.stages if s.cache_status}
     print(f"  run dir: {run_dir}")
