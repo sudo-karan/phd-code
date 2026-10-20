@@ -914,7 +914,15 @@ carries the config name, the cache fingerprint, the merge summary numbers, the
 stand-size distribution and the stands and area under each `merge_kind`.
 
 GeoJSON attributes: every SHP attribute, **plus** per-stand means of every
-features_* band, plus centroid lat/lon.
+features_* band, plus centroid lat/lon. Each is the plain mean of the band's
+pixel values over the polygon (`ee.Reducer.mean()` in `reduceRegions`), the
+angle bands too: `aspect` (degrees, 0 to 360) and `<index>_phase_annual`
+(radians, −π to π; `<index>_phase_semi` too in a dual-harmonic run) are
+arithmetic means of angles, not circular means. So a stand whose pixels face
+350° and 10° reads 180°, and one whose phases lie on both sides of ±π reads near
+0 (review C10). The clustering does not read these columns: it takes the sine
+and cosine of each angle per pixel. The export is unchanged; whether it should
+give circular means is a question for Jaskaran (round 13).
 
 **Null `cluster_id` is meaningful, not missing data.** Unlike `stands_snic`,
 this layer keeps stands that clustering could not type. Under the merge
@@ -954,6 +962,8 @@ SHP attributes (capped at 10-char field-name limit):
 GeoJSON attributes: every SHP attribute, **plus** per-superpixel means
 of every features_* band (ndvi_mean, ndvi_amplitude_annual, vv_p50,
 canopy_height, elevation, etc.) — typically 25-30 additional columns.
+The angle bands (`aspect`, `<index>_phase_*`) are arithmetic means of angles
+here too, as in `stands_merged` (review C10).
 Centroid lat/lon are also included for convenience.
 
 #### `stands_dissolved`

@@ -113,7 +113,9 @@ meters.
   359 as maximally different despite being identical compass directions.
   A flat cell (slope 0) has no aspect (`ee.Terrain.products` gave it 0);
   the clustering stage gives it no direction, `aspect_sin` = `aspect_cos` =
-  0 (review A5).
+  0 (review A5). The stand layers' `aspect` column is not decomposed: it is
+  the plain mean of the stand's pixel degrees, an arithmetic mean of angles
+  (review C10; `docs/outputs.md`).
 
 ## CoRE Stack LULC (IndiaSAT)
 

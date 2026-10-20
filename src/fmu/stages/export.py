@@ -1020,7 +1020,10 @@ def _build_merged_feature_collection(
         maxPixels=int(1e9),
     )
 
-    # Step 2: per-stand feature means, same exclusions as the SNIC layer.
+    # Step 2: per-stand feature means, same exclusions as the SNIC layer. Plain means
+    # of the pixel values, the angle bands too: aspect (degrees) and *_phase_* (radians)
+    # come out as arithmetic means of angles, not circular means (review C10). The
+    # clustering does not read them; it takes sine and cosine per pixel.
     all_features = _feature_source_image(ctx)
     kept_feature_bands = all_features.bandNames().removeAll(
         ee.List(["ndvi_obs_count", "nirv_obs_count"])
@@ -1237,7 +1240,8 @@ def _build_snic_feature_collection(
         maxPixels=int(1e9),
     )
 
-    # Step 2: attach per-superpixel feature means.
+    # Step 2: attach per-superpixel feature means: plain means, so aspect and
+    # *_phase_* are arithmetic means of angles here too (review C10).
     # ee.Image.cat concatenates multi-band images; band names must be unique
     # across the inputs, which they are by construction (ndvi_*, vv_*, vh_*,
     # canopy_*, elevation/slope/aspect/...). We drop the obs_count metadata
