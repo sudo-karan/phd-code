@@ -1404,7 +1404,7 @@ The review of 19 Oct 2026 (`docs/reviews/2026-10-19-review.md`, A8) found that t
 script scored the 6.1 rotation null, and its null structure, on every plot a realisation put on a
 stand, while the observed value leaves out a plot the observed map leaves unassigned. The null
 forces only the observed-assigned plots onto a stand, so the other plots could enter the null but
-never the observed value. Since commit `390c5fb` the script scores the null on the
+never the observed value. Since commit `57235ca` the script scores the null on the
 observed-assigned plots only, as Phase 3 does, and ends every name it writes with `_r13`. The files
 without `_r13` are kept as written before the fix.
 

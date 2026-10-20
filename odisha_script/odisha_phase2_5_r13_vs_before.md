@@ -3,12 +3,14 @@
 The review of 19 Oct 2026 (`docs/reviews/2026-10-19-review.md`, finding A8) found that the rotation
 null of 6.1 and of its null structure was scored on every plot a realisation put on a stand, while
 the observed value leaves out a plot the observed stand map leaves unassigned. Since commit
-`390c5fb`, `odisha_phase2_5_stats.py` scores the null on the observed-assigned plots only, as Phase 3
+`57235ca`, `odisha_phase2_5_stats.py` scores the null on the observed-assigned plots only, as Phase 3
 does, and ends every name it writes with `_r13`. The files from before the fix keep their names.
 
 This file lists every line and cell that differs between the files from before the fix, as
 committed at `c368eb7` (before the dated note added to the results text in round 13), and the
-`_r13` files the fixed script (`390c5fb`) wrote with the documented commands, run from the repo root:
+`_r13` files the fixed script wrote with the documented commands, run from the repo root, at
+`390c5fb`, the fix's first commit, on a local branch (the script and every file it reads are those
+of `57235ca`, its commit on this branch; ids corrected 20 Oct 2026):
 
 ```bash
 python odisha_script/odisha_phase2_5_stats.py --set pilot

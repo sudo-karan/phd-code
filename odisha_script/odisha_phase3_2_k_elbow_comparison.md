@@ -65,7 +65,7 @@ Both report the elbow in two geometries side by side, and name neither as the on
 
 The sweep is the script's own throughout: scikit-learn k-means, seed 42, 25 starts, k from 2 to
 12, the knee of the inertia curve. Every elbow is given again with the same rows in reverse order,
-because k-means' best of 25 starts depends on the order of the rows (commit `3fe8c16`).
+because k-means' best of 25 starts depends on the order of the rows (commit `91f4287`).
 
 ## The elbows
 
