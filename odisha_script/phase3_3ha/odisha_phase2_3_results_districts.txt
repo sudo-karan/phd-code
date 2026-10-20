@@ -130,3 +130,17 @@ JOIN — plots to stands by geometry (set: districts)
   plots whose merged stand carries a cluster_id: 145 of 145; cluster values after rounding [0.0, 1.0, 2.0, 3.0, 4.0] (non-integer: 0)
 
   wrote phase2_plots_joined_districts.csv: 274 rows, 30 columns
+
+  NOTE ADDED 20 Oct 2026 (round 13, review A6; the numbers above are as first written): the stand
+  areas above are area_ha of the layers in phase2_vectors/, which Earth Engine's area() gave, and
+  for a polygon whose hole touches its outer ring at a vertex area() added the hole instead of
+  subtracting it. This file's script, re-run offline on copies of those layers with the holes
+  subtracted, changes three lines: line 74 reads median 2.36 / p90 2.93 (was 2.37 / 2.94), line
+  119 median 2.37 (was 2.38) and line 123 p90 0.65 (was 0.66). Since round 13 the export gives
+  area_ha as the polygon's pixel count on the analysis grid times 0.01 ha, for these layers also
+  0.2% to 0.3% below area() for every polygon: on that measure line 74 reads p10 1.26 / median
+  2.35 / p90 2.92, line 119 p10 1.28 / median 2.36 / p90 2.92 and line 123 p10 0.11 / median 0.33
+  / p90 0.65, and line 89 reads median 2.28 / p90 2.94 and line 104 median 2.35 / p90 2.95. The
+  stands_dissolved layers lie on a geographic grid in these runs (docs/outputs.md, "Areas and
+  pixel counts"). The plot table this script writes here, phase2_plots_joined_districts.csv, holds
+  23 area cells that the holes change (odisha_script/PHASE3_STATUS.md, note at the end).

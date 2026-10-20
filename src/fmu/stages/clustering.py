@@ -21,14 +21,14 @@ Pipeline (server-side throughout):
 
   2. Cyclic decomposition
        - Each *_phase_* and aspect band becomes a sin/cos pair. Original dropped.
+       - A flat cell (slope 0) has no aspect: its aspect pair is (0, 0).
 
   3. Per-unit means
-       - reduceConnectedComponents with the stand (or superpixel) labels.
-       - Every pixel now holds the mean of its unit for each feature.
-       - maxSize is the measured widest unit extent (plus margin, capped at
-         Config.max_component_pixels), not the cap itself: EE pads every tile
-         by maxSize, so memory grows with bands x pad and a wide band stack
-         can run out of memory at the cap. See _component_neighbourhood_px.
+       - One mean per stand (or superpixel) label, over all of its pixels in
+         the ROI, a stand in several pieces included: a grouped reduction by
+         the label image, painted back with remap. See
+         _compute_superpixel_means.
+       - Every pixel of a unit now holds the mean of its unit for each feature.
 
   4. Habitat filter
        - updateMask(habitat_mask). Non-habitat pixels excluded from
@@ -37,13 +37,15 @@ Pipeline (server-side throughout):
   5. Skewness detection (DEC-004)
        - For each band, compute skewness over habitat-masked sample.
        - Mark bands with |skew| > skewness_threshold for log-transform.
+       - Not the sin and cos of a harmonic phase, which are never logged.
 
   6. Log-transform marked bands
        - log(x - min + 1e-3) so x can include zero/negative values safely.
 
   7. Robust scaling (DEC-003, method=robust in config)
        - Per band: (x - median) / IQR. Drop bands with IQR near 0 (constant).
-       - Median/IQR computed over the habitat-masked sample.
+       - Median/IQR computed over the habitat-masked sample, exactly: each
+         band's column is read back (see _exact_quartiles).
 
   8. Train k-means
        - ONE row per unit, and every unit -- no pixel sampling. The stack is
@@ -76,6 +78,7 @@ import math
 from typing import Any
 
 import ee
+import numpy as np
 
 from fmu.config import Config
 from fmu.stages.base import (
@@ -87,7 +90,6 @@ from fmu.stages.base import (
     SummaryNumber,
     register_stage,
 )
-from fmu.utils.components import assert_components_fit
 from fmu.utils.gee import LABEL_BAND, safe_call, safe_get_info
 from fmu.utils.logging import get_logger
 
@@ -409,44 +411,14 @@ class ClusteringStage(Stage):
             ", ".join(decomposition_log) if decomposition_log else "none",
         )
 
-        # 3. Per-unit means (per stand, or per superpixel if merge is off).
-        # maxSize is derived, not configured (see Config.max_component_pixels),
-        # and checked against the labels in hand first -- the argument masks any
-        # component larger than it, so getting it wrong deletes stands rather
-        # than raising.
-        #
-        # The cap still does that guarding. The argument actually passed is the
-        # measured unit extent, because EE pads every tile by maxSize and a wide
-        # band stack does not fit in memory at the cap. Every unit is still
-        # aggregated whole, so the means cover the same pixels as at the cap;
-        # why, and under what precondition, is in _component_neighbourhood_px.
-        max_component_px = config.max_component_pixels()
-        component_stats = assert_components_fit(
-            unit_labels,
-            roi,
-            scale,
-            max_component_px,
-            context=f"clustering per-{unit_key} means",
-        )
-        # Failure mode, stated so nobody mistakes it for a silent one: an AOI
-        # with an extremely elongated stand pushes the neighbourhood towards the
-        # cap, and a wide band stack could then run out of memory again. That
-        # run fails loudly, exactly as it did before this measurement existed.
-        # A label reused across disjoint places inflates the measured extent the
-        # same way and is warned about. widest_unit_extent_px in the stage
-        # metadata is the diagnostic.
-        neighbourhood_widest_px, rcc_neighbourhood_px = _component_neighbourhood_px(
-            unit_labels,
-            decomposed_stack,
-            roi,
-            scale,
-            cap=max_component_px,
-            n_labels=component_stats["n_components"],
-            largest_component_px=component_stats["largest_component_px"],
-            context=f"clustering per-{unit_key} means",
+        # 3. Per-unit means (per stand, or per superpixel if merge is off): one
+        # mean per unit label over all of its pixels, whether the unit is in one
+        # piece or several (review B14); see _compute_superpixel_means.
+        candidate_bands = safe_get_info(
+            decomposed_stack.bandNames(), context="post-decomposition bands"
         )
         superpixel_stack = _compute_superpixel_means(
-            decomposed_stack, unit_labels, rcc_neighbourhood_px
+            decomposed_stack, unit_labels, candidate_bands, roi, scale
         )
 
         # 4. Habitat filter
@@ -465,9 +437,6 @@ class ClusteringStage(Stage):
         # This also retires the "10,000 superpixels" confusion in the docs. The
         # old `n_training_samples: 10000` was 10,000 *pixels*, roughly 37 per
         # superpixel, never 10,000 superpixels.
-        candidate_bands = safe_get_info(
-            habitat_masked.bandNames(), context="post-decomposition bands"
-        )
         preprocessing_sample = _sample_one_point_per_unit(
             habitat_masked,
             unit_labels,
@@ -477,10 +446,12 @@ class ClusteringStage(Stage):
             context=f"preprocessing stats per {unit_key}",
         )
 
-        # 5. Skewness detection (sample-based)
+        # 5. Skewness detection (sample-based). Not of a harmonic phase's sin and
+        #    cos: see _phase_components.
+        phase_components = _phase_components(decomposition_log)
         skewed_bands = _identify_skewed_bands(
             preprocessing_sample,
-            candidate_bands,
+            [b for b in candidate_bands if b not in phase_components],
             threshold=params.skewness_threshold,
         )
         log.info(
@@ -602,15 +573,10 @@ class ClusteringStage(Stage):
                 "fit_excludes_stands_below_min_area": (
                     params.fit_excludes_stands_below_min_area
                 ),
-                # Recorded even when the check passes: the headroom is the early
-                # warning that a merge.max_area_ha change is about to start
-                # masking components rather than merely resizing them.
-                **component_stats,
-                # Recorded so the manifest shows the neighbourhood actually used,
-                # and how close the widest stand is to it. Deliberately kept out
-                # of clustering_metadata, which stays key-for-key what it was.
-                "rcc_neighbourhood_px": rcc_neighbourhood_px,
-                "widest_unit_extent_px": neighbourhood_widest_px,
+                # No n_components, largest_component_px, max_component_px_cap,
+                # rcc_neighbourhood_px or widest_unit_extent_px since round 13:
+                # they described reduceConnectedComponents' maxSize, and the
+                # means no longer call it (review B14).
             },
         )
 
@@ -669,6 +635,14 @@ def _decompose_cyclic_bands(image: ee.Image) -> tuple[ee.Image, list[str]]:
     0 and 2π are maximally far apart in linear space despite being identical
     angles. sin/cos decomposition removes that artifact.
 
+    A flat cell has no aspect: ee.Terrain.products gave a cell with no gradient
+    an aspect of 0 (review A5), which as (sin, cos) is (0, 1), a slope facing
+    due north.
+    Where the slope is 0 the aspect pair is (0, 0) instead, so that a unit's
+    mean aspect vector holds only the directions of its sloping cells (review
+    A5). The slope is read from the same stack: features_static emits it with
+    aspect.
+
     Returns the new image plus a list of band names that were decomposed.
     """
     band_names = safe_get_info(image.bandNames(), context="bands for cyclic check")
@@ -676,9 +650,16 @@ def _decompose_cyclic_bands(image: ee.Image) -> tuple[ee.Image, list[str]]:
 
     if not cyclic_bands:
         return image, []
+    if "aspect" in cyclic_bands and "slope" not in band_names:
+        raise ValueError(
+            "The feature stack has an aspect band but no slope band, so the flat "
+            "cells, which have no aspect, cannot be told apart from slopes facing "
+            "due north. features_static emits slope and aspect together."
+        )
 
     # Phase bands are in radians (atan2 output ∈ [-π, π]).
-    # Aspect is in degrees [0, 360] from ee.Terrain.products; convert first.
+    # Aspect is in degrees [0, 360] from ee.Terrain.aspect (ee.Terrain.products
+    # until round 13); convert first.
     new_bands: list[ee.Image] = []
     for cb in cyclic_bands:
         original = image.select(cb)
@@ -688,235 +669,126 @@ def _decompose_cyclic_bands(image: ee.Image) -> tuple[ee.Image, list[str]]:
         else:
             # Phase bands from atan2 are already in radians ∈ [-π, π].
             radians = original
-        sin_band = radians.sin().rename(f"{cb}_sin")
-        cos_band = radians.cos().rename(f"{cb}_cos")
-        new_bands.extend([sin_band, cos_band])
+        sin_band = radians.sin()
+        cos_band = radians.cos()
+        if cb == "aspect":
+            # No direction where the ground is flat (see the docstring).
+            flat = image.select("slope").eq(0)
+            sin_band = sin_band.where(flat, 0)
+            cos_band = cos_band.where(flat, 0)
+        new_bands.extend([sin_band.rename(f"{cb}_sin"), cos_band.rename(f"{cb}_cos")])
 
     kept_bands = [b for b in band_names if b not in cyclic_bands]
     return image.select(kept_bands).addBands(ee.Image.cat(new_bands)), cyclic_bands
 
 
-# reduceConnectedComponents masks an object only when it is strictly LARGER than
-# maxSize in either dimension, so the widest extent itself would already fit in
-# the grid it was measured in. The margin is not for that equality case. It
-# absorbs the difference between the grids that were measured and a grid
-# neither saw exactly (an export aligns to the same CRS and scale but not
-# necessarily the same pixel origin, which can move an extent by about a pixel).
-_RCC_EXTENT_MARGIN = 1.2
-# Flat pad on top of the relative margin: for a small widest extent, 20% is under
-# a pixel and would not cover the ~1 px sub-pixel / ROI-edge alignment error.
-_RCC_EXTENT_PAD_PX = 2
-# A connected object's extent never exceeds its pixel count, so a measured extent
-# more than this many times the largest label's count cannot be one object. It
-# is a label reused across disjoint places, or a broken measurement. 2x leaves
-# room for the ~1/cos(lat) width difference between the two measured grids.
-_DISJOINT_LABEL_EXTENT_RATIO = 2
+def _phase_components(decomposed: list[str]) -> list[str]:
+    """The sin and cos bands _decompose_cyclic_bands made of a harmonic phase band.
 
-
-def _neighbourhood_from_groups(
-    groups: list[dict[str, list[float]]] | None, *, cap: int
-) -> tuple[int, int]:
-    """Neighbourhood (px) for reduceConnectedComponents from per-label
-    pixel-coordinate extents.
-
-    Returns (widest_extent_px, neighbourhood_px).
-
-    Each group carries the min and max pixel coordinate (x, y) of one label.
-    The +1 turns a coordinate span into a pixel extent: a label occupying
-    columns 10..137 is 128 px wide, not 127. The span is rounded before the +1
-    because pixel coordinates come back as floats, and a 127-px span that
-    arrives as 126.9999999 must not truncate to a 127-px extent. Truncating
-    under-measures, the one direction this must not err in.
-
-    neighbourhood = ceil(widest * _RCC_EXTENT_MARGIN) + _RCC_EXTENT_PAD_PX, never
-    above the cap. That is always strictly greater than widest, so every
-    measured label fits. Because of the cap, this can only narrow the
-    neighbourhood relative to passing the cap directly. With no groups at all it
-    returns the cap, which is exactly the old behaviour. The caller decides
-    whether an empty result is legitimate (no labels) or a failure.
-
-    Pure arithmetic, no Earth Engine: kept separate so the fast test tier pins
-    it.
+    `decomposed` is the list of bands it decomposed. These components are never
+    candidates for the skew test or the log (review B13): they are the two
+    coordinates of a point on the unit circle, so their skew across units says
+    where the units' phases sit on it, which moves with the harmonic's reference
+    date, not that a band has a long tail. Logged one by one, they bent the
+    circle. Aspect's pair is not among them, and every other band is tested as
+    before.
     """
-    widest = 0
-    for g in groups or []:
-        span = max(g["max"][0] - g["min"][0], g["max"][1] - g["min"][1])
-        widest = max(widest, int(round(span)) + 1)
-    if widest == 0:
-        return 0, cap
-    return widest, min(
-        cap, math.ceil(widest * _RCC_EXTENT_MARGIN) + _RCC_EXTENT_PAD_PX
-    )
+    return [f"{b}_{part}" for b in decomposed if "_phase_" in b for part in ("sin", "cos")]
 
 
-def _component_neighbourhood_px(
-    unit_labels: ee.Image,
-    feature_image: ee.Image,
-    roi: ee.Geometry,
-    scale: int,
-    *,
-    cap: int,
-    n_labels: int,
-    largest_component_px: int,
-    context: str,
-) -> tuple[int, int]:
-    """Measure the widest unit extent and derive the maxSize to pass.
-
-    Returns (widest_extent_px, neighbourhood_px); see _neighbourhood_from_groups.
-    `n_labels` and `largest_component_px` are assert_components_fit's
-    measurements of the same labels. They decide whether an empty measurement
-    is legitimate and whether the extent is plausible for one object.
-
-    Why this exists. reduceConnectedComponents' maxSize is an EXTENT in pixels
-    ("objects larger than maxSize in either the horizontal or vertical
-    dimension will be masked"), and EE pads every tile by it. tileScale does
-    not shrink the pad. Config.max_component_pixels derives the cap as a pixel
-    COUNT: 1200 at 10 ha / 10 m. Passed straight through, each 256 px tile was
-    evaluated over about 2656^2 px per band, so memory scales with bands x pad,
-    and a wide enough band stack exceeds the user memory limit.
-
-    Why every unit is still aggregated whole. The argument does not rest on
-    assert_components_fit. That bounds a pixel COUNT in the label grid, while
-    the reduction runs in the feature image's first-band grid (EPSG:4326 for
-    the feature sources in use), where the same stand is ~1/cos(lat) wider. A
-    count bound in one grid does not bound an extent in the other. Instead:
-
-      - When the cap does not bind, neighbourhood > widest, and widest is
-        measured in the grid the reduction evaluates in. So no label exceeds
-        maxSize and every label is aggregated whole. The old call, with a
-        larger maxSize, also aggregated every label whole, because a label wider
-        than the cap would be wider than widest. Same pixels in each mean.
-      - When the cap binds, the argument passed IS the cap, so behaviour is
-        exactly what it was before this function existed, including any
-        pre-existing edge case at the cap.
-
-    Values therefore agree up to floating-point summation order, not bit for
-    bit: EE may sum a unit's pixels in a different order under a different
-    tiling. Measured on two hand-crafted configs, training rows differed by at
-    most ~2e-13 and scaling parameters by at most ~2.4e-14, and cluster labels
-    were pixel-identical over the whole ROI. Do not expect byte-identical
-    metadata JSON.
-
-    Precondition. This holds when the lazy outputs are evaluated at
-    analysis_scale_m in the measured grids. That is true of today's pipeline:
-    the cache and Drive exports pass `scale` with no `crs`, so they evaluate in
-    the image's first-band CRS at that scale, and profiling/metrics read either
-    cached assets or the same lazy graph at the same scale. An evaluation in a
-    different CRS, or at a coarser scale, is outside the argument. The
-    alignment-only difference of an export (same CRS and scale, possibly a
-    different origin) is what _RCC_EXTENT_MARGIN is for.
-
-    What is measured, and where:
-      - per LABEL, not per connected component, so a stand split into parts is
-        bounded by the box around all of them. That is the conservative
-        direction, but a label reused far apart inflates the extent. When that
-        pushes the neighbourhood up to the cap, a WARNING says so.
-      - over the ROI: labels are clipped to it upstream, so this sees every
-        labelled pixel.
-      - in two grids: the feature image's first-band projection and the labels'
-        own grid; the larger is used. reduceConnectedComponents' output bands
-        keep the input's band projections, so the reduced stack's band-0 grid
-        is the feature band-0 grid. This was checked live: identical projection
-        and identical widest extent on an embedding and a hand-crafted config.
-      - no bestEffort: a downsampled grid would under-measure extents, the one
-        direction this must not err in.
-
-    Raises:
-        RuntimeError: a measurement came back without groups although
-            assert_components_fit found labels in the ROI. Falling back to the
-            cap there would silently reintroduce the memory failure this exists
-            to prevent (ENG-012).
-    """
-    all_groups: list[dict[str, list[float]]] = []
-    for grid_name, proj in (
-        ("feature band-0", feature_image.select([0]).projection().atScale(scale)),
-        ("label", unit_labels.select([0]).projection().atScale(scale)),
-    ):
-        info = safe_get_info(
-            ee.Image.pixelCoordinates(proj)
-            .addBands(unit_labels.select([0]).rename(LABEL_BAND))
-            .reduceRegion(
-                reducer=ee.Reducer.minMax()
-                .repeat(2)
-                .group(groupField=2, groupName=LABEL_BAND),
-                geometry=roi,
-                crs=proj,
-                maxPixels=1_000_000_000,
-            ),
-            context=f"{context} unit extents",
-        )
-        groups = (info or {}).get("groups")
-        if not groups and n_labels > 0:
-            raise RuntimeError(
-                f"{context}: the unit-extent measurement in the {grid_name} grid "
-                f"returned no groups ({info!r}), but the label histogram found "
-                f"{n_labels} label(s) in the ROI. Refusing to fall back to the "
-                f"cap ({cap} px): that is the neighbourhood that runs out of "
-                f"memory on wide band stacks, and a measurement that silently "
-                f"sees nothing is a bug to find, not a default to use."
-            )
-        all_groups.extend(groups or [])
-
-    widest, neighbourhood = _neighbourhood_from_groups(all_groups, cap=cap)
-    log.info(
-        "  %s: widest unit %d px, reduceConnectedComponents neighbourhood %d px (cap %d)",
-        context,
-        widest,
-        neighbourhood,
-        cap,
-    )
-    if (
-        neighbourhood == cap
-        and widest > _DISJOINT_LABEL_EXTENT_RATIO * largest_component_px
-    ):
-        log.warning(
-            "  %s: widest label extent %d px is more than %dx the largest label's "
-            "pixel count (%d px), which no single connected object can be: a "
-            "label is reused across disjoint places and has inflated the extent. "
-            "The neighbourhood fell back to the cap (%d px), which is correct "
-            "but may run out of memory on a wide band stack.",
-            context,
-            widest,
-            _DISJOINT_LABEL_EXTENT_RATIO,
-            largest_component_px,
-            cap,
-        )
-    return widest, neighbourhood
+# The name of the band of 1 (data) and 0 (no data) that goes beside each feature band
+# into the unit means' grouped reduction (_compute_superpixel_means).
+_HAS_DATA_SUFFIX = "__has_data"
 
 
 def _compute_superpixel_means(
-    feature_image: ee.Image, unit_labels: ee.Image, max_size: int
+    feature_image: ee.Image,
+    unit_labels: ee.Image,
+    band_names: list[str],
+    roi: ee.Geometry,
+    scale: int,
 ) -> ee.Image:
-    """Replace each feature value with its mean over the containing unit.
+    """Replace each feature value with its mean over the unit it belongs to.
 
-    Adds the unit labels as a label band, then calls reduceConnectedComponents
-    (the standard SNIC-aggregate pattern in GEE). Output has the same bands
-    as the input but pixel values are constant within each unit.
-    Note: reduceConnectedComponents preserves input band names, no
-    _mean suffix is added (unlike SNIC's mean output bands).
+    One mean per unit label, over every pixel the label has in the ROI, whether
+    the unit is in one piece or in several (review B14). Until round 13 this was
+    reduceConnectedComponents, which averages each 8-connected piece of a label
+    on its own: a stand in two pieces had two means, its k-means row came from
+    one of them, and its pieces could get two types. For a unit in one piece the
+    means are the same, up to floating-point summation order, in every band the
+    unit has data in.
+
+    One grouped reduction of the stack by the label image, then each band
+    painted back on the label image with remap, all server-side (no mean is
+    read back):
+      - sums, unweighted, so that each pixel whose centre is in the ROI counts
+        once, as in reduceConnectedComponents, not by the share of it the ROI
+        covers;
+      - band by band: a band's mean is over the unit's pixels where that band
+        has data, and every pixel of the unit holds it; a unit with no data at
+        all in a band is masked in that band, so it has no k-means row. Until
+        round 13 it had one: reduceConnectedComponents gave it 0 in that band, a
+        value never measured (read on Earth Engine in round 13, on synthetic
+        images). No band goes into the reduction masked: Earth Engine's grouped,
+        unweighted reducers add a band's masked pixels into the sum they give a
+        group, though their count leaves them out (read on Earth Engine in round
+        13, on synthetic images: a band with data on 16 of a unit's 32 pixels
+        summed to 2,664 where its 16 values sum to 1,320, and a unit with no data
+        got a mean of 0). So each band goes in with 0 where it has no data,
+        beside a band of 1 where it has data and 0 elsewhere, both unmasked
+        everywhere, outside the band's footprint too, and a unit's mean is the
+        one sum over the other;
+      - in the label image's own grid at the analysis scale, so that the pixels
+        averaged are the unit's own, and with no bestEffort, which would average
+        a coarser grid.
 
     The unit is a merged stand when merge ran and a raw superpixel otherwise;
-    the reduction is identical either way, which is why this took no change
-    beyond the label image it is handed.
-
-    `max_size` is the reduceConnectedComponents neighbourhood; ClusteringStage
-    passes the measured unit extent (see _component_neighbourhood_px), not the
-    count-derived cap.
+    the reduction is identical either way. A label found in two places, which
+    SNIC's labels can be (review B3), is one unit here, as it is in the merge.
+    The output has the bands of `band_names`, in that order.
     """
-    band_names = feature_image.bandNames()
-    # Was "snic_label", which is now the wrong word as well as a second
-    # convention: the unit here is a merged stand whenever merge ran.
-    label_band = LABEL_BAND
-
-    with_labels = feature_image.addBands(unit_labels.rename(label_band))
-    reduced = with_labels.reduceConnectedComponents(
-        reducer=ee.Reducer.mean(),
-        labelBand=label_band,
-        maxSize=max_size,
+    features = feature_image.select(band_names)
+    label_image = unit_labels.select([0])
+    has_data_names = [f"{band}{_HAS_DATA_SUFFIX}" for band in band_names]
+    # Unmasked everywhere (sameFootprint false): unmask(0) alone leaves a band masked
+    # outside its footprint, and a unit that footprint cuts then took in masked pixels
+    # (read on Earth Engine in round 13: 2,664 and 32 pixels where 1,320 and 16 are right).
+    summed = features.unmask(0, False).addBands(
+        features.mask().gt(0).unmask(0, False).rename(has_data_names)
     )
-    # Drop the label band from the result; keep only the feature bands
-    # (which retain their original names).
-    return reduced.select(band_names)
+    stats = summed.addBands(label_image.rename(LABEL_BAND)).reduceRegion(
+        reducer=ee.Reducer.sum()
+        .unweighted()
+        .forEachBand(summed)
+        .group(groupField=2 * len(band_names), groupName=LABEL_BAND),
+        geometry=roi,
+        crs=label_image.projection().atScale(scale),
+        maxPixels=1_000_000_000,
+    )
+    # One feature per unit, {LABEL_BAND: label, band: sum, band__has_data: pixels
+    # with data, ...}.
+    units = ee.FeatureCollection(
+        ee.List(stats.get("groups")).map(lambda group: ee.Feature(None, group))
+    )
+    means: list[ee.Image] = []
+    for band, has_data in zip(band_names, has_data_names, strict=True):
+        # The units with data in the band, each with its mean there.
+        with_data = units.filter(ee.Filter.gt(has_data, 0)).map(_mean_of(band, has_data))
+        means.append(
+            label_image.remap(
+                with_data.aggregate_array(LABEL_BAND), with_data.aggregate_array(band)
+            ).rename(band)
+        )
+    return ee.Image.cat(means)
+
+
+def _mean_of(band: str, has_data: str) -> Any:
+    """For FeatureCollection.map: set a unit's `band` to its sum over its pixels with data."""
+
+    def mean(unit: ee.Feature) -> ee.Element:
+        return unit.set(band, ee.Number(unit.get(band)).divide(unit.get(has_data)))
+
+    return mean
 
 
 def _identify_skewed_bands(
@@ -926,10 +798,15 @@ def _identify_skewed_bands(
 ) -> list[str]:
     """Return bands whose |skewness| over the sample exceeds threshold.
 
-    Operates on a FeatureCollection sample (typically 10k features) rather
-    than the full image to stay within GEE's user memory limit. Per-band
-    skewness uses `reduceColumns`: one server call per band, small payload.
-    Skewness estimates are stable with n=10k.
+    The sample is one row per unit (`_sample_one_point_per_unit`, a unit with
+    no data in a band left out), not a pixel sample: 219 to 3,738 rows in the
+    `_r9` runs of record (`n_units_in_habitat` less
+    `n_units_dropped_null_band` in their manifests). Per-band skewness uses
+    `reduceColumns`: one server call per band, small payload.
+
+    Corrected 20 Oct 2026 (review C19): this said the sample was "typically
+    10k features" and that skewness estimates are stable at that size, which
+    described the 10,000-pixel sample used before one row per unit.
     """
     skewed: list[str] = []
     for band in band_names:
@@ -956,9 +833,15 @@ def _apply_log_transform(
 
     The offset min comes from the same sample used for skew detection
     (avoids re-scanning the full image just for one statistic per band).
-    epsilon=1e-3 keeps log() defined exactly at the sample minimum; if
-    a real pixel value is below the sample min, the log is still defined
-    (just produces a small negative number).
+    epsilon=1e-3 keeps log() defined at the sample minimum, where the band
+    becomes log(0.001), about -6.91. A value below the sample minimum by
+    less than epsilon gives a value below -6.91; a value below it by epsilon
+    or more gives the log of zero or of a negative number, which is not a
+    real number. What Earth Engine puts in such a pixel was not checked.
+
+    Corrected 20 Oct 2026 (review C19; round 2's item B3 had listed it): this
+    said that below the sample minimum the log "is still defined" and gives
+    a small negative number.
 
     Returns the transformed image plus a dict of per-band log offsets.
     """
@@ -1009,32 +892,29 @@ def _apply_scaling(
     method="zscore":           center=mean,   spread=stdDev.
 
     Scaling parameters are derived from the sample (FeatureCollection),
-    not the full image. Sidesteps GEE memory limits on percentile reducers.
+    not the full image. With method="robust" each band's column of the sample
+    is read back and its median and IQR are exact (_exact_quartiles, review
+    B16): Earth Engine's percentile reducer, used before round 13, falls back to
+    histogram buckets, so a band whose p25 and p75 shared a bucket got a spread
+    of exactly 0 and was dropped as constant although it had spread.
 
     Drops bands with spread ≤ epsilon (constant features can't be scaled
-    and contribute nothing to clustering).
+    and contribute nothing to clustering). The drop test and the scaling read
+    the same center and spread.
     """
     scaling_params: dict[str, dict[str, float]] = {}
 
     if method == "robust":
         for band in band_names:
-            result = safe_get_info(
-                sample.reduceColumns(
-                    reducer=ee.Reducer.percentile([25, 50, 75]),
-                    selectors=[band],
-                ),
-                context=f"p25/p50/p75 of {band}",
+            values = safe_get_info(
+                sample.aggregate_array(band), context=f"values of {band}"
             )
-            if result is None:
+            if not values:
                 continue
-            p25 = result.get("p25")
-            p50 = result.get("p50")
-            p75 = result.get("p75")
-            if p25 is None or p50 is None or p75 is None:
-                continue
+            p25, p50, p75 = _exact_quartiles(values)
             scaling_params[band] = {
-                "center": float(p50),
-                "spread": float(p75) - float(p25),  # IQR
+                "center": p50,
+                "spread": p75 - p25,  # IQR
             }
     elif method == "zscore":
         for band in band_names:
@@ -1082,6 +962,18 @@ def _apply_scaling(
     return ee.Image.cat(scaled_bands), scaling_params, active_bands
 
 
+def _exact_quartiles(values: list[float]) -> tuple[float, float, float]:
+    """The 25th, 50th and 75th percentiles of `values`, exactly (review B16).
+
+    Linear interpolation between order statistics, numpy's default: with the n
+    values sorted, v[0] <= ... <= v[n-1], the q-th quantile is
+    v[j] + (h - j) * (v[j+1] - v[j]), where h = q * (n - 1) and j = floor(h).
+    Pure Python and numpy, no Earth Engine.
+    """
+    p25, p50, p75 = np.percentile(np.asarray(values, dtype=float), [25, 50, 75])
+    return float(p25), float(p50), float(p75)
+
+
 def _sample_one_point_per_unit(
     image: ee.Image,
     unit_labels: ee.Image,
@@ -1093,9 +985,10 @@ def _sample_one_point_per_unit(
 ) -> ee.FeatureCollection:
     """One feature per unit, carrying that unit's feature vector.
 
-    The image handed in is constant within a unit (it is the per-unit mean), so
-    a single pixel per unit reproduces the unit's vector exactly -- this is not
-    an approximation of a larger sample, it is the complete set of distinct rows
+    The image handed in is constant within a unit (it is the per-unit mean, one
+    per unit label, a unit in several pieces included: review B14), so a single
+    pixel per unit reproduces the unit's vector exactly -- this is not an
+    approximation of a larger sample, it is the complete set of distinct rows
     with the duplicates removed.
 
     Removing them matters. A pixel sample draws each unit once per pixel, so a
@@ -1176,6 +1069,14 @@ def _train_and_apply_kmeans(
     #     forest character -- and since `cluster()` masks wherever an input band
     #     is masked, those units are missing from `cluster_labels` too. They
     #     become holes in the map, not mistyped stands.
+    #
+    # What the second count held in the runs of record (review C15): the units at
+    # the ROI's edge with no pixel whose centre is inside the ROI. _count_units'
+    # frequency histogram counts a pixel by its share inside the ROI, so it lists
+    # them, and the one-pixel sample, which takes pixel centres, has no row for
+    # them (nor does the export give them a polygon). Until round 13 a unit with
+    # no data in a band got 0 there and kept its row, so no band gap was counted;
+    # since B14 such a unit is masked and is counted here too. The name is kept.
     #
     # Both are counted against every row, before the stands below the minimum
     # are left out (clustering.fit_excludes_stands_below_min_area), or those

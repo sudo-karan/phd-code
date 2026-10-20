@@ -21,10 +21,29 @@ from typing import Any
 _MAX_LISTED = 50
 _TIMEOUT_S = 10
 
+# Untracked paths listed first, before the others, so that run outputs cannot push
+# them off the list (review C34, round 13): source and config files, by suffix, and
+# untracked folders, which git names as the folder ("dir/") without listing their
+# files. Before round 13 the list was sorted as a whole, and 50 untracked outputs in
+# odisha_script/phase2_vectors/ sorted before an untracked module in src/ or scripts/.
+_CODE_SUFFIXES = (".py", ".pyi", ".pyx", ".sh", ".bash", ".yaml", ".yml", ".toml", ".cfg",
+                  ".ini", ".js", ".mjs", ".cjs", ".ts", ".ipynb", ".r", ".sql")
+
+
+def _code_first(path: str) -> tuple[bool, str]:
+    """Sort key: untracked code and untracked folders before everything else, each in path order."""
+    is_code = path.endswith("/") or path.lower().endswith(_CODE_SUFFIXES)
+    return (not is_code, path)
+
 # One answer per checkout per process. The code a process runs is the code it
-# imported when it started, so the state at first asking is the state that
-# describes the run; it also keeps a test suite that writes hundreds of
-# manifests from starting hundreds of git processes.
+# imported when it started, so the state at first asking describes the run only
+# if the run asks before it does anything: the pipeline asks when Pipeline.run
+# starts, and each script that writes a run record asks at the start of main(),
+# before it writes a result (review C32, round 13; until then the first asking
+# came after the stages, or after the results were written). It also keeps a
+# test suite that writes hundreds of manifests from starting hundreds of git
+# processes. `git_state_now` reads the state again, for a record of how the
+# tree stood at the end, and remembers nothing.
 _cache: dict[str, dict[str, Any]] = {}
 
 
@@ -44,7 +63,11 @@ def git_state(start: Path | None = None, *, refresh: bool = False) -> dict[str, 
                            it could not be determined
       modified             sorted tracked paths behind `dirty` (at most 50)
       modified_truncated   True if there were more than 50
-      untracked            sorted untracked, non-ignored paths (at most 50)
+      untracked            untracked, non-ignored paths (at most 50): first the
+                           code (source and config files, by suffix) and the
+                           untracked folders, then the rest, each sorted, so
+                           that run outputs do not push an untracked source
+                           file off the list
       untracked_truncated  True if there were more than 50
       root                 the checkout's root directory, or None
       error                None, or why the state could not be read (git not
@@ -68,6 +91,21 @@ def git_state(start: Path | None = None, *, refresh: bool = False) -> dict[str, 
     if refresh or key not in _cache:
         _cache[key] = _read_git_state(Path(key))
     return copy.deepcopy(_cache[key])
+
+
+def git_state_now(start: Path | None = None) -> dict[str, Any]:
+    """The state of the same checkout as `git_state`, read again now and not remembered.
+
+    For a record of how the tree stood when a run ended, beside `git_state()`,
+    how it stood when the run started: a commit made, or a file edited, while the
+    run ran shows as a difference between the two. The keys are those of
+    `git_state`. Never raises.
+    """
+    if start is None:
+        import fmu
+
+        start = Path(fmu.__file__).resolve().parent
+    return _read_git_state(Path(start).resolve())
 
 
 def _read_git_state(start: Path) -> dict[str, Any]:
@@ -154,7 +192,7 @@ def _read_git_state(start: Path) -> dict[str, Any]:
         elif code != "!!":
             modified.append(path)
     modified.sort()
-    untracked.sort()
+    untracked.sort(key=_code_first)
     state["dirty"] = bool(modified)
     state["modified"] = modified[:_MAX_LISTED]
     state["modified_truncated"] = len(modified) > _MAX_LISTED
@@ -182,10 +220,18 @@ def environment_state(*, refresh: bool = False) -> dict[str, Any]:
                            without comment lines and without the line of this
                            package itself, or None
       pip_freeze_packages  how many lines the hash is over
-      pip_freeze_left_out  the lines left out of the hash (this package's own:
-                           `-e git+...@<commit>#egg=fmu`, which names the commit
-                           the git block already records and would make two
-                           checkouts of one commit differ)
+      pip_freeze_left_out  the lines left out of the hash: this package's own,
+                           `-e git+...@<commit>#egg=fmu` (or `-e <path>`), which
+                           would make two checkouts of one commit differ. Its
+                           commit is that of the checkout the venv's editable
+                           install points at, when the environment is first
+                           read, not always the one the git block records: in a
+                           run-tree batch the package is imported from the run
+                           tree (PYTHONPATH=<run tree>/src) while the shared
+                           venv's editable install is the live checkout, so the
+                           two differ (review C33; in 92 of the 108 committed
+                           records with both blocks, counted 20 Oct 2026).
+                           Nothing reads the line.
       error                None, or why pip freeze could not be read
 
     Two runs with the same hash ran on the same third-party packages, version for

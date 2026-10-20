@@ -43,6 +43,15 @@ How, for one run:
      compared twice: by their numbers, and as groupings whatever the numbers (k-means numbers its
      types afresh on every fit), which is the comparison that says whether the fit came out the
      same. The stands are what "reproduces" means in a summary; the types are reported beside.
+     The type of every pixel, live against saved (`type_pixels_against_the_saved_type_raster`),
+     is compared over a set of pixels that depends on the mode (review C44, recorded 20 Oct
+     2026): a full run (--run, --all) takes the pixels of the type grid whose centre lies in a
+     stand of the old rule; --recheck takes every pixel of the downloaded type rasters (each ROI
+     part's bounding box, widened by three superpixel cells), stand or not. Both then keep the
+     pixels typed in both rasters. The committed summaries hold --recheck's values: for the 14
+     runs of docs/demo/demo_set.json, 26,061 to 163,424 pixels against a full run's 25,695 to
+     162,122, and adjusted Rand indices that differ by at most 0.0122 (odisha_alphaearth_angul_repro:
+     0.4167 by --recheck, 0.4289 over a full run's pixels), recomputed offline from the saved rasters.
   6. New rule against old: stands before and after, the share of stand area whose stand
      changed, the plots whose stand changed.
   7. The elbow of k-means on the rows of step 3, for k = 2 to 12, beside the config's k (which is
@@ -65,7 +74,11 @@ run writes; each summary counts the stands this happens to (`stands_typed_by_the
 (Note of 19 Oct 2026, round 12: since then the export gives a stand with a row in the fit its
 row's type, register entry spec-export-stand-type-from-its-fit-row, so a run of this script now
 writes that type for the stands with a row whose vote differed; the stands with no row are
-counted as before.)
+counted as before.) (Note of 20 Oct 2026, round 13: since then a stand with no typed pixel of
+its own gets a null type in every layout, register entry
+spec-export-stand-type-from-its-own-row-or-null, so a run of this script would now count only a
+stand with no row in the fit that holds typed pixel centres of its own on the type grid (one in
+the 14 runs); docs/demo/remerge/README.md, section 4.)
 
 A run already made under the new rule (its config sets merge.pass2_skip_at_min_area: the box runs
 of docs/demo/demo_set_boxes.json, given with --demo-set) is not re-merged. For such a run the tool
@@ -1051,6 +1064,8 @@ def recheck(run: dict[str, Any], out_dir: Path, summary_dir: Path) -> dict[str, 
     Offline. It reads the stand layer of the old rule (`vectors_old/`), the run's exported layer and
     the type rasters under `remerge/<run_id>/`, and rewrites `old_rule_check` in the run's summary
     with the same functions a full run uses. The merge and the stands are not touched.
+    The type pixels are compared over every pixel of the saved type rasters, not only those in a
+    stand of the old rule as in a full run (review C44; the module docstring, step 5).
     """
     run_id = run["run_id"]
     summary_path = summary_dir / f"{run_id}.json"

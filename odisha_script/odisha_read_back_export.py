@@ -30,6 +30,15 @@ Drive. It writes the files the export pass writes, but only those that are missi
 run itself wrote is never replaced; what was read back is compared with it and the result goes
 in the record. The run record it writes says it was read back.
 
+What the record holds (review C30, round 13). `export_vector_layers` is what the runner's record
+has under that key, the export stage's own counts, read from the manifest of the newest of the
+config's run folders whose export stage ran (null, and `read_back.export_vector_layers_from`
+says so, if none has); the tool's own counts of the layers it read back are
+`read_back.layer_counts`. Until round 13 the tool put its own counts under
+`export_vector_layers`, which for the superpixels gave counts the export stage never makes. When
+the run wrote its own `<config>_run.json`, that file is kept as it is, and the comparison goes in
+`<config>_read_back.json` beside it; until round 13 it went to the terminal only.
+
 `--check` writes nothing. It reads the layers back and compares them with the files already in
 `--vectors-dir`: for a run whose export pass did finish, this shows that reading back gives the
 run's own files.
@@ -137,6 +146,69 @@ def drive_exports_in_log(text: str) -> dict[str, dict[str, str]]:
     flat = re.sub(r"\s*\n\s+", " ", text)
     return {name: {"folder": folder, "task_id": task, "kind": kind}
             for kind, task, folder, name in DRIVE_LINE.findall(flat)}
+
+
+# The counts of each layer the runner's record takes from the export stage's manifest.
+EXPORT_COUNT_KEYS = ("n_features", "n_stands", "n_stands_split_into_pieces")
+
+
+def run_manifests(runs_dir: Path, config_name: str) -> list[tuple[str, dict[str, Any]]]:
+    """(folder name, manifest) of each of the config's run folders in `runs_dir`, oldest first.
+
+    Run folders are <config>_<YYYYMMDD_HHMMSS>: "_2*" leaves out the folders of another config
+    whose name starts with this one (<config>_repro_..., <config>_keptland_...). A folder with no
+    readable manifest (a pass that failed before writing it) is left out.
+    """
+    out = []
+    for path in sorted(runs_dir.glob(f"{config_name}_2*/manifest.json")):
+        try:
+            out.append((path.parent.name, json.loads(path.read_text())))
+        except (OSError, ValueError):
+            continue
+    return out
+
+
+def export_stage_counts(manifests: list[tuple[str, dict[str, Any]]]) -> dict[str, Any] | None:
+    """The export stage's own counts of each layer, as the runner records them, from the newest
+    manifest whose export stage ran; None if no manifest has them."""
+    for _folder, manifest in reversed(manifests):
+        for stage in manifest.get("stages") or []:
+            if stage.get("name") != "export":
+                continue
+            layers = ((stage.get("metadata") or {}).get("manifest") or {}).get("vector_layers")
+            if layers:
+                return {name: {k: v.get(k) for k in EXPORT_COUNT_KEYS} for name, v in layers.items()}
+    return None
+
+
+def segmentation_distance_scale(segmentation: Any, manifests: list[tuple[str, dict[str, Any]]],
+                                config_name: str) -> tuple[float | None, str]:
+    """SNIC's distance normaliser for the superpixels a pass used, and where it was read.
+
+    `segmentation` is the pass's own record of the stage (a StageRecord). A pass that ran the
+    stage has the scale in its metadata. A pass that read the superpixels from the cache (every
+    export pass, and this tool) has only {'source': 'cache'} there, so the scale is taken from the
+    newest manifest of the config whose segmentation stage computed `snic_clusters` and exported
+    it under the key this pass read it under (the stage record's cache_key). Until round 13 the
+    run records took it from the pass's own metadata, and so held null (review C36).
+    """
+    metadata = getattr(segmentation, "metadata", None) or {}
+    if "distance_scale" in metadata:
+        return metadata["distance_scale"], "this pass, which ran the segmentation stage"
+    key = getattr(segmentation, "cache_key", None)
+    asset = f"segmentation/snic_clusters__{key}"
+    if key:
+        for _folder, manifest in reversed(manifests):
+            for stage in manifest.get("stages") or []:
+                if stage.get("name") != "segmentation":
+                    continue
+                if (stage.get("cache_status") or {}).get("snic_clusters") != "miss-exported":
+                    continue
+                paths = [str(t.get("asset_path", "")) for t in stage.get("export_tasks") or []]
+                if any(p.endswith(f"/{config_name}/{asset}") for p in paths):
+                    return ((stage.get("metadata") or {}).get("distance_scale"),
+                            f"the manifest of the segmentation pass that exported {asset}")
+    return None, f"not found: no run folder of the config holds the manifest of the pass that exported {asset}"
 
 
 # ---------------------------------------------------------------------------
@@ -285,9 +357,29 @@ def main() -> int:
         runner.VECTOR_DIR = args.vectors_dir
         runner.sample_rasters_at_plots(cfg, ctx)
 
+    # The tool's own counts of what it read back: under its own key, never the export stage's (C30).
+    read_back_counts = {name: layer_counts(layers[name], unit) for name, (unit, _id) in LAYERS.items()}
     record_path = args.vectors_dir / f"{cfg.name}_run.json"
     if record_path.exists():
-        print(f"  kept {record_path.name}: the run wrote it")
+        # The run wrote its record: it is kept as it is, and what was read back against the run's
+        # layers goes beside it (C30: it went to the terminal only).
+        comparison_path = args.vectors_dir / f"{cfg.name}_read_back.json"
+        comparison_path.write_text(json.dumps({
+            "config": cfg.name,
+            "fingerprint": fingerprint,
+            "git": git_state(),
+            "read_back": {
+                "by": "odisha_script/odisha_read_back_export.py",
+                "why": f"the run wrote its own record, {record_path.name}, which is kept as it is; this file "
+                       "holds what was read back from the cached assets against the run's layers",
+                "layers_read_back": written,
+                "layers_the_run_wrote": kept,
+                "read_back_against_the_layers_the_run_wrote": agreement,
+                "layer_counts": read_back_counts,
+            },
+            "cache_status": status,
+        }, indent=1, default=str))
+        print(f"  kept {record_path.name}: the run wrote it; the comparison is in {comparison_path.name}")
     else:
         # What the export stage submitted to Drive, from the logs of the run's own folders.
         submitted: dict[str, dict[str, str]] = {}
@@ -296,6 +388,9 @@ def main() -> int:
         for log in sorted(args.runs_dir.glob(f"{cfg.name}_2*/fmu.log")):
             submitted.update(drive_exports_in_log(log.read_text(errors="replace")))
         by_name = {s.name: s for s in result.stages}
+        manifests = run_manifests(args.runs_dir, cfg.name)
+        stage_counts = export_stage_counts(manifests)
+        scale, scale_from = segmentation_distance_scale(by_name["segmentation"], manifests, cfg.name)
         record = {
             "config": cfg.name,
             "fingerprint": fingerprint,
@@ -307,12 +402,20 @@ def main() -> int:
                 "layers_the_run_wrote": kept,
                 "read_back_against_the_layers_the_run_wrote": agreement,
                 "drive_exports_from": "the logs of the run's folders: what the export stage had submitted",
+                "layer_counts": read_back_counts,
+                "export_vector_layers_from": (
+                    "the export stage's manifest, in the newest of the run's folders whose export stage ran"
+                    if stage_counts is not None else
+                    "not found: no run folder of the config holds a manifest whose export stage ran"),
             },
             "cache_status": status,
             "pulled_polygon_counts": {name: len(layers[name]) for name in LAYERS},
-            "export_vector_layers": {name: layer_counts(layers[name], unit) for name, (unit, _id) in LAYERS.items()},
+            # The export stage's own counts, as the runner records them (C30).
+            "export_vector_layers": stage_counts,
             "drive_exports": submitted,
-            "snic_distance_scale": by_name["segmentation"].metadata.get("distance_scale"),
+            # From the pass that drew the superpixels (C36): segmentation is read from the cache here.
+            "snic_distance_scale": scale,
+            "snic_distance_scale_from": scale_from,
             "merge_diagnostics": ctx.get("merge_diagnostics"),
             "stand_attributes": ctx.get("stand_attributes"),
             "stand_provenance": ctx.get("stand_provenance"),

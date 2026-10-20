@@ -1,12 +1,14 @@
 """Stand-ins for what the clustering stage asks of Earth Engine, for the offline tests.
 
 `answers()` gives a `safe_get_info` that answers every request `ClusteringStage.run()`
-makes by the context it names, the same way every time: the band lists, the skewness,
-minimum and percentiles of each band, the training row count, the label histograms of
-`_count_units` and the unit extents of `_component_neighbourhood_px`. Each request is also
-written into the call log, so a recording shows what was asked as well as what was built.
-`run_stage()` runs `ClusteringStage().run()` of a given copy of the stage module on the
-stand-ins of tests/_ee_recorder.py, with `assert_components_fit` replaced too.
+makes by the context it names, the same way every time: the band lists, the skewness and
+minimum of each band and its column of values (whose exact quartiles the scaling takes; until
+review B16 it asked Earth Engine's percentiles), the training row count and the label
+histograms of `_count_units`. Each request is also written into the call log, so a recording shows what
+was asked as well as what was built. `run_stage()` runs `ClusteringStage().run()` of a given
+copy of the stage module on the stand-ins of tests/_ee_recorder.py. (Until round 13 the stage
+also checked the labels with `assert_components_fit` and measured the unit extents for
+reduceConnectedComponents; review B14 took both out, with their stand-ins here.)
 
 tests/test_clustering_off_golden.py records the default path with these, and
 tests/test_clustering_fit_excludes_stands.py runs the path with
@@ -18,7 +20,6 @@ with no training row.
 
 from __future__ import annotations
 
-import copy
 from collections.abc import Callable
 from types import ModuleType
 from typing import Any
@@ -73,13 +74,6 @@ NO_SPREAD = frozenset({"distance_to_water", "A63"})
 UNITS_IN_ROI = 25
 UNITS_IN_HABITAT = 22
 TRAINING_ROWS = 20  # so two units inside the habitat mask have no row: missing band data
-LARGEST_UNIT_PX = 280
-UNIT_EXTENTS = {
-    "groups": [
-        {"fmu_label": 0, "min": [10.0, 20.0], "max": [50.0, 45.0]},
-        {"fmu_label": 1, "min": [100.0, 100.0], "max": [160.0, 130.0]},
-    ]
-}
 
 # The two requests that only the path with the setting on makes.
 FIT_ROW_COUNT = "k-means training row count without the stands below the minimum"
@@ -107,16 +101,14 @@ def answers(
             return list(raw)
         if context in ("post-decomposition bands", "bands"):
             return list(decomposed)
-        if context.endswith(" unit extents"):
-            return copy.deepcopy(UNIT_EXTENTS)
         if context.startswith("skew of "):
             return {"skew": SKEW.get(context.removeprefix("skew of "), 0.3)}
         if context.startswith("min of "):
             return {"min": -1.5}
-        if context.startswith("p25/p50/p75 of "):
-            if context.removeprefix("p25/p50/p75 of ") in NO_SPREAD:
-                return {"p25": 5.0, "p50": 5.0, "p75": 5.0}
-            return {"p25": 0.25, "p50": 0.5, "p75": 1.0}
+        if context.startswith("values of "):
+            if context.removeprefix("values of ") in NO_SPREAD:
+                return [5.0] * 5
+            return [0.0, 0.25, 0.5, 1.0, 1.5]  # quartiles 0.25, 0.5 and 1.0
         if context.startswith("mean/stdDev of "):
             flat = context.removeprefix("mean/stdDev of ") in NO_SPREAD
             return {"mean": 0.5, "stdDev": 0.0 if flat else 0.4}
@@ -141,22 +133,6 @@ def answers(
     return get_info
 
 
-def components_fit(log: list) -> Callable[..., dict[str, int]]:
-    """A stand-in for `assert_components_fit`: the check passes, and the call is logged."""
-
-    def stand_in(labels: Any, roi: Any, scale: int, max_size: int, *, context: str) -> dict[str, int]:
-        log.append(
-            Call("assert_components_fit", None, None, (labels, roi, scale, max_size), {"context": context}, None)
-        )
-        return {
-            "n_components": UNITS_IN_ROI,
-            "largest_component_px": LARGEST_UNIT_PX,
-            "max_component_px_cap": max_size,
-        }
-
-    return stand_in
-
-
 def inputs(config: Any) -> set[str]:
     """The context keys `run()` reads with the setting off."""
     if config.clustering.feature_source == "embedding":
@@ -178,20 +154,19 @@ def run_stage(
 
     Every input in `inputs(config)` is a recorder named by its key; `merge_outputs`
     (stand_provenance and stand_attributes, for the setting on) go in as given. The
-    module's `ee`, `safe_get_info` and `assert_components_fit` are swapped for the run and
-    put back after it, so this works on another copy of the module as well.
+    module's `ee` and `safe_get_info` are swapped for the run and put back after it, so
+    this works on another copy of the module as well.
     """
     from fmu.stages.base import PipelineContext
 
     log: list = []
-    names = ("ee", "safe_get_info", "assert_components_fit")
+    names = ("ee", "safe_get_info")
     saved = {name: getattr(module, name) for name in names}
     try:
         module.ee = Rec("ee", log)  # type: ignore[attr-defined]
         module.safe_get_info = answers(  # type: ignore[attr-defined]
             config, log, fit_rows=fit_rows, left_out_rows=left_out_rows
         )
-        module.assert_components_fit = components_fit(log)  # type: ignore[attr-defined]
         ctx = PipelineContext()
         for key in sorted(inputs(config)):
             ctx.set(key, Rec(key, log))

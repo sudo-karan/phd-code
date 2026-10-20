@@ -23,6 +23,15 @@ here only after checking the same thing for it.
 What is copied: every cacheable output of every stage before clustering (merge is
 not cached and recomputes each pass). What is not: clustering's own outputs.
 
+THE LEGACY LAYOUT ONLY. The assets it names are those of the legacy cache layout
+(the runs before round 9), which is what it was written for: the regroup of 7 October
+(PHASE3_STATUS.md, deviation 5). In the per-step layout each step has its own key, and
+a change of clustering.k moves the clustering step key only, so the stages before it
+keep their assets and there is nothing to copy: for a config whose cache at --from-ref
+is in that layout the tool says so and stops (exit 0). Since c64180a it failed at
+import, as the runner no longer imported `cached_asset_path` for it; it now imports
+from fmu itself (review C42, round 13).
+
 Default is a dry run that prints the plan; --execute performs the copies.
 Run from the repo root (the pipeline reads .env from the working directory).
 """
@@ -38,10 +47,13 @@ HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
 
 import ee  # noqa: E402
-from odisha_phase2_2_run_pipeline import (  # noqa: E402
-    Pipeline, asset_exists, cached_asset_path, config_fingerprint, default_stage_names,
-    get_stage_class, init_gee, load_config,
-)
+import odisha_phase2_2_run_pipeline  # noqa: E402, F401  (registers every stage, as the runner does)
+
+from fmu.config import load_config  # noqa: E402
+from fmu.pipeline import Pipeline, cache_layout_for, default_stage_names  # noqa: E402
+from fmu.stages.base import get_stage_class  # noqa: E402
+from fmu.utils.caching import asset_exists, cached_asset_path, config_fingerprint  # noqa: E402
+from fmu.utils.gee import init_gee  # noqa: E402
 
 # (block, key) pairs that no stage before clustering reads.
 SAFE_KEYS = {("clustering", "k")}
@@ -95,6 +107,13 @@ def main() -> int:
         return 0
 
     init_gee()
+    # The old config's assets decide: the new fingerprint has none yet, whatever the layout.
+    layout, why = cache_layout_for(old)
+    if layout != "legacy":
+        print(f"  nothing to copy: at {args.from_ref} the config is in the {layout.replace('_', '-')} "
+              f"cache layout ({why}); there a change of clustering.k moves the clustering step key "
+              f"only, and the stages before it keep their assets")
+        return 0
     plan, missing = [], []
     for name in default_stage_names(new, through="clustering"):
         if name in NOT_COPIED:

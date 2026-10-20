@@ -50,9 +50,11 @@ say("C — site-level aggregation, six Dhenkanal polygons (~10 plots each)")
 say("=" * 96)
 sites = df[df.site_polygon.notna()]
 say(f"plots inside polygons: {len(sites)}  across {sites.site_polygon.nunique()} sites")
+# The site means are correlated unrounded and rounded only when printed. Until round 13 they
+# were rounded to 2 dp first, which moved r and R2 in the third decimal (review C22).
 agg = sites.groupby("site_polygon").agg(n=("plot_key", "size"), field=("loreys_h_m", "mean"),
-                                        **{c: (c, "mean") for c in HEIGHT if c != "gedi_rh98_50m"}).round(2)
-say(agg.to_string())
+                                        **{c: (c, "mean") for c in HEIGHT if c != "gedi_rh98_50m"})
+say(agg.round(2).to_string())
 say("")
 for c in HEIGHT:
     if c == "gedi_rh98_50m" or c not in agg: continue

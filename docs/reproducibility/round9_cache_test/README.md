@@ -26,3 +26,66 @@ run tree at `fb8e8ce`:
 | `cache_test_run3_read_back.json` | run 3: every cached output read back, no task, and the three layers against run 1's |
 
 Timings are in the logs on the Mac (`outputs/round9/logs/`), not here.
+
+**Note of 20 Oct 2026 (round 13; review A1, A4, A5, A6, B13, B14, B16, B17 and B18): both runs are
+from before the round 13 fixes.** The test compares two runs of the same code and a read-back, and
+its verdict on them stands; whether the code after the fixes reproduces as well was not tested. The
+files here are kept as the runs wrote them; no number is changed. Run 1's files are the `_r9`
+record's Kendujhar files, also in `docs/reproducibility/r9_runs/` (see the note at the end of its
+README). What reaches both runs (the round 13 brief, `docs/handoff/2026-10-20-round13.md`, Done):
+- A1: each distance to water is to water inside the ROI only, so an upper bound (none is at the 10
+  km cap; the largest is 5,029.7 m).
+- A4: one Sentinel-1 scene of 31 Dec 2022 over the Kendujhar box was left out (read-only call 4 of
+  the brief). The 188 Sentinel-1 images in the grid checks are what the runs used; the 10 manifests
+  give the windows as 2017-01-01 to 2022-12-31, though the filters stopped on 30 Dec 2022.
+- A5 (slope and aspect in whole degrees, a flat cell read as facing north), B13 (the NDVI phase's
+  cosine log-transformed), B14 (2 stands whose label has more than one polygon, in each run), B16,
+  B17 (each run record has stands with a `frac_valid_<band>` up to 2, and 2 stands of 0 pixels) and
+  B18.
+- A6: in the four layers here, 36 of 1,316 polygons are off by more than 1% (+2.33 ha; 18 in each
+  run), counted offline as the brief counts the other run folders, and every other polygon's area
+  moves by 0.1% to 0.3% on the export's new measure.
+- How far any fix moves a stand, a type or a score was not measured; it needs Earth Engine.
+
+**Note added 20 Oct 2026 (round 13, review C16; the manifests here are as first written).** Each
+manifest here glosses the summary number `stands_below_min_area_by_cause` as "isolated: it
+touches no other stand". `isolated` means no 4-connected neighbour in the merge's graph, which
+counts shared edges only, so a stand that meets another stand only at a corner is isolated too.
+In these two Kendujhar runs none does: 0 of the 143 stands filed `isolated` that have a polygon in
+each layer (145 in each run record). Since round 13 the merge stage writes "isolated: it shares
+no edge with another stand (no 4-connected neighbour; it may meet one at a corner)".
+
+**Note of 20 Oct 2026 (round 13, review C36): the scale comparison compared two nulls.**
+`snic_distance_scale` is null in both run records here: the record is written by the export pass,
+which reads the superpixels from the cache, so the segmentation stage's metadata there holds no
+scale. So `cache_test_layers_r9_vs_r9_check.json`'s `"snic_distance_scale": [null, null]` compared
+nothing. The two runs' segmentation manifests (`<run>_manifest_segmentation.json`, the
+segmentation stage's `metadata.distance_scale`) give 1.23244545317568 for run 1 (`_r9`) and
+1.2324454531756805 for run 2 (`_r9_check`): they differ by 4.4e-16, two units in the last place
+of a double. Since round 13 the runner reads the scale from that pass's manifest. The records and
+the comparison are kept as written; no number changed.
+
+## Notes added 20 Oct 2026 (round 13)
+
+The files above are kept as the runs wrote them. These notes say how to read some of their
+fields, after the review of 19 Oct 2026 (`docs/reviews/2026-10-19-review.md`; finding ids in bold).
+
+- **C15, `units_dropped_missing_band`.** In both runs the clustering manifest's
+  `units_dropped_missing_band` (`n_units_dropped_null_band` in `clustering_metadata`) is 2, the
+  number of stands with no polygon in `stands_merged`: two stands at the ROI's edge with no pixel
+  whose centre is inside the ROI (0 pixels in `stand_attributes`). Neither is a stand with a band
+  gap, the case the name says it counts: until round 13 a stand with no data in a band got 0 there
+  and kept its row (review B14). See `docs/outputs.md`, "What `units_dropped_missing_band` has
+  counted".
+- **C31, the masking summary.** In both runs the masking stage's `area_ha` and `share_kept`
+  (`transparency.summary_numbers`) are 1330.7522 ha and 0.703186 in
+  `_manifest_features_computed.json`, the pass that computed the masks, and 1330.0937 ha and
+  0.703251 in the four passes that read them from the cache. The cached masks lie on the ROI's UTM
+  grid, and the summary is tabulated on EPSG:4326, so a pass that reads them tabulates them
+  resampled. No stand, type or score reads these numbers. See `mask_provenance_areas` in
+  `src/fmu/stages/masking.py`.
+- **C33, the left-out pip line.** Each record's `environment.pip_freeze_left_out` is this
+  package's own `pip freeze` line, left out of `pip_freeze_sha256`. Its commit is the one the
+  venv's editable install pointed at when the run read its environment (the live checkout,
+  `/Users/karan/Desktop/phd-code`), not the run tree's commit that `git` records: the two differ in
+  all 12 records here that hold both blocks. Nothing reads the line.

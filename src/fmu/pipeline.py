@@ -38,7 +38,7 @@ from fmu.utils.caching import (
 from fmu.utils.gee import safe_get_info
 from fmu.utils.grid import analysis_grid_export_args
 from fmu.utils.logging import get_logger
-from fmu.utils.provenance import environment_state, git_state
+from fmu.utils.provenance import environment_state, git_state, git_state_now
 
 log = get_logger(__name__)
 
@@ -263,6 +263,9 @@ class StageRecord:
     # key -> "hit" (read from the cache) / "miss-exported" (computed live, export
     # submitted) / "miss" (computed live, nothing submitted). Empty with caching off.
     cache_status: dict[str, str] = field(default_factory=dict)
+    # The cache exports the orchestrator submitted for this stage's outputs. Tasks a
+    # stage submits itself (the export stage's Drive files) are not here: they are in
+    # its metadata, and nothing waits on them (review C39).
     export_tasks: list[dict[str, str]] = field(default_factory=list)
     # The stage's transparency declaration, filled in: its display layers (with
     # the cache asset each belongs at, when caching is on) and its summary numbers.
@@ -361,6 +364,10 @@ class Pipeline:
     ) -> PipelineResult:
         ctx = initial_context if initial_context is not None else PipelineContext()
         result = PipelineResult(config_name=config.name, run_dir=run_dir)
+        # Which code ran: asked now, before any stage, so that the manifest's `git` (and the
+        # export stage's) is the tree this run started from, not one changed while it ran
+        # (fmu.utils.provenance remembers the first answer; review C32, round 13).
+        git_state()
 
         log.info("=" * 60)
         log.info("Pipeline run: %s", config.name)
@@ -903,8 +910,12 @@ class Pipeline:
             "cache_layout": self._layout,
             "cache_layout_reason": self._layout_reason,
             # Which code ran: the commit of the checkout the fmu package was
-            # imported from, and whether it had uncommitted changes.
+            # imported from, and whether it had uncommitted changes, as the run
+            # started (asked at the start of run()).
             "git": git_state(),
+            # The same checkout read again as the manifest is written: a commit
+            # or an edit made while the run ran shows as a difference (C32).
+            "git_at_end": git_state_now(),
             # And in which Python environment (round 9).
             "environment": environment_state(),
             "stages": [

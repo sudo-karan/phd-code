@@ -73,6 +73,10 @@ def _plain(value: Any) -> Any:
         return [_plain(v) for v in value]
     if isinstance(value, dict):
         return {str(k): _plain(v) for k, v in sorted(value.items())}
+    if callable(value):
+        # A function handed to a server-side map: its name, not its address, which
+        # changes from run to run.
+        return f"<function {value.__qualname__}>"
     return repr(value)
 
 

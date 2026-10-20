@@ -108,6 +108,18 @@ How far the null moves the plots (the box declaration's check; unconditional nul
     koraput:BARAKANTI                           30      1181    10184               1.00  feasible-region
     median over the plots the join scores: 446 m
 
+  NOTE ADDED 20 Oct 2026 (round 13, review C8; the rest of this file is as first written): the three
+  feasible-region boxes above, BHANRADI SAHI, KHASUGUDA and BARAKANTI, are long because one plot of
+  each habitation lies 4.70, 3.91 and 9.34 km from the habitation's other plots, on built-up land or
+  cropland per IndiaSAT (measured in the docstring of odisha_squares_0_aois.py). Those three plots
+  add 4,599 of the 8,248 ha of boxes, and these three boxes have the largest median and p90 moves in
+  this table. For them the median move is not a stable summary, so read the p90 beside it: here
+  BARAKANTI's median move is 1,181 m and its p90 10,184 m, and over the four declared runs (each
+  with its own seed and its own stands) its median runs from 1,063 to 7,266 m while its p90 stays at
+  10,170 to 10,213 m. The share of moves over 2 km would need each realisation's moves, which the
+  .json does not keep (it holds each box's median and p90 only); a re-run of the null that kept them
+  would give it. No number in this file is changed.
+
 --------------------------------------------------------------------------------------------------------
 WHAT THIS SAYS
 --------------------------------------------------------------------------------------------------------
@@ -119,3 +131,33 @@ WHAT THIS SAYS
     4, because a district then lacks 2 scored plots of 2 field types (kendujhar).
   * NOT supported by this file: 'better than chance' from a score
     above zero; a single p read without the Holm column.
+
+  NOTE ADDED 20 Oct 2026 (round 13, review A1, A4, A5, A6, B13, B14, B16, B17 and B18; the numbers
+  above are as first written): the four runs whose stands this test reads are from before the round
+  13 fixes (docs/handoff/2026-10-20-round13.md, Done), and so are its observed scores and its null,
+  which places the plots on those same stands. Their inputs were affected by A1, A4 and A5. A1:
+  distance_to_water saw no water outside the ROI (in Angul all 219 stands read the 10 km cap, and
+  the band was dropped as constant). A4: the Sentinel-1 and Sentinel-2 date windows stopped on 30
+  Dec 2022, not 31 Dec, which left out one Sentinel-1 scene of 31 Dec 2022 over the Angul, Dhenkanal
+  and Kendujhar boxes and two Sentinel-2 scenes over the Koraput boxes (read-only call 4 of that
+  record). A5: slope and aspect were whole degrees, and a flat cell read as facing north. The merge
+  and clustering fixes reach these runs too: B13 (the NDVI phase's cosine was log-transformed in
+  every run, its sine too in Angul; since the fix neither is), B14 (a stand in several pieces got
+  one mean per piece, not one per stand), B16 (the constant-band test and the scaling used histogram
+  quartiles, not exact ones), B17 (the merge counted a superpixel's pixels and its valid pixels by
+  different rules at the ROI's edge) and B18 (the merge tested its area limits on a sum of floats).
+  Of what this file reads, A4, B17 and B18 can move the stand outlines, and so every score and its
+  null; A1, A5, B13, B14 and B16 reach only the stand types, and so only the two labelling scores
+  and their null. A6 changes the layers' area_ha and n_pixels, which the test does not read. How far
+  any of these moves a stand, a type, a score, a null or a p was not measured: it needs Earth
+  Engine. This file is kept as the record from before the fixes; these runs are to be re-run
+  (roadmap R3). Counts per run are in docs/reproducibility/r9_runs/README.md. The note after the
+  move table (review C8), this one and the dated notes after it are the only lines added to this
+  file since it was written. No number in this file is changed.
+
+  NOTE ADDED 20 Oct 2026 (round 13, review C7; the numbers above are as first written): lines 5-6
+  cite the rules used where the declaration is silent as "Q1-Q6 in the script's docstring and in
+  docs/handoff/2026-10-17-round9-chat.md". The docstring of odisha_keptland_chance.py holds Q1 to Q8,
+  and Q7 and Q8 were applied in this run too. The handoff asks them under its own numbers, 1 to 7:
+  Q1 is its question 1, Q2 its 4, Q4 its 5, Q6 its 6, Q7 its 2 and Q8 its 7; Q3 and Q5 are not asked
+  there. Since round 13 the script prints this in place of those two lines.

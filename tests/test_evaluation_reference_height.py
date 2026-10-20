@@ -24,8 +24,8 @@ def test_a_pixel_belongs_to_the_stand_holding_its_centre():
     assert lab.shape == (4, 6)
     assert (lab[:, :2] == 0).all()
     assert (lab[:, 3:] == 1).all()
-    # centre x = 25 lies on stand 0's edge: GDAL's rule assigns a centre on an edge to one side or none; it must not be 1
-    assert set(np.unique(lab[:, 2])) <= {0, -1}
+    # centre x = 25 lies on stand 0's edge, and a centre on a stand's boundary is in the stand
+    assert (lab[:, 2] == 0).all()
 
 
 def test_pixels_outside_every_stand_and_empty_stands():
@@ -85,3 +85,41 @@ def test_the_raster_and_the_r2_together():
     r = height_variance_explained(lab, h)
     assert r.n_stands == 2 and r.n_height_pixels_without_stand == 0
     assert 0.98 < r.r2 < 1.0
+
+
+def test_a_shared_horizontal_edge_through_a_row_of_centres_is_not_an_overlap():
+    """B23 (review of 19 Oct 2026): the centres of row 1 (y = 25) lie on the edge the two stands share.
+    GDAL's burn count gave them 2 and the map was refused; each such centre goes to the first listed stand."""
+    top, bottom = box(0, 25, 60, 40), box(0, 0, 60, 25)
+    lab = stand_raster([top, bottom], T, (4, 6))
+    assert (lab[:2] == 0).all() and (lab[2:] == 1).all()
+    lab = stand_raster([bottom, top], T, (4, 6))
+    assert (lab[0] == 1).all() and (lab[1:] == 0).all()
+
+
+def test_a_hole_whose_bottom_edge_is_on_a_row_of_centres():
+    """B23: one stand with a hole; the hole's bottom edge (y = 15) runs through two centres, which are on
+    the stand's boundary and so in the stand; the two centres strictly inside the hole are in no stand."""
+    ring = [(0, 0), (60, 0), (60, 40), (0, 40)]
+    hole = [(20, 15), (40, 15), (40, 30), (20, 30)]
+    lab = stand_raster([Polygon(ring, [hole])], T, (4, 6))
+    expected = np.zeros((4, 6), dtype=int)
+    expected[1, 2:4] = -1
+    assert (lab == expected).all()
+
+
+def test_the_sliver_tolerance():
+    """B23: a sliver overlap no deeper than the declared tolerance goes to the first listed stand; an
+    overlap deeper than it is still refused."""
+    # stand 0 reaches x = 25.5 and stand 1 starts at x = 24.8: the centres at x = 25 are 0.5 inside
+    # stand 0 and 0.2 inside stand 1
+    sliver = [box(0, 0, 25.5, 40), box(24.8, 0, 60, 40)]
+    with pytest.raises(ValueError, match="more than one stand"):
+        stand_raster(sliver, T, (4, 6))
+    lab = stand_raster(sliver, T, (4, 6), sliver_tolerance=1.0)
+    assert (lab[:, :3] == 0).all() and (lab[:, 3:] == 1).all()
+    # the centres at x = 25 are 5 inside each stand
+    with pytest.raises(ValueError, match="more than one stand"):
+        stand_raster([box(0, 0, 30, 40), box(20, 0, 60, 40)], T, (4, 6), sliver_tolerance=1.0)
+    with pytest.raises(ValueError, match="sliver_tolerance"):
+        stand_raster(sliver, T, (4, 6), sliver_tolerance=-1.0)

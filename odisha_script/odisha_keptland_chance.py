@@ -26,8 +26,10 @@ odisha_phase3_3_significance (multi_ari, pair_precision, lab_wmean); the observe
 match the committed keptland_s1desc_scores.json to 1e-12 or the script stops.
 
 WHERE THE DECLARATION IS SILENT, the village-outline test's rule (odisha_phase3_3_significance.py,
-odisha_phase2_5_stats.rotation_null) is used, and each point is listed under "Questions" in
-docs/handoff/2026-10-17-round9-chat.md:
+odisha_phase2_5_stats.rotation_null) is used. Each point but Q3 and Q5 is asked under "Questions" in
+docs/handoff/2026-10-17-round9-chat.md, under its own numbers: Q1 is its question 1, Q2 its 4, Q4
+its 5, Q6 its 6, Q7 its 2 and Q8 its 7 (review C7, 20 Oct 2026: this said each point is listed
+there, and the report cited "Q1-Q6" in both places):
   Q1  which plots are scored in a realisation: the plots the observed join scores (264), each left
       out of a realisation in which it has no stand within 30 m. The 3 plots with no stand within
       30 m at their real position move with their box's cloud but are never scored, as plots
@@ -82,9 +84,12 @@ OTHER RUNS, ANOTHER ARM (round 10, 18 Oct 2026). --runs names the runs scored by
 {district}, as odisha_keptland_score.py's --runs does, for runs that are not the default name plus
 a --run-suffix: the AlphaEarth arm's odisha_alphaearth_3ha_squares_{district}_keptland_r9. --arm
 names the arm in the seed strings; by default it is the runs' own name without "odisha_", the
-district or a round 9 run suffix (_r9, _r9_check), which for the default runs, with or without
-_r9, is v120_3ha_squares_keptland_s1desc as before (Q6), and for the AlphaEarth arm
-alphaearth_3ha_squares_keptland: each arm its own seeds, as the village test seeds each arm.
+district or the run suffixes: a round's (_r9, _r13 and so on, and _r9_check) and _repro, numbered
+or not (CLAUDE.md's from-scratch copy, so a _repro re-run, or a later round's re-run, draws its
+source's placements; review of 19 Oct 2026, B22, and a check of its fix in round 13), which for
+the default runs, with or without _r9, is v120_3ha_squares_keptland_s1desc as before (Q6), and for the
+AlphaEarth arm alphaearth_3ha_squares_keptland: each arm its own seeds, as the village test seeds
+each arm.
 
 WRITES, in --out-dir: keptland_s1desc_chance_rehearsal.txt and .json for the pre-fix runs, or
 <scored-stem>_chance.txt and .json for runs with a suffix; results only (no dates, no run times; the
@@ -98,6 +103,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sys
 import time
 from pathlib import Path
@@ -139,8 +145,10 @@ ANALYSES = (("primary", "the primary field types, every plot the join scores"),
             ("S1", "field type 0 (no trees) left out, same realisations"),
             ("S2", "four field types (odisha_phase3_0_field_types_k4.csv), same realisations"))
 
-#: round 9's run suffixes, which the seed strings do not take (Q6)
-RUN_SUFFIXES = ("_r9_check", "_r9")
+#: a run suffix the seed strings do not take (Q6): a round's (_r9, _r13, ..., and _r9_check), and
+#: _repro, numbered or not, CLAUDE.md's from-scratch copy of a config (review of 19 Oct 2026, B22;
+#: until a check of its fix in round 13 only _repro, _r9_check and _r9)
+RUN_SUFFIX = re.compile(r"(_r\d+(_check)?|_repro\d*)$")
 
 _lines: list[str] = []
 _timings: list[str] = []
@@ -148,11 +156,12 @@ _timings: list[str] = []
 
 def arm_from_runs(pattern: str) -> str:
     """The arm's name in the seed strings, from the runs' name pattern: without "odisha_", the
-    district and a round 9 run suffix. The default runs give ARM, with or without _r9."""
+    district and the trailing run suffixes (RUN_SUFFIX, as many as there are: _r9_repro, a
+    from-scratch copy of an _r9 run, is seeded as the _r9 run, and _r13 as well). The default runs
+    give ARM, with or without a run suffix."""
     arm = pattern.removeprefix("odisha_").replace("{district}_", "").replace("_{district}", "")
-    for sfx in RUN_SUFFIXES:
-        if arm.endswith(sfx):
-            return arm[: -len(sfx)]
+    while m := RUN_SUFFIX.search(arm):
+        arm = arm[: m.start()]
     return arm
 
 
@@ -699,8 +708,9 @@ def report(res: dict[str, Any], plots: pd.DataFrame, how0: np.ndarray) -> None:
         say("Chance test of the Odisha kept-land field check (PHASE_KEPTLAND_PREDECLARED.md)")
         say("=" * w)
         say(f"  Runs: {', '.join(res['runs'])}.")
-    say("  Where the declaration is silent the village-outline test's rule is used (Q1-Q6 in the script's")
-    say("  docstring and in docs/handoff/2026-10-17-round9-chat.md).")
+    say("  Where the declaration is silent the village-outline test's rule is used (Q1-Q8 in the script's")
+    say("  docstring). docs/handoff/2026-10-17-round9-chat.md asks them under its own numbers: Q1 is its")
+    say("  question 1, Q2 its 4, Q4 its 5, Q6 its 6, Q7 its 2 and Q8 its 7; Q3 and Q5 are not asked there.")
     say("")
     say("  HOW TO READ IT. Chance is positive in this design (plots and stands both cluster by village), so each")
     say("  score is read against a rotation null: each box's plot cloud moved rigidly to a random position and")
@@ -812,18 +822,34 @@ def report(res: dict[str, Any], plots: pd.DataFrame, how0: np.ndarray) -> None:
     say("    above zero; a single p read without the Holm column.")
 
 
-def write_run_record(out_dir: Path, stem: str, argv: list[str]) -> None:
+def git_block(now: bool = False) -> dict[str, Any]:
+    """This checkout's git state as a run record holds it: as the process found it first, or read
+    again now (`now`). main() asks first, before the run writes anything (review C32)."""
+    sys.path.insert(0, str(REPO / "src"))
+    from fmu.utils.provenance import git_state, git_state_now
+
+    state = git_state_now(HERE) if now else git_state(HERE)
+    return {k: v for k, v in state.items() if k != "root"}
+
+
+def write_run_record(out_dir: Path, stem: str, argv: list[str], git: dict[str, Any] | None = None) -> None:
+    """The run record beside the results. `git` is the state the run started from (main() reads it
+    first); `git_at_end` is read now, after the results were written."""
     import datetime
     import shlex
 
     sys.path.insert(0, str(REPO / "src"))
-    from fmu.utils.provenance import git_state
+    from fmu.utils.provenance import environment_state
 
     rec = {"result_files": [f"{stem}.txt", f"{stem}.json"],
            "command_line": "python " + " ".join(shlex.quote(a) for a in
                                                 ["odisha_script/odisha_keptland_chance.py", *argv]),
            "date": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
-           "git": {k: v for k, v in git_state(HERE).items() if k != "root"}}
+           "git": git if git is not None else git_block(),
+           "git_at_end": git_block(now=True),
+           # The Python environment, as the pipeline's manifests record it (review C37): the null
+           # draws from a seeded numpy Generator and places plots with shapely.
+           "environment": environment_state()}
     (out_dir / f"{stem}_run.json").write_text(json.dumps(rec, indent=1) + "\n")
 
 
@@ -841,7 +867,7 @@ def main(argv: list[str] | None = None) -> int:
                          "(e.g. odisha_alphaearth_3ha_squares_{district}_keptland_r9)")
     ap.add_argument("--arm", default=None,
                     help="the arm's name in the seed strings (default: the runs' name without odisha_, the district "
-                         "and a round 9 run suffix)")
+                         "and the run suffixes: a round's, such as _r9, _r13 or _r9_check, and _repro, numbered or not)")
     ap.add_argument("--scored-stem", default="keptland_s1desc",
                     help="stem of the field check's <stem>_joined.csv and <stem>_scores.json in --scores-dir")
     ap.add_argument("--scores-dir", type=Path, default=SCORES_DIR)
@@ -849,11 +875,12 @@ def main(argv: list[str] | None = None) -> int:
                     help="the declared test, not a rehearsal: needs --stands-from geojson, and stops if any "
                          "stand file is a pre-fix run's file (by SHA-256)")
     args = ap.parse_args(argv)
+    started = git_block()  # before the run writes anything (review C32)
     res = run(args.rotations, args.out_dir, stands_from=args.stands_from, stands_dir=args.stands_dir,
               run_suffix=args.run_suffix, scored_stem=args.scored_stem, scores_dir=args.scores_dir,
               declared=args.declared, runs_pattern=args.runs, arm=args.arm)
     write_run_record(args.out_dir, out_stem(args.scored_stem, res["rehearsal"], args.rotations),
-                     list(sys.argv[1:] if argv is None else argv))
+                     list(sys.argv[1:] if argv is None else argv), git=started)
     return 0
 
 

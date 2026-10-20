@@ -1177,7 +1177,9 @@ decisions:
   decision: >-
     distance_to_water is computed from the masking stage's water_mask, so this stage depends on masking.
     fastDistanceTransform gives squared distance in pixels; the stage takes the square root and multiplies
-    by the analysis scale (10 m) to get metres.
+    by the analysis scale (10 m) to get metres. (Superseded in round 13: features_static builds its own water input
+    with masking's definition, one function read by both stages, over the ROI buffered by the transform's reach, and
+    no longer depends on masking; spec-static-water-input-over-the-transforms-reach.)
   alternatives_considered:
   - Computing water freshly inside the static stage
   rationale: >-
@@ -1199,7 +1201,7 @@ decisions:
   - path: tests/test_stage_graph.py
     what: Stage dependency graph tests
   papers: []
-  status: adopted
+  status: superseded
   design_notes_section: 'features_static: terrain + distance + climate'
   source: docs/design_notes.md lines 346-353
 - id: dn-static-rainfall-chirps-30-year-mean
@@ -1841,7 +1843,9 @@ decisions:
 - id: dn-cluster-on-unit-means-dec-001
   title: Average features per superpixel before clustering (DEC-001)
   decision: >-
-    Average each feature within a SNIC superpixel and cluster those means, not raw pixels.
+    Average each feature within a SNIC superpixel and cluster those means, not raw pixels. (Round 13: the means
+    are taken per unit label over all of its pixels, spec-clustering-one-mean-per-unit-label; the test the evidence
+    names, test_run_passes_measured_neighbourhood_to_superpixel_means, was removed with the measured neighbourhood.)
   alternatives_considered:
   - clustering on raw pixels
   rationale: >-
@@ -2543,6 +2547,8 @@ decisions:
     what: test_diagonal_contacts_are_not_edges
   - path: docs/configs.md
     what: merge block, lines 446-503
+  - path: docs/reviews/2026-10-19-review.md
+    what: C62
   papers:
   - doi: 10.14214/sf.23014
     title: Forest stand delineation using airborne LiDAR and hyperspectral data
@@ -2568,13 +2574,28 @@ decisions:
       publisher page again and found the same: Eq. 1 is a list of five conditions (summed area under the
       maximum, same tree species, canopy closure difference under 0.2, tree proportion difference under
       TP1, stand height difference under SH1); Eq. 2 has no canopy closure term and ends with 'Max(LenghtofCommonSide)';
-      Eq. 4 is R2 = 1 - SSwithin/SStotal.
+      Eq. 4 is R2 = 1 - SSwithin/SStotal. Corrected 20 Oct 2026 (round 13, review C62), read that day on the
+      publisher's page (https://www.silvafennica.fi/article/23014, the image of Eq. 2 and the text of section
+      2.6.2): Eq. 2 lists five conditions, the segment under Area_min, the same tree species, the tree-proportion
+      difference under TP2, the stand-height difference under SH2, and Max(LenghtofCommonSide), and the text under
+      it reads 'We evaluate in turn whether neighbor n meets the conditions of Eq. 2. Segment m will be merged
+      with its neighbor n which matched the condition. If no neighbor or more than one neighbors match the
+      condition, we will proceed to the next condition to ensure there is neither repetition nor omission.' So
+      the longest common side is the last condition of a rule taken one condition at a time; read plainly, it also
+      decides for a segment no neighbour of which meets the conditions before it, which is where FMU uses its
+      fallback. FMU's pass 2 is not that rule: it applies the relaxed tolerances at once and takes the closest
+      neighbour that passes, an order of choice that is FMU's own. The paper supports (a), used, for the two
+      passes, the relaxed thresholds of the second, and a last step on the longest common side; the 'confirmed'
+      above rested on Eq. 2's last condition alone. Crossref (10.14214/sf.23014, checked 20 Oct 2026) gives the
+      title above, Silva Fennica 58(2), 2024, and Hao Xiong as the first person author.
     cited_in: >-
       src/fmu/utils/region_merge.py:3 and :10-12 and :438; src/fmu/config.py:435-437, :506-507, :541;
       MODULES.md:28; README.md:39
   status: adopted
   design_notes_section: null
-  source: src/fmu/utils/region_merge.py module docstring; src/fmu/config.py MergeParams
+  source: >-
+    src/fmu/utils/region_merge.py module docstring; src/fmu/config.py MergeParams; the correction of 20 Oct 2026
+    from review C62 (round 13 brief, Task 6)
 - id: spec-merge-default-criteria
   title: 'Default merge criteria: canopy height (2.00 m) and annual NDVI amplitude (0.030)'
   decision: >-
@@ -2770,50 +2791,71 @@ decisions:
     How the merge handles missing data: valid-pixel weights, a two-criterion floor, nulls below half coverage
   decision: >-
     Stand means are weighted by the number of valid pixels for each criterion, not by total pixels. A
-    pass-1 merge needs at least min_defined_criteria (2) criteria defined on both sides; pairs that fall
-    short go to pass 2. A stand with a band valid on under min_frac_valid (0.5) of its pixels reports
-    null for that band.
+    merge needs at least min_defined_criteria (2) criteria defined on both sides, in pass 1 and under pass 2's
+    relaxed tolerances alike, so a pair that falls short never merges on its attributes: in pass 2 a region below
+    min_area_ha whose neighbours all fall short, or fail the relaxed tolerances, can join one only by the
+    shared-edge fallback, which ignores attributes, and two regions both at or above the minimum do not merge. A
+    stand with a band valid on under min_frac_valid (0.5) of its pixels reports null for that band. Reworded 20 Oct
+    2026 (round 13, review C13): this said that pairs that fall short "go to pass 2", and the rationale that
+    refusing them outright would leave them to the blinder shared-edge rule, as if pass 2 could still match them
+    on their attributes; compare() applies the floor under the relaxed tolerances too (at the review's commit
+    5caae3f and now), so the shared-edge fallback is the only way such a pair merges. Nothing in the code changed.
   alternatives_considered:
   - 'Weighting by total pixels: named and rejected'
-  - 'Refusing to merge pairs with too few defined criteria at all: named and rejected'
+  - >-
+    Refusing to merge pairs with too few defined criteria at all: named and rejected. The code refuses them in the
+    attribute tests of both passes, and the shared-edge fallback still takes them
   - >-
     Lowering min_defined_criteria to fit a shorter criteria list: ruled out in PHASE1_STATUS.md
   rationale: >-
     region_merge.py: weighting by total pixels would let a region with no canopy height inherit one from
     its neighbour for land that was never measured, so the merge would invent data; 14 of the 1249 superpixels
     in the committed baseline run have no canopy height at all (ETH no-data). One criterion is too weak
-    a test to justify a pass-1 merge. Refusing such pairs outright does not avoid a weak merge; it leaves
-    them to the blinder shared-edge rule.
+    a test to justify a merge on attributes, in either pass; the shared-edge fallback still lets a region below the
+    minimum join such a neighbour.
   evidence:
   - path: src/fmu/utils/region_merge.py
     what: >-
-      docstring lines 25-39; _Region (class starts at line 120); compare() (starts at line 250); null
-      below the floor lines 527-533
+      module docstring, the two properties (the floor in both passes, said so since round 13); _Region; compare();
+      null below the floor
   - path: src/fmu/config.py
     what: >-
-      min_defined_criteria lines 516-531; min_frac_valid lines 533-538; validator lines 580-589
+      min_defined_criteria and its comment (corrected in round 13); min_frac_valid; the validator
   - path: tests/test_region_merge.py
     what: >-
       test_merged_mean_is_weighted_by_valid_pixels_not_total, test_band_below_min_frac_valid_is_reported_as_null,
-      test_pair_with_one_defined_criterion_does_not_merge_in_pass1
+      test_pair_with_one_defined_criterion_does_not_merge_in_pass1,
+      test_a_pair_short_of_the_floor_merges_in_pass_2_by_the_fallback_only (round 13: the relaxed tier applies the
+      floor too)
   - path: tests/test_merge_config.py
     what: >-
       test_pass1_needs_at_least_two_defined_criteria, test_rejects_min_defined_criteria_above_criterion_count
   - path: odisha_script/PHASE1_STATUS.md
     what: >-
       lines 274-303 and 389-392: the floor 'must not be lowered'; what the two-criterion list changes
+  - path: docs/configs.md
+    what: min_defined_criteria (corrected in round 13)
+  - path: docs/reviews/2026-10-19-review.md
+    what: C13
   papers: []
   status: adopted
   design_notes_section: null
   source: >-
-    src/fmu/utils/region_merge.py module docstring (lines 25-39); src/fmu/config.py lines 516-538
+    src/fmu/utils/region_merge.py module docstring (lines 25-39); src/fmu/config.py lines 516-538; reworded from
+    review C13 (round 13 brief, Task 6)
 - id: spec-merge-runs-client-side-uncached
   title: >-
     The merge runs on the client as plain Python, is not cached, and orders ties by centroid
   decision: >-
     The stage downloads the superpixel adjacency graph (a few thousand rows), merges it in pure Python
     with union-find, and sends the result back as a relabel of the SNIC image (remap). The stand image
-    is not cached as an asset. Ties are broken by stand centroid, not by SNIC label.
+    is not cached as an asset. Ties are broken by stand centroid, not by SNIC label. Recorded 20 Oct 2026
+    (round 13, review C12): one tie in the code is not broken by centroid. In pass 2's shared-edge fallback,
+    two neighbours sharing boundaries of the same length go to the lower root index (pass2_partner in
+    fmu.utils.region_merge), and the dense index is the rank of the SNIC label (fmu.utils.adjacency numbers
+    the sorted labels 0 to n - 1), so that tie follows SNIC label order; order_key also ends on the dense
+    index, for two centroids equal to 7 decimals. Whether the code or this entry is to change is a question
+    for Jaskaran (round 13); until it is answered, the code is as it was.
   alternatives_considered:
   - 'Caching stand_clusters like other stage outputs: named and rejected'
   - 'Ordering by SNIC label: named and rejected'
@@ -2827,9 +2869,12 @@ decisions:
   evidence:
   - path: src/fmu/stages/merge.py
     what: >-
-      docstring lines 20-29; tie-break comment lines 94-97; cacheable_outputs comment lines 160-166
+      docstring lines 20-29; tie-break comment lines 94-97 (since round 13 it names the fallback's tie);
+      cacheable_outputs comment lines 160-166
   - path: src/fmu/utils/region_merge.py
-    what: 'order_key(), lines 240-248: centroid rounded to 7 decimals'
+    what: >-
+      order_key(): centroid rounded to 7 decimals, then the dense index; pass2_partner(): the fallback's ties to
+      the lower root index (both docstrings say so since round 13)
   - path: src/fmu/utils/adjacency.py
     what: docstring lines 1-8; note on run-to-run differences at line 454
   - path: src/fmu/config.py
@@ -2837,14 +2882,20 @@ decisions:
   - path: tests/test_merge_stage.py
     what: test_merge_is_not_cached
   - path: tests/test_region_merge.py
-    what: test_result_is_deterministic_across_runs
+    what: >-
+      test_result_is_deterministic_across_runs, which reruns identical input and so cannot see a dependence on
+      label order (review C12); test_a_fallback_tie_goes_to_the_lower_root_index_the_snic_label_order (round 13),
+      which pins the fallback's tie by label order and fails on a version that breaks it by centroid
   - path: README.md
     what: 'line 209: why merge is not cached'
+  - path: docs/reviews/2026-10-19-review.md
+    what: C12
   papers: []
   status: adopted
   design_notes_section: null
   source: >-
-    src/fmu/stages/merge.py docstring ('How it runs') and comments at lines 94-97 and 160-166
+    src/fmu/stages/merge.py docstring ('How it runs') and comments at lines 94-97 and 160-166; the sentence of 20 Oct
+    2026 from review C12 (round 13 brief, Task 6)
 - id: spec-analysis-grid-utm-from-roi
   title: 'All raster measurements use one grid: the UTM zone of the region of interest'
   decision: >-
@@ -2964,7 +3015,8 @@ decisions:
     Before averaging features per unit, the stage measures the widest unit extent in pixels in two grids
     (the feature image's and the label image's) and passes min(cap, ceil(widest x 1.2) + 2) as maxSize.
     If the measurement returns nothing while labels exist, the stage raises an error and does not fall
-    back to the cap.
+    back to the cap. (Superseded in round 13: the stage no longer calls reduceConnectedComponents, so the
+    measured neighbourhood is removed; one mean per unit label, spec-clustering-one-mean-per-unit-label.)
   alternatives_considered:
   - >-
     Passing the derived cap (1200 px) directly, as before: ran out of memory on the 64-band AlphaEarth
@@ -3011,7 +3063,7 @@ decisions:
   - path: tests/test_components_guard.py
     what: Tests of the size guard.
   papers: []
-  status: adopted
+  status: superseded
   design_notes_section: null
   source: >-
     docs/pending_decisions/clustering_rcc_neighbourhood.md; src/fmu/stages/clustering.py _component_neighbourhood_px()
@@ -3540,16 +3592,32 @@ decisions:
     so phase values are comparable across configs by default. If two configs have different phenology
     windows, a shared anchor keeps their phase values comparable, which the metrics stage relies on. Why
     the value was made configurable in v1.1.0 is not recorded in the source; the docs point to a decision
-    id written only as 'DEC-???'.
+    id written only as 'DEC-???'. Review C9 (19 Oct 2026; added here 20 Oct 2026, round 13) found
+    the claim about clustering outcomes false. With include_trend on (every config) the stage stores the
+    intercept a as <index>_mean, and a is the de-seasonalised trend line's value on time_reference, not the
+    mean over the window: moving the reference by D years changes <index>_mean by trend x D, a different
+    amount for each pixel, while amplitude and trend do not move and the phase moves by the same angle
+    everywhere. <index>_mean is a clustering band, and each sin and cos of the phase is scaled by its own
+    spread (reviews A2 and B13), so the reference date can change the stand types. In Kendujhar's 3 ha box
+    layer of record 3 x ndvi_trend, about how far ndvi_mean sits from the window's mean of the fitted
+    curve, runs from -0.054 to +0.083 (5th to 95th percentile) against an interquartile range of 0.142 for
+    ndvi_mean. Every config and manifest of record uses 2017-01-01, so the committed results agree with each
+    other. In round 13 the comments of config.py and features_optical.py, the docs and the comments of seven
+    configs were corrected, with no setting and no computation changed; whether the band changes (its name,
+    or t centred on the window) is a method decision, with A2, put to Jaskaran.
   evidence:
   - path: src/fmu/config.py
-    what: FeaturesOpticalParams.time_reference and the comment above it, lines 117-130
+    what: FeaturesOpticalParams.time_reference and the comment above it (corrected in round 13, review C9)
   - path: MODULES.md
-    what: row 9 (line 22) and the v1.1.0 paragraph (lines 45-48)
+    what: row 9 and the v1.1.0 paragraph
   - path: docs/configs.md
-    what: features_optical.time_reference, lines 303-308
+    what: features_optical.time_reference (corrected in round 13, review C9)
   - path: src/fmu/stages/features_optical.py
-    what: 'module docstring lines 12-15: ''configurable per DEC-???'''
+    what: >-
+      module docstring: 'configurable per DEC-???', and since round 13 what moving the reference changes
+      (review C9)
+  - path: docs/reviews/2026-10-19-review.md
+    what: C9
   papers: []
   status: adopted
   design_notes_section: null
@@ -3943,14 +4011,24 @@ decisions:
     pre-registered 999, gave no percentile to cells with 3 or fewer pairs on either side, and labelled
     the naive within-band permutation p INVALID. It also restricted the type-agreement test (6.3) to rotations
     that keep every typed plot on a typed polygon, and computed the arms prediction as a differenced null.
-    None changes an observed value.
+    None changes an observed value. Round 13 (20 Oct 2026, review A8) made one more change, which changes no
+    observed value either: the rotation null of 6.1 and of its null structure is scored on the plots the observed
+    statistic is computed on, the observed-assigned ones, as Phase 3 scores its null. Until then a realisation
+    that put a plot the observed map leaves unassigned on a stand scored it there. On the full set this moves the
+    null of v120 stands_snic only (265 of 267 plots assigned; n_species percentile 2.8 to 2.9) and no conclusion;
+    the pilot assigns every plot and does not change. The statistics script writes _r13 files since, and the
+    files from before the change keep their names.
   alternatives_considered: []
   alternatives_note: not recorded in the source
   rationale: >-
     PHASE2_STATUS.md: each was introduced in the corrected run, after the first run's statistics existed,
     and is listed for that reason. Reasons given for individual changes: the naive permutation p pools
     sites and its pairs are not independent; thin cells are uninformative. The reason for 1,999 rather
-    than 999 is not recorded in the source.
+    than 999 is not recorded in the source. The round 13 change: an observed value and its null must be computed
+    on the same plots (review A8). The pre-registered null redraws a realisation that puts a plot off every
+    stand; the script applies that to the observed-assigned plots only (forcing the others onto a stand too would
+    rule out the observed placement itself), but it then scored the others wherever a realisation put them.
+    tests/test_phase2_5_null_scoring.py fails on the code before the change and passes after it.
   evidence:
   - path: odisha_script/PHASE2_STATUS.md
     what: '''Corrections to earlier figures (pilot)'', lines 1104-1210'
@@ -3960,12 +4038,21 @@ decisions:
     what: the statistics script the corrections were made in
   - path: odisha_script/PHASE2_PREDICTIONS.md
     what: the pre-registered values departed from
+  - path: odisha_script/odisha_phase2_5_results_districts_r13.txt
+    what: The full set's statistics with the null scored on the observed-assigned plots (round 13, review A8)
+  - path: odisha_script/odisha_phase2_5_r13_vs_before.md
+    what: Every line and cell the round 13 change moves, before and after
+  - path: tests/test_phase2_5_null_scoring.py
+    what: The null is scored on the plots the observed statistic is computed on
+  - path: docs/reviews/2026-10-19-review.md
+    what: A8
   papers: []
   status: adopted
   design_notes_section: null
   source: >-
     odisha_script/PHASE2_STATUS.md 'Departures from PHASE2_PREDICTIONS.md made after seeing the first
-    run'
+    run'; the round 13 change: docs/reviews/2026-10-19-review.md, A8, and the round 13 brief (Jaskaran, 19 Oct
+    2026), Task 6
 - id: field-forest-types-from-structure
   title: Field forest types are built from structure, not species
   decision: >-
@@ -4053,18 +4140,49 @@ decisions:
     Choosing the number by agreement 'would manufacture the result'. The elbow rule is the one the supervisor
     named. For the 3 ha stands the elbow gives 5 in every district and pooled, so by the rule 6 was the
     wrong number. For the 10 ha stands, 6 was already in the Phase 2 configs; the elbow was run ten days
-    later (6, 6, 6 and 5 by district, 5 pooled) and 6 was kept.
+    later (6, 6, 6 and 5 by district, 5 pooled) and 6 was kept. Review A7 (19 Oct 2026; added here 20 Oct
+    2026, round 13) found that both elbows come from the elbow script's own preprocessing. That
+    preprocessing departs from the clustering stage's in five ways: it keeps annual_rainfall and
+    ndvi_residual_variance; it logs only non-negative bands, by log1p; it keeps bands with no spread; it
+    fits every polygon; and it takes sin and cos of mean angles. Neither elbow is in the geometry
+    wekaKMeans fits in (A2). Recomputed in the stage's space, with both geometries side by side and
+    neither named as the one of record, and rebuilt from the same stand files: the 3 ha elbows by
+    district are 6, 6, 6 and 5 (5 pooled) with (x - median)/IQR, and 5, 6, 6 and 6 (5 pooled)
+    min-max; the 10 ha ones are 5, 6, 7 and 5 and 6, 6, 5 and 5 (5 pooled in both). On the stage's
+    own rows of the _repro stands, by district: at 3 ha, 5, 6, 6 and 5 as the stage scaled them,
+    and 5, 6, 6 and 5 min-max; at 10 ha, 6, 5, 6 and 5, and 5, 6, 6 and 5. So "the elbow gives 5 in
+    every district" at 3 ha holds only in the script's own space. The rebuild from the stand files
+    is approximate: they hold mean angles (review C10), and on the _repro stands it gives the stage's
+    own elbow in 9 of 16 cases. The order of the rows alone moves 4 of the 60 elbows given in both
+    orders. k is unchanged, 5 and 6 as PHASE3_PREDECLARED.md declared them, and no score changes;
+    which geometry is of record waits on A2.
   evidence:
   - path: odisha_script/PHASE3_STATUS.md
-    what: lines 111-116, 171-190, 225-242 and 407-442
+    what: lines 111-116, 171-190, 225-242 and 407-442; the note of 20 Oct 2026 at the end
   - path: odisha_script/PHASE3_PREDECLARED.md
-    what: lines 18-26 and 34-39
+    what: lines 18-26 and 34-39; the note of 20 Oct 2026 at the end
   - path: odisha_script/odisha_phase3_2_stand_k_elbow.py
     what: 'docstring lines 1-20: the integrity rule'
   - path: odisha_script/odisha_phase3_2_k_elbow_odisha_v120_3ha.txt
-    what: elbow for the 3 ha stands
+    what: elbow for the 3 ha stands, in the script's own space (dated note of 20 Oct 2026 at the end)
   - path: odisha_script/odisha_phase3_2_k_elbow_odisha_v120_handcrafted.txt
-    what: elbow for the 10 ha stands
+    what: elbow for the 10 ha stands, in the script's own space (dated note of 20 Oct 2026 at the end)
+  - path: odisha_script/odisha_phase3_2_k_elbow_comparison.md
+    what: >-
+      The committed elbows beside the elbow in the clustering stage's space, both geometries, both routes,
+      and the limits of each (round 13, review A7)
+  - path: odisha_script/odisha_phase3_2_k_elbow_odisha_v120_3ha_stage.txt
+    what: elbow for the 3 ha stands in the stage's space, rebuilt from the stand files of record
+  - path: odisha_script/odisha_phase3_2_k_elbow_odisha_v120_handcrafted_stage.txt
+    what: elbow for the 10 ha stands in the stage's space, rebuilt from the stand files of record
+  - path: odisha_script/odisha_phase3_2_k_elbow_odisha_v120_3ha_stage_rows.txt
+    what: >-
+      elbow on the stage's own rows of the 3 ha _repro stands (off git, SHA-256 listed), and the rebuild's
+      rules checked on them
+  - path: odisha_script/odisha_phase3_2_k_elbow_odisha_v120_handcrafted_stage_rows.txt
+    what: the same for the 10 ha _repro stands
+  - path: docs/reviews/2026-10-19-review.md
+    what: A7
   - path: odisha_script/odisha_phase3_0_field_structure_types.py
     what: docstring lines 14-18
   - path: configs/odisha_v120_3ha_dhenkanal.yaml
@@ -4805,7 +4923,18 @@ decisions:
     Jaskaran's to decide, with the counts above, before they run. The clip to the ROI is his answer of 15 Oct 2026
     to question 1 of docs/handoff/2026-10-14-round3.md: "clip kept land (and so SNIC's input and seeds) to the ROI
     before SNIC, only when segmentation.mask_before_snic is on. Use the same clip as the output clip, so both treat
-    edge pixels the same way. No new setting: no kept-land segmentation asset exists yet."
+    edge pixels the same way. No new setting: no kept-land segmentation asset exists yet." Review C17 (19 Oct
+    2026; added here 20 Oct 2026, round 13): the checks of 15 Oct 2026 count pieces on the label raster, which
+    still holds the ROI's edge pixels the clip keeps, those the ROI only partly covers. The exported vector
+    layers keep only the pixels whose centre is inside the ROI (reduceToVectors), so a superpixel or stand drawn
+    through such pixels can still come out in more than one polygon. In the layers of the per-step runs of
+    record (docs/reproducibility/r9_runs and round12_runs, committed or off git with their SHA-256 checked) 0 to
+    14 superpixels and 0 to 7 stands per run are in more than one polygon (two, but for one superpixel in three
+    in each of the 10 ha hand-crafted runs of Dhenkanal and Kendujhar); the smaller pieces lie within 5.2 m of the
+    ROI's edge, but for a few stray pieces of 1 to 41 pixels against a line a multiple of 256 pixels from the ROI's
+    south-west pixel corner (4 superpixels and 2 stands in the 10 km tile, and 1 superpixel in each of three
+    AlphaEarth layers), which the review reads as a line between Earth Engine's computation tiles. The joins key
+    on stand_lbl, so no score changes; whether to change anything is put to Jaskaran.
   evidence:
   - path: src/fmu/stages/segmentation.py
     what: >-
@@ -4855,7 +4984,11 @@ decisions:
   - path: tests/test_repro_fingerprints.py
     what: Pins the fingerprints of the 14 _repro configs to those in the names of their saved assets
   - path: docs/outputs.md
-    what: The merge.kept_land row of the metrics table
+    what: >-
+      The merge.kept_land row of the metrics table; since round 13, the stands and superpixels in pieces in the
+      vector layers (review C17)
+  - path: docs/reviews/2026-10-19-review.md
+    what: C17
   papers: []
   status: adopted
   design_notes_section: null
@@ -5066,7 +5199,20 @@ decisions:
     isolated ones (question 2, (a)); the stands left out leave the k-means rows only and still take part in the
     skewness test, the log offsets and the scaling, as built, to be looked at again in the review of the method
     decisions (question 3); and the sixth summary number (question 4, (b)), because with the setting on the five
-    numbers no longer add up without it.
+    numbers no longer add up without it. Recorded 20 Oct 2026 (round 13, review C16): below_why 'isolated' means
+    no 4-connected neighbour in the merge's graph, which counts shared edges only, so with mask_before_snic, whose
+    kept patches are 8-connected, a stand that meets another only at a corner is isolated too, though it is not an
+    isolated patch of kept land: 21 of the 1,293 isolated stands with a polygon in the eight 3 ha box runs of round
+    9, 10 of 578 in the 10 km tile and 1 of 387 in Sanjay Van baseline, counted offline from the committed layers
+    (docs/reproducibility/r9_runs/README.md). The setting takes every stand below the minimum whatever below_why
+    says, so this changes nothing it does. Review C15 (19 Oct 2026; added here 20 Oct 2026, round 13): in every
+    per-step run of record (docs/reproducibility/r9_runs, round12_runs and round9_cache_test)
+    n_units_dropped_null_band, the summary number units_dropped_missing_band, equals the number of stands with no
+    polygon in stands_merged, 2 to 5 per box run and 10 in the 10 km tile: stands at the ROI's edge with no pixel
+    whose centre is inside the ROI, which the coverage-weighted label histograms count and the one-pixel sample
+    cannot draw. They are not stands with a band gap: until round 13 a stand with no data in a band got 0 there
+    and kept its row (round 13, review B14). The count's name and description are unchanged; whether to rename
+    it or count the two causes apart is put to Jaskaran (question 35 of the round 13 brief).
   evidence:
   - path: src/fmu/stages/clustering.py
     what: >-
@@ -5103,6 +5249,8 @@ decisions:
     what: >-
       The read-only check of 15 Oct 2026 (scripts/check_fit_excludes_stands.py) on Kendujhar's cached box run: the
       rows left out, the types, the summary numbers
+  - path: docs/reviews/2026-10-19-review.md
+    what: C15, what n_units_dropped_null_band counted in the runs of record
   - path: tests/test_cache_fingerprint.py
     what: The setting off, left out or written out, hashes as before; on, it changes the fingerprint
   - path: tests/test_repro_fingerprints.py
@@ -5117,6 +5265,10 @@ decisions:
       number
   - path: docs/handoff/2026-10-14-round3.md
     what: Jaskaran's decision D3, as he gave it (section 1), and the notes on it (section 6)
+  - path: docs/reproducibility/r9_runs/README.md
+    what: >-
+      The note of 20 Oct 2026 (review C16): what isolated means, and the stands filed isolated that meet another at
+      a corner
   papers: []
   status: adopted
   design_notes_section: null
@@ -5622,7 +5774,15 @@ decisions:
     answer (a), 18 Oct 2026). The round 9 cache test (docs/reproducibility/round9_cache_test/) passed under the
     brief's criterion (Jaskaran's ruling, 18 Oct 2026): two from-scratch runs give the same superpixels, stands and
     stand types exactly, and their feature values agree to about 1e-13, a stated property of the pipeline. No paper
-    was searched for this decision.
+    was searched for this decision. Review C40 (19 Oct 2026; added here 20 Oct 2026, round 13): the ROI file's
+    content is read from the path as the config gives it, relative to the working directory, and a file that
+    cannot be read hashes as None, with no warning. From a directory where the path does not resolve, every
+    per-step key changes while the legacy fingerprint, which hashes the path, does not (the 10 km tile config run
+    from docs/: masking key s4a47c8b2cc against s354522a974 from the repo root, fingerprint 5772fb6133 both). Every
+    entry point then fails safe, with a misleading reason: the ROI loader raises, or the pass runner reports every
+    upstream asset missing (exit 3). No run of record is affected: the keys of record are pinned
+    (tests/test_step_keys_of_record.py). The docs say so since round 13; whether to resolve the path against the
+    repo root is put to Jaskaran.
   evidence:
   - path: src/fmu/utils/caching.py
     what: The two layouts, STEP_SETTINGS, step_upstream, step_key, cache_key, start_export with crs and crs_transform
@@ -5636,6 +5796,8 @@ decisions:
     what: The orchestrator under the two layouts
   - path: docs/reproducibility.md
     what: Section 4 of the Odisha re-runs, the cause found on 13 Oct 2026
+  - path: docs/reviews/2026-10-19-review.md
+    what: C40, the ROI file read from the working directory
   papers: []
   status: adopted
   design_notes_section: null
@@ -5697,7 +5859,12 @@ decisions:
     195 images at Sanjay Van, and the Kendujhar composite changed with its count unchanged (docs/reproducibility.md).
     This package's own pip freeze line names the commit, which the git block records, and would make two checkouts
     of one commit differ. The limit of 100 listed ids is Claude Code's choice. No paper was searched for this
-    decision.
+    decision. Review C33 (19 Oct 2026; added here 20 Oct 2026, round 13): the line names the commit of the
+    checkout the venv's editable install points at, the live checkout, when pip freeze ran, not always the one the
+    git block records. In a run-tree batch the code is imported from the run tree (PYTHONPATH=<run tree>/src), so
+    the two differ: in 92 of the 108 committed JSON records that hold both blocks at their top level (counted 20
+    Oct 2026). The line is left out of the hash, so the hash is unaffected, and nothing reads it. The docstring of
+    environment_state says so since round 13; whether to drop the line is put to Jaskaran.
   evidence:
   - path: src/fmu/utils/provenance.py
     what: environment_state
@@ -5709,6 +5876,8 @@ decisions:
     what: The records, computed and read back from an asset
   - path: tests/test_provenance.py
     what: environment_state
+  - path: docs/reviews/2026-10-19-review.md
+    what: C33, the left-out pip line in run-tree batches
   papers: []
   status: adopted
   design_notes_section: null
@@ -5845,7 +6014,8 @@ decisions:
     round 10's 10 km cost pilot in Angul (docs/handoff/2026-10-18-round10.md, Task I, "The rule, written before the
     run"; odisha_script/odisha_tile_0_aoi.py): a square north-up in EPSG:32645, the UTM zone of the Angul boxes,
     centred on the centroid of the union of the four Angul boxes, wherever the rule puts it. It runs in the next
-    round; round 11 has no Earth Engine work.
+    round; round 11 has no Earth Engine work. (Round 13: it was not run in round 12, and it is not yet scheduled;
+    spec-district-step-30-km-tile-not-run-in-round-12.)
   alternatives_considered:
   - >-
     A whole district (option (b) of question 2 of docs/handoff/2026-10-18-round10.md): not chosen
@@ -5910,7 +6080,12 @@ decisions:
     placements of each arm by that arm's name, as the village test seeds each arm: v120_3ha_squares_keptland_s1desc for
     the hand-crafted runs, with or without _r9 (so the declared run on the re-run stands draws the rehearsal's
     placements), and alphaearth_3ha_squares_keptland for the AlphaEarth arm. The AlphaEarth arm is not read against the
-    hand-crafted arm's placements, and its declared run of 18 Oct 2026 stands as run.
+    hand-crafted arm's placements, and its declared run of 18 Oct 2026 stands as run. (Round 13: each 10 ha
+    set draws its own placements too, field-keptland-chance-10ha-sets-draw-their-own-placements. Round 13, review
+    B22: a _repro copy of a run is seeded as its source, so it draws the same placements; RUN_SUFFIXES in
+    odisha_script/odisha_keptland_chance.py. Since a check of that fix, also in round 13, a later round's re-run
+    (_r13, _r13_check and so on) and a numbered _repro copy are seeded as their source too: RUN_SUFFIX, a pattern
+    in place of the list.)
   alternatives_considered:
   - >-
     Read the AlphaEarth arm against the hand-crafted arm's placements (--arm v120_3ha_squares_keptland_s1desc), so that
@@ -6141,7 +6316,9 @@ decisions:
     polygon. They are the stands with no row at all (no pixel in the habitat mask, or a feature band with no data
     over the stand) and, with clustering.fit_excludes_stands_below_min_area on, the stands left out of the fit;
     whether either should change is questions 1 and 2 of docs/handoff/2026-10-19-round12.md. stands_snic and
-    stands_dissolved are typed as before.
+    stands_dissolved are typed as before. (Superseded in part in round 13: a stand with no row gets a null type in
+    every cache layout, and a stand left out of the fit takes its own row's type, with no vote;
+    spec-export-stand-type-from-its-own-row-or-null.)
   alternatives_considered:
   - >-
     Keep the vote for every stand (the export before round 12): not chosen, as the brief asks
@@ -6198,6 +6375,1391 @@ decisions:
   - path: docs/handoff/2026-10-19-round12.md
     what: Task 2, what a stand with no row gets, written before the change, and the record
   papers: []
-  status: adopted
+  status: superseded
   design_notes_section: null
   source: Jaskaran, 19 Oct 2026 (round 12 brief)
+- id: spec-per-step-keys-leave-out-a-new-field-at-its-default
+  title: >-
+    A field added to a block a per-step key hashes is left out of the key while it holds its default, and the step
+    keys the runs recorded are pinned
+  decision: >-
+    fmu.utils.caching (a Locked module) gets _STEP_OMITTED_AT_DEFAULT, the per-step layout's counterpart of
+    _OMITTED_AT_DEFAULT: a field listed there, keyed (block, field) with its default, is left out of every step key
+    that hashes it while it holds that default, and hashed otherwise. The block may be a sub-block (dates.phenology),
+    and a field that a step's STEP_SETTINGS names on its own (merge.x) is left out the same way. The table is empty,
+    so no key moves. A field added later to a block that both layouts hash goes in both tables.
+    tests/test_step_keys_of_record.py pins the step keys of every per-step run of record, the 21 _run.json records (11
+    in docs/reproducibility/r9_runs, 8 in round12_runs, 2 in round9_cache_test) and each stage's key in their 87
+    manifests, and checks block by block that a listed field at its default moves no key and, switched on, moves the
+    steps that hash it and those downstream.
+  alternatives_considered:
+  - >-
+    Leave the per-step keys hashing every field as dumped and rely on the legacy table: not chosen. That table protects
+    the legacy fingerprint only; in the per-step layout, which every config run since round 9 uses, a field listed in
+    it still moved six step keys of every kept-land config (review B11)
+  - >-
+    Raise STEP_KEY_VERSION whenever a field is added: not chosen, since it would move every key of every config at once
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 3: "B11: an omit-at-default table for the per-step keys (empty
+    today, so no key moves), and a test that pins the step keys recorded in docs/reproducibility/r9_runs/*_run.json."
+    The review (docs/reviews/2026-10-19-review.md, B11) added a field at its default to the masking block and listed it
+    in _OMITTED_AT_DEFAULT: every legacy fingerprint kept its value, but the masking, features_static, segmentation,
+    merge, clustering and k_elbow keys of every kept-land record moved, and no test noticed. The new test shows the
+    same on the code before the change (36 of its 148 cases fail there; for the Angul hand-crafted _r9 config, those
+    six keys move) and passes after it. The test of the keys of record also pins the graph of steps (step_upstream),
+    which no test pinned (review C52); round 12's records and the cache test's are pinned beside those of
+    docs/reproducibility/r9_runs because a later run will meet the assets of all three. The legacy table lists
+    top-level blocks only, so a new field of a sub-block still moves the legacy fingerprint; the configs that use the
+    legacy layout are the runs made before round 9. No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/utils/caching.py
+    what: _STEP_OMITTED_AT_DEFAULT and _omit_step_defaults, read by _step_key
+  - path: tests/test_step_keys_of_record.py
+    what: The step keys of record pinned; a field added at its default and listed moves no key
+  - path: docs/reviews/2026-10-19-review.md
+    what: B11, and C52
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 3, B11
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-per-step-key-revision-of-a-step
+  title: >-
+    A step whose computation a fix changes gets a revision, which moves its per-step key and those downstream of it
+  decision: >-
+    fmu.utils.caching (a Locked module) gets STEP_REVISION, a step's revision number, put in that step's per-step key
+    payload when it is 1 or more and left out at 0, so a step not listed keeps the key it had. A fix that changes what
+    a step computes for configs whose settings do not change raises that step's revision in the same commit, with a
+    register entry; its key then moves, and through step_upstream the key of every step downstream of it, and no
+    other. The k_elbow step also takes clustering's revision (_REVISION_ALSO_FROM): it reads clustering's cached
+    scaled feature stack, but its key leaves k out and so cannot hash clustering's key; added the same evening, after
+    the table, with a test that fails without it (a revision of clustering moved clustering only). The table is empty
+    when added, so no key moves. tests/test_step_keys_of_record.py checks that the configs of the 21 per-step runs of
+    record give their recorded keys exactly for the steps no revision reaches, a new key for each step one reaches,
+    and every recorded key again with the table emptied. The legacy fingerprint has no revision: a config whose cache
+    holds legacy assets (the runs before round 9) still reads the assets it made.
+  alternatives_considered:
+  - >-
+    Raise STEP_KEY_VERSION: not chosen; it moves every key of every step and config at once, so assets no fix touched
+    (the masks, the canopy height, the embedding) would be computed again
+  - >-
+    Add a setting for each fix, off by default and left out of the keys at its default: not chosen; the configs of
+    record would then keep the old behaviour unless edited, while the brief asks for the fix itself ("make the date
+    windows' end inclusive in data_load")
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), "How to fix each finding", rule 4: "If the fix changes what a step
+    computes, it must change that step's cache key, so cached assets are not reused (A4 notes that its fix would
+    not)." A per-step key hashes the settings and the upstream keys only, so a change of code with no change of
+    setting moves no key (review A4: making data_load's end inclusive leaves the data_load and features_radar keys as
+    they are). The new test fails on the code before the change (a revision moved no key) and passes after it. No
+    paper was searched for this decision.
+  evidence:
+  - path: src/fmu/utils/caching.py
+    what: STEP_REVISION and _REVISION_ALSO_FROM, read by _step_key
+  - path: tests/test_step_keys_of_record.py
+    what: >-
+      test_a_revision_moves_its_step_and_every_step_downstream_and_no_other; the records' keys checked against the
+      revisions
+  - path: docs/reviews/2026-10-19-review.md
+    what: A4, its note on the step keys
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 2, the per-step revision
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-export-stand-type-from-its-own-row-or-null
+  title: >-
+    In the exported stand layer a stand left out of the k-means fit takes its own row's type, and a stand with no row
+    gets a null type in every cache layout
+  decision: >-
+    The export stage (src/fmu/stages/export.py, a Locked module) types each stand of stands_merged from its own row
+    only. Every stand with a typed pixel of its own takes the type most of its own typed pixels carry (_stand_row_types,
+    as since round 12), the stands left out of the k-means fit with clustering.fit_excludes_stands_below_min_area on
+    among them, whose rows the fitted clusters type too; every other stand gets a null cluster_id, whatever typed
+    pixels its polygon touches (_take_the_fit_rows_types). The vote over a polygon's pixels (reduceRegions with
+    ee.Reducer.mode()) is no longer made for stands_merged, and the stage no longer reads the setting or
+    stand_provenance to type a stand (_fit_row_types, and its warning when the setting is on without provenance, are
+    gone). "Has a row" is read as round 12 reads it: the stand has a typed pixel of its own. On the legacy cache layout
+    these are the type-grid pixels whose centres it holds, so a stand with a row in the fit that holds none gets a null
+    type too, and a stand with no row in the fit that holds some takes their type. A stand whose pieces carry different
+    types takes the commonest type over its typed pixels, as coded (question 3, answered (a): no change).
+    stands_snic and stands_dissolved are typed as before.
+  alternatives_considered:
+  - >-
+    Keep the vote for the stands with no row and for the stands left out of the fit (round 12's export): not chosen;
+    Jaskaran answered (b) to questions 1 and 2 of docs/handoff/2026-10-19-round12.md
+  - >-
+    Keep the vote and set it to null afterwards for the stands with no row: not chosen, since the vote would then be
+    computed over every polygon for nothing
+  - >-
+    On the legacy layout, keep the vote for a stand with a row in the fit that holds no typed pixel centre on the type
+    grid: not chosen. The export cannot tell such a stand from one with no row (the clustering stage keeps neither the
+    clusterer nor which pixel each row was drawn at), and the vote is what question 1's answer drops
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 1: "Jaskaran's answers: 1 (b), 2 (b), 3 (a), 5 (a). ... Implement
+    1 and 2 in the export, with tests: a stand with no row in the fit gets a null type in every layout, and a stand
+    left out of the fit takes its own row's type. Add the register entry the Locked module needs." Question 1's (b) in
+    docs/handoff/2026-10-19-round12.md: "Make them null in every layout, as docs/outputs.md ("Null cluster_id is
+    meaningful") and the export's comment say is intended." Question 2's (b): "Yes: they take their row's type too.
+    For: it is the type the fit gives them, which is what the kept-land declaration says they get ("the type of the
+    nearest fitted cluster")." On round 12's export the new tests fail: a stand with no typed pixel whose polygon
+    touches a sliver of a neighbour's type 2 got 2 (assert 2 is None), and a stand left out of the fit whose vote was
+    3 and whose row is 0 got 3 (assert 3 == 0). On the analysis grid (every _r9 and round 12 run) nothing changes: in
+    the eleven _r9 runs and the eight round 12 runs every stand of the layer has a typed superpixel of its own (the
+    stands with no row have no polygon) and no stand left out of the fit carries a type other than its own (round 12's
+    count, docs/reproducibility/r9_runs/stand_types_from_fit_rows.json, and the same script run again on the round 12
+    runs' layers in round 13, offline, not kept). On the legacy layout, counted offline from the demo set's re-merge
+    (its per-stand files, off git, built at 5c8dcad), a re-export would give a null type to every one of the 3 to 33
+    stands per run that took a neighbour's type through the vote (docs/demo/remerge/README.md, section 4) but one stand
+    of odisha_v120_handcrafted_koraput_repro, which holds typed pixel centres of its own; and to two stands with a row
+    in the fit that hold no typed pixel centre on the type grid, one each in odisha_v120_3ha_dhenkanal_repro and
+    odisha_v120_handcrafted_dhenkanal_repro, whose vote was their row's type. The export is not cached, so no step key
+    moves (the fingerprint and the eleven step keys of all 74 configs under configs/ are the same before and after).
+    No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/export.py
+    what: _build_merged_feature_collection, step 3; _take_the_fit_rows_types
+  - path: tests/test_export_stand_type_from_fit_row.py
+    what: >-
+      The rule on a fake raster; test_a_stand_with_no_row_gets_a_null_type_whatever_its_polygon_touches and
+      test_a_stand_left_out_of_the_fit_takes_its_own_rows_type fail on round 12's export
+  - path: tests/test_export_stand_type_from_fit_row_live.py
+    what: The Earth Engine calls on synthetic images, with the null type of a stand without a row (live tier)
+  - path: tests/test_export_merged_layer.py
+    what: The builder's calls, with no vote
+  - path: docs/outputs.md
+    what: cluster_id of stands_merged, and the note on null types
+  - path: docs/demo/remerge/README.md
+    what: Section 4, the note of round 13 on what a re-export of the legacy-layout runs would give
+  - path: docs/reproducibility/r9_runs/stand_types_from_fit_rows.json
+    what: Round 12's count on the analysis grid, the stands left out of the fit counted apart
+  - path: docs/handoff/2026-10-19-round12.md
+    what: Task 2, what a stand with no row gets, and questions 1 to 3
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-export-stand-whose-pieces-differ-takes-its-commonest-type
+  title: >-
+    A stand whose pieces carry different types takes, on every piece, the commonest type over its typed pixels
+  decision: >-
+    In stands_merged, a stand in several pieces whose pieces carry different types takes on every piece the commonest
+    type over the stand's own typed pixels (src/fmu/stages/export.py, _stand_row_types), as round 12 coded it. Nothing
+    changes. In the eleven _r9 runs this is one stand, in the 10 km tile (344 pixels of type 4 and one pixel of type
+    3, the one-pixel piece taking type 4).
+  alternatives_considered:
+  - >-
+    Each piece keeps the type of its own pixels (option (b) of question 3 of docs/handoff/2026-10-19-round12.md): not
+    chosen
+  - >-
+    Draw the stand's row again with the fit's seed and take the type at that pixel (option (c)): not chosen
+  rationale: >-
+    Jaskaran's answer (a) to question 3 of docs/handoff/2026-10-19-round12.md, 19 Oct 2026 (the round 13 brief):
+    "Jaskaran's answers: 1 (b), 2 (b), 3 (a), 5 (a)." One type per stand, as for every other stand; it is the row's
+    type whenever the row fell on a piece of that type; deterministic and cheap. The case arises because the
+    clustering stage averages each connected piece of a stand apart (review B14), which round 13's Task 4 is to change
+    to one mean per stand; after that change every piece of a stand carries one type, and this rule picks it. No
+    paper was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/export.py
+    what: _stand_row_types, the commonest type per stand label
+  - path: docs/handoff/2026-10-19-round12.md
+    what: Question 3, with its three options; marked answered
+  - path: docs/handoff/2026-10-20-round13.md
+    what: The brief, Task 1
+  - path: docs/reproducibility/r9_runs/stand_types_from_fit_rows.json
+    what: The one stand whose pieces carry different types (10 km tile, stand 2874)
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: field-keptland-chance-10ha-sets-draw-their-own-placements
+  title: >-
+    In the kept-land chance test each 10 ha set draws its own placements, seeded by its set's name
+  decision: >-
+    The declared chance test of the 10 ha box runs (round 12, Task 4) seeds each set's placements by the set's own
+    name, as the script does for those run names (v120_10ha_squares_keptland_s1desc and alphaearth_10ha_squares_keptland),
+    as Phase 3 seeded its 3 ha and 10 ha arms apart. The two 10 ha results of round 12 stand as run
+    (odisha_script/keptland_scores/, each results file naming its seed). Nothing changes.
+  alternatives_considered:
+  - >-
+    Each 10 ha set draws its arm's 3 ha placements (--arm v120_3ha_squares_keptland_s1desc, --arm
+    alphaearth_3ha_squares_keptland; option (b) of question 5 of docs/handoff/2026-10-19-round12.md): not chosen
+  rationale: >-
+    Jaskaran's answer (a) to question 5 of docs/handoff/2026-10-19-round12.md, 19 Oct 2026 (the round 13 brief):
+    "Jaskaran's answers: 1 (b), 2 (b), 3 (a), 5 (a)." It extends the rule of field-keptland-chance-each-arm-draws-its-own-placements
+    (each arm seeded by its arm's name) to the 10 ha sets, treating the stand size as part of the arm, as Phase 3 did;
+    a 3 ha and a 10 ha result of one arm then differ by their placements as well as by their stands, and nothing in
+    the test compares them (3 ha beside 10 ha is descriptive only). No paper was searched for this decision.
+  evidence:
+  - path: odisha_script/odisha_keptland_chance.py
+    what: arm_from_runs, which names each set's seed from its runs
+  - path: docs/handoff/2026-10-19-round12.md
+    what: Question 5, with its two options; Task 4 part 5, the run as (a)
+  - path: docs/handoff/2026-10-20-round13.md
+    what: The brief, Task 1
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-district-step-30-km-tile-not-run-in-round-12
+  title: >-
+    The 30 km tile was not run in round 12, and is not yet scheduled
+  decision: >-
+    The 30 km tile of spec-district-step-next-one-30-km-tile was not run in round 12: nothing of it was committed or
+    submitted. It is not yet scheduled. The round 13 brief leaves district scale (review B1 to B3: the merge's
+    50,000-superpixel guard, the export pass's read-back cost, SNIC label collisions) to a later round, and the tile,
+    run as round 12's brief specified it, would stop at that guard.
+  alternatives_considered:
+  - >-
+    Run it as specified, knowing it stops at the merge (option (a) of question 4 of docs/handoff/2026-10-19-round12.md):
+    not chosen
+  - >-
+    Raise merge.max_superpixels in the tile's config (option (b)): not chosen
+  rationale: >-
+    Jaskaran's answer (c) to question 4 of docs/handoff/2026-10-19-round12.md, read at 13:33 IST on 19 Oct 2026:
+    "Question 4: (c). Do not run Task 5 this round. A read-only review found that the 30 km tile stops at the merge
+    (max_superpixels) and that the feature steps it would cache are about to change. Finish Task 4 (the AlphaEarth 10
+    ha runs and their scoring), write the record, and stop. Start no other Earth Engine work." A read-only count in
+    round 12 put about 170,600 superpixels on the tile's kept land, 3.4 times the guard. The feature steps did change
+    in round 13 (Task 2, the step revisions). Entered in the register in round 13, as round 12's record asked. No paper
+    was searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-19-round12.md
+    what: Question 4, with its three options and the answer as given; "Task 5 (roadmap 3.4a) not run"
+  - path: docs/reviews/2026-10-19-review.md
+    what: B1 to B3
+  - path: docs/handoff/2026-10-20-round13.md
+    what: The brief, "Out of scope"
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 12, answer to question 4)
+- id: spec-data-load-windows-include-their-end-date
+  title: >-
+    data_load's three date windows include their end date, as features_embedding's does, and data_load's step revision
+    is raised to 1
+  decision: >-
+    src/fmu/stages/data_load.py (a Locked module) gives filterDate the day after each window's end date
+    (ee.Date(end).advance(1, "day"), the helper _day_after), for the Sentinel-2 phenology collection, the Sentinel-1
+    collection and the Sentinel-2 composite (_composite_window, which input_collections reads too, so the record of
+    the composite's images names the images used). filterDate's end is exclusive, so each window now holds every day
+    the config gives, 2017-01-01 to 2022-12-31 in all 74 configs, and the window strings the stage records are the
+    days it used. fmu.utils.caching (Locked) raises data_load's step revision to 1 (STEP_REVISION): the data_load key
+    moves, and with it the features_optical, features_radar, merge, clustering and k_elbow keys of all 74 configs under
+    configs/, and the segmentation key of the 52 whose superpixels are drawn on the hand-crafted stack (the 22
+    embedding configs segment on the embedding). The legacy fingerprints do not move. The only other filterDate in
+    src/fmu, the CHIRPS climatology window of features_static, is unchanged: the review found it sound (pentads are
+    dated by their first day, the 1st, 6th, 11th, 16th, 21st or 26th of a month, so an exclusive end of 31 December
+    leaves none out); not checked against Earth Engine here.
+  alternatives_considered:
+  - >-
+    Keep the shorter window and write 2017-01-01 to 2022-12-30 in the register, the docs and the manifests (the
+    review's second option): not chosen; the brief asks for the end to be made inclusive
+  - >-
+    Compute the day after in Python and pass it as a date string: not chosen, so that data_load filters the same way
+    features_embedding does
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 2: "A4: make the date windows' end inclusive in data_load, as
+    features_embedding does." Review A4 (docs/reviews/2026-10-19-review.md): the configs' end, 2022-12-31, went to
+    filterDate as an exclusive end, so the S2 phenology collection, the S2 composite and the S1 collection stopped on
+    30 Dec 2022, while the register (dn-date-windows-one-shared-window), docs/datasets.md and the manifests give 31
+    Dec; Phase 1's descending S1 sample counts 189 scenes at the plots of the Angul, Dhenkanal and Kendujhar boxes,
+    where those runs' manifests record 188. The new test (tests/test_data_load_windows.py) fails on the code before:
+    each window kept the days up to the day before its end (2017-01-01 to 2022-12-30 against the recorded 2017-01-01
+    to 2022-12-31). A read-only check on Earth Engine (call 4 of the round 13 record) found the images of 31 Dec 2022
+    the exclusive end left out of the _r9 runs' collections: one Sentinel-1 scene over the Angul, Dhenkanal and
+    Kendujhar boxes and the Angul 10 km tile, two Sentinel-2 scenes passing the cloud filter over the Koraput boxes,
+    and none at Sanjay Van. The revision follows the brief's rule 4: a fix that changes what a step computes must
+    change that step's cache key. No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/data_load.py
+    what: _day_after, read by _load_s2, _load_s1 and _composite_window
+  - path: src/fmu/utils/caching.py
+    what: STEP_REVISION, data_load at revision 1
+  - path: tests/test_data_load_windows.py
+    what: The days each filter keeps, against the window the stage records; the composite named in the record
+  - path: docs/current_flow.md
+    what: The data_load stage, Logic
+  - path: docs/reviews/2026-10-19-review.md
+    what: A4
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Read-only Earth Engine calls, call 4, the images of 31 Dec 2022 each run left out
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-static-water-input-over-the-transforms-reach
+  title: >-
+    distance_to_water measures to water built over the ROI buffered by the distance transform's reach, not to masking's
+    water_mask, which ends at the ROI; features_static's step revision is raised to 1
+  decision: >-
+    src/fmu/stages/features_static.py (a Locked module) builds its own water input: masking's definition, JRC occurrence
+    at least masking.jrc_water_occurrence_threshold, unmasked to 0 (fmu.stages.masking.jrc_water_mask, one function now
+    read by both stages), over the ROI buffered by water_reach_m = ceil(sqrt(2) x max_water_distance_pixels) x
+    export.analysis_scale_m, 14,150 m at the default 1,000 pixels of 10 m. fastDistanceTransform searches a square of
+    half-width max_water_distance_pixels, whose corners are sqrt(2) times as far, so every water pixel that
+    neighbourhood holds for any pixel of the ROI is in the input. The buffer is given maxError 1 m, since by default
+    Geometry.buffer may fall short by 1% of the distance (141.5 m), more than the 7.9 m the ceil leaves at 1,000
+    pixels. (Since a check of the fix, also in round 13: buffered 1% past the reach, water_buffer_m, 14,292 m at the
+    default, since Geometry.buffer measures in metres on Earth Engine's sphere and the reach is in the analysis grid's;
+    on the reach alone a neighbourhood corner at an Odisha box corner lay up to 15 m past the buffer; features_static's
+    revision is 3.) Only the result is clipped to the ROI, as before. The stage reads no masking output any more:
+    required_inputs is {"roi"}. src/fmu/stages/masking.py (Locked) builds water_mask with the same function over the
+    ROI; its calls are the same as before for all 74 configs (recorded offline and compared), so masking's output and
+    key do not change, and landcover_summary still reads it. fmu.utils.caching (Locked): STEP_SETTINGS lists
+    datasets.water and masking.jrc_water_occurrence_threshold for features_static, step_upstream no longer puts masking
+    upstream of it, and STEP_REVISION raises features_static to 1. Its key moves in all 74 configs under configs/, and
+    the clustering and k_elbow keys of the 52 hand-crafted ones; the 22 embedding configs' clustering does not read the
+    static features. The legacy fingerprints do not move. src/fmu/config.py (Locked) changes in a comment only. This
+    supersedes dn-static-distance-to-water-reuses-masking-water-mask (distance to water read from masking's
+    water_mask); the drift between two definitions of water that entry guarded against is prevented by the one
+    function.
+  alternatives_considered:
+  - >-
+    Keep masking upstream of features_static: not chosen. The stage reads no masking output, step_upstream is
+    documented as the steps whose outputs a step reads, and a change to a masking setting it does not read (the habitat
+    classes, say) would recompute the distance transform over the buffered ROI for nothing
+  - >-
+    Cache masking's water_mask over the buffered region instead (the review's wording, "and cache it over that
+    region"): not chosen. water_mask is a masking output that landcover_summary and the display read over the ROI, and
+    the brief keeps it as it is
+  - >-
+    Leave the water input unclipped: not chosen; the brief asks for it to be built over the ROI buffered by the
+    transform's reach
+  - >-
+    Buffer by max_water_distance_pixels x analysis_scale_m (the review's figure): not chosen, as it leaves out the
+    corners of the square neighbourhood, where the transform still finds water up to sqrt(2) times as far
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 2: "A1: build the distance-to-water input over the ROI buffered by
+    the transform's reach, and clip only the result." Review A1 (docs/reviews/2026-10-19-review.md): masking clipped
+    the JRC layer to the ROI before the threshold, unmask(0) kept the clipped footprint, and features_static's 10 km
+    fastDistanceTransform never saw water outside the ROI, so every value was min(distance to water inside the ROI, 10
+    km); all 219 stands of the Angul _r9 box layer read exactly 10,000 m, while the 10 km tile run puts the 178 box
+    stands it covers 847 to 3,567 m from water. The new test (tests/test_static_water_input.py) fails on the code
+    before (the transform's input was the context's water_mask) and passes after. The revision follows the brief's
+    rule 4. The off-path golden of tests/test_static_distance_cap.py was recorded again: all 3 of its cases changed, in
+    the water input's calls and the names made from them only. tests/test_step_keys_of_record.py now undoes this
+    re-keying, beside the revisions, before it checks the recorded keys, and its test of a new masking field expects
+    features_static to stay. The claim that the buffer leaves every distance as an unclipped input would give rests
+    on the square neighbourhood the repo already describes (real distances up to 12.3 km in the Odisha box runs); it
+    was not checked against Earth Engine. No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/features_static.py
+    what: water_reach_m and the water input of distance_to_water; required_inputs
+  - path: src/fmu/stages/masking.py
+    what: jrc_water_mask, read by both stages
+  - path: src/fmu/utils/caching.py
+    what: STEP_SETTINGS["features_static"], step_upstream, STEP_REVISION
+  - path: tests/test_static_water_input.py
+    what: The transform's input, its buffer and reach, and masking's water_mask unchanged
+  - path: tests/test_static_distance_cap.py
+    what: The off-path golden, recorded again
+  - path: tests/data/features_static_off_calls.json
+    what: The golden
+  - path: tests/test_step_keys_of_record.py
+    what: _keyed_as_the_records_were; a new masking field no longer moves features_static
+  - path: docs/current_flow.md
+    what: masking and features_static, on distance to water
+  - path: docs/design_notes.md
+    what: 'Section ''features_static: terrain + distance + climate'', paragraph 3'
+  - path: docs/reviews/2026-10-19-review.md
+    what: A1
+  papers: []
+  status: adopted
+  design_notes_section: 'features_static: terrain + distance + climate'
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-static-terrain-on-a-float-dem
+  title: >-
+    Slope and aspect are computed with ee.Terrain.slope and ee.Terrain.aspect on the DEM cast to float, in fractional
+    degrees, and features_static's step revision is raised to 2
+  decision: >-
+    src/fmu/stages/features_static.py (a Locked module) casts NASADEM's elevation band to float and takes slope from
+    ee.Terrain.slope and aspect from ee.Terrain.aspect on it, in fractional degrees; elevation is the DEM's band as
+    float, its values unchanged. ee.Terrain.products, which gave the three bands before round 13, is no longer used.
+    fmu.utils.caching (Locked) raises features_static's step revision to 2 (1 was review A1's, the same day): its key
+    moves in all 74 configs under configs/, and the clustering and k_elbow keys of the 52 hand-crafted ones; the
+    legacy fingerprints do not move. This is the first half of review A5's fix; the second half, a flat cell's aspect,
+    is spec-clustering-flat-cells-have-no-aspect.
+  alternatives_considered:
+  - >-
+    Give ee.Terrain.products the DEM cast to float, the review's inferred fix (and the fix as first written in round
+    13): not chosen. A read-only check on Earth Engine found that ee.Terrain.products gives slope and aspect as integer
+    bands on the float DEM too, so the cast alone changes nothing
+  - >-
+    Keep the terrain as it is and declare whole degrees: not chosen; the brief asks for the terrain on a float DEM
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 2: "A5: compute the terrain on a float DEM; give flat cells no
+    aspect direction (zero vector). One read-only bandTypes() call to confirm the type is allowed." Review A5
+    (docs/reviews/2026-10-19-review.md): in the committed _r9 and tile layers all 689 one-pixel stands have
+    whole-number slope, aspect and elevation, while the float bands of the same asset keep their decimals, so the three
+    smallest gradients (0.93, 0.99 and 1.36 degrees) all read 1; the review inferred NASADEM's integer elevation as the
+    cause. Two read-only calls on Earth Engine (calls 1 and 2 of the round 13 record, 19 Oct 2026) found the cause
+    elsewhere: ee.Terrain.products gives slope and aspect as int bands (slope 0 to 90, aspect 0 to 359) on the integer
+    DEM and on the DEM cast to float alike, while ee.Terrain.slope and ee.Terrain.aspect give float bands on both, with
+    the same values on both (at one Angul pixel slope 14.976821606934545 and aspect 244.93915812599607, where the
+    products give 15 and 245). So the stage casts the DEM, as the brief asks, and uses the two functions. In the Angul
+    _r9 hand-crafted layer seven stands share the rounded minimum slope of exactly 1, and all 18 one-pixel stands have
+    whole-number slope and aspect (checked from the committed layer). The new test (tests/test_static_terrain.py)
+    fails on the code before and on the cast alone (ee.Terrain.products on the DEM as float), and passes after. The
+    off-path golden of tests/test_static_distance_cap.py was recorded again: 3 of 3 cases changed, in the terrain
+    calls and the names made from them only. No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/features_static.py
+    what: ee.Terrain.slope and ee.Terrain.aspect on the DEM cast to float
+  - path: src/fmu/utils/caching.py
+    what: STEP_REVISION, features_static at revision 2
+  - path: tests/test_static_terrain.py
+    what: The terrain calls, on the DEM as float; ee.Terrain.products not used
+  - path: tests/data/features_static_off_calls.json
+    what: The off-path golden, recorded again
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Read-only Earth Engine calls 1 and 2, the band types of the terrain
+  - path: docs/design_notes.md
+    what: 'Section ''features_static: terrain + distance + climate'', paragraph 2'
+  - path: docs/reviews/2026-10-19-review.md
+    what: A5
+  papers: []
+  status: adopted
+  design_notes_section: 'features_static: terrain + distance + climate'
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-clustering-flat-cells-have-no-aspect
+  title: >-
+    A flat cell's aspect sin and cos are both 0 in the clustering and profiling stages, not the pair of a slope facing
+    due north
+  decision: >-
+    The clustering stage's _decompose_cyclic_bands (src/fmu/stages/clustering.py, a Locked module) gives every cell whose
+    slope is 0 the aspect pair (0, 0), per pixel and before the unit means, in place of (sin 0, cos 0) = (0, 1), the
+    pair of a slope facing due north. Every other cell keeps the sin and cos of its aspect, and the phase pairs are
+    unchanged. The slope is read from the same stack (features_static emits elevation, slope and aspect together); a
+    stack with aspect and no slope is refused with an error. The profiling stage's copy of the decomposition
+    (src/fmu/stages/profiling.py, a Locked module) applies the same rule, so that the profiles describe what was
+    clustered. A unit's mean aspect vector then holds the directions of its sloping cells only, shortened by its share
+    of flat cells. Clustering's revision is raised to 1 (STEP_REVISION in src/fmu/utils/caching.py), which moves the
+    clustering and k_elbow keys of every config and no other key.
+  alternatives_considered:
+  - >-
+    Weight each cell's aspect sin and cos by its slope, the review's second option: not chosen. The brief names the zero
+    vector, and a weight would change the pair of every sloping cell too
+  - >-
+    Leave a flat cell facing north: not chosen, it is the finding
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 2: "A5: compute the terrain on a float DEM; give flat cells no
+    aspect direction (zero vector)." This entry is the second half; the float DEM is features_static's. The review
+    (docs/reviews/2026-10-19-review.md, A5) found that a cell with no gradient gets aspect 0, which the sin/cos
+    decomposition encodes exactly like a slope facing north, (0, 1): all 9 one-pixel stands with slope 0 in the
+    committed _r9 and tile layers have aspect 0, and _decompose_cyclic_bands gives (0, 1) for a flat pixel and a due
+    north pixel alike. The new test fails on the code before the change with "assert (0.0, 1.0) != (0.0, 1.0)", in both
+    stages, and passes after it. With NASADEM's integer elevations the smallest gradients the review lists (0.93, 0.99
+    and 1.36 degrees) read 1 in whole degrees, so a slope of 0 is a cell with no gradient, in the whole degrees of the
+    runs before round 13 as in the fractional degrees of ee.Terrain.slope (spec-static-terrain-on-a-float-dem). Per
+    the review, flat cells barely reach the scored boxes (0 of 345 one-pixel stands) but occur in the 10 km tile (5 of
+    235) and Sanjay Van (4 of 109); how many stand types the rule moves needs Earth Engine and was not measured. The
+    embedding arm has no aspect band and computes the same as before, though its clustering and k_elbow keys move with
+    the step's revision. No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/clustering.py
+    what: _decompose_cyclic_bands, the flat-cell rule and the refusal of aspect without slope
+  - path: src/fmu/stages/profiling.py
+    what: _decompose_cyclic_bands, the same rule
+  - path: src/fmu/utils/caching.py
+    what: STEP_REVISION, clustering at 1
+  - path: tests/test_flat_cells_have_no_aspect.py
+    what: >-
+      A flat cell and a due north cell on numpy stand-ins for the images (tests/_ee_arrays.py); fails on the code before
+      the change
+  - path: tests/data/clustering_off_calls.json
+    what: The recorded calls of the two hand-crafted configs, rewritten from the new code
+  - path: docs/reviews/2026-10-19-review.md
+    what: A5
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 2, A5
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-export-area-and-pixels-from-the-pixel-count
+  title: >-
+    Each exported polygon's n_pixels is the pixel count reduceToVectors gives it, and its area_ha that count on the
+    analysis grid
+  decision: >-
+    The export stage (src/fmu/stages/export.py, a Locked module), _add_geom_attrs, used by all three vector layers
+    (stands_merged, stands_snic, stands_dissolved): n_pixels is the 'count' reduceToVectors puts on every polygon it
+    makes (its default reducer, countEvery, over the polygon's pixels at the analysis scale), and area_ha is n_pixels x
+    analysis_scale_m² / 10,000, the area on the analysis grid. perim_m and the centroid are still the geometry's
+    (found after a check of the fix in round 13: the centroid has the same hole error as area(), the centroid with the
+    hole counted as area, 54 of the 7,371 centroids of the committed merged layers of _r9 and round 12 more than 1 m
+    off, up to 35 m, and stand_id is numbered by it; perim_m is right; not changed in round 13, question 21 of its
+    brief). The three builders compute these before _drop_internal_properties drops 'count', and no reduction in between writes a
+    property of that name (the feature means are named after their bands, the vote 'mode'); a test pins that order for
+    the three builders. On the legacy cache layout stands_dissolved is vectorised from a type image on a geographic grid,
+    whose pixels are smaller than analysis_scale_m² away from the equator, so there its area_ha overstates the area
+    (about 7.5% at 21° N); stands_merged and stands_snic lie on a UTM grid in both layouts.
+  alternatives_considered:
+  - >-
+    Keep the geometry's area() for area_ha, and n_pixels derived from it (the export before round 13): not chosen;
+    review A6
+  - >-
+    Subtract the holes from area() (the exterior's area minus the holes'): not chosen. It keeps Earth Engine's
+    measure, which in the committed layers is the area on a sphere of radius 6,371,008.8 m, 0.11% (Sanjay Van) to
+    0.31% (Odisha) more than the planar area on the run's grid, and n_pixels would still be derived from an area
+  - >-
+    Sum ee.Image.pixelArea() over each polygon in reduceToVectors: exact on any grid, the legacy layout's geographic
+    type grid included, at the cost of a second band and reducer in every vectorisation; not what the brief asks
+    (question for Jaskaran in the round 13 record)
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 2: "A6: take n_pixels from reduceToVectors' count, and area_ha
+    from it." Review A6 (docs/reviews/2026-10-19-review.md): "For some polygons with a hole that touches the outer ring
+    at a vertex, Earth Engine's area() adds the holes instead of subtracting them. So area_ha and n_pixels of those
+    stands are too large." Stand 83 of sanjay_van_alphaearth_keptland_r9 is 18.27 ha and 1,827 pixels in its committed
+    layer; its planar area with its 5.01 ha hole subtracted is 8.23 ha, and its merge record gives 823 pixels. The new
+    test fails on the export before the fix (assert 1827 == 823). Checked offline on the committed layers: every
+    polygon's area_ha is its area on a sphere of radius 6,371,008.8 m within 1 part in 10^6, with its holes subtracted
+    or, for the polygons A6 describes, added; 52 of the 3,816 polygons of the eight committed _r9 stands_merged layers
+    are off by more than 1% (15.97 ha, as the review found), 104 of 10,381 in all 22 committed layers of
+    docs/reproducibility/r9_runs, 137 of 9,951 in the 22 of docs/reproducibility/round12_runs and 404 of 31,254 in the
+    57 of odisha_script/phase2_vectors. Every vertex of the stands_merged and stands_snic layers there lies on the 10 m
+    grid of the run's UTM zone, so their planar area is a whole number of pixels, the count the export now reads; the
+    _r9 and round 12 stands_dissolved layers lie on it too. That area is 0.2% to 0.3% below area() at the Odisha sites
+    and 0.11% at Sanjay Van for every polygon, so a re-export gives slightly smaller areas throughout, closer to the
+    WGS84 ellipsoidal area (within 0.07% of it at the Odisha sites). No scored statistic reads area_ha (review A6);
+    the committed descriptive numbers it changes carry dated notes. The export is not cached, so no step key moves.
+    No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/export.py
+    what: _add_geom_attrs, and the three builders' order of operations
+  - path: tests/test_export_area_from_pixel_count.py
+    what: >-
+      Stand 83's numbers on a fake feature (fails on the export before the fix with assert 1827 == 823), and the count
+      reaching _add_geom_attrs in all three builders
+  - path: docs/reproducibility/r9_runs/sanjay_van_alphaearth_keptland_r9_stands_merged.geojson
+    what: Stand 83 (stand_lbl 83, stand_id 223), 18.27 ha and 1,827 pixels
+  - path: docs/reproducibility/r9_runs/sanjay_van_alphaearth_keptland_r9_run.json
+    what: Stand 83's merge record, 823 pixels and 8.23 ha
+  - path: docs/outputs.md
+    what: '"Areas and pixel counts", and area_ha and n_pixels of the three layers'
+  - path: odisha_script/odisha_phase2_5_results_districts.txt
+    what: >-
+      The dated note at its end (20 Oct 2026): the committed areas with the holes subtracted, and on the grid; the
+      same in odisha_phase2_5_results.txt, both odisha_phase2_3_results_districts.txt, PHASE2_STATUS.md and
+      PHASE3_STATUS.md
+  - path: docs/reviews/2026-10-19-review.md
+    what: A6
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-batch-wrapper-resumes-a-label-and-holds-one-lock-per-machine
+  title: >-
+    The batch wrapper resumes a label without re-running what it finished, holds one lock per machine that its
+    children hold too, passes signals on to them, knows a config by its name and puts a deadline on its queue poll
+  decision: >-
+    odisha_script/run_passes_safely.py, the one way to start an Earth Engine batch run (CLAUDE.md;
+    night-repro-copies-and-safe-passes), gets four guards against a second copy of a task, and one against a hang
+    (review B4 to B9). (1) A batch started again under the same label reads <label>.state.json first and skips, with
+    a log line, every config an earlier batch of the label finished or put under needs attention; the state file
+    keeps every key it had, and adds the earlier batches' records (earlier_batches) and the configs skipped
+    (skipped); the exit lines of a pass cut short are read all the same. (2) One lock per machine,
+    ~/.fmu/run_passes_safely.lock: an fcntl.flock taken before git, `import ee` and ee.Initialize, and held to the
+    end; a start is refused (exit 90) while another batch holds it, whatever its run tree or log folder. (3) The
+    shell script and the runner run in a process group of their own and are given the lock's descriptor:
+    SIGTERM, SIGHUP and SIGINT are passed on to them, and the wrapper waits for them to end, records the pass and
+    stops (exit 128 plus the signal's number); a signal ignored when the batch started stays ignored; if the
+    wrapper is killed outright they keep the lock until they end. (4) Each config is read with the run tree's
+    fmu.config and known by its name:, after which the pipeline names its tasks; a config whose name: differs from
+    its file stem, a path that does not end in .yaml, or a name listed twice is refused (exit 93). (5) Each
+    request of the wrapper's queue polls has a deadline of 120 s (ee.data.setDeadline, set right after
+    ee.Initialize), as the runner's polls have; the client retries a request that times out up to 5 times, with
+    backoff, so a poll on a dead network ends after about 13 minutes, and the wrapper then retries the poll. Within a batch, as night-repro-copies-and-safe-passes
+    records, a finished config is never re-run and a config whose export stage failed is not retried; that entry is
+    not changed. A batch under another label still does not know what an earlier one finished. Corrected in round
+    13 after a check of the fix (a review of the round's own changes): a config whose export stage started and has
+    no exit line, because a signal or an error cut the pass short while it ran, is put under needs attention, as one
+    whose export stage failed is, since its Drive exports may have been sent; the state file is written beside
+    itself, flushed and moved over the old one (os.replace), so a save cut short leaves the earlier record whole;
+    and the signal handler only records the signal and passes it on (it set a threading.Event, whose lock it waited
+    for forever if the signal came while the main thread held it), the waits between polls sleeping in steps of at
+    most a second.
+  alternatives_considered:
+  - >-
+    A lock file holding a pid, checked for a live pid and kept in the log folder (the wrapper before round 13): two
+    starts seconds apart both passed the check, a batch with another log folder did not see it, and the children of
+    a killed wrapper ran on while the lock read as stale (review B5 to B7)
+  - >-
+    Refuse a batch whose label's state file lists a finished config, rather than skip the config: not chosen; the
+    brief asks for a resume, and with it the same command finishes a batch that was cut short
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 3: "B4 to B9, as the review suggests: resume from the state file
+    and skip finished configs; a held lock at one fixed path, taken first; signals forwarded to the children; configs
+    keyed by name:, refusing a name that differs from the file stem, a non-.yaml file or a repeat; a request deadline
+    on the queue poll. Test each with a fake Earth Engine, as the review did." The review
+    (docs/reviews/2026-10-19-review.md, B4 to B9) found these ways for the wrapper to submit a second copy of a task,
+    and for its poll to hang, in a harness that ran the real wrapper and shell script against a modelled Earth
+    Engine. tests/test_run_passes_safely.py is such a harness (tests/_wrapper_harness.py), and each of its tests of a
+    finding fails on the wrapper before that finding's fix: the state file of a batch cut short read "done": [], and
+    the same command again sent every Drive export twice (B4); two starts 0.3 s apart, or with two log folders, both
+    ran (B6, B7); after SIGTERM, SIGHUP or SIGINT the runner was still running, and a new start was not refused (B5);
+    a .yml path, a name: unlike the file stem or a config listed twice ran (B8); no deadline was set before the first
+    poll (B9). All 74 configs under configs/ have a name: equal to their file stem, so none is refused. The check's
+    three tests fail on the wrapper as first fixed: after a signal during the export stage the config read as not
+    finished and the same command sent its nine Drive exports again; a save that stopped halfway left the state file
+    unreadable; a signal during a wait whose lock was held hung the wrapper. No paper was searched for this
+    decision.
+  evidence:
+  - path: odisha_script/run_passes_safely.py
+    what: The wrapper; its docstring lists the guards and the exit codes
+  - path: tests/test_run_passes_safely.py
+    what: The real wrapper and shell script against a modelled Earth Engine, a test or more per finding
+  - path: tests/_wrapper_harness.py
+    what: The run tree, the stand-in ee package and the stand-in runner
+  - path: docs/running.md
+    what: The wrapper's paragraph
+  - path: docs/reviews/2026-10-19-review.md
+    what: B4 to B9
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-clustering-phase-pair-not-logged
+  title: >-
+    The sin and cos of a harmonic phase band are kept out of the clustering stage's skew test and log transform
+  decision: >-
+    In the clustering stage (src/fmu/stages/clustering.py, a Locked module) the sin and cos bands that
+    _decompose_cyclic_bands makes of a harmonic phase band (a band with "_phase_" in its name, such as
+    ndvi_phase_annual) are never candidates for the skew test (_identify_skewed_bands), and so are never logged
+    (_apply_log_transform); they go to the scaling as the decomposition gives them (_phase_components). Every other
+    band is tested exactly as before: the same |skew| > skewness_threshold rule (review A3, unchanged) and the same
+    offset (review B12, unchanged). Aspect's sin and cos are tested as before. The scaling of the pair, each component
+    by its own median and IQR, is unchanged (review A2). Clustering's revision is raised to 2 (STEP_REVISION in
+    src/fmu/utils/caching.py), which moves the clustering and k_elbow keys of every config and no other key.
+  alternatives_considered:
+  - >-
+    Keep aspect's sin and cos out of the skew test and the log too: not chosen, since the brief names the phase only.
+    Put to Jaskaran under Questions; no committed run logged an aspect component
+  - >-
+    Scale each pair with one shared spread, or not at all, as the review also suggests: not chosen; that is the
+    scaling, a method decision left out of this round (review A2)
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 4: "B13 (the phase's sin and cos kept out of the skew test and
+    the log)". The review (docs/reviews/2026-10-19-review.md, B13) found that the decomposition runs before the skew
+    test, so ndvi_phase_annual_cos is logged in every hand-crafted _r9 run and Angul also logs _sin, and that a log
+    taken of one coordinate of the circle makes the distance between two stands depend on where on the circle their
+    phases sit, which moves with the harmonic's reference date. The committed run records agree: every hand-crafted
+    run in docs/reproducibility (keptland_runs, r9_runs, round12_runs, round9_cache_test) logged
+    ndvi_phase_annual_cos, and the Angul runs ndvi_phase_annual_sin too; none logged an aspect component. The new test
+    fails on the code before the change with "assert 'ndvi_phase_annual_sin' not in ['vh_iqr', 'canopy_height_max',
+    'slope', 'ndvi_phase_annual_sin', 'ndvi_phase_annual_cos', 'aspect_cos']" and passes after it. The review's
+    suggested test, that moving time_reference leaves the pairwise distances unchanged, is not added: it cannot pass
+    while each component is scaled by its own spread (A2) and while ndvi_mean is the trend line's value on the
+    reference date (review C9). The clustering therefore still depends on the reference date through those two
+    routes. The records that said it does not (spec-harmonic-time-reference-configurable, src/fmu/config.py,
+    src/fmu/stages/features_optical.py, and the docs and config comments that repeated them) were corrected in
+    round 13, in their text only (review C9); the two routes stay until A2 and C9 are settled. No paper was
+    searched for this decision.
+  evidence:
+  - path: src/fmu/stages/clustering.py
+    what: _phase_components; step 5 of ClusteringStage.run
+  - path: src/fmu/utils/caching.py
+    what: STEP_REVISION, clustering at 2
+  - path: tests/test_phase_pair_not_logged.py
+    what: >-
+      A phase component above the threshold is neither tested nor logged, while vh_iqr and aspect_cos with the same
+      skew are; fails on the code before the change
+  - path: tests/data/clustering_off_calls.json
+    what: The recorded calls of the two hand-crafted configs, two skew requests fewer
+  - path: docs/reviews/2026-10-19-review.md
+    what: B13, and C9
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 4, B13
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-clustering-one-mean-per-unit-label
+  title: >-
+    The clustering stage takes one mean per unit label over all of its pixels, not one per connected piece, and no
+    longer calls reduceConnectedComponents
+  decision: >-
+    The clustering stage's _compute_superpixel_means (src/fmu/stages/clustering.py, a Locked module) takes one mean per
+    unit label (a stand, or a superpixel when the merge is off) over every pixel the label has in the ROI, whether the
+    unit is in one piece or in several: one grouped reduction of the decomposed stack by the label image
+    (ee.Reducer.sum().unweighted().forEachBand(...).group(...), in the label image's grid at the analysis scale,
+    maxPixels 1e9, no bestEffort), then each band painted back on the label image with remap, server-side, so that no
+    mean is read back. A band's mean is over the unit's pixels where that band has data, and every pixel of the unit
+    holds it: each band goes into the reduction unmasked, 0 where it has no data, beside a band of 1 where it has
+    data, and the mean is the one sum over the other, since Earth Engine's grouped unweighted reducers add a band's
+    masked pixels into the sum they give a group. Both bands that go in are unmasked everywhere
+    (unmask(0, False)): unmask(0) alone leaves a band masked outside its footprint, and a unit that footprint cuts
+    then took in those pixels (read on Earth Engine on synthetic images: 2,664 over 32 pixels where 1,320 over 16 is
+    right). A unit with no data in a band is masked in that band and so has no
+    k-means row (reduceConnectedComponents gave it 0 there, read on Earth Engine on synthetic images). The stage no
+    longer calls reduceConnectedComponents, which averaged each 8-connected piece of a label on its own, and what
+    existed only for its maxSize is removed: the measured neighbourhood (_component_neighbourhood_px,
+    _neighbourhood_from_groups and their three constants), the stage's check of the labels against the cap
+    (assert_components_fit, which stays in src/fmu/utils/components.py for the merge and metrics stages), and the five
+    stage-metadata keys that described them (n_components, largest_component_px, max_component_px_cap,
+    rcc_neighbourhood_px, widest_unit_extent_px). clustering_metadata is unchanged. Comments and docstrings that the
+    change made untrue are corrected in src/fmu/config.py (max_component_pixels), src/fmu/utils/caching.py (why
+    clustering's key still lists merge.max_area_ha, merge.min_area_ha and merge.pass2_soft_ceiling: taking them out
+    would change every recorded key), src/fmu/stages/merge.py (which stage checks the output stands against the cap)
+    and src/fmu/stages/export.py (_stand_row_types), all Locked; none of them changes a computation. Clustering's
+    revision is raised to 3 (STEP_REVISION), which moves the clustering and k_elbow keys of every config and no other
+    key.
+  alternatives_considered:
+  - >-
+    Relabel each piece as a unit of its own before clustering, the review's other suggestion: not chosen. The brief
+    asks for one mean per stand, and the merge, the export and the fit's rows all treat a label as one stand
+  - >-
+    Keep reduceConnectedComponents: not chosen, since it averages per connected piece by definition
+  - >-
+    ee.Reducer.mean().repeat(n), with each band's means taken out of the list by position: not chosen. A unit with
+    no data in a band would leave a gap in that list, and how Earth Engine leaves it was not checked; forEachBand
+    names each sum by its band, so the units without data in a band are filtered out by name
+  - >-
+    A grouped unweighted mean of the masked bands (ee.Reducer.mean().unweighted().forEachBand(...).group(...)), the
+    change as first written in round 13: not chosen. Its live test, run read-only on 20 Oct 2026, failed: Earth
+    Engine's grouped unweighted reducers add a band's masked pixels into the group's sum, though their count leaves
+    them out, so a band with data on 16 of a unit's 32 pixels came out 83.25 where the mean of its data is 82.5 (its
+    sum 2,664 against 1,320), and a unit with no data in a band got a mean of 0
+  - >-
+    A grouped weighted mean (no unweighted): masks each band rightly (82.5, and no mean for a unit with no data, read
+    on Earth Engine), but at the ROI's edge it takes in every pixel the ROI touches, weighted by the share of it
+    inside, where the merge's counts take the pixels whose centre is inside, each once (review B17): not chosen
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 4: "B14 (one mean per stand, not per piece)". The review
+    (docs/reviews/2026-10-19-review.md, B14) found that reduceConnectedComponents aggregates per 8-connected piece, not
+    per label, so a stand in several pieces had one mean per piece, its k-means row came from one random piece, and it
+    could get two types, while the docstrings said every pixel holds the mean of its unit. The new test fails on the
+    code before the change with "assert {1.0, 6.0} == {2.0}" (a stand in two pieces held two means) and passes after
+    it; for each stand in one piece it gives the means reduceConnectedComponents gives on the same numpy stand-in
+    stack. The reduction is unweighted, so that each pixel whose centre is in the ROI counts once, as in
+    reduceConnectedComponents, not by the share of it the ROI covers, and it is taken in the label image's own grid,
+    so that the pixels averaged are the unit's own (every cached image of a per-step run is on the analysis grid).
+    tests/test_clustering_unit_means_live.py checks the calls on Earth Engine, read-only, on synthetic images. Run on
+    20 Oct 2026 against the change as first written (a grouped unweighted mean of the masked bands) it failed, and the
+    read-only checks recorded in docs/handoff/2026-10-20-round13.md found why: a grouped unweighted sum of a band with
+    data on 16 of a unit's 32 pixels came out 2,664 where its 16 values sum to 1,320, while a weighted one, an
+    ungrouped unweighted one and a grouped unweighted sum of an unmasked band came out right (an edge that cuts pixels
+    gave the sum of the 12 pixels whose centre is inside, 138). With the bands summed unmasked beside their bands of
+    data the live test passes: one mean over unit 1's two pieces (54.5); the mean of unit 3's pixels with data in band
+    b (82.5) on all of its pixels; unit 4 masked in b; the means of reduceConnectedComponents for every unit in one
+    piece where both give one; double precision. On the same images reduceConnectedComponents gave unit 4, which has
+    no data in b, the value 0 in b on all of its pixels, unmasked: before round 13 such a unit had a k-means row with a
+    0 it never measured, where now it has none, as the stage's warning about units without a row describes. Whether a
+    unit of the runs of record had no data in a band was not checked; their manifests count 1 to 10 units per run
+    dropped for a null band, so some came through masked. The offline stand-ins (tests/_ee_arrays.py) now refuse a
+    band masked on part of a group in an unweighted grouped reduction, so the first version fails offline too. In the
+    committed runs 0 to 5 stands per 3 ha _r9 run and 0 to 7 per 10 ha round 12 run are in several
+    pieces, two at most each (n_stands_split_into_pieces in their export manifests): their means change, and through
+    the fit the types of other stands may move; this needs Earth Engine and was not measured. A label that SNIC
+    reuses in two places (review B3) is now one unit in the clustering, as it already was in the merge. At district
+    scale (out of scope this round: B1 to B3) the grouped reduction holds one dictionary of means per unit and each
+    remap a list as long as the units, which may meet Earth Engine's memory limits; not measured. No paper was
+    searched for this decision.
+  evidence:
+  - path: src/fmu/stages/clustering.py
+    what: _compute_superpixel_means; step 3 of ClusteringStage.run; the stage metadata
+  - path: src/fmu/utils/caching.py
+    what: STEP_REVISION, clustering at 3; the comment on clustering's settings
+  - path: tests/test_clustering_one_mean_per_unit.py
+    what: >-
+      A stand in two pieces has one mean, and a stand in one piece the means reduceConnectedComponents gave, on numpy
+      stand-ins (tests/_ee_arrays.py); fails on the code before the change
+  - path: tests/test_clustering_unit_means_live.py
+    what: >-
+      The same on Earth Engine, on synthetic images, read-only (live tier); passes on the sums, failed on the grouped
+      unweighted mean of the masked bands
+  - path: tests/data/clustering_off_calls.json
+    what: The recorded calls of the three configs, and their stage metadata without the five keys
+  - path: docs/outputs.md
+    what: Clustering stage metadata, the five keys recorded until round 13
+  - path: docs/reviews/2026-10-19-review.md
+    what: B14
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 4, B14
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-clustering-exact-quartiles-for-the-robust-scaling
+  title: >-
+    The robust scaling's median and IQR are exact quartiles of the one-row-per-unit sample, for the constant-band test
+    and the scaling alike
+  decision: >-
+    In the clustering stage (src/fmu/stages/clustering.py, a Locked module), _apply_scaling with method robust reads
+    each band's column of the one-row-per-unit sample back (aggregate_array, one request per band) and takes its 25th,
+    50th and 75th percentiles exactly (_exact_quartiles): linear interpolation between order statistics, numpy's
+    default, that is v[j] + (h - j)(v[j+1] - v[j]) with h = q(n - 1) and j = floor(h), the n values sorted. The centre
+    is that median and the spread that IQR, and the drop test (a spread of at most 1e-9 is a constant band) and the
+    scaling, (x - centre) / spread, use the same two numbers. The method is unchanged: median and IQR, as DEC-003
+    declares (dn-median-iqr-scaling-dec-003); until round 13 the centre and spread were those of Earth Engine's
+    percentile reducer, which falls back to histogram buckets. The zscore method is unchanged. Clustering's revision is
+    raised to 4 (STEP_REVISION in src/fmu/utils/caching.py), which moves the clustering and k_elbow keys of every
+    config and no other key.
+  alternatives_considered:
+  - >-
+    ee.Reducer.percentile with maxRaw above the row count, the review's other suggestion: not chosen. The quartiles
+    would still be Earth Engine's, whose interpolation could not be stated or tested offline
+  - >-
+    Exact quartiles for the drop test only, histogram quartiles for the scaling: not chosen. A band kept by the exact
+    test could then be divided by a histogram spread of 0
+  - >-
+    The quartiles computed on Earth Engine from the sorted column: not chosen, since the arithmetic could then be tested
+    on Earth Engine only
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 4: "B16 (exact quartiles for the constant-band test)". The review
+    (docs/reviews/2026-10-19-review.md, B16) found that the recorded centre and spread are histogram-bucket values,
+    0.57 to 1.52 times the exact IQR in the _r9 runs, and that where p25 and p75 share a bucket the spread is exactly 0
+    and a band with spread is dropped as constant, as distance_to_water was in round 7's two Koraput runs. The new test
+    fails on the code before the change with "assert 'distance_to_water' not in ['distance_to_water']" (a band whose
+    exact IQR is 0.1 and whose histogram quartiles coincide) and passes after it. Under review A2 wekaKMeans
+    min-max-normalises every band over the fit rows, which cancels a per-band (x - centre) / spread with a positive
+    spread, so the exact values change the fitted types only through the drop decision, up to floating-point rounding.
+    In the runs of record the bands dropped as constant are exactly constant over the stands (distance_to_water at
+    10,000 m in the Angul hand-crafted _r9 and round 12 runs, at the fill value 463,409.5 m in Sanjay Van's _r9 run),
+    and no other raw band has an exact IQR of 0 over the typed stands of the committed _r9 and round 12 stands_merged
+    layers, so this changes no drop decision of record that could be checked offline (the check is over stands rather
+    than the stage's units, and leaves out the sin and cos pairs; the Koraput 3 ha _r9 and 10 km tile layers are off
+    git and were not checked); the recorded centres and spreads do change. In round 7's Koraput run
+    (docs/reproducibility/keptland_runs) distance_to_water spreads over about 510 m across the stands and would have
+    been kept. The k elbow step (src/fmu/stages/k_elbow.py) reads the scaled rows into scikit-learn with no min-max, so
+    its inertia, and possibly its elbow, move. Reading a column back costs one request per band of a few hundred to a
+    few thousand numbers per run; at district scale (out of scope this round) a column is as long as the units. No
+    paper was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/clustering.py
+    what: _apply_scaling and _exact_quartiles
+  - path: src/fmu/utils/caching.py
+    what: STEP_REVISION, clustering at 4
+  - path: tests/test_clustering_exact_quartiles.py
+    what: >-
+      A band whose exact IQR is 0.1 and whose histogram quartiles coincide is kept, and scaled by that IQR; the
+      quartiles' definition; fails on the code before the change
+  - path: tests/data/clustering_off_calls.json
+    what: The recorded calls of the three configs, a column read per band in place of a percentile reducer
+  - path: docs/reviews/2026-10-19-review.md
+    what: B16, and A2
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 4, B16
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-merge-pixel-counts-on-one-inclusion-rule
+  title: >-
+    The merge's pixel counts, boundary counts and valid counts are all taken by one rule: whole pixels whose centre is
+    in the ROI
+  decision: >-
+    fmu.utils.adjacency (Locked, part of the merge stage) hands Earth Engine an unweighted reducer in each of the
+    merge's four reductions: the label histogram (each superpixel's pixel count), the two pair histograms (the shared
+    boundary counts) and a grouped reduction per criterion band (the valid counts and the means). Each then counts the
+    whole pixels whose centre is in the ROI. The histogram counts are rounded to the nearest whole number, not
+    truncated, and a valid count above its superpixel's pixel count raises ValueError, so frac_valid is at most 1. Two
+    things Earth Engine's unweighted reducers do that its guide does not say, read on Earth Engine in round 13 on
+    synthetic images, shape the code: a frequencyHistogram counts the region's masked pixels under the key "null",
+    which the graph leaves out of both histograms; and a grouped reducer adds a band's masked pixels into the sum (and
+    so the mean) it gives a group, though its count leaves them out, so each criterion band goes in unmasked (0 where
+    it has no data) beside a band of 1 where it has data, both summed per superpixel, and a mean is the one sum over
+    the other. Both are unmasked everywhere (unmask(0, False)), outside the band's footprint
+    too, since unmask(0) alone leaves it masked there and the sums then take those pixels in (read on Earth Engine).
+    Inside the ROI the counts are as before. At its edge a superpixel's pixel count is now its pixels whose centre is
+    inside, the means are over the pixels counted, and a superpixel with no pixel whose centre is inside is no longer
+    in the graph, so its pixels, all outside the ROI by that rule, get no stand (remap masks a label it is not given).
+    The merge's revision (fmu.utils.caching.STEP_REVISION) is raised to 1, which moves the merge, clustering and k_elbow
+    keys of every config with the merge on: all 74 under configs/.
+  alternatives_considered:
+  - >-
+    Make the valid counts weighted instead, sums of weights like the histogram: not chosen. The counts would be
+    fractions, so the merge's pixel counts and area bounds would no longer be whole pixels
+  - >-
+    Make only the three histograms unweighted and leave the grouped mean weighted: not chosen. Earth Engine does not
+    document how it admits pixels to a reducer that combines a weighted mean with count(), so the valid counts could
+    still take pixels the histogram leaves out; with the whole reducer unweighted, both follow one documented rule
+  - >-
+    The change as first written in round 13: the three histograms read with every key, and a grouped unweighted mean
+    and count of each criterion band as it is. Not chosen: run read-only on synthetic images on 20 Oct 2026, the graph
+    stopped on the histogram's "null" key, and the grouped reducer gave a band with data on 16 of a superpixel's 32
+    pixels a mean of 83.25 where its 16 values average 82.5
+  - >-
+    Check frac_valid <= 1 in merge_superpixels instead: not chosen. The merge is a pure function that its tests feed
+    valid counts above the pixel count on purpose (98 of the 200 golden graphs of tests/test_region_merge_provenance.py
+    do), and the check belongs where the two Earth Engine counts meet
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 4: "B17 (one inclusion rule for pixel counts)". The review
+    (docs/reviews/2026-10-19-review.md, B17) found the label histogram coverage-weighted and truncated with int(), while
+    the valid counts count whole pixels: at the ROI edge frac_valid, documented as a fraction, is above 1 in every
+    committed run record (up to 5.0 on the tile), 21 of 23 records have stands of zero pixels, and six edge stands of
+    the _r9 runs were counted at 1 ha or more by the merge while holding 97 to 99 whole pixels. Earth Engine's guide
+    ("Pixels in the region", developers.google.com/earth-engine/guides/reducers_reduce_region) takes a pixel into an
+    unweighted reduction when its centre is in the region, with weight 1, and into a weighted one when about 1/256 of
+    it is, weighted by the smaller of its mask and the fraction inside; the algorithm reference bundled with
+    earthengine-api describes frequencyHistogram as "a (weighted) frequency table" and Reducer.unweighted as giving
+    "the same inputs and outputs as the given Reducer, but with no weighted inputs". tests/test_adjacency_edge_pixels.py
+    follows those rules on a scene the ROI's edge cuts. On the code before, it gives two superpixels 3 and 0 pixels
+    where 4 and 1 have their centre inside, counts boundaries at the edge as 0, and finds valid counts above the pixel
+    count; with the real client, offline, it checks that each reduction is handed Reducer.unweighted itself. Earth
+    Engine itself departs from the guide's rule in two ways, found when the change as first written was run read-only
+    on synthetic images (the round 13 record, read-only calls 7, 11 and 12): an unweighted frequencyHistogram of a
+    label image masked on 104 of a region's 200 pixels gave the four labels' counts and "null": 104 (a weighted one
+    gave no "null"), and at an edge that cuts pixels the unweighted counts were those of the pixels whose centre is
+    inside (12, where the weighted histogram gave 11.70); a grouped unweighted sum of a band with data on 16 of a
+    superpixel's 32 pixels gave 2,664 where its values sum to 1,320, while its count gave 16. The test file models the
+    "null" key, and a new test checks that no masked band goes into the grouped reduction; on the change as first
+    written both fail. tests/test_adjacency_attributes_live.py runs extract_superpixel_graph and
+    extract_superpixel_attributes on Earth Engine on synthetic images (read-only): on the change as first written it
+    stopped on the "null" key; on this one the pixel counts, the valid counts and the means over the pixels with data
+    are as worked out by hand, a band with no data read as None. No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/utils/adjacency.py
+    what: extract_superpixel_graph and extract_superpixel_attributes, the four unweighted reductions and the check
+  - path: src/fmu/utils/caching.py
+    what: STEP_REVISION, the merge at revision 1
+  - path: tests/test_adjacency_edge_pixels.py
+    what: >-
+      The counts at the ROI edge on a fake Earth Engine that follows the documented rules and the "null" key; no masked
+      band into the grouped reduction; fails on the code before and on the change as first written
+  - path: tests/test_adjacency_attributes_live.py
+    what: The counts and means on Earth Engine, on synthetic images, read-only (live tier)
+  - path: tests/test_step_keys_of_record.py
+    what: The recorded keys downstream of the merge move, and no other
+  - path: docs/reviews/2026-10-19-review.md
+    what: B17
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 4, B17
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-merge-area-bounds-in-whole-pixels
+  title: >-
+    The merge holds each merge to its ceilings in whole pixels: the two regions' pixels added, against the ceiling in
+    pixels worked out exactly
+  decision: >-
+    fmu.utils.region_merge (Locked, part of the merge stage) judges a merge against max_area_ha, and with
+    merge.pass2_soft_ceiling on against max_area_ha + min_area_ha, by adding the two regions' pixel counts and comparing
+    the sum with the most whole pixels within the ceiling, worked out exactly from the ceiling as written
+    (_whole_pixels_within: the shortest decimal each bound prints as, in fractions). It does so at every such
+    comparison: pass 1's candidates and their re-check, pass 2's neighbours under and over max_area_ha, and the cause
+    filed for a stand left below the minimum. The minimum is compared as before, a region's area (its pixels times
+    hectares per pixel) against min_area_ha. The merge's revision (STEP_REVISION in fmu.utils.caching) is raised to 2,
+    which moves the merge, clustering and k_elbow keys of all 74 configs under configs/. Three of the 200 golden graphs
+    of tests/test_region_merge_provenance.py (seeds 3, 53 and 98) and five of the 516 graphs of
+    tests/test_region_merge_soft_ceiling.py (random 3, 53 and 98; tight 53 and 98) give new digests, pinned in those
+    tests; the two fixture files keep what the merge gave at their commits.
+  alternatives_considered:
+  - >-
+    Compare (n_a + n_b) * px_to_ha with the bound, adding the pixels first: not chosen. It is exact at the configs'
+    bounds (3, 4, 10 and 11 ha at 10 m) and gives the same merges on every test graph, but the product is itself a
+    float, and 35 * 0.01 is a hair over 0.35: at 13,929 of the two-decimal bounds from 0.01 to 1000 ha at 10 m (3,477
+    at 20 m, none at 30 m) it would judge every merge ending exactly on the bound as over it
+  - >-
+    Turn the bound into pixels by float division: not chosen; 0.29 / 0.01 is 28.999999999999996, so a 29 px stand would
+    be over a 0.29 ha bound
+  - >-
+    Compare the minimum in whole pixels too: not done. The review lists the sums only, and its fix for B19 has
+    Config.kept_patch_min_pixels() follow the merge's own arithmetic for the minimum; left as a question for Jaskaran
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 4: "B18 (area bounds compared in whole pixels)", and "Regenerate
+    golden files only where the fix requires it, and say how many cases changed." The review
+    (docs/reviews/2026-10-19-review.md, B18): "area(a) + area(b) <= max_area_ha, with area = n_pixels × 0.01, misjudges
+    some exact splits as over the bound. At 3 ha that is 10 of 299 splits, at 10 ha 32 of 999, and at 1 or 4 ha none.
+    Pass 1 then refuses the merge, and pass 2 demotes it." The new tests of tests/test_region_merge.py fail on the code
+    before with those counts (pass 1 refused splits 20, 22, 45, 47, 70, 230, 253, 255, 278 and 280 of 300 px, 32 splits
+    of 1000 px, and 8 of the 34 splits of 35 px at a 0.35 ha bound), and at each comparison of pass 2: a region filling
+    10 ha exactly was left area-blocked, a join landing exactly on the 11 ha soft ceiling was refused, and a stand left
+    by the iteration cap beside a neighbour it fits exactly was filed as area-blocked. When the change was made, the
+    merge gave on all 200 golden graphs what the merge at 1da0614 gives with only this comparison changed, and with the
+    soft ceiling off on all 516 graphs what the merge at 363ea6d gives with it changed, so the provenance and the soft
+    ceiling still change nothing else. The review found that summing pixel counts first changes no stand on rebuilt
+    graphs of the tile pilot, the Angul box and the Sanjay Van baseline; that was not checked here. No paper was
+    searched for this decision.
+  evidence:
+  - path: src/fmu/utils/region_merge.py
+    what: _whole_pixels_within, and max_px, soft_ceiling_px and joined_px in merge_superpixels
+  - path: src/fmu/utils/caching.py
+    what: STEP_REVISION, the merge at revision 2
+  - path: tests/test_region_merge.py
+    what: The area bounds in whole pixels; these tests fail on the code before
+  - path: tests/test_region_merge_provenance.py
+    what: DIGESTS_SINCE_B18, and the check of below_why in whole pixels
+  - path: tests/test_region_merge_soft_ceiling.py
+    what: OFF_DIGESTS_SINCE_B18
+  - path: docs/outputs.md
+    what: merge.pass2_relaxed_merges_over_max_area, decided in whole pixels
+  - path: docs/reviews/2026-10-19-review.md
+    what: B18
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 4, B18
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-kept-patch-minimum-by-the-merges-arithmetic
+  title: >-
+    The smallest kept patch SNIC sees is the fewest pixels the merge does not count as below merge.min_area_ha, by the
+    merge's own arithmetic
+  decision: >-
+    Config.kept_patch_min_pixels() (src/fmu/config.py, a Locked module) returns, with
+    segmentation.drop_kept_patches_below_min_area on, the smallest n for which n * (scale^2 / 10_000), in floats as
+    fmu.utils.region_merge computes a region's area, is not below merge.min_area_ha, instead of rounding up
+    min_area_ha * 10_000 / scale^2. With the setting off it still returns 0. No config under configs/ has the setting
+    on, and every one has min_area_ha 1.0 at 10 m, which gives 100 px either way, so the value of no config changes, no
+    step computes differently and no revision is raised.
+  alternatives_considered:
+  - >-
+    Round up a decimal-exact quotient: not chosen. It disagrees with the merge at 30 m, where 5 * 0.09 is
+    0.44999999999999996, so the merge counts 5 px as below a 0.45 ha minimum that the exact quotient puts at 5 px (54 of
+    the two-decimal minima from 0.01 to 20.00 ha at 30 m)
+  - >-
+    Make the merge's own minimum exact in whole pixels, so that both follow the decimal: not done; a question for
+    Jaskaran (spec-merge-area-bounds-in-whole-pixels compares the ceilings so, not the minimum)
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 4: "B19 (the kept-patch minimum)". The review
+    (docs/reviews/2026-10-19-review.md, B19): "1.11 ha at 10 m gives 111.00000000000001 px, which rounds up to 112. With
+    drop_kept_patches_below_min_area on, an isolated patch of exactly the minimum (111 px) is removed before SNIC,
+    although the merge counts it as a legal stand", against the method's docstring and
+    spec-segmentation-mask-before-snic; at 10 m 116 of the 2,000 two-decimal minima from 0.01 to 20.00 ha came out one
+    pixel high, and the tests pinned exact values only. The new test in tests/test_mask_before_snic.py fails on the code
+    before with assert (112, 57, 5) == (111, 56, 6) (1.11 and 0.56 ha at 10 m, 0.45 ha at 30 m, where the rule before
+    was one pixel low), and checks against merge_superpixels itself that the value is the smallest the merge counts as
+    a stand for every two-decimal minimum from 0.01 to 5.00 ha at 10, 20 and 30 m (the rule before differed on 51 of
+    those 1,500). Latent, as the review says: no committed or planned run has the setting on. No paper was searched
+    for this decision.
+  evidence:
+  - path: src/fmu/config.py
+    what: Config.kept_patch_min_pixels
+  - path: tests/test_mask_before_snic.py
+    what: test_the_smallest_patch_is_the_smallest_the_merge_counts_as_a_stand; fails on the code before
+  - path: src/fmu/utils/region_merge.py
+    what: The merge's arithmetic, a region's area against min_area_ha
+  - path: docs/reviews/2026-10-19-review.md
+    what: B19
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 4, B19
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-merge-pair-code-cast-before-it-is-computed
+  title: >-
+    The merge's boundary pair code is computed in int64: both dense indices are cast before the code is made
+  decision: >-
+    fmu.utils.adjacency (Locked, part of the merge stage) makes the code of each boundary pixel pair as
+    dense.toInt64().multiply(n).add(neighbour.toInt64()), the cast first, where it made dense.multiply(n).add(neighbour)
+    and cast the result. The code a * n + b reaches n^2 - 1, past 2^31 once n is over 46,340. For n up to 46,340 the
+    codes are the same numbers, and every run of record had fewer superpixels (the largest, the 10 km tile, 21,263), so
+    no step computes differently for any config and no revision is raised. The bandTypes() call the review suggests
+    belongs with raising merge.max_superpixels (review B1, out of round 13) and was not made.
+  alternatives_considered:
+  - >-
+    Leave it, since no run comes near: not chosen; the brief lists B34, and merge.max_superpixels (50,000) allows n past
+    46,340
+  - >-
+    Confirm the pixel type Earth Engine gives with one bandTypes() call: not done this round; it belongs with B1
+    (raising the guard), out of round 13
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 5, which lists B34. The review (docs/reviews/2026-10-19-review.md,
+    B34, low confidence): "Codes reach n² − 1, which is above 2³¹ once n > 46,340. A correct graph then depends on Earth
+    Engine widening integer multiply/add. If it wraps, the result is a loud KeyError; if it saturates, edges are
+    silently wrong", with the fix "Cast first". The algorithm reference bundled with earthengine-api says of
+    Image.multiply and Image.add: "The type of the output pixels is the union of the input types." The new test in
+    tests/test_adjacency.py records the calls with a stand-in for Earth Engine (tests/_ee_recorder.py) and fails on the
+    code before, where the multiply was made on the dense image itself and the cast came last. What Earth Engine
+    computes was not checked: no Earth Engine call was made. No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/utils/adjacency.py
+    what: extract_superpixel_graph, the pair code
+  - path: tests/test_adjacency.py
+    what: test_the_pair_code_is_computed_in_int64; fails on the code before
+  - path: docs/reviews/2026-10-19-review.md
+    what: B34
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 5, B34
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-multi-feature-roi-shells-counter-clockwise
+  title: >-
+    A ROI file of several features is sent to Earth Engine with every shell counter-clockwise and every hole clockwise
+  decision: >-
+    fmu.utils.gee.load_roi_geometry (a Locked module) builds a ROI file of more than one feature as before, one
+    MultiPolygon under the left-inside rule (evenOdd=False), but first orients each polygon with
+    shapely.geometry.polygon.orient (sign 1.0: shell counter-clockwise, holes clockwise), and takes each part of a
+    MultiPolygon feature as one polygon of the ROI. A feature that is not a Polygon or MultiPolygon is refused. A ROI
+    file of one feature, as every committed AOI is, takes the path it took before, unchanged: its geometry dict goes to
+    ee.Geometry as the file holds it.
+  alternatives_considered:
+  - >-
+    Refuse a ROI file of more than one feature: not chosen; aois/README.md gives an ogr2ogr recipe that can write
+    one, and the fix keeps that file usable instead of sending the person to dissolve it by hand
+  - >-
+    Dissolve the features locally (shapely union) and send one geometry: not chosen; it changes the vertices sent,
+    and orienting is the smallest change that makes the left-inside rule read each shell as its inside
+  - >-
+    Build the several features with evenOdd=True: not chosen; where two features overlap the even-odd rule makes the
+    overlap a hole
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 5, names B33 among the tools to fix; the review
+    (docs/reviews/2026-10-19-review.md, B33): "Under the left-inside rule a clockwise shell (GEOS buffers, and GDAL's
+    shapefile conversion) means the rest of the globe. Every committed AOI has one feature, so the path is unused",
+    with the suggested fix "Orient shells counter-clockwise (shapely.geometry.polygon.orient), dissolve locally, or
+    refuse more than one feature." Orienting was chosen because it changes nothing for a one-feature ROI (that code
+    path is not touched) and keeps a multi-feature file usable. The new test fails on the code before the fix (a
+    clockwise second shell reached ee.Geometry.MultiPolygon with signed area -1.0) and passes after it; a test over
+    all 12 committed AOIs (aois/*.geojson, one feature each) checks that each is sent as ee.Geometry of its one
+    geometry dict, unchanged, and never as a MultiPolygon. No cached step computes anything different for any config,
+    so no step revision is raised and no cache key moves. No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/utils/gee.py
+    what: load_roi_geometry, the multi-feature branch
+  - path: tests/test_gee_utils.py
+    what: >-
+      test_a_multi_feature_roi_is_sent_with_counter_clockwise_shells, and
+      test_every_committed_aoi_is_sent_as_its_one_feature_unchanged over aois/*.geojson
+  - path: docs/reviews/2026-10-19-review.md
+    what: B33
+  - path: aois/README.md
+    what: The ogr2ogr recipe that can write a ROI file of several features
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: field-keptland-r9-and-10ha-results-kept-from-before-the-round-13-fixes
+  title: >-
+    The kept-land _r9 and 10 ha results stay as the record from before the round 13 fixes, each with a dated note;
+    the hand-crafted arm is to be re-run in R3
+  decision: >-
+    The committed results of the kept-land runs made before the round 13 fixes are kept as first written: no number
+    is changed and no file is regenerated. They are the hand-crafted _r9 runs
+    (odisha_v120_3ha_squares_<district>_keptland_s1desc_r9, the 10 km tile odisha_v120_3ha_tile10km_angul_keptland_s1desc_r9
+    and sanjay_van_baseline_keptland_r9), round 12's 10 ha box runs of both arms
+    (odisha_v120_10ha_squares_<district>_keptland_s1desc_r9 and odisha_alphaearth_10ha_squares_<district>_keptland_r9)
+    and the AlphaEarth arm's _r9 runs (odisha_alphaearth_3ha_squares_<district>_keptland_r9 and
+    sanjay_van_alphaearth_keptland_r9). Each results file gets a note dated 20 Oct 2026, placed so that no line moves:
+    at the end of the eight score and chance .txt files and of the seven side-by-side .md tables in
+    odisha_script/keptland_scores/; in that folder's README for its .json and .csv files and run records; in the
+    READMEs of docs/reproducibility/r9_runs, round12_runs and round9_cache_test for the layers, run records and
+    manifests; and a pointer at the end of odisha_script/PHASE_KEPTLAND_PREDECLARED.md, whose note of 19 Oct 2026 names
+    the scores of record. The notes say which fix reaches which arm. The hand-crafted arm: its inputs were affected by
+    A1 (distance to water saw no water outside the ROI), A4 (the Sentinel-1 and Sentinel-2 date windows stopped on 30
+    Dec 2022) and A5 (slope and aspect in whole degrees, a flat cell read as facing north), and B13 (the NDVI phase's
+    cosine, and in Angul its sine, log-transformed) reaches it too; it is to be re-run in roadmap R3. The AlphaEarth
+    arm: A1, A5 and B13 do not reach it (it reads no static band and has no phase band); A4 reaches its two Koraput
+    runs only (3 ha _r9 and 10 ha), through the NDVI amplitude, one of the merge's three criteria, by an amount not
+    measured; until question 1 of the round 13 brief is answered they are noted as affected (its option (a)), and the
+    other AlphaEarth runs as not affected by A4. Both arms: the merge and clustering fixes B14 (one mean per stand over
+    all its pieces), B16 (exact quartiles), B17 (the merge's pixel counts on one inclusion rule) and B18 (area bounds
+    in whole pixels) reach every run; A6 changes every exported area_ha and n_pixels, which no score reads; round 13's
+    Task 1 changes no type of these runs. A4, B17 and B18 can move the stand outlines and so every score; A1, A5, B13,
+    B14 and B16 reach only the stand types and so only the labelling scores. How far any fix moves a stand, a type or
+    a score was not measured. Whether R3 re-runs the AlphaEarth arm, which B14, B16, B17 and B18 reach, is a question
+    for Jaskaran in the round 13 brief (question 22).
+  alternatives_considered:
+  - >-
+    Note only the hand-crafted results, as the brief's sentence reads, and leave the AlphaEarth arm's files without a
+    note: not chosen; read-only call 4 found that A4 reaches its Koraput runs through the merge, and the merge and
+    clustering fixes of Task 4 reach every run of it, so a file without a note would read as untouched by the round
+  - >-
+    Put the notes in the run folders' READMEs only: not chosen; the brief asks for a note beside each committed
+    results file
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 6: "The _r9 hand-crafted results. Add one register entry, and a
+    dated note beside each committed results file of the hand-crafted _r9 runs and the round 12 10 ha runs. The note
+    says their inputs were affected by A1, A4 and A5, so they are kept as the record from before the fixes and will
+    be re-run (roadmap R3). The AlphaEarth arm is not affected by A1, A4 or A5; say so. Do not change any number." Its
+    rule 5: "Do not overwrite any committed result. Where a fix shows a committed number is wrong, add a dated note
+    beside it that names the finding and says the result is from before the fix." The brief allows no Earth Engine
+    task this round, so the results cannot be regenerated. Read-only call 4 of the round 13 record found the images
+    of 31 Dec 2022 the exclusive end left out: one Sentinel-1 scene over the Angul, Dhenkanal and Kendujhar boxes and
+    the Angul 10 km tile, two Sentinel-2 scenes passing the cloud filter over the Koraput boxes, and none at Sanjay
+    Van. The Sentinel-2 scenes enter the phenology collection, and so ndvi_amplitude_annual, one of the merge's
+    criteria in both arms; the AlphaEarth arm reads no Sentinel-1 band. So its notes say it is not affected by A1 or
+    A5, and by A4 in Koraput only (question 1, option (a), until Jaskaran answers). The counts in the run folders'
+    notes were read offline from the committed layers and run records (the Koraput and tile layers off git, SHA-256
+    checked): the A6 counts reproduce the brief's for r9_runs and round12_runs. No paper was searched for this
+    decision.
+  evidence:
+  - path: odisha_script/keptland_scores/README.md
+    what: The note for the .json and .csv files and run records, and the list of every file noted
+  - path: odisha_script/keptland_scores/keptland_s1desc_r9_scores.txt
+    what: The hand-crafted scores of record, with the note at the end
+  - path: odisha_script/keptland_scores/keptland_alphaearth_r9_scores.txt
+    what: The AlphaEarth scores, with the note on what does and does not reach them
+  - path: docs/reproducibility/r9_runs/README.md
+    what: Per run, which fixes reach it, with the counts read offline from the layers and run records
+  - path: docs/reproducibility/round12_runs/README.md
+    what: The same for the 10 ha runs
+  - path: docs/reproducibility/round9_cache_test/README.md
+    what: The same for the two cache-test runs; the test's verdict stands
+  - path: odisha_script/PHASE_KEPTLAND_PREDECLARED.md
+    what: The pointer at the end, beside the note that names the scores of record
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Done, what each fix changes; read-only call 4; question 1
+  - path: docs/reviews/2026-10-19-review.md
+    what: A1, A4, A5, A6, B13, B14, B16, B17, B18
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-merge-calibration-admit-rate-applies-the-floor
+  title: >-
+    The merge's joint admit rate counts only the pairs its gate admits, the two-criterion floor included
+  decision: >-
+    calibrate_thresholds (fmu.utils.region_merge, Locked, part of the merge stage) takes min_defined_criteria, a
+    required keyword, and counts a pair as admitted only when every criterion defined on both sides is within its
+    tolerance and at least min_defined_criteria of them are defined on both sides, the rule of the merge's gate
+    (compare in merge_superpixels). The merge stage passes merge.min_defined_criteria. joint_admit_rate_pct is that
+    count over n_pairs_with_any_defined_criterion, the pairs with at least one criterion defined on both sides, as
+    before, and the per-band figures are unchanged. Before 20 Oct 2026 the rate also counted a pair with fewer criteria
+    defined that passed the ones it had, which the gate rejects. Nothing reads the rate to merge, type or export a
+    stand: it goes into merge_diagnostics and the stage metadata, and scripts print it. The merge is not cached, so no
+    step key moves and no revision is raised.
+  alternatives_considered:
+  - >-
+    Keep the count and say in the docstring and docs/outputs.md how it differs from the gate (the review's other
+    fix): not chosen; the docstring says the rate is the share of pairs the gate admits
+  - >-
+    Count the pairs with no criterion defined on both sides in the denominator as well: not done; the denominator
+    stays n_pairs_with_any_defined_criterion, so a rate recorded before the fix differs from the fixed one only by the
+    pairs the gate rejects
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 6, the C list. The review (docs/reviews/2026-10-19-review.md,
+    C14): "Pairs below min_defined_criteria count as admitted", with the fix "Pass min_defined_criteria in, or document
+    the difference". In odisha_script/gate_effect_results.txt such pairs are 323 of 3,601 in arms A and B and 370 of
+    3,632 in arm C, so its printed rates are up to 8.97 and 10.19 points above the gate's (its dated note); in the 122
+    committed run records the bound (round-1 pairs blocked by undefined criteria or by area, over the pairs with a
+    criterion defined) is 0 in 83 and at most 0.38 points in the others (docs/outputs.md). The new test in
+    tests/test_merge_stage.py runs the stage with Earth Engine stubbed out and fails on the code before (assert 100.0
+    == 66.67). No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/utils/region_merge.py
+    what: calibrate_thresholds and its docstring
+  - path: src/fmu/stages/merge.py
+    what: run() passes merge.min_defined_criteria to calibrate_thresholds
+  - path: tests/test_merge_stage.py
+    what: >-
+      test_the_recorded_joint_admit_rate_is_the_share_of_pairs_the_gate_admits; fails on the code before
+  - path: tests/test_region_merge.py
+    what: test_the_joint_rate_leaves_out_pairs_short_of_the_floor
+  - path: odisha_script/gate_effect_results.txt
+    what: The dated note of 20 Oct 2026 at its end
+  - path: docs/outputs.md
+    what: The row for merge.threshold_calibration.joint_admit_rate_pct, with the bound for the committed records
+  - path: docs/reviews/2026-10-19-review.md
+    what: C14
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief), Task 6; review C14
+- id: spec-run-records-read-the-git-state-when-the-run-starts
+  title: >-
+    Run records give the git state as the run started, read before any stage or result is written, and again at the
+    end; the untracked list puts code first
+  decision: >-
+    src/fmu/pipeline.py (a Locked module): Pipeline.run asks fmu.utils.provenance.git_state() before any stage runs.
+    git_state remembers its first answer for the life of the process, so the manifest's git block, the export
+    stage's, and a runner record written after the run in the same process describe the tree the run started from.
+    The manifest adds git_at_end, the same checkout read again, when the manifest is written, by the new
+    git_state_now(), which remembers nothing. odisha_script/odisha_keptland_score.py, odisha_keptland_chance.py and
+    odisha_phase1_12_radar_descending.py read the git state at the start of main(), before they write a result or a
+    sample, record it as git, and add git_at_end. scripts/eecu_by_stage.py records git_state of its own checkout,
+    read before it writes, in place of git run in the working directory after (review C38). git_state lists the
+    untracked paths code first: source and config files, by suffix, and untracked folders, then the rest, each in path
+    order, under the same cap of 50 (review C34). The dirty flag still counts tracked files only. No computation and
+    no cache key changes.
+  alternatives_considered:
+  - >-
+    Read git when the record is written (the state before round 13): not kept; a commit made during a run was recorded
+    as the run's commit, and a script that rewrote a tracked result recorded its own output as a dirty tree (review
+    C32)
+  - >-
+    Record the state at the start only, without git_at_end: not chosen; a commit or an edit made while a run ran would
+    then leave no trace in its record
+  - >-
+    Count untracked files under src/, scripts/, odisha_script/ and configs/ as dirty (round 2's answer (b) to question
+    19, task B11, never implemented): not taken in round 13; odisha_script/ holds the run outputs, so as worded it
+    would mark almost every batch manifest dirty, and night-git-state-in-manifests records that untracked files do not
+    make the tree dirty. Put to Jaskaran (docs/handoff/2026-10-20-round13.md, Questions)
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 6: "The C list: fix what is a documentation or record error." The
+    review (docs/reviews/2026-10-19-review.md), C32: the provenance comment says the state at first asking describes
+    the run, but nothing asked at start-up; its fix is to read the git state at process start and again at the end, and
+    record both. C34: the untracked list, the stated safeguard for an untracked source file, is sorted and cut at 50,
+    and with 50 untracked outputs an untracked module is not listed; its fix includes listing paths in source folders
+    before outputs. C38: the cost script read git in the working directory after writing its result. The tests of
+    tests/test_git_state_read_first.py, tests/test_provenance_untracked_order.py and tests/test_eecu_by_stage.py fail
+    on the code before (the manifest named a commit made during the run; the scripts' records said dirty, read after
+    their results were written; the module was not listed; the cost record named another repository's commit) and
+    pass after. The legacy fingerprint and the eleven step keys of all 74 configs under configs/ and
+    configs/experiments/ are the same before and after, and tests/test_every_config_fingerprint.py and
+    tests/test_step_keys_of_record.py pass. No committed record is rewritten; dated notes in the folders' READMEs say
+    which are affected. No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/pipeline.py
+    what: Pipeline.run (git_state asked first) and Pipeline._write_manifest (git, git_at_end)
+  - path: src/fmu/utils/provenance.py
+    what: git_state, git_state_now, _code_first
+  - path: tests/test_git_state_read_first.py
+    what: The pipeline's manifest, and the records of the kept-land scorer, the chance test and Phase 1 step 12
+  - path: tests/test_provenance_untracked_order.py
+    what: An untracked module past 50 untracked outputs, and the order of the list
+  - path: tests/test_eecu_by_stage.py
+    what: >-
+      test_the_run_record_names_the_scripts_checkout_as_it_was_before_the_result_was_written
+  - path: docs/outputs.md
+    what: The manifest's keys and the git block
+  - path: docs/reviews/2026-10-19-review.md
+    what: C32, C34 and C38
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-batch-wrapper-starts-no-pass-on-a-changed-run-tree
+  title: >-
+    The batch wrapper reads the run tree before and after each pass, records it, and starts no pass on a tree that has
+    changed since the batch started
+  decision: >-
+    odisha_script/run_passes_safely.py reads the run tree's commit and modified tracked files at the start (a tree with
+    modified tracked files is refused, exit 92, as before), and again before and after each pass. The state file's git
+    block is the tree as the batch started, with its real dirty flag and the files behind it; each pass adds
+    git_before and git_after. If before a pass the tree is not the one the batch started from (its commit moved, or a
+    tracked file is modified), that pass does not start, the configs left are not finished, run_tree_changed records
+    the pass and the tree, and the batch ends NOT ALL COMPLETE with exit 95. A change seen after the last pass ends the
+    batch so too (after_pass). Untracked files are left out, as at the start: finished runs leave untracked outputs.
+  alternatives_considered:
+  - >-
+    Read the tree once, at the start, and write dirty false (the wrapper before round 13): not kept; a commit or an edit
+    made between passes was not seen, the next pass ran other code than the passes before it, and the state file named
+    the start commit as clean (review C32)
+  - >-
+    Record the change and carry on with the next pass: not chosen; a batch is run from a run tree pinned to one commit
+    (CLAUDE.md), and exit 92 already refuses a modified tree at the start. Put to Jaskaran
+    (docs/handoff/2026-10-20-round13.md, Questions)
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 6: "The C list: fix what is a documentation or record error." The
+    review (docs/reviews/2026-10-19-review.md, C32): in the wrapper, read the git state before each pass, and refuse (or
+    record) when it changes; with a stand-in ee, a commit or an uncommitted edit between passes left state.json at the
+    start commit, dirty False. tests/test_run_passes_safely_run_tree.py runs the real wrapper and shell script against
+    the modelled Earth Engine of tests/_wrapper_harness.py: on the wrapper before, a commit or an edit made during pass
+    1 of a config that needs a pass 2, and a commit made during the only pass, end with exit 0 where 95 is expected,
+    and the passes of a batch on an unchanged tree record no git_before. On an unchanged tree a batch runs as before
+    (tests/test_run_passes_safely.py passes unchanged). No batch was run (no Earth Engine). No paper was searched for
+    this decision.
+  evidence:
+  - path: odisha_script/run_passes_safely.py
+    what: >-
+      tree_state, the check before each pass and after the last, the state file's git, git_before, git_after and
+      run_tree_changed, exit 95
+  - path: tests/test_run_passes_safely_run_tree.py
+    what: The real wrapper and shell script on a run tree that changes while the batch runs
+  - path: docs/running.md
+    what: The wrapper's paragraph
+  - path: docs/reviews/2026-10-19-review.md
+    what: C32
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)

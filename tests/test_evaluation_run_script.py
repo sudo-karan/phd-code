@@ -7,6 +7,7 @@ and the column names are made up.
 
 from __future__ import annotations
 
+import argparse
 import csv
 import hashlib
 import json
@@ -344,3 +345,20 @@ def test_plot_table_alone_with_permutation_null(site: dict, tmp_path: Path) -> N
     assert manifest["predeclared"]["names_not_found_in_it"] == ["within_group_permutation"]
     anosim = results["descriptive"]["anosim_stand"]
     assert "r_with_equal_weights_for_comparison" in anosim and anosim["per_stratum"]
+
+
+def test_the_drawing_index_context_counts_stands_over_the_plots_it_scores() -> None:
+    """Review C24. The adjusted Rand index for the drawing leaves out a plot with no field type
+    (`agreement.agreement` drops -1 in either grouping), so the stand counts beside it are over
+    the same plots. Stand 1 holds two plots, neither with a field type: it holds no scored plot."""
+    sid = np.array([0, 0, 1, 1, 2, -1])
+    field_type = np.array([0, 1, -1, -1, 0, 1])
+    site = rev.Site(
+        n=6, stand_id=sid, stand_type=None, coords=None, attributes=None, field_type=field_type,
+        groups=None, super_group=None, group_labels=[], super_group_labels=[], stand_map=None,
+        stand_geometries=None, regions=None, label_check={},
+    )
+    _, describe = rev.build_statistics(["ari_drawing"], site, argparse.Namespace())
+    d = describe["ari_drawing"]
+    assert d["same_stand_pairs"] == 1  # plots 0 and 1, as the index counts them
+    assert (d["stands_with_a_plot"], d["stands_with_two_or_more_plots"]) == (2, 1)

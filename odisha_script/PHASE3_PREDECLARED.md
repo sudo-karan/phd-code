@@ -17,7 +17,7 @@ result, and nothing may be added to the "primary" line afterwards.
    `--rows all` still reproduces the previous typology label for label.
 2. **Stand types for the 3 hectare stands: 5, not 6.** The first 3 hectare run
    carried 6 over from the 10 hectare configs. The elbow on the 3 hectare stands
-   themselves gives 5 in every district and pooled. Only labelling depends on it.
+   themselves gives 5 in every district and pooled. Only labelling depends on it. (See the note of 20 Oct 2026 at the end.)
 
 ## Primary analysis (one, fixed)
 
@@ -55,3 +55,20 @@ change group, so I expect the primary scores to move in the third decimal and th
 conclusion of PR #40 (neither stand size beats chance on drawing or labelling) to
 stand. I have no expectation for S1 and S2. If any primary headline test survives
 the Holm correction, that is a change of conclusion and will be reported as one.
+
+---
+
+**Note of 20 Oct 2026 (round 13, review A7).** Change 2 says the elbow on the
+3 hectare stands gives 5 in every district and pooled. That holds in the elbow
+script's own space (`odisha_phase3_2_k_elbow_odisha_v120_3ha.txt`), which departs
+from the clustering stage's in five ways (review A7). It does not hold in the
+stage's space. Rebuilt from the same stand files, the elbows by district (Angul,
+Dhenkanal, Kendujhar, Koraput) are 6, 6, 6 and 5, pooled 5, with (x − median)/IQR,
+and 5, 6, 6 and 6, pooled 5, with each band min-max normalised over the fit rows,
+the geometry `wekaKMeans` fits in (review A2). On the stage's own rows of the
+`_repro` stands they are 5, 6, 6 and 5 as the stage scaled them, and 5, 6, 6 and 5
+min-max. The 5 declared here stays, and so does every score: it was fixed before
+any labelling score was computed with it, and this note changes no declaration.
+The comparison, with the limits of each route, is in
+`odisha_phase3_2_k_elbow_comparison.md`. Apart from the pointer to this note on
+line 20, the file is as first written.

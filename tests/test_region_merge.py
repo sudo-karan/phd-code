@@ -138,9 +138,10 @@ def test_non_adjacent_regions_never_merge():
 
 
 def test_pair_with_one_defined_criterion_does_not_merge_in_pass1():
-    """One criterion is too weak a similarity test. The pair falls to pass 2 --
-    the right destination, since refusing outright would leave it to the blinder
-    shared-edge rule anyway."""
+    """One criterion is too weak a similarity test, so the pair does not merge in
+    pass 1. Both are over the minimum here, so pass 2 does not take them up
+    either: a pair short of the floor never merges on its attributes (the
+    next-but-one test has one of them below the minimum)."""
     px = [200, 200]
     means = {0: {"ch": None, "std": 0.5}, 1: {"ch": 10.0, "std": 0.52}}
     counts = {0: {"ch": 0, "std": 200}, 1: {"ch": 200, "std": 200}}
@@ -167,6 +168,26 @@ def test_lowering_min_defined_criteria_lets_that_pair_merge():
         min_defined_criteria=1,
     )
     assert r.n_stands == 1
+
+
+def test_a_pair_short_of_the_floor_merges_in_pass_2_by_the_fallback_only():
+    """The floor holds under pass 2's relaxed tolerances too (review C13). A 0.2 ha
+    region with no canopy height beside a 2 ha one: the one criterion they share is
+    identical, yet pass 2 joins them only by the shared-edge fallback, which ignores
+    attributes. With the floor at 1 the same pair merges in pass 1, on that criterion."""
+    px = [20, 200]
+    means = {0: {"ch": None, "std": 0.5}, 1: {"ch": 10.0, "std": 0.5}}
+    counts = {0: {"ch": 0, "std": 20}, 1: {"ch": 200, "std": 200}}
+    graph = _graph(px, {(0, 1): 10})
+    criteria = {"ch": 2.0, "std": 0.45}
+    r = _run(graph, means, counts, criteria)
+    d = r.diagnostics
+    assert r.n_stands == 1
+    assert d["pass1_merges"] == 0
+    assert d["pass2_merges"] == d["pass2_fallback_merges"] == 1
+    assert r.stand_provenance[0]["n_fallback"] == 1 and r.stand_provenance[0]["n_relaxed"] == 0
+    one = _run(graph, means, counts, criteria, min_defined_criteria=1).diagnostics
+    assert (one["pass1_merges"], one["pass2_merges"]) == (1, 0)
 
 
 # ---------- valid-pixel weighting ----------
@@ -271,6 +292,78 @@ def test_pass2_fallback_also_respects_max_area():
         assert attrs["area_ha"] <= 10.0
 
 
+# ---------- area bounds in whole pixels (review B18) ----------
+#
+# A merge ending exactly on a bound is within it. The merge used to add two float
+# areas, and n * 0.01 + (N - n) * 0.01 comes out a hair over N * 0.01 for some n:
+# 10 of the 299 ways to split 300 px (3 ha), 32 of the 999 ways to split 1000 px
+# (10 ha) and 38 of the 1099 ways to split 1100 px (11 ha). It now adds the pixels
+# and compares them with the bound in whole pixels.
+
+
+@pytest.mark.parametrize("max_area_ha", [3.0, 10.0, 0.35])
+def test_a_pair_that_adds_up_to_exactly_max_area_merges_in_pass_1(max_area_ha):
+    """However the pixels are split between two alike regions. At 0.35 ha (35 px)
+    adding the pixels first is not enough: 35 * 0.01 is itself a hair over 0.35 in
+    floats, so the bound is turned into whole pixels exactly."""
+    total = round(max_area_ha * PX_PER_HA)
+    refused = []
+    for n in range(1, total):
+        px = [n, total - n]
+        means, counts = _attrs([{"ch": 10.0, "std": 0.5}, {"ch": 10.1, "std": 0.5}], px)
+        r = _run(
+            _graph(px, {(0, 1): 1}), means, counts, {"ch": 2.0, "std": 0.45},
+            max_area_ha=max_area_ha, min_area_ha=0.01,
+        )
+        if r.diagnostics["pass1_merges"] != 1:
+            refused.append(n)
+    assert refused == []
+
+
+def test_a_region_that_fits_exactly_under_max_area_is_not_area_blocked():
+    """Pass 2: a 0.05 ha region unlike its only neighbour (9.95 ha) joins it by the
+    fallback, at exactly 10 ha. 0.05 + 9.95 is over 10.0 in floats, so it was left
+    below the minimum, filed as area-blocked."""
+    px = [995, 5]
+    means, counts = _attrs([{"ch": 10.0, "std": 0.5}, {"ch": 30.0, "std": 3.0}], px)
+    r = _run(_graph(px, {(0, 1): 5}), means, counts, {"ch": 2.0, "std": 0.45})
+    assert r.n_stands == 1
+    assert r.diagnostics["orphans_area_blocked"] == 0
+    assert r.stand_attributes[0]["area_ha"] == 10.0
+
+
+def test_a_join_that_lands_exactly_on_the_soft_ceiling_is_within_it():
+    """With merge.pass2_soft_ceiling on, a region below the minimum may join a
+    neighbour up to max_area_ha + min_area_ha, 11 ha here: 5 px and 1095 px make
+    exactly 1100 px. 0.05 + 10.95 is over 11.0 in floats."""
+    px = [1095, 5]
+    means, counts = _attrs([{"ch": 10.0, "std": 0.5}, {"ch": 30.0, "std": 3.0}], px)
+    r = _run(
+        _graph(px, {(0, 1): 5}), means, counts, {"ch": 2.0, "std": 0.45},
+        pass2_soft_ceiling=True,
+    )
+    assert r.n_stands == 1
+    assert r.stand_attributes[0]["area_ha"] == 11.0
+
+
+def test_a_stand_left_by_the_iteration_cap_beside_a_neighbour_it_fits_is_not_area_blocked():
+    """The causes of a stand below the minimum. A chain X - U - R - V of 8, 10, 12 and
+    970 px, none alike. In the one sweep allowed, X joins U (18 px), and U, now
+    larger than R, takes R: that used U's turn, and the sweep ends with U at 30 px
+    beside V. Together they are exactly 1000 px, max_area_ha, so U is below the
+    minimum for want of a sweep, not for want of room. 0.3 + 9.7 is over 10.0 in
+    floats."""
+    px = [8, 10, 12, 970]
+    means, counts = _attrs([{"ch": 5.0 + 20.0 * i, "std": 0.5} for i in range(4)], px)
+    r = _run(
+        _graph(px, {(0, 1): 2, (1, 2): 2, (2, 3): 2}), means, counts,
+        {"ch": 2.0, "std": 0.45}, max_pass2_iterations=1,
+    )
+    assert r.assignment == [0, 0, 0, 1]
+    assert r.diagnostics["orphans_area_blocked"] == 0
+    assert r.diagnostics["orphans_no_attribute_match"] == 1
+
+
 # ---------- pass 2 ----------
 
 
@@ -302,6 +395,32 @@ def test_shared_edge_fallback_picks_the_longest_boundary():
     assert r.diagnostics["pass2_fallback_merges"] == 1
     assert r.assignment[1] == r.assignment[2]
     assert r.assignment[1] != r.assignment[0]
+
+
+def test_a_fallback_tie_goes_to_the_lower_root_index_the_snic_label_order():
+    """Pins what the code does (review C12; a question for Jaskaran). A fragment
+    between two stands it shares boundaries of the same length with, and matches
+    neither: the fallback takes the neighbour with the lower root index. Dense
+    indices follow the sorted SNIC labels, so the same ground labelled the other
+    way round sends the fragment to the other side: the tie is broken by label
+    order, not by centroid as spec-merge-runs-client-side-uncached says. A tie
+    broken by `order_key` (centroid first) would send it west both times, and
+    this test would fail."""
+
+    def side_taken(west: int, east: int) -> str:
+        # West to east: a 2 ha stand, a 0.2 ha fragment (index 1), a 2 ha stand.
+        lon = {west: 77.000, 1: 77.001, east: 77.002}
+        ch = {west: 30.0, 1: 10.0, east: 50.0}  # over the relaxed 3.5 m either way
+        px = [20 if i == 1 else 200 for i in range(3)]
+        means, counts = _attrs([{"ch": ch[i], "std": 0.5} for i in range(3)], px)
+        edges = {tuple(sorted((west, 1))): 5, tuple(sorted((1, east))): 5}
+        r = _run(_graph(px, edges), means, counts, {"ch": 2.0, "std": 0.45},
+                 centroids={i: (lon[i], 28.5) for i in range(3)})
+        assert r.diagnostics["pass2_fallback_merges"] == 1 and r.n_stands == 2
+        return "west" if r.assignment[1] == r.assignment[west] else "east"
+
+    assert side_taken(west=0, east=2) == "west"  # the western stand has the lower index
+    assert side_taken(west=2, east=0) == "east"  # now the eastern one has it
 
 
 def test_isolated_undersized_region_is_reported_not_merged():
@@ -410,11 +529,28 @@ def test_calibration_reports_the_joint_rate_not_just_marginals():
     ]
     means, _ = _attrs(rows, px)
     graph = _graph(px, {(0, 1): 5, (2, 3): 5})
-    report = calibrate_thresholds(graph, means, {"ch": 2.0, "std": 0.45})
+    report = calibrate_thresholds(graph, means, {"ch": 2.0, "std": 0.45}, min_defined_criteria=2)
     assert report["per_band"]["ch"]["percentile_of_threshold"] == 50.0
     assert report["per_band"]["std"]["percentile_of_threshold"] == 50.0
     # Each criterion admits half the pairs; together they admit none.
     assert report["joint_admit_rate_pct"] == 0.0
+
+
+def test_the_joint_rate_leaves_out_pairs_short_of_the_floor():
+    """Review C14: a pair with fewer than min_defined_criteria criteria defined on both
+    sides is one the gate rejects, however alike the one it has; with the floor at 1 the
+    gate would take it. Pair (0, 1) has no canopy height on one side."""
+    px = [100] * 4
+    means = {0: {"ch": None, "std": 0.5}, 1: {"ch": 10.0, "std": 0.5},
+             2: {"ch": 10.0, "std": 0.5}, 3: {"ch": 10.5, "std": 0.55}}
+    graph = _graph(px, {(0, 1): 5, (1, 2): 5, (2, 3): 5})
+    criteria = {"ch": 2.0, "std": 0.45}
+    floor_2 = calibrate_thresholds(graph, means, criteria, min_defined_criteria=2)
+    floor_1 = calibrate_thresholds(graph, means, criteria, min_defined_criteria=1)
+    assert floor_2["n_pairs_with_any_defined_criterion"] == 3
+    assert floor_2["joint_admit_rate_pct"] == 66.67
+    assert floor_1["joint_admit_rate_pct"] == 100.0
+    assert floor_2["per_band"] == floor_1["per_band"]  # the floor changes the joint rate only
 
 
 def test_calibration_reports_quantiles_of_the_difference_distribution():
@@ -422,7 +558,7 @@ def test_calibration_reports_quantiles_of_the_difference_distribution():
     rows = [{"ch": float(v)} for v in (10, 11, 13, 16, 20)]
     means, _ = _attrs(rows, px)
     graph = _graph(px, {(i, i + 1): 5 for i in range(4)})
-    report = calibrate_thresholds(graph, means, {"ch": 2.0})
+    report = calibrate_thresholds(graph, means, {"ch": 2.0}, min_defined_criteria=1)
     band = report["per_band"]["ch"]
     assert band["n_pairs_defined"] == 4
     assert band["p50"] is not None
@@ -432,7 +568,9 @@ def test_calibration_reports_quantiles_of_the_difference_distribution():
 def test_calibration_skips_pairs_with_undefined_bands():
     px = [100, 100]
     means = {0: {"ch": None}, 1: {"ch": 10.0}}
-    report = calibrate_thresholds(_graph(px, {(0, 1): 5}), means, {"ch": 2.0})
+    report = calibrate_thresholds(
+        _graph(px, {(0, 1): 5}), means, {"ch": 2.0}, min_defined_criteria=1
+    )
     assert report["per_band"]["ch"]["n_pairs_defined"] == 0
     assert report["n_pairs_with_any_defined_criterion"] == 0
 

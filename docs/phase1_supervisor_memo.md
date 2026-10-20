@@ -12,7 +12,7 @@ Koraput (146), Dhenkanal (76), Angul (40), Kendujhar (12) — of which 60 plots 
 six Dhenkanal village-forest polygons that give a second, coarser unit of comparison. The
 reference quantities are **Lorey's height** (basal-area-weighted mean height, the standard
 stand-height statistic and the quantity a delineation merge rule claims to hold constant)
-and **crown cover percent**. Field Lorey's height spans 0.16–37.75 m. Each candidate remote
+and **crown cover percent**. Field Lorey's height spans 0.16–45.52 m. Each candidate remote
 product was sampled at the plot coordinate and regressed against Lorey's height at plot
 level, and against the plot-mean at site level. The question the phase was built to answer
 is narrow and prior to everything else in the thesis: *is there a freely available product
@@ -26,7 +26,7 @@ Plot-level R² against field Lorey's height, n=274 unless stated.
 |---|---|---|
 | `vh_iqr` — Sentinel-1 radar texture | **0.227** | not a height measurement; a backscatter-variability proxy (see the note of 19 Oct 2026 at the end) |
 | Meta/WRI 1 m | 0.241 → **0.142** excl. zeros | reads 0 over 12–33 m of measured canopy |
-| ETH 10 m | **0.207** | range compressed to 14.30–22.47 m against a real 3.45–37.75 m; slope 0.30 |
+| ETH 10 m | **0.207** | height-bin means compressed to 14.30–22.47 m against the field's 3.45–37.75 m (plots 0.16–45.52 m); slope 0.30 |
 | GEDI rh98 (n=89) | **0.088** | reproduces ETH's compression; slope 0.27 |
 | GLAD | **0.041** | inverts to r=−0.121 once Meta-zero plots are excluded |
 
@@ -64,8 +64,8 @@ search never executed: Earth Engine's `reduceNeighborhood` masks its output wher
 centre pixel is masked, so only plots whose own 25 m cell contained a shot ever received a
 value. That produced 10 plots, R²=0.404 — the best-looking number in the study. Re-sampled
 with an explicit buffered reduction, true coverage is **89 of 274** and R² is **0.088**.
-The ten original rows all survive with values essentially unchanged, so the defect
-suppressed coverage rather than corrupting values.
+The ten original rows all survive; nine move by at most 0.92 m and one from 16.11 to 12.69 m,
+so the defect mainly suppressed coverage.
 
 ## 3. Why these failures are not independent
 

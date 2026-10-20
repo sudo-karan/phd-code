@@ -6,9 +6,14 @@ The field has moved from hand-engineering multi-sensor feature stacks toward
 clustering pretrained per-pixel embeddings. This stage supplies that arm:
 
   - AlphaEarth Satellite Embedding (GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL): a
-    64-band annual ImageCollection (one image per year, bands A00..A63). It is
-    collapsed to one image over the feature window (mean by default), matching
-    the 2017-2022 averaging the hand-crafted arm rests on. Google's own
+    64-band annual ImageCollection (bands A00..A63) of one image per year for
+    each tile it is cut into, so a ROI over two tiles reads two images a year.
+    It is collapsed to one image over the feature window (mean by default,
+    taken per pixel), matching the 2017-2022 averaging the hand-crafted arm
+    rests on. The count recorded as `n_source_images`, and in the note "mean
+    over N annual image(s)", is the number of images, tiles times years, not of
+    years: a ROI over two tiles records 12 for a six-year window (review C11;
+    corrected in round 13, in this text only). Google's own
     documentation recommends grouping these embeddings with unsupervised
     clustering, which is exactly what the clustering stage does.
   - Tessera (or any other pretrained embedding): once uploaded to Earth Engine
@@ -127,6 +132,8 @@ class FeaturesEmbeddingStage(Stage):
             # Annual ImageCollection (AlphaEarth) or unknown: filter to the
             # feature window and collapse to one image.
             ic = _embedding_window(asset, window, roi)
+            # Images, not years: one per tile per year, so a ROI over two tiles
+            # records 12 for six years (review C11). The mean is per pixel.
             n_images = safe_get_info(ic.size(), context="embedding collection size")
             if not n_images:
                 raise ee.EEException(

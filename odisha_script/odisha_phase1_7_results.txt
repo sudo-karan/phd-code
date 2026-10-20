@@ -189,6 +189,12 @@ A7 — does aggregation still 'recover signal', with zeros excluded?
   above), and the radar lines here were not recomputed without them. See
   odisha_phase1_12_radar_descending_results.txt (round 9, task E, 17 Oct 2026).
 
+  NOTE ADDED 20 Oct 2026 (round 13, review C3; line 32 above is as first written): A2's
+  "field Lorey's heights running to 37.75 m" gave the mean of Test 1's top height bin (30 to
+  60 m, 5 plots; odisha_phase1_results.txt), not the maximum. The 274 plots run from 0.16 to
+  45.52 m (loreys_h_m in odisha_plots_sampled_v2.csv, the input above). The script now prints
+  the maximum, read from the data.
+
 ================================================================================================
 B — raw 1 m Meta neighbourhood at the zero plots (Earth Engine)
 ================================================================================================

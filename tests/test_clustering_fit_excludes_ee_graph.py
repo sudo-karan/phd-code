@@ -49,53 +49,120 @@ def offline_ee():
         case.tearDown()
 
 
-def _expanded(encoded: dict[str, Any]) -> dict[str, Any]:
-    """An encoded expression as one tree: each `valueReference` replaced by its value."""
+def _expanded(encoded: dict[str, Any], interned: dict[Any, Any] | None = None) -> dict[str, Any]:
+    """An encoded expression as one tree: each `valueReference` replaced by its value, and
+    the body of each function definition (a key of the same table) by the body itself. A
+    function is mapped over a list since review B14 (the unit means).
+
+    A value referred to more than once is expanded once and shared, and equal subtrees of the
+    trees expanded with one `interned` table are one object, so that the tree is as large as the
+    request and comparing two trees stops where they share a subtree. Since B14 the unit means
+    refer to the grouped sums twice per band, and copies made the test hold about 10 GB."""
     values = encoded["values"]
+    table: dict[Any, Any] = {} if interned is None else interned
+    done: dict[str, Any] = {}
+
+    def one(node: Any) -> Any:
+        parts = node.items() if isinstance(node, dict) else enumerate(node)
+        key = (type(node).__name__, tuple(
+            (k, id(v) if isinstance(v, (dict, list)) else (type(v).__name__, v)) for k, v in parts))
+        return table.setdefault(key, node)
+
+    def reference(name: str) -> Any:
+        if name not in done:
+            done[name] = expand(values[name])
+        return done[name]
 
     def expand(node: Any) -> Any:
         if isinstance(node, dict):
             if set(node) == {"valueReference"}:
-                return expand(values[node["valueReference"]])
-            return {key: expand(value) for key, value in node.items()}
+                return reference(node["valueReference"])
+            if set(node) == {"functionDefinitionValue"}:
+                definition = node["functionDefinitionValue"]
+                body = reference(definition["body"])
+                return one({"functionDefinitionValue": one(
+                    {key: body if key == "body" else expand(value) for key, value in definition.items()})})
+            return one({key: expand(value) for key, value in node.items()})
         if isinstance(node, list):
-            return [expand(value) for value in node]
+            return one([expand(value) for value in node])
         return node
 
-    return expand(values[encoded["result"]])
+    return reference(encoded["result"])
 
 
-def _invocations(node: Any) -> list[tuple[str, dict[str, Any]]]:
-    """(function name, arguments) of every call in an expanded tree, outermost first."""
-    found: list[tuple[str, dict[str, Any]]] = []
+def test_a_value_referred_to_more_than_once_is_expanded_once():
+    """A check of the B14 fix (round 13): the unit means refer to the grouped sums twice per band,
+    and a helper that copied a value at every reference made this file's test hold about 10 GB
+    (a review of the round's own changes measured it)."""
+    shared = {"functionInvocationValue": {"functionName": "Image.load",
+                                          "arguments": {"id": {"constantValue": "a"}}}}
+    encoded = {"result": "0", "values": {
+        "0": {"arrayValue": {"values": [{"valueReference": "1"}, {"valueReference": "1"}]}},
+        "1": shared,
+    }}
+    first, second = _expanded(encoded)["arrayValue"]["values"]
+    assert first == shared and first is second
+    interned: dict[Any, Any] = {}
+    one, other = (_expanded(encoded, interned)["arrayValue"]["values"][0] for _ in range(2))
+    assert one is other  # equal subtrees are one object across the trees of one table
+    assert len(_calls(_expanded(encoded), "Image.load")) == 2  # each reference still counts
 
-    def walk(value: Any) -> None:
+
+def _calls(node: Any, name: str, where: Any = None) -> list[dict[str, Any]]:
+    """The arguments of every call of `name` in an expanded tree (those `where` accepts, if
+    given), outermost first, a call under a shared subtree once for each place it is referred
+    to. Each subtree is walked once, and keeps only the calls asked for."""
+    walked: dict[int, list[dict[str, Any]]] = {}
+
+    def walk(value: Any) -> list[dict[str, Any]]:
+        if not isinstance(value, (dict, list)):
+            return []
+        if id(value) not in walked:
+            found: list[dict[str, Any]] = []
+            if isinstance(value, dict):
+                inv = value.get("functionInvocationValue")
+                if isinstance(inv, dict) and inv["functionName"] == name:
+                    arguments = inv.get("arguments", {})
+                    if where is None or where(arguments):
+                        found.append(arguments)
+                items: Any = value.values()
+            else:
+                items = value
+            for item in items:
+                found.extend(walk(item))
+            walked[id(value)] = found
+        return walked[id(value)]
+
+    return list(walk(node))
+
+
+def _outermost_call(node: Any) -> tuple[str, dict[str, Any]]:
+    """(function name, arguments) of the first call in an expanded tree, outermost first."""
+    stack = [node]
+    while stack:
+        value = stack.pop()
         if isinstance(value, dict):
             inv = value.get("functionInvocationValue")
             if isinstance(inv, dict):
-                found.append((inv["functionName"], inv.get("arguments", {})))
-            for item in value.values():
-                walk(item)
+                return inv["functionName"], inv.get("arguments", {})
+            stack.extend(reversed(list(value.values())))
         elif isinstance(value, list):
-            for item in value:
-                walk(item)
-
-    walk(node)
-    return found
+            stack.extend(reversed(value))
+    raise AssertionError("no call in the tree")
 
 
 def _remaps(node: Any) -> list[tuple[Any, Any, Any]]:
-    """(from, to, defaultValue) of every Image.remap in a tree."""
+    """(from, to, defaultValue) of every Image.remap in a tree that masks stands: one with a
+    default value. The unit means remap the labels too (review B14), with no default."""
     return [
         (a["from"]["constantValue"], a["to"]["constantValue"], a["defaultValue"]["constantValue"])
-        for name, a in _invocations(node)
-        if name == "Image.remap"
+        for a in _calls(node, "Image.remap", lambda a: "defaultValue" in a)
     ]
 
 
 def _call(node: Any, name: str) -> dict[str, Any]:
     """The arguments of the one call of `name` in a tree."""
-    (args,) = [a for n, a in _invocations(node) if n == name]
+    (args,) = _calls(node, name)
     return args
 
 
@@ -125,11 +192,7 @@ def _run(ee: Any, monkeypatch: Any) -> tuple[Any, dict[str, list[Any]]]:
         requested.setdefault(context, []).append(encoded)
         return answer(obj, context)
 
-    def components_fit(labels: Any, roi: Any, scale: int, max_size: int, *, context: str) -> dict[str, int]:
-        return {"n_components": 25, "largest_component_px": 280, "max_component_px_cap": max_size}
-
     monkeypatch.setattr(clustering_module, "safe_get_info", get_info)
-    monkeypatch.setattr(clustering_module, "assert_components_fit", components_fit)
 
     ctx = PipelineContext()
     ctx.set("roi", ee.Geometry.Rectangle([82.80, 18.50, 82.85, 18.55]))
@@ -146,34 +209,36 @@ def test_the_requests_with_the_setting_on_are_valid_and_mask_the_right_stands(of
     ee = offline_ee
     result, requested = _run(ee, monkeypatch)
     ids = sorted(BELOW_MIN)
+    interned: dict[Any, Any] = {}  # the trees share their equal subtrees, so they compare quickly
 
     # The rows of every unit, as with the setting off: no mask on the stand labels.
-    (all_rows,) = [_expanded(e) for e in requested[ALL_ROWS]]
+    (all_rows,) = [_expanded(e, interned) for e in requested[ALL_ROWS]]
     assert _remaps(all_rows) == []
     training_image = _sampled_image(all_rows)
 
     # The fit's rows: the training image masked to the other stands.
-    (fit_rows,) = [_expanded(e) for e in requested[FIT_ROW_COUNT]]
-    assert _invocations(fit_rows)[0][0] == "Collection.size"
+    (fit_rows,) = [_expanded(e, interned) for e in requested[FIT_ROW_COUNT]]
+    assert _outermost_call(fit_rows)[0] == "Collection.size"
     assert _remaps(fit_rows) == [(ids, [0] * len(ids), 1)]
     masked = _sampled_image(fit_rows)["functionInvocationValue"]
     assert masked["functionName"] == "Image.updateMask"
     assert masked["arguments"]["image"] == training_image
 
     # The stands left out: their labels, from the training image masked to them alone.
-    (their_rows,) = [_expanded(e) for e in requested[LEFT_OUT_ROWS]]
-    name, args = _invocations(their_rows)[0]
+    (their_rows,) = [_expanded(e, interned) for e in requested[LEFT_OUT_ROWS]]
+    name, args = _outermost_call(their_rows)
     assert name == "AggregateFeatureCollection.array"
     assert args["property"]["constantValue"] == "fmu_label"
     assert _remaps(their_rows) == [(ids, [1] * len(ids), 0)]
     alone = _sampled_image(their_rows)["functionInvocationValue"]
     assert alone["arguments"]["image"] == training_image
 
-    # No statistic of the preprocessing is taken over a masked sample.
+    # No statistic of the preprocessing is taken over a masked sample. (The scaling read
+    # Earth Engine's "p25/p50/p75 of" a band until review B16; it reads its "values of".)
     statistics = [
-        _expanded(e)
+        _expanded(e, interned)
         for context, encoded in requested.items()
-        if context.startswith(("skew of ", "min of ", "p25/p50/p75 of "))
+        if context.startswith(("skew of ", "min of ", "values of "))
         for e in encoded
     ]
     assert len(statistics) > 40
@@ -181,7 +246,8 @@ def test_the_requests_with_the_setting_on_are_valid_and_mask_the_right_stands(of
 
     # The output: the clusterer was trained on the fit's rows and types the whole training
     # image, the stands left out of the fit included.
-    labels = _expanded(ee.serializer.encode(result.outputs["cluster_labels"], for_cloud_api=True))
+    labels = _expanded(ee.serializer.encode(result.outputs["cluster_labels"], for_cloud_api=True),
+                       interned)
     cluster = _call(labels, "Image.cluster")
     assert cluster["image"] == training_image
     train = _call(cluster["clusterer"], "Clusterer.train")

@@ -14,6 +14,14 @@ PHASE 3 STEP 1 -- pairwise score, arm=v120_3ha layer=merged set=districts
   Whether a value beats chance is tested with the spatial rotation null in
   odisha_phase3_3_significance.py, not read off this file.
 
+  NOTE ADDED 19 Oct 2026 (round 13, review C1; the rest of this file is as first written): the
+  band "~0.005-0.022 on delineation and ~0.04-0.06 on labelling" is a fixed text of the scorer,
+  not a measured chance level, and it does not hold for this file. The chance test of these
+  stands and this typology, odisha_phase3_3_results.txt (3 HA ARM), puts the null medians at
+  +0.0045 (delineation, all plots), +0.0223 (delineation, multi-plot stands) and +0.0665
+  (labelling); this file's labelling ARI of +0.0793 is at percentile 83.1 of its null (p 0.169).
+  Since round 13 the scorer prints no band. No number in this file is changed.
+
 ----------------------------------------------------------------------------------------------------
 A. DELINEATION -- do alike plots end up in the same stand?
 ----------------------------------------------------------------------------------------------------

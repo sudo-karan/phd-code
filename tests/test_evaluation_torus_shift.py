@@ -92,3 +92,26 @@ def test_a_map_with_a_period_reproduces_itself_under_some_shifts():
     r = torus_shift_test(stands.copy(), stands, ari)
     assert r.n_equal == 3 * 4                         # every shift is a relabelling of the stripes
     assert r.p_value == pytest.approx(1.0)
+
+
+def test_an_infinite_observed_value_is_not_a_tie_with_every_map():
+    """B24 (review of 19 Oct 2026): with the observed statistic infinite, the tie tolerance was inf and
+    `observed - tol` NaN, so every map counted as equal. Ties now use permutation_p_value's rule
+    (no tolerance for an infinite value), and the counts agree with the p-value."""
+    stands = np.arange(12).reshape(3, 4)
+    field = np.zeros((3, 4))
+
+    def first_quadrat(inf_at):
+        return lambda f, s: math.inf if s[0] in inf_at else float(s[0])
+
+    r = torus_shift_test(field, stands, first_quadrat({0}))
+    assert r.observed == math.inf
+    assert (r.n_greater, r.n_less, r.n_equal) == (11, 0, 1)
+    assert r.p_value == pytest.approx(1 / 12)
+    # one shifted map is infinite as well: a tie
+    r = torus_shift_test(field, stands, first_quadrat({0, 5}))
+    assert (r.n_greater, r.n_less, r.n_equal) == (10, 0, 2)
+    assert r.p_value == pytest.approx(2 / 12)
+    r = torus_shift_test(field, stands, lambda f, s: -math.inf if s[0] == 0 else float(s[0]), alternative="less")
+    assert (r.n_greater, r.n_less, r.n_equal) == (0, 11, 1)
+    assert r.p_value == pytest.approx(1 / 12)

@@ -87,3 +87,14 @@ tested (`odisha_script/PHASE_KEPTLAND_PREDECLARED.md`).
 | hand-crafted, 10 ha | `odisha_v120_3ha_squares_dhenkanal` | `a2afbc6481abb455c6d5d4a4698ff4d335541895796012acab4e9364d2ffb771` |
 | hand-crafted, 10 ha | `odisha_v120_3ha_squares_kendujhar` | `5d2b1d2d61d115bd18214931027a5c5967bfbe78f91f9c2ffb5b5ef42fb8615e` |
 | hand-crafted, 10 ha | `odisha_v120_3ha_squares_koraput` | `6d9ebeb5689219d1ef86722c8479a4465f8c18f68e470ff5ed5555024f089fc1` |
+
+## Note added 20 Oct 2026 (round 13, review A1, A4, A5, A6, B13, B14, B16, B17 and B18)
+
+The numbers above are as first written. Both sides are hand-crafted runs from before the round 13
+fixes (`docs/handoff/2026-10-20-round13.md`, Done), and so are the differences between them. Their
+inputs were affected by A1, A4 and A5; B13 and the merge and clustering fixes B14, B16, B17 and B18
+reach them too; and the stand counts above, from the run records, are from before the fixes. The
+runs of both sizes are to be re-run (roadmap R3). How far any fix moves a stand, a type, a score or
+a difference was not measured; it needs Earth Engine. The note at the end of each scores file says
+more (`keptland_s1desc_r9_scores.txt`, `keptland_s1desc_10ha_r9_scores.txt`). `README.md` here lists
+every file noted. No number here is changed.

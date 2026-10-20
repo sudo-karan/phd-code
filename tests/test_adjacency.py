@@ -17,6 +17,7 @@ from __future__ import annotations
 import pytest
 
 import fmu.utils.adjacency as adj
+from _ee_recorder import Rec, calls, made_by
 from fmu.utils.adjacency import (
     SuperpixelGraph,
     TooManySuperpixelsError,
@@ -144,6 +145,9 @@ class _Shift:
     def __init__(self, dx: int, dy: int) -> None:
         self.dx, self.dy = dx, dy
 
+    def toInt64(self):  # noqa: N802 - mirrors the ee API
+        return self
+
 
 class _Pair(_FakeImage):
     def __init__(self, dx: int, dy: int) -> None:
@@ -157,14 +161,21 @@ class _Pair(_FakeImage):
         return self
 
 
+class _FakeReducer:
+    def unweighted(self):
+        return self
+
+
 class _FakeEE:
     """Just enough of `ee` for this module. Building real reducers needs an
-    initialized client, which is the point of not doing it."""
+    initialized client, which is the point of not doing it. The rasters here lie
+    wholly inside the ROI, so a weighted and an unweighted histogram are the same
+    (tests/test_adjacency_edge_pixels.py has a raster the ROI's edge cuts)."""
 
     class Reducer:
         @staticmethod
         def frequencyHistogram():  # noqa: N802
-            return object()
+            return _FakeReducer()
 
 
 @pytest.fixture
@@ -446,6 +457,12 @@ def _grouped_reducer_ee():
         def group(self, groupField=None, groupName=None):  # noqa: N803 - mirrors ee
             return self
 
+        def unweighted(self):
+            return self
+
+        def forEachBand(self, image):  # noqa: N802 - mirrors ee
+            return self
+
     class _FakeEE:
         class Reducer:
             @staticmethod
@@ -492,6 +509,19 @@ class _FakeFeatures:
         return self
 
     def addBands(self, other):  # noqa: N802 - mirrors the ee API
+        return self
+
+    # The band unmasked beside its band of pixels with data (round 13, review B17).
+    def unmask(self, value, same_footprint=True):
+        return self
+
+    def mask(self):
+        return self
+
+    def gt(self, value):
+        return self
+
+    def rename(self, name):
         return self
 
     def reduceRegion(self, **kwargs):  # noqa: N802 - mirrors the ee API
@@ -548,7 +578,7 @@ def test_the_group_band_name_is_one_earth_engine_accepts(attribute_server):
     underscore, and only says so at getInfo time, so this failed halfway through
     a live run rather than in CI."""
     record = []
-    _attributes([{"label": 11, "mean": 5.0, "count": 100}], record)
+    _attributes([{"label": 11, "value": 500.0, "has_data": 100.0}], record)
 
     renamed = [
         entry[1] for entry in record if isinstance(entry, tuple) and entry[0] == "rename"
@@ -566,7 +596,7 @@ def test_the_reduction_is_pinned_to_the_label_grid(attribute_server):
     count valid pixels on a geographic grid while `graph.n_pixels` holds label
     grid pixels -- and `min_frac_valid` divides one by the other."""
     record = []
-    _attributes([{"label": 11, "mean": 5.0, "count": 100}], record)
+    _attributes([{"label": 11, "value": 500.0, "has_data": 100.0}], record)
 
     kwargs = [k for k in record if isinstance(k, dict)]
     assert kwargs, "no reduction ran"
@@ -586,8 +616,8 @@ def test_a_band_with_no_valid_pixel_reads_as_none_not_zero(attribute_server):
     record = []
     means, counts = _attributes(
         [
-            {"label": 11, "mean": 5.0, "count": 100},
-            {"label": 22, "mean": None, "count": 0},
+            {"label": 11, "value": 500.0, "has_data": 100.0},
+            {"label": 22, "value": 0.0, "has_data": 0.0},
         ],
         record,
     )
@@ -601,9 +631,47 @@ def test_a_label_the_histogram_never_saw_is_skipped(attribute_server):
     record = []
     means, _ = _attributes(
         [
-            {"label": 11, "mean": 5.0, "count": 100},
-            {"label": 999, "mean": 7.0, "count": 100},
+            {"label": 11, "value": 500.0, "has_data": 100.0},
+            {"label": 999, "value": 700.0, "has_data": 100.0},
         ],
         record,
     )
     assert set(means) == {0}
+
+
+# ---------- the pair code (review B34) ----------
+
+
+def test_the_pair_code_is_computed_in_int64(monkeypatch):
+    """The code a * n + b reaches n^2 - 1, past 2^31 once there are more than 46,340
+    superpixels, and Earth Engine gives multiply and add "the union of the input
+    types". So both dense indices are cast to int64 before the code is computed, not
+    the code after. The calls are recorded (tests/_ee_recorder.py), so the order is
+    what is checked, not what Earth Engine computes."""
+    log: list = []
+    monkeypatch.setattr(adj, "ee", Rec("ee", log))
+
+    def fake_get_info(obj, *, context: str = ""):
+        if context.endswith("band name"):
+            return ["snic_clusters"]
+        if context.endswith("label histogram"):
+            return {"snic_clusters": {"1": 4.0, "2": 4.0, "3": 4.0}}
+        if context.endswith("projection scale"):
+            return 10.0
+        if context.endswith("-neighbour pairs"):
+            return {"pair": {}}
+        raise AssertionError(f"unexpected getInfo context: {context!r}")
+
+    monkeypatch.setattr(adj, "safe_get_info", fake_get_info)
+    extract_superpixel_graph(Rec("labels", log), Rec("roi", log), 10, context="merge adjacency")
+
+    multiplies = calls(log, ".multiply")
+    assert len(multiplies) == 2  # the right and the down neighbour
+    for multiply in multiplies:
+        assert multiply.args == (3,)
+        cast = made_by(log, multiply.owner)
+        assert (cast.attr, made_by(log, cast.owner).attr) == ("toInt64", "reproject")
+        (add,) = [c for c in log if c.attr == "add" and c.owner is multiply.out]
+        (neighbour,) = add.args
+        cast = made_by(log, neighbour)
+        assert (cast.attr, made_by(log, cast.owner).attr) == ("toInt64", "translate")

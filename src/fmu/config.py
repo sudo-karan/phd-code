@@ -72,7 +72,8 @@ class DatasetIDs(BaseModel):
     # CHIRPS pentad rainfall (5-day totals, ~5 km). Long climatology source.
     climate: str = "UCSB-CHG/CHIRPS/PENTAD"
     # AlphaEarth Satellite Embedding: a 64-band annual per-pixel embedding
-    # (bands A00..A63), one image per year from 2017. Read ONLY when
+    # (bands A00..A63), one image per year from 2017 for each tile of the
+    # collection, so a ROI over two tiles reads two a year (review C11). Read ONLY when
     # clustering.feature_source == "embedding". Point this at an uploaded
     # Tessera asset (a single Image) to run the Tessera arm instead — the
     # features_embedding stage handles both an ImageCollection (annual
@@ -115,11 +116,16 @@ class FeaturesOpticalParams(BaseModel):
     # multi-year greening or browning beyond seasonality.
     include_trend: bool = True
     # Reference date for the harmonic regression's time variable t.
-    # t = years since `time_reference`. Affects the numerical value of
-    # `phase_annual` (which is measured relative to this epoch) but NOT
-    # amplitude, trend, or clustering outcomes. Default 2017-01-01
-    # matches Sentinel-2's S2A+S2B full-constellation start, so cross-
-    # config phase values are comparable by default.
+    # t = years since `time_reference`. Moving it leaves amplitude and trend
+    # as they are and shifts `phase_annual` (measured relative to this
+    # epoch) by the same angle everywhere. With include_trend on it also
+    # changes `<index>_mean`, the intercept, by trend x the shift in years,
+    # since that band is the trend line's value on this date, not the mean
+    # over the window. So it can change the clustering: `<index>_mean` is a
+    # clustering band, and the phase's sin and cos are each scaled by their
+    # own spread (review C9, B13; corrected in round 13, comment only).
+    # Default 2017-01-01 matches Sentinel-2's S2A+S2B full-constellation
+    # start, so cross-config phase values are comparable by default.
     #
     # Important: do NOT auto-derive this from `dates.phenology.start`.
     # If two configs have different phenology windows, keeping a shared
@@ -205,7 +211,8 @@ class FeaturesEmbeddingParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     # How to collapse an annual embedding ImageCollection (AlphaEarth ships one
-    # image per year) to a single image over the feature window. "mean" matches
+    # image per year for each tile it covers) to a single image over the feature
+    # window, per pixel. "mean" matches
     # the 2017-2022 averaging the hand-crafted arm rests on; "median" is a
     # robust alternative. Ignored when the source is a single uploaded image
     # (Tessera), which is loaded as-is.
@@ -241,8 +248,9 @@ class MaskingParams(BaseModel):
         default=[10, 20, 30], min_length=1
     )
     # JRC GSW occurrence is 0-100 (% of months observed as water). >= this =
-    # "permanent" water. Used ONLY to build water_mask for the downstream
-    # distance-to-water feature, NOT for habitat masking.
+    # "permanent" water. Used ONLY to define water, NOT for habitat masking:
+    # masking's water_mask, and the water features_static measures
+    # distance_to_water to (fmu.stages.masking.jrc_water_mask).
     jrc_water_occurrence_threshold: float = Field(default=50.0, ge=0.0, le=100.0)
 
 
@@ -524,7 +532,11 @@ class MergeParams(BaseModel):
     eliminating rule (Eq. 2) drops closure and relaxes TP and SH. FMU has
     analogues of three: max_area_ha for the area bound, canopy_height for the
     stand height and ndvi_amplitude_annual for the species proportion. It has
-    none for closure or for the same species.
+    none for closure or for the same species. Eq. 2 ends on the longest common
+    side and takes its conditions one at a time; FMU's second pass applies the
+    relaxed tolerances at once, takes the closest neighbour that passes, and
+    falls back to the longest shared boundary only when none passes (review
+    C62; fmu.utils.region_merge module docstring).
 
     The two criteria are the closest analogues FMU has without ALS or a
     species map:
@@ -608,12 +620,17 @@ class MergeParams(BaseModel):
     min_area_ha: float = Field(default=1.0, gt=0.0)
     max_area_ha: float = Field(default=10.0, gt=0.0)
 
-    # A pass-1 merge on a single criterion is too weak a similarity test to
-    # justify, so a pair needs at least this many criteria *defined on both
-    # sides*. Pairs that fall short drop to pass 2, which is the right
-    # destination. (14 of 1249 superpixels in the committed run have no
-    # canopy_height at all -- ETH no-data. Demo set, 13 Oct 2026: 107 of
-    # 1,298; why it is more has not been looked into.)
+    # A merge on a single criterion is too weak a similarity test to justify,
+    # so a pair needs at least this many criteria *defined on both sides*, in
+    # pass 1 and under pass 2's relaxed tolerances alike. A pair that falls
+    # short never merges on its attributes: a region below min_area_ha whose
+    # neighbours all fall short (or fail the relaxed tolerances) joins one only
+    # by the pass-2 shared-edge fallback, which ignores attributes, and two
+    # regions both at or above the minimum do not merge. (14 of 1249
+    # superpixels in the committed run have no canopy_height at all -- ETH
+    # no-data. Demo set, 13 Oct 2026: 107 of 1,298; why it is more has not been
+    # looked into.) Corrected 20 Oct 2026 (review C13): this said that pairs
+    # that fall short "drop to pass 2, which is the right destination".
     #
     # Read this against `len(criteria)`, because the default list is now two
     # long and 2 == 2: **every criterion is currently mandatory**, where three
@@ -621,9 +638,9 @@ class MergeParams(BaseModel):
     # below rejects only floor > len(criteria), the impossible case; equality
     # is legal and is the case that changes behaviour. Concretely, those 14
     # no-canopy_height superpixels could previously clear pass 1 on the other
-    # two criteria and now cannot. Pass 2 is still the right destination for
-    # them -- but if a criterion is ever added back, note that doing so
-    # *loosens* the pass-1 gate rather than tightening it.
+    # two criteria and now cannot; in pass 2 they can join a neighbour only by
+    # the shared-edge fallback. If a criterion is ever added back, note that
+    # doing so *loosens* the gate rather than tightening it.
     min_defined_criteria: int = Field(default=2, ge=1)
 
     # A stand whose fraction of valid pixels for a band falls below this gets a
@@ -634,10 +651,15 @@ class MergeParams(BaseModel):
     min_frac_valid: float = Field(default=0.5, ge=0.0, le=1.0)
 
     # Fallback when no neighbour passes even the relaxed tolerances: absorb into
-    # the neighbour sharing the longest boundary (Xiong's eliminate-pass rule --
-    # this is what prevents orphans). Shared edge is counted with
-    # 4-connectivity even though SNIC runs connectivity=8: a diagonal contact
-    # has zero shared boundary length, so counting it would inflate the
+    # the neighbour sharing the longest boundary -- this is what prevents
+    # orphans. Xiong's eliminating rule (Eq. 2) also ends on the longest common
+    # side, but takes its conditions one at a time, where the second pass here
+    # applies the relaxed tolerances at once and takes the closest neighbour that
+    # passes: the order of choice is this pipeline's own (fmu.utils.region_merge
+    # module docstring; review C62, 20 Oct 2026, which corrects "Xiong's
+    # eliminate-pass rule" here). Shared edge is counted
+    # with 4-connectivity even though SNIC runs connectivity=8: a diagonal
+    # contact has zero shared boundary length, so counting it would inflate the
     # tie-break.
     tie_break: Literal["shared_edge_length"] = "shared_edge_length"
 
@@ -768,6 +790,12 @@ class KElbowParams(BaseModel):
         return self
 
 
+# Read by nothing (review C20): which feature stages run is set by
+# clustering.feature_source, segmentation.input_bands and merge.criteria, and a
+# toggle set to false changes no stage and no per-step key. The legacy
+# fingerprint hashes the block, so a false moves it, and removing the block, or
+# a toggle, would move every legacy fingerprint, the 14 pinned _repro ones among
+# them.
 class FeatureToggles(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -966,9 +994,10 @@ class Config(BaseModel):
     def max_component_pixels(self) -> int:
         """Upper bound on `maxSize` for every `reduceConnectedComponents` call.
 
-        metrics passes it as is; clustering passes a measured unit extent at or
-        below it, because EE pads every tile by `maxSize` (see
-        `clustering._component_neighbourhood_px`).
+        metrics passes it as is (the confidence layer, and the explained variance
+        of `utils.components`). clustering passed a measured unit extent at or
+        below it until round 13, when its unit means stopped calling
+        reduceConnectedComponents (review B14).
 
         Derived rather than configured. This argument does not clamp -- it
         **masks any component larger than it**, silently deleting those regions
@@ -1008,14 +1037,27 @@ class Config(BaseModel):
         """Smallest patch of kept land SNIC sees, in pixels; 0 when none is left out.
 
         Nonzero only with segmentation.drop_kept_patches_below_min_area, and then
-        merge.min_area_ha at the analysis scale, rounded up: a patch of fewer
-        pixels is below the smallest stand the merge allows. Segmentation and
-        merge both read it, so they agree on what kept land is.
+        the fewest pixels the merge does not count as below merge.min_area_ha: a
+        patch of fewer pixels is below the smallest stand the merge allows.
+        Segmentation and merge both read it, so they agree on what kept land is.
+
+        Worked out with the merge's own arithmetic (fmu.utils.region_merge): n
+        pixels are n * (scale^2 / 10_000) ha, in floats, against min_area_ha.
+        Rounding up min_area_ha * 10_000 / scale^2 was one pixel more for some
+        minima (1.11 ha at 10 m is 111.00000000000001 px, so 112, though the merge
+        counts 111 px as a stand) and one fewer for others (0.45 ha at 30 m gave
+        5 px, which the merge counts as below it): review B19.
         """
         if not self.segmentation.drop_kept_patches_below_min_area:
             return 0
         scale = self.export.analysis_scale_m
-        return int(math.ceil(self.merge.min_area_ha * 10_000 / (scale * scale)))
+        px_to_ha = scale * scale / 10_000.0
+        n = math.ceil(self.merge.min_area_ha / px_to_ha)
+        while n > 0 and (n - 1) * px_to_ha >= self.merge.min_area_ha:
+            n -= 1
+        while n * px_to_ha < self.merge.min_area_ha:
+            n += 1
+        return n
 
     @model_validator(mode="after")
     def _optical_band_prefixes_match_index(self) -> Config:

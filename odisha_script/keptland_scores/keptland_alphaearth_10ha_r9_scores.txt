@@ -35,3 +35,28 @@ The five scores
   box_runs: beside it, descriptive only: the 13 Oct box runs' merged stands (the Phase 2 rule) on the plots the primary scores.
     264 plots in 196 stands; 44 stands hold two or more (112 plots); far-apart pairs alike 3590, differ 6727
     labelling ARI by district: ANGUL +0.1254 (n=39), DHENKANAL +0.1362 (n=74), KENDUJHAR +0.2000 (n=7), KORAPUT -0.0219 (n=143)
+
+  NOTE ADDED 20 Oct 2026 (round 13, review A1, A4, A5, A6, B13, B14, B16, B17 and B18; the numbers
+  above are as first written): the four 10 ha runs of round 12 scored here are from before the round
+  13 fixes (docs/handoff/2026-10-20-round13.md, Done). A1 and A5 do not reach this arm, nor does
+  B13: its SNIC and k-means read the 64 AlphaEarth bands, and its merge reads canopy height, its
+  spread and the NDVI amplitude, so no run here reads distance to water, slope, aspect or an NDVI
+  phase. A4 (the date windows stopped on 30 Dec 2022, not 31 Dec) reaches the Koraput run only: two
+  Sentinel-2 scenes of 31 Dec 2022 over the Koraput boxes were left out (read-only call 4 of that
+  record), and they enter the NDVI amplitude, one of the merge's three criteria. Koraput holds 144
+  of the 264 plots the primary analysis scores. Question 1 of that record asks Jaskaran whether this
+  arm's Koraput runs join the hand-crafted ones in R3; until it is answered, they are noted as
+  affected by A4, through the merge, by an amount not measured. Over the other three boxes A4 left
+  out one Sentinel-1 scene only, which this arm does not read. The merge and clustering fixes reach
+  this arm as they reach the hand-crafted one: B14 (a stand in several pieces got one mean per
+  piece, not one per stand), B16 (the constant-band test and the scaling used histogram quartiles,
+  not exact ones), B17 (the merge counted a superpixel's pixels and its valid pixels by different
+  rules at the ROI's edge) and B18 (the merge tested its area limits on a sum of floats). Of what
+  this file reads, A4 (in Koraput), B17 and B18 can move the stand outlines, and so every score; B14
+  and B16 reach only the stand types, and so only the two labelling scores. A6 changes the layers'
+  area_ha and n_pixels, which no score reads. How far any of these moves a stand, a type or a score
+  was not measured: it needs Earth Engine. This file is kept as the record from before the fixes.
+  Whether roadmap R3 re-runs this arm is put to Jaskaran in that record. The box_runs row is not of
+  this arm: as in every kept-land scores file, it scores the 13 Oct box runs, hand-crafted runs from
+  before the fixes too, which A1 and A5 reach. Counts per run are in
+  docs/reproducibility/round12_runs/README.md. No number in this file is changed.

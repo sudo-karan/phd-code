@@ -148,7 +148,8 @@ everything needed to know what happened:
 | `use_cache` | The `use_cache` argument given to `Pipeline()` |
 | `submit_exports` | The `submit_exports` argument given to `Pipeline()`. `false` means the run read the cache and submitted no cache export. It has no effect unless `use_cache` is on |
 | `summaries` | The `summaries` argument given to `Pipeline()`. `false` means no stage's summary numbers were computed |
-| `git` | Which code ran: commit and uncommitted changes. See "The `git` block" below |
+| `git` | Which code ran: commit and uncommitted changes, as the run started. See "The `git` block" below |
+| `git_at_end` | The same block read again as the manifest is written (round 13): a commit or an edit made while the run ran shows as a difference from `git` |
 | `stages[].name` | Stage name (matches the `@register_stage` decorator) |
 | `stages[].elapsed_sec` | Wall-clock time for this stage |
 | `stages[].produced` | Sorted list of context keys this stage actually wrote |
@@ -179,13 +180,23 @@ same block is in `export_manifest_<config>.json`, in the Odisha
 `<config>_run.json` records, in `docs/transparency/<config>/run_record.json`
 and in `evaluation_manifest.json`. Result files do not carry it.
 
+`git_state()` remembers its first answer for the life of the process, so the
+block describes the tree as it was when the process first asked. Since round 13
+the pipeline asks when `Pipeline.run` starts, before any stage, and the kept-land
+scorer and chance test and Phase 1 step 12 ask at the start of `main()`, before
+they write a result; each also records `git_at_end`, the block read again
+(`git_state_now()`) when the record is written (review C32). Before round 13 the
+first asking came after the stages, or after the results were written: a commit
+made during a run was recorded as the run's commit, and a script that rewrote a
+tracked result recorded its own output as a dirty tree.
+
 | Key | Meaning |
 |---|---|
 | `commit` | Full hash of HEAD, or `null` |
 | `dirty` | `true` if any tracked file is modified, staged, deleted or renamed relative to HEAD; `false` if none; `null` if it could not be determined |
 | `modified` | The tracked paths behind `dirty`, sorted, at most 50 |
 | `modified_truncated` | `true` if there were more than 50 |
-| `untracked` | Untracked, non-ignored paths, sorted, at most 50. They do not make the tree dirty, but an untracked source file can change what ran |
+| `untracked` | Untracked, non-ignored paths, at most 50. They do not make the tree dirty, but an untracked source file can change what ran. Since round 13 (review C34) the code (source and config files, by suffix) and untracked folders come first, then the rest, each sorted, so that run outputs cannot push an untracked source file off the list; before, the list was sorted as a whole, and 50 untracked outputs in `odisha_script/phase2_vectors/` sorted before `scripts/` and `src/` |
 | `untracked_truncated` | `true` if there were more than 50 |
 | `root` | The checkout's root directory, or `null` |
 | `error` | `null`, or why the state could not be read (git not installed, the code is not in a git checkout, a git command failed) |
@@ -268,6 +279,26 @@ samples do not add up to that. The area of the stands left out, and how many
 stands the merge marked below the minimum, are in `clustering_metadata` (under
 `export_manifest_<config>.json` below), not among these six.
 
+**What `units_dropped_missing_band` has counted** (review C15). Its name and its
+description say: units inside the habitat mask that the fit left out because a
+feature band has no data over them. In every per-step run of record
+(`docs/reproducibility/r9_runs`, `round12_runs` and `round9_cache_test`) it
+equals instead the number of stands with no polygon in `stands_merged`, 2 to 5
+per box run and 10 in the 10 km tile: stands at the ROI's edge with no pixel
+whose centre is inside the ROI (0 to 2 pixels in the merge's `stand_attributes`,
+which until round 13 counted a pixel the edge cuts by its share, review B17).
+The unit counts come from a frequency histogram that counts a pixel by its
+share inside the ROI, so they list such a stand; the fit's one-pixel sample and
+`reduceToVectors` take pixel centres inside the ROI, so it gets neither a row
+nor a polygon. No stand with a band gap is among them: until round 13 the unit
+means gave a unit with no data in a band 0 there, so it kept its row (round 13,
+review B14). Since round 13 such a unit is masked in that band, has no row and
+is counted here too, and the merge puts a superpixel with no pixel whose centre
+is inside the ROI in no stand (review B17); neither has run on Earth Engine yet.
+The legacy-layout runs (`docs/demo/remerge`) were not checked. The name, the
+description and the stage's log line are unchanged; renaming the count, or
+counting the two causes apart, is a question for Jaskaran (round 13).
+
 These counts are distinct unit labels on the analysis grid, as the fit saw
 them. They are not counts of the polygons in the exported stand layer, and the
 two do not agree: in the 14 re-runs of 13 Oct 2026 the exported
@@ -280,8 +311,9 @@ of which 269 carry a type; `odisha_alphaearth_angul_repro`: 102 and 86, against
 several pieces is several polygons; the export stage types a stand from the
 typed pixels its polygon touches, weighted by the share of each pixel inside
 it, so a stand with no habitat pixel of its own can take a neighbour's type
-(round 12 leaves such a stand, which has no row in the fit, on that vote:
-question 1 of `docs/handoff/2026-10-19-round12.md`);
+(so it did when these runs were made; since round 13 such a stand, which has no
+row in the fit, gets a null type in every cache layout: question 1 of
+`docs/handoff/2026-10-19-round12.md`, answered (b));
 and the merge is not cached, so the pass that fits the types and the pass that
 exports the stands each merge again, and where one of them computed a merge
 criterion live they did not get the same stands (`odisha_alphaearth_angul_repro`:
@@ -336,9 +368,10 @@ because all its cacheable outputs were cached. The stage's `run()`
 method didn't execute; the cached assets were loaded into the context
 and the stage was marked done.
 
-### Clustering stage metadata: unit sizes and the reduction neighbourhood
+### Clustering stage metadata: unit sizes and the reduction neighbourhood (until round 13)
 
-Recorded on every live clustering run, including when every check passes:
+Recorded on every live clustering run made before round 13, including when every
+check passed:
 
 | Key | Meaning |
 |---|---|
@@ -353,6 +386,11 @@ narrow the neighbourhood. That happens with an elongated stand, or a label
 reused across disjoint places, which logs a WARNING. A wide band stack may then
 run out of memory, as it did before the measurement existed. These keys are in
 the stage metadata only, not in `clustering_metadata`.
+
+Since round 13 the clustering stage takes one mean per unit label with a grouped
+reduction and calls `reduceConnectedComponents` no longer (review B14), so a run
+records none of the five keys; manifests of earlier runs keep them. The number of
+distinct unit labels is in `clustering_metadata` as `n_units_total`.
 
 The stage metadata also holds `fit_excludes_stands_below_min_area`, true or
 false, on every run that computes the clustering stage: whether the stands
@@ -573,8 +611,10 @@ Where `<band>` is each input feature band: `ndvi_mean`, `ndvi_amplitude_annual`,
 `vv_p50`, `canopy_height`, `elevation`, etc.
 
 **Critical: values are in ORIGINAL UNITS**, not the scaled values that
-went into k-means. So `ndvi_mean` for a cluster is a real NDVI between
--1 and 1; `elevation` is real meters; `canopy_height` is real meters.
+went into k-means. So `ndvi_mean` for a cluster is in NDVI units (the
+band is the harmonic fit's intercept: with the trend term, the trend line's
+value on `features_optical.time_reference`, not the mean NDVI over the
+window; review C9); `elevation` is real meters; `canopy_height` is real meters.
 This is what makes clusters interpretable: cluster 3 might be "dense
 canopy, low NDVI amplitude, high elevation". That's the ecological
 interpretation, and it comes from the original-unit profiles, not the
@@ -678,12 +718,12 @@ SNIC ran").
 | `explained_variance.level` | Always `"pixel"`. Scoring at region level makes any partition score 1.000 by construction | string |
 | `merge.orphans_area_blocked` | Undersized stands whose every neighbour is already too big to absorb them under the ceiling: `merge.max_area_ha`, or `merge.max_area_ha + merge.min_area_ha` with `merge.pass2_soft_ceiling` on. **A signal `max_area_ha` is too tight**, not a fact about the forest | int |
 | `merge.pass2_fallback_merges` | Pass-2 merges no relaxed criterion could justify, decided by shared-edge length alone. The honest count of "surrounded by genuinely different forest"; look here first if stand geometry looks wrong | int |
-| `merge.pass2_relaxed_merges_over_max_area`, `merge.pass2_fallback_merges_over_max_area` | Present only when `merge.pass2_soft_ceiling` is on, like the five keys below. Pass-2 merges that took a region over `merge.max_area_ha`: by a relaxed match (step 2 of the order of choice, part of `pass2_merges - pass2_fallback_merges`) and by the shared-edge fallback (step 4, part of `pass2_fallback_merges`). Whether a merge goes over is decided as the hard ceiling decides it, on the sum of the two areas, so a merge that ends exactly on `merge.max_area_ha` can come out a hair over it through float rounding. It is then ranked at step 2 or 4 and counted here, though `stands_over_max_area` does not count the stand it makes | int |
+| `merge.pass2_relaxed_merges_over_max_area`, `merge.pass2_fallback_merges_over_max_area` | Present only when `merge.pass2_soft_ceiling` is on, like the five keys below. Pass-2 merges that took a region over `merge.max_area_ha`: by a relaxed match (step 2 of the order of choice, part of `pass2_merges - pass2_fallback_merges`) and by the shared-edge fallback (step 4, part of `pass2_fallback_merges`). Whether a merge goes over is decided as the hard ceiling decides it, in whole pixels (the two regions' pixels added, against `merge.max_area_ha` in pixels; review B18), so a merge that ends exactly on `merge.max_area_ha` is not over it and is counted neither here nor in `stands_over_max_area` | int |
 | `merge.stands_over_max_area` | Stands whose area as reported in `stand_attributes` (`area_ha`, 6 decimals) is over `merge.max_area_ha` taken to the same 6 decimals, so a stand exactly at `merge.max_area_ha` is not counted. None is over `merge.max_area_ha + merge.min_area_ha` unless it is a single superpixel that came in larger | int |
 | `merge.stands_over_max_area_never_merged` | Of `stands_over_max_area`, those made of a single superpixel (`n_superpx` 1): a superpixel that came in larger than `merge.max_area_ha` and that nothing joined. The setting did not make them, and with it off they are over `merge.max_area_ha` too, unreported. The rest were made by merging, which only the setting allows past `merge.max_area_ha` | int |
 | `merge.excess_over_max_area_total_ha`, `merge.excess_over_max_area_largest_ha` | Those stands' area over `merge.max_area_ha`, added up, and the largest of them (0.0 when no stand is over), rounded to 4 decimals | ha |
 | `merge.excess_over_max_area_each_ha` | Each of those stands' area over `merge.max_area_ha`, largest first, rounded to 4 decimals (so an excess under 0.00005 ha shows as 0.0) | list of ha |
-| `merge.threshold_calibration.joint_admit_rate_pct` | Share of adjacent pairs passing **all** criteria at once. The gate is conjunctive, so the per-band marginals do not describe it. **Not a tuning target** — pass rate is a diagnostic, and pass 1 iterates to convergence so a per-round rate is not the share of total merging | 0 to 100 |
+| `merge.threshold_calibration.joint_admit_rate_pct` | Share of adjacent pairs the gate admits, of the `n_pairs_with_any_defined_criterion` pairs with at least one criterion defined on both sides: every criterion defined on both sides within its tolerance, and at least `merge.min_defined_criteria` of them defined. The gate is conjunctive, so the per-band marginals do not describe it. **Not a tuning target** — pass rate is a diagnostic, and pass 1 iterates to convergence so a per-round rate is not the share of total merging. Since 20 Oct 2026 (round 13, review C14): before, a pair with fewer than `merge.min_defined_criteria` criteria defined that passed the ones it had was counted as admitted, though the gate rejects it. Every committed record is from before the fix. Its rate is above the fixed one by at most `pass1_pairs_blocked_by_undefined_criteria_round1` plus `pass1_pairs_blocked_by_area_round1` over `n_pairs_with_any_defined_criterion`, from the same record: 0 (the same rate) in 83 of the 122 committed records under `docs/reproducibility/`, `odisha_script/phase2_vectors/` and `ui_data/`, and at most 0.38 points in the others; `odisha_script/gate_effect_results.txt` overstates by up to 8.97 and 10.19 points (its dated note) | 0 to 100 |
 | `merge.kept_land` | Present only when `segmentation.mask_before_snic` is on, and then SNIC and the merge see only kept land: where `habitat_mask` is 1, inside the ROI (the mask on the analysis grid clipped to the ROI as the stage's outputs are), less, with `segmentation.drop_kept_patches_below_min_area`, each patch smaller than `merge.min_area_ha` that touches no other kept land. `kept_land_ha`: that land, in the ROI. `small_patches_ha`: land `habitat_mask` keeps but left out as patches below the minimum (0 without the option). `kept_land_ha_without_superpixel`: kept land SNIC left with no superpixel, so in no stand; the seeds of `fmu.utils.kept_land` should make it 0. `superpixel_ha_off_kept_land`: superpixel area off kept land, 0 against the mask SNIC read. Both shortfalls are measured against the mask the merge reads, on the superpixel image's own pixels; if SNIC ran on the mask computed live and the merge reads the cached copy, the two differ a little along the edges of kept land (`docs/reproducibility.md`, "Superpixels depend on whether the features were cached when SNIC ran"), which gives a little of both. Areas are pixel count × scale² | ha; both shortfalls should be 0 |
 | `silhouette_current` | Intrinsic cohesion/separation of current clustering. **Demoted to an internal diagnostic for the labelling step**: it is computed in each arm's own feature space (21-D vs 64-D) and is strongly dimensionality-dependent, so it was never valid across arms, and under two independent segmentations it is doubly invalid | -1 to 1; higher is better |
 | `silhouette_reference` | Same for the reference (only if reference's `feature_stack` is cached) | -1 to 1; higher is better |
@@ -826,6 +866,46 @@ old and new runs stay comparable, not because it is a second answer.
 For a typical Sanjay Van run: ~330 merged stands, ~1,200 SNIC polygons,
 ~460 dissolved polygons. All three layers in EPSG:4326.
 
+**Areas and pixel counts.** Since round 13 (review A6) `n_pixels` is each
+polygon's pixel count at the analysis scale, the `count` `reduceToVectors`
+gives it, and `area_ha` is that count × `analysis_scale_m`² / 10,000: the area
+on the analysis grid. Until then both came from the geometry's area
+(`n_pixels` = area / `analysis_scale_m`²), and Earth Engine's `area()` adds
+instead of subtracting the hole of some polygons whose hole touches the outer
+ring at a vertex (`sanjay_van_alphaearth_keptland_r9`, stand 83: 18.27 ha and
+1,827 pixels in its layer, 8.23 ha and 823 pixels on the grid); the layers
+exported before round 13 carry those values. `perim_m` and the centroid are the
+geometry's. `perim_m` is right on those polygons, but the centroid has the same
+hole error as the area: it is the centroid with the hole counted as area (up to
+35 m off on the committed merged layers of `_r9` and round 12, where 54 of 7,371
+centroids are more than 1 m off), and `stand_id` is numbered by the centroid, so
+a few stands' ids follow the error. Not changed in round 13. On the legacy cache layout `stands_dissolved` is vectorised from a
+type image on a geographic grid, whose pixels are smaller than
+`analysis_scale_m`² away from the equator (about 93 m² at 10 m and 21° N), so
+there its `area_ha` overstates the area (by about 7.5% at 21° N).
+
+**Stands and superpixels in pieces** (review C17). A stand or a superpixel can
+come out as more than one polygon, so a layer can hold more polygons than
+stands. SNIC labels every pixel the ROI clip keeps, those the ROI only partly
+covers at its edge included, while `reduceToVectors` keeps only the pixels whose
+centre is inside the ROI; a label drawn through such edge pixels is then cut. In a
+large ROI a label can also have a stray piece of a few pixels against a line a
+multiple of 256 pixels from the ROI's south-west pixel corner, which the review
+reads as a line between Earth Engine's computation tiles. In the layers of the
+per-step runs of record (`docs/reproducibility/r9_runs` and `round12_runs`,
+committed or off git with their SHA-256 checked), 0 to 7 stands and 0 to 14
+superpixels per run are in more than one polygon: two, but for one superpixel in
+three in each of the 10 ha hand-crafted runs of Dhenkanal and Kendujhar. Every
+smaller piece lies within 5.2 m
+of the ROI's edge, but the stray pieces, of 1 to 41 pixels, of 4 superpixels and
+2 stands in the 10 km tile and of 1 superpixel in each of three AlphaEarth layers
+(Dhenkanal 3 ha, Koraput 3 ha and 10 ha). The kept-land checks that found no
+superpixel in pieces (register entry `spec-segmentation-mask-before-snic`)
+counted pieces on the label raster, which still holds those edge pixels. The
+joins key on `stand_lbl`, so no score changes. A stand with no pixel whose
+centre is inside the ROI gets no polygon at all (2 to 10 per run; "What
+`units_dropped_missing_band` has counted", above).
+
 ### Attribute schemas
 
 #### `stands_merged`
@@ -836,16 +916,16 @@ SHP attributes (capped at 10-char field-name limit):
 |---|---|---|
 | `stand_id` | int | Sequential 1..N. Sorted by centroid lat desc / lon asc. **Deterministic** — the same merged geometry always produces the same numbering. |
 | `stand_lbl` | int | Raw merge label. Use to cross-reference with the `stand_clusters` raster. `stand_id` is a renumbering and cannot be joined back to the raster; this can. |
-| `cluster_id` | int | The k-means cluster (0 to k-1) assigned to this stand: since round 12, for a stand whose row the fit was trained on, the commonest type over the stand's own typed pixels, which on the analysis grid is the type the fit gives its row (for a stand whose pieces carry different types, see question 3 of `docs/handoff/2026-10-19-round12.md`); for any other stand, the commonest type among the typed pixels its polygon touches. **May be null** — see below. |
-| `area_ha` | float | Polygon area in hectares. |
+| `cluster_id` | int | The k-means cluster (0 to k-1) assigned to this stand: the commonest type over the stand's own typed pixels, which on the analysis grid is the type the fitted clusters give its row (since round 12; for a stand whose pieces carry different types, see question 3 of `docs/handoff/2026-10-19-round12.md`). Since round 13 this holds for a stand left out of the fit too (`clustering.fit_excludes_stands_below_min_area`), and a stand with no typed pixel of its own has a null type; until then both took the commonest type among the typed pixels their polygon touches. **May be null** — see below. |
+| `area_ha` | float | Polygon area in hectares on the analysis grid: `n_pixels × (analysis_scale_m)² / 10,000` (since round 13; see "Areas and pixel counts" above). |
 | `perim_m` | float | Polygon perimeter in metres. |
-| `n_pixels` | int | `area_m² / (analysis_scale_m)²`. Derived from area, consistent with `area_ha`. |
+| `n_pixels` | int | The polygon's pixels at the analysis scale: the `count` `reduceToVectors` gives it (since round 13; until then `area_m² / (analysis_scale_m)²` from the geometry's area). |
 | `n_superpx` | int | Superpixels the stand is made of (1 = it never merged). |
 | `n_pass1` | int | Merges inside the stand made by the first pass: every criterion within its configured tolerance. |
 | `n_relaxed` | int | Merges inside the stand made by the second pass under tolerances multiplied by `merge.relax_factor`. |
 | `n_fallback` | int | Merges inside the stand made by the second pass's shared-edge fallback: no criterion justified them, even relaxed. These are the merges to look at first. |
 | `below_min` | int (0/1) | 1 if the stand ended below `merge.min_area_ha`. |
-| `below_why` | string | Empty unless `below_min` is 1; then `isolated` (touches no other stand), `area_blocked` (every neighbour is too big to take it under `merge.max_area_ha`, or under `merge.max_area_ha + merge.min_area_ha` with `merge.pass2_soft_ceiling` on) or `iteration_cap` (it still had a neighbour it could have joined when the second pass stopped at `merge.max_pass2_iterations`). |
+| `below_why` | string | Empty unless `below_min` is 1; then `isolated` (shares no edge with another stand: no 4-connected neighbour in the merge's graph, so a stand that meets another only at a corner is isolated too; corrected 20 Oct 2026, review C16, from "touches no other stand"), `area_blocked` (every neighbour is too big to take it under `merge.max_area_ha`, or under `merge.max_area_ha + merge.min_area_ha` with `merge.pass2_soft_ceiling` on) or `iteration_cap` (it still had a neighbour it could have joined when the second pass stopped at `merge.max_pass2_iterations`). |
 
 The last six are the merge provenance (`PROVENANCE_FIELDS` in
 `src/fmu/utils/region_merge.py`). A stand of m superpixels contains exactly
@@ -876,7 +956,15 @@ carries the config name, the cache fingerprint, the merge summary numbers, the
 stand-size distribution and the stands and area under each `merge_kind`.
 
 GeoJSON attributes: every SHP attribute, **plus** per-stand means of every
-features_* band, plus centroid lat/lon.
+features_* band, plus centroid lat/lon. Each is the plain mean of the band's
+pixel values over the polygon (`ee.Reducer.mean()` in `reduceRegions`), the
+angle bands too: `aspect` (degrees, 0 to 360) and `<index>_phase_annual`
+(radians, −π to π; `<index>_phase_semi` too in a dual-harmonic run) are
+arithmetic means of angles, not circular means. So a stand whose pixels face
+350° and 10° reads 180°, and one whose phases lie on both sides of ±π reads near
+0 (review C10). The clustering does not read these columns: it takes the sine
+and cosine of each angle per pixel. The export is unchanged; whether it should
+give circular means is a question for Jaskaran (round 13).
 
 **Null `cluster_id` is meaningful, not missing data.** Unlike `stands_snic`,
 this layer keeps stands that clustering could not type. Under the merge
@@ -886,16 +974,22 @@ dropping it would delete real delineated area from the deliverable while
 leaving the file looking complete. Two reasons a stand is untyped: it lies
 outside the habitat mask, or at least one active feature band has no data
 over it. The clustering stage logs the split, and the counts are in the run
-manifest as `n_units_outside_habitat` and `n_units_dropped_null_band`. Note
+manifest as `n_units_outside_habitat` and `n_units_dropped_null_band`. In the
+runs of record the second counted stands at the ROI's edge with no polygon, not
+stands with a band gap ("What `units_dropped_missing_band` has counted", above;
+review C15). Note
 that SHP cannot represent a null integer — read the GeoJSON if you need to
-tell null from 0. Such a stand has no row in the k-means fit, so it keeps the
-commonest type among the typed pixels its polygon touches: null on the analysis
-grid (every run since round 9), but on the legacy cache layout, where the types
-lay on another grid, its polygon could take in slivers of a neighbour's pixels and
-so a neighbour's type (`docs/demo/remerge/README.md`, section 4; whether it
-should be null in every layout is question 1 of
-`docs/handoff/2026-10-19-round12.md`; register entry
-`spec-export-stand-type-from-its-fit-row`).
+tell null from 0. Such a stand has no row in the k-means fit, and since round 13
+its type is null in every cache layout, whatever typed pixels its polygon
+touches (question 1 of `docs/handoff/2026-10-19-round12.md`, answered (b);
+register entry `spec-export-stand-type-from-its-own-row-or-null`). Until then it
+kept the commonest type among the typed pixels its polygon touches: null on the
+analysis grid (every run since round 9), but on the legacy cache layout, where
+the types lay on another grid, its polygon could take in slivers of a
+neighbour's pixels and so a neighbour's type (`docs/demo/remerge/README.md`,
+section 4). On the legacy layout the stand's own pixels are those whose centres
+it holds on the type grid, so a stand with a row in the fit that holds none has
+a null type too.
 
 #### `stands_snic`
 
@@ -906,13 +1000,15 @@ SHP attributes (capped at 10-char field-name limit):
 | `stand_id` | int | Sequential 1..N. Sorted by centroid lat desc / lon asc. **Deterministic** — same SNIC geometry always produces the same numbering. Use as a stable ID across runs of the same config. |
 | `snic_label` | int | Raw SNIC superpixel hash. Use to cross-reference with the `snic_clusters` raster asset. |
 | `cluster_id` | int | The k-means cluster (0 to k-1) that this superpixel was assigned to. |
-| `area_ha` | float | Polygon area in hectares. |
+| `area_ha` | float | As in `stands_merged`: `n_pixels × (analysis_scale_m)² / 10,000` (since round 13). |
 | `perim_m` | float | Polygon perimeter in metres. |
-| `n_pixels` | int | `area_m² / (analysis_scale_m)²`. Derived from area, consistent with `area_ha`. |
+| `n_pixels` | int | As in `stands_merged`: the `count` `reduceToVectors` gives the polygon (since round 13). |
 
 GeoJSON attributes: every SHP attribute, **plus** per-superpixel means
 of every features_* band (ndvi_mean, ndvi_amplitude_annual, vv_p50,
 canopy_height, elevation, etc.) — typically 25-30 additional columns.
+The angle bands (`aspect`, `<index>_phase_*`) are arithmetic means of angles
+here too, as in `stands_merged` (review C10).
 Centroid lat/lon are also included for convenience.
 
 #### `stands_dissolved`
@@ -923,9 +1019,9 @@ SHP attributes:
 |---|---|---|
 | `unit_id` | int | Sequential 1..M, after `vector_min_stand_pixels` filtering. Same lat-desc/lon-asc renumbering as stand_id; deterministic. |
 | `cluster_id` | int | The k-means cluster ID this unit corresponds to. |
-| `area_ha` | float | Polygon area in hectares. |
+| `area_ha` | float | As in `stands_merged` (since round 13; on the legacy cache layout see "Areas and pixel counts" above). |
 | `perim_m` | float | Polygon perimeter in metres. |
-| `n_pixels` | int | Used by the min-pixel filter. |
+| `n_pixels` | int | As in `stands_merged` (since round 13). Used by the min-pixel filter. |
 
 GeoJSON attributes: every SHP attribute, **plus** `profile_<band>_p50`
 columns for every feature band, looked up from `cluster_profiles.csv`
@@ -1138,9 +1234,17 @@ and `outputs/transparency`). `<part>` is the name of one polygon of the ROI
 file, in lower case with underscores (`part_N` when the file gives no name).
 
 All rasters are EPSG:4326 at the analysis scale (`export.analysis_scale_m`),
-on a grid anchored at (0, 0). At 10 m that is the grid cache exports land on,
-so a cached mask is read pixel for pixel. Whole-ROI numbers in `summary.md` come
+on a grid anchored at (0, 0). At 10 m that is the grid the legacy layout's cache
+exports land on, so for a config of that layout (every committed one here) a
+cached mask is read pixel for pixel. In the per-step layout, every run since
+round 9, cache exports land on the ROI's UTM grid, and a cached mask is
+resampled onto these rasters (review C31). Whole-ROI numbers in `summary.md` come
 from the run manifest (the masking stage's `transparency.summary_numbers`).
+The stage tabulates those on the same EPSG:4326 grid, so in the per-step layout
+the pass that computed the masks and the passes that read them from the cache
+record slightly different `area_ha` and `share_kept`: in the runs of record
+`area_ha` is 0.008% to 0.074% lower, and `share_kept` 1e-6 to 3e-4 higher, in
+the passes that read the cache (`docs/reproducibility/r9_runs/README.md`).
 Per-part numbers are tabulated from the saved rasters with the stage's own
 arithmetic, and can differ slightly from the manifest at the edges of a part.
 The colours, labels and the note on what "habitat" means are read from the
@@ -1164,6 +1268,13 @@ stand layers it pulls down. Keys: `config`, `fingerprint`, `git`, `run_dir`,
 - `stand_provenance` maps each stand id (the `stand_lbl` of `stands_merged`, the
   same ids as `stand_attributes`) to the six provenance fields listed under
   `stands_merged`.
+- `snic_distance_scale` is SNIC's distance normaliser for the superpixels the run
+  used. The export pass reads segmentation from the cache, so since round 13 the
+  value is read from the manifest of the segmentation pass that exported the
+  superpixel asset the export pass read, and `snic_distance_scale_from` says so
+  (or that no such manifest was found). Every record committed before round 13
+  holds null there (review C36); the value is in the segmentation pass's
+  manifest, `<run>_manifest_segmentation.json` where it is committed.
 
 The run records committed so far were written before these two keys existed and
 have neither. A record written from the current code has both.
@@ -1187,7 +1298,10 @@ Written to `--out-dir`. The script has not been run on any real site; see
   arguments, library versions, and the sha256 of the results file.
 
 `scripts/evaluation_synthetic_validation.py` writes
-`docs/evaluation/synthetic_validation.md` and `.csv` (committed).
+`docs/evaluation/synthetic_validation.md` and `.csv` (committed), and since round 13
+`synthetic_validation_run.json` beside them: the command, the date, the `git` block (read
+before the run) and the `environment` block, as a run record (review C37). The committed
+`.md` and `.csv` were written before that, so no run record of theirs is committed.
 
 ## Run times go to logs
 

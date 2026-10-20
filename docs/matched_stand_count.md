@@ -28,8 +28,10 @@ different feature spaces — six hand-crafted bands versus a 64-dimensional embe
 and the merge's area bounds do not pin them: `min_area_ha`/`max_area_ha` bound each stand, not
 how many there are.
 
-The baseline currently lands on 327 stands. If the AlphaEarth arm lands on, say, 500, its R²
-will be higher and the difference will be mostly arithmetic.
+The baseline (`sanjay_van_baseline`) currently lands on 291 stands and the AlphaEarth arm on
+290 (the re-runs of 13 Oct 2026, `docs/reproducibility.md`): close, but nothing holds them
+there. If the AlphaEarth arm landed on, say, 500, its R² would be higher and the difference
+would be mostly arithmetic.
 
 ## Three mechanisms, and what each costs
 

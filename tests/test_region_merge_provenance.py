@@ -16,7 +16,11 @@ Three things are pinned here:
     holds digests of what the merge produced for 200 seeded random graphs
     *before* provenance was added, made by the committed version of the code
     (the file says which commit, and how). Today's code has to reproduce every
-    one of them.
+    one of them but three: review B18 (round 13) changed the merge on those, by
+    comparing its area bounds in whole pixels, and they are pinned to the
+    digests it gives since (`DIGESTS_SINCE_B18`). When B18 was made, today's
+    merge gave on all 200 graphs what the fixture's commit gives with B18's
+    comparison put in it, so provenance still moved no stand.
 
 The random graphs are built the way a run builds them: a pixel grid with
 non-habitat masked out is partitioned into superpixels, and adjacency, shared
@@ -34,6 +38,7 @@ import sys
 import tempfile
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from fractions import Fraction
 from importlib import util as importlib_util
 from pathlib import Path
 from typing import Any
@@ -65,6 +70,7 @@ def assert_provenance_invariants(
     min_area_ha: float,
     max_area_ha: float,
     max_pass2_iterations: int,
+    pass2_soft_ceiling: bool = False,
     **_other_settings: Any,
 ) -> None:
     """What has to hold between the provenance and what the merge reports.
@@ -108,8 +114,15 @@ def assert_provenance_invariants(
     for why, total_key in BELOW_WHY_TOTALS.items():
         assert sum(1 for p in prov.values() if p["below_why"] == why) == d[total_key]
 
-    # below_why, worked out again from the finished stands alone.
+    # below_why, worked out again from the finished stands alone. A neighbour
+    # could take a stand below the minimum if their pixels together are within
+    # the ceiling, counted in whole pixels as the merge counts it (review B18):
+    # max_area_ha, or with pass2_soft_ceiling on, max_area_ha + min_area_ha,
+    # each as written, against the pixels' area in square metres.
     px_to_ha = graph.scale_m * graph.scale_m / 10_000.0
+    ceiling_m2 = Fraction(str(max_area_ha)) * 10_000
+    if pass2_soft_ceiling:
+        ceiling_m2 += Fraction(str(min_area_ha)) * 10_000
     touching: list[set[int]] = [set() for _ in range(result.n_stands)]
     for i, j in graph.edges:
         a, b = result.assignment[i], result.assignment[j]
@@ -123,7 +136,8 @@ def assert_provenance_invariants(
         elif not touching[sid]:
             expected = "isolated"
         elif not any(
-            area + stand_px[nb] * px_to_ha <= max_area_ha for nb in touching[sid]
+            (stand_px[sid] + stand_px[nb]) * graph.scale_m**2 <= ceiling_m2
+            for nb in touching[sid]
         ):
             expected = "area_blocked"
         else:
@@ -768,6 +782,17 @@ def branches_reached(diagnostics: dict[str, Any]) -> dict[str, bool]:
 
 GOLDEN_SEEDS = range(200)
 
+# The golden graphs on which review B18 (round 13: the merge's area bounds compared
+# in whole pixels, not on a float sum of two areas) changed what the merge does, and
+# the digest each gives since. On no other graph did it change anything: when B18
+# was made, today's merge gave on all 200 graphs what the fixture's commit gives with
+# only that comparison changed.
+DIGESTS_SINCE_B18: dict[str, str] = {
+    "3": "8039de8a6342d5add12d063968ae3e0bb928d0b62cacc995f51a4922bbfb8540",
+    "53": "d1f57e24d7bcad2757bed21ca11d9daded76fdbea182d7ba7c7527fff6ebe73c",
+    "98": "6291ccc8b07217e3c42dfea8d5a8a90dc94a3396ad5ae154de79725362e7e133",
+}
+
 # The diagnostics the merge reported when the digests were made. Named here, not
 # read from the result, so a key added later does not disturb the comparison.
 PINNED_DIAGNOSTICS = (
@@ -860,18 +885,21 @@ def test_the_generator_still_builds_the_graphs_the_digests_were_made_from(
 
 def test_todays_merge_reproduces_every_committed_digest(golden, golden_runs):
     """The merge must produce the assignment, stand count, totals and stand
-    attributes it produced at the commit named in the fixture, on every graph."""
+    attributes it produced at the commit named in the fixture, on every graph but
+    the three of `DIGESTS_SINCE_B18`, where it must produce what is pinned there."""
+    assert all(golden["digests"][seed] != d for seed, d in DIGESTS_SINCE_B18.items())
+    expected = {**golden["digests"], **DIGESTS_SINCE_B18}
     changed = [
         seed
         for seed, case, result in golden_runs
-        if _sha256(pinned_outputs(result, case)) != golden["digests"][str(seed)]
+        if _sha256(pinned_outputs(result, case)) != expected[str(seed)]
     ]
     assert not changed, (
         f"merge_superpixels no longer produces what it produced at "
-        f"{golden['made_from']['commit'][:7]} on {len(changed)} of "
-        f"{len(golden_runs)} seeded graphs (seeds {changed}). If moving stands "
-        f"was the point of the change, say so in the commit and regenerate the "
-        f"fixture (see its 'how'); if it was not, this is the bug."
+        f"{golden['made_from']['commit'][:7]} (or since review B18, where pinned) on "
+        f"{len(changed)} of {len(golden_runs)} seeded graphs (seeds {changed}). If "
+        f"moving stands was the point of the change, say so in the commit and pin "
+        f"the new digests, as DIGESTS_SINCE_B18 does; if it was not, this is the bug."
     )
 
 

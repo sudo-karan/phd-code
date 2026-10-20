@@ -6,7 +6,8 @@ Engine; the stage wrapper turns the result back into an `ee.Image` with
 `snic_clusters.remap(...)`.
 
 Pass 1 -- merge homogeneous neighbours, iterating to convergence:
-  - a pair is eligible if their areas sum to at most `max_area_ha`;
+  - a pair is eligible if their areas sum to at most `max_area_ha`, judged in
+    whole pixels (`_whole_pixels_within`);
   - a **hard gate**, not a weighted sum: reject if *any* shared criterion
     exceeds its tolerance. This is Xiong's design and it keeps thresholds
     interpretable in physical units;
@@ -33,6 +34,28 @@ Pass 2 -- eliminate undersized regions, smallest first:
     exact failure that cap exists to prevent. Regions that cannot be placed
     under the ceiling stay undersized and get reported.
 
+What Xiong et al. 2024 (doi:10.14214/sf.23014) support here: (a) others use
+the method, a merge in two steps whose second step takes the segments under
+the minimum area and relaxes the thresholds. Pass 2's order of choice is this
+pipeline's own (review C62, 20 Oct 2026; read that day on the publisher's
+page, the image of Eq. 2 and the text under it). Xiong's eliminating rule
+(section 2.6.2, Eq. 2) lists five conditions: the segment under the minimum
+area, the same tree species, the tree-proportion and stand-height differences
+under the relaxed thresholds TP2 and SH2, and the longest common side. The
+text under it reads: "We evaluate in turn whether neighbor n meets the
+conditions of Eq. 2. Segment m will be merged with its neighbor n which
+matched the condition. If no neighbor or more than one neighbors match the
+condition, we will proceed to the next condition to ensure there is neither
+repetition nor omission." So there the conditions are taken one at a time,
+and the longest common side, the last, decides when those before it leave no
+single neighbour; read plainly, that includes a segment no neighbour of which
+meets them. Pass 2 here applies every relaxed tolerance at once, takes the
+closest neighbour that passes, and uses the longest boundary only when none
+passes. The register entry spec-merge-two-pass-hard-gate recorded the fallback
+as Xiong's, confirmed by Eq. 2 ending on the longest common side alone; the
+sentence quoted above is the fuller evidence, and it supports a last step on
+the longest common side, not pass 2's order of choice.
+
 Two properties this file is careful about:
 
 **Attribute means are weighted by per-criterion valid pixel count, not total
@@ -43,11 +66,16 @@ a canopy height for territory that never measured one -- the merge would invent
 data. 14 of the 1249 superpixels in the committed baseline run have no
 `canopy_height` at all (ETH no-data), so this is not hypothetical.
 
-**A pair needs at least `min_defined_criteria` criteria defined on both sides.**
-One criterion is too weak a similarity test to justify a pass-1 merge. Pairs
-that fall short drop to pass 2, which is the right destination -- refusing to
-merge them at all does not avoid a weak merge, it just leaves them to the
-blinder shared-edge rule.
+**A pair needs at least `min_defined_criteria` criteria defined on both sides,
+in both passes.** One criterion is too weak a similarity test to justify a
+merge. `compare` applies this floor under pass 2's relaxed tolerances as well,
+so a pair that falls short never merges on its attributes: in pass 2 a region
+below `min_area_ha` whose neighbours all fall short of the floor, or fail the
+relaxed tolerances, joins one only by the shared-edge fallback, which ignores
+attributes; and two regions that are both at or above the minimum and fall
+short do not merge at all. Corrected 20 Oct 2026 (review C13): this said that
+such pairs "drop to pass 2, which is the right destination", as if pass 2
+could still match them on their attributes.
 
 Provenance -- what each stand is made of. It is recorded beside the merge and
 never read back by it: no merge decision depends on anything described here.
@@ -65,7 +93,12 @@ longer without saying so:
                    which ignores attributes
   below_min   int  1 if the stand ended below `min_area_ha`, else 0
   below_why   str  why, when below_min is 1; "" when it is 0. One of:
-                     "isolated"       it touches no other stand
+                     "isolated"       it shares no edge with another stand:
+                                      no 4-connected neighbour in the graph
+                                      (`fmu.utils.adjacency`), so a stand that
+                                      meets another only at a corner is
+                                      isolated too (review C16; this said "it
+                                      touches no other stand")
                      "area_blocked"   every neighbouring stand is too big to
                                       take it under the ceiling: `max_area_ha`,
                                       or `max_area_ha + min_area_ha` with
@@ -102,6 +135,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
+from fractions import Fraction
 from typing import Any
 
 from fmu.utils.adjacency import SuperpixelGraph
@@ -180,6 +214,19 @@ class MergeResult:
     # `stand_attributes`, and one entry per stand. The fields are documented in
     # the module docstring.
     stand_provenance: dict[int, dict[str, Any]] = field(default_factory=dict)
+
+
+def _whole_pixels_within(scale_m: int, *bounds_ha: float) -> int:
+    """The most whole pixels whose area is at most the sum of `bounds_ha`.
+
+    Worked out exactly, so that a bound of exactly N pixels admits N pixels at
+    any scale (review B18): each bound is taken as the decimal it prints as
+    (`str` gives the shortest decimal that reads back as the same float, so a
+    bound written in a config as 0.35 is 0.35) and the arithmetic is on
+    fractions. Floats would not do: 35 * 0.01 is a hair over 0.35.
+    """
+    total_ha = sum((Fraction(str(b)) for b in bounds_ha), Fraction(0))
+    return math.floor(total_ha * 10_000 / (scale_m * scale_m))
 
 
 class _UnionFind:
@@ -271,12 +318,36 @@ def merge_superpixels(
     def area(root: int) -> float:
         return regions[root].n_pixels * px_to_ha
 
+    # The ceilings a merge is held to, in whole pixels (review B18): a merge adds
+    # the two regions' pixels and compares the sum with these. Adding two float
+    # areas judged some merges that end exactly on a ceiling as over it (at 3 ha,
+    # 10 of the 299 ways to split 300 px). The minimum is compared as before, a
+    # region's area against min_area_ha.
+    max_px = _whole_pixels_within(graph.scale_m, max_area_ha)
+    soft_ceiling_px = _whole_pixels_within(graph.scale_m, max_area_ha, min_area_ha)
+
+    def joined_px(a: int, b: int) -> int:
+        """The pixels of two regions together."""
+        return regions[a].n_pixels + regions[b].n_pixels
+
     def order_key(root: int) -> tuple[float, float, int]:
         """Deterministic tie-break: centroid, then dense index.
 
         Not SNIC labels: the two arms' tessellations diverge run to run, so
         label order is not a stable thing to sort by. Rounded to 7 decimal
         places (~1 cm) so float noise cannot reorder otherwise-equal stands.
+
+        What the code does, recorded 20 Oct 2026 (review C12): the dense index
+        is the rank of the root superpixel's SNIC label (`fmu.utils.adjacency`
+        numbers the sorted labels 0 to n - 1), so where two centroids agree to
+        7 decimals this key falls back on SNIC label order. And the shared-edge
+        fallback of `pass2_partner` does not use this key: a tie there, two
+        neighbours sharing boundaries of the same length, goes to the lower
+        root index, which is SNIC label order
+        (tests/test_region_merge.py::test_a_fallback_tie_goes_to_the_lower_root_index_the_snic_label_order).
+        The register entry spec-merge-runs-client-side-uncached says ties are
+        broken by centroid; whether the code or the entry is to change is a
+        question for Jaskaran.
         """
         lon, lat = regions[root].centroid()
         return (round(lon, 7), round(lat, 7), root)
@@ -337,7 +408,7 @@ def merge_superpixels(
             a, b = uf.find(i), uf.find(j)
             if a == b:
                 continue
-            if area(a) + area(b) > max_area_ha:
+            if joined_px(a, b) > max_px:
                 blocked_area += 1
                 continue
             ok, d, n_defined = compare(a, b, criteria)
@@ -365,7 +436,7 @@ def merge_superpixels(
             # Re-check: earlier merges this round may have grown one side past
             # the cap. Skipping is correct -- the pair gets reconsidered next
             # round against the grown region.
-            if area(ra) + area(rb) > max_area_ha:
+            if joined_px(ra, rb) > max_px:
                 continue
             keep, gone = (ra, rb) if order_key(ra) <= order_key(rb) else (rb, ra)
             merges_made.append((keep, "n_pass1"))  # provenance only
@@ -390,19 +461,18 @@ def merge_superpixels(
     relaxed = {b: t * relax_factor for b, t in criteria.items()}
     # With pass2_soft_ceiling on: the most a pass-2 merge of a region below
     # min_area_ha may make, and what Config.max_component_pixels() is derived
-    # from. It is checked on the result of each merge, not assumed from "below
-    # the minimum plus at most max_area_ha": a neighbour already over
-    # max_area_ha after an earlier such merge could otherwise take a second
-    # region and pass it.
+    # from. It is checked, in whole pixels (soft_ceiling_px), on the result of
+    # each merge, not assumed from "below the minimum plus at most max_area_ha":
+    # a neighbour already over max_area_ha after an earlier such merge could
+    # otherwise take a second region and pass it.
     soft_ceiling_ha = max_area_ha + min_area_ha
     pass2_merges = 0
     pass2_fallback_merges = 0
     # With pass2_soft_ceiling on: the merges that took a region over
     # max_area_ha, by a relaxed match and by the shared-edge fallback. "Over"
-    # is decided as the hard ceiling decides it, on the sum of the two areas,
-    # so a merge that ends exactly on max_area_ha can come out a hair over it
-    # and is then ranked and counted as over; stands_over_max_area, which
-    # compares to 6 decimals, does not count the stand it makes.
+    # is decided as the hard ceiling decides it, in whole pixels, so a merge
+    # that ends exactly on max_area_ha is not over it, as stands_over_max_area,
+    # which compares to 6 decimals, does not count the stand it makes.
     pass2_relaxed_over_max = 0
     pass2_fallback_over_max = 0
     pass2_iterations = 0
@@ -470,15 +540,18 @@ def merge_superpixels(
         Otherwise `over` is empty and this is the rule of every earlier run:
         steps 1 and 3 over the fitting neighbours. Closest is `d` under the
         relaxed tolerances, ties broken by order_key; the longest boundary is
-        Xiong's eliminate-pass fallback, ties broken by the lower root index.
+        the fallback, ties broken by the lower root index: SNIC label order,
+        not the centroid order_key gives (review C12; see order_key). This order
+        of choice is this pipeline's own, not Xiong's eliminating rule, which
+        takes its conditions one at a time (the module docstring; review C62).
         """
         soft = pass2_soft_ceiling and area(r) < min_area_ha
         fitting: list[int] = []
         over: list[int] = []
         for nb in sorted(root_neighbours(r), key=order_key):
-            if area(r) + area(nb) <= max_area_ha:
+            if joined_px(r, nb) <= max_px:
                 fitting.append(nb)
-            elif soft and area(r) + area(nb) <= soft_ceiling_ha:
+            elif soft and joined_px(r, nb) <= soft_ceiling_px:
                 over.append(nb)
         for candidates, over_max in ((fitting, False), (over, True)):
             scored = []
@@ -572,9 +645,9 @@ def merge_superpixels(
     root_to_stand = {root: sid for sid, root in enumerate(roots)}
     assignment = [root_to_stand[uf.find(i)] for i in range(n)]
 
-    # The ceiling a stand below the minimum had to join a neighbour under:
-    # max_area_ha, or with pass2_soft_ceiling on, soft_ceiling_ha.
-    ceiling_below_min = soft_ceiling_ha if pass2_soft_ceiling else max_area_ha
+    # The ceiling a stand below the minimum had to join a neighbour under, in
+    # whole pixels: max_area_ha, or with pass2_soft_ceiling on, soft_ceiling_ha.
+    ceiling_below_min_px = soft_ceiling_px if pass2_soft_ceiling else max_px
     orphans_isolated = 0
     orphans_area_blocked = 0
     orphans_no_attribute_match = 0
@@ -592,7 +665,7 @@ def merge_superpixels(
         if not nbrs:
             orphans_isolated += 1
             why_below_min[root] = "isolated"
-        elif not any(area(root) + area(nb) <= ceiling_below_min for nb in nbrs):
+        elif not any(joined_px(root, nb) <= ceiling_below_min_px for nb in nbrs):
             # Every neighbour is already too big to absorb this one under the
             # ceiling. This is the signal that max_area_ha is too tight, and it
             # is what stranded 163 of 388 regions in the min-3/max-4 prototype.
@@ -710,6 +783,8 @@ def calibrate_thresholds(
     graph: SuperpixelGraph,
     means: dict[int, dict[str, float | None]],
     criteria: dict[str, float],
+    *,
+    min_defined_criteria: int,
 ) -> dict[str, Any]:
     """Where the configured tolerances land in this AOI's own difference
     distribution, and what fraction of pairs the gate actually admits.
@@ -720,10 +795,20 @@ def calibrate_thresholds(
       - `percentile_of_threshold`: per band, the share of adjacent pairs whose
         difference falls at or below the tolerance. This is the number the spec
         originally described as "p60-p75", and taken alone it is misleading.
-      - `joint_admit_rate`: the share of pairs passing *all* criteria at once.
-        The gate is conjunctive, so per-band marginals do not describe it: three
-        criteria at ~54%, ~76% and ~79% marginal admit 38.7% jointly, not the
-        32.4% independence would predict and not any of the marginals.
+      - `joint_admit_rate`: the share of pairs the gate admits, of the
+        `n_pairs_with_any_defined_criterion` pairs with at least one criterion
+        defined on both sides. The gate admits a pair when every criterion
+        defined on both sides is within its tolerance and at least
+        `min_defined_criteria` of them are defined on both sides, as in
+        `merge_superpixels`. The gate is conjunctive, so per-band marginals do
+        not describe it: three criteria at ~54%, ~76% and ~79% marginal admit
+        38.7% jointly, not the 32.4% independence would predict and not any of
+        the marginals.
+
+    Before 20 Oct 2026 (review C14) the joint rate also counted as admitted a
+    pair with fewer than `min_defined_criteria` criteria defined that passed the
+    ones it had, which the gate rejects; the joint rates recorded before then
+    are from before the fix.
 
     A low joint rate is **not** a reason to loosen a threshold. Pass rate is a
     diagnostic, not an objective; tuning to a target admit rate is exactly the
@@ -738,19 +823,19 @@ def calibrate_thresholds(
     for i, j in graph.edges:
         mi, mj = means.get(i, {}), means.get(j, {})
         passes_all = True
-        any_defined = False
+        n_defined = 0
         for band in bands:
             a, b = mi.get(band), mj.get(band)
             if a is None or b is None:
                 continue
-            any_defined = True
+            n_defined += 1
             delta = abs(a - b)
             diffs[band].append(delta)
             if delta > criteria[band]:
                 passes_all = False
-        if any_defined:
+        if n_defined:
             joint_total += 1
-            joint_pass += int(passes_all)
+            joint_pass += int(passes_all and n_defined >= min_defined_criteria)
 
     def pct(sorted_vals: list[float], threshold: float) -> float:
         if not sorted_vals:

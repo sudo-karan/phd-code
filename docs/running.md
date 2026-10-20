@@ -187,7 +187,11 @@ projects/<your-project>/assets/fmu/<config_name>/<stage_name>/<output_key>__<key
   digits, a hash over what that step reads (its settings in `STEP_SETTINGS`, the
   ROI file's content, and the keys of the steps whose outputs it reads), so a
   setting moves the key of the step that reads it and of the steps after it, and
-  no other. Every asset is exported on the analysis grid segmentation works on
+  no other. The ROI file is read from its path as the config gives it, relative
+  to the working directory, and a file that cannot be read hashes as nothing,
+  with no warning: from another folder every per-step key changes, and the pass
+  runner reports every upstream asset as missing (exit 3). Run from the repo root
+  or the run tree's root (review C40). Every asset is exported on the analysis grid segmentation works on
   (the ROI's UTM zone at `export.analysis_scale_m`), so a stage reads cached
   features on the very pixels it would compute them on live. A per-step asset
   also carries the count and SHA-256 of the images each of its input
@@ -363,16 +367,45 @@ python odisha_script/run_passes_safely.py --label <name> \
 The wrapper runs one pass at a time and, before each, waits until Earth Engine
 has no queued or running task whose description starts with the name of a
 config it is about to run. It calls the shell script with `MAX_PASSES=1` and
-`RUN_PASSES_SAFELY=1`. Within a batch it never re-runs a config that has
-finished (the export stage would submit its Drive exports again); a new batch
+`RUN_PASSES_SAFELY=1`. A config is known by its `name:`, after which the
+pipeline names its tasks; the shell script names its exit lines after the file
+name less `.yaml`. So the wrapper refuses (exit 93) a config whose `name:`
+differs from its file name, a path that does not end in `.yaml`, and a name
+listed twice (round 13). It never re-runs a config that has finished (the export
+stage would submit its Drive exports again): a batch started again with the
+same `--label` reads `<label>.state.json` first and skips, with a log line,
+every config an earlier batch of that label finished or put under needs
+attention, so a batch cut short is resumed by giving the same command again
+(round 13). A config whose export stage was running when the batch was cut short
+is put under needs attention, as one whose export stage failed is: its Drive
+exports may have been sent, so read the log first. A batch under another label
 does not know what an earlier one finished, so do not list a finished config in
-it. It does not retry a config whose export stage failed, allows one batch at a
-time (a lock file in the log folder), and refuses a run tree with modified
-tracked files. Config paths are
-relative to the run tree, which needs its own `.env`. It writes
-`<log-dir>/<label>.log` and `<label>.state.json` (the commit it ran from and
-each pass's per-stage exit codes); `--log-dir` defaults to `<run-tree>/logs`,
-which is git-ignored. It needs live Earth Engine and submits tasks.
+it. A config counts as finished, in the state file and in the log's `ALL CONFIGS
+COMPLETE`, when its export stage exits 0: its Drive exports have then been
+submitted, not finished. Nothing in the batch waits on them or records how they
+ended (the runner's `--wait` covers the cache exports only, and the export call
+is not given it), so read their states on the Earth Engine task list; their ids
+are in the config's run record, `drive_exports` (review C39). It does not retry
+a config whose export stage failed, allows one batch at a time on the machine
+(before anything else it takes a lock on `~/.fmu/run_passes_safely.lock`,
+whatever the run tree or the log folder, and refuses to start, exit 90, while
+another batch holds it), and refuses a run tree with modified tracked files. It
+reads the run tree again before and after each pass, and starts no pass on a
+tree that has changed since the batch started (its commit moved, or a tracked
+file is modified): the configs left are not finished, and it ends with exit 95;
+a change seen after the last pass ends it so too (round 13, review C32). Ctrl-C,
+SIGTERM and SIGHUP reach the shell script and the runner too: the wrapper passes
+them on, waits for both to end, records the pass and stops (exit 128 plus the
+signal's number). The two run in a process group of their own and hold the lock
+as well, so if the wrapper itself is killed (`kill -9`) they run on, and no new
+batch starts until they have ended. A signal ignored when the batch started
+(under `nohup`) stays ignored. Config paths are relative to the run tree, which
+needs its own `.env`. It writes `<log-dir>/<label>.log` and `<label>.state.json`
+(the run tree's commit and modified tracked files as the batch started, each
+pass's per-stage exit codes with the tree as it stood before and after the pass,
+and the change that stopped the batch, if one did); `--log-dir` defaults to
+`<run-tree>/logs`, which is git-ignored. It needs live Earth Engine and submits
+tasks.
 
 Then compare. Two general tools, and an Odisha wrapper:
 
@@ -567,7 +600,10 @@ python scripts/fetch_drive_vectors.py                                  # all con
 python scripts/fetch_drive_vectors.py --configs sanjay_van_alphaearth  # just one
 ```
 It keeps only the newest `<config>_stands_<layer>.geojson` (normalizing the `(n)`
-suffixes) and skips the SHP/DBF.
+suffixes) and skips the SHP/DBF. It stops if several Drive folders carry the name, and
+if a layer's polygon count is not the `n_features` that the config's newest run manifest
+(`outputs/runs/<config>_2*/manifest.json`, or `--runs-root`) records for it; such a layer
+is not saved.
 
 Once the configs have run (their `cluster_profiles.csv`, `metrics_<config>.json`,
 and exported `stands_*` vectors are on disk), `scripts/report.py` turns them into
@@ -603,7 +639,7 @@ prints (screenshot them).
 | `KeyError: 'roi' not found` | Forgot to seed the context | `ctx.set("roi", load_roi_geometry(config.roi.roi_file))` |
 | `KeyError: 'habitat_mask' not found` (or any other context key) | Ran a stage out of order, its `required_inputs` weren't produced yet | Run upstream stages first; the orchestrator validates this and tells you which input is missing |
 | Stage fails with "image computation user memory limit exceeded" | Live tile rendering of a compute-heavy layer | Enable caching (`use_cache=True`). The next run loads the static asset |
-| `ValueError: cluster_labels asset is missing the 'clustering_metadata' property` in export | The cached `cluster_labels` asset was produced by an older clustering stage | Running clustering again does not replace the asset: the run finds it in the cache and reads it back. Delete the config's cached assets, then run the config again. From the repo root, `python rebuild_cache.py <config_name>` lists what would be deleted and `python rebuild_cache.py --delete <config_name>` deletes it. Give the config's name, not its path; with no name it takes `sanjay_van_baseline` and `sanjay_van_nirv_dual`. It deletes every cached asset of that config, all stages, so do not use it on a config whose assets are kept as a record: the `_repro` configs (`docs/demo/README.md`) and the Odisha configs whose cached labels are pinned (`field-cached-type-labels-pinned` in `docs/decisions.yaml`) |
+| `ValueError: cluster_labels asset is missing the 'clustering_metadata' property` in export | The cached `cluster_labels` asset was produced by an older clustering stage | Running clustering again does not replace the asset: the run finds it in the cache and reads it back. Delete the config's cached assets, then run the config again. From the repo root, `python rebuild_cache.py <config_name>` lists what would be deleted and `python rebuild_cache.py --delete <config_name>` deletes it. With `--delete` it refuses while a task whose description starts with the config's name is queued or running (an export of the old code would write its asset after the deletion), and it exits non-zero if any listing or deletion failed. Give the config's name, not its path; with no name it takes `sanjay_van_baseline` and `sanjay_van_nirv_dual`. It deletes every cached asset of that config, all stages, so do not use it on a config whose assets are kept as a record: the `_repro` configs (`docs/demo/README.md`) and the Odisha configs whose cached labels are pinned (`field-cached-type-labels-pinned` in `docs/decisions.yaml`) |
 | Live tests skip with "Baseline cache not populated" | `test_pipeline_smoke_live.py` needs baseline assets first | Run `inspect_clustering.py --config configs/sanjay_van_baseline.yaml` |
 | Drive export task never appears | GEE Tasks page shows the task with FAILED, usually GEE quota or permission issues | Check the task error message; may need to wait an hour for quota reset |
 

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 import sys
 from pathlib import Path
 
@@ -226,6 +227,24 @@ def test_boxes_are_named_as_the_village_test_names_its_parts():
     # the habitation of the box would be dhenkanal:BALIKUMA; stats.load names it by the plots' site polygon
     assert "dhenkanal:Balikurma" in names and "dhenkanal:BALIKUMA" not in names
     assert len(names) == len(parts)
+
+
+def test_the_rules_used_where_the_declaration_is_silent_are_cited_by_the_docstrings_numbers(monkeypatch):
+    """Review C7. The docstring numbers the rules Q1 to Q8, and Q7 and Q8 are applied too;
+    docs/handoff/2026-10-17-round9-chat.md asks them under its own numbers, 1 to 7 in another
+    order (Q2 is its 4, Q7 its 2), and does not ask Q3 or Q5. The report must cite Q1-Q8 of
+    the docstring and give the handoff's number of each, not "Q1-Q6" in both."""
+    qs = [line.split()[0] for line in C.__doc__.splitlines() if re.match(r"  Q\d  ", line)]
+    assert qs == [f"Q{i}" for i in range(1, 9)]
+    res = json.loads((C.SCORES_DIR / "keptland_s1desc_r9_chance.json").read_text())
+    monkeypatch.setattr(C, "_lines", [])
+    C.report(res, pd.DataFrame(index=range(267)), np.array(["covered"] * 267))
+    head = " ".join(" ".join(C._lines).split("HOW TO READ IT")[0].split())
+    assert "Q1-Q6" not in head
+    assert "Q1-Q8 in the script's docstring" in head
+    for q, item in (("Q1", 1), ("Q2", 4), ("Q4", 5), ("Q6", 6), ("Q7", 2), ("Q8", 7)):
+        assert f"{q} its {item}" in head or f"{q} is its question {item}" in head, q
+    assert "Q3 and Q5 are not asked there" in head
 
 
 def test_output_stems():

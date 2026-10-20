@@ -74,13 +74,13 @@ Builds the habitat mask, water mask, and labeled landcover summary. IndiaSAT-pri
 **Datasets:**
 - CoRE Stack LULC (`projects/corestack-trees/assets/LULC_v4`, a folder of per-year images `lulc_v4_YYYY_YYYY`, class band `predicted_label`); primary habitat source, 30 m annual maps, hydrological-year window `masking.indiasat_year_min/max` (default 2017-2021). Mirror of the private `projects/ee-indiasat/...` product
 - ESA WorldCover v200 (`ESA/WorldCover/v200`); habitat fallback where IndiaSAT has no data
-- JRC Global Surface Water 1.4 (`JRC/GSW1_4/GlobalSurfaceWater`); permanent water from occurrence, for the downstream distance-to-water feature only
+- JRC Global Surface Water 1.4 (`JRC/GSW1_4/GlobalSurfaceWater`); permanent water from occurrence, for `water_mask` only, not for habitat (features_static builds the distance-to-water input from the same definition)
 
 **Logic:**
 - `veg_indiasat` = per-pixel **majority vote** of the yearly habitat indicator (IndiaSAT class ∈ `indiasat_habitat_classes`, default 6 = Trees, 12 = Shrubs/Scrubs) over the usable (non-masked) year images in the window — habitat if more usable years were Trees/Shrubs than not. A **tie** is broken by the **most recent usable year** (sorted by the year parsed from each asset id, since the images carry no `system:time_start`; cascading to the next-latest where the newest is no-data). Masked where IndiaSAT has no usable year.
 - `veg_wc` = WorldCover class ∈ `keep_worldcover_classes` (fallback)
 - `habitat_mask` = `veg_indiasat` where IndiaSAT has data, else `veg_wc`. Single-phase: no water or built-up subtraction — those classes are simply not in the habitat set.
-- `water_mask` = JRC occurrence ≥ threshold. Built for the distance-to-water feature; NOT used for habitat exclusion.
+- `water_mask` = JRC occurrence ≥ threshold, over the ROI (`jrc_water_mask`). Drawn in `landcover_summary`; NOT used for habitat exclusion. Since round 13 the distance-to-water feature does not read it: features_static builds its own input with the same function over the ROI buffered by the transform's reach, since this one ends at the ROI (review A1).
 - `landcover_summary` = labeled image: `6` / `12` for the IndiaSAT habitat classes kept, `80` for JRC water (water wins where they overlap), `0` for other/excluded.
 - `mask_provenance` = why each pixel is in or out of `habitat_mask`. Band `reason`: `1` kept, `2` removed as cropland, `3` built-up, `4` water, `5` other non-habitat, `0` no land-cover data in either map. Band `source`: `1` IndiaSAT decided, `2` WorldCover decided, `0` neither has data. `reason == 1` exactly where `habitat_mask == 1`; a pixel IndiaSAT removed takes the reason of its most recent non-habitat year. Derived beside the mask, never fed back into it.
 
@@ -90,7 +90,7 @@ Builds the habitat mask, water mask, and labeled landcover summary. IndiaSAT-pri
 - `indiasat_habitat_classes`; IndiaSAT classes kept as habitat (default `[6, 12]`)
 - `indiasat_class_band`; band holding the IndiaSAT class label (default `null` = first band of each annual image)
 - `keep_worldcover_classes`; WorldCover fallback classes, used only where IndiaSAT has no data (default `[10, 20, 30]`)
-- `jrc_water_occurrence_threshold`; % months water observed (default 50.0); builds `water_mask` for the distance-to-water feature only
+- `jrc_water_occurrence_threshold`; % months water observed (default 50.0); defines water for `water_mask` and for the distance-to-water feature (read by features_static too), never for habitat
 
 **Why these data sources** (see also `docs/design_notes.md`):
 IndiaSAT is a purpose-built Indian LULC (Bansal et al. 2021) whose Trees/Shrubs classes give a habitat definition tailored to Indian landscapes; the majority vote across the usable 2017-2022 years (ties broken by the most recent usable year) makes that definition robust to single-year misclassification. WorldCover is a global 10 m fallback for the rare pixels IndiaSAT doesn't cover.
@@ -114,6 +114,7 @@ Loads Sentinel-2 and Sentinel-1 collections, applies S2 cloud masking (SCL-based
 - S2 collection: filter by ROI + phenology window + `CLOUDY_PIXEL_PERCENTAGE ≤ max_cloud_pct`. Per-image SCL masking drops classes 3 (cloud shadow), 8 (cloud medium prob), 9 (cloud high prob), 10 (thin cirrus).
 - S1 collection: filter by IW mode, single orbit direction (default ASCENDING), VV+VH polarizations. **No dB conversion needed**; `COPERNICUS/S1_GRD` is already in dB ([source](https://developers.google.com/earth-engine/guides/sentinel1)).
 - S2 composite: re-filter S2 by the optical_composite window, apply SCL mask, reduce by `s2_composite_reducer` (default median).
+- Each window includes its end date: `filterDate`'s end is exclusive, so the stage passes the day after it (`advance(1, "day")`, as `features_embedding` does). Before round 13 it passed the end date itself, and the three windows stopped on 30 Dec 2022 (review A4).
 - Empty windows to `RuntimeError` (fail-loud per ENG-012).
 
 **Config knobs** (in `configs/*.yaml`):
@@ -142,10 +143,10 @@ y(t) = a + b·cos(2π·t) + c·sin(2π·t)
      + [f·t]                          # if include_trend
 ```
 
-Where `y` is the vegetation index (NDVI or NIRv) and `t` is years since `features_optical.time_reference` (default 2017-01-01; configurable per DEC-???). The reference epoch shifts the numeric value of `phase_*` by a constant but does **not** affect amplitude, trend, or any clustering outcome. Cross-config phase comparability (which the metrics stage relies on) requires both configs use the same `time_reference`.
+Where `y` is the vegetation index (NDVI or NIRv) and `t` is years since `features_optical.time_reference` (default 2017-01-01; configurable per DEC-???). Moving the reference date by D years leaves amplitude, trend and the residual variance as they are, and shifts `phase_*` by the same angle at every pixel. With `include_trend` on (every shipped config) it also changes `<prefix>_mean` by trend × D, a different amount at each pixel, because `<prefix>_mean` is the intercept `a`: the de-seasonalised trend line's value on `time_reference`, not the average over the window (review C9). Both reach the clustering, which uses `<prefix>_mean` and scales the phase's sin and cos each by its own spread (review A2, B13), so the reference date **can** change the stand types. Until round 13 this paragraph said it could not. Cross-config phase comparability (which the metrics stage relies on) requires both configs use the same `time_reference`.
 
 **Derived metrics extracted from the coefficients** (per DEC-002):
-- `<prefix>_mean = a` (intercept)
+- `<prefix>_mean = a` (intercept): with `include_trend` on, the trend line's value on `time_reference`, not the mean over the window (review C9; the name is kept)
 - `<prefix>_amplitude_annual = sqrt(b² + c²)`
 - `<prefix>_phase_annual = atan2(c, b)`; radians, when peak greenness happens
 - `<prefix>_amplitude_semi`, `<prefix>_phase_semi`; dual harmonic only
@@ -220,29 +221,30 @@ When `include_neighborhood_stats` is false, only `canopy_height` is emitted (not
 
 Per-pixel features that don't change meaningfully over the analysis time window: terrain, distance to water, long-term rainfall climatology.
 
-**Reads from context:** `roi`, `water_mask`
+**Reads from context:** `roi`
 **Writes to context:** `static_features` (single multi-band image)
 **Cacheable:** yes
 
 **Bands (default):**
 - `elevation`; meters above sea level (NASADEM)
-- `slope`; degrees (derived from elevation via `ee.Terrain.products`)
-- `aspect`; degrees 0-360, cyclic raw (derived from elevation)
-- `distance_to_water`; meters to nearest water pixel (uses `water_mask` from masking stage, via `fastDistanceTransform`)
+- `slope`; degrees, fractional (`ee.Terrain.slope` on the DEM cast to float, since round 13; the runs before took slope and aspect from `ee.Terrain.products`, which gives them in whole degrees on an integer and on a float DEM alike, read on Earth Engine in round 13; review A5)
+- `aspect`; degrees 0-360, cyclic raw, fractional (`ee.Terrain.aspect`, likewise)
+- `distance_to_water`; meters to nearest JRC water pixel, via `fastDistanceTransform` (see below)
 - `annual_rainfall`; mm/year mean from CHIRPS PENTAD over 1991-2020 climatology
 
 When `include_climate` is false, only the first 4 bands are emitted.
 
 **On aspect:** emitted as raw degrees (0-360). Cyclic, so 0° and 359° look maximally different to a Euclidean clusterer despite being identical. Future improvement: emit `aspect_sin`, `aspect_cos` instead. Left as raw to match notebook approach (ENG-006).
 
-**On distance to water:** uses `water_mask` from masking, not a fresh JRC pull, so the water source is consistent between exclusion (masking) and feature (here). The transform looks for water within `max_water_distance_pixels` × analysis scale (default 10 km), and off the axes a little further (real distances up to 12.3 km in the Odisha box runs). Where it finds none, it returns its fill value, sqrt(2^31 − 1) pixels (463,409.5 m at 10 m), not a distance, unless `features_static.cap_distance_to_water` is on, which caps the band there (register entry `spec-static-cap-distance-to-water`; on in the four Odisha kept-land configs of round 6).
+**On distance to water:** water is masking's definition, JRC occurrence ≥ `masking.jrc_water_occurrence_threshold` (one function, `fmu.stages.masking.jrc_water_mask`), but built here over the ROI buffered by the transform's reach, `water_reach_m`: ceil(sqrt(2) × `max_water_distance_pixels`) pixels, the corner of the square neighbourhood the transform searches (14,150 m by default); the result is clipped to the ROI. Until round 13 the transform read masking's `water_mask`, which ends at the ROI, so it saw no water outside the ROI and every value was at most the distance to water inside it (all 219 stands of the Angul `_r9` box layer read 10,000 m; review A1). The transform looks for water within `max_water_distance_pixels` × analysis scale (default 10 km), and off the axes a little further (real distances up to 12.3 km in the Odisha box runs). Where it finds none, it returns its fill value, sqrt(2^31 − 1) pixels (463,409.5 m at 10 m), not a distance, unless `features_static.cap_distance_to_water` is on, which caps the band there (register entry `spec-static-cap-distance-to-water`; on in the four Odisha kept-land configs of round 6).
 
 **On rainfall:** 30-year standard climatology (1991-2020). Long enough to smooth out year-to-year variation. For a small AOI like Sanjay Van, this band will be nearly constant; included for cross-AOI generality.
 
 **Config knobs:**
 - `features_static.include_climate`; bool (default `true`)
 - `features_static.max_water_distance_pixels`; int 100-10000 (default 1000)
-- `features_static.cap_distance_to_water`; bool (default `false`, every earlier run; left out of the fingerprint while false). On: `distance_to_water` is capped at `max_water_distance_pixels` × analysis scale. Off, the stage makes the calls it made before (`tests/test_static_distance_cap.py`).
+- `features_static.cap_distance_to_water`; bool (default `false`, every earlier run; left out of the fingerprint while false). On: `distance_to_water` is capped at `max_water_distance_pixels` × analysis scale. Off, nothing is capped (`tests/test_static_distance_cap.py`).
+- `masking.jrc_water_occurrence_threshold`, `datasets.water`; the water the distance is measured to (read here since round 13)
 - `datasets.climate`; CHIRPS pentad path (default `UCSB-CHG/CHIRPS/PENTAD`)
 - `dates.climate`; climatology window (default 1991-01-01 to 2020-12-31)
 
@@ -257,13 +259,13 @@ The *embedding arm's* single feature stage. Runs when `clustering.feature_source
 **Cacheable:** yes
 
 **Datasets** (`datasets.embedding`, default `GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL`):
-- AlphaEarth Satellite Embedding; a 64-band annual `ImageCollection` (bands `A00..A63`, one image per year from 2017). The default source.
+- AlphaEarth Satellite Embedding; a 64-band annual `ImageCollection` (bands `A00..A63`, one image per year from 2017 for each tile the collection is cut into). The default source.
 - Tessera (or any other pretrained embedding) uploaded to Earth Engine as a single `Image`; point `datasets.embedding` at the uploaded asset id.
 
 **Logic:**
 - Sniff the asset type with `ee.data.getAsset` (the same tolerant pattern as masking).
 - **Single `Image` (Tessera):** loaded as-is; no collapse.
-- **`ImageCollection` (AlphaEarth) or unknown:** filter to the ROI + the `dates.phenology` window (2017-2022, the shared time-series support the handcrafted features rest on; end date made inclusive via `advance(1, "day")`) and collapse to ONE image by `mean` (default) or `median`. An empty window (no images intersecting the ROI) is a hard error (fail-loud per ENG-012).
+- **`ImageCollection` (AlphaEarth) or unknown:** filter to the ROI + the `dates.phenology` window (2017-2022, the shared time-series support the handcrafted features rest on; end date made inclusive via `advance(1, "day")`) and collapse to ONE image by `mean` (default) or `median`, per pixel. An empty window (no images intersecting the ROI) is a hard error (fail-loud per ENG-012). The metadata's `n_source_images`, and the count in its note "mean over N annual image(s)", is the size of the filtered collection: images, one per tile per year, not years. A ROI over two tiles records 12 for 2017-2022, as the Dhenkanal box runs do (review C11).
 - Optional band restriction via `band_names` (None keeps every embedding dimension), then `clip(roi)`.
 - The embedding is **not** masked or otherwise altered here; the experiment holds everything but the clustering feature vector fixed.
 
@@ -310,7 +312,7 @@ NASADEM (30 m), CHIRPS (5,500 m), and cyclic features (phase, aspect) remain exc
 - `segmentation.normalize_inputs`; bool (default `true`; z-score per band before SNIC)
 - `segmentation.normalize_distance_scale`; bool (default `true`; divide by the RMS 4-neighbour feature distance)
 - `segmentation.input_bands`; list of `{source, band}`, in order. `band: "*"` takes every band of that source (how the embedding arms segment on all 64/128 dimensions without listing them). Band names must be unique after expansion, since SNIC names its per-cluster means `<band>_mean`.
-- `segmentation.mask_before_snic`; bool (default `false`). On: kept land is `habitat_mask` 1 on the analysis grid, clipped to the ROI with the same `reproject(grid).clip(roi)` as the stage's outputs (`fmu.utils.kept_land.kept_land_in_roi`), so SNIC cannot grow a superpixel past the ROI edge; the z-score and the distance normaliser are measured over that land, SNIC runs on the stack with every other pixel masked, seeded on the grid plus every pixel of each kept patch no grid point falls in, and both outputs are masked to kept land; the merge then joins only superpixels that touch on kept land. Off, the stage computes what it always did (`tests/test_segmentation_off_golden.py`). Register entry `spec-segmentation-mask-before-snic`. Not run in batch. Without the clip, `scripts/check_snic_on_kept_land.py` and `scripts/check_split_superpixels.py` ran read-only on Earth Engine on 14 Oct 2026 and found three superpixels cut in two by the ROI edge (`docs/reproducibility/snic_split_superpixels_kendujhar.json`), which is why kept land is clipped. With the clip, both ran again read-only on 15 Oct 2026, for Kendujhar's and Sanjay Van's kept-land configs, and found no superpixel in pieces and none outside the ROI (`docs/reproducibility/snic_on_kept_land_*_keptland.json`, `snic_split_superpixels_*_keptland.json`).
+- `segmentation.mask_before_snic`; bool (default `false`). On: kept land is `habitat_mask` 1 on the analysis grid, clipped to the ROI with the same `reproject(grid).clip(roi)` as the stage's outputs (`fmu.utils.kept_land.kept_land_in_roi`), so SNIC cannot grow a superpixel past the ROI edge; the z-score and the distance normaliser are measured over that land, SNIC runs on the stack with every other pixel masked, seeded on the grid plus every pixel of each kept patch no grid point falls in, and both outputs are masked to kept land; the merge then joins only superpixels that touch on kept land. Off, the stage computes what it always did (`tests/test_segmentation_off_golden.py`). Register entry `spec-segmentation-mask-before-snic`. Not run in batch. Without the clip, `scripts/check_snic_on_kept_land.py` and `scripts/check_split_superpixels.py` ran read-only on Earth Engine on 14 Oct 2026 and found three superpixels cut in two by the ROI edge (`docs/reproducibility/snic_split_superpixels_kendujhar.json`), which is why kept land is clipped. With the clip, both ran again read-only on 15 Oct 2026, for Kendujhar's and Sanjay Van's kept-land configs, and found no superpixel in pieces and none outside the ROI (`docs/reproducibility/snic_on_kept_land_*_keptland.json`, `snic_split_superpixels_*_keptland.json`). Those checks count pieces on the label raster, which still holds the ROI's edge pixels the clip keeps; the exported vector layers keep only pixels whose centre is inside the ROI, so a superpixel or stand drawn through such pixels can still come out in more than one polygon there (review C17; section 11).
 - `segmentation.drop_kept_patches_below_min_area`; bool (default `false`; needs `mask_before_snic`). Leaves out, before SNIC, each kept patch smaller than `merge.min_area_ha` that touches no other kept land (`Config.kept_patch_min_pixels()`).
 
 **Related decisions:** DEC-001 (superpixels not pixels), DEC-014 (compute everywhere, mask at clustering), DEC-016 (cross-pol metric definition).
@@ -337,17 +339,17 @@ Per-superpixel feature stack to preprocessing to k-means to per-pixel cluster la
 
 1. **Build raw feature stack**; in the handcrafted arm, auto-detect bands from each features_* asset (works for both `ndvi_*` and `nirv_*` configs) and drop `*_obs_count` (metadata), `*_residual_variance` (diagnostic-only, not a clustering feature), and `annual_rainfall` (constant in our ROI; kept in the static-features asset for cross-AOI generality). In the embedding arm the raw stack is simply the `embedding_features` image itself (every embedding dimension is a feature; nothing to concatenate or exclude). Everything from step 2 onward is band-name-agnostic and runs identically for both arms.
 
-2. **Cyclic decomposition**; every `*_phase_*` band and `aspect` is replaced with a sin/cos pair. Aspect is converted from degrees to radians first.
+2. **Cyclic decomposition**; every `*_phase_*` band and `aspect` is replaced with a sin/cos pair. Aspect is converted from degrees to radians first. A cell whose `slope` is 0 has no aspect (`ee.Terrain.products` gave it 0, which reads as due north), so its aspect pair is (0, 0) (review A5, round 13); a unit's mean aspect vector then holds only the directions of its sloping cells.
 
-3. **Per-unit averaging**; `reduceConnectedComponents(reducer=mean, labelBand=<unit labels>, maxSize=<measured neighbourhood>)` over stands (or superpixels when merge is off). Every pixel now holds its unit's mean for each feature. `maxSize` is an *extent*, and EE pads every tile by it, so memory grows with bands x `maxSize`: at the derived cap (1200 px at 10 ha / 10 m) a wide band stack runs out of memory. The stage first checks the pixel count against the cap (`assert_components_fit`). It then measures each label's pixel-coordinate extent in the feature band-0 grid and the label grid, and passes `ceil(widest x 1.2) + 2`, never above the cap. Every unit is still aggregated whole, so means agree with the cap version up to floating-point summation order. The manifest records `rcc_neighbourhood_px` and `widest_unit_extent_px`. See `_component_neighbourhood_px` for the argument and its precondition (evaluation at `analysis_scale_m` in the measured grids).
+3. **Per-unit averaging**; one mean per unit label (a stand, or a superpixel when merge is off) over all of its pixels in the ROI, a stand in several pieces included: one grouped reduction of the stack by the label image (`ee.Reducer.sum().unweighted().forEachBand(...).group(...)`, in the label image's grid at `analysis_scale_m`, no `bestEffort`), then each band painted back on the label image with `remap`, server-side. A band's mean is over the unit's pixels where that band has data: each band goes into the reduction unmasked (0 where it has no data) beside a band of 1 where it has data, and the mean is the one sum over the other, because Earth Engine's grouped unweighted reducers add a band's masked pixels into its sum (read on Earth Engine in round 13). A unit with no data in a band is masked in it, so it has no k-means row; `reduceConnectedComponents` gave such a unit 0 in that band (read on Earth Engine in round 13, on synthetic images). Every pixel of a unit now holds its unit's mean for each feature. Until round 13 this was `reduceConnectedComponents`, which averages each 8-connected piece of a label on its own, so a stand in several pieces had one mean per piece and its k-means row came from one of them (review B14); for a unit in one piece the means are the same up to floating-point summation order, in every band the unit has data in. With it went the measured `maxSize` neighbourhood, the check of the labels against the cap (`assert_components_fit`), and the stage-metadata keys that described them (`docs/outputs.md`).
 
 4. **Habitat filter**; `updateMask(habitat_mask)`. Non-habitat pixels excluded from training and labelling.
 
-5. **Skewness detection**; `ee.Reducer.skew()` per band. Bands with `|skew| > 1.0` are marked for log-transform.
+5. **Skewness detection**; `ee.Reducer.skew()` per band. Bands with `|skew| > 1.0` are marked for log-transform. The sin and cos of a harmonic phase (`*_phase_*_sin`, `*_phase_*_cos`) are not tested and never logged (review B13, round 13): they are the coordinates of a point on a circle, and their skew across units says where the units' phases sit on it, which moves with the harmonic's reference date. Aspect's pair is tested like every other band.
 
 6. **Log-transform**; `log(x − band_min + 1e-3)` so log is defined even for zero/negative values (some bands like `trend` and `vv_minus_vh_median` include both).
 
-7. **Robust scaling**; per band: `(x − median) / IQR`. Bands with zero IQR (true constants) are dropped; they contribute nothing to clustering and would cause division-by-zero.
+7. **Robust scaling**; per band: `(x − median) / IQR`. Bands with zero IQR (true constants) are dropped; they contribute nothing to clustering and would cause division-by-zero. The median and IQR are exact: each band's column of the one-row-per-unit sample is read back (`aggregate_array`) and its quartiles taken by linear interpolation between order statistics, numpy's default; the drop test and the scaling use the same centre and spread (review B16, round 13). Earth Engine's percentile reducer, used before, falls back to histogram buckets, so a band whose p25 and p75 shared a bucket got a spread of exactly 0 and was dropped although it had spread (`distance_to_water` in round 7's two Koraput runs).
 
 8. **K-means**; one row per unit and *every* unit (`stratifiedSample(numPoints=1, classBand=<unit>)`), train `ee.Clusterer.wekaKMeans(k=6, init=KMeansPlusPlus, seed=42)`, apply to all habitat pixels. No pixel sampling: the stack is constant within a unit, so a pixel sample drew each unit once per pixel and area-weighted every statistic computed from it. With `clustering.fit_excludes_stands_below_min_area` on, the stands the merge left below `merge.min_area_ha` are left out of the rows the fit is trained on, and typed with every other unit when the clusterer is applied (config knobs below).
 
@@ -360,7 +362,7 @@ Per-superpixel feature stack to preprocessing to k-means to per-pixel cluster la
 - `clustering.seed`; random seed (default 42)
 - `clustering.skewness_threshold`; log-transform threshold (default 1.0 per DEC-004)
 - `clustering.fit_excludes_stands_below_min_area`; bool (default `false`; needs `merge.enabled`). On: the stands the merge marks below `merge.min_area_ha` (`below_min` in `stand_provenance`) are left out of the k-means training rows of step 8, and only out of those: the samples of steps 5 to 7 still take a row from every unit. They stay on the map as stands of their own, and the trained clusterer, applied to every unit, gives each the type of the nearest fitted cluster. `clustering_metadata` records how many were left out of the fit and their area, and the summary number `units_left_out_of_fit` how many (`docs/outputs.md`). Off, the stage makes the Earth Engine calls and writes the `clustering_metadata` it did before (`tests/test_clustering_off_golden.py`). Register entry `spec-clustering-fit-excludes-stands-below-min-area`. Not run in batch; read-only on Earth Engine it left out the rows intended (`docs/reproducibility/fit_excludes_stands_kendujhar.json`, 15 Oct 2026).
-- (no `superpixel_max_size` knob: the `reduceConnectedComponents` cap is derived as `ceil(merge.max_area_ha * 10000 / analysis_scale_m^2) * 1.2`, with `merge.max_area_ha + merge.min_area_ha` when `merge.pass2_soft_ceiling` is on, and asserted against the actual labels at stage entry. That argument *masks* components larger than it rather than clamping, so a hand-set value silently deletes stands -- which is what happened when the two arms drifted to 1024 and 256. The cap is the upper bound: clustering passes the smaller measured unit extent plus margin (step 3), while metrics still passes the cap itself.)
+- (no `superpixel_max_size` knob: the `reduceConnectedComponents` cap is derived as `ceil(merge.max_area_ha * 10000 / analysis_scale_m^2) * 1.2`, with `merge.max_area_ha + merge.min_area_ha` when `merge.pass2_soft_ceiling` is on, and asserted against the actual labels at stage entry. That argument *masks* components larger than it rather than clamping, so a hand-set value silently deletes stands -- which is what happened when the two arms drifted to 1024 and 256. Metrics passes the cap itself. Clustering passed a smaller measured unit extent plus margin until round 13, and calls `reduceConnectedComponents` no longer (step 3).)
 - `normalization.method`; `robust` (default, per DEC-003) or `zscore` (notebook baseline)
 
 **Related decisions:** DEC-001, DEC-003, DEC-004, DEC-014.
@@ -377,7 +379,7 @@ Per-cluster feature statistics in **original units** (un-scaled, un-log-transfor
 - `cluster_id`, `pixel_count`, `area_ha`
 - For each feature band: `<band>_mean`, `<band>_p25`, `<band>_p50`, `<band>_p75`
 
-Cyclic bands (phase, aspect) are decomposed to sin/cos first; circular mean can be recovered from `atan2(sin_mean, cos_mean)` if needed for interpretation.
+Cyclic bands (phase, aspect) are decomposed to sin/cos first, by the clustering stage's rule (a flat cell's aspect pair is (0, 0)); circular mean can be recovered from `atan2(sin_mean, cos_mean)` if needed for interpretation.
 
 Profile data lives in the `manifest.json` `metadata.profiles` block, so it's automatically saved alongside every run. The inspect script also writes `cluster_profiles.csv` to the run dir for easy pandas loading.
 
@@ -416,7 +418,9 @@ The manifest goes into the orchestrator's `manifest.json` automatically (via sta
 - `raster_features_raw`: every feature band in original units (metres, dB, NDVI, ...) plus a `cluster_id` band; multiband float, human-readable / GIS-ready.
 - `raster_features_scaled`: the preprocessed `feature_stack` exactly as k-means saw it (log/robust-scaled, cyclic-decomposed) plus a `cluster_id` band; multiband float.
 
-**Vector exports** use `ee.batch.Export.table.toDrive`. The SNIC layer is built server-side via `reduceToVectors` on the snic_clusters image, then `reduceRegions(mean)` on the concatenated features_* stack, then `reduceRegions(mode)` for cluster_id, then geometry-derived attributes (area_ha, perim_m, n_pixels, centroid lat/lon), then renumbered 1..N by centroid (sorted lat desc / lon asc; deterministic). The dissolved layer is built via `reduceToVectors(eightConnected=true)` on cluster_labels, filtered by `vector_min_stand_pixels`, with `profile_<band>_p50` columns attached from cluster_profiles, then renumbered 1..M by the same centroid scheme.
+**Vector exports** use `ee.batch.Export.table.toDrive`. The SNIC layer is built server-side via `reduceToVectors` on the snic_clusters image, then `reduceRegions(mean)` on the concatenated features_* stack (a plain mean per band, so a polygon's `aspect` and `*_phase_*` are arithmetic means of angles, not circular means: review C10), then `reduceRegions(mode)` for cluster_id, then the size and geometry attributes (n_pixels, the pixel count `reduceToVectors` gives each polygon, and area_ha from it, since round 13; perim_m and the centroid lat/lon from the geometry), then renumbered 1..N by centroid (sorted lat desc / lon asc; deterministic). The dissolved layer is built via `reduceToVectors(eightConnected=true)` on cluster_labels, filtered by `vector_min_stand_pixels`, with `profile_<band>_p50` columns attached from cluster_profiles, then renumbered 1..M by the same centroid scheme.
+
+**Pieces** (review C17). SNIC labels every pixel the ROI clip keeps, those the ROI only partly covers at its edge included, while `reduceToVectors` keeps only the pixels whose centre is inside the ROI, so a superpixel or stand drawn through such pixels can come out as more than one polygon, and one with no pixel centre inside the ROI gets none. In a large ROI a label can also have a stray piece against a line a multiple of 256 pixels from the ROI's south-west pixel corner. `docs/outputs.md` ("Stands and superpixels in pieces") gives the counts of the runs of record; the joins key on `stand_lbl`, so no score changes.
 
 SHP outputs use the `selectors` argument to pick a minimal SHP-safe attribute subset (every name ≤10 chars). GeoJSON outputs pass no `selectors`, so they include all attached properties.
 

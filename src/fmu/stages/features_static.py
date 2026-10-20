@@ -6,15 +6,19 @@ clustering purposes, as are elevation/slope/aspect.
 
 Bands (with default config):
 - elevation: meters above sea level (NASADEM)
-- slope: degrees (derived from elevation)
-- aspect: degrees 0-360, cyclic (derived from elevation)
-- distance_to_water: meters to nearest water pixel from masking's water_mask,
-  looked for within features_static.max_water_distance_pixels (10 km by
-  default). Off the axes the search reaches a little past 10 km (real
-  distances up to 12.3 km in the Odisha box runs); where it finds no water,
-  the transform returns a fill value (463,409.5 m at 10 m). With
-  features_static.cap_distance_to_water on, every distance past the cap, the
-  fill value and those real ones, reads as the cap.
+- slope: degrees, fractional (ee.Terrain.slope on the DEM as float; whole
+  degrees from ee.Terrain.products until round 13, review A5)
+- aspect: degrees 0-360, cyclic, fractional (ee.Terrain.aspect, likewise)
+- distance_to_water: meters to nearest JRC water pixel, looked for within
+  features_static.max_water_distance_pixels (10 km by default). Off the axes
+  the search reaches a little past 10 km (real distances up to 12.3 km in the
+  Odisha box runs); where it finds no water, the transform returns a fill
+  value (463,409.5 m at 10 m). With features_static.cap_distance_to_water on,
+  every distance past the cap, the fill value and those real ones, reads as
+  the cap. The water is masking's definition (masking.jrc_water_mask), built
+  here over the ROI buffered past the transform's reach (`water_buffer_m`), not
+  read from masking's water_mask, which ends at the ROI: before round 13 the
+  transform saw no water outside the ROI (review A1).
 - annual_rainfall: mm/year, 30-year mean from CHIRPS climatology
 
 Per DEC-014, computed over the full ROI; the habitat mask applies at
@@ -29,6 +33,7 @@ matches the notebook approach.
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 import ee
@@ -41,16 +46,50 @@ from fmu.stages.base import (
     StageResult,
     register_stage,
 )
+from fmu.stages.masking import jrc_water_mask
 from fmu.utils.gee import safe_call, safe_get_info
 from fmu.utils.logging import get_logger
 
 log = get_logger(__name__)
 
 
+#: How much further than the reach the water input is buffered. buffer() measures
+#: in metres on Earth Engine's sphere (its documentation: "in a spherical coordinate
+#: system"), the reach in the analysis grid's metres (UTM). In a UTM zone the two
+#: differ by under 0.7%: most along a meridian near the equator, where the sphere's
+#: radius is 0.6% longer than the ellipsoid's radius of curvature along the
+#: meridian, with the zone's scale factor (0.9996 at its centre) on top. Round 13, a
+#: check of the A1 fix: on the reach alone, a neighbourhood corner at an Odisha box
+#: corner lay up to 15 m past the 14,150 m buffer.
+WATER_BUFFER_OVER_REACH = 1.01
+
+
+def water_reach_m(max_water_distance_pixels: int, analysis_scale_m: int) -> int:
+    """How far past the ROI the water input of distance_to_water must reach, in metres.
+
+    fastDistanceTransform looks for water in a square of half-width
+    max_water_distance_pixels around each pixel, whose corners are sqrt(2) times
+    as far: ceil(sqrt(2) x max_water_distance_pixels) whole pixels (14,150 m at
+    the default 1,000 pixels of 10 m), in the analysis grid. The input is buffered
+    1% further (water_buffer_m), so that every water pixel that neighbourhood
+    holds, for every pixel of the ROI, is in the input, and every distance the
+    transform finds is the one it would find with no clip (review A1).
+    """
+    return math.ceil(math.sqrt(2) * max_water_distance_pixels) * analysis_scale_m
+
+
+def water_buffer_m(max_water_distance_pixels: int, analysis_scale_m: int) -> int:
+    """The buffer of the ROI the water input is built over, in metres on Earth
+    Engine's sphere: the reach, 1% further (WATER_BUFFER_OVER_REACH); 14,292 m at
+    the default 1,000 pixels of 10 m."""
+    reach_m = water_reach_m(max_water_distance_pixels, analysis_scale_m)
+    return math.ceil(reach_m * WATER_BUFFER_OVER_REACH)
+
+
 @register_stage("features_static")
 class FeaturesStaticStage(Stage):
     name = "features_static"
-    required_inputs = {"roi", "water_mask"}
+    required_inputs = {"roi"}
     produces = {"static_features"}
     cacheable_outputs = {"static_features"}
 
@@ -86,7 +125,7 @@ class FeaturesStaticStage(Stage):
 
     def input_collections(self, ctx: PipelineContext, config: Config) -> dict[str, Any]:
         """The CHIRPS pentads the rainfall climatology sums, when it is computed (the
-        DEM is one image, named in the config)."""
+        DEM and the JRC water map are one image each, named in the config)."""
         if not config.features_static.include_climate:
             return {}
         return {"chirps": _climate_window(config)}
@@ -94,22 +133,35 @@ class FeaturesStaticStage(Stage):
     @safe_call("computing static features")
     def run(self, ctx: PipelineContext, config: Config) -> StageResult:
         roi = ctx.get("roi")
-        water_mask: ee.Image = ctx.get("water_mask")
         params = config.features_static
 
-        # Terrain: elevation, slope, aspect from NASADEM
-        dem = ee.Image(config.datasets.dem).select("elevation")
-        terrain = ee.Terrain.products(dem)
-        elevation = terrain.select("elevation").rename("elevation")
-        slope = terrain.select("slope").rename("slope")
-        aspect = terrain.select("aspect").rename("aspect")
+        # Terrain: elevation, slope and aspect from NASADEM. Slope and aspect come
+        # from ee.Terrain.slope and ee.Terrain.aspect on the DEM cast to float, in
+        # fractional degrees. Until round 13 they came from ee.Terrain.products,
+        # which gives them as whole degrees (integer bands) on an integer and on a
+        # float DEM alike (read on Earth Engine in round 13; review A5). Elevation
+        # keeps the DEM's values, as a float band.
+        dem = ee.Image(config.datasets.dem).select("elevation").toFloat()
+        elevation = dem.rename("elevation")
+        slope = ee.Terrain.slope(dem).rename("slope")
+        aspect = ee.Terrain.aspect(dem).rename("aspect")
 
-        # Distance to water: fast distance transform on the water_mask.
+        # Distance to water: fast distance transform on JRC water, built over the
+        # ROI buffered past the transform's reach so that water outside the ROI is
+        # seen (review A1); the stack is clipped to the ROI below. The buffer is 1%
+        # past the reach, as buffer() measures on a sphere (water_buffer_m).
+        # maxError 1 m: by default buffer() may fall short by 1% of the distance.
         # fastDistanceTransform returns squared euclidean distance in pixels;
         # take sqrt and multiply by analysis scale (10 m) to get meters.
         max_dist_pix = params.max_water_distance_pixels
+        buffer_m = water_buffer_m(max_dist_pix, config.export.analysis_scale_m)
+        water = jrc_water_mask(
+            ee.Image(config.datasets.water),
+            config.masking.jrc_water_occurrence_threshold,
+            roi.buffer(buffer_m, maxError=1),
+        )
         distance_to_water = (
-            water_mask.fastDistanceTransform(max_dist_pix, "pixels", "squared_euclidean")
+            water.fastDistanceTransform(max_dist_pix, "pixels", "squared_euclidean")
             .sqrt()
             .multiply(config.export.analysis_scale_m)
         )
