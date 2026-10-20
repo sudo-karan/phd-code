@@ -159,3 +159,13 @@ fields, after the review of 19 Oct 2026 (`docs/reviews/2026-10-19-review.md`; fi
   `stand_attributes` for 43 of them, 1 or 2 for the others). None is a stand with a band gap, as
   the name says: until round 13 a stand with no data in a band got 0 there and kept its row
   (review B14). See `docs/outputs.md`, "What `units_dropped_missing_band` has counted".
+- **C17, stands in pieces.** The "Stand polygons" column counts polygons, and a stand can have
+  two: SNIC labels the edge pixels the ROI only partly covers, and the export keeps only pixels
+  whose centre is inside the ROI, which can cut a stand drawn through them. Stands in two polygons:
+  Dhenkanal 5, Kendujhar 2 and Koraput 5 (hand-crafted); Dhenkanal 1, Kendujhar 2 and Koraput 2
+  (AlphaEarth); the tile 5; none in Angul or Sanjay Van. Every smaller piece lies within 5.2 m of
+  the ROI's edge, but those of 2 stands of the tile (1 and 4 pixels), which lie against a line 256
+  pixels, or a multiple of it, from the ROI's south-west pixel corner. So Dhenkanal's 552
+  hand-crafted stand polygons are 547 stands, 5 of them in two pieces, while 5 of its 552 stands
+  have no polygon. The joins key on `stand_lbl`, so no score changes. See `docs/outputs.md`,
+  "Stands and superpixels in pieces".

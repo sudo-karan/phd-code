@@ -4923,7 +4923,18 @@ decisions:
     Jaskaran's to decide, with the counts above, before they run. The clip to the ROI is his answer of 15 Oct 2026
     to question 1 of docs/handoff/2026-10-14-round3.md: "clip kept land (and so SNIC's input and seeds) to the ROI
     before SNIC, only when segmentation.mask_before_snic is on. Use the same clip as the output clip, so both treat
-    edge pixels the same way. No new setting: no kept-land segmentation asset exists yet."
+    edge pixels the same way. No new setting: no kept-land segmentation asset exists yet." Review C17 (19 Oct
+    2026; added here 20 Oct 2026, round 13): the checks of 15 Oct 2026 count pieces on the label raster, which
+    still holds the ROI's edge pixels the clip keeps, those the ROI only partly covers. The exported vector
+    layers keep only the pixels whose centre is inside the ROI (reduceToVectors), so a superpixel or stand drawn
+    through such pixels can still come out in more than one polygon. In the layers of the per-step runs of
+    record (docs/reproducibility/r9_runs and round12_runs, committed or off git with their SHA-256 checked) 0 to
+    14 superpixels and 0 to 7 stands per run are in more than one polygon (two, but for one superpixel in three
+    in each of the 10 ha hand-crafted runs of Dhenkanal and Kendujhar); the smaller pieces lie within 5.2 m of the
+    ROI's edge, but for a few stray pieces of 1 to 41 pixels against a line a multiple of 256 pixels from the ROI's
+    south-west pixel corner (4 superpixels and 2 stands in the 10 km tile, and 1 superpixel in each of three
+    AlphaEarth layers), which the review reads as a line between Earth Engine's computation tiles. The joins key
+    on stand_lbl, so no score changes; whether to change anything is put to Jaskaran.
   evidence:
   - path: src/fmu/stages/segmentation.py
     what: >-
@@ -4973,7 +4984,11 @@ decisions:
   - path: tests/test_repro_fingerprints.py
     what: Pins the fingerprints of the 14 _repro configs to those in the names of their saved assets
   - path: docs/outputs.md
-    what: The merge.kept_land row of the metrics table
+    what: >-
+      The merge.kept_land row of the metrics table; since round 13, the stands and superpixels in pieces in the
+      vector layers (review C17)
+  - path: docs/reviews/2026-10-19-review.md
+    what: C17
   papers: []
   status: adopted
   design_notes_section: null

@@ -884,6 +884,26 @@ type image on a geographic grid, whose pixels are smaller than
 `analysis_scale_m`² away from the equator (about 93 m² at 10 m and 21° N), so
 there its `area_ha` overstates the area (by about 7.5% at 21° N).
 
+**Stands and superpixels in pieces** (review C17). A stand or a superpixel can
+come out as two polygons, so a layer can hold more polygons than stands. SNIC
+labels every pixel the ROI clip keeps, those the ROI only partly covers at its
+edge included, while `reduceToVectors` keeps only the pixels whose centre is
+inside the ROI; a label drawn through such edge pixels is then cut in two. In a
+large ROI a label can also have a stray piece of a few pixels against a line a
+multiple of 256 pixels from the ROI's south-west pixel corner, which the review
+reads as a line between Earth Engine's computation tiles. In the layers of the
+per-step runs of record (`docs/reproducibility/r9_runs` and `round12_runs`,
+committed or off git with their SHA-256 checked), 0 to 7 stands and 0 to 14
+superpixels per run are in two polygons. Every smaller piece lies within 5.2 m
+of the ROI's edge, but the stray pieces, of 1 to 41 pixels, of 4 superpixels and
+2 stands in the 10 km tile and of 1 superpixel in each of three AlphaEarth layers
+(Dhenkanal 3 ha, Koraput 3 ha and 10 ha). The kept-land checks that found no
+superpixel in pieces (register entry `spec-segmentation-mask-before-snic`)
+counted pieces on the label raster, which still holds those edge pixels. The
+joins key on `stand_lbl`, so no score changes. A stand with no pixel whose
+centre is inside the ROI gets no polygon at all (2 to 10 per run; "What
+`units_dropped_missing_band` has counted", above).
+
 ### Attribute schemas
 
 #### `stands_merged`
