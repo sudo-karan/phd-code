@@ -279,6 +279,26 @@ samples do not add up to that. The area of the stands left out, and how many
 stands the merge marked below the minimum, are in `clustering_metadata` (under
 `export_manifest_<config>.json` below), not among these six.
 
+**What `units_dropped_missing_band` has counted** (review C15). Its name and its
+description say: units inside the habitat mask that the fit left out because a
+feature band has no data over them. In every per-step run of record
+(`docs/reproducibility/r9_runs`, `round12_runs` and `round9_cache_test`) it
+equals instead the number of stands with no polygon in `stands_merged`, 2 to 5
+per box run and 10 in the 10 km tile: stands at the ROI's edge with no pixel
+whose centre is inside the ROI (0 to 2 pixels in the merge's `stand_attributes`,
+which until round 13 counted a pixel the edge cuts by its share, review B17).
+The unit counts come from a frequency histogram that counts a pixel by its
+share inside the ROI, so they list such a stand; the fit's one-pixel sample and
+`reduceToVectors` take pixel centres inside the ROI, so it gets neither a row
+nor a polygon. No stand with a band gap is among them: until round 13 the unit
+means gave a unit with no data in a band 0 there, so it kept its row (round 13,
+review B14). Since round 13 such a unit is masked in that band, has no row and
+is counted here too, and the merge puts a superpixel with no pixel whose centre
+is inside the ROI in no stand (review B17); neither has run on Earth Engine yet.
+The legacy-layout runs (`docs/demo/remerge`) were not checked. The name, the
+description and the stage's log line are unchanged; renaming the count, or
+counting the two causes apart, is a question for Jaskaran (round 13).
+
 These counts are distinct unit labels on the analysis grid, as the fit saw
 them. They are not counts of the polygons in the exported stand layer, and the
 two do not agree: in the 14 re-runs of 13 Oct 2026 the exported
@@ -932,7 +952,10 @@ dropping it would delete real delineated area from the deliverable while
 leaving the file looking complete. Two reasons a stand is untyped: it lies
 outside the habitat mask, or at least one active feature band has no data
 over it. The clustering stage logs the split, and the counts are in the run
-manifest as `n_units_outside_habitat` and `n_units_dropped_null_band`. Note
+manifest as `n_units_outside_habitat` and `n_units_dropped_null_band`. In the
+runs of record the second counted stands at the ROI's edge with no polygon, not
+stands with a band gap ("What `units_dropped_missing_band` has counted", above;
+review C15). Note
 that SHP cannot represent a null integer — read the GeoJSON if you need to
 tell null from 0. Such a stand has no row in the k-means fit, and since round 13
 its type is null in every cache layout, whatever typed pixels its polygon

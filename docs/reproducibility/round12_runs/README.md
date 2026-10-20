@@ -106,3 +106,10 @@ fields, after the review of 19 Oct 2026 (`docs/reviews/2026-10-19-review.md`; fi
   number of years: the Dhenkanal run's 12 are the twelve its 3 ha run lists
   (`docs/reproducibility/r9_runs/README.md`), over the six years 2017 to 2022; every other run's 6
   is one tile. The mean is taken per pixel, as declared.
+- **C15, `units_dropped_missing_band`.** In every run here the clustering manifest's
+  `units_dropped_missing_band` (`n_units_dropped_null_band` in `clustering_metadata`) equals the
+  number of stands with no polygon in `stands_merged`, 2 or 5 per run: stands at the ROI's edge with
+  no pixel whose centre is inside the ROI (0 to 2 pixels in `stand_attributes`). None is a stand
+  with a band gap, as the name says: until round 13 a stand with no data in a band got 0 there and
+  kept its row (review B14). See `docs/outputs.md`, "What `units_dropped_missing_band` has
+  counted".

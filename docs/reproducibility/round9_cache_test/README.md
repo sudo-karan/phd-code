@@ -64,3 +64,15 @@ segmentation stage's `metadata.distance_scale`) give 1.23244545317568 for run 1 
 1.2324454531756805 for run 2 (`_r9_check`): they differ by 4.4e-16, two units in the last place
 of a double. Since round 13 the runner reads the scale from that pass's manifest. The records and
 the comparison are kept as written; no number changed.
+
+## Notes added 20 Oct 2026 (round 13)
+
+The files above are kept as the runs wrote them. These notes say how to read some of their
+fields, after the review of 19 Oct 2026 (`docs/reviews/2026-10-19-review.md`; finding ids in bold).
+
+- **C15, `units_dropped_missing_band`.** In both runs the clustering manifest's
+  `units_dropped_missing_band` (`n_units_dropped_null_band` in `clustering_metadata`) is 2, the
+  number of stands with no polygon in `stands_merged`: two stands at the ROI's edge with no pixel
+  whose centre is inside the ROI (0 pixels in `stand_attributes`). Neither is a stand with a band
+  gap, as the name says: until round 13 a stand with no data in a band got 0 there and kept its
+  row (review B14). See `docs/outputs.md`, "What `units_dropped_missing_band` has counted".

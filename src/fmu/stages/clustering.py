@@ -1070,6 +1070,14 @@ def _train_and_apply_kmeans(
     #     is masked, those units are missing from `cluster_labels` too. They
     #     become holes in the map, not mistyped stands.
     #
+    # What the second count held in the runs of record (review C15): the units at
+    # the ROI's edge with no pixel whose centre is inside the ROI. _count_units'
+    # frequency histogram counts a pixel by its share inside the ROI, so it lists
+    # them, and the one-pixel sample, which takes pixel centres, has no row for
+    # them (nor does the export give them a polygon). Until round 13 a unit with
+    # no data in a band got 0 there and kept its row, so no band gap was counted;
+    # since B14 such a unit is masked and is counted here too. The name is kept.
+    #
     # Both are counted against every row, before the stands below the minimum
     # are left out (clustering.fit_excludes_stands_below_min_area), or those
     # stands would be counted as missing band data.

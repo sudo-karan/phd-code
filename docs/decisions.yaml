@@ -5190,7 +5190,14 @@ decisions:
     isolated patch of kept land: 21 of the 1,293 isolated stands with a polygon in the eight 3 ha box runs of round
     9, 10 of 578 in the 10 km tile and 1 of 387 in Sanjay Van baseline, counted offline from the committed layers
     (docs/reproducibility/r9_runs/README.md). The setting takes every stand below the minimum whatever below_why
-    says, so this changes nothing it does.
+    says, so this changes nothing it does. Review C15 (19 Oct 2026; added here 20 Oct 2026, round 13): in every
+    per-step run of record (docs/reproducibility/r9_runs, round12_runs and round9_cache_test)
+    n_units_dropped_null_band, the summary number units_dropped_missing_band, equals the number of stands with no
+    polygon in stands_merged, 2 to 5 per box run and 10 in the 10 km tile: stands at the ROI's edge with no pixel
+    whose centre is inside the ROI, which the coverage-weighted label histograms count and the one-pixel sample
+    cannot draw. They are not stands with a band gap: until round 13 a stand with no data in a band got 0 there
+    and kept its row (round 13, review B14). The count's name and description are unchanged; whether to rename
+    it or count the two causes apart is put to Jaskaran (question 35 of the round 13 brief).
   evidence:
   - path: src/fmu/stages/clustering.py
     what: >-
@@ -5227,6 +5234,8 @@ decisions:
     what: >-
       The read-only check of 15 Oct 2026 (scripts/check_fit_excludes_stands.py) on Kendujhar's cached box run: the
       rows left out, the types, the summary numbers
+  - path: docs/reviews/2026-10-19-review.md
+    what: C15, what n_units_dropped_null_band counted in the runs of record
   - path: tests/test_cache_fingerprint.py
     what: The setting off, left out or written out, hashes as before; on, it changes the fingerprint
   - path: tests/test_repro_fingerprints.py

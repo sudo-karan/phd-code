@@ -448,7 +448,10 @@ masked, those units are absent from `cluster_labels` too — holes in the map,
 not mistyped stands. The stage logs the split and the manifest records it as
 `n_training_units`, `n_units_total`, `n_units_in_habitat`,
 `n_units_outside_habitat` and `n_units_dropped_null_band`, alongside
-`training_unit_key`. Read the shortfall before reading a silhouette: a cluster
+`training_unit_key`. In the runs of record `n_units_dropped_null_band` counted
+the stands at the ROI's edge with no pixel whose centre is inside the ROI,
+which have no row and no polygon, not units with a band gap (review C15;
+`docs/outputs.md`). Read the shortfall before reading a silhouette: a cluster
 definition rests only on the units that reached the fit. With
 `fit_excludes_stands_below_min_area` on (below) there is a third, made on
 purpose: the stands below `merge.min_area_ha` are left out of the fit, though
