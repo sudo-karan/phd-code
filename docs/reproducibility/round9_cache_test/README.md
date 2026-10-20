@@ -26,3 +26,23 @@ run tree at `fb8e8ce`:
 | `cache_test_run3_read_back.json` | run 3: every cached output read back, no task, and the three layers against run 1's |
 
 Timings are in the logs on the Mac (`outputs/round9/logs/`), not here.
+
+**Note of 20 Oct 2026 (round 13; review A1, A4, A5, A6, B13, B14, B16, B17 and B18): both runs are
+from before the round 13 fixes.** The test compares two runs of the same code and a read-back, and
+its verdict on them stands; whether the code after the fixes reproduces as well was not tested. The
+files here are kept as the runs wrote them; no number is changed. Run 1's files are the `_r9`
+record's Kendujhar files, also in `docs/reproducibility/r9_runs/` (see the note at the end of its
+README). What reaches both runs (the round 13 brief, `docs/handoff/2026-10-20-round13.md`, Done):
+- A1: each distance to water is to water inside the ROI only, so an upper bound (none is at the 10
+  km cap; the largest is 5,029.7 m).
+- A4: one Sentinel-1 scene of 31 Dec 2022 over the Kendujhar box was left out (read-only call 4 of
+  the brief). The 188 Sentinel-1 images in the grid checks are what the runs used; the 10 manifests
+  give the windows as 2017-01-01 to 2022-12-31, though the filters stopped on 30 Dec 2022.
+- A5 (slope and aspect in whole degrees, a flat cell read as facing north), B13 (the NDVI phase's
+  cosine log-transformed), B14 (2 stands whose label has more than one polygon, in each run), B16,
+  B17 (each run record has stands with a `frac_valid_<band>` up to 2, and 2 stands of 0 pixels) and
+  B18.
+- A6: in the four layers here, 36 of 1,316 polygons are off by more than 1% (+2.33 ha; 18 in each
+  run), counted offline as the brief counts the other run folders, and every other polygon's area
+  moves by 0.1% to 0.3% on the export's new measure.
+- How far any fix moves a stand, a type or a score was not measured; it needs Earth Engine.

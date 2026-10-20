@@ -55,3 +55,59 @@ polygon.
 | `cost_<run>.json` (and `_run.json`) | Task I: the run's EECU-hours, batch by stage and online by pass, and per 1,000 ha (`scripts/eecu_by_stage.py`); the record holds the pass spans and when they were read |
 | `<run>_run.json` | the run record: merge diagnostics, per-stand attributes and provenance, export counts, cache layout, step keys, git, environment |
 | `<run>_manifest_features.json`, `_segmentation`, `_clustering`, `_export` | the manifests of the wrapper's four passes; the features pass computed and exported every feature asset |
+
+**Note of 20 Oct 2026 (round 13; review A1, A4, A5, A6, B13, B14, B16, B17 and B18): these runs are
+from before the round 13 fixes.** Their files here (the layers, the run records and the manifests)
+are kept as the runs wrote them, the record from before the fixes; no number is changed. The round
+13 brief (`docs/handoff/2026-10-20-round13.md`, Done) says what each fix changes, and that the
+hand-crafted `_r9` runs will be re-run (roadmap R3); whether R3 re-runs the AlphaEarth runs is put
+to Jaskaran there. Which fixes reach which run:
+- **The six hand-crafted runs** (the four `odisha_v120_3ha_squares_<district>_keptland_s1desc_r9`,
+  the tile and `sanjay_van_baseline_keptland_r9`):
+  - A1, distance to water saw no water outside the ROI. Angul's 219 stand polygons all read the 10
+    km cap, and Sanjay Van's 578 all read 463,409.5 m, the transform's fill value where it finds no
+    water (that config sets no cap); both runs dropped the band as constant. In Dhenkanal (279 of
+    552 at the cap) and Koraput (1,149 of 1,616, by the review) the capped values are upper bounds.
+  - A4, the Sentinel-1 and Sentinel-2 date windows stopped on 30 Dec 2022, not 31 Dec. Left out
+    (read-only call 4 of the brief): one Sentinel-1 scene of 31 Dec 2022 over the Angul, Dhenkanal
+    and Kendujhar boxes and the tile, two Sentinel-2 scenes over the Koraput boxes, and none at
+    Sanjay Van. The Sentinel-1 scene reaches `vv_minus_vh_median`, one of SNIC's six input bands,
+    and the radar bands the clustering reads; the Sentinel-2 scenes reach `B4_median`, `B8_median`
+    and `ndvi_amplitude_annual` (SNIC's inputs; the last is also one of the merge's criteria) and
+    the NDVI bands the clustering reads.
+  - A5, slope and aspect in whole degrees, and a flat cell read as facing north.
+  - B13, the NDVI phase's cosine log-transformed in every run, its sine too in Angul.
+- **The five AlphaEarth runs** (the four `odisha_alphaearth_3ha_squares_<district>_keptland_r9` and
+  `sanjay_van_alphaearth_keptland_r9`): A1, A5 and B13 do not reach them. SNIC and k-means read the
+  64 embedding bands, the merge reads canopy height and the NDVI amplitude (on the boxes also the
+  canopy height's spread), and the layers carry the embedding bands only. A4 reaches the Koraput run
+  only, through the merge's NDVI amplitude (question 1 of the brief; noted as affected until it is
+  answered, by an amount not measured). The other four read no image that A4 left out.
+- **All eleven runs:**
+  - B14, a stand in several pieces got one mean per piece, not one per stand. Stands whose label has
+    more than one polygon in the merged layer: hand-crafted Angul 0, Dhenkanal 5, Kendujhar 2,
+    Koraput 5, the tile 5, Sanjay Van 0; AlphaEarth Angul 0, Dhenkanal 1, Kendujhar 2, Koraput 2,
+    Sanjay Van 0 (the Koraput and tile layers read off git, SHA-256 checked against
+    `<run>_files_off_git.json`). A unit with no data in a band was given 0 there; whether these runs
+    had such a unit was not checked.
+  - B16, the constant-band test and the scaling used histogram quartiles, not exact ones. Where it
+    was checked, no drop decision of these runs changes; the recorded centres and spreads do.
+  - B17, the merge counted a superpixel's pixels and its valid pixels by different rules at the
+    ROI's edge. Every run record here has stands with a `frac_valid_<band>` above 1 (the largest 2
+    to 5 per run, 5 on the tile) and 1 to 13 stands of 0 pixels. The review names six edge stands
+    (hand-crafted Angul 32 and 218, Koraput 47; AlphaEarth Angul 33, Dhenkanal 255 and 431) that the
+    merge counted at 1 ha or more and that hold 97 to 99 whole pixels by its count (not checked
+    here); none holds a scored plot.
+  - B18, the merge tested its area limits on a sum of floats. The review rebuilt the graphs of three
+    runs (the tile pilot, the Angul box and the Sanjay Van baseline) and found no stand that
+    changes; this was not checked again, nor for the other runs.
+  - A6, `area_ha` and `n_pixels` came from the polygon's area, which counted some holes as area. In
+    the committed layers here, 104 of 10,381 polygons are off by more than 1% (+29.50 ha in all; 52
+    of the 3,816 stand polygons, +15.97 ha; the brief's count), and every other polygon's area moves
+    by 0.1% to 0.3% on the export's new measure. No score reads them.
+  - The 45 manifests give `s2_phenology_window`, `s2_composite_window` and `s1_radar_window` as
+    2017-01-01 to 2022-12-31; the runs' filters stopped on 30 Dec 2022 (A4).
+- How far any fix moves a stand, a type or a score was not measured; it needs Earth Engine. Round
+  13's Task 1 changes no type of these runs. The cost files record what the runs cost and are not
+  affected. The review's method questions (A2, A3, B12, B15) are not fixes of this round and are not
+  covered here.

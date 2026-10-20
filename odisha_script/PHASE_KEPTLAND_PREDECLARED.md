@@ -219,3 +219,13 @@ Made by Claude Code on Jaskaran's instruction (the round 12 brief, Task 4, roadm
   fixed the chance test's seed names: none is in the brief. It also said that no 10 ha stand
   existed on kept land, which Sanjay Van's runs contradict, and left the demo set's chance test
   out of what existed.
+
+## Note of 20 Oct 2026 (round 13): the scores of record are from before the round 13 fixes
+
+The scores of record named in the note of 19 Oct 2026 above, and the 10 ha files of the round 12
+change, rest on runs from before the round 13 fixes (review `docs/reviews/2026-10-19-review.md`, A1,
+A4, A5, A6, B13, B14, B16, B17 and B18; `docs/handoff/2026-10-20-round13.md`). They stay in the repo
+as first written, the record from before the fixes, each with a dated note
+(`keptland_scores/README.md`). The hand-crafted arm's runs are to be re-run (roadmap R3). A1 and A5
+do not reach the AlphaEarth arm, and A4 reaches it in Koraput only (question 1 of the round 13
+brief); whether R3 re-runs that arm is put to Jaskaran there. Nothing declared above is changed.
