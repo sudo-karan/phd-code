@@ -128,3 +128,8 @@ fields, after the review of 19 Oct 2026 (`docs/reviews/2026-10-19-review.md`; fi
   that read the cache, `share_kept` 2.6e-5 to 3e-4 higher. The Dhenkanal hand-crafted run's four
   manifests all read the masks from the cache, and agree. No stand, type or score reads these
   numbers. See `mask_provenance_areas` in `src/fmu/stages/masking.py`.
+- **C33, the left-out pip line.** Each record's `environment.pip_freeze_left_out` is this
+  package's own `pip freeze` line, left out of `pip_freeze_sha256`. Its commit is the one the
+  venv's editable install pointed at when the run read its environment (the live checkout,
+  `/Users/karan/Desktop/phd-code`), not the run tree's commit that `git` records: the two differ in
+  34 of the 40 records here that hold both blocks. Nothing reads the line.

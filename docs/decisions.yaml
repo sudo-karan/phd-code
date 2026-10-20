@@ -5849,7 +5849,12 @@ decisions:
     195 images at Sanjay Van, and the Kendujhar composite changed with its count unchanged (docs/reproducibility.md).
     This package's own pip freeze line names the commit, which the git block records, and would make two checkouts
     of one commit differ. The limit of 100 listed ids is Claude Code's choice. No paper was searched for this
-    decision.
+    decision. Review C33 (19 Oct 2026; added here 20 Oct 2026, round 13): the line names the commit of the
+    checkout the venv's editable install points at, the live checkout, when pip freeze ran, not always the one the
+    git block records. In a run-tree batch the code is imported from the run tree (PYTHONPATH=<run tree>/src), so
+    the two differ: in 92 of the 108 committed JSON records that hold both blocks at their top level (counted 20
+    Oct 2026). The line is left out of the hash, so the hash is unaffected, and nothing reads it. The docstring of
+    environment_state says so since round 13; whether to drop the line is put to Jaskaran.
   evidence:
   - path: src/fmu/utils/provenance.py
     what: environment_state
@@ -5861,6 +5866,8 @@ decisions:
     what: The records, computed and read back from an asset
   - path: tests/test_provenance.py
     what: environment_state
+  - path: docs/reviews/2026-10-19-review.md
+    what: C33, the left-out pip line in run-tree batches
   papers: []
   status: adopted
   design_notes_section: null

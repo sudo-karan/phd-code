@@ -220,10 +220,18 @@ def environment_state(*, refresh: bool = False) -> dict[str, Any]:
                            without comment lines and without the line of this
                            package itself, or None
       pip_freeze_packages  how many lines the hash is over
-      pip_freeze_left_out  the lines left out of the hash (this package's own:
-                           `-e git+...@<commit>#egg=fmu`, which names the commit
-                           the git block already records and would make two
-                           checkouts of one commit differ)
+      pip_freeze_left_out  the lines left out of the hash: this package's own,
+                           `-e git+...@<commit>#egg=fmu` (or `-e <path>`), which
+                           would make two checkouts of one commit differ. Its
+                           commit is that of the checkout the venv's editable
+                           install points at, when the environment is first
+                           read, not always the one the git block records: in a
+                           run-tree batch the package is imported from the run
+                           tree (PYTHONPATH=<run tree>/src) while the shared
+                           venv's editable install is the live checkout, so the
+                           two differ (review C33; in 92 of the 108 committed
+                           records with both blocks, counted 20 Oct 2026).
+                           Nothing reads the line.
       error                None, or why pip freeze could not be read
 
     Two runs with the same hash ran on the same third-party packages, version for
