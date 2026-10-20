@@ -512,7 +512,7 @@ class _FakeFeatures:
         return self
 
     # The band unmasked beside its band of pixels with data (round 13, review B17).
-    def unmask(self, value):
+    def unmask(self, value, same_footprint=True):
         return self
 
     def mask(self):

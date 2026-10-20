@@ -197,7 +197,10 @@ def test_the_grouped_reduction_counts_each_pixel_once_in_the_label_grid():
 def test_no_band_goes_into_the_grouped_reduction_masked():
     """Earth Engine's grouped unweighted reducers add a band's masked pixels into the sum (read
     on Earth Engine, 20 Oct 2026): every band of the reduced image is a band unmasked to 0, a
-    0/1 band of where a band has data, or the labels."""
+    0/1 band of where a band has data, or the labels. Both are unmasked everywhere
+    (sameFootprint false): unmask(0) alone leaves a band masked outside its footprint, and a
+    unit cut by a band's footprint then took in its masked pixels (read on Earth Engine, 20 Oct
+    2026: 2,664 and 32 pixels where 1,320 and 16 are right)."""
     config = load_config(BASELINE)
     _, log, _ = run_stage(clustering, config)
     reduction = _grouped_reduction(log)
@@ -206,11 +209,13 @@ def test_no_band_goes_into_the_grouped_reduction_masked():
     summed = made_by(log, with_labels.owner)
     assert summed.attr == "addBands"
     unmasked = made_by(log, summed.owner)
-    assert (unmasked.attr, unmasked.args) == ("unmask", (0,))
+    assert (unmasked.attr, unmasked.args) == ("unmask", (0, False))
     (has_data,) = summed.args
     renamed = made_by(log, has_data)
     assert renamed.attr == "rename"
-    above_zero = made_by(log, renamed.owner)
+    everywhere = made_by(log, renamed.owner)
+    assert (everywhere.attr, everywhere.args) == ("unmask", (0, False))
+    above_zero = made_by(log, everywhere.owner)
     assert (above_zero.attr, above_zero.args) == ("gt", (0,))
     the_mask = made_by(log, above_zero.owner)
     assert the_mask.attr == "mask"

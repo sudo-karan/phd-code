@@ -186,3 +186,33 @@ def test_the_means_are_double_precision(images):
     _labels, means, _per_piece, _region, _proj = images
     types = means.bandTypes().getInfo()
     assert {band: types[band]["precision"] for band in BANDS} == {"a": "double", "b": "double"}
+
+
+def test_a_band_whose_footprint_ends_inside_a_unit_is_averaged_over_its_data(images):
+    """A band clipped at x = 100 m (col 10) has data on unit 1's first piece, all of unit 2,
+    the west half of unit 3 and none of unit 4. Read on Earth Engine on 20 Oct 2026 (round 13):
+    unmask(0) alone leaves it masked outside its footprint, and the grouped unweighted sum then
+    took those pixels in (unit 3: 2,664 over 32 pixels, where 1,320 over 16 is right); unmasked
+    everywhere it is right."""
+    labels, _means, _per_piece, region, proj = images
+    xy = ee.Image.pixelCoordinates(ee.Projection(CRS)).reproject(proj)
+    col = xy.select("x").subtract(X0).divide(10).floor()
+    row = xy.select("y").subtract(Y0).multiply(-1).divide(10).floor()
+    a = col.add(row.multiply(10)).toDouble().reproject(proj)
+    small = ee.Geometry.Rectangle([X0, Y0 - 10 * H, X0 + 100, Y0], CRS, False)
+    c = a.clip(small).rename("c")
+    means = clustering._compute_superpixel_means(c, labels, ["c"], region, 10)
+    grouped = (
+        means.addBands(labels.rename(LABEL_BAND))
+        .reduceRegion(
+            reducer=ee.Reducer.minMax().combine(ee.Reducer.count(), sharedInputs=True)
+            .group(groupField=1, groupName=LABEL_BAND),
+            geometry=region, crs=proj, maxPixels=1_000_000,
+        )
+        .getInfo()
+    )
+    got = {int(g[LABEL_BAND]): (g.get("min"), g.get("max"), g.get("count", 0)) for g in grouped["groups"]}
+    assert got[1][:2] == pytest.approx((16.5, 16.5)) and got[1][2] == 32
+    assert got[2][:2] == pytest.approx((22.5, 22.5)) and got[2][2] == 16
+    assert got[3][:2] == pytest.approx((82.5, 82.5)) and got[3][2] == 32
+    assert got[4][2] == 0

@@ -180,7 +180,7 @@ class _Image:
     def updateMask(self, mask: Any) -> _Image:  # noqa: N802 - mirrors the ee API
         return self
 
-    def unmask(self, value: Any) -> _Image:
+    def unmask(self, value: Any, same_footprint: bool = True) -> _Image:
         return self
 
     def mask(self) -> _Image:
@@ -507,9 +507,13 @@ def test_no_masked_band_goes_into_the_grouped_reduction(monkeypatch):
     assert summed.attr == "addBands"
     renamed = made_by(log, summed.owner)
     unmasked = made_by(log, renamed.owner)
-    assert (unmasked.attr, unmasked.args) == ("unmask", (0,))
+    # Unmasked everywhere (sameFootprint false): unmask(0) alone leaves the band masked outside
+    # its footprint (read on Earth Engine, 20 Oct 2026).
+    assert (unmasked.attr, unmasked.args) == ("unmask", (0, False))
     (has_data,) = summed.args
-    above_zero = made_by(log, made_by(log, has_data).owner)
+    everywhere = made_by(log, made_by(log, has_data).owner)
+    assert (everywhere.attr, everywhere.args) == ("unmask", (0, False))
+    above_zero = made_by(log, everywhere.owner)
     assert (above_zero.attr, above_zero.args) == ("gt", (0,))
     assert made_by(log, above_zero.owner).attr == "mask"
     assert made_by(log, above_zero.owner).owner is unmasked.owner  # the same band

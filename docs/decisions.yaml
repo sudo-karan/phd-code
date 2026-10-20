@@ -6956,7 +6956,10 @@ decisions:
     mean is read back. A band's mean is over the unit's pixels where that band has data, and every pixel of the unit
     holds it: each band goes into the reduction unmasked, 0 where it has no data, beside a band of 1 where it has
     data, and the mean is the one sum over the other, since Earth Engine's grouped unweighted reducers add a band's
-    masked pixels into the sum they give a group. A unit with no data in a band is masked in that band and so has no
+    masked pixels into the sum they give a group. Both bands that go in are unmasked everywhere
+    (unmask(0, False)): unmask(0) alone leaves a band masked outside its footprint, and a unit that footprint cuts
+    then took in those pixels (read on Earth Engine on synthetic images: 2,664 over 32 pixels where 1,320 over 16 is
+    right). A unit with no data in a band is masked in that band and so has no
     k-means row (reduceConnectedComponents gave it 0 there, read on Earth Engine on synthetic images). The stage no
     longer calls reduceConnectedComponents, which averaged each 8-connected piece of a label on its own, and what
     existed only for its maxSize is removed: the measured neighbourhood (_component_neighbourhood_px,
@@ -7125,7 +7128,8 @@ decisions:
     which the graph leaves out of both histograms; and a grouped reducer adds a band's masked pixels into the sum (and
     so the mean) it gives a group, though its count leaves them out, so each criterion band goes in unmasked (0 where
     it has no data) beside a band of 1 where it has data, both summed per superpixel, and a mean is the one sum over
-    the other.
+    the other. Both are unmasked everywhere (unmask(0, False)), outside the band's footprint
+    too, since unmask(0) alone leaves it masked there and the sums then take those pixels in (read on Earth Engine).
     Inside the ROI the counts are as before. At its edge a superpixel's pixel count is now its pixels whose centre is
     inside, the means are over the pixels counted, and a superpixel with no pixel whose centre is inside is no longer
     in the graph, so its pixels, all outside the ROI by that rule, get no stand (remap masks a label it is not given).

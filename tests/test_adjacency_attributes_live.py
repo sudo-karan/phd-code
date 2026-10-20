@@ -88,3 +88,35 @@ def test_a_band_is_counted_and_averaged_over_its_pixels_with_data(merged_inputs)
                 assert means[i][band] is None, (unit, band, means[i])
             else:
                 assert means[i][band] == pytest.approx(mean, rel=1e-9), (unit, band, means[i])
+
+
+def test_a_band_whose_footprint_ends_inside_a_superpixel_is_counted_and_averaged_over_its_data():
+    """A band clipped at x = 100 m (col 10) has data on unit 1's first piece (16 pixels), all of
+    unit 2, the west half of unit 3 (16) and none of unit 4. Read on Earth Engine on 20 Oct 2026
+    (round 13): unmask(0) alone leaves it masked outside its footprint, and the grouped
+    unweighted sums then took those pixels in; unmasked everywhere they are right."""
+    init_real_gee_or_skip()
+    proj = ee.Projection(CRS).atScale(10)
+    region = ee.Geometry.Rectangle([X0, Y0 - 10 * H, X0 + 10 * W, Y0], CRS, False)
+    xy = ee.Image.pixelCoordinates(ee.Projection(CRS)).reproject(proj)
+    col = xy.select("x").subtract(X0).divide(10).floor()
+    row = xy.select("y").subtract(Y0).multiply(-1).divide(10).floor()
+
+    def box(cols, rows):
+        return col.gte(cols[0]).And(col.lte(cols[1])).And(row.gte(rows[0])).And(row.lte(rows[1]))
+
+    labels = ee.Image(0).reproject(proj)
+    for unit, boxes in UNITS.items():
+        for cols, rows in boxes:
+            labels = labels.where(box(cols, rows), unit)
+    labels = labels.updateMask(labels.gt(0)).toInt().rename("snic_clusters").reproject(proj)
+    a = col.add(row.multiply(10)).toDouble().reproject(proj)
+    small = ee.Geometry.Rectangle([X0, Y0 - 10 * H, X0 + 100, Y0], CRS, False)
+    c = a.clip(small).rename("c")
+    graph = extract_superpixel_graph(labels, region, 10, context="live merge graph")
+    means, counts = extract_superpixel_attributes(c, labels, graph, region, 10, context="live merge c")
+    by_unit = {u: (counts[i]["c"], means[i]["c"]) for i, u in enumerate(graph.raw_labels)}
+    assert by_unit[1][0] == 16 and by_unit[1][1] == pytest.approx(16.5)
+    assert by_unit[2][0] == 16 and by_unit[2][1] == pytest.approx(22.5)
+    assert by_unit[3][0] == 16 and by_unit[3][1] == pytest.approx(82.5)
+    assert by_unit[4] == (0, None)

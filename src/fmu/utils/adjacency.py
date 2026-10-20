@@ -340,9 +340,11 @@ def extract_superpixel_attributes(
         # No masked band into the grouped unweighted reduction (see the docstring):
         # the band with 0 where it has no data, and a band of where it has data.
         summed = (
-            band_image.unmask(0)
+            # Unmasked everywhere (sameFootprint false): unmask(0) alone leaves the band
+            # masked outside its footprint (read on Earth Engine in round 13).
+            band_image.unmask(0, False)
             .rename(_SUM_OF_VALUES)
-            .addBands(band_image.mask().gt(0).rename(_PIXELS_WITH_DATA))
+            .addBands(band_image.mask().gt(0).unmask(0, False).rename(_PIXELS_WITH_DATA))
         )
         grouped = safe_get_info(
             summed.addBands(label_image)

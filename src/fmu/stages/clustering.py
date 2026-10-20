@@ -732,8 +732,9 @@ def _compute_superpixel_means(
         13, on synthetic images: a band with data on 16 of a unit's 32 pixels
         summed to 2,664 where its 16 values sum to 1,320, and a unit with no data
         got a mean of 0). So each band goes in with 0 where it has no data,
-        beside a band of 1 where it has data and 0 elsewhere, and a unit's mean
-        is the one sum over the other;
+        beside a band of 1 where it has data and 0 elsewhere, both unmasked
+        everywhere, outside the band's footprint too, and a unit's mean is the
+        one sum over the other;
       - in the label image's own grid at the analysis scale, so that the pixels
         averaged are the unit's own, and with no bestEffort, which would average
         a coarser grid.
@@ -746,7 +747,12 @@ def _compute_superpixel_means(
     features = feature_image.select(band_names)
     label_image = unit_labels.select([0])
     has_data_names = [f"{band}{_HAS_DATA_SUFFIX}" for band in band_names]
-    summed = features.unmask(0).addBands(features.mask().gt(0).rename(has_data_names))
+    # Unmasked everywhere (sameFootprint false): unmask(0) alone leaves a band masked
+    # outside its footprint, and a unit that footprint cuts then took in masked pixels
+    # (read on Earth Engine in round 13: 2,664 and 32 pixels where 1,320 and 16 are right).
+    summed = features.unmask(0, False).addBands(
+        features.mask().gt(0).unmask(0, False).rename(has_data_names)
+    )
     stats = summed.addBands(label_image.rename(LABEL_BAND)).reduceRegion(
         reducer=ee.Reducer.sum()
         .unweighted()

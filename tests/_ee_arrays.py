@@ -132,8 +132,9 @@ class Image:
         """Each band's mask as a band of its own: 1 where the band has data, 0 elsewhere."""
         return Image({n: m.astype(float) for n, m in self.masks.items()})
 
-    def unmask(self, value: float) -> Image:
-        """`value` where a band is masked, and no mask left."""
+    def unmask(self, value: float, same_footprint: bool = True) -> Image:
+        """`value` where a band is masked, and no mask left. Every image here covers the whole
+        grid, so there is no footprint to keep (`same_footprint` is not modelled)."""
         return Image({n: np.where(self.masks[n], v, value) for n, v in self.bands.items()})
 
     def where(self, test: Image, value: float) -> Image:
