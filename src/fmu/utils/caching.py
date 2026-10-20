@@ -187,6 +187,18 @@ def asset_exists(path: str) -> bool:
     (most reliable across GEE client versions); falls back to string-
     matching the EE error message for older versions where the wrapped
     cause is unreachable.
+
+    What it does with earthengine-api 1.7.35, the version every manifest
+    records (review C41; this docstring corrected in round 13): `ee.data`
+    raises its EEException inside `except HttpError` without `from`, so
+    `__cause__` is None (the HttpError is on `__context__`) and the status
+    branch below never runs. Every answer comes from the message: an error
+    whose text contains "not found", "does not exist" or "404" returns False,
+    among them a 403 that says "does not exist or doesn't allow this
+    operation" and a 500 whose request id holds "404"; any other error, a
+    plain 403 "Permission denied" or a 401 for example, is raised. A wrong
+    False leads to a recompute whose export then fails, or to the pass
+    runner's exit 3; it cannot make a stale asset be read.
     """
     try:
         ee.data.getAsset(path)
@@ -195,7 +207,8 @@ def asset_exists(path: str) -> bool:
         # Prefer the underlying HttpError status when available; GEE's
         # Python client wraps googleapiclient HttpError into EEException,
         # and the cause's response status is more reliable than message
-        # text.
+        # text. With earthengine-api 1.7.35 __cause__ is None, so this branch
+        # is not reached (review C41; see the docstring).
         cause = getattr(e, "__cause__", None)
         if cause is not None:
             status = getattr(getattr(cause, "resp", None), "status", None)

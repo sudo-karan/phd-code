@@ -242,7 +242,7 @@ Regression test: `tests/test_pipeline.py::test_subclass_inherits_cacheable_outpu
 |---|---|
 | `cached_asset_path(config_name, stage_name, key, fingerprint)` | Build a deterministic GEE asset path: `{asset_root}/{config_name}/{stage_name}/{key}__{fingerprint}` |
 | `config_fingerprint(config)` | Short hash of the config content that can change a cached raster, so editing a threshold does not silently reuse the old asset |
-| `asset_exists(path) -> bool` | True if the asset exists. Tries the underlying HttpError status (401/403 propagates, 404 returns False), falls back to message-text matching for older GEE client versions |
+| `asset_exists(path) -> bool` | True if the asset exists. Meant to read the underlying HttpError's status (401/403 raise, 404 is False), with message-text matching as a fallback. With earthengine-api 1.7.35, the version every manifest records, the EEException is raised without `from`, so the status is never read and every answer comes from the text: an error whose message contains "not found", "does not exist" or "404" is False (a 403 "does not exist or doesn't allow this operation" among them), and any other error is raised (review C41). A wrong False leads to a recompute whose export fails, or to the pass runner's exit 3; it cannot make a stale asset be read |
 | `start_export(image, asset_path, roi, scale)` | Submit an async export-to-asset task; return `ExportTaskInfo(task_id, asset_path, description)` |
 | `load_cached_image(path) -> ee.Image` | Trivial wrapper for `ee.Image(path)` |
 
