@@ -1015,8 +1015,8 @@ def _build_merged_feature_collection(
     # so the name survives SHP's 10-character field limit unchanged, and both
     # formats therefore carry the same column name. reduceToVectors keeps the
     # pixels whose centre is inside `roi`, while SNIC labelled the edge pixels the
-    # ROI clip keeps too, so a stand drawn through them can come out in two
-    # polygons, and one with no pixel centre inside gets none (review C17).
+    # ROI clip keeps too, so a stand drawn through them can come out in more
+    # than one polygon, and one with no pixel centre inside gets none (review C17).
     stand_label_image = stand_clusters.toInt().rename("stand_lbl")
     polygons = stand_label_image.reduceToVectors(
         geometry=roi,
@@ -1238,8 +1238,8 @@ def _build_snic_feature_collection(
     # Step 1: vectorize SNIC labels. Rename to a known band name so
     # labelProperty is deterministic regardless of segmentation's band naming.
     # Only pixels whose centre is inside `roi` are kept, so a superpixel drawn
-    # through the ROI's partly covered edge pixels can come out in two polygons
-    # (review C17), as in the merged layer.
+    # through the ROI's partly covered edge pixels can come out in more than one
+    # polygon (review C17), as in the merged layer.
     snic_label_image = snic_clusters.toInt().rename("snic_label")
     polygons = snic_label_image.reduceToVectors(
         geometry=roi,
