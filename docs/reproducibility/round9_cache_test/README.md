@@ -76,3 +76,10 @@ fields, after the review of 19 Oct 2026 (`docs/reviews/2026-10-19-review.md`; fi
   whose centre is inside the ROI (0 pixels in `stand_attributes`). Neither is a stand with a band
   gap, as the name says: until round 13 a stand with no data in a band got 0 there and kept its
   row (review B14). See `docs/outputs.md`, "What `units_dropped_missing_band` has counted".
+- **C31, the masking summary.** In both runs the masking stage's `area_ha` and `share_kept`
+  (`transparency.summary_numbers`) are 1330.7522 ha and 0.703186 in
+  `_manifest_features_computed.json`, the pass that computed the masks, and 1330.0937 ha and
+  0.703251 in the four passes that read them from the cache. The cached masks lie on the ROI's UTM
+  grid, and the summary is tabulated on EPSG:4326, so a pass that reads them tabulates them
+  resampled. No stand, type or score reads these numbers. See `mask_provenance_areas` in
+  `src/fmu/stages/masking.py`.

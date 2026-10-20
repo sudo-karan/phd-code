@@ -120,3 +120,11 @@ fields, after the review of 19 Oct 2026 (`docs/reviews/2026-10-19-review.md`; fi
   which can cut a stand drawn through them; every smaller piece here lies within 4.7 m of the
   ROI's edge. The joins key on `stand_lbl`, so no score changes. See `docs/outputs.md`, "Stands
   and superpixels in pieces".
+- **C31, the masking summary.** The masking stage's `area_ha` and `share_kept`
+  (`transparency.summary_numbers`) differ between the manifests of one run. The features pass,
+  which computed the masks (masking's cache status `miss-exported`), tabulated them live; every
+  pass that read them from the cache (`hit`) tabulated the cached masks, which lie on the ROI's UTM
+  grid, on the EPSG:4326 grid the summary uses. `area_ha` is 0.032% to 0.074% lower in the passes
+  that read the cache, `share_kept` 2.6e-5 to 3e-4 higher. The Dhenkanal hand-crafted run's four
+  manifests all read the masks from the cache, and agree. No stand, type or score reads these
+  numbers. See `mask_provenance_areas` in `src/fmu/stages/masking.py`.

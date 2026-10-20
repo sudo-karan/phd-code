@@ -169,3 +169,12 @@ fields, after the review of 19 Oct 2026 (`docs/reviews/2026-10-19-review.md`; fi
   hand-crafted stand polygons are 547 stands, 5 of them in two pieces, while 5 of its 552 stands
   have no polygon. The joins key on `stand_lbl`, so no score changes. See `docs/outputs.md`,
   "Stands and superpixels in pieces".
+- **C31, the masking summary.** The masking stage's `area_ha` and `share_kept`
+  (`transparency.summary_numbers`) differ between the manifests of one run. The pass that computed
+  the masks (masking's cache status `miss-exported`: the features pass, or Kendujhar's
+  `_manifest_features_computed.json`) tabulated them live; every pass that read them from the cache
+  (`hit`) tabulated the cached masks, which lie on the ROI's UTM grid, on the EPSG:4326 grid the
+  summary uses. `area_ha` is 0.008% to 0.074% lower in the passes that read the cache (Angul
+  601.9709 ha in the features pass, 601.5234 ha in the others), `share_kept` 1e-6 to 3e-4 higher.
+  No stand, type or score reads these numbers. See `mask_provenance_areas` in
+  `src/fmu/stages/masking.py`.

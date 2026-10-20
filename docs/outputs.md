@@ -1232,9 +1232,17 @@ and `outputs/transparency`). `<part>` is the name of one polygon of the ROI
 file, in lower case with underscores (`part_N` when the file gives no name).
 
 All rasters are EPSG:4326 at the analysis scale (`export.analysis_scale_m`),
-on a grid anchored at (0, 0). At 10 m that is the grid cache exports land on,
-so a cached mask is read pixel for pixel. Whole-ROI numbers in `summary.md` come
+on a grid anchored at (0, 0). At 10 m that is the grid the legacy layout's cache
+exports land on, so for a config of that layout (every committed one here) a
+cached mask is read pixel for pixel. In the per-step layout, every run since
+round 9, cache exports land on the ROI's UTM grid, and a cached mask is
+resampled onto these rasters (review C31). Whole-ROI numbers in `summary.md` come
 from the run manifest (the masking stage's `transparency.summary_numbers`).
+The stage tabulates those on the same EPSG:4326 grid, so in the per-step layout
+the pass that computed the masks and the passes that read them from the cache
+record slightly different `area_ha` and `share_kept`: in the runs of record
+`area_ha` is 0.008% to 0.074% lower, and `share_kept` 1e-6 to 3e-4 higher, in
+the passes that read the cache (`docs/reproducibility/r9_runs/README.md`).
 Per-part numbers are tabulated from the saved rasters with the stage's own
 arithmetic, and can differ slightly from the manifest at the edges of a part.
 The colours, labels and the note on what "habitat" means are read from the

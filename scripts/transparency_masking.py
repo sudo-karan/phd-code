@@ -85,9 +85,11 @@ NODATA = 255
 POINT_WINDOW = 5
 
 # Metres per degree that Earth Engine uses to turn a scale in metres into a
-# pixel size in EPSG:4326. A cache export at 10 m lands on the grid this gives,
-# anchored at (0, 0), so a download on the same grid reads a cached asset pixel
-# for pixel instead of resampling it.
+# pixel size in EPSG:4326. A cache export of the legacy layout at 10 m lands on
+# the grid this gives, anchored at (0, 0), so a download on the same grid reads
+# such an asset pixel for pixel instead of resampling it. An asset of the
+# per-step layout (every run since round 9) is on the ROI's UTM grid, and a
+# download on this grid resamples it (review C31).
 _EE_METRES_PER_DEGREE = 111319.49079327357
 
 _GEOD = Geod(ellps="WGS84")
@@ -866,8 +868,10 @@ def download_geotiff(
 ) -> None:
     """One interactive download of `image` over `bounds`, saved as a GeoTIFF.
 
-    The grid is EPSG:4326 at `scale_m`, anchored at (0, 0): the grid cache
-    exports land on. Retries a failed request a few times before giving up.
+    The grid is EPSG:4326 at `scale_m`, anchored at (0, 0): the grid the legacy
+    layout's cache exports land on (an asset of the per-step layout is on the
+    ROI's UTM grid, and is resampled; review C31). Retries a failed request a
+    few times before giving up.
     With `keep`, every pixel that geometry does not touch is written as
     `nodata` (see `blank_untouched`).
     """

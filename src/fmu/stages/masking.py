@@ -583,6 +583,16 @@ def mask_provenance_areas(
     `habitat_mask` is read pixel for pixel and is compared with `reason` at the
     very pixels it was exported at. A grouped sum keeps one running total per
     key, at most 36 of them, so its memory does not grow with the ROI.
+
+    That holds for the legacy cache layout only (review C31; corrected in round
+    13, in this text only). In the per-step layout, every run since round 9, a
+    cache export lands on the ROI's UTM grid at the analysis scale, so a pass
+    that reads the masks from the cache tabulates them resampled onto this grid
+    and records a slightly different `area_ha` and `share_kept` from the pass
+    that computed them: in the per-step runs of record `area_ha` is 0.008% to
+    0.074% lower in the passes that read the cache, and `share_kept` 1e-6 to
+    3e-4 higher (docs/reproducibility/r9_runs/README.md). No stand, type or
+    score reads these numbers.
     """
     reason = mask_provenance.select("reason")
     source = mask_provenance.select("source")
