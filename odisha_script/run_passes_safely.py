@@ -45,14 +45,20 @@ RUN_PASSES_SAFELY=1 for the script (`pass_env`), which refuses to start without 
   - runs from a "run tree": a checkout whose tracked files are unmodified. A multi-hour run
     started from a working tree that is being edited executes whatever half-finished code
     is on disk when each stage starts. Use a clean clone pinned to one commit;
-  - writes the commit it ran from, and each pass's per-stage exit codes, to
-    <log-dir>/<label>.state.json beside the log, after the record of the label's earlier
+  - reads the run tree's commit and modified tracked files again before and after each pass,
+    and starts no pass on a tree that has changed since the batch started (its commit moved,
+    or a tracked file is modified): the configs left are not finished, and it stops (exit 95).
+    Until round 13 it read the tree once, at the start, so a change while a batch ran was
+    not seen, and the next pass ran other code than the passes before it (review C32);
+  - writes the run tree's state as the batch started, each pass's per-stage exit codes and
+    the tree's state before and after it, and the change that stopped the batch if one did,
+    to <log-dir>/<label>.state.json beside the log, after the record of the label's earlier
     batches. A pass cut short (Ctrl-C) still records the configs it finished.
 
 Exit codes: 0 every config complete; 1 not all complete (one not finished, or one needing
 attention); 90 another batch holds the lock; 92 the run tree has modified tracked files; 93 a
-config refused (B8); 94 a config missing from the run tree; 128 + n stopped by signal n (129
-SIGHUP, 130 Ctrl-C, 143 SIGTERM).
+config refused (B8); 94 a config missing from the run tree; 95 the run tree changed while the
+batch ran (C32); 128 + n stopped by signal n (129 SIGHUP, 130 Ctrl-C, 143 SIGTERM).
 
 Run from anywhere; the run tree needs its own .env (the pipeline reads .env from the working
 directory). NEEDS LIVE EARTH ENGINE and submits tasks.
@@ -111,6 +117,21 @@ def take_lock(path: Path) -> int | None:
     return fd
 
 
+def tree_state(rt: Path, *, check: bool = False) -> dict:
+    """The run tree's commit and its modified tracked files, read now. Untracked files are left
+    out: finished runs leave untracked outputs behind, and those are not code. With `check`, a git
+    command that fails raises; otherwise the failure is recorded under "error"."""
+    head = subprocess.run(["git", "-C", str(rt), "rev-parse", "HEAD"],
+                          capture_output=True, text=True, check=check)
+    status = subprocess.run(["git", "-C", str(rt), "status", "--porcelain", "--untracked-files=no"],
+                            capture_output=True, text=True, check=check)
+    if head.returncode or status.returncode:
+        return {"commit": None, "dirty": None, "modified": [],
+                "error": (head.stderr or status.stderr).strip()[:300] or "git failed"}
+    modified = sorted(line[3:] for line in status.stdout.splitlines() if line.strip())
+    return {"commit": head.stdout.strip(), "dirty": bool(modified), "modified": modified, "error": None}
+
+
 def wait_for_group(pgid: int) -> None:
     """Until no process of the group is left: the runner can outlive the shell script. macOS
     refuses to signal a group of which only zombies are left (EPERM); they run nothing and hold
@@ -154,14 +175,11 @@ def main() -> int:
             f.write(line + "\n")
 
     # Tracked files only: finished runs leave untracked outputs behind, and those are not code.
-    modified = subprocess.run(
-        ["git", "-C", str(rt), "status", "--porcelain", "--untracked-files=no"],
-        capture_output=True, text=True, check=True).stdout.strip()
-    if modified:
-        print("REFUSING: the run tree has modified tracked files:\n" + modified)
+    started = tree_state(rt, check=True)
+    if started["dirty"]:
+        print("REFUSING: the run tree has modified tracked files:\n" + "\n".join(started["modified"]))
         return 92
-    commit = subprocess.run(["git", "-C", str(rt), "rev-parse", "HEAD"],
-                            capture_output=True, text=True, check=True).stdout.strip()
+    commit = started["commit"]
     for c in args.configs:
         if not (rt / c).exists():
             print(f"REFUSING: {c} does not exist in the run tree at {commit[:7]}")
@@ -277,19 +295,27 @@ def main() -> int:
     attention: dict[str, str] = {}
     history: list[dict] = []
     running: list[int] = []  # the pass whose exit lines are not yet read, and its first log line
+    running_git: list[dict] = []  # the run tree as that pass started
+    changed: list[dict] = []  # how the run tree had changed when the batch stopped for it (C32)
+
+    def moved(state: dict) -> bool:
+        """Whether the run tree is not the tree the batch started from (C32)."""
+        return (state["commit"], state["dirty"]) != (commit, False)
 
     def save() -> None:
         # Written beside the state file and moved over it (os.replace), so that a save cut short
         # (the disk full, the machine down) leaves the earlier state whole: B4's resume reads it.
         text = json.dumps({
             "label": args.label,
-            "git": {"commit": commit, "dirty": False},
+            # As the batch started; each pass adds how the tree stood before and after it (C32).
+            "git": started,
             "configs": [name_of[c] for c in args.configs],
             "done": [name_of[c] for c in done],
             "needs_attention": {name_of[c]: why for c, why in attention.items()},
             "not_finished": [name_of[c] for c in remaining],
             "passes": history,
             "skipped": {name_of[c]: why for c, why in skipped.items()},
+            "run_tree_changed": changed[0] if changed else None,
             "earlier_batches": earlier,
         }, indent=1)
         tmp = state_path.with_name(f"{state_path.name}.tmp")
@@ -302,10 +328,11 @@ def main() -> int:
         finally:
             tmp.unlink(missing_ok=True)
 
-    def read_pass(p: int, rc: int | None, n0: int) -> None:
+    def read_pass(p: int, rc: int | None, n0: int, git_before: dict) -> None:
         """The pass's stage lines, from line n0 of the log on: a config whose export stage exited 0
         is done; one whose export stage failed, or started and has no exit line (the pass was cut
-        short while it ran, after it may have submitted its Drive exports), needs attention."""
+        short while it ran, after it may have submitted its Drive exports), needs attention. The
+        pass's record holds the run tree as it stood before the pass and after it (C32)."""
         exits: dict[str, dict[str, int]] = {}
         exports_started: set[str] = set()
         for line in log_path.read_text().splitlines()[n0:]:
@@ -315,7 +342,8 @@ def main() -> int:
             m = STAGE_START.match(line.strip())
             if m and m.group(2) == "export":
                 exports_started.add(m.group(1))
-        history.append({"pass": p, "exit": rc, "stage_exits": exits})
+        history.append({"pass": p, "exit": rc, "stage_exits": exits,
+                        "git_before": git_before, "git_after": tree_state(rt)})
         for c in list(remaining):
             st = exits.get(name_of[c], {})
             if st.get("export") == 0:
@@ -342,9 +370,20 @@ def main() -> int:
             names = [name_of[c] for c in remaining]
             if not wait_until_idle(names, f"before pass {p}"):
                 break
+            # The run tree, read again (review C32): no pass runs on other code than the passes
+            # before it, as no batch starts on a tree with modified tracked files.
+            before = tree_state(rt)
+            if moved(before):
+                changed[:] = [{"before_pass": p, "git": before}]
+                say(f"REFUSING pass {p}: the run tree changed since the batch started (commit "
+                    f"{commit[:7]}; now {str(before['commit'])[:7]}, modified tracked files: "
+                    f"{before['modified'] or 'none'}" + (f", {before['error']}" if before["error"] else "")
+                    + "); the configs left are not finished")
+                break
             n0 = len(log_path.read_text().splitlines())
             say(f"pass {p}: {' '.join(names)}")
             running[:] = [p, n0]
+            running_git[:] = [before]
             # A process group of its own, and the lock's descriptor, which the runner inherits
             # too: the lock stays held for as long as any of them runs (review B5).
             child[:] = [subprocess.Popen(
@@ -357,21 +396,30 @@ def main() -> int:
             wait_for_group(child[0].pid)
             child.clear()
             running.clear()
-            read_pass(p, rc, n0)
+            read_pass(p, rc, n0, before)
             say(f"pass {p} exit={rc}; finished: {[name_of[c] for c in done]}; "
                 f"not finished: {[name_of[c] for c in remaining]}; "
                 f"needs attention: {[name_of[c] for c in attention]}")
+        if not changed and history and moved(history[-1]["git_after"]):
+            # The last pass ended on a changed tree: its later calls may have run other code (C32).
+            after = history[-1]["git_after"]
+            changed[:] = [{"after_pass": history[-1]["pass"], "git": after}]
+            say(f"the run tree changed during pass {history[-1]['pass']} (commit {commit[:7]}; now "
+                f"{str(after['commit'])[:7]}, modified tracked files: {after['modified'] or 'none'})")
         held_back = [c for c in skipped if name_of[c] not in done_before]
         ok = not remaining and not attention and not held_back
         if stopped_by:
             say(f"batch {args.label} ended: NOT ALL COMPLETE "
                 f"(stopped by {signal.Signals(stopped_by[0]).name})")
             return 128 + stopped_by[0]
+        if changed:
+            say(f"batch {args.label} ended: NOT ALL COMPLETE (the run tree changed)")
+            return 95
         say(f"batch {args.label} ended: {'ALL CONFIGS COMPLETE' if ok else 'NOT ALL COMPLETE'}")
         return 0 if ok else 1
     finally:
         if running:  # a pass cut short by an error here: what it finished is done all the same
-            read_pass(running[0], None, running[1])
+            read_pass(running[0], None, running[1], running_git[0])
         save()
         os.close(lock_fd)  # lets go of the lock; the file stays, as removing it would open a race
 

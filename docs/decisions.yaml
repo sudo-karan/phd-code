@@ -7647,3 +7647,49 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-batch-wrapper-starts-no-pass-on-a-changed-run-tree
+  title: >-
+    The batch wrapper reads the run tree before and after each pass, records it, and starts no pass on a tree that has
+    changed since the batch started
+  decision: >-
+    odisha_script/run_passes_safely.py reads the run tree's commit and modified tracked files at the start (a tree with
+    modified tracked files is refused, exit 92, as before), and again before and after each pass. The state file's git
+    block is the tree as the batch started, with its real dirty flag and the files behind it; each pass adds
+    git_before and git_after. If before a pass the tree is not the one the batch started from (its commit moved, or a
+    tracked file is modified), that pass does not start, the configs left are not finished, run_tree_changed records
+    the pass and the tree, and the batch ends NOT ALL COMPLETE with exit 95. A change seen after the last pass ends the
+    batch so too (after_pass). Untracked files are left out, as at the start: finished runs leave untracked outputs.
+  alternatives_considered:
+  - >-
+    Read the tree once, at the start, and write dirty false (the wrapper before round 13): not kept; a commit or an edit
+    made between passes was not seen, the next pass ran other code than the passes before it, and the state file named
+    the start commit as clean (review C32)
+  - >-
+    Record the change and carry on with the next pass: not chosen; a batch is run from a run tree pinned to one commit
+    (CLAUDE.md), and exit 92 already refuses a modified tree at the start. Put to Jaskaran
+    (docs/handoff/2026-10-20-round13.md, Questions)
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 6: "The C list: fix what is a documentation or record error." The
+    review (docs/reviews/2026-10-19-review.md, C32): in the wrapper, read the git state before each pass, and refuse (or
+    record) when it changes; with a stand-in ee, a commit or an uncommitted edit between passes left state.json at the
+    start commit, dirty False. tests/test_run_passes_safely_run_tree.py runs the real wrapper and shell script against
+    the modelled Earth Engine of tests/_wrapper_harness.py: on the wrapper before, a commit or an edit made during pass
+    1 of a config that needs a pass 2, and a commit made during the only pass, end with exit 0 where 95 is expected,
+    and the passes of a batch on an unchanged tree record no git_before. On an unchanged tree a batch runs as before
+    (tests/test_run_passes_safely.py passes unchanged). No batch was run (no Earth Engine). No paper was searched for
+    this decision.
+  evidence:
+  - path: odisha_script/run_passes_safely.py
+    what: >-
+      tree_state, the check before each pass and after the last, the state file's git, git_before, git_after and
+      run_tree_changed, exit 95
+  - path: tests/test_run_passes_safely_run_tree.py
+    what: The real wrapper and shell script on a run tree that changes while the batch runs
+  - path: docs/running.md
+    what: The wrapper's paragraph
+  - path: docs/reviews/2026-10-19-review.md
+    what: C32
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
