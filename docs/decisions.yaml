@@ -7599,7 +7599,7 @@ decisions:
 - id: spec-run-records-read-the-git-state-when-the-run-starts
   title: >-
     Run records give the git state as the run started, read before any stage or result is written, and again at the
-    end
+    end; the untracked list puts code first
   decision: >-
     src/fmu/pipeline.py (a Locked module): Pipeline.run asks fmu.utils.provenance.git_state() before any stage runs.
     git_state remembers its first answer for the life of the process, so the manifest's git block, the export
@@ -7608,8 +7608,10 @@ decisions:
     git_state_now(), which remembers nothing. odisha_script/odisha_keptland_score.py, odisha_keptland_chance.py and
     odisha_phase1_12_radar_descending.py read the git state at the start of main(), before they write a result or a
     sample, record it as git, and add git_at_end. scripts/eecu_by_stage.py records git_state of its own checkout,
-    read before it writes, in place of git run in the working directory after (review C38). The dirty flag still counts
-    tracked files only. No computation and no cache key changes.
+    read before it writes, in place of git run in the working directory after (review C38). git_state lists the
+    untracked paths code first: source and config files, by suffix, and untracked folders, then the rest, each in path
+    order, under the same cap of 50 (review C34). The dirty flag still counts tracked files only. No computation and
+    no cache key changes.
   alternatives_considered:
   - >-
     Read git when the record is written (the state before round 13): not kept; a commit made during a run was recorded
@@ -7618,14 +7620,22 @@ decisions:
   - >-
     Record the state at the start only, without git_at_end: not chosen; a commit or an edit made while a run ran would
     then leave no trace in its record
+  - >-
+    Count untracked files under src/, scripts/, odisha_script/ and configs/ as dirty (round 2's answer (b) to question
+    19, task B11, never implemented): not taken in round 13; odisha_script/ holds the run outputs, so as worded it
+    would mark almost every batch manifest dirty, and night-git-state-in-manifests records that untracked files do not
+    make the tree dirty. Put to Jaskaran (docs/handoff/2026-10-20-round13.md, Questions)
   rationale: >-
     The round 13 brief (Jaskaran, 19 Oct 2026), Task 6: "The C list: fix what is a documentation or record error." The
     review (docs/reviews/2026-10-19-review.md), C32: the provenance comment says the state at first asking describes
     the run, but nothing asked at start-up; its fix is to read the git state at process start and again at the end, and
-    record both. C38: the cost script read git in the working directory after writing its result. The tests of
-    tests/test_git_state_read_first.py and tests/test_eecu_by_stage.py fail on the code before (the manifest named a
-    commit made during the run; the scripts' records said dirty, read after their results were written; the cost
-    record named another repository's commit) and pass after. The legacy fingerprint and the eleven step keys of all 74 configs under configs/ and
+    record both. C34: the untracked list, the stated safeguard for an untracked source file, is sorted and cut at 50,
+    and with 50 untracked outputs an untracked module is not listed; its fix includes listing paths in source folders
+    before outputs. C38: the cost script read git in the working directory after writing its result. The tests of
+    tests/test_git_state_read_first.py, tests/test_provenance_untracked_order.py and tests/test_eecu_by_stage.py fail
+    on the code before (the manifest named a commit made during the run; the scripts' records said dirty, read after
+    their results were written; the module was not listed; the cost record named another repository's commit) and
+    pass after. The legacy fingerprint and the eleven step keys of all 74 configs under configs/ and
     configs/experiments/ are the same before and after, and tests/test_every_config_fingerprint.py and
     tests/test_step_keys_of_record.py pass. No committed record is rewritten; dated notes in the folders' READMEs say
     which are affected. No paper was searched for this decision.
@@ -7633,16 +7643,18 @@ decisions:
   - path: src/fmu/pipeline.py
     what: Pipeline.run (git_state asked first) and Pipeline._write_manifest (git, git_at_end)
   - path: src/fmu/utils/provenance.py
-    what: git_state and git_state_now
+    what: git_state, git_state_now, _code_first
   - path: tests/test_git_state_read_first.py
     what: The pipeline's manifest, and the records of the kept-land scorer, the chance test and Phase 1 step 12
+  - path: tests/test_provenance_untracked_order.py
+    what: An untracked module past 50 untracked outputs, and the order of the list
   - path: tests/test_eecu_by_stage.py
     what: >-
       test_the_run_record_names_the_scripts_checkout_as_it_was_before_the_result_was_written
   - path: docs/outputs.md
     what: The manifest's keys and the git block
   - path: docs/reviews/2026-10-19-review.md
-    what: C32 and C38
+    what: C32, C34 and C38
   papers: []
   status: adopted
   design_notes_section: null

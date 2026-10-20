@@ -21,6 +21,20 @@ from typing import Any
 _MAX_LISTED = 50
 _TIMEOUT_S = 10
 
+# Untracked paths listed first, before the others, so that run outputs cannot push
+# them off the list (review C34, round 13): source and config files, by suffix, and
+# untracked folders, which git names as the folder ("dir/") without listing their
+# files. Before round 13 the list was sorted as a whole, and 50 untracked outputs in
+# odisha_script/phase2_vectors/ sorted before an untracked module in src/ or scripts/.
+_CODE_SUFFIXES = (".py", ".pyi", ".pyx", ".sh", ".bash", ".yaml", ".yml", ".toml", ".cfg",
+                  ".ini", ".js", ".mjs", ".cjs", ".ts", ".ipynb", ".r", ".sql")
+
+
+def _code_first(path: str) -> tuple[bool, str]:
+    """Sort key: untracked code and untracked folders before everything else, each in path order."""
+    is_code = path.endswith("/") or path.lower().endswith(_CODE_SUFFIXES)
+    return (not is_code, path)
+
 # One answer per checkout per process. The code a process runs is the code it
 # imported when it started, so the state at first asking describes the run only
 # if the run asks before it does anything: the pipeline asks when Pipeline.run
@@ -49,7 +63,11 @@ def git_state(start: Path | None = None, *, refresh: bool = False) -> dict[str, 
                            it could not be determined
       modified             sorted tracked paths behind `dirty` (at most 50)
       modified_truncated   True if there were more than 50
-      untracked            sorted untracked, non-ignored paths (at most 50)
+      untracked            untracked, non-ignored paths (at most 50): first the
+                           code (source and config files, by suffix) and the
+                           untracked folders, then the rest, each sorted, so
+                           that run outputs do not push an untracked source
+                           file off the list
       untracked_truncated  True if there were more than 50
       root                 the checkout's root directory, or None
       error                None, or why the state could not be read (git not
@@ -174,7 +192,7 @@ def _read_git_state(start: Path) -> dict[str, Any]:
         elif code != "!!":
             modified.append(path)
     modified.sort()
-    untracked.sort()
+    untracked.sort(key=_code_first)
     state["dirty"] = bool(modified)
     state["modified"] = modified[:_MAX_LISTED]
     state["modified_truncated"] = len(modified) > _MAX_LISTED

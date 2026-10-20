@@ -196,7 +196,7 @@ tracked result recorded its own output as a dirty tree.
 | `dirty` | `true` if any tracked file is modified, staged, deleted or renamed relative to HEAD; `false` if none; `null` if it could not be determined |
 | `modified` | The tracked paths behind `dirty`, sorted, at most 50 |
 | `modified_truncated` | `true` if there were more than 50 |
-| `untracked` | Untracked, non-ignored paths, sorted, at most 50. They do not make the tree dirty, but an untracked source file can change what ran |
+| `untracked` | Untracked, non-ignored paths, at most 50. They do not make the tree dirty, but an untracked source file can change what ran. Since round 13 (review C34) the code (source and config files, by suffix) and untracked folders come first, then the rest, each sorted, so that run outputs cannot push an untracked source file off the list; before, the list was sorted as a whole, and 50 untracked outputs in `odisha_script/phase2_vectors/` sorted before `scripts/` and `src/` |
 | `untracked_truncated` | `true` if there were more than 50 |
 | `root` | The checkout's root directory, or `null` |
 | `error` | `null`, or why the state could not be read (git not installed, the code is not in a git checkout, a git command failed) |
