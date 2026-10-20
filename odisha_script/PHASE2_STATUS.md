@@ -1422,7 +1422,8 @@ without `_r13` are kept as written before the fix.
   and have no null (NOT BUILT). The merged layers assign every plot, so the primary result, the
   arms comparison and the three figures are as before, and so is every 6.2 and 6.3 value. The
   pilot assigns all 60 plots on every layer: its five `_r13` files are the same bytes as the files
-  without `_r13`.
+  without `_r13` as committed at `c368eb7` (the pilot's results text has since gained A6's dated
+  note at its end).
 - **No conclusion moves.** `n_species` stays in the low tail (2.9: below 5, above 2.5), no other
   percentile moves by more than 0.9, and the reading of this layer above rests on 6.2, which is
   unchanged.

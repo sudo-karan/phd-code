@@ -162,13 +162,16 @@ No.
 
 ## How to check
 
-From the repo root. The results text is compared with its version at `c368eb7`, because the
-committed file now also holds the dated note of round 13 at its end.
+From the repo root. The two results texts are compared with their versions at `c368eb7`, because
+each committed file now also holds dated notes of round 13 at its end (A8's and A6's in the full
+set's, A6's in the pilot's). Corrected 20 Oct 2026: the pilot's was compared with the committed
+file, which `cmp` then reported as well.
 
 ```bash
 git show c368eb7:odisha_script/odisha_phase2_5_results_districts.txt |
   diff - odisha_script/odisha_phase2_5_results_districts_r13.txt
-cmp odisha_script/odisha_phase2_5_results.txt odisha_script/odisha_phase2_5_results_r13.txt
+git show c368eb7:odisha_script/odisha_phase2_5_results.txt |
+  cmp - odisha_script/odisha_phase2_5_results_r13.txt
 for s in '' _districts; do
   for f in summary.csv primary_r2_null.png arms_excess.png pairwise_bands.png; do
     cmp "odisha_script/odisha_phase2_5_${f%.*}$s.${f##*.}" "odisha_script/odisha_phase2_5_${f%.*}${s}_r13.${f##*.}"
