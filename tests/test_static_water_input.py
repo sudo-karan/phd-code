@@ -13,9 +13,11 @@ Engine is replaced by the recorder of tests/_ee_recorder.py.
 
 from __future__ import annotations
 
+import json
 import math
 from pathlib import Path
 
+import numpy as np
 import pytest
 import yaml
 
@@ -23,7 +25,9 @@ import fmu.stages.features_static as static_module
 import fmu.stages.masking as masking_module
 from _ee_recorder import Rec, calls, made_by
 from fmu.config import Config, load_config
+from fmu.pipeline import default_stage_names
 from fmu.stages.base import PipelineContext
+from fmu.utils.grid import utm_epsg_code
 
 REPO = Path(__file__).resolve().parent.parent
 HANDCRAFTED = REPO / "configs" / "odisha_v120_3ha_squares_angul_keptland_s1desc_r9.yaml"
@@ -80,12 +84,12 @@ def test_the_transform_reads_jrc_water_over_the_roi_buffered_by_its_reach(monkey
     assert select == ("select", ("occurrence",), {})
     assert gte == ("gte", (50.0,), {})
     assert unmask == ("unmask", (0,), {})
-    # Clipped to the ROI buffered by the reach of the neighbourhood's corners:
-    # ceil(sqrt(2) x 1000) = 1415 pixels of 10 m.
+    # Clipped to the ROI buffered past the reach of the neighbourhood's corners,
+    # ceil(sqrt(2) x 1000) = 1415 pixels of 10 m, by 1%: ceil(14,150 x 1.01).
     (region,) = clip[1]
     buffer = made_by(log, region)
     assert buffer.owner is roi and buffer.attr == "buffer"
-    assert buffer.args == (14150,) and buffer.kwargs == {"maxError": 1}
+    assert buffer.args == (14292,) and buffer.kwargs == {"maxError": 1}
 
 
 def test_only_the_result_is_clipped_to_the_roi(monkeypatch):
@@ -119,13 +123,60 @@ def test_the_reach_is_the_corner_of_the_square_neighbourhood(pixels, scale, reac
     assert reach - scale < math.sqrt(2) * pixels * scale
 
 
+SPHERE_RADIUS_M = 6_371_008.8  # the mean earth radius, of the sphere buffer() measures on
+STATIC_ROIS = sorted({
+    str(load_config(path).roi.roi_file) for path in sorted((REPO / "configs").glob("*.yaml"))
+    if "features_static" in default_stage_names(load_config(path))})
+
+
+def _farthest_corner_m(roi_file: Path, pixels: int, scale: int) -> float:
+    """How far the farthest corner of the transform's square neighbourhood (half-width `pixels`
+    in the analysis grid, the ROI's UTM zone) lies from its pixel, over the ROI's vertices, on
+    Earth Engine's sphere or on the WGS84 ellipsoid, whichever is farther."""
+    from pyproj import Geod, Transformer
+    from shapely.geometry import shape
+
+    rings = []
+    for feature in json.loads(roi_file.read_text())["features"]:
+        geom = shape(feature["geometry"])
+        rings += [p.exterior for p in getattr(geom, "geoms", [geom])]
+    lon, lat = (np.concatenate([np.asarray(r.coords)[:, i] for r in rings]) for i in (0, 1))
+    epsg = utm_epsg_code((lon.min() + lon.max()) / 2, (lat.min() + lat.max()) / 2)
+    to_grid = Transformer.from_crs(4326, epsg, always_xy=True)
+    x, y = to_grid.transform(lon, lat)
+    half = pixels * scale
+    farthest = 0.0
+    for dx, dy in ((half, half), (half, -half), (-half, half), (-half, -half)):
+        clon, clat = to_grid.transform(x + dx, y + dy, direction="INVERSE")
+        p1, p2, dl = np.radians(lat), np.radians(clat), np.radians(clon - lon)
+        haversine = np.sin((p2 - p1) / 2) ** 2 + np.cos(p1) * np.cos(p2) * np.sin(dl / 2) ** 2
+        on_sphere = 2 * SPHERE_RADIUS_M * np.arcsin(np.sqrt(haversine))
+        on_ellipsoid = Geod(ellps="WGS84").inv(lon, lat, clon, clat)[2]
+        farthest = max(farthest, float(on_sphere.max()), float(np.max(on_ellipsoid)))
+    return farthest
+
+
+@pytest.mark.parametrize("roi_file", STATIC_ROIS)
+def test_the_buffer_holds_every_corner_of_the_neighbourhood_on_the_earth(monkeypatch, roi_file):
+    """A check of the A1 fix (round 13): buffer() measures in metres on Earth Engine's sphere
+    (its documentation: "in a spherical coordinate system"), the reach in the analysis grid's
+    metres, and at the corners of the Odisha boxes a neighbourhood's corner lay up to 15 m past
+    the 14,150 m buffer. The buffer, less its maxError, must reach every corner on the sphere
+    and on the WGS84 ellipsoid, from every vertex of every ROI a config computes static
+    features over (each at 1,000 pixels of 10 m)."""
+    _, log, _, _ = _run_static(monkeypatch, _config())
+    (buffer,) = calls(log, "roi.buffer")
+    (distance,) = buffer.args
+    assert distance - buffer.kwargs["maxError"] >= _farthest_corner_m(REPO / roi_file, 1000, 10)
+
+
 def test_the_buffer_follows_the_neighbourhood_and_the_scale(monkeypatch):
     raw = yaml.safe_load(HANDCRAFTED.read_text())
     raw["features_static"]["max_water_distance_pixels"] = 500
     raw["export"]["analysis_scale_m"] = 30
     _, log, _, _ = _run_static(monkeypatch, Config.model_validate(raw))
     (buffer,) = calls(log, "roi.buffer")
-    assert buffer.args == (21240,)
+    assert buffer.args == (21453,)  # ceil(21,240 x 1.01)
     (transform,) = calls(log, ".fastDistanceTransform")
     assert transform.args == (500, "pixels", "squared_euclidean")
 

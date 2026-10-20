@@ -178,7 +178,9 @@ use.
   same definition (`jrc_water_mask`) but over the ROI buffered by the
   transform's reach, ceil(sqrt(2) x `max_water_distance_pixels`) pixels
   (14,150 m by default), so that water outside the ROI counts; only the result
-  is clipped to the ROI. Until round 13 it was masking's `water_mask`, which
+  is clipped to the ROI. The buffer is 1% past the reach (14,292 m by default),
+  because `buffer()` measures on Earth Engine's sphere and the reach is in the
+  analysis grid's metres (round 13, a check of the A1 fix). Until round 13 it was masking's `water_mask`, which
   ends at the ROI, so water outside the ROI was never seen (review A1).
   `fastDistanceTransform` returns
   squared-euclidean distance in pixels; we sqrt and multiply by scale

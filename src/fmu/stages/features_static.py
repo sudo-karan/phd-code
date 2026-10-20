@@ -16,7 +16,7 @@ Bands (with default config):
   value (463,409.5 m at 10 m). With features_static.cap_distance_to_water on,
   every distance past the cap, the fill value and those real ones, reads as
   the cap. The water is masking's definition (masking.jrc_water_mask), built
-  here over the ROI buffered by the transform's reach (`water_reach_m`), not
+  here over the ROI buffered past the transform's reach (`water_buffer_m`), not
   read from masking's water_mask, which ends at the ROI: before round 13 the
   transform saw no water outside the ROI (review A1).
 - annual_rainfall: mm/year, 30-year mean from CHIRPS climatology
@@ -53,17 +53,37 @@ from fmu.utils.logging import get_logger
 log = get_logger(__name__)
 
 
+#: How much further than the reach the water input is buffered. buffer() measures
+#: in metres on Earth Engine's sphere (its documentation: "in a spherical coordinate
+#: system"), the reach in the analysis grid's metres (UTM). In a UTM zone the two
+#: differ by under 0.7%: most along a meridian near the equator, where the sphere's
+#: radius is 0.6% longer than the ellipsoid's radius of curvature along the
+#: meridian, with the zone's scale factor (0.9996 at its centre) on top. Round 13, a
+#: check of the A1 fix: on the reach alone, a neighbourhood corner at an Odisha box
+#: corner lay up to 15 m past the 14,150 m buffer.
+WATER_BUFFER_OVER_REACH = 1.01
+
+
 def water_reach_m(max_water_distance_pixels: int, analysis_scale_m: int) -> int:
-    """How far past the ROI the water input of distance_to_water is built, in metres.
+    """How far past the ROI the water input of distance_to_water must reach, in metres.
 
     fastDistanceTransform looks for water in a square of half-width
     max_water_distance_pixels around each pixel, whose corners are sqrt(2) times
     as far: ceil(sqrt(2) x max_water_distance_pixels) whole pixels (14,150 m at
-    the default 1,000 pixels of 10 m). Every water pixel that neighbourhood holds,
-    for every pixel of the ROI, is then in the input, so every distance the
+    the default 1,000 pixels of 10 m), in the analysis grid. The input is buffered
+    1% further (water_buffer_m), so that every water pixel that neighbourhood
+    holds, for every pixel of the ROI, is in the input, and every distance the
     transform finds is the one it would find with no clip (review A1).
     """
     return math.ceil(math.sqrt(2) * max_water_distance_pixels) * analysis_scale_m
+
+
+def water_buffer_m(max_water_distance_pixels: int, analysis_scale_m: int) -> int:
+    """The buffer of the ROI the water input is built over, in metres on Earth
+    Engine's sphere: the reach, 1% further (WATER_BUFFER_OVER_REACH); 14,292 m at
+    the default 1,000 pixels of 10 m."""
+    reach_m = water_reach_m(max_water_distance_pixels, analysis_scale_m)
+    return math.ceil(reach_m * WATER_BUFFER_OVER_REACH)
 
 
 @register_stage("features_static")
@@ -127,18 +147,18 @@ class FeaturesStaticStage(Stage):
         aspect = ee.Terrain.aspect(dem).rename("aspect")
 
         # Distance to water: fast distance transform on JRC water, built over the
-        # ROI buffered by the transform's reach so that water outside the ROI is
-        # seen (review A1); the stack is clipped to the ROI below. maxError 1 m:
-        # by default buffer() may fall short by 1% of the distance (141.5 m),
-        # more than the ceil in water_reach_m leaves (7.9 m at 1,000 pixels).
+        # ROI buffered past the transform's reach so that water outside the ROI is
+        # seen (review A1); the stack is clipped to the ROI below. The buffer is 1%
+        # past the reach, as buffer() measures on a sphere (water_buffer_m).
+        # maxError 1 m: by default buffer() may fall short by 1% of the distance.
         # fastDistanceTransform returns squared euclidean distance in pixels;
         # take sqrt and multiply by analysis scale (10 m) to get meters.
         max_dist_pix = params.max_water_distance_pixels
-        reach_m = water_reach_m(max_dist_pix, config.export.analysis_scale_m)
+        buffer_m = water_buffer_m(max_dist_pix, config.export.analysis_scale_m)
         water = jrc_water_mask(
             ee.Image(config.datasets.water),
             config.masking.jrc_water_occurrence_threshold,
-            roi.buffer(reach_m, maxError=1),
+            roi.buffer(buffer_m, maxError=1),
         )
         distance_to_water = (
             water.fastDistanceTransform(max_dist_pix, "pixels", "squared_euclidean")

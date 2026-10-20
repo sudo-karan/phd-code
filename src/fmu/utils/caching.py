@@ -474,8 +474,9 @@ _STEP_OMITTED_AT_DEFAULT: dict[tuple[str, str], Any] = {}
 STEP_REVISION: dict[str, int] = {
     "data_load": 1,  # A4, round 13: the date windows' end is inclusive
     # A1, round 13: water seen past the ROI, out to the transform's reach (1);
-    # A5, round 13: slope and aspect in fractional degrees, on the DEM as float (2)
-    "features_static": 2,
+    # A5, round 13: slope and aspect in fractional degrees, on the DEM as float (2);
+    # A1 again, round 13: the buffer 1% past the reach, as buffer() measures on a sphere (3)
+    "features_static": 3,
     # Round 13. 1, A5: a flat cell's aspect sin and cos are both 0. 2, B13: a harmonic
     # phase's sin and cos are kept out of the skew test and the log. 3, B14: one mean
     # per unit label, not per connected piece. 4, B16: the robust scaling's median and

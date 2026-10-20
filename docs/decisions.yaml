@@ -6589,7 +6589,10 @@ decisions:
     half-width max_water_distance_pixels, whose corners are sqrt(2) times as far, so every water pixel that
     neighbourhood holds for any pixel of the ROI is in the input. The buffer is given maxError 1 m, since by default
     Geometry.buffer may fall short by 1% of the distance (141.5 m), more than the 7.9 m the ceil leaves at 1,000
-    pixels. Only the result is clipped to the ROI, as before. The stage reads no masking output any more:
+    pixels. (Since a check of the fix, also in round 13: buffered 1% past the reach, water_buffer_m, 14,292 m at the
+    default, since Geometry.buffer measures in metres on Earth Engine's sphere and the reach is in the analysis grid's;
+    on the reach alone a neighbourhood corner at an Odisha box corner lay up to 15 m past the buffer; features_static's
+    revision is 3.) Only the result is clipped to the ROI, as before. The stage reads no masking output any more:
     required_inputs is {"roi"}. src/fmu/stages/masking.py (Locked) builds water_mask with the same function over the
     ROI; its calls are the same as before for all 74 configs (recorded offline and compared), so masking's output and
     key do not change, and landcover_summary still reads it. fmu.utils.caching (Locked): STEP_SETTINGS lists
