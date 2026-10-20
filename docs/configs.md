@@ -247,7 +247,16 @@ it is, see [design_notes.md](design_notes.md).
 - `name`: short tag for the ROI (informational; appears in manifest).
 - `roi_file`: path to a GeoJSON polygon in EPSG:4326. Loaded via
   `fmu.utils.gee.load_roi_geometry`. Capped at GEE's inline-geometry
-  limit (~5 MB).
+  limit (~5 MB). The path is read relative to the working directory, so
+  run from the repo root (or the run tree's root). Nothing checks the file
+  when the config is loaded. The per-step cache keys hash its content, and a
+  file they cannot read hashes as nothing, with no warning: from another
+  folder every per-step key changes while the legacy fingerprint, which
+  hashes the path, does not (the 10 km tile config: masking `s354522a974`
+  from the repo root, `s4a47c8b2cc` from `docs/`, fingerprint `5772fb6133`
+  from both). A run then stops when it loads the ROI (`FileNotFoundError`),
+  or the pass runner reports every upstream asset as missing (exit 3), which
+  names the wrong cause (review C40).
 
 ### `dates`
 
@@ -693,11 +702,13 @@ ValidationError: clustering.k -> ensure this value is greater than 1
 ```
 Invalid value. `k=1` is meaningless for clustering.
 
-```
-ValidationError: roi.roi_file -> file does not exist
-```
-The path is wrong, or you're running from a different cwd than where
-the YAML expects.
+A missing or unreadable `roi.roi_file` is **not** caught when the config is
+loaded: nothing checks it then (review C40; until round 13 this section showed
+a `ValidationError: roi.roi_file -> file does not exist` that no code raises).
+It shows up when a run loads the ROI (`FileNotFoundError: ROI file not found:
+...`), or, from the wrong working directory, as every upstream asset reported
+missing by the pass runner (exit 3), because the per-step keys then hash no
+ROI file (see `roi_file` above).
 
 ```
 ValidationError: dates.phenology -> end must be after start

@@ -5774,7 +5774,15 @@ decisions:
     answer (a), 18 Oct 2026). The round 9 cache test (docs/reproducibility/round9_cache_test/) passed under the
     brief's criterion (Jaskaran's ruling, 18 Oct 2026): two from-scratch runs give the same superpixels, stands and
     stand types exactly, and their feature values agree to about 1e-13, a stated property of the pipeline. No paper
-    was searched for this decision.
+    was searched for this decision. Review C40 (19 Oct 2026; added here 20 Oct 2026, round 13): the ROI file's
+    content is read from the path as the config gives it, relative to the working directory, and a file that
+    cannot be read hashes as None, with no warning. From a directory where the path does not resolve, every
+    per-step key changes while the legacy fingerprint, which hashes the path, does not (the 10 km tile config run
+    from docs/: masking key s4a47c8b2cc against s354522a974 from the repo root, fingerprint 5772fb6133 both). Every
+    entry point then fails safe, with a misleading reason: the ROI loader raises, or the pass runner reports every
+    upstream asset missing (exit 3). No run of record is affected: the keys of record are pinned
+    (tests/test_step_keys_of_record.py). The docs say so since round 13; whether to resolve the path against the
+    repo root is put to Jaskaran.
   evidence:
   - path: src/fmu/utils/caching.py
     what: The two layouts, STEP_SETTINGS, step_upstream, step_key, cache_key, start_export with crs and crs_transform
@@ -5788,6 +5796,8 @@ decisions:
     what: The orchestrator under the two layouts
   - path: docs/reproducibility.md
     what: Section 4 of the Odisha re-runs, the cause found on 13 Oct 2026
+  - path: docs/reviews/2026-10-19-review.md
+    what: C40, the ROI file read from the working directory
   papers: []
   status: adopted
   design_notes_section: null

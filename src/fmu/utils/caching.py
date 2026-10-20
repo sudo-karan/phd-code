@@ -566,6 +566,14 @@ def _roi_file_sha256(config: Any) -> str | None:
     The legacy fingerprint hashes the ROI file's path only. None when the file
     cannot be read (an ROI given as an asset, or a test config whose file does
     not exist).
+
+    The path is read as the config gives it, relative to the working directory,
+    and any error reading it gives None, with no warning (review C40; this
+    docstring corrected in round 13). So from a directory where a config's
+    relative path does not resolve, every per-step key changes while the legacy
+    fingerprint does not. Every entry point then fails safe, with a misleading
+    reason: the ROI loader raises, or the pass runner reports every upstream
+    asset as missing (exit 3). Run from the repo root or the run tree's root.
     """
     roi_file = getattr(config.roi, "roi_file", None)
     if roi_file is None:
@@ -580,8 +588,9 @@ def step_key(config: Any, step: str) -> str:
     """The per-step cache key of `step` for `config`: "s" and ten hex digits.
 
     A hash of the settings `STEP_SETTINGS` lists for the step, the ones every
-    step depends on (the ROI and the analysis scale), the ROI file's content, and
-    the keys of the steps upstream of it. The config's name, description, export
+    step depends on (the ROI and the analysis scale), the ROI file's content (read
+    from the working directory, see `_roi_file_sha256`), and the keys of the steps
+    upstream of it. The config's name, description, export
     plumbing and metrics are in none of them, so two configs that differ only in
     name have the same keys.
 
