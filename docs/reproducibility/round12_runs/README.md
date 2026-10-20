@@ -110,9 +110,9 @@ fields, after the review of 19 Oct 2026 (`docs/reviews/2026-10-19-review.md`; fi
   `units_dropped_missing_band` (`n_units_dropped_null_band` in `clustering_metadata`) equals the
   number of stands with no polygon in `stands_merged`, 2 or 5 per run: stands at the ROI's edge with
   no pixel whose centre is inside the ROI (0 to 2 pixels in `stand_attributes`). None is a stand
-  with a band gap, as the name says: until round 13 a stand with no data in a band got 0 there and
-  kept its row (review B14). See `docs/outputs.md`, "What `units_dropped_missing_band` has
-  counted".
+  with a band gap, the case the name says it counts: until round 13 a stand with no data in a band
+  got 0 there and kept its row (review B14). See `docs/outputs.md`, "What
+  `units_dropped_missing_band` has counted".
 - **C17, stands in pieces.** Where the "Stand polygons" column gives two numbers, the second is
   the stands that have a polygon, and the difference is the stands in two polygons: Kendujhar 3,
   Koraput 7 and Dhenkanal 1 (hand-crafted), Koraput 2 (AlphaEarth). SNIC labels the edge pixels

@@ -156,9 +156,9 @@ fields, after the review of 19 Oct 2026 (`docs/reviews/2026-10-19-review.md`; fi
   `units_dropped_missing_band` (`n_units_dropped_null_band` in `clustering_metadata`) equals the
   number of stands with no polygon in `stands_merged`: 2 or 5 per box run, 10 in the tile, 48 in
   all. Each is a stand at the ROI's edge with no pixel whose centre is inside the ROI (0 pixels in
-  `stand_attributes` for 43 of them, 1 or 2 for the others). None is a stand with a band gap, as
-  the name says: until round 13 a stand with no data in a band got 0 there and kept its row
-  (review B14). See `docs/outputs.md`, "What `units_dropped_missing_band` has counted".
+  `stand_attributes` for 43 of them, 1 or 2 for the others). None is a stand with a band gap, the
+  case the name says it counts: until round 13 a stand with no data in a band got 0 there and kept
+  its row (review B14). See `docs/outputs.md`, "What `units_dropped_missing_band` has counted".
 - **C17, stands in pieces.** The "Stand polygons" column counts polygons, and a stand can have
   two: SNIC labels the edge pixels the ROI only partly covers, and the export keeps only pixels
   whose centre is inside the ROI, which can cut a stand drawn through them. Stands in two polygons:

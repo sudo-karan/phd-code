@@ -74,8 +74,9 @@ fields, after the review of 19 Oct 2026 (`docs/reviews/2026-10-19-review.md`; fi
   `units_dropped_missing_band` (`n_units_dropped_null_band` in `clustering_metadata`) is 2, the
   number of stands with no polygon in `stands_merged`: two stands at the ROI's edge with no pixel
   whose centre is inside the ROI (0 pixels in `stand_attributes`). Neither is a stand with a band
-  gap, as the name says: until round 13 a stand with no data in a band got 0 there and kept its
-  row (review B14). See `docs/outputs.md`, "What `units_dropped_missing_band` has counted".
+  gap, the case the name says it counts: until round 13 a stand with no data in a band got 0 there
+  and kept its row (review B14). See `docs/outputs.md`, "What `units_dropped_missing_band` has
+  counted".
 - **C31, the masking summary.** In both runs the masking stage's `area_ha` and `share_kept`
   (`transparency.summary_numbers`) are 1330.7522 ha and 0.703186 in
   `_manifest_features_computed.json`, the pass that computed the masks, and 1330.0937 ha and
