@@ -101,7 +101,9 @@ def test_boxes_hold_the_same_plots_as_the_hulls() -> None:
             if hull.covers(pt):
                 in_hull.add(key)
         # The hulls were buffered in UTM and the boxes widened on the ellipsoid, so a hull's rim
-        # may poke out by a sliver of well under a square metre (1e-10 square degrees is ~120 m2).
+        # may poke out by a sliver of well under a square metre (1e-10 square degrees is about
+        # 1.15 m2 at these latitudes; the slivers are 0.18 m2 in Dhenkanal, 0.003 m2 in Kendujhar
+        # and none elsewhere; corrected 20 Oct 2026, review C24, from "~120 m2").
         assert hull.difference(box).area < 1e-10, f"{d}: a box must contain its hulls"
     assert len(in_hull) == 267
     assert in_box == in_hull

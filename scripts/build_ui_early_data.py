@@ -39,6 +39,11 @@ run computed its own, with distance_to_water capped at 10 km. They get what the 
 with their feature layers as stand means, as the box runs have. Their plots are shown without a stand:
 their field check (odisha_script/PHASE_KEPTLAND_PREDECLARED.md) is not run yet, so no plot is
 joined to a stand, the plots carry no stand_id or stand_type, and the runs are not fes_declared.
+The four descending-orbit runs of round 7 (`KEPTLAND_S1DESC_RUNS`) are added the same way. Their
+field check has been run (odisha_script/keptland_scores/keptland_s1desc_scores.json): they are
+fes_declared and the site shows that check's scores (`keptland_rows`). Their plots are shown
+without a stand too, because this script does not read that check's join
+(keptland_s1desc_joined.csv), not because the check is not run (corrected 20 Oct 2026, review C24).
 
 The box runs of A0 (configs/odisha_v120_3ha_squares_<district>.yaml) are added when their files
 exist: the stand files and run record (searched in BOX_VEC_DIRS) and the output of
@@ -665,7 +670,8 @@ def plots_for(run_id: str, district: str, area_geom, stands_fc: dict | None = No
     """A district's FES plots, each with its field type and mask, and the stand it is on: a box
     run's by the Phase 2 join rule on `stands_fc`, any other run's from its committed join.
     Without `with_stands` no plot is joined: the plots carry no stand_id or stand_type, and the
-    counts leave out the plots with a stand (for a run whose field check is not run yet)."""
+    counts leave out the plots with a stand (for a kept-land run, whether or not its field check
+    has run: this script does not read that check's join; review C24)."""
     plots = read_csv(REPO / "odisha_script" / "odisha_plots_clean.csv")
     ftype = {r["plot_key"]: r["field_type"]
              for r in read_csv(REPO / "odisha_script" / "odisha_phase3_0_field_types.csv")}
@@ -1015,7 +1021,9 @@ def main() -> None:
                         "description": "Cropland, built-up land, water, other land and pixels "
                                        "with no land-cover data, from the land-cover step."}]}]
         if odisha:
-            # A kept-land run's plots are not joined to its stands: its field check is not run.
+            # A kept-land run's plots are not joined to its stands here. The round-6 runs' field
+            # check is not run; the _s1desc runs' is (round 7), but its join is not read here
+            # (review C24).
             pfc, pn = plots_for(run_id, AREAS[area]["district"], ai["geom"],
                                 stands_fc if box else None, with_stands=not keptland)
             write_json(OUT / "by_run" / run_id / "plots.geojson", pfc)

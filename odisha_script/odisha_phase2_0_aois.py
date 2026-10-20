@@ -35,8 +35,11 @@ odisha_plots_clean.csv, which that script rounds to 4 dp (~11 m).
 EXIT CONDITION
 --------------
 Each AOI is a valid (multi)polygon, and a point-in-polygon check over all 274 plots returns
-the expected counts: 60 (pilot) and 261 (full). A mismatch is printed and the script exits
-non-zero; it is not silently accepted.
+the expected counts: 60 (pilot) and 267 (full: the 261 plots of the 21 habitations with 5 or
+more plots, and 6 plots of smaller habitations that the dissolved hulls also hold, kept by
+Jaskaran's decision of 14 Sep 2026; EXPECTED_FULL_PLOTS below). A mismatch is printed and the
+script exits non-zero; it is not silently accepted. (Corrected 20 Oct 2026, review C24: this
+gave the full count as 261.)
 
 Run:  python odisha_phase2_0_aois.py
 Writes: ../aois/odisha_dhenkanal_sites.geojson, ../aois/odisha_habitations.geojson,
