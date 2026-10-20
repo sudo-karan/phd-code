@@ -2547,6 +2547,8 @@ decisions:
     what: test_diagonal_contacts_are_not_edges
   - path: docs/configs.md
     what: merge block, lines 446-503
+  - path: docs/reviews/2026-10-19-review.md
+    what: C62
   papers:
   - doi: 10.14214/sf.23014
     title: Forest stand delineation using airborne LiDAR and hyperspectral data
@@ -2572,13 +2574,28 @@ decisions:
       publisher page again and found the same: Eq. 1 is a list of five conditions (summed area under the
       maximum, same tree species, canopy closure difference under 0.2, tree proportion difference under
       TP1, stand height difference under SH1); Eq. 2 has no canopy closure term and ends with 'Max(LenghtofCommonSide)';
-      Eq. 4 is R2 = 1 - SSwithin/SStotal.
+      Eq. 4 is R2 = 1 - SSwithin/SStotal. Corrected 20 Oct 2026 (round 13, review C62), read that day on the
+      publisher's page (https://www.silvafennica.fi/article/23014, the image of Eq. 2 and the text of section
+      2.6.2): Eq. 2 lists five conditions, the segment under Area_min, the same tree species, the tree-proportion
+      difference under TP2, the stand-height difference under SH2, and Max(LenghtofCommonSide), and the text under
+      it reads 'We evaluate in turn whether neighbor n meets the conditions of Eq. 2. Segment m will be merged
+      with its neighbor n which matched the condition. If no neighbor or more than one neighbors match the
+      condition, we will proceed to the next condition to ensure there is neither repetition nor omission.' So
+      the longest common side is the last condition of a rule taken one condition at a time; read plainly, it also
+      decides for a segment no neighbour of which meets the conditions before it, which is where FMU uses its
+      fallback. FMU's pass 2 is not that rule: it applies the relaxed tolerances at once and takes the closest
+      neighbour that passes, an order of choice that is FMU's own. The paper supports (a), used, for the two
+      passes, the relaxed thresholds of the second, and a last step on the longest common side; the 'confirmed'
+      above rested on Eq. 2's last condition alone. Crossref (10.14214/sf.23014, checked 20 Oct 2026) gives the
+      title above, Silva Fennica 58(2), 2024, and Hao Xiong as the first person author.
     cited_in: >-
       src/fmu/utils/region_merge.py:3 and :10-12 and :438; src/fmu/config.py:435-437, :506-507, :541;
       MODULES.md:28; README.md:39
   status: adopted
   design_notes_section: null
-  source: src/fmu/utils/region_merge.py module docstring; src/fmu/config.py MergeParams
+  source: >-
+    src/fmu/utils/region_merge.py module docstring; src/fmu/config.py MergeParams; the correction of 20 Oct 2026
+    from review C62 (round 13 brief, Task 6)
 - id: spec-merge-default-criteria
   title: 'Default merge criteria: canopy height (2.00 m) and annual NDVI amplitude (0.030)'
   decision: >-

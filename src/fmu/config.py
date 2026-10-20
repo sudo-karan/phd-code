@@ -525,7 +525,11 @@ class MergeParams(BaseModel):
     eliminating rule (Eq. 2) drops closure and relaxes TP and SH. FMU has
     analogues of three: max_area_ha for the area bound, canopy_height for the
     stand height and ndvi_amplitude_annual for the species proportion. It has
-    none for closure or for the same species.
+    none for closure or for the same species. Eq. 2 ends on the longest common
+    side and takes its conditions one at a time; FMU's second pass applies the
+    relaxed tolerances at once, takes the closest neighbour that passes, and
+    falls back to the longest shared boundary only when none passes (review
+    C62; fmu.utils.region_merge module docstring).
 
     The two criteria are the closest analogues FMU has without ALS or a
     species map:
@@ -640,10 +644,15 @@ class MergeParams(BaseModel):
     min_frac_valid: float = Field(default=0.5, ge=0.0, le=1.0)
 
     # Fallback when no neighbour passes even the relaxed tolerances: absorb into
-    # the neighbour sharing the longest boundary (Xiong's eliminate-pass rule --
-    # this is what prevents orphans). Shared edge is counted with
-    # 4-connectivity even though SNIC runs connectivity=8: a diagonal contact
-    # has zero shared boundary length, so counting it would inflate the
+    # the neighbour sharing the longest boundary -- this is what prevents
+    # orphans. Xiong's eliminating rule (Eq. 2) also ends on the longest common
+    # side, but takes its conditions one at a time, where the second pass here
+    # applies the relaxed tolerances at once and takes the closest neighbour that
+    # passes: the order of choice is this pipeline's own (fmu.utils.region_merge
+    # module docstring; review C62, 20 Oct 2026, which corrects "Xiong's
+    # eliminate-pass rule" here). Shared edge is counted
+    # with 4-connectivity even though SNIC runs connectivity=8: a diagonal
+    # contact has zero shared boundary length, so counting it would inflate the
     # tie-break.
     tie_break: Literal["shared_edge_length"] = "shared_edge_length"
 

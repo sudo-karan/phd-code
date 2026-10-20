@@ -34,6 +34,28 @@ Pass 2 -- eliminate undersized regions, smallest first:
     exact failure that cap exists to prevent. Regions that cannot be placed
     under the ceiling stay undersized and get reported.
 
+What Xiong et al. 2024 (doi:10.14214/sf.23014) support here: (a) others use
+the method, a merge in two steps whose second step takes the segments under
+the minimum area and relaxes the thresholds. Pass 2's order of choice is this
+pipeline's own (review C62, 20 Oct 2026; read that day on the publisher's
+page, the image of Eq. 2 and the text under it). Xiong's eliminating rule
+(section 2.6.2, Eq. 2) lists five conditions: the segment under the minimum
+area, the same tree species, the tree-proportion and stand-height differences
+under the relaxed thresholds TP2 and SH2, and the longest common side. The
+text under it reads: "We evaluate in turn whether neighbor n meets the
+conditions of Eq. 2. Segment m will be merged with its neighbor n which
+matched the condition. If no neighbor or more than one neighbors match the
+condition, we will proceed to the next condition to ensure there is neither
+repetition nor omission." So there the conditions are taken one at a time,
+and the longest common side, the last, decides when those before it leave no
+single neighbour; read plainly, that includes a segment no neighbour of which
+meets them. Pass 2 here applies every relaxed tolerance at once, takes the
+closest neighbour that passes, and uses the longest boundary only when none
+passes. The register entry spec-merge-two-pass-hard-gate recorded the fallback
+as Xiong's, confirmed by Eq. 2 ending on the longest common side alone; the
+sentence quoted above is the fuller evidence, and it supports a last step on
+the longest common side, not pass 2's order of choice.
+
 Two properties this file is careful about:
 
 **Attribute means are weighted by per-criterion valid pixel count, not total
@@ -518,9 +540,10 @@ def merge_superpixels(
         Otherwise `over` is empty and this is the rule of every earlier run:
         steps 1 and 3 over the fitting neighbours. Closest is `d` under the
         relaxed tolerances, ties broken by order_key; the longest boundary is
-        Xiong's eliminate-pass fallback, ties broken by the lower root index:
-        SNIC label order, not the centroid order_key gives (review C12; see
-        order_key).
+        the fallback, ties broken by the lower root index: SNIC label order,
+        not the centroid order_key gives (review C12; see order_key). This order
+        of choice is this pipeline's own, not Xiong's eliminating rule, which
+        takes its conditions one at a time (the module docstring; review C62).
         """
         soft = pass2_soft_ceiling and area(r) < min_area_ha
         fitting: list[int] = []

@@ -568,8 +568,14 @@ a two-tier threshold scheme.
 - `min_frac_valid`: below this fraction of valid pixels for a band, profiling
   emits null for that band rather than a mean over territory that has none
   (default 0.5).
-- `tie_break`: `shared_edge_length` (the only value). Xiong's eliminate-pass
-  fallback, and what prevents orphans. Shared edge is counted with
+- `tie_break`: `shared_edge_length` (the only value): the second pass's
+  fallback when no neighbour passes the relaxed tolerances, and what prevents
+  orphans. Xiong's eliminating rule (Eq. 2) ends on the longest common side
+  too, but takes its conditions one at a time, where the second pass here
+  applies the relaxed tolerances at once and takes the closest neighbour that
+  passes; that order of choice is this pipeline's own (the module docstring of
+  `src/fmu/utils/region_merge.py`; corrected 20 Oct 2026, review C62, from
+  "Xiong's eliminate-pass fallback"). Shared edge is counted with
   4-connectivity even though SNIC runs `connectivity: 8` — a diagonal contact
   has zero shared boundary length.
 - `max_pass2_iterations`: cap so a pathological AOI logs its stragglers instead
