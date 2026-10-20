@@ -2,7 +2,7 @@
 
 The runs scored can be named by a pattern with {district}, as the scorer's --runs names them, so
 that the AlphaEarth arm's runs can be tested; the arm's name in the seed strings is, by default,
-the runs' name without "odisha_", the district and a round 9 run suffix. The default runs keep
+the runs' name without "odisha_", the district and its run suffixes. The default runs keep
 their seeds (Q6 of the script). Short runs on the committed inputs, skipped where an off-git
 stand layer is not on this machine.
 """
@@ -50,6 +50,13 @@ def _layers_here(pattern: str) -> bool:
     (AE_RUNS + "_repro", "alphaearth_3ha_squares_keptland"),
     ("odisha_v120_10ha_squares_{district}_keptland_s1desc_r9_repro", "v120_10ha_squares_keptland_s1desc"),
     ("odisha_alphaearth_10ha_squares_{district}_keptland_r9_repro", "alphaearth_10ha_squares_keptland"),
+    # A check of the B22 fix (round 13): a later round's suffix, and a numbered _repro copy, too.
+    (K.RUNS + "_r13", C.ARM),
+    (K.RUNS + "_r13_check", C.ARM),
+    (K.RUNS + "_r9_repro2", C.ARM),
+    (K.RUNS + "_repro2", C.ARM),
+    (AE_RUNS.replace("_r9", "_r14"), "alphaearth_3ha_squares_keptland"),
+    ("odisha_v120_10ha_squares_{district}_keptland_s1desc_r13", "v120_10ha_squares_keptland_s1desc"),
 ])
 def test_the_arms_seed_name_is_the_runs_name_without_the_district_and_the_run_suffix(pattern, arm):
     assert C.arm_from_runs(pattern) == arm

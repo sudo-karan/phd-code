@@ -5969,7 +5969,9 @@ decisions:
     hand-crafted arm's placements, and its declared run of 18 Oct 2026 stands as run. (Round 13: each 10 ha
     set draws its own placements too, field-keptland-chance-10ha-sets-draw-their-own-placements. Round 13, review
     B22: a _repro copy of a run is seeded as its source, so it draws the same placements; RUN_SUFFIXES in
-    odisha_script/odisha_keptland_chance.py.)
+    odisha_script/odisha_keptland_chance.py. Since a check of that fix, also in round 13, a later round's re-run
+    (_r13, _r13_check and so on) and a numbered _repro copy are seeded as their source too: RUN_SUFFIX, a pattern
+    in place of the list.)
   alternatives_considered:
   - >-
     Read the AlphaEarth arm against the hand-crafted arm's placements (--arm v120_3ha_squares_keptland_s1desc), so that
