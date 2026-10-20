@@ -57,3 +57,14 @@ Beside the primary's score 4, outside the Holm correction, no pass or fail (`odi
 |---|---|---|---|---|---|---|---|
 | hand-crafted, 3 ha (_r9) | `odisha_v120_3ha_squares_angul_keptland_s1desc_r9`, `odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r9`, `odisha_v120_3ha_squares_kendujhar_keptland_s1desc_r9`, `odisha_v120_3ha_squares_koraput_keptland_s1desc_r9` | declared | 1999 | `v120_3ha_squares_keptland_s1desc` | yes | 264, 257 | 411 |
 | hand-crafted, 10 ha | `odisha_v120_10ha_squares_angul_keptland_s1desc_r9`, `odisha_v120_10ha_squares_dhenkanal_keptland_s1desc_r9`, `odisha_v120_10ha_squares_kendujhar_keptland_s1desc_r9`, `odisha_v120_10ha_squares_koraput_keptland_s1desc_r9` | declared | 1999 | `v120_10ha_squares_keptland_s1desc` | yes | 264, 257 | 404 |
+
+## Note added 20 Oct 2026 (round 13, review A1, A4, A5, A6, B13, B14, B16, B17 and B18)
+
+The numbers above are as first written. Both sets are on hand-crafted stands from before the round
+13 fixes (`docs/handoff/2026-10-20-round13.md`, Done), and so are the differences between them. The
+runs' inputs were affected by A1, A4 and A5, and B13 and the merge and clustering fixes B14, B16,
+B17 and B18 reach them too. The runs of both sizes are to be re-run (roadmap R3). How far any fix
+moves a score, a null, a p or a difference was not measured; it needs Earth Engine. The note at the
+end of each chance file says more (`keptland_s1desc_r9_chance.txt`,
+`keptland_s1desc_10ha_r9_chance.txt`). `README.md` here lists every file noted. No number here is
+changed.

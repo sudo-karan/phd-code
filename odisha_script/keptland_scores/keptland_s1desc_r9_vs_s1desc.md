@@ -89,3 +89,13 @@ tested (`odisha_script/PHASE_KEPTLAND_PREDECLARED.md`).
 | re-run (_r9) | `odisha_v120_3ha_squares_kendujhar_keptland_s1desc_r9` | `b2d1e7d1daab895c3512c1b0a8cd5e014c0a0abefb6619e79316ad5247e58002` |
 | re-run (_r9) | `odisha_v120_3ha_squares_koraput` | `6d9ebeb5689219d1ef86722c8479a4465f8c18f68e470ff5ed5555024f089fc1` |
 | re-run (_r9) | `odisha_v120_3ha_squares_koraput_keptland_s1desc_r9` | `57cb55a0690b72344a7c88e8d9544b3cccc69b352364e432a7b411ab6cf69780` |
+
+## Note added 20 Oct 2026 (round 13, review A1, A4, A5, A6, B13, B14, B16, B17 and B18)
+
+The numbers above are as first written. Neither side has any of the round 13 fixes
+(`docs/handoff/2026-10-20-round13.md`, Done): round 7's runs of 15 Oct 2026, and their `_r9` copies,
+which change only the name and were made from empty caches in the per-step cache layout of round 9.
+So the differences here are not the fixes'. Round 7's scores stay as history; the `_r9` scores are
+the record from before the fixes, and their runs are to be re-run (roadmap R3). Which fixes reach
+the `_r9` runs is said in the note at the end of `keptland_s1desc_r9_scores.txt`. `README.md` here
+lists every file noted. No number here is changed.

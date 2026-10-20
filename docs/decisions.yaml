@@ -7412,3 +7412,80 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: field-keptland-r9-and-10ha-results-kept-from-before-the-round-13-fixes
+  title: >-
+    The kept-land _r9 and 10 ha results stay as the record from before the round 13 fixes, each with a dated note;
+    the hand-crafted arm is to be re-run in R3
+  decision: >-
+    The committed results of the kept-land runs made before the round 13 fixes are kept as first written: no number
+    is changed and no file is regenerated. They are the hand-crafted _r9 runs
+    (odisha_v120_3ha_squares_<district>_keptland_s1desc_r9, the 10 km tile odisha_v120_3ha_tile10km_angul_keptland_s1desc_r9
+    and sanjay_van_baseline_keptland_r9), round 12's 10 ha box runs of both arms
+    (odisha_v120_10ha_squares_<district>_keptland_s1desc_r9 and odisha_alphaearth_10ha_squares_<district>_keptland_r9)
+    and the AlphaEarth arm's _r9 runs (odisha_alphaearth_3ha_squares_<district>_keptland_r9 and
+    sanjay_van_alphaearth_keptland_r9). Each results file gets a note dated 20 Oct 2026, placed so that no line moves:
+    at the end of the eight score and chance .txt files and of the seven side-by-side .md tables in
+    odisha_script/keptland_scores/; in that folder's README for its .json and .csv files and run records; in the
+    READMEs of docs/reproducibility/r9_runs, round12_runs and round9_cache_test for the layers, run records and
+    manifests; and a pointer at the end of odisha_script/PHASE_KEPTLAND_PREDECLARED.md, whose note of 19 Oct 2026 names
+    the scores of record. The notes say which fix reaches which arm. The hand-crafted arm: its inputs were affected by
+    A1 (distance to water saw no water outside the ROI), A4 (the Sentinel-1 and Sentinel-2 date windows stopped on 30
+    Dec 2022) and A5 (slope and aspect in whole degrees, a flat cell read as facing north), and B13 (the NDVI phase's
+    cosine, and in Angul its sine, log-transformed) reaches it too; it is to be re-run in roadmap R3. The AlphaEarth
+    arm: A1, A5 and B13 do not reach it (it reads no static band and has no phase band); A4 reaches its two Koraput
+    runs only (3 ha _r9 and 10 ha), through the NDVI amplitude, one of the merge's three criteria, by an amount not
+    measured; until question 1 of the round 13 brief is answered they are noted as affected (its option (a)), and the
+    other AlphaEarth runs as not affected by A4. Both arms: the merge and clustering fixes B14 (one mean per stand over
+    all its pieces), B16 (exact quartiles), B17 (the merge's pixel counts on one inclusion rule) and B18 (area bounds
+    in whole pixels) reach every run; A6 changes every exported area_ha and n_pixels, which no score reads; round 13's
+    Task 1 changes no type of these runs. A4, B17 and B18 can move the stand outlines and so every score; A1, A5, B13,
+    B14 and B16 reach only the stand types and so only the labelling scores. How far any fix moves a stand, a type or
+    a score was not measured. Whether R3 re-runs the AlphaEarth arm, which B14, B16, B17 and B18 reach, is a question
+    for Jaskaran in the round 13 brief (question 22).
+  alternatives_considered:
+  - >-
+    Note only the hand-crafted results, as the brief's sentence reads, and leave the AlphaEarth arm's files without a
+    note: not chosen; read-only call 4 found that A4 reaches its Koraput runs through the merge, and the merge and
+    clustering fixes of Task 4 reach every run of it, so a file without a note would read as untouched by the round
+  - >-
+    Put the notes in the run folders' READMEs only: not chosen; the brief asks for a note beside each committed
+    results file
+  rationale: >-
+    The round 13 brief (Jaskaran, 19 Oct 2026), Task 6: "The _r9 hand-crafted results. Add one register entry, and a
+    dated note beside each committed results file of the hand-crafted _r9 runs and the round 12 10 ha runs. The note
+    says their inputs were affected by A1, A4 and A5, so they are kept as the record from before the fixes and will
+    be re-run (roadmap R3). The AlphaEarth arm is not affected by A1, A4 or A5; say so. Do not change any number." Its
+    rule 5: "Do not overwrite any committed result. Where a fix shows a committed number is wrong, add a dated note
+    beside it that names the finding and says the result is from before the fix." The brief allows no Earth Engine
+    task this round, so the results cannot be regenerated. Read-only call 4 of the round 13 record found the images
+    of 31 Dec 2022 the exclusive end left out: one Sentinel-1 scene over the Angul, Dhenkanal and Kendujhar boxes and
+    the Angul 10 km tile, two Sentinel-2 scenes passing the cloud filter over the Koraput boxes, and none at Sanjay
+    Van. The Sentinel-2 scenes enter the phenology collection, and so ndvi_amplitude_annual, one of the merge's
+    criteria in both arms; the AlphaEarth arm reads no Sentinel-1 band. So its notes say it is not affected by A1 or
+    A5, and by A4 in Koraput only (question 1, option (a), until Jaskaran answers). The counts in the run folders'
+    notes were read offline from the committed layers and run records (the Koraput and tile layers off git, SHA-256
+    checked): the A6 counts reproduce the brief's for r9_runs and round12_runs. No paper was searched for this
+    decision.
+  evidence:
+  - path: odisha_script/keptland_scores/README.md
+    what: The note for the .json and .csv files and run records, and the list of every file noted
+  - path: odisha_script/keptland_scores/keptland_s1desc_r9_scores.txt
+    what: The hand-crafted scores of record, with the note at the end
+  - path: odisha_script/keptland_scores/keptland_alphaearth_r9_scores.txt
+    what: The AlphaEarth scores, with the note on what does and does not reach them
+  - path: docs/reproducibility/r9_runs/README.md
+    what: Per run, which fixes reach it, with the counts read offline from the layers and run records
+  - path: docs/reproducibility/round12_runs/README.md
+    what: The same for the 10 ha runs
+  - path: docs/reproducibility/round9_cache_test/README.md
+    what: The same for the two cache-test runs; the test's verdict stands
+  - path: odisha_script/PHASE_KEPTLAND_PREDECLARED.md
+    what: The pointer at the end, beside the note that names the scores of record
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Done, what each fix changes; read-only call 4; question 1
+  - path: docs/reviews/2026-10-19-review.md
+    what: A1, A4, A5, A6, B13, B14, B16, B17, B18
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 19 Oct 2026 (round 13 brief)
