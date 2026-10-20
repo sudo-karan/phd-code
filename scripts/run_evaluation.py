@@ -600,7 +600,10 @@ def build_statistics(
             field_type = _need(site.field_type, name, "--field-type-col")
             stats.append(agreement.drawing_statistic(field_type))
             result = agreement.agreement(field_type, sid)
-            per_stand = np.bincount(sid[sid >= 0]) if (sid >= 0).any() else np.zeros(0, int)
+            # Over the plots the index scores, those with a stand and a field type
+            # (review C24: these counts included plots with no field type).
+            scored = (sid >= 0) & (np.asarray(field_type) >= 0)
+            per_stand = np.bincount(sid[scored]) if scored.any() else np.zeros(0, int)
             describe[name] = {
                 "rand": result.rand,
                 "adjusted_rand": result.adjusted_rand,
