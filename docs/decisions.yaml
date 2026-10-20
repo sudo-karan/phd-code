@@ -6847,9 +6847,10 @@ decisions:
     stops (exit 128 plus the signal's number); a signal ignored when the batch started stays ignored; if the
     wrapper is killed outright they keep the lock until they end. (4) Each config is read with the run tree's
     fmu.config and known by its name:, after which the pipeline names its tasks; a config whose name: differs from
-    its file stem, a path that does not end in .yaml, or a name listed twice is refused (exit 93). (5) The
-    wrapper's queue polls have a deadline of 120 s (ee.data.setDeadline, set right after ee.Initialize), as the
-    runner's polls have; a poll that times out is retried. Within a batch, as night-repro-copies-and-safe-passes
+    its file stem, a path that does not end in .yaml, or a name listed twice is refused (exit 93). (5) Each
+    request of the wrapper's queue polls has a deadline of 120 s (ee.data.setDeadline, set right after
+    ee.Initialize), as the runner's polls have; the client retries a request that times out up to 5 times, with
+    backoff, so a poll on a dead network ends after about 13 minutes, and the wrapper then retries the poll. Within a batch, as night-repro-copies-and-safe-passes
     records, a finished config is never re-run and a config whose export stage failed is not retried; that entry is
     not changed. A batch under another label still does not know what an earlier one finished. Corrected in round
     13 after a check of the fix (a review of the round's own changes): a config whose export stage started and has
