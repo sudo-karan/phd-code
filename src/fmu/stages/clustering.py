@@ -715,7 +715,8 @@ def _compute_superpixel_means(
     reduceConnectedComponents, which averages each 8-connected piece of a label
     on its own: a stand in two pieces had two means, its k-means row came from
     one of them, and its pieces could get two types. For a unit in one piece the
-    means are the same, up to floating-point summation order.
+    means are the same, up to floating-point summation order, in every band the
+    unit has data in.
 
     One grouped reduction of the stack by the label image, then each band
     painted back on the label image with remap, all server-side (no mean is
@@ -725,8 +726,10 @@ def _compute_superpixel_means(
         covers;
       - band by band: a band's mean is over the unit's pixels where that band
         has data, and every pixel of the unit holds it; a unit with no data at
-        all in a band is masked in that band, so it has no k-means row, as
-        before. No band goes into the reduction masked: Earth Engine's grouped,
+        all in a band is masked in that band, so it has no k-means row. Until
+        round 13 it had one: reduceConnectedComponents gave it 0 in that band, a
+        value never measured (read on Earth Engine in round 13, on synthetic
+        images). No band goes into the reduction masked: Earth Engine's grouped,
         unweighted reducers add a band's masked pixels into the sum they give a
         group, though their count leaves them out (read on Earth Engine in round
         13, on synthetic images: a band with data on 16 of a unit's 32 pixels
