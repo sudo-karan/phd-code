@@ -9,8 +9,14 @@ The two committed files are unchanged except for a dated note at their end.
 
 `odisha_phase3_2_stand_k_elbow.py` said its preprocessing "mirrors the clustering stage". It does
 not (review A7, `docs/reviews/2026-10-19-review.md`). Compared with `src/fmu/stages/clustering.py`
-(its preprocessing lines are the same at HEAD as at `4f3f04e`, 26 Aug 2026, so the same as when
-the stands of record were typed; their run records date from 15 Sept and 8 Oct 2026):
+(its preprocessing lines were the same at `c368eb7`, where this comparison was made, as at
+`4f3f04e`, 26 Aug 2026, so the same as when the stands of record were typed; their run records
+date from 15 Sept and 8 Oct 2026. Corrected 20 Oct 2026: this said "the same at HEAD". Later in
+round 13 four fixes change those lines, the phase pair kept out of the skew test (B13), one mean
+per stand over all its pieces (B14), exact quartiles (B16) and a flat cell's aspect pair (0, 0)
+(A5); the two stage spaces below rebuild the stage before them, the stage that typed the stands
+of record, so their numbers stand, but for stands typed by the stage as fixed they would have to
+follow those four):
 
 1. it keeps `annual_rainfall` and `ndvi_residual_variance`, which the stage leaves out
    (`_EXCLUDE_BANDS`);

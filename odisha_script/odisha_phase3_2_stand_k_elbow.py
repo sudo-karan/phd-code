@@ -41,6 +41,15 @@ aspect and ndvi_phase_annual (review C10), while the stage takes sin and cos per
 pixel before the mean, so the last of the five departures above is one no
 rebuild from the layers can remove.
 
+"The stage" in this file is the clustering stage as it typed the stands of
+record: src/fmu/stages/clustering.py as at 4f3f04e (26 Aug 2026) and until
+round 13. Four fixes of round 13 change it, and the two stage spaces do not
+follow them: the phase pair is kept out of the skew test (review B13), each
+stand has one mean over all its pieces (B14), the quartiles are exact (B16),
+and a flat cell's aspect pair is (0, 0) (A5). So they are right for the stands
+of record; for stands typed by the stage as fixed (R3), they would have to
+follow those four.
+
 `stage-rows` reads the clustering stage's own k-means rows of the _repro runs,
 saved off git by scripts/remerge_demo_set.py (--demo-dir, outputs/demo by
 default), gives the elbow on them in both geometries, checks the rebuild's
@@ -192,9 +201,10 @@ def is_cyclic(band: str) -> bool:
 def stage_stands(layer: pd.DataFrame) -> pd.DataFrame:
     """One row per stand with a type in the layer: the stand's largest piece, in stand_id order.
 
-    The stage averages the features over each connected piece of a stand (review B14) and takes
-    one row per stand, at a pixel drawn inside the habitat mask, so a stand in several pieces
-    enters with one piece's means. The largest piece (most pixels; ties to the lowest
+    The stage of the stands of record averaged the features over each connected piece of a stand
+    (review B14; since round 13 it takes one mean over all the pieces) and took one row per stand,
+    at a pixel drawn inside the habitat mask, so a stand in several pieces entered with one piece's
+    means. The largest piece (most pixels; ties to the lowest
     stand_id) is the one such a pixel most likely falls in; --space stage-rows counts which
     piece the stage's own rows came from. A stand has a type where its cluster_id is not null.
     """
@@ -281,8 +291,8 @@ def stage_space(stands: pd.DataFrame, bands: list[str], *, threshold: float,
       - a stand typed in a layer of the legacy layout need not have had a row in the fit: the
         export's vote could give a stand with no pixel in the habitat mask a neighbour's type
         (docs/demo/remerge/README.md, section 4), and the layer does not say which;
-      - the stage's median and IQR are Earth Engine's percentiles (review B16) and its skewness
-        estimator is not documented.
+      - the stage's median and IQR were Earth Engine's percentiles (review B16; exact since round
+        13) and its skewness estimator is not documented.
     --space stage-rows measures what these do to the elbow on stands where both exist.
     """
     decomposed = decompose(stands, bands)
