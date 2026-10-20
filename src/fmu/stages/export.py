@@ -1385,7 +1385,13 @@ def _add_geom_attrs(feature: ee.Feature, scale: int) -> ee.Feature:
     some polygons with a hole that touches the outer ring at a vertex adds the
     hole instead of subtracting it (review A6: stand 83 of
     sanjay_van_alphaearth_keptland_r9, 823 pixels, read 1,827 pixels and
-    18.27 ha). The perimeter and the centroid are still the geometry's. So the
+    18.27 ha). The perimeter and the centroid are still the geometry's. The
+    perimeter is right on those polygons (the rings' length, the hole's included),
+    but the centroid has the same hole error as area(): it is the centroid with the
+    hole counted as area (on the merged layers of r9 and round 12, 54 of 7,371
+    centroids are more than 1 m from the hole-subtracted one, 52 of them at the
+    holes-added one, up to 35 m), and `_renumber_by_centroid` numbers stand_id by
+    it. That is not changed in round 13 (its brief, question 21). So the
     builders run this before `_drop_internal_properties` drops 'count', and no
     reduction in between writes a property of that name. On the legacy cache
     layout `stands_dissolved` vectorises a type image on a geographic grid, whose

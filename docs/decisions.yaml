@@ -6771,8 +6771,11 @@ decisions:
     The export stage (src/fmu/stages/export.py, a Locked module), _add_geom_attrs, used by all three vector layers
     (stands_merged, stands_snic, stands_dissolved): n_pixels is the 'count' reduceToVectors puts on every polygon it
     makes (its default reducer, countEvery, over the polygon's pixels at the analysis scale), and area_ha is n_pixels x
-    analysis_scale_m² / 10,000, the area on the analysis grid. perim_m and the centroid are still the geometry's. The
-    three builders compute these before _drop_internal_properties drops 'count', and no reduction in between writes a
+    analysis_scale_m² / 10,000, the area on the analysis grid. perim_m and the centroid are still the geometry's
+    (found after a check of the fix in round 13: the centroid has the same hole error as area(), the centroid with the
+    hole counted as area, 54 of the 7,371 centroids of the committed merged layers of _r9 and round 12 more than 1 m
+    off, up to 35 m, and stand_id is numbered by it; perim_m is right; not changed in round 13, question 21 of its
+    brief). The three builders compute these before _drop_internal_properties drops 'count', and no reduction in between writes a
     property of that name (the feature means are named after their bands, the vote 'mode'); a test pins that order for
     the three builders. On the legacy cache layout stands_dissolved is vectorised from a type image on a geographic grid,
     whose pixels are smaller than analysis_scale_m² away from the equator, so there its area_ha overstates the area

@@ -842,7 +842,11 @@ instead of subtracting the hole of some polygons whose hole touches the outer
 ring at a vertex (`sanjay_van_alphaearth_keptland_r9`, stand 83: 18.27 ha and
 1,827 pixels in its layer, 8.23 ha and 823 pixels on the grid); the layers
 exported before round 13 carry those values. `perim_m` and the centroid are the
-geometry's. On the legacy cache layout `stands_dissolved` is vectorised from a
+geometry's. `perim_m` is right on those polygons, but the centroid has the same
+hole error as the area: it is the centroid with the hole counted as area (up to
+35 m off on the committed merged layers of `_r9` and round 12, where 54 of 7,371
+centroids are more than 1 m off), and `stand_id` is numbered by the centroid, so
+a few stands' ids follow the error. Not changed in round 13. On the legacy cache layout `stands_dissolved` is vectorised from a
 type image on a geographic grid, whose pixels are smaller than
 `analysis_scale_m`² away from the equator (about 93 m² at 10 m and 21° N), so
 there its `area_ha` overstates the area (by about 7.5% at 21° N).

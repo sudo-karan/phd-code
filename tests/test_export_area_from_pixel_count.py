@@ -8,7 +8,8 @@ at a vertex, Earth Engine's `area()` adds the hole instead of subtracting it: st
 its planar area with its 5.01 ha hole subtracted is 8.23 ha and the merge record
 (sanjay_van_alphaearth_keptland_r9_run.json, stand_attributes) gives 823 pixels. Now `n_pixels`
 is the `count` reduceToVectors puts on every polygon, and `area_ha` is that count at the
-analysis scale; the perimeter and the centroid are still the geometry's.
+analysis scale; the perimeter and the centroid are still the geometry's (the centroid with the
+same hole error, not changed in round 13).
 
 The builders must leave `count` on each polygon until `_add_geom_attrs` has read it: the
 reductions between add their outputs beside it (a band's mean under the band's name, the vote
