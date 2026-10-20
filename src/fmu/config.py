@@ -72,7 +72,8 @@ class DatasetIDs(BaseModel):
     # CHIRPS pentad rainfall (5-day totals, ~5 km). Long climatology source.
     climate: str = "UCSB-CHG/CHIRPS/PENTAD"
     # AlphaEarth Satellite Embedding: a 64-band annual per-pixel embedding
-    # (bands A00..A63), one image per year from 2017. Read ONLY when
+    # (bands A00..A63), one image per year from 2017 for each tile of the
+    # collection, so a ROI over two tiles reads two a year (review C11). Read ONLY when
     # clustering.feature_source == "embedding". Point this at an uploaded
     # Tessera asset (a single Image) to run the Tessera arm instead — the
     # features_embedding stage handles both an ImageCollection (annual
@@ -210,7 +211,8 @@ class FeaturesEmbeddingParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     # How to collapse an annual embedding ImageCollection (AlphaEarth ships one
-    # image per year) to a single image over the feature window. "mean" matches
+    # image per year for each tile it covers) to a single image over the feature
+    # window, per pixel. "mean" matches
     # the 2017-2022 averaging the hand-crafted arm rests on; "median" is a
     # robust alternative. Ignored when the source is a single uploaded image
     # (Tessera), which is loaded as-is.

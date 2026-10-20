@@ -365,8 +365,9 @@ embedding mode this single pretrained per-pixel image replaces the four
 hand-crafted feature images (optical / radar / structure / static).
 
 - `collapse_reducer`: `mean` (default) or `median`. How an annual embedding
-  ImageCollection (AlphaEarth ships one image per year) is collapsed to a single
-  image over the `dates.phenology` window. `mean` matches the 2017-2022
+  ImageCollection (AlphaEarth ships one image per year for each tile it covers,
+  so a ROI over two tiles reads two a year; review C11) is collapsed, per pixel,
+  to a single image over the `dates.phenology` window. `mean` matches the 2017-2022
   averaging the hand-crafted arm rests on. Ignored for a single uploaded Image
   (Tessera), which is loaded as-is.
 - `band_names`: list of band names, or `null` (default) to keep every band the

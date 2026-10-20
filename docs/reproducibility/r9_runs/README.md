@@ -140,3 +140,15 @@ were drawn with is in `<run>_manifest_segmentation.json` beside its record (the 
 stage's `metadata.distance_scale`), and it is there for all eleven. Since round 13 the runner reads
 it from that pass's manifest, and `snic_distance_scale_from` says where. The records are kept as
 written; no number changed.
+
+## Notes added 20 Oct 2026 (round 13)
+
+The files above are kept as their runs wrote them. These notes say how to read some of their
+fields, after the review of 19 Oct 2026 (`docs/reviews/2026-10-19-review.md`; finding ids in bold).
+
+- **C11, the AlphaEarth collapse.** The AlphaEarth runs' `_manifest_features.json` give the
+  embedding's collapse as "mean over N annual image(s)", and N as `n_source_images`. N is the
+  number of images the filtered collection held, one per tile of the collection per year, not a
+  number of years: the Dhenkanal run's 12 are the six images that the Angul and Kendujhar runs also
+  list and six others, over the six years 2017 to 2022; every other run's 6 is one tile. The mean
+  is taken per pixel, as declared.

@@ -216,8 +216,9 @@ distance-to-water feature.
 ## AlphaEarth Satellite Embedding
 
 `GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL`. A pretrained per-pixel embedding:
-a 64-band annual ImageCollection (one image per year from 2017, bands
-`A00`..`A63`) at 10 m, learned from multi-sensor satellite time series.
+a 64-band annual ImageCollection (one image per year from 2017 for each tile
+the collection is cut into, bands `A00`..`A63`) at 10 m, learned from
+multi-sensor satellite time series.
 
 - **Embedding mode only.** Read solely by `features_embedding`, which
   runs only when `clustering.feature_source: embedding`. In the default
@@ -226,7 +227,12 @@ a 64-band annual ImageCollection (one image per year from 2017, bands
   are filtered to `dates.phenology` (2017-2022) and reduced to a single
   embedding image by `features_embedding.collapse_reducer` (default
   `mean`; `median` available), matching the 2017-2022 averaging the
-  hand-crafted features rest on.
+  hand-crafted features rest on. The reduction is per pixel. The run's
+  manifest records how many images the filtered collection held
+  (`n_source_images`, and the note "mean over N annual image(s)"): one per
+  tile per year, so not a number of years. The Dhenkanal box runs record 12,
+  the six images the Angul and Kendujhar runs also list and six others, for
+  the six years 2017-2022 (review C11).
 - **All 64 bands by default.** `features_embedding.band_names: null`
   keeps every embedding dimension; the dimensions are jointly meaningful,
   so restricting to a subset is rarely useful.

@@ -259,13 +259,13 @@ The *embedding arm's* single feature stage. Runs when `clustering.feature_source
 **Cacheable:** yes
 
 **Datasets** (`datasets.embedding`, default `GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL`):
-- AlphaEarth Satellite Embedding; a 64-band annual `ImageCollection` (bands `A00..A63`, one image per year from 2017). The default source.
+- AlphaEarth Satellite Embedding; a 64-band annual `ImageCollection` (bands `A00..A63`, one image per year from 2017 for each tile the collection is cut into). The default source.
 - Tessera (or any other pretrained embedding) uploaded to Earth Engine as a single `Image`; point `datasets.embedding` at the uploaded asset id.
 
 **Logic:**
 - Sniff the asset type with `ee.data.getAsset` (the same tolerant pattern as masking).
 - **Single `Image` (Tessera):** loaded as-is; no collapse.
-- **`ImageCollection` (AlphaEarth) or unknown:** filter to the ROI + the `dates.phenology` window (2017-2022, the shared time-series support the handcrafted features rest on; end date made inclusive via `advance(1, "day")`) and collapse to ONE image by `mean` (default) or `median`. An empty window (no images intersecting the ROI) is a hard error (fail-loud per ENG-012).
+- **`ImageCollection` (AlphaEarth) or unknown:** filter to the ROI + the `dates.phenology` window (2017-2022, the shared time-series support the handcrafted features rest on; end date made inclusive via `advance(1, "day")`) and collapse to ONE image by `mean` (default) or `median`, per pixel. An empty window (no images intersecting the ROI) is a hard error (fail-loud per ENG-012). The metadata's `n_source_images`, and the count in its note "mean over N annual image(s)", is the size of the filtered collection: images, one per tile per year, not years. A ROI over two tiles records 12 for 2017-2022, as the Dhenkanal box runs do (review C11).
 - Optional band restriction via `band_names` (None keeps every embedding dimension), then `clip(roi)`.
 - The embedding is **not** masked or otherwise altered here; the experiment holds everything but the clustering feature vector fixed.
 

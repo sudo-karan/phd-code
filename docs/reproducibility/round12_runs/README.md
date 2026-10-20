@@ -94,3 +94,15 @@ tracked file. Two of them, Dhenkanal and Koraput of the AlphaEarth arm, hold
 read, and the record does not say which. Since round 13 the script records the block every run
 record has (`fmu.utils.provenance.git_state` of its own checkout, read before it writes). The
 records are kept as written; no number changed.
+
+## Notes added 20 Oct 2026 (round 13)
+
+The files above are kept as their runs wrote them. These notes say how to read some of their
+fields, after the review of 19 Oct 2026 (`docs/reviews/2026-10-19-review.md`; finding ids in bold).
+
+- **C11, the AlphaEarth collapse.** The AlphaEarth runs' `_manifest_features.json` give the
+  embedding's collapse as "mean over N annual image(s)", and N as `n_source_images`. N is the
+  number of images the filtered collection held, one per tile of the collection per year, not a
+  number of years: the Dhenkanal run's 12 are the twelve its 3 ha run lists
+  (`docs/reproducibility/r9_runs/README.md`), over the six years 2017 to 2022; every other run's 6
+  is one tile. The mean is taken per pixel, as declared.
