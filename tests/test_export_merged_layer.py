@@ -110,6 +110,9 @@ class _FakeList:
         drop = set(other.items if isinstance(other, _FakeList) else other)
         return _FakeList([i for i in self.items if i not in drop])
 
+    def getInfo(self):  # noqa: N802 - the band names the angle pairs are read from (round 14)
+        return list(self.items)
+
 
 class _FakeFC:
     """Records what the builder does to the collection."""

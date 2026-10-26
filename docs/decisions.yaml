@@ -8960,3 +8960,78 @@ decisions:
   source: >-
     Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 21, Claude Code's recommendation (a), by the brief's rule
     'Every other question: your recommendation'
+- id: spec-export-stand-means-of-angle-sin-and-cos
+  title: >-
+    The stand layers give each polygon's means of the sine and cosine of its angle bands, beside the plain means
+  decision: >-
+    The export stage (src/fmu/stages/export.py, a Locked module), in stands_merged and stands_snic, adds to the feature
+    stack whose per-polygon means it attaches (reduceRegions with ee.Reducer.mean()) the sine and cosine of each of its
+    angle bands, by the clustering stage's rule, which it reuses (_with_angle_sin_cos calls
+    fmu.stages.clustering._decompose_cyclic_bands): aspect, made radians from degrees, and every band with "_phase_" in
+    its name, in radians, each as <band>_sin and <band>_cos per pixel, a cell whose slope is 0 given the aspect pair
+    (0, 0), no direction, and a stack with aspect and no slope refused. So the GeoJSON of a hand-crafted run carries
+    aspect_sin, aspect_cos, ndvi_phase_annual_sin and ndvi_phase_annual_cos (a NIRv run nirv_phase_annual_sin and _cos,
+    a dual-harmonic run <index>_phase_semi_sin and _cos too), each the polygon's mean of the per-pixel values, per
+    polygon piece as the other means. The old columns, aspect and <index>_phase_*, are the plain means as before, so
+    they keep their meaning. The embedding arm, which has no angle band, gets no new column. The shapefiles' columns are
+    unchanged (a name such as ndvi_phase_annual_sin is longer than a shapefile's ten characters), and stands_dissolved,
+    which carries the clusters' profiles and no polygon means, is unchanged. Each of the two layers makes one request
+    more per ROI part, for the stack's band names. The export is not cached, so no step key moves.
+  alternatives_considered:
+  - >-
+    Replace the two columns by circular means, atan2 of the mean sine and cosine (option (b) of round 13's question
+    33): not chosen; the same column name would mean different things in old and new layers
+  - >-
+    Keep the columns as they are, documented (option (c)): not chosen; the site's 'Faces' and 'Peak month' stay wrong
+    for stands that straddle north or the phase's wrap
+  - >-
+    A third copy of the decomposition in the export (the profiling stage keeps a copy of its own, to stand alone): not
+    chosen; the export reuses the clustering stage's, so the stand means are of the values the clustering takes
+  rationale: >-
+    The round 14 brief (Jaskaran, 26 Oct 2026), Task 1: "Every other question: your recommendation", and among the code
+    changes the answers call for before R3, Q33. Round 13's question 33 (docs/handoff/2026-10-20-round13.md)
+    recommended (a): "Add the stand means of each angle's sine and cosine as new columns (aspect_sin, aspect_cos,
+    ndvi_phase_annual_sin, ndvi_phase_annual_cos), counting a flat cell as no direction, as the clustering does", for
+    which "the old columns keep their meaning, and both a stand's direction and how spread it is can be read", in the
+    round that re-exports for R3. Review C10 (docs/reviews/2026-10-19-review.md) found the layers' aspect and
+    ndvi_phase_annual to be arithmetic means of angles: a stand whose pixels face 350 and 10 degrees reads 180, and in
+    the Phase 2/3 3 ha stands 57%, 58%, 32% and 35% have a mean aspect between 135 and 225 degrees, where 25% would be
+    expected of evenly spread aspects (round 13, Task 6, C10). The new tests build both layers on numpy stand-ins for
+    the images: a stand facing 350 and 10 degrees gets aspect_cos 0.985, north, where its aspect reads 180; one whose
+    phases are 3.0 and -3.0 gets ndvi_phase_annual_cos -0.990 where its phase reads 0; and a stand of a flat cell and a
+    slope facing east gets the vector (0.5, 0), where a flat cell read as facing north would give (0.5, 0.5). On the
+    export before the change they fail: the four columns are not there ("assert {'aspect_sin'...al_cos': None} ==
+    approx(...)"), and a stack with aspect and no slope "DID NOT RAISE ValueError". The clustering is not changed. A
+    stand's direction
+    is atan2 of its sine and cosine means, and the length of the mean vector says how far its cells agree (shortened by
+    its share of flat cells, for aspect); the site reading them is a later step (the brief's out of scope: the website
+    and ui_data/). Layers exported before round 14 lack the new columns. Scripts that read every column of a layer that
+    is not an id as a feature would read the new ones too if run on a new layer:
+    odisha_script/odisha_phase3_2_stand_k_elbow.py, whose stage space would take ndvi_phase_annual_sin and _cos for
+    angles (its is_cyclic matches "_phase_"), and scripts/build_ui_early_data.py, which would show them as features.
+    Neither is run on a new layer this round. No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/export.py
+    what: _with_angle_sin_cos, and step 2 of _build_merged_feature_collection and _build_snic_feature_collection
+  - path: src/fmu/stages/clustering.py
+    what: _decompose_cyclic_bands, the rule reused
+  - path: tests/test_export_stand_means_of_angle_sin_and_cos.py
+    what: >-
+      The new columns on a stack with a flat cell, by the rule; none on an embedding stack; the shapefiles' columns
+      unchanged; fails on the export before the change
+  - path: tests/test_flat_cells_have_no_aspect.py
+    what: The export's pairs are the clustering stage's, a flat cell's (0, 0) among them
+  - path: docs/outputs.md
+    what: The GeoJSON attributes of stands_merged and stands_snic
+  - path: docs/reviews/2026-10-19-review.md
+    what: C10
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 6, C10, and question 33
+  - path: docs/handoff/2026-10-26-round14.md
+    what: The brief, Task 1
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 33, Claude Code's recommendation (a), by the brief's rule
+    'Every other question: your recommendation'

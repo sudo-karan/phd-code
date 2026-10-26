@@ -166,6 +166,9 @@ class _List(list):
     def removeAll(self, other):  # noqa: N802 - mirrors the ee API
         return _List(x for x in self if x not in set(other))
 
+    def getInfo(self):  # noqa: N802 - the band names the angle pairs are read from (round 14)
+        return list(self)
+
 
 class _Reducer:
     def __init__(self, name: str):

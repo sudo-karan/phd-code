@@ -582,7 +582,7 @@ Structure:
       "unclustered_stands_retained": true,
       "shp_attributes": ["stand_id", "stand_lbl", "cluster_id", "area_ha", "perim_m", "n_pixels", "n_superpx", "n_pass1", "n_relaxed", "n_fallback", "below_min", "below_why"],
       "provenance_attributes": ["n_superpx", "n_pass1", "n_relaxed", "n_fallback", "below_min", "below_why"],
-      "geojson_attributes": "all SHP attributes plus per-stand means of every features_* band"
+      "geojson_attributes": "all SHP attributes plus per-stand means of every features_* band and of the sine and cosine of each angle band (<band>_sin, <band>_cos)"
     },
     "stands_snic": {
       "description": "One polygon per SNIC superpixel ...",
@@ -591,7 +591,7 @@ Structure:
       "id_field": "stand_id",
       "id_renumbering": "1..N, sorted by centroid lat desc then lon asc.",
       "shp_attributes": ["stand_id", "snic_label", "cluster_id", "area_ha", "perim_m", "n_pixels"],
-      "geojson_attributes": "all SHP attributes plus per-superpixel means of every features_* band"
+      "geojson_attributes": "all SHP attributes plus per-superpixel means of every features_* band and of the sine and cosine of each angle band (<band>_sin, <band>_cos)"
     },
     "stands_dissolved": {
       "description": "One polygon per connected same-cluster region ...",
@@ -1035,8 +1035,21 @@ angle bands too: `aspect` (degrees, 0 to 360) and `<index>_phase_annual`
 arithmetic means of angles, not circular means. So a stand whose pixels face
 350° and 10° reads 180°, and one whose phases lie on both sides of ±π reads near
 0 (review C10). The clustering does not read these columns: it takes the sine
-and cosine of each angle per pixel. The export is unchanged; whether it should
-give circular means is a question for Jaskaran (round 13).
+and cosine of each angle per pixel. Since round 14 (round 13's question 33,
+answered (a)) the layer gives the means of those too, beside the angles, which
+keep their meaning: for each angle band `<band>_sin` and `<band>_cos`, the
+polygon's mean of its pixels' sine and cosine (`aspect_sin`, `aspect_cos`,
+`ndvi_phase_annual_sin` and `ndvi_phase_annual_cos` in a hand-crafted run;
+`<index>_phase_semi_sin` and `_cos` too in a dual-harmonic run), by the
+clustering stage's rule, which the export reuses: aspect made radians from
+degrees, and a flat cell (slope 0) given the aspect pair (0, 0), no direction.
+A stand's direction is atan2(`<band>_sin`, `<band>_cos`), and the length of the
+pair says how far its pixels agree (1 when they all point one way; for aspect it
+is shortened by the share of flat cells too): the stand facing 350° and 10° has
+`aspect_cos` 0.98, north. The embedding arm has no angle band and no such
+column. GeoJSON only: the shapefile keeps its columns (`ndvi_phase_annual_sin`
+is longer than ten characters), and the layers exported before round 14 lack the
+new columns (register entry `spec-export-stand-means-of-angle-sin-and-cos`).
 
 **Null `cluster_id` is meaningful, not missing data.** Unlike `stands_snic`,
 this layer keeps stands that clustering could not type. Under the merge
@@ -1081,7 +1094,9 @@ GeoJSON attributes: every SHP attribute, **plus** per-superpixel means
 of every features_* band (ndvi_mean, ndvi_amplitude_annual, vv_p50,
 canopy_height, elevation, etc.) — typically 25-30 additional columns.
 The angle bands (`aspect`, `<index>_phase_*`) are arithmetic means of angles
-here too, as in `stands_merged` (review C10).
+here too, as in `stands_merged` (review C10), and since round 14 the means of
+their sine and cosine are beside them, `<band>_sin` and `<band>_cos`, as in
+`stands_merged`.
 Centroid lat/lon are also included for convenience: the mean position of
 the polygon's pixel centres since round 14, as in `stands_merged`.
 

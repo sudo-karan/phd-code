@@ -115,7 +115,10 @@ meters.
   the clustering stage gives it no direction, `aspect_sin` = `aspect_cos` =
   0 (review A5). The stand layers' `aspect` column is not decomposed: it is
   the plain mean of the stand's pixel degrees, an arithmetic mean of angles
-  (review C10; `docs/outputs.md`).
+  (review C10; `docs/outputs.md`). Since round 14 the layers also give
+  `aspect_sin` and `aspect_cos`, the stand's means of its cells' sine and
+  cosine by the clustering stage's rule, a flat cell (0, 0); the stand faces
+  atan2(`aspect_sin`, `aspect_cos`).
 
 ## CoRE Stack LULC (IndiaSAT)
 

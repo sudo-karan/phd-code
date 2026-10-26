@@ -86,6 +86,7 @@ import ee
 from fmu import __version__
 from fmu.config import Config
 from fmu.stages.base import PipelineContext, Stage, StageResult, register_stage
+from fmu.stages.clustering import _decompose_cyclic_bands
 from fmu.utils.caching import asset_exists, cached_asset_path
 from fmu.utils.gee import safe_call, safe_get_info
 from fmu.utils.logging import get_logger
@@ -361,7 +362,9 @@ class ExportStage(Stage):
                 "unclustered_stands_retained": True,
                 "shp_attributes": [*_SHP_SELECTORS_MERGED, *provenance_fields],
                 "geojson_attributes": "all SHP attributes plus per-stand means "
-                                      "of every features_* band",
+                                      "of every features_* band and of the "
+                                      "sine and cosine of each angle band "
+                                      "(<band>_sin, <band>_cos)",
                 "provenance_attributes": list(provenance_fields),
             }
             for fmt in config.export.vector_formats:
@@ -424,7 +427,9 @@ class ExportStage(Stage):
                 ),
                 "shp_attributes": list(_SHP_SELECTORS_SNIC),
                 "geojson_attributes": "all SHP attributes plus per-superpixel "
-                                      "means of every features_* band",
+                                      "means of every features_* band and of "
+                                      "the sine and cosine of each angle band "
+                                      "(<band>_sin, <band>_cos)",
             }
             for fmt in config.export.vector_formats:
                 filename = f"{config.name}_{_SNIC_LAYER_NAME}"
@@ -676,6 +681,27 @@ def _feature_source_image(ctx: PipelineContext) -> ee.Image:
         ctx.get("structure_features"),
         ctx.get("static_features"),
     ])
+
+
+def _with_angle_sin_cos(stack: ee.Image) -> ee.Image:
+    """`stack` with the sine and cosine of each of its angle bands added, by the clustering stage's rule.
+
+    The angle bands and their pairs are those of the clustering stage's
+    _decompose_cyclic_bands, reused so that the stand layers average the values the
+    clustering takes: aspect, made radians from degrees, and every band with "_phase_" in
+    its name, in radians, each as <band>_sin and <band>_cos per pixel; a cell whose slope
+    is 0 has the aspect pair (0, 0), no direction (review A5); a stack with aspect and no
+    slope is refused. The bands of `stack` stay as they are, so the layers' plain means of
+    the angles keep their columns (review C10), with the means of the pairs beside them
+    (round 14; round 13's question 33, answered (a)). A stack with no angle band, the
+    embedding arm's, is returned as it is. One request, for the stack's band names.
+    """
+    decomposed, angle_bands = _decompose_cyclic_bands(stack)
+    if not angle_bands:
+        return stack
+    return stack.addBands(
+        decomposed.select([f"{band}_{part}" for band in angle_bands for part in ("sin", "cos")])
+    )
 
 
 def _read_clustering_metadata(cluster_labels: ee.Image) -> dict[str, Any]:
@@ -1066,12 +1092,16 @@ def _build_merged_feature_collection(
     # Step 2: per-stand feature means, same exclusions as the SNIC layer. Plain means
     # of the pixel values, the angle bands too: aspect (degrees) and *_phase_* (radians)
     # come out as arithmetic means of angles, not circular means (review C10). The
-    # clustering does not read them; it takes sine and cosine per pixel.
+    # clustering does not read them; it takes sine and cosine per pixel, and since
+    # round 14 the stack holds those too, beside the angles (_with_angle_sin_cos), so
+    # each stand also gets their means, as <band>_sin and <band>_cos.
     all_features = _feature_source_image(ctx)
     kept_feature_bands = all_features.bandNames().removeAll(
         ee.List(["ndvi_obs_count", "nirv_obs_count"])
     )
-    polygons_with_features = all_features.select(kept_feature_bands).reduceRegions(
+    polygons_with_features = _with_angle_sin_cos(
+        all_features.select(kept_feature_bands)
+    ).reduceRegions(
         collection=polygons,
         reducer=ee.Reducer.mean(),
         scale=scale,
@@ -1253,7 +1283,9 @@ def _build_snic_feature_collection(
          (_vectorise_with_pixel_centres, round 14).
       2. Attach per-superpixel feature means via reduceRegions on the
          concatenated features_* image stack (minus metadata bands like
-         ndvi_obs_count, which match profiling's _EXCLUDE_BANDS).
+         ndvi_obs_count, which match profiling's _EXCLUDE_BANDS), and since
+         round 14 the means of the sine and cosine of each angle band
+         (_with_angle_sin_cos).
       3. Attach cluster_id via reduceRegions(mode) on cluster_labels.
       4. Drop superpixels that fall entirely outside the habitat mask
          (cluster_labels is null there → no cluster_id). These are
@@ -1287,7 +1319,9 @@ def _build_snic_feature_collection(
     )
 
     # Step 2: attach per-superpixel feature means: plain means, so aspect and
-    # *_phase_* are arithmetic means of angles here too (review C10).
+    # *_phase_* are arithmetic means of angles here too (review C10), with the
+    # means of their sine and cosine beside them since round 14
+    # (_with_angle_sin_cos, as in the merged layer).
     # ee.Image.cat concatenates multi-band images; band names must be unique
     # across the inputs, which they are by construction (ndvi_*, vv_*, vh_*,
     # canopy_*, elevation/slope/aspect/...). We drop the obs_count metadata
@@ -1297,7 +1331,7 @@ def _build_snic_feature_collection(
     feature_band_names = all_features.bandNames()
     excluded_metadata_bands = ee.List(["ndvi_obs_count", "nirv_obs_count"])
     kept_feature_bands = feature_band_names.removeAll(excluded_metadata_bands)
-    feature_stack_for_attrs = all_features.select(kept_feature_bands)
+    feature_stack_for_attrs = _with_angle_sin_cos(all_features.select(kept_feature_bands))
 
     polygons_with_features = feature_stack_for_attrs.reduceRegions(
         collection=polygons,
