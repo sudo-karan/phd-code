@@ -113,14 +113,63 @@ def safe_call(context: str) -> Callable[[Callable[..., T]], Callable[..., T]]:
     return decorator
 
 
-def load_roi_geometry(roi_file: Path) -> ee.Geometry:
-    """Load a local GeoJSON into an ee.Geometry."""
-    roi_file = Path(roi_file)
-    if not roi_file.exists():
-        raise FileNotFoundError(f"ROI file not found: {roi_file}")
+def checkout_root() -> Path:
+    """The root of the checkout the `fmu` package was imported from: the folder holding `src/`.
 
-    with roi_file.open() as f:
-        gj = json.load(f)
+    Read from `fmu.__file__` (<root>/src/fmu/__init__.py) at every call: the root
+    `fmu.utils.provenance` names as this package's checkout. In a batch run tree the package
+    is imported from the run tree (PYTHONPATH=<run tree>/src), so the root is the run tree.
+    The working directory plays no part.
+    """
+    import fmu
+
+    return Path(fmu.__file__).resolve().parents[2]
+
+
+def resolve_roi_file(roi_file: str | Path) -> Path:
+    """Where a config's `roi.roi_file` is read from (round 14; round 13 question 41).
+
+    An absolute path is used as it is; a relative one is taken under `checkout_root()`, never
+    under the working directory. Until round 14 both the ROI loader and the per-step cache
+    keys read a relative path from the working directory (review C40).
+    """
+    path = Path(roi_file)
+    return path if path.is_absolute() else checkout_root() / path
+
+
+def read_roi_file(roi_file: str | Path) -> bytes:
+    """The bytes of a config's ROI file, read where `resolve_roi_file` puts it.
+
+    The one reader of a ROI file: `load_roi_geometry` makes the run's geometry from these
+    bytes and the per-step cache keys hash them (fmu.utils.caching), so the keys and the
+    geometry are always of the same file, whatever folder the process stands in. The file
+    is read at every call, not remembered.
+
+    A file that cannot be read raises an OSError of the kind the read gave
+    (FileNotFoundError for a missing file, IsADirectoryError for a folder, ...) whose
+    message names the path as given, the path it resolved to and the checkout root.
+    """
+    path = resolve_roi_file(roi_file)
+    try:
+        return path.read_bytes()
+    except OSError as e:
+        message = (
+            f"ROI file {str(roi_file)!r} cannot be read ({e.strerror or e}): read at {path}. "
+            f"A relative roi_file is resolved against {checkout_root()}, the root of the "
+            f"checkout the fmu package was imported from, not against the working directory; "
+            f"an absolute one is used as it is."
+        )
+        raise (type(e)(e.errno, message) if e.errno is not None else type(e)(message)) from e
+
+
+def load_roi_geometry(roi_file: str | Path) -> ee.Geometry:
+    """Load a config's GeoJSON ROI file into an ee.Geometry.
+
+    The file is read by `read_roi_file`, the reader the per-step cache keys hash it with:
+    an absolute path as it is, a relative one from the checkout root, not the working
+    directory (round 14). A file that cannot be read raises an OSError naming it.
+    """
+    gj = json.loads(read_roi_file(roi_file))
 
     gtype = gj.get("type")
     if gtype == "FeatureCollection":

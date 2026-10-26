@@ -57,6 +57,27 @@ def reset_registry():
         _stage_registry.update(found)
 
 
+# The ROI file every config built here names: a real one, written for each test to a
+# temporary folder of its own, not the run folder the tests read. Since round 14 the
+# per-step cache keys, which a run with the cache on computes, raise for a ROI file they
+# cannot read, where they hashed None before (round 13 question 41). A module that borrows
+# `_make_config` (tests/test_git_state_read_first.py) runs outside this fixture and gets the
+# path the configs named before, which no file holds; it runs no cached stage.
+_ROI_FILE: dict[str, Path] = {}
+_ROI = {
+    "type": "FeatureCollection",
+    "features": [{"type": "Feature", "properties": {}, "geometry": {
+        "type": "Polygon", "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]}}],
+}
+
+
+@pytest.fixture(autouse=True)
+def _a_real_roi_file(tmp_path_factory, monkeypatch):
+    path = tmp_path_factory.mktemp("roi") / "t.geojson"
+    path.write_text(json.dumps(_ROI))
+    monkeypatch.setitem(_ROI_FILE, "path", path)
+
+
 # Helper: build a minimal-but-valid Config object for tests.
 def _make_config(name: str = "test_run"):
     """Construct a Config without going through YAML; cheap and isolated."""
@@ -64,7 +85,7 @@ def _make_config(name: str = "test_run"):
 
     return Config(
         name=name,
-        roi=ROIConfig(name="t", roi_file=Path("aois/t.geojson")),
+        roi=ROIConfig(name="t", roi_file=_ROI_FILE.get("path", Path("aois/t.geojson"))),
         dates=DatesConfig(
             phenology=DateRange(start="2020-01-01", end="2024-12-31"),
             radar=DateRange(start="2020-01-01", end="2024-12-31"),

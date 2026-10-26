@@ -187,11 +187,16 @@ projects/<your-project>/assets/fmu/<config_name>/<stage_name>/<output_key>__<key
   digits, a hash over what that step reads (its settings in `STEP_SETTINGS`, the
   ROI file's content, and the keys of the steps whose outputs it reads), so a
   setting moves the key of the step that reads it and of the steps after it, and
-  no other. The ROI file is read from its path as the config gives it, relative
-  to the working directory, and a file that cannot be read hashes as nothing,
-  with no warning: from another folder every per-step key changes, and the pass
-  runner reports every upstream asset as missing (exit 3). Run from the repo root
-  or the run tree's root (review C40). Every asset is exported on the analysis grid segmentation works on
+  no other. The ROI file is read by the ROI loader's own reader
+  (`fmu.utils.gee.read_roi_file`): a relative path from the root of the checkout
+  the `fmu` package is imported from (the run tree, in a batch), not from the
+  working directory, so the keys are the same from any folder; a file that
+  cannot be read stops the run with an error naming the path as given, the path
+  it resolved to and the root (round 14; round 13 question 41). Until round 14
+  the path was read relative to the working directory, and a file that could not
+  be read hashed as nothing, with no warning: from another folder every per-step
+  key changed, and the pass runner reported every upstream asset as missing
+  (exit 3) (review C40). Every asset is exported on the analysis grid segmentation works on
   (the ROI's UTM zone at `export.analysis_scale_m`), so a stage reads cached
   features on the very pixels it would compute them on live. A per-step asset
   also carries the count and SHA-256 of the images each of its input

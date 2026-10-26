@@ -39,12 +39,11 @@ import re
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Literal
 
 import ee
 
-from fmu.utils.gee import asset_path
+from fmu.utils.gee import asset_path, read_roi_file
 from fmu.utils.logging import get_logger
 
 log = get_logger(__name__)
@@ -602,25 +601,25 @@ def _setting(dumped: dict[str, Any], path: str) -> Any:
 def _roi_file_sha256(config: Any) -> str | None:
     """SHA-256 of the ROI file, so that a changed outline changes every key.
 
-    The legacy fingerprint hashes the ROI file's path only. None when the file
-    cannot be read (an ROI given as an asset, or a test config whose file does
-    not exist).
+    The legacy fingerprint hashes the ROI file's path only. None for a ROI given
+    as an asset (`roi.roi_asset`), which has no file.
 
-    The path is read as the config gives it, relative to the working directory,
-    and any error reading it gives None, with no warning (review C40; this
-    docstring corrected in round 13). So from a directory where a config's
-    relative path does not resolve, every per-step key changes while the legacy
-    fingerprint does not. Every entry point then fails safe, with a misleading
-    reason: the ROI loader raises, or the pass runner reports every upstream
-    asset as missing (exit 3). Run from the repo root or the run tree's root.
+    The file is read by `fmu.utils.gee.read_roi_file`, the reader the ROI loader
+    uses too, so the keys hash the file the run's geometry is made from: an
+    absolute path as it is, a relative one from the root of the checkout the fmu
+    package was imported from (in a batch, the run tree), never the working
+    directory. A file that cannot be read raises an OSError that names the path as
+    given, the path it resolved to and the root. It is read at every call, not
+    remembered. (Round 14, round 13 question 41. Until then the path was read
+    relative to the working directory, and a file that could not be read hashed
+    as None, with no warning: from a folder where the path did not resolve every
+    per-step key changed while the legacy fingerprint did not, and the pass
+    runner reported every upstream asset as missing, exit 3; review C40.)
     """
     roi_file = getattr(config.roi, "roi_file", None)
     if roi_file is None:
         return None
-    try:
-        return hashlib.sha256(Path(roi_file).read_bytes()).hexdigest()
-    except OSError:
-        return None
+    return hashlib.sha256(read_roi_file(roi_file)).hexdigest()
 
 
 def step_key(config: Any, step: str) -> str:
@@ -628,7 +627,8 @@ def step_key(config: Any, step: str) -> str:
 
     A hash of the settings `STEP_SETTINGS` lists for the step, the ones every
     step depends on (the ROI and the analysis scale), the ROI file's content (read
-    from the working directory, see `_roi_file_sha256`), and the keys of the steps
+    from the checkout root, whatever the working directory, and raising for a file
+    that cannot be read; see `_roi_file_sha256`), and the keys of the steps
     upstream of it. The config's name, description, export
     plumbing and metrics are in none of them, so two configs that differ only in
     name have the same keys.

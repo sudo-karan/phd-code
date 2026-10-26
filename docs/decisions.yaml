@@ -5792,7 +5792,10 @@ decisions:
     entry point then fails safe, with a misleading reason: the ROI loader raises, or the pass runner reports every
     upstream asset missing (exit 3). No run of record is affected: the keys of record are pinned
     (tests/test_step_keys_of_record.py). The docs say so since round 13; whether to resolve the path against the
-    repo root is put to Jaskaran.
+    repo root is put to Jaskaran. Round 14 (26 Oct 2026): it is resolved now, against the root of the checkout the
+    fmu package was imported from, and a file that cannot be read raises (round 13 question 41, Claude Code's
+    recommendation (a); register entry spec-per-step-keys-resolve-the-roi-file-from-the-checkout-root). No
+    fingerprint and no step key of a config run from the repo root moves.
   evidence:
   - path: src/fmu/utils/caching.py
     what: The two layouts, STEP_SETTINGS, step_upstream, step_key, cache_key, start_export with crs and crs_transform
@@ -8213,3 +8216,83 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 26 Oct 2026 (round 14 brief), Task 2, item 4
+- id: spec-per-step-keys-resolve-the-roi-file-from-the-checkout-root
+  title: >-
+    The per-step cache keys and the ROI loader read a config's ROI file from the checkout root, and a file that
+    cannot be read raises
+  decision: >-
+    fmu.utils.gee.read_roi_file (a Locked module) reads a config's roi_file for both the per-step cache keys
+    (fmu.utils.caching._roi_file_sha256, Locked, asset caching) and load_roi_geometry, so the keys hash the file the
+    run's geometry is made from. It finds the file with resolve_roi_file: an absolute path is used as it is, and a
+    relative one is taken under checkout_root(), the root of the checkout the fmu package was imported from
+    (Path(fmu.__file__).resolve().parents[2], the root fmu.utils.provenance names too), never under the working
+    directory. In a batch the package is imported from the run tree (PYTHONPATH=<run tree>/src), so the run tree's
+    file is read. A file that cannot be read raises an OSError of the kind the read gave (FileNotFoundError for a
+    missing file, IsADirectoryError for a folder), whose message names the path as given, the path it resolved to
+    and the root, where the keys hashed None before and the loader said only "ROI file not found". A ROI given as an
+    asset (roi_asset) has no file and hashes as None, as before. The file is read at every call, not remembered. The
+    config is not changed (roi_file keeps the path as written, and the dumped config is the same), so the legacy
+    fingerprint, which hashes the path, does not move, and no step revision is raised: what a step computes is
+    unchanged. From the repo root the 74 configs under configs/ and configs/experiments/ give the same legacy
+    fingerprint (74 of 74) and the same keys for the eleven cached steps (814 of 814) and for profiling and export
+    before and after the change, and since the change the same from docs/ too.
+  alternatives_considered:
+  - >-
+    Only warn when the hash is None (option (b) of round 13 question 41): not chosen; a warning in a long log is easy
+    to miss
+  - >-
+    Leave it, documented (option (c)): not chosen; every entry point failed safe, but the pass runner's exit 3 named
+    the wrong cause
+  - >-
+    Write the resolved, absolute path into the config when it is loaded: not chosen; roi_file is in the dumped
+    config, so every legacy fingerprint and every per-step key would move, and they would differ between checkouts
+  - >-
+    Look in the working directory first and under the checkout root only when the file is not there: not chosen; the
+    keys would still depend on the folder a run starts in whenever both hold a file of that name
+  rationale: >-
+    The round 14 brief (Jaskaran, 26 Oct 2026), Task 1: "Every other question: your recommendation", with Q41 among
+    the code changes to make before R3. Round 13's question 41 (docs/handoff/2026-10-20-round13.md, Questions for
+    Jaskaran): "(a) Resolve roi_file against the repo root (or the run tree's root), and raise for a config whose ROI
+    file cannot be read. For: the keys never depend on the folder, and a wrong path fails with its own message.
+    Against: a change to caching.py (a Locked module), and the 13 unit tests that rely on the None fallback need
+    real files. ... Recommendation: (a), with a test that a key computed from a subfolder equals the key computed
+    from the root." Review C40 (docs/reviews/2026-10-19-review.md) found that from a subfolder every per-step key
+    changes while the legacy fingerprint does not; measured again on 26 Oct 2026 before the change, from docs/ none
+    of the 814 step keys of the 74 configs was the one from the repo root (the 10 km tile config's masking key
+    s4a47c8b2cc against s354522a974), and every fingerprint was. tests/test_roi_file_from_checkout_root.py fails on
+    the code before the change: the keys from docs/, src/fmu/ and a folder outside the checkout differ from the
+    root's ({'masking': 's4a47c8b2cc'} != {'masking': 's354522a974'}, and the other ten), the loader raises
+    "FileNotFoundError: ROI file not found: aois/odisha_tile_angul_10km.geojson" from docs/, a run tree's own file is
+    not the one hashed, and a missing file, a folder and a missing absolute path raise nothing ("Failed: DID NOT
+    RAISE"). The 13 fast tests of tests/test_pipeline.py (8) and tests/test_pipeline_cache_layout.py (5) whose
+    configs named a ROI file that does not exist, and which fail once the keys raise, now name a real one written to
+    a temporary folder; nothing else they test changes. No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/utils/gee.py
+    what: checkout_root, resolve_roi_file, read_roi_file, load_roi_geometry
+  - path: src/fmu/utils/caching.py
+    what: _roi_file_sha256, and the docstring of step_key
+  - path: tests/test_roi_file_from_checkout_root.py
+    what: >-
+      The keys from another folder are the keys from the root, the geometry is read from the root too, a run tree
+      reads its own file, a file that cannot be read raises and names it; fails on the code before the change
+  - path: tests/test_pipeline.py
+    what: _make_config names a real ROI file in a temporary folder (_a_real_roi_file)
+  - path: tests/test_pipeline_cache_layout.py
+    what: _config names a real ROI file in a temporary folder (_a_real_roi_file)
+  - path: docs/configs.md
+    what: roi_file, and "Schema validation"
+  - path: docs/running.md
+    what: The per-step layout
+  - path: docs/reviews/2026-10-19-review.md
+    what: C40
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Question 41
+  - path: docs/handoff/2026-10-26-round14.md
+    what: The brief, Task 1
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 41, Claude Code's recommendation (a), by the brief's
+    rule 'Every other question: your recommendation'

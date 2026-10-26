@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Any, ClassVar
 from unittest.mock import MagicMock, patch
 
@@ -31,12 +32,29 @@ from fmu.utils.caching import ExportTaskInfo, active_layout
 
 GRID = {"crs": "EPSG:32645", "crs_transform": [10.0, 0.0, 0.0, 0.0, 10.0, 0.0]}
 
+# The ROI file `_config` names: a real one, written for each test to a temporary folder of
+# its own, not the run folder the tests read. Since round 14 the per-step cache keys raise
+# for a ROI file they cannot read, where they hashed None before (round 13 question 41).
+_ROI_FILE: dict[str, Path] = {}
+_ROI = {
+    "type": "FeatureCollection",
+    "features": [{"type": "Feature", "properties": {}, "geometry": {
+        "type": "Polygon", "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]}}],
+}
+
+
+@pytest.fixture(autouse=True)
+def _a_real_roi_file(tmp_path_factory, monkeypatch):
+    path = tmp_path_factory.mktemp("roi") / "t.geojson"
+    path.write_text(json.dumps(_ROI))
+    monkeypatch.setitem(_ROI_FILE, "path", path)
+
 
 def _config(name: str = "layout_test") -> Config:
     return Config.model_validate(
         {
             "name": name,
-            "roi": {"name": "t", "roi_file": "aois/does_not_exist.geojson"},
+            "roi": {"name": "t", "roi_file": str(_ROI_FILE["path"])},
             "dates": {
                 "phenology": {"start": "2020-01-01", "end": "2020-12-31"},
                 "radar": {"start": "2020-01-01", "end": "2020-12-31"},

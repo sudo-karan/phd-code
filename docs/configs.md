@@ -248,16 +248,26 @@ it is, see [design_notes.md](design_notes.md).
 - `name`: short tag for the ROI (informational; appears in manifest).
 - `roi_file`: path to a GeoJSON polygon in EPSG:4326. Loaded via
   `fmu.utils.gee.load_roi_geometry`. Capped at GEE's inline-geometry
-  limit (~5 MB). The path is read relative to the working directory, so
-  run from the repo root (or the run tree's root). Nothing checks the file
-  when the config is loaded. The per-step cache keys hash its content, and a
-  file they cannot read hashes as nothing, with no warning: from another
-  folder every per-step key changes while the legacy fingerprint, which
-  hashes the path, does not (the 10 km tile config: masking `s354522a974`
-  from the repo root, `s4a47c8b2cc` from `docs/`, fingerprint `5772fb6133`
-  from both). A run then stops when it loads the ROI (`FileNotFoundError`),
-  or the pass runner reports every upstream asset as missing (exit 3), which
-  names the wrong cause (review C40).
+  limit (~5 MB). An absolute path is used as it is; a relative one is
+  resolved against the root of the checkout the `fmu` package is imported
+  from (the folder holding `src/`; in a batch, the run tree, whose `src/` is
+  on `PYTHONPATH`), not against the working directory
+  (`fmu.utils.gee.resolve_roi_file`). Nothing checks the file when the config
+  is loaded. The per-step cache keys hash its content, read by the same
+  function as the ROI loader (`read_roi_file`), so the keys and the geometry
+  are of one file, and the same, from any folder. A file that cannot be read
+  raises an `OSError` (`FileNotFoundError` for a missing one) naming the path
+  as given, the path it resolved to and the root, as soon as the keys are
+  computed or the ROI is loaded. The legacy fingerprint hashes the path as
+  written. Until round 14 the path was read relative to the working
+  directory, and a file the keys could not read hashed as nothing, with no
+  warning: from another folder every per-step key changed while the legacy
+  fingerprint did not (the 10 km tile config: masking `s354522a974` from the
+  repo root, `s4a47c8b2cc` from `docs/`, fingerprint `5772fb6133` from both),
+  and the pass runner reported every upstream asset as missing (exit 3),
+  which named the wrong cause (review C40; round 13 question 41). Run from
+  the repo root (or the run tree's root) all the same: the pipeline reads
+  `.env` from the working directory.
 
 ### `dates`
 
@@ -795,10 +805,18 @@ Invalid value. `k=1` is meaningless for clustering.
 A missing or unreadable `roi.roi_file` is **not** caught when the config is
 loaded: nothing checks it then (review C40; until round 13 this section showed
 a `ValidationError: roi.roi_file -> file does not exist` that no code raises).
-It shows up when a run loads the ROI (`FileNotFoundError: ROI file not found:
-...`), or, from the wrong working directory, as every upstream asset reported
-missing by the pass runner (exit 3), because the per-step keys then hash no
-ROI file (see `roi_file` above).
+Since round 14 it stops a run as soon as the per-step keys are computed or the
+ROI is loaded, whichever comes first (in the pass runner, before any task is
+submitted), with an error that names the file:
+
+```
+FileNotFoundError: [Errno 2] ROI file 'aois/x.geojson' cannot be read (No such file or directory): read at <root>/aois/x.geojson. A relative roi_file is resolved against <root>, the root of the checkout the fmu package was imported from, not against the working directory; an absolute one is used as it is.
+```
+
+The working directory plays no part (see `roi_file` above). Until round 14,
+from the wrong working directory, it showed up as every upstream asset
+reported missing by the pass runner (exit 3), because the per-step keys then
+hashed no ROI file.
 
 ```
 ValidationError: dates.phenology -> end must be after start

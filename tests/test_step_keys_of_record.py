@@ -131,7 +131,9 @@ def test_the_records_of_the_per_step_runs_are_all_found():
 
 @pytest.mark.parametrize("record", RUN_RECORDS, ids=lambda p: p.stem)
 def test_a_config_still_has_the_step_keys_its_run_recorded(record: Path, monkeypatch):
-    monkeypatch.chdir(REPO)  # the ROI file is read from the working directory (review C40)
+    # Not needed since round 14: the ROI file is read from the checkout root, whatever the
+    # working directory (round 13 question 41; until then it was read from it, review C40).
+    monkeypatch.chdir(REPO)
     rec = json.loads(record.read_text())
     assert rec["cache_layout"] == "per_step"
     cfg = load_config(CONFIGS / f"{rec['config']}.yaml")
