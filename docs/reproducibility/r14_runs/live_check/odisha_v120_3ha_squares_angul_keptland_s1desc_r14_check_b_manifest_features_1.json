@@ -1,0 +1,1043 @@
+{
+ "config_name": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b",
+ "use_cache": true,
+ "submit_exports": true,
+ "summaries": true,
+ "cache_layout": "per_step",
+ "cache_layout_reason": "given to Pipeline()",
+ "git": {
+  "commit": "2335d176b946db9ad47480f3d2efd967e086b626",
+  "dirty": false,
+  "modified": [],
+  "modified_truncated": false,
+  "untracked_code": [],
+  "untracked_code_truncated": false,
+  "untracked": [],
+  "untracked_truncated": false,
+  "root": "/Users/karan/Desktop/phd-code/outputs/round14/run_tree",
+  "error": null
+ },
+ "git_at_end": {
+  "commit": "2335d176b946db9ad47480f3d2efd967e086b626",
+  "dirty": false,
+  "modified": [],
+  "modified_truncated": false,
+  "untracked_code": [],
+  "untracked_code_truncated": false,
+  "untracked": [],
+  "untracked_truncated": false,
+  "root": "/Users/karan/Desktop/phd-code/outputs/round14/run_tree",
+  "error": null
+ },
+ "environment": {
+  "python": "3.13.14",
+  "earthengine_api": "1.7.35",
+  "pip_freeze_sha256": "31aca07855862d34db7bcb31a6b60769d1785e80606cdaa23093cdf2a60bcc21",
+  "pip_freeze_packages": 232,
+  "pip_freeze_left_out": [
+   "-e git+https://github.com/sudo-karan/phd-code.git@7e4400aac9346e3ef4a431638289ddf9bee4172b#egg=fmu"
+  ],
+  "error": null
+ },
+ "stages": [
+  {
+   "name": "masking",
+   "produced": [
+    "habitat_mask",
+    "landcover_summary",
+    "mask_provenance",
+    "water_mask"
+   ],
+   "warnings": [],
+   "metadata": {
+    "indiasat_dataset": "projects/corestack-trees/assets/LULC_v4",
+    "indiasat_habitat_classes": [
+     6,
+     12
+    ],
+    "indiasat_class_band": "predicted_label",
+    "indiasat_year_window": [
+     2017,
+     2021
+    ],
+    "habitat_collapse": "majority_vote; ties -> most recent usable year",
+    "worldcover_fallback_classes": [
+     10,
+     20,
+     30
+    ],
+    "worldcover_dataset": "ESA/WorldCover/v200",
+    "water_occurrence_threshold": 50.0,
+    "water_dataset": "JRC/GSW1_4/GlobalSurfaceWater",
+    "mask_provenance_reason_codes": {
+     "0": "no_data",
+     "1": "kept",
+     "2": "cropland",
+     "3": "built_up",
+     "4": "water",
+     "5": "other_non_habitat"
+    },
+    "mask_provenance_source_codes": {
+     "0": "none",
+     "1": "indiasat",
+     "2": "worldcover"
+    }
+   },
+   "cache_status": {
+    "habitat_mask": "miss-exported",
+    "landcover_summary": "miss-exported",
+    "mask_provenance": "miss-exported",
+    "water_mask": "miss-exported"
+   },
+   "cache_key": "s073c13df8c",
+   "export_tasks": [
+    {
+     "task_id": "Z2VRIPWOKQKDJZ5FNDRFIFFX",
+     "asset_path": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b/masking/habitat_mask__s073c13df8c",
+     "description": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b_masking_habitat_mask"
+    },
+    {
+     "task_id": "GLC7CNLOEVH3T4MFETA3P33I",
+     "asset_path": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b/masking/water_mask__s073c13df8c",
+     "description": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b_masking_water_mask"
+    },
+    {
+     "task_id": "GEVEBAW3DK6DVP7SRLHT4W3V",
+     "asset_path": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b/masking/landcover_summary__s073c13df8c",
+     "description": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b_masking_landcover_summary"
+    },
+    {
+     "task_id": "GDNVREWLMG2KGBJ3RVQV53E5",
+     "asset_path": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b/masking/mask_provenance__s073c13df8c",
+     "description": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b_masking_mask_provenance"
+    }
+   ],
+   "transparency": {
+    "display_layers": [
+     {
+      "key": "mask_provenance",
+      "band": "reason",
+      "title": "Habitat mask, by reason",
+      "description": "What the mask kept, and why it removed the rest: cropland, built-up, water or other non-habitat. Under IndiaSAT a pixel is kept or removed by a majority vote over its usable years, and a removed pixel is given the reason of its most recent non-habitat year. Other non-habitat is every remaining class: in IndiaSAT, barren land and orchard/plantation; in WorldCover, bare or sparse vegetation, snow and ice, herbaceous wetland, mangroves, and moss and lichen.",
+      "vis": {
+       "bands": [
+        "reason"
+       ],
+       "min": 0,
+       "max": 5,
+       "palette": [
+        "000000",
+        "1a9850",
+        "fdae61",
+        "d73027",
+        "4575b4",
+        "9e9e9e"
+       ]
+      },
+      "legend": [
+       {
+        "value": 0,
+        "label": "No land-cover data in either map (not habitat)",
+        "color": "000000"
+       },
+       {
+        "value": 1,
+        "label": "Kept as habitat (not only forest)",
+        "color": "1a9850"
+       },
+       {
+        "value": 2,
+        "label": "Removed: cropland",
+        "color": "fdae61"
+       },
+       {
+        "value": 3,
+        "label": "Removed: built-up",
+        "color": "d73027"
+       },
+       {
+        "value": 4,
+        "label": "Removed: water",
+        "color": "4575b4"
+       },
+       {
+        "value": 5,
+        "label": "Removed: other non-habitat",
+        "color": "9e9e9e"
+       }
+      ],
+      "legend_note": "This is a habitat mask, not a strict forest mask. By default it keeps IndiaSAT Trees and Shrubs/Scrub, and WorldCover tree cover, shrubland and grassland where IndiaSAT has no data; the classes a run kept are listed in its masking summary (kept_classes). The definition and the reasoning behind it are in docs/design_notes.md, section \"Masking: IndiaSAT-primary, single-phase habitat\".",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b/masking/mask_provenance__s073c13df8c",
+      "asset_status": "miss-exported"
+     },
+     {
+      "key": "mask_provenance",
+      "band": "source",
+      "title": "Which map decided each pixel",
+      "description": "IndiaSAT decides wherever it has at least one usable year; WorldCover decides only where IndiaSAT has no data.",
+      "vis": {
+       "bands": [
+        "source"
+       ],
+       "min": 0,
+       "max": 2,
+       "palette": [
+        "000000",
+        "7570b3",
+        "e7298a"
+       ]
+      },
+      "legend": [
+       {
+        "value": 0,
+        "label": "Neither map has data",
+        "color": "000000"
+       },
+       {
+        "value": 1,
+        "label": "IndiaSAT decided",
+        "color": "7570b3"
+       },
+       {
+        "value": 2,
+        "label": "WorldCover decided (IndiaSAT has no data)",
+        "color": "e7298a"
+       }
+      ],
+      "legend_note": "",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b/masking/mask_provenance__s073c13df8c",
+      "asset_status": "miss-exported"
+     }
+    ],
+    "summary_numbers": [
+     {
+      "name": "area_ha",
+      "description": "Area of the ROI the mask was tabulated over",
+      "unit": "ha",
+      "value": 601.9709
+     },
+     {
+      "name": "share_kept",
+      "description": "Share of that area kept as habitat",
+      "unit": "fraction",
+      "value": 0.67371
+     },
+     {
+      "name": "share_by_reason",
+      "description": "Share of the area under each reason: kept, removed as cropland, as built-up, as water, as other non-habitat, or no land-cover data. Adds up to 1",
+      "unit": "fraction",
+      "value": {
+       "no_data": 0.0,
+       "kept": 0.67371,
+       "cropland": 0.320242,
+       "built_up": 0.004244,
+       "water": 0.000464,
+       "other_non_habitat": 0.00134
+      }
+     },
+     {
+      "name": "share_kept_by_source",
+      "description": "Share of the whole area that was kept as habitat, split by the map that decided it. Adds up to share_kept",
+      "unit": "fraction",
+      "value": {
+       "none": 0.0,
+       "indiasat": 0.67371,
+       "worldcover": 0.0
+      }
+     },
+     {
+      "name": "share_decided_by_source",
+      "description": "Share of the area each map decided, kept or removed. Adds up to 1",
+      "unit": "fraction",
+      "value": {
+       "none": 0.0,
+       "indiasat": 1.0,
+       "worldcover": 0.0
+      }
+     },
+     {
+      "name": "area_ha_by_reason_and_source",
+      "description": "Area under each reason, split by the map that decided it",
+      "unit": "ha",
+      "value": {
+       "no_data": {
+        "none": 0.0,
+        "indiasat": 0.0,
+        "worldcover": 0.0
+       },
+       "kept": {
+        "none": 0.0,
+        "indiasat": 405.5536,
+        "worldcover": 0.0
+       },
+       "cropland": {
+        "none": 0.0,
+        "indiasat": 192.7764,
+        "worldcover": 0.0
+       },
+       "built_up": {
+        "none": 0.0,
+        "indiasat": 2.555,
+        "worldcover": 0.0
+       },
+       "water": {
+        "none": 0.0,
+        "indiasat": 0.279,
+        "worldcover": 0.0
+       },
+       "other_non_habitat": {
+        "none": 0.0,
+        "indiasat": 0.8068,
+        "worldcover": 0.0
+       }
+      }
+     },
+     {
+      "name": "area_ha_reason_disagrees_with_habitat_mask",
+      "description": "Area where the reason layer says kept and habitat_mask does not, or the reverse. Zero when both come from the same inputs; anything else means the cached habitat_mask predates a change in a land-cover input",
+      "unit": "ha",
+      "value": 0.0
+     },
+     {
+      "name": "kept_classes",
+      "description": "Land-cover classes this run kept as habitat, from the config: IndiaSAT classes, and the WorldCover classes used where IndiaSAT has no data",
+      "unit": "class code",
+      "value": {
+       "indiasat": [
+        6,
+        12
+       ],
+       "worldcover": [
+        10,
+        20,
+        30
+       ]
+      }
+     }
+    ]
+   },
+   "input_images": {
+    "habitat_mask": {
+     "source": "computed in this run",
+     "collections": {
+      "indiasat_lulc": {
+       "count": 5,
+       "sha256": "c831b93509e8b256d00212060f1ff452784c162843d2b67ab0da6058a60ac422",
+       "ids": [
+        "projects/corestack-trees/assets/LULC_v4/lulc_v4_2017_2018",
+        "projects/corestack-trees/assets/LULC_v4/lulc_v4_2018_2019",
+        "projects/corestack-trees/assets/LULC_v4/lulc_v4_2019_2020",
+        "projects/corestack-trees/assets/LULC_v4/lulc_v4_2020_2021",
+        "projects/corestack-trees/assets/LULC_v4/lulc_v4_2021_2022"
+       ]
+      },
+      "worldcover": {
+       "count": 1,
+       "sha256": "bf43ff10c8c01e227a26bf36344b492dde5da8975ff49e581814de5b8ae2d8df",
+       "ids": [
+        "ESA/WorldCover/v200/2021"
+       ]
+      }
+     }
+    },
+    "landcover_summary": {
+     "source": "computed in this run",
+     "collections": {
+      "indiasat_lulc": {
+       "count": 5,
+       "sha256": "c831b93509e8b256d00212060f1ff452784c162843d2b67ab0da6058a60ac422",
+       "ids": [
+        "projects/corestack-trees/assets/LULC_v4/lulc_v4_2017_2018",
+        "projects/corestack-trees/assets/LULC_v4/lulc_v4_2018_2019",
+        "projects/corestack-trees/assets/LULC_v4/lulc_v4_2019_2020",
+        "projects/corestack-trees/assets/LULC_v4/lulc_v4_2020_2021",
+        "projects/corestack-trees/assets/LULC_v4/lulc_v4_2021_2022"
+       ]
+      },
+      "worldcover": {
+       "count": 1,
+       "sha256": "bf43ff10c8c01e227a26bf36344b492dde5da8975ff49e581814de5b8ae2d8df",
+       "ids": [
+        "ESA/WorldCover/v200/2021"
+       ]
+      }
+     }
+    },
+    "mask_provenance": {
+     "source": "computed in this run",
+     "collections": {
+      "indiasat_lulc": {
+       "count": 5,
+       "sha256": "c831b93509e8b256d00212060f1ff452784c162843d2b67ab0da6058a60ac422",
+       "ids": [
+        "projects/corestack-trees/assets/LULC_v4/lulc_v4_2017_2018",
+        "projects/corestack-trees/assets/LULC_v4/lulc_v4_2018_2019",
+        "projects/corestack-trees/assets/LULC_v4/lulc_v4_2019_2020",
+        "projects/corestack-trees/assets/LULC_v4/lulc_v4_2020_2021",
+        "projects/corestack-trees/assets/LULC_v4/lulc_v4_2021_2022"
+       ]
+      },
+      "worldcover": {
+       "count": 1,
+       "sha256": "bf43ff10c8c01e227a26bf36344b492dde5da8975ff49e581814de5b8ae2d8df",
+       "ids": [
+        "ESA/WorldCover/v200/2021"
+       ]
+      }
+     }
+    },
+    "water_mask": {
+     "source": "computed in this run",
+     "collections": {
+      "indiasat_lulc": {
+       "count": 5,
+       "sha256": "c831b93509e8b256d00212060f1ff452784c162843d2b67ab0da6058a60ac422",
+       "ids": [
+        "projects/corestack-trees/assets/LULC_v4/lulc_v4_2017_2018",
+        "projects/corestack-trees/assets/LULC_v4/lulc_v4_2018_2019",
+        "projects/corestack-trees/assets/LULC_v4/lulc_v4_2019_2020",
+        "projects/corestack-trees/assets/LULC_v4/lulc_v4_2020_2021",
+        "projects/corestack-trees/assets/LULC_v4/lulc_v4_2021_2022"
+       ]
+      },
+      "worldcover": {
+       "count": 1,
+       "sha256": "bf43ff10c8c01e227a26bf36344b492dde5da8975ff49e581814de5b8ae2d8df",
+       "ids": [
+        "ESA/WorldCover/v200/2021"
+       ]
+      }
+     }
+    }
+   }
+  },
+  {
+   "name": "data_load",
+   "produced": [
+    "s1_collection",
+    "s2_collection",
+    "s2_composite"
+   ],
+   "warnings": [],
+   "metadata": {
+    "s2_dataset": "COPERNICUS/S2_SR_HARMONIZED",
+    "s1_dataset": "COPERNICUS/S1_GRD",
+    "s2_phenology_window": "2017-01-01 to 2022-12-31",
+    "s1_radar_window": "2017-01-01 to 2022-12-31",
+    "s2_composite_window": "2017-01-01 to 2022-12-31",
+    "s1_orbit": "DESCENDING",
+    "s1_polarizations": [
+     "VV",
+     "VH"
+    ],
+    "s1_instrument_mode": "IW",
+    "s2_composite_reducer": "median",
+    "cloud_max_pct": 20.0,
+    "scl_drop_classes": [
+     3,
+     8,
+     9,
+     10
+    ]
+   },
+   "cache_status": {
+    "s2_composite": "miss-exported"
+   },
+   "cache_key": "s9249226467",
+   "export_tasks": [
+    {
+     "task_id": "AJCUNWTP7Z6E6LAB2PRIPE5N",
+     "asset_path": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b/data_load/s2_composite__s9249226467",
+     "description": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b_data_load_s2_composite"
+    }
+   ],
+   "transparency": {
+    "display_layers": [
+     {
+      "key": "s2_composite",
+      "band": "B4_median",
+      "title": "True colour (Sentinel-2 composite)",
+      "description": "The cloud-masked Sentinel-2 composite over the optical_composite window, drawn as red, green and blue: the ground as a camera would show it. With the default hand-crafted bands, segmentation reads its red and near-infrared bands from this same image, so this is then part of what the superpixels were drawn on, not a separate picture; a run that segments on the embedding does not read it. The band names are those of the default median composite; a config with another s2_composite_reducer writes other names.",
+      "vis": {
+       "bands": [
+        "B4_median",
+        "B3_median",
+        "B2_median"
+       ],
+       "min": 0,
+       "max": 3000
+      },
+      "legend": [],
+      "legend_note": "",
+      "bands": [
+       "B4_median",
+       "B3_median",
+       "B2_median"
+      ],
+      "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b/data_load/s2_composite__s9249226467",
+      "asset_status": "miss-exported"
+     }
+    ],
+    "summary_numbers": []
+   },
+   "input_images": {
+    "s2_composite": {
+     "source": "computed in this run",
+     "collections": {
+      "s2_composite": {
+       "count": 713,
+       "sha256": "2abd57bf40f3257c490dab999a8d43d5577b0c45c555e7baf4f67862875f1fa0",
+       "ids": null
+      }
+     }
+    }
+   }
+  },
+  {
+   "name": "features_optical",
+   "produced": [
+    "optical_features"
+   ],
+   "warnings": [],
+   "metadata": {
+    "index": "ndvi",
+    "harmonic_mode": "single",
+    "include_trend": true,
+    "time_reference": "2017-01-01",
+    "num_regression_terms": 4,
+    "output_bands": [
+     "ndvi_mean",
+     "ndvi_amplitude_annual",
+     "ndvi_phase_annual",
+     "ndvi_trend",
+     "ndvi_residual_variance",
+     "ndvi_obs_count"
+    ],
+    "mean_over_window": true,
+    "mean_window": "2017-01-01 to 2022-12-31",
+    "mean_weights": {
+     "constant": 1.0,
+     "cos_annual": -0.00020766561113882815,
+     "sin_annual": 8.127308858951377e-07,
+     "t": 2.99937712615591
+    }
+   },
+   "cache_status": {
+    "optical_features": "miss-exported"
+   },
+   "cache_key": "s4ef0426c2c",
+   "export_tasks": [
+    {
+     "task_id": "XNK47AUG7B44PXANC2AD2F4A",
+     "asset_path": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b/features_optical/optical_features__s4ef0426c2c",
+     "description": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b_features_optical_optical_features"
+    }
+   ],
+   "transparency": {
+    "display_layers": [
+     {
+      "key": "optical_features",
+      "band": "ndvi_amplitude_annual",
+      "title": "Seasonal swing in greenness (NDVI annual amplitude)",
+      "description": "How far greenness rises and falls over a year: the amplitude of the annual cycle fitted to every cloud-free Sentinel-2 NDVI observation in the phenology window. It has no unit. Low values are vegetation that stays the same all year (evergreen cover, or bare ground); high values are vegetation that greens up and dries out (deciduous trees, grass, crops). It is one of the bands the superpixels are drawn on by default and one of the two the merge compares by default; a config can name other merge criteria. The band name is that of the default NDVI index; a config on the NIRv index writes nirv_amplitude_annual in its place.",
+      "vis": {
+       "bands": [
+        "ndvi_amplitude_annual"
+       ],
+       "min": 0,
+       "max": 0.4,
+       "palette": [
+        "fff7ec",
+        "fdd49e",
+        "fc8d59",
+        "d7301f",
+        "7f0000"
+       ]
+      },
+      "legend": [],
+      "legend_note": "",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b/features_optical/optical_features__s4ef0426c2c",
+      "asset_status": "miss-exported"
+     }
+    ],
+    "summary_numbers": []
+   },
+   "input_images": {
+    "optical_features": {
+     "source": "computed in this run",
+     "collections": {
+      "s2_phenology": {
+       "count": 713,
+       "sha256": "2abd57bf40f3257c490dab999a8d43d5577b0c45c555e7baf4f67862875f1fa0",
+       "ids": null
+      }
+     }
+    }
+   }
+  },
+  {
+   "name": "features_radar",
+   "produced": [
+    "radar_features"
+   ],
+   "warnings": [],
+   "metadata": {
+    "percentiles": [
+     10,
+     50,
+     90
+    ],
+    "include_iqr": true,
+    "include_cross_pol_contrast": true,
+    "output_bands": [
+     "vv_p10",
+     "vh_p10",
+     "vv_p50",
+     "vh_p50",
+     "vv_p90",
+     "vh_p90",
+     "vv_iqr",
+     "vh_iqr",
+     "vv_minus_vh_median"
+    ]
+   },
+   "cache_status": {
+    "radar_features": "miss-exported"
+   },
+   "cache_key": "s7bb26d198c",
+   "export_tasks": [
+    {
+     "task_id": "LLCFWCN43V3JA7OL7HGVDPMC",
+     "asset_path": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b/features_radar/radar_features__s7bb26d198c",
+     "description": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b_features_radar_radar_features"
+    }
+   ],
+   "transparency": {
+    "display_layers": [
+     {
+      "key": "radar_features",
+      "band": "vv_minus_vh_median",
+      "title": "Radar contrast between polarisations (VV minus VH), dB",
+      "description": "The median Sentinel-1 backscatter in VV minus the median in VH, in decibels, over the radar window. A difference in decibels is the ratio of the two signals. It comes from radar alone, so it does not depend on cloud or on the optical bands, and it is one of the bands the superpixels are drawn on by default. Read it as a second, independent view of surface structure, not as a measure of any one forest property.",
+      "vis": {
+       "bands": [
+        "vv_minus_vh_median"
+       ],
+       "min": 3,
+       "max": 12,
+       "palette": [
+        "f7fbff",
+        "c6dbef",
+        "6baed6",
+        "2171b5",
+        "08306b"
+       ]
+      },
+      "legend": [],
+      "legend_note": "",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b/features_radar/radar_features__s7bb26d198c",
+      "asset_status": "miss-exported"
+     }
+    ],
+    "summary_numbers": []
+   },
+   "input_images": {
+    "radar_features": {
+     "source": "computed in this run",
+     "collections": {
+      "s1": {
+       "count": 189,
+       "sha256": "9ba8e9bf9dc7700b6b101e06a7b2c0291076e9a5c81f80f90262b2c9e6b51476",
+       "ids": null
+      }
+     }
+    }
+   }
+  },
+  {
+   "name": "features_structure",
+   "produced": [
+    "structure_features"
+   ],
+   "warnings": [],
+   "metadata": {
+    "canopy_height_dataset": "users/nlang/ETH_GlobalCanopyHeight_2020_10m_v1",
+    "include_neighborhood_stats": true,
+    "neighborhood_kernel_size": 3,
+    "output_bands": [
+     "canopy_height",
+     "canopy_height_std",
+     "canopy_height_max"
+    ]
+   },
+   "cache_status": {
+    "structure_features": "miss-exported"
+   },
+   "cache_key": "sc823e0cc39",
+   "export_tasks": [
+    {
+     "task_id": "OOK4KJPWZ7FEPPMVL6UM5YFV",
+     "asset_path": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b/features_structure/structure_features__sc823e0cc39",
+     "description": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b_features_structure_structure_features"
+    }
+   ],
+   "transparency": {
+    "display_layers": [
+     {
+      "key": "structure_features",
+      "band": "canopy_height",
+      "title": "Canopy height (ETH 2020), m",
+      "description": "Height of the top of the canopy in metres, from the ETH Global Canopy Height map for 2020 at 10 m. It is a single snapshot, the same in every run. It is one of the bands the superpixels are drawn on by default and one of the two the merge compares by default; a config can name other merge criteria.",
+      "vis": {
+       "bands": [
+        "canopy_height"
+       ],
+       "min": 0,
+       "max": 30,
+       "palette": [
+        "f7fcf5",
+        "c7e9c0",
+        "74c476",
+        "238b45",
+        "00441b"
+       ]
+      },
+      "legend": [],
+      "legend_note": "This is a modelled map, not a field measurement. docs/datasets.md, section 'ETH Global Canopy Height 2020', records a field validation of this product; read differences of a few metres with that in mind.",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b/features_structure/structure_features__sc823e0cc39",
+      "asset_status": "miss-exported"
+     },
+     {
+      "key": "structure_features",
+      "band": "canopy_height_std",
+      "title": "Local spread of canopy height, m",
+      "description": "The standard deviation of ETH 2020 canopy height in a small window around each pixel (3 by 3 pixels by default), in metres. Low where neighbouring pixels have the same height, high at edges and gaps. It is shown because some configurations segment on it and some use it as a merge criterion; it is in neither the default segmentation bands nor the default merge criteria.",
+      "vis": {
+       "bands": [
+        "canopy_height_std"
+       ],
+       "min": 0,
+       "max": 3,
+       "palette": [
+        "fcfbfd",
+        "dadaeb",
+        "9e9ac8",
+        "6a51a3",
+        "3f007d"
+       ]
+      },
+      "legend": [],
+      "legend_note": "",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b/features_structure/structure_features__sc823e0cc39",
+      "asset_status": "miss-exported"
+     }
+    ],
+    "summary_numbers": []
+   },
+   "input_images": {}
+  },
+  {
+   "name": "features_static",
+   "produced": [
+    "static_features"
+   ],
+   "warnings": [],
+   "metadata": {
+    "dem_dataset": "NASA/NASADEM_HGT/001",
+    "climate_dataset": "UCSB-CHG/CHIRPS/PENTAD",
+    "climate_window": "1991-01-01 to 2020-12-31",
+    "include_climate": true,
+    "max_water_distance_pixels": 1000,
+    "cap_distance_to_water": true,
+    "output_bands": [
+     "elevation",
+     "slope",
+     "aspect",
+     "distance_to_water",
+     "annual_rainfall"
+    ]
+   },
+   "cache_status": {
+    "static_features": "miss-exported"
+   },
+   "cache_key": "s7483f4391a",
+   "export_tasks": [
+    {
+     "task_id": "IMWVBQBUQKIVQEX7NHDXC5WH",
+     "asset_path": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b/features_static/static_features__s7483f4391a",
+     "description": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b_features_static_static_features"
+    }
+   ],
+   "transparency": {
+    "display_layers": [
+     {
+      "key": "static_features",
+      "band": "elevation",
+      "title": "Elevation (NASADEM), m",
+      "description": "Height of the ground above sea level in metres, from NASADEM at 30 m. It does not change between runs. It is one of the features the stands are typed on in the hand-crafted arm, and by default it is not used to draw the superpixels. The colour scale is wide enough for lowland and plateau sites at once, so a small area can look almost flat on it; that is the scale, not the ground.",
+      "vis": {
+       "bands": [
+        "elevation"
+       ],
+       "min": 0,
+       "max": 1500,
+       "palette": [
+        "440154",
+        "3b528b",
+        "21918c",
+        "5ec962",
+        "fde725"
+       ]
+      },
+      "legend": [],
+      "legend_note": "",
+      "asset": "projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b/features_static/static_features__s7483f4391a",
+      "asset_status": "miss-exported"
+     }
+    ],
+    "summary_numbers": []
+   },
+   "input_images": {
+    "static_features": {
+     "source": "computed in this run",
+     "collections": {
+      "chirps": {
+       "count": 2160,
+       "sha256": "3a2d483b73e7d60c4ce07038a20e796b1082b8cac58d8d31c4d6036d17fc0b29",
+       "ids": null
+      }
+     }
+    }
+   }
+  }
+ ],
+ "config": {
+  "name": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b",
+  "description": "Odisha ANGUL, v120 hand-crafted method, stands capped at 3 ha, run on boxes around the villages' plots, on kept land only (mask before SNIC), radar from the descending Sentinel-1 orbit.",
+  "roi": {
+   "name": "odisha_squares_angul",
+   "roi_file": "aois/odisha_squares_angul.geojson",
+   "roi_asset": null
+  },
+  "dates": {
+   "phenology": {
+    "start": "2017-01-01",
+    "end": "2022-12-31"
+   },
+   "radar": {
+    "start": "2017-01-01",
+    "end": "2022-12-31"
+   },
+   "optical_composite": {
+    "start": "2017-01-01",
+    "end": "2022-12-31"
+   },
+   "climate": {
+    "start": "1991-01-01",
+    "end": "2020-12-31"
+   }
+  },
+  "datasets": {
+   "phenology_collection": "COPERNICUS/S2_SR_HARMONIZED",
+   "optical_composite_collection": "COPERNICUS/S2_SR_HARMONIZED",
+   "radar_collection": "COPERNICUS/S1_GRD",
+   "canopy_height": "users/nlang/ETH_GlobalCanopyHeight_2020_10m_v1",
+   "dem": "NASA/NASADEM_HGT/001",
+   "indiasat": "projects/corestack-trees/assets/LULC_v4",
+   "worldcover": "ESA/WorldCover/v200",
+   "water": "JRC/GSW1_4/GlobalSurfaceWater",
+   "climate": "UCSB-CHG/CHIRPS/PENTAD",
+   "embedding": "GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL"
+  },
+  "cloud_mask": {
+   "max_cloud_pct": 20.0,
+   "drop_scl_classes": [
+    3,
+    8,
+    9,
+    10
+   ]
+  },
+  "data_load": {
+   "s1_orbit": "DESCENDING",
+   "s1_polarizations": [
+    "VV",
+    "VH"
+   ],
+   "s1_instrument_mode": "IW",
+   "s2_composite_reducer": "median"
+  },
+  "masking": {
+   "indiasat_habitat_classes": [
+    6,
+    12
+   ],
+   "indiasat_class_band": "predicted_label",
+   "indiasat_year_min": 2017,
+   "indiasat_year_max": 2021,
+   "keep_worldcover_classes": [
+    10,
+    20,
+    30
+   ],
+   "jrc_water_occurrence_threshold": 50.0
+  },
+  "features_optical": {
+   "index": "ndvi",
+   "harmonic_mode": "single",
+   "include_trend": true,
+   "time_reference": "2017-01-01",
+   "mean_over_window": true
+  },
+  "features_radar": {
+   "percentiles": [
+    10,
+    50,
+    90
+   ],
+   "include_iqr": true,
+   "include_cross_pol_contrast": true
+  },
+  "features_structure": {
+   "include_neighborhood_stats": true,
+   "neighborhood_kernel_size": 3
+  },
+  "features_static": {
+   "include_climate": true,
+   "max_water_distance_pixels": 1000,
+   "cap_distance_to_water": true
+  },
+  "features_embedding": {
+   "collapse_reducer": "mean",
+   "band_names": null
+  },
+  "segmentation": {
+   "size": 6,
+   "compactness": 0.5,
+   "connectivity": 8,
+   "neighborhood_size": 128,
+   "normalize_inputs": true,
+   "normalize_distance_scale": true,
+   "input_bands": [
+    {
+     "source": "s2_composite",
+     "band": "B4_median"
+    },
+    {
+     "source": "s2_composite",
+     "band": "B8_median"
+    },
+    {
+     "source": "structure_features",
+     "band": "canopy_height"
+    },
+    {
+     "source": "structure_features",
+     "band": "canopy_height_std"
+    },
+    {
+     "source": "optical_features",
+     "band": "ndvi_amplitude_annual"
+    },
+    {
+     "source": "radar_features",
+     "band": "vv_minus_vh_median"
+    }
+   ],
+   "mask_before_snic": true,
+   "drop_kept_patches_below_min_area": false
+  },
+  "merge": {
+   "enabled": true,
+   "criteria": [
+    {
+     "source": "structure_features",
+     "band": "canopy_height",
+     "tolerance": 2.0
+    },
+    {
+     "source": "structure_features",
+     "band": "canopy_height_std",
+     "tolerance": 0.45
+    },
+    {
+     "source": "optical_features",
+     "band": "ndvi_amplitude_annual",
+     "tolerance": 0.03
+    }
+   ],
+   "relax_factor": 1.75,
+   "min_area_ha": 1.0,
+   "max_area_ha": 3.0,
+   "min_defined_criteria": 2,
+   "min_frac_valid": 0.5,
+   "tie_break": "shared_edge_length",
+   "max_pass2_iterations": 60,
+   "pass2_skip_at_min_area": true,
+   "pass2_soft_ceiling": true,
+   "max_superpixels": 50000
+  },
+  "clustering": {
+   "k": 5,
+   "seed": 42,
+   "feature_source": "handcrafted",
+   "skewness_threshold": 1.0,
+   "fit_excludes_stands_below_min_area": true,
+   "fit_outside_earth_engine": true,
+   "log_rule": "right_skew"
+  },
+  "normalization": {
+   "method": "robust"
+  },
+  "features": {
+   "optical_harmonic": true,
+   "radar": true,
+   "canopy_height": true,
+   "terrain": true
+  },
+  "export": {
+   "export_geotiff": true,
+   "export_gee_asset": false,
+   "analysis_scale_m": 10,
+   "drive_folder": "fmu_exports_kept_land_s1desc",
+   "export_vector_merged": true,
+   "export_vector_snic": true,
+   "export_vector_dissolved": true,
+   "vector_formats": [
+    "shp",
+    "geojson"
+   ],
+   "vector_min_stand_pixels": 4
+  },
+  "metrics": {
+   "reference_config_name": null,
+   "reference_config_file": null,
+   "n_comparison_samples": 10000,
+   "n_silhouette_samples_per_cluster": 833,
+   "r2_attributes": [
+    {
+     "source": "structure_features",
+     "band": "canopy_height",
+     "held_out": false
+    },
+    {
+     "source": "optical_features",
+     "band": "ndvi_trend",
+     "held_out": true
+    },
+    {
+     "source": "structure_features",
+     "band": "canopy_height_max",
+     "held_out": true
+    }
+   ]
+  },
+  "k_elbow": {
+   "k_min": 2,
+   "k_max": 12,
+   "seed": 42,
+   "n_init": 25,
+   "in_fit_space": true
+  }
+ }
+}
