@@ -200,6 +200,25 @@ def test_the_step_writes_the_elbow_the_table_the_rows_and_the_types_at_each_k():
     assert record["log_rule"] == "right_skew" and record["active_bands"] == pre.bands
 
 
+@pytest.mark.parametrize("fit_excludes", [False, True], ids=["every stand fitted", "stands below the minimum left out"])
+def test_every_file_the_step_writes_passes_the_copy_tools_results_only_check(fit_excludes):
+    """scripts/copy_run_results.py refuses a JSON file with a key that names a time, and a file that
+    holds a date and time: the step's own files, as it writes them, pass both checks, so a key the
+    step adds is checked here too (the gate's review, parts 1 and 4)."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("copy_run_results", REPO / "scripts" / "copy_run_results.py")
+    assert spec is not None and spec.loader is not None
+    copy_tool = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(copy_tool)
+    result, _ = _run(_config(fit_excludes_stands_below_min_area=fit_excludes))
+    assert "k_elbow_preprocessing.json" in result.files
+    for name, text in result.files.items():
+        if name.endswith(".json"):
+            assert copy_tool.time_keys(json.loads(text)) == [], name
+        assert not copy_tool.STAMP.search(text), name
+
+
 def test_on_only_the_k_elbow_key_moves_and_off_none(monkeypatch):
     monkeypatch.chdir(REPO)
     base, on = _config(in_fit_space=False), _config()
