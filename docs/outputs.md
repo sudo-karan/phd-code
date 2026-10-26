@@ -27,8 +27,10 @@ input_images.json                       when a stage computed an output live
 
 A stage can hand the orchestrator result files (`StageResult.files`, round 14): tables too
 large for the manifest, such as the k-means rows of the clustering stage with
-`clustering.fit_outside_earth_engine` on and of the k elbow step with `k_elbow.in_fit_space`
-on. They are written into the run folder as the stage returns, and the stage's manifest entry
+`clustering.fit_outside_earth_engine` on (`clustering_stand_table.csv`,
+`clustering_fit_rows.csv`, `clustering_kmeans.json`) and of the k elbow step with
+`k_elbow.in_fit_space` on (`k_elbow.csv`, `k_elbow_stand_table.csv`, `k_elbow_fit_rows.csv`,
+`k_elbow_types.csv`, `k_elbow_preprocessing.json`; `docs/configs.md`, `k_elbow`). They are written into the run folder as the stage returns, and the stage's manifest entry
 names each under `files`, with its size and SHA-256; a stage that wrote none has no `files`
 key. They hold results only, no dates or times. A stage served from the cache does not run
 and writes none.

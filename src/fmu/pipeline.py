@@ -145,13 +145,16 @@ def default_stage_names(config: Config, through: str = "metrics") -> list[str]:
     if config.merge.enabled:
         needed |= _feature_stages_for(config.merge.input_sources())
     feature_stages = [s for s in _FEATURE_STAGE_ORDER if s in needed]
+    # The elbow in the fit's own space (k_elbow.in_fit_space, round 14) reads what clustering
+    # reads, not what it writes, so a run that ends with it has no clustering stage.
+    elbow_alone = through == "k_elbow" and config.k_elbow.in_fit_space
     return [
         "masking",
         "data_load",
         *feature_stages,
         "segmentation",
         *(["merge"] if config.merge.enabled else []),
-        "clustering",
+        *([] if elbow_alone else ["clustering"]),
         *_STAGE_TAILS[through],
     ]
 

@@ -5902,6 +5902,7 @@ decisions:
     asset, in the per-step layout only, under a key over the clustering settings but k, the steps upstream of
     clustering and the new k_elbow config block, so a configuration's elbow is computed once and read back by later
     runs whatever its k. It is in no default run and nothing reads it; k stays as each config sets it.
+    Round 14 (26 Oct 2026): with k_elbow.in_fit_space on (off by default) the step runs on the fit's own rows, in its own space, reads none of the clustering stage's outputs, and records the starts' agreement at each k (spec-k-elbow-in-the-fits-space); for R3, k is chosen by Jaskaran from its elbow report (field-r3-k-chosen-by-jaskaran-from-the-elbow-report).
   alternatives_considered:
   - >-
     Recompute the elbow offline from each run's exported stand layer, as odisha_script/odisha_phase3_2_stand_k_elbow.py
@@ -8088,3 +8089,67 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 26 Oct 2026 (round 14 brief), Task 2, item 3, and his answer (c) to round 13 question 31
+- id: spec-k-elbow-in-the-fits-space
+  title: >-
+    With k_elbow.in_fit_space on, the k elbow runs on the fit's own rows, in its own space, with its own starts, and
+    records how much the starts agree at each k
+  decision: >-
+    A setting k_elbow.in_fit_space, false by default (src/fmu/config.py, a Locked module). With it on, the k elbow step
+    (src/fmu/stages/k_elbow.py) reads the table of units exactly as the clustering stage does with
+    clustering.fit_outside_earth_engine on (the stage's _units_in_habitat and read_stand_table, the same request),
+    preprocesses it by clustering.log_rule over every row, and for each k from k_min to k_max (2 to 12, each below the
+    number of rows) fits the rows of the fit with the fit's own starts (fmu.utils.stand_table.kmeans_starts: 25 k-means++
+    starts from the seed, the start scikit-learn keeps, on one thread). It records the best start's within-cluster sum
+    of squares (rounded to 6 decimals, as the step of round 9 rounds it), the median and lowest adjusted Rand index over
+    the 300 pairs of starts (a diagnostic of the clustering, not a field score), the knee of the sums of squares (the
+    rule of round 9, the k farthest from the chord), and every unit's type at each k by the best start's nearest
+    centre. It reads none of the clustering stage's outputs (validate() asks for the clustering stage's inputs), so
+    fmu.pipeline.default_stage_names(through="k_elbow") then leaves the clustering stage out and a pass can stop after
+    the elbow. The table's features gain ari_median, ari_min and in_fit_space; read_k_elbow returns the two agreements.
+    The step hands the orchestrator five files for the run folder (StageResult.files): k_elbow.csv, the table of units,
+    the rows after the preprocessing keyed by unit label with whether each is a row of the fit, the types at every k,
+    and the preprocessing, so that a fit at another k can later be scored offline with no Earth Engine. It needs
+    clustering.fit_outside_earth_engine, k_elbow.seed equal to clustering.seed and k_elbow.n_init equal to the fit's 25
+    starts, checked when the config loads, so that at the config's k the elbow's sum of squares is the fit's. The key
+    of the step already leaves k out, so choosing k later recomputes no elbow. False is left out of the per-step key
+    (the k_elbow block is not in the legacy fingerprint), so no config that leaves it off moves; true moves the k_elbow
+    key only. Off, the step makes the calls it made before (tests/test_k_elbow_off_golden.py, recorded at 284b73d).
+  alternatives_considered:
+  - >-
+    The step of round 9 on the scaled stack with min-max scaling added (the space of wekaKMeans): not chosen; with the
+    fit off Earth Engine there is no min-max step, and the fit's space is the table's
+  - >-
+    Let the clustering stage read the elbow's rows from the cache: not chosen; the clustering stage would then depend on
+    the elbow, and its key on the elbow's, which leaves k out
+  - >-
+    Starts seeded per k, or 10 starts for the sweep: not chosen; the fit's own 25 starts make the elbow at k the fit
+  rationale: >-
+    The round 14 brief (Jaskaran, 26 Oct 2026), Task 2, item 4: "The elbow in the fit's own space (A7). With the setting
+    on, the k_elbow step runs on the same rows and in the same scaled space as the fit (k 2 to 12, 25 starts, seed 42, no
+    plot read). Its cache key already leaves out k, so choosing k later does not recompute it. Add a pass that stops
+    after it ... Also save each run's fit rows, after preprocessing and keyed by stand label, as a result file". Task 6
+    reads the elbow and the starts' median agreement for each k. Review A7 found the elbow of record taken in another
+    space than the fit's. The new tests (tests/test_k_elbow_in_fit_space.py) fail on the code before the change (no such
+    setting) and pass after it, among them one that the elbow's sum of squares at the config's k equals the clustering
+    stage's fit on the same stand-ins. No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/k_elbow.py
+    what: _in_fit_space, fit_space_sweep, the files, validate(), read_k_elbow
+  - path: src/fmu/pipeline.py
+    what: default_stage_names, the elbow alone
+  - path: src/fmu/config.py
+    what: KElbowParams.in_fit_space and the validator that it needs the fit off Earth Engine with its starts and seed
+  - path: src/fmu/utils/caching.py
+    what: _STEP_OMITTED_AT_DEFAULT
+  - path: tests/test_k_elbow_in_fit_space.py
+    what: The sweep, the starts' agreement, the knee, the fit's own sum of squares at k, the files, the keys
+  - path: tests/test_k_elbow_off_golden.py
+    what: The step's calls with the setting off, recorded at 284b73d
+  - path: docs/configs.md
+    what: The k_elbow block
+  - path: docs/reviews/2026-10-19-review.md
+    what: A7
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 26 Oct 2026 (round 14 brief), Task 2, item 4

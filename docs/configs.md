@@ -46,6 +46,7 @@ normalization: { method }
 features: { optical_harmonic, radar, canopy_height, terrain }
 export: { export_geotiff, export_gee_asset, analysis_scale_m, drive_folder, export_vector_merged, export_vector_snic, export_vector_dissolved, vector_formats, vector_min_stand_pixels }
 metrics: { reference_config_name, n_comparison_samples, n_silhouette_samples_per_cluster }
+k_elbow: { k_min, k_max, seed, n_init, in_fit_space }
 ```
 
 For the canonical field list and validators, read `src/fmu/config.py`
@@ -744,6 +745,30 @@ every legacy fingerprint, the 14 pinned `_repro` ones among them.
   count for a `stands_dissolved` polygon to survive filtering. SNIC
   layer is unfiltered because SNIC enforces its own minimum via
   `segmentation.size`.
+
+### `k_elbow`
+
+The k elbow step (`src/fmu/stages/k_elbow.py`, round 9), in no default run: k-means on the
+stands for every k from `k_min` (2) to `k_max` (12), `seed` 42, `n_init` 25 starts, and the knee
+of the within-cluster sums of squares (the k farthest from the chord between the first and last
+point). Its key leaves out `clustering.k`, so it is computed once for a config whatever its k.
+The block is not in the legacy fingerprint.
+
+- `in_fit_space` (round 14, Task 2.4; review A7): `false` (default) runs the step of round 9 on
+  the clustering stage's cached scaled feature stack, re-sampled. `true` runs it on the fit's own
+  rows, in the fit's own space: it reads the table of units as the clustering stage does with
+  `clustering.fit_outside_earth_engine` on, preprocesses it by the same rule, and sweeps k on the
+  rows of the fit with the fit's own 25 starts, recording at each k how much the starts agree
+  (the median and lowest adjusted Rand index over every pair; a diagnostic of the clustering,
+  not a field score); so at the config's k its sum of squares is the fit's. It reads none of the
+  clustering stage's outputs, so a run that ends with it has no clustering stage, and a batch can
+  stop after it (`--through k_elbow`, `docs/running.md`). It writes five files into the run
+  folder: `k_elbow.csv` (k, sum of squares, the two agreements, the knee), the table of units,
+  the rows after the preprocessing keyed by unit label (`k_elbow_fit_rows.csv`), each unit's type
+  at every k, and the preprocessing; so a fit at another k can be scored offline with no Earth
+  Engine. It needs `clustering.fit_outside_earth_engine`, `seed` equal to `clustering.seed` and
+  `n_init` 25. Register entry `spec-k-elbow-in-the-fits-space`. Left out of the per-step key
+  while `false`; `true` moves the k_elbow key only.
 
 ### `metrics`
 

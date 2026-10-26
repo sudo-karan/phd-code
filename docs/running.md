@@ -226,7 +226,10 @@ its fingerprint:
 ```
 
 The merge stage caches nothing. The k elbow step (`stages/k_elbow.py`, in no
-default run) caches a table, in the per-step layout only.
+default run) caches a table, in the per-step layout only. With `k_elbow.in_fit_space` on
+(round 14) it reads the clustering stage's inputs, not its outputs, so a run that ends with it
+has no clustering stage, and it writes its elbow, the table of units, the scaled rows and the
+types at every k into the run folder (`docs/configs.md`, `k_elbow`).
 
 Every manifest also records the Python environment (`environment`: Python,
 earthengine-api, a pip freeze hash) and, per stage, the images of each input

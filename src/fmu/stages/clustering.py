@@ -694,7 +694,7 @@ def _units_in_habitat(
 # The k-means starts of the fit outside Earth Engine (round 14, Task 2.1): k-means++, this
 # many starts from clustering.seed, the start with the lowest within-cluster sum of squares
 # kept (fmu.utils.stand_table.kmeans_starts).
-KMEANS_STARTS = 25
+KMEANS_STARTS = st.KMEANS_STARTS
 
 
 def read_stand_table(

@@ -60,6 +60,9 @@ from typing import Any
 
 import numpy as np
 
+# The k-means starts of the fit off Earth Engine and of the k elbow in the fit's space
+# (round 14): k-means++, this many starts from the seed, the best kept.
+KMEANS_STARTS = 25
 # What a spread must exceed for a band not to be dropped as constant (as the Earth Engine
 # path's _apply_scaling).
 SPREAD_EPSILON = 1e-9

@@ -10,6 +10,8 @@ from typing import Any, Literal
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from fmu.utils.stand_table import KMEANS_STARTS
+
 
 class ROIConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -811,6 +813,17 @@ class KElbowParams(BaseModel):
     k_max: int = Field(default=12, ge=3, le=50)
     seed: int = 42
     n_init: int = Field(default=25, ge=1)
+    # Round 14 (Task 2.4; review A7): the elbow in the fit's own space. False (the default):
+    # k-means on the clustering stage's cached scaled feature stack, re-sampled, with
+    # scikit-learn's KMeans (the step of round 9). True: the step reads the table of units as
+    # the clustering stage does with clustering.fit_outside_earth_engine on, preprocesses it by
+    # the same rule, and sweeps k on the rows of the fit with the fit's own starts (25 from the
+    # seed), recording the starts' agreement at each k; it needs neither the clustering stage nor
+    # its outputs. Needs clustering.fit_outside_earth_engine, seed equal to clustering.seed and
+    # n_init equal to the fit's 25 starts, so that at the config's k the elbow is the fit itself.
+    # Not in the legacy fingerprint (the block is not); left out of the per-step key while false
+    # (docs/decisions.yaml, spec-k-elbow-in-the-fits-space).
+    in_fit_space: bool = False
 
     @model_validator(mode="after")
     def _range_has_three_points(self) -> KElbowParams:
@@ -1136,6 +1149,24 @@ class Config(BaseModel):
                 "clustering.fit_excludes_stands_below_min_area needs merge.enabled: "
                 "without the merge there are no stands, and nothing marks a stand "
                 "as below merge.min_area_ha."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _elbow_in_the_fits_space_needs_that_fit(self) -> Config:
+        if not self.k_elbow.in_fit_space:
+            return self
+        if not self.clustering.fit_outside_earth_engine:
+            raise ValueError(
+                "k_elbow.in_fit_space needs clustering.fit_outside_earth_engine: the fit's own "
+                "space is that of the fit off Earth Engine (fmu.utils.stand_table)."
+            )
+        if self.k_elbow.seed != self.clustering.seed or self.k_elbow.n_init != KMEANS_STARTS:
+            raise ValueError(
+                f"k_elbow.in_fit_space needs k_elbow.seed equal to clustering.seed "
+                f"({self.clustering.seed}) and k_elbow.n_init equal to the fit's {KMEANS_STARTS} "
+                f"starts, so that at the config's k the elbow is the fit itself; it has seed "
+                f"{self.k_elbow.seed} and n_init {self.k_elbow.n_init}."
             )
         return self
 

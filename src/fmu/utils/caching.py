@@ -496,6 +496,9 @@ _STEP_OMITTED_AT_DEFAULT: dict[tuple[str, str], Any] = {
     ("clustering", "log_rule"): "abs_skew",
     # Round 14, Task 2.3 (spec-optical-mean-over-the-window).
     ("features_optical", "mean_over_window"): False,
+    # Round 14, Task 2.4 (spec-k-elbow-in-the-fits-space); the k_elbow block is not in the
+    # legacy fingerprint, so this table only.
+    ("k_elbow", "in_fit_space"): False,
 }
 
 # A step's revision, raised when what the step computes changes for configs whose

@@ -1,0 +1,1314 @@
+{
+"configs/odisha_alphaearth_angul_repro.yaml": {
+"calls": [
+[
+"feature_stack.bandNames",
+[],
+{}
+],
+[
+"getInfo",
+[
+"feature_stack.bandNames()"
+],
+{
+"context": "'k elbow bands'"
+}
+],
+[
+"feature_stack.updateMask",
+[
+"habitat_mask"
+],
+{}
+],
+[
+"stand_clusters.rename",
+[
+"'fmu_label'"
+],
+{}
+],
+[
+"feature_stack.updateMask().addBands",
+[
+"stand_clusters.rename()"
+],
+{}
+],
+[
+"feature_stack.updateMask().addBands().stratifiedSample",
+[],
+{
+"classBand": "'fmu_label'",
+"dropNulls": "True",
+"geometries": "False",
+"numPoints": "1",
+"region": "roi",
+"scale": "10",
+"seed": "42"
+}
+],
+[
+"feature_stack.updateMask().addBands().stratifiedSample().size",
+[],
+{}
+],
+[
+"getInfo",
+[
+"feature_stack.updateMask().addBands().stratifiedSample().size()"
+],
+{
+"context": "'k elbow rows: count'"
+}
+],
+[
+"getInfo",
+[
+"feature_stack.updateMask().addBands().stratifiedSample()"
+],
+{
+"context": "'k elbow rows'"
+}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "237.56002",
+"is_elbow": "0",
+"k": "2",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "25.601236",
+"is_elbow": "1",
+"k": "3",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "20.642313",
+"is_elbow": "0",
+"k": "4",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "16.991676",
+"is_elbow": "0",
+"k": "5",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "15.260232",
+"is_elbow": "0",
+"k": "6",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "13.756275",
+"is_elbow": "0",
+"k": "7",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "12.60037",
+"is_elbow": "0",
+"k": "8",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "11.071128",
+"is_elbow": "0",
+"k": "9",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "10.066689",
+"is_elbow": "0",
+"k": "10",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "8.865159",
+"is_elbow": "0",
+"k": "11",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "8.183777",
+"is_elbow": "0",
+"k": "12",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.FeatureCollection",
+[
+[
+"ee.Feature()",
+"ee.Feature()",
+"ee.Feature()",
+"ee.Feature()",
+"ee.Feature()",
+"ee.Feature()",
+"ee.Feature()",
+"ee.Feature()",
+"ee.Feature()",
+"ee.Feature()",
+"ee.Feature()"
+]
+],
+{}
+]
+],
+"metadata": {
+"bands": [
+"b0",
+"b1",
+"b2",
+"b3"
+],
+"elbow_k": 3,
+"inertia": [
+237.56002,
+25.601236,
+20.642313,
+16.991676,
+15.260232,
+13.756275,
+12.60037,
+11.071128,
+10.066689,
+8.865159,
+8.183777
+],
+"k_max": 12,
+"k_min": 2,
+"ks": [
+2,
+3,
+4,
+5,
+6,
+7,
+8,
+9,
+10,
+11,
+12
+],
+"n_bands": 4,
+"n_init": 25,
+"n_rows": 38,
+"seed": 42
+},
+"table": [
+{
+"elbow_k": 3,
+"inertia": 237.56002,
+"is_elbow": 0,
+"k": 2,
+"n_bands": 4,
+"n_rows": 38
+},
+{
+"elbow_k": 3,
+"inertia": 25.601236,
+"is_elbow": 1,
+"k": 3,
+"n_bands": 4,
+"n_rows": 38
+},
+{
+"elbow_k": 3,
+"inertia": 20.642313,
+"is_elbow": 0,
+"k": 4,
+"n_bands": 4,
+"n_rows": 38
+},
+{
+"elbow_k": 3,
+"inertia": 16.991676,
+"is_elbow": 0,
+"k": 5,
+"n_bands": 4,
+"n_rows": 38
+},
+{
+"elbow_k": 3,
+"inertia": 15.260232,
+"is_elbow": 0,
+"k": 6,
+"n_bands": 4,
+"n_rows": 38
+},
+{
+"elbow_k": 3,
+"inertia": 13.756275,
+"is_elbow": 0,
+"k": 7,
+"n_bands": 4,
+"n_rows": 38
+},
+{
+"elbow_k": 3,
+"inertia": 12.60037,
+"is_elbow": 0,
+"k": 8,
+"n_bands": 4,
+"n_rows": 38
+},
+{
+"elbow_k": 3,
+"inertia": 11.071128,
+"is_elbow": 0,
+"k": 9,
+"n_bands": 4,
+"n_rows": 38
+},
+{
+"elbow_k": 3,
+"inertia": 10.066689,
+"is_elbow": 0,
+"k": 10,
+"n_bands": 4,
+"n_rows": 38
+},
+{
+"elbow_k": 3,
+"inertia": 8.865159,
+"is_elbow": 0,
+"k": 11,
+"n_bands": 4,
+"n_rows": 38
+},
+{
+"elbow_k": 3,
+"inertia": 8.183777,
+"is_elbow": 0,
+"k": 12,
+"n_bands": 4,
+"n_rows": 38
+}
+]
+},
+"configs/odisha_v120_3ha_squares_kendujhar_keptland_s1desc.yaml": {
+"calls": [
+[
+"feature_stack.bandNames",
+[],
+{}
+],
+[
+"getInfo",
+[
+"feature_stack.bandNames()"
+],
+{
+"context": "'k elbow bands'"
+}
+],
+[
+"feature_stack.updateMask",
+[
+"habitat_mask"
+],
+{}
+],
+[
+"stand_clusters.rename",
+[
+"'fmu_label'"
+],
+{}
+],
+[
+"feature_stack.updateMask().addBands",
+[
+"stand_clusters.rename()"
+],
+{}
+],
+[
+"feature_stack.updateMask().addBands().stratifiedSample",
+[],
+{
+"classBand": "'fmu_label'",
+"dropNulls": "True",
+"geometries": "False",
+"numPoints": "1",
+"region": "roi",
+"scale": "10",
+"seed": "42"
+}
+],
+[
+"feature_stack.updateMask().addBands().stratifiedSample().size",
+[],
+{}
+],
+[
+"getInfo",
+[
+"feature_stack.updateMask().addBands().stratifiedSample().size()"
+],
+{
+"context": "'k elbow row count'"
+}
+],
+[
+"stand_clusters.remap",
+[
+[
+"5",
+"11"
+],
+[
+"0",
+"0"
+],
+"1"
+],
+{}
+],
+[
+"stand_clusters.remap",
+[
+[
+"5",
+"11"
+],
+[
+"1",
+"1"
+],
+"0"
+],
+{}
+],
+[
+"feature_stack.updateMask().updateMask",
+[
+"stand_clusters.remap()"
+],
+{}
+],
+[
+"stand_clusters.rename",
+[
+"'fmu_label'"
+],
+{}
+],
+[
+"feature_stack.updateMask().updateMask().addBands",
+[
+"stand_clusters.rename()"
+],
+{}
+],
+[
+"feature_stack.updateMask().updateMask().addBands().stratifiedSample",
+[],
+{
+"classBand": "'fmu_label'",
+"dropNulls": "True",
+"geometries": "False",
+"numPoints": "1",
+"region": "roi",
+"scale": "10",
+"seed": "42"
+}
+],
+[
+"feature_stack.updateMask().updateMask().addBands().stratifiedSample().size",
+[],
+{}
+],
+[
+"getInfo",
+[
+"feature_stack.updateMask().updateMask().addBands().stratifiedSample().size()"
+],
+{
+"context": "'k-means training row count without the stands below the minimum'"
+}
+],
+[
+"feature_stack.updateMask().updateMask",
+[
+"stand_clusters.remap()"
+],
+{}
+],
+[
+"stand_clusters.rename",
+[
+"'fmu_label'"
+],
+{}
+],
+[
+"feature_stack.updateMask().updateMask().addBands",
+[
+"stand_clusters.rename()"
+],
+{}
+],
+[
+"feature_stack.updateMask().updateMask().addBands().stratifiedSample",
+[],
+{
+"classBand": "'fmu_label'",
+"dropNulls": "True",
+"geometries": "False",
+"numPoints": "1",
+"region": "roi",
+"scale": "10",
+"seed": "42"
+}
+],
+[
+"feature_stack.updateMask().updateMask().addBands().stratifiedSample().aggregate_array",
+[
+"'fmu_label'"
+],
+{}
+],
+[
+"getInfo",
+[
+"feature_stack.updateMask().updateMask().addBands().stratifiedSample().aggregate_array()"
+],
+{
+"context": "'stands below the minimum with a training row'"
+}
+],
+[
+"feature_stack.updateMask().updateMask().addBands().stratifiedSample().size",
+[],
+{}
+],
+[
+"getInfo",
+[
+"feature_stack.updateMask().updateMask().addBands().stratifiedSample().size()"
+],
+{
+"context": "'k elbow rows: count'"
+}
+],
+[
+"getInfo",
+[
+"feature_stack.updateMask().updateMask().addBands().stratifiedSample()"
+],
+{
+"context": "'k elbow rows'"
+}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "237.56002",
+"is_elbow": "0",
+"k": "2",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "25.601236",
+"is_elbow": "1",
+"k": "3",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "20.642313",
+"is_elbow": "0",
+"k": "4",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "16.991676",
+"is_elbow": "0",
+"k": "5",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "15.260232",
+"is_elbow": "0",
+"k": "6",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "13.756275",
+"is_elbow": "0",
+"k": "7",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "12.60037",
+"is_elbow": "0",
+"k": "8",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "11.071128",
+"is_elbow": "0",
+"k": "9",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "10.066689",
+"is_elbow": "0",
+"k": "10",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "8.865159",
+"is_elbow": "0",
+"k": "11",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "8.183777",
+"is_elbow": "0",
+"k": "12",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.FeatureCollection",
+[
+[
+"ee.Feature()",
+"ee.Feature()",
+"ee.Feature()",
+"ee.Feature()",
+"ee.Feature()",
+"ee.Feature()",
+"ee.Feature()",
+"ee.Feature()",
+"ee.Feature()",
+"ee.Feature()",
+"ee.Feature()"
+]
+],
+{}
+]
+],
+"metadata": {
+"bands": [
+"b0",
+"b1",
+"b2",
+"b3"
+],
+"elbow_k": 3,
+"inertia": [
+237.56002,
+25.601236,
+20.642313,
+16.991676,
+15.260232,
+13.756275,
+12.60037,
+11.071128,
+10.066689,
+8.865159,
+8.183777
+],
+"k_max": 12,
+"k_min": 2,
+"ks": [
+2,
+3,
+4,
+5,
+6,
+7,
+8,
+9,
+10,
+11,
+12
+],
+"n_bands": 4,
+"n_init": 25,
+"n_rows": 38,
+"seed": 42
+},
+"table": [
+{
+"elbow_k": 3,
+"inertia": 237.56002,
+"is_elbow": 0,
+"k": 2,
+"n_bands": 4,
+"n_rows": 38
+},
+{
+"elbow_k": 3,
+"inertia": 25.601236,
+"is_elbow": 1,
+"k": 3,
+"n_bands": 4,
+"n_rows": 38
+},
+{
+"elbow_k": 3,
+"inertia": 20.642313,
+"is_elbow": 0,
+"k": 4,
+"n_bands": 4,
+"n_rows": 38
+},
+{
+"elbow_k": 3,
+"inertia": 16.991676,
+"is_elbow": 0,
+"k": 5,
+"n_bands": 4,
+"n_rows": 38
+},
+{
+"elbow_k": 3,
+"inertia": 15.260232,
+"is_elbow": 0,
+"k": 6,
+"n_bands": 4,
+"n_rows": 38
+},
+{
+"elbow_k": 3,
+"inertia": 13.756275,
+"is_elbow": 0,
+"k": 7,
+"n_bands": 4,
+"n_rows": 38
+},
+{
+"elbow_k": 3,
+"inertia": 12.60037,
+"is_elbow": 0,
+"k": 8,
+"n_bands": 4,
+"n_rows": 38
+},
+{
+"elbow_k": 3,
+"inertia": 11.071128,
+"is_elbow": 0,
+"k": 9,
+"n_bands": 4,
+"n_rows": 38
+},
+{
+"elbow_k": 3,
+"inertia": 10.066689,
+"is_elbow": 0,
+"k": 10,
+"n_bands": 4,
+"n_rows": 38
+},
+{
+"elbow_k": 3,
+"inertia": 8.865159,
+"is_elbow": 0,
+"k": 11,
+"n_bands": 4,
+"n_rows": 38
+},
+{
+"elbow_k": 3,
+"inertia": 8.183777,
+"is_elbow": 0,
+"k": 12,
+"n_bands": 4,
+"n_rows": 38
+}
+]
+},
+"configs/sanjay_van_baseline.yaml": {
+"calls": [
+[
+"feature_stack.bandNames",
+[],
+{}
+],
+[
+"getInfo",
+[
+"feature_stack.bandNames()"
+],
+{
+"context": "'k elbow bands'"
+}
+],
+[
+"feature_stack.updateMask",
+[
+"habitat_mask"
+],
+{}
+],
+[
+"stand_clusters.rename",
+[
+"'fmu_label'"
+],
+{}
+],
+[
+"feature_stack.updateMask().addBands",
+[
+"stand_clusters.rename()"
+],
+{}
+],
+[
+"feature_stack.updateMask().addBands().stratifiedSample",
+[],
+{
+"classBand": "'fmu_label'",
+"dropNulls": "True",
+"geometries": "False",
+"numPoints": "1",
+"region": "roi",
+"scale": "10",
+"seed": "42"
+}
+],
+[
+"feature_stack.updateMask().addBands().stratifiedSample().size",
+[],
+{}
+],
+[
+"getInfo",
+[
+"feature_stack.updateMask().addBands().stratifiedSample().size()"
+],
+{
+"context": "'k elbow rows: count'"
+}
+],
+[
+"getInfo",
+[
+"feature_stack.updateMask().addBands().stratifiedSample()"
+],
+{
+"context": "'k elbow rows'"
+}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "237.56002",
+"is_elbow": "0",
+"k": "2",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "25.601236",
+"is_elbow": "1",
+"k": "3",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "20.642313",
+"is_elbow": "0",
+"k": "4",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "16.991676",
+"is_elbow": "0",
+"k": "5",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "15.260232",
+"is_elbow": "0",
+"k": "6",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "13.756275",
+"is_elbow": "0",
+"k": "7",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "12.60037",
+"is_elbow": "0",
+"k": "8",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "11.071128",
+"is_elbow": "0",
+"k": "9",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "10.066689",
+"is_elbow": "0",
+"k": "10",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "8.865159",
+"is_elbow": "0",
+"k": "11",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.Feature",
+[
+"None",
+{
+"elbow_k": "3",
+"inertia": "8.183777",
+"is_elbow": "0",
+"k": "12",
+"n_bands": "4",
+"n_rows": "38"
+}
+],
+{}
+],
+[
+"ee.FeatureCollection",
+[
+[
+"ee.Feature()",
+"ee.Feature()",
+"ee.Feature()",
+"ee.Feature()",
+"ee.Feature()",
+"ee.Feature()",
+"ee.Feature()",
+"ee.Feature()",
+"ee.Feature()",
+"ee.Feature()",
+"ee.Feature()"
+]
+],
+{}
+]
+],
+"metadata": {
+"bands": [
+"b0",
+"b1",
+"b2",
+"b3"
+],
+"elbow_k": 3,
+"inertia": [
+237.56002,
+25.601236,
+20.642313,
+16.991676,
+15.260232,
+13.756275,
+12.60037,
+11.071128,
+10.066689,
+8.865159,
+8.183777
+],
+"k_max": 12,
+"k_min": 2,
+"ks": [
+2,
+3,
+4,
+5,
+6,
+7,
+8,
+9,
+10,
+11,
+12
+],
+"n_bands": 4,
+"n_init": 25,
+"n_rows": 38,
+"seed": 42
+},
+"table": [
+{
+"elbow_k": 3,
+"inertia": 237.56002,
+"is_elbow": 0,
+"k": 2,
+"n_bands": 4,
+"n_rows": 38
+},
+{
+"elbow_k": 3,
+"inertia": 25.601236,
+"is_elbow": 1,
+"k": 3,
+"n_bands": 4,
+"n_rows": 38
+},
+{
+"elbow_k": 3,
+"inertia": 20.642313,
+"is_elbow": 0,
+"k": 4,
+"n_bands": 4,
+"n_rows": 38
+},
+{
+"elbow_k": 3,
+"inertia": 16.991676,
+"is_elbow": 0,
+"k": 5,
+"n_bands": 4,
+"n_rows": 38
+},
+{
+"elbow_k": 3,
+"inertia": 15.260232,
+"is_elbow": 0,
+"k": 6,
+"n_bands": 4,
+"n_rows": 38
+},
+{
+"elbow_k": 3,
+"inertia": 13.756275,
+"is_elbow": 0,
+"k": 7,
+"n_bands": 4,
+"n_rows": 38
+},
+{
+"elbow_k": 3,
+"inertia": 12.60037,
+"is_elbow": 0,
+"k": 8,
+"n_bands": 4,
+"n_rows": 38
+},
+{
+"elbow_k": 3,
+"inertia": 11.071128,
+"is_elbow": 0,
+"k": 9,
+"n_bands": 4,
+"n_rows": 38
+},
+{
+"elbow_k": 3,
+"inertia": 10.066689,
+"is_elbow": 0,
+"k": 10,
+"n_bands": 4,
+"n_rows": 38
+},
+{
+"elbow_k": 3,
+"inertia": 8.865159,
+"is_elbow": 0,
+"k": 11,
+"n_bands": 4,
+"n_rows": 38
+},
+{
+"elbow_k": 3,
+"inertia": 8.183777,
+"is_elbow": 0,
+"k": 12,
+"n_bands": 4,
+"n_rows": 38
+}
+]
+}
+}
