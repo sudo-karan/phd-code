@@ -29,11 +29,21 @@ _TIMEOUT_S = 10
 _CODE_SUFFIXES = (".py", ".pyi", ".pyx", ".sh", ".bash", ".yaml", ".yml", ".toml", ".cfg",
                   ".ini", ".js", ".mjs", ".cjs", ".ts", ".ipynb", ".r", ".sql")
 
+# The folders whose untracked code makes the tree dirty, as the modified tracked files
+# do (round 14: round 13 question 30, answer (c), with the four folders of round 2's
+# answer (b) to question 19): the package, the scripts, the Odisha scripts and the
+# configs. Untracked code elsewhere (tests/, the top level) is listed, not counted.
+_CODE_FOLDERS = ("src", "scripts", "odisha_script", "configs")
+
+
+def _is_code(path: str) -> bool:
+    """A source or config file by its suffix, or a folder git names without listing its files."""
+    return path.endswith("/") or path.lower().endswith(_CODE_SUFFIXES)
+
 
 def _code_first(path: str) -> tuple[bool, str]:
     """Sort key: untracked code and untracked folders before everything else, each in path order."""
-    is_code = path.endswith("/") or path.lower().endswith(_CODE_SUFFIXES)
-    return (not is_code, path)
+    return (not _is_code(path), path)
 
 # One answer per checkout per process. The code a process runs is the code it
 # imported when it started, so the state at first asking describes the run only
@@ -58,11 +68,17 @@ def git_state(start: Path | None = None, *, refresh: bool = False) -> dict[str, 
     Returns a dict that always has these keys:
 
       commit               full hash of HEAD, or None
-      dirty                True if any TRACKED file is modified, staged, deleted
-                           or renamed relative to HEAD; False if none; None if
-                           it could not be determined
+      dirty                True if any tracked file is modified, staged, deleted
+                           or renamed relative to HEAD, or if there is untracked
+                           code under src/, scripts/, odisha_script/ or configs/
+                           (`untracked_code`); False if neither; None if it could
+                           not be determined
       modified             sorted tracked paths behind `dirty` (at most 50)
       modified_truncated   True if there were more than 50
+      untracked_code       sorted untracked code behind `dirty` (at most 50), as
+                           `untracked_code()` finds it
+      untracked_code_truncated
+                           True if there were more than 50
       untracked            untracked, non-ignored paths (at most 50): first the
                            code (source and config files, by suffix) and the
                            untracked folders, then the rest, each sorted, so
@@ -74,9 +90,13 @@ def git_state(start: Path | None = None, *, refresh: bool = False) -> dict[str, 
                            installed, the code is not in a git checkout, a git
                            command failed)
 
-    Untracked files do not make the tree dirty: a finished run leaves untracked
-    outputs behind, and they are not code. They are listed all the same, because
-    an untracked source file can change what ran.
+    Untracked code under the four code folders makes the tree dirty (round 14;
+    round 13 question 30, answer (c)): an untracked module or config can change
+    what ran. Until round 14 only tracked files counted, and a record could call
+    such a tree clean. Other untracked files do not count: a finished run leaves
+    untracked outputs behind (odisha_script/phase2_vectors/), and they, like
+    __pycache__ folders, are not code. Every untracked path, counted or not, is
+    listed under `untracked`.
 
     Never raises, never waits more than a few seconds per git call, changes
     nothing in the checkout, and does not depend on the user's git settings.
@@ -108,19 +128,8 @@ def git_state_now(start: Path | None = None) -> dict[str, Any]:
     return _read_git_state(Path(start).resolve())
 
 
-def _read_git_state(start: Path) -> dict[str, Any]:
-    state: dict[str, Any] = {
-        "commit": None,
-        "dirty": None,
-        "modified": [],
-        "modified_truncated": False,
-        "untracked": [],
-        "untracked_truncated": False,
-        "root": None,
-        "error": None,
-    }
-    cwd = start if start.is_dir() else start.parent
-
+def _git(*args: str, at: Path) -> tuple[int, str, str]:
+    """Runs git in the checkout at `at`: its exit code, its output and its error text."""
     # GIT_DIR and friends would point git at some other repository than the one
     # the code sits in. GIT_OPTIONAL_LOCKS=0 keeps `status` from rewriting the
     # index, so reading the state never touches the checkout.
@@ -130,46 +139,93 @@ def _read_git_state(start: Path) -> dict[str, Any]:
         if k not in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_PREFIX")
     }
     env["GIT_OPTIONAL_LOCKS"] = "0"
+    done = subprocess.run(  # noqa: S603 - fixed argv, no shell
+        ["git", "-C", str(at), *args],
+        capture_output=True,
+        timeout=_TIMEOUT_S,
+        env=env,
+        check=False,
+    )
+    return (
+        done.returncode,
+        done.stdout.decode("utf-8", "replace"),
+        done.stderr.decode("utf-8", "replace").strip(),
+    )
 
-    def git(*args: str, at: Path) -> tuple[int, str, str]:
-        done = subprocess.run(  # noqa: S603 - fixed argv, no shell
-            ["git", "-C", str(at), *args],
-            capture_output=True,
-            timeout=_TIMEOUT_S,
-            env=env,
-            check=False,
-        )
-        return (
-            done.returncode,
-            done.stdout.decode("utf-8", "replace"),
-            done.stderr.decode("utf-8", "replace").strip(),
-        )
+
+def untracked_code(root: Path) -> list[str]:
+    """The untracked code of the checkout whose root directory is `root`, sorted.
+
+    That is every untracked, non-ignored file under src/, scripts/, odisha_script/
+    or configs/ whose suffix is a source or config file's (`_CODE_SUFFIXES`: .py,
+    .sh, .yaml and the like), the files of an untracked folder among them, and a
+    folder whose files git does not list (a repository inside the checkout), by
+    its name. With the modified tracked files these make the tree dirty (round
+    14; round 13 question 30, answer (c)). `git status` names an untracked folder
+    without its files, so the files are listed here (`git ls-files --others`) and
+    a folder counts by what it holds: a __pycache__ folder or a folder of run
+    outputs holds no code and does not count. Untracked code outside the four
+    folders does not count either: the answer names these four.
+
+    The batch wrapper, odisha_script/run_passes_safely.py, refuses a run tree by
+    this function, imported from the run tree's own package, so that its refusal
+    and the dirty flag of the records its runs write follow one rule.
+
+    Raises subprocess.CalledProcessError if git fails, FileNotFoundError if git is
+    not installed and subprocess.TimeoutExpired if git does not answer within a
+    few seconds. Changes nothing in the checkout.
+    """
+    args = ("ls-files", "--others", "--exclude-standard", "-z", "--", *_CODE_FOLDERS)
+    rc, out, err = _git(*args, at=root)
+    if rc != 0:
+        raise subprocess.CalledProcessError(rc, ["git", "-C", str(root), *args], out, err)
+    return sorted(path for path in out.split("\0") if path and _is_code(path))
+
+
+def _read_git_state(start: Path) -> dict[str, Any]:
+    state: dict[str, Any] = {
+        "commit": None,
+        "dirty": None,
+        "modified": [],
+        "modified_truncated": False,
+        "untracked_code": [],
+        "untracked_code_truncated": False,
+        "untracked": [],
+        "untracked_truncated": False,
+        "root": None,
+        "error": None,
+    }
+    cwd = start if start.is_dir() else start.parent
 
     try:
-        rc, out, err = git("rev-parse", "--show-toplevel", at=cwd)
+        rc, out, err = _git("rev-parse", "--show-toplevel", at=cwd)
         if rc != 0:
             state["error"] = f"not in a git checkout: {err or 'git rev-parse failed'}"
             return state
         root = Path(out.strip())
         state["root"] = str(root)
 
-        rc, out, err = git("rev-parse", "--verify", "HEAD", at=root)
+        rc, out, err = _git("rev-parse", "--verify", "HEAD", at=root)
         if rc == 0:
             state["commit"] = out.strip()
         else:
             state["error"] = f"no commit to name: {err or 'git rev-parse HEAD failed'}"
 
-        rc, out, err = git(
+        rc, out, err = _git(
             "status", "--porcelain=v1", "-z", "--untracked-files=normal", at=root
         )
         if rc != 0:
             state["error"] = f"git status failed: {err}"
             return state
+        code_paths = untracked_code(root)
     except FileNotFoundError:
         state["error"] = "git is not installed or not on PATH"
         return state
     except subprocess.TimeoutExpired:
         state["error"] = f"git did not answer within {_TIMEOUT_S} s"
+        return state
+    except subprocess.CalledProcessError as e:
+        state["error"] = f"git ls-files failed: {e.stderr}"
         return state
     except (OSError, subprocess.SubprocessError) as e:
         state["error"] = f"could not run git: {type(e).__name__}: {e}"
@@ -193,9 +249,11 @@ def _read_git_state(start: Path) -> dict[str, Any]:
             modified.append(path)
     modified.sort()
     untracked.sort(key=_code_first)
-    state["dirty"] = bool(modified)
+    state["dirty"] = bool(modified) or bool(code_paths)
     state["modified"] = modified[:_MAX_LISTED]
     state["modified_truncated"] = len(modified) > _MAX_LISTED
+    state["untracked_code"] = code_paths[:_MAX_LISTED]
+    state["untracked_code_truncated"] = len(code_paths) > _MAX_LISTED
     state["untracked"] = untracked[:_MAX_LISTED]
     state["untracked_truncated"] = len(untracked) > _MAX_LISTED
     return state

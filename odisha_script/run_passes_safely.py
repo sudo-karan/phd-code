@@ -42,14 +42,24 @@ RUN_PASSES_SAFELY=1 for the script (`pass_env`), which refuses to start without 
     run in a process group of their own, waits for them to end, records the pass and stops
     (exit 128 plus the signal's number). A signal that was ignored when the batch started
     (nohup, or SIGINT in a background job) stays ignored (round 13, review B5);
-  - runs from a "run tree": a checkout whose tracked files are unmodified. A multi-hour run
-    started from a working tree that is being edited executes whatever half-finished code
-    is on disk when each stage starts. Use a clean clone pinned to one commit;
-  - reads the run tree's commit and modified tracked files again before and after each pass,
-    and starts no pass on a tree that has changed since the batch started (its commit moved,
-    or a tracked file is modified): the configs left are not finished, and it stops (exit 95).
-    Until round 13 it read the tree once, at the start, so a change while a batch ran was
-    not seen, and the next pass ran other code than the passes before it (review C32);
+  - runs from a "run tree": a checkout whose tracked files are unmodified and which holds no
+    untracked code (exit 92 otherwise). A multi-hour run started from a working tree that is
+    being edited executes whatever half-finished code is on disk when each stage starts. Use a
+    clean clone pinned to one commit. Untracked code is an untracked file with a code suffix
+    (.py, .sh, .yaml and the like) under src/, scripts/, odisha_script/ or configs/, in an
+    untracked folder or not, as the run tree's own fmu.utils.provenance.untracked_code finds
+    it; the dirty flag of the records its runs write follows the same rule (round 14: round 13
+    question 30, answer (c)). A run tree whose fmu has no such rule (one from before round 14)
+    is refused as well. Run outputs and __pycache__ folders hold no code, and untracked code
+    elsewhere (tests/, the top level) does not count. Until round 14 the wrapper read tracked
+    files only, and ran a batch on a tree with an untracked module, which the runs' records
+    listed but did not call dirty;
+  - reads the run tree's commit, modified tracked files and untracked code again before and
+    after each pass, and starts no pass on a tree that has changed since the batch started (its
+    commit moved, a tracked file is modified, or untracked code has appeared): the configs left
+    are not finished, and it stops (exit 95). Until round 13 it read the tree once, at the
+    start, so a change while a batch ran was not seen, and the next pass ran other code than the
+    passes before it (review C32);
   - writes the run tree's state as the batch started, each pass's per-stage exit codes and
     the tree's state before and after it, and the change that stopped the batch if one did,
     to <log-dir>/<label>.state.json beside the log, after the record of the label's earlier
@@ -72,9 +82,10 @@ RUN_PASSES_SAFELY=1 for the script (`pass_env`), which refuses to start without 
     their states are on the Earth Engine task list.
 
 Exit codes: 0 every config complete; 1 not all complete (one not finished, or one needing
-attention); 90 another batch holds the lock; 92 the run tree has modified tracked files; 93 a
-config refused (B8); 94 a config missing from the run tree; 95 the run tree changed while the
-batch ran (C32); 128 + n stopped by signal n (129 SIGHUP, 130 Ctrl-C, 143 SIGTERM).
+attention); 90 another batch holds the lock; 92 the run tree has modified tracked files or
+untracked code, or its fmu cannot say which code is untracked (round 14); 93 a config refused
+(B8); 94 a config missing from the run tree; 95 the run tree changed while the batch ran (C32);
+128 + n stopped by signal n (129 SIGHUP, 130 Ctrl-C, 143 SIGTERM).
 
 Run from anywhere; the run tree needs its own .env (the pipeline reads .env from the working
 directory). NEEDS LIVE EARTH ENGINE and submits tasks.
@@ -150,18 +161,35 @@ def take_lock(path: Path) -> int | None:
 
 
 def tree_state(rt: Path, *, check: bool = False) -> dict:
-    """The run tree's commit and its modified tracked files, read now. Untracked files are left
-    out: finished runs leave untracked outputs behind, and those are not code. With `check`, a git
-    command that fails raises; otherwise the failure is recorded under "error"."""
+    """The run tree's commit, its modified tracked files and its untracked code, read now.
+
+    The untracked code is what the run tree's own fmu.utils.provenance.untracked_code finds (main()
+    puts the run tree's src first on sys.path before the first call): untracked files with a code
+    suffix under src/, scripts/, odisha_script/ and configs/, so that the wrapper refuses a tree by
+    the rule the dirty flag of its runs' records follows (round 14, round 13 question 30 (c)). Other
+    untracked files are left out: finished runs leave untracked outputs behind, and those, like
+    __pycache__ folders, are not code. With `check`, a git command that fails raises; otherwise
+    the failure is recorded under "error"."""
+    from fmu.utils.provenance import untracked_code
+
     head = subprocess.run(["git", "-C", str(rt), "rev-parse", "HEAD"],
                           capture_output=True, text=True, check=check)
     status = subprocess.run(["git", "-C", str(rt), "status", "--porcelain", "--untracked-files=no"],
                             capture_output=True, text=True, check=check)
     if head.returncode or status.returncode:
-        return {"commit": None, "dirty": None, "modified": [],
+        return {"commit": None, "dirty": None, "modified": [], "untracked_code": [],
                 "error": (head.stderr or status.stderr).strip()[:300] or "git failed"}
     modified = sorted(line[3:] for line in status.stdout.splitlines() if line.strip())
-    return {"commit": head.stdout.strip(), "dirty": bool(modified), "modified": modified, "error": None}
+    try:
+        code = untracked_code(rt)
+    except (OSError, subprocess.SubprocessError) as e:
+        if check:
+            raise
+        why = e.stderr if isinstance(e, subprocess.CalledProcessError) else e
+        return {"commit": head.stdout.strip(), "dirty": None, "modified": modified,
+                "untracked_code": [], "error": f"git ls-files failed: {why}"[:300]}
+    return {"commit": head.stdout.strip(), "dirty": bool(modified or code), "modified": modified,
+            "untracked_code": code, "error": None}
 
 
 def wait_for_group(pgid: int) -> None:
@@ -208,17 +236,32 @@ def main() -> int:
         with log_path.open("a") as f:
             f.write(line + "\n")
 
-    # Tracked files only: finished runs leave untracked outputs behind, and those are not code.
+    # The run tree's code, not an editable install elsewhere: its fmu.utils.provenance says which of
+    # its untracked files are code (tree_state), by the rule the records of its runs follow, and its
+    # fmu.config reads the configs. Put first before the tree is read (round 14; until then after).
+    sys.path.insert(0, str(rt / "src"))
+    try:
+        from fmu.utils.provenance import untracked_code  # noqa: F401 - tree_state's rule
+    except ImportError as e:
+        print(f"REFUSING: the run tree's fmu cannot say which of its untracked files are code "
+              f"({e}); a run tree from before round 14 has no such rule. Use a run tree at a "
+              f"later commit")
+        return 92
+    # Modified tracked files and untracked code; other untracked files are left out, since
+    # finished runs leave untracked outputs behind, and those are not code.
     started = tree_state(rt, check=True)
     if started["dirty"]:
-        print("REFUSING: the run tree has modified tracked files:\n" + "\n".join(started["modified"]))
+        print("REFUSING: the run tree is not clean (a batch runs on the code of one commit)"
+              + "".join(f"\n{what}:\n" + "\n".join(paths) for what, paths in (
+                  ("modified tracked files", started["modified"]),
+                  ("untracked code under src/, scripts/, odisha_script/ or configs/",
+                   started["untracked_code"])) if paths))
         return 92
     commit = started["commit"]
     for c in args.configs:
         if not (rt / c).exists():
             print(f"REFUSING: {c} does not exist in the run tree at {commit[:7]}")
             return 94
-    sys.path.insert(0, str(rt / "src"))  # the run tree's code, not an editable install elsewhere
     from fmu.config import load_config
 
     # A config is known by its name: (review B8): the pipeline names every task of it after it,
@@ -418,7 +461,8 @@ def main() -> int:
         save()
 
     try:
-        say(f"batch {args.label} started from commit {commit} (tracked files unmodified); "
+        say(f"batch {args.label} started from commit {commit} (tracked files unmodified, no "
+            f"untracked code); "
             f"{len(args.configs)} config(s), up to {args.passes} pass(es); stages "
             f"{' '.join(stages)} (--through {args.through})")
         for c, why in skipped.items():
@@ -431,13 +475,15 @@ def main() -> int:
             if not wait_until_idle(names, f"before pass {p}"):
                 break
             # The run tree, read again (review C32): no pass runs on other code than the passes
-            # before it, as no batch starts on a tree with modified tracked files.
+            # before it, as no batch starts on a tree with modified tracked files or untracked code.
             before = tree_state(rt)
             if moved(before):
                 changed[:] = [{"before_pass": p, "git": before}]
                 say(f"REFUSING pass {p}: the run tree changed since the batch started (commit "
                     f"{commit[:7]}; now {str(before['commit'])[:7]}, modified tracked files: "
-                    f"{before['modified'] or 'none'}" + (f", {before['error']}" if before["error"] else "")
+                    f"{before['modified'] or 'none'}, untracked code: "
+                    f"{before['untracked_code'] or 'none'}"
+                    + (f", {before['error']}" if before["error"] else "")
                     + "); the configs left are not finished")
                 break
             n0 = len(log_path.read_text().splitlines())
@@ -465,7 +511,8 @@ def main() -> int:
             after = history[-1]["git_after"]
             changed[:] = [{"after_pass": history[-1]["pass"], "git": after}]
             say(f"the run tree changed during pass {history[-1]['pass']} (commit {commit[:7]}; now "
-                f"{str(after['commit'])[:7]}, modified tracked files: {after['modified'] or 'none'})")
+                f"{str(after['commit'])[:7]}, modified tracked files: {after['modified'] or 'none'}"
+                f", untracked code: {after['untracked_code'] or 'none'})")
         held_back = [c for c in skipped if name_of[c] not in done_before]
         ok = not remaining and not attention and not held_back
         if stopped_by:

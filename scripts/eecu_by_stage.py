@@ -23,11 +23,11 @@ in round 10) measures with it what one config costs per 1,000 ha (docs/handoff/2
 
 OUT.json holds results only (no dates or times); OUT_run.json beside it holds the pass spans,
 when the figures were read and the git block of every run record (fmu.utils.provenance.git_state:
-the commit of the checkout this script is in, whether tracked files were modified, and which),
-read before anything is written. Until round 13 it read git in the working directory after
-writing OUT.json, as `tracked_files_modified` (review C38): run from another repository it named
-that one's commit, and measured again into a committed cost file it counted the new numbers as a
-modified tracked file.
+the commit of the checkout this script is in, whether tracked files were modified or, since round
+14, untracked code was there, and which), read before anything is written. Until round 13 it read
+git in the working directory after writing OUT.json, as `tracked_files_modified` (review C38): run
+from another repository it named that one's commit, and measured again into a committed cost file
+it counted the new numbers as a modified tracked file.
 """
 
 from __future__ import annotations

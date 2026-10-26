@@ -22,6 +22,8 @@ KEYS = {
     "dirty",
     "modified",
     "modified_truncated",
+    "untracked_code",  # round 14: untracked code under four folders makes the tree dirty
+    "untracked_code_truncated",
     "untracked",
     "untracked_truncated",
     "root",

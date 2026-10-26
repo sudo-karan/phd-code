@@ -4535,14 +4535,16 @@ decisions:
     was imported from, whether any tracked file differs from HEAD ("dirty"), the tracked paths behind
     that, and the untracked paths. A "git" block is written into manifest.json, the export stage's manifest,
     and the run record <config>_run.json. Result files (the *_results.txt family, scores, tables) deliberately
-    do not get a hash.
+    do not get a hash. Round 14 (26 Oct 2026): "dirty" also counts untracked code under src/, scripts/,
+    odisha_script/ and configs/, which the block lists under untracked_code (spec-dirty-flag-counts-untracked-code).
   alternatives_considered:
   - >-
     Looking at the working directory instead of where the code was imported from: not done, because a
     run can be started in one checkout with PYTHONPATH pointing at another
   - >-
     Counting untracked files as dirty: not done; they are listed, but a finished run leaves untracked
-    outputs behind, and they are not code
+    outputs behind, and they are not code. Round 14 (26 Oct 2026): untracked code under the four code folders
+    counts since; other untracked files, the outputs among them, still do not (spec-dirty-flag-counts-untracked-code)
   - >-
     Putting the commit hash into result files: deliberately not done; they hold results only, so that
     git diff after a re-run shows whether the numbers reproduced
@@ -7684,7 +7686,8 @@ decisions:
     read before it writes, in place of git run in the working directory after (review C38). git_state lists the
     untracked paths code first: source and config files, by suffix, and untracked folders, then the rest, each in path
     order, under the same cap of 50 (review C34). The dirty flag still counts tracked files only. No computation and
-    no cache key changes.
+    no cache key changes. Round 14 (26 Oct 2026): the dirty flag counts untracked code under src/, scripts/,
+    odisha_script/ and configs/ as well, listed under untracked_code (spec-dirty-flag-counts-untracked-code).
   alternatives_considered:
   - >-
     Read git when the record is written (the state before round 13): not kept; a commit made during a run was recorded
@@ -7697,7 +7700,8 @@ decisions:
     Count untracked files under src/, scripts/, odisha_script/ and configs/ as dirty (round 2's answer (b) to question
     19, task B11, never implemented): not taken in round 13; odisha_script/ holds the run outputs, so as worded it
     would mark almost every batch manifest dirty, and night-git-state-in-manifests records that untracked files do not
-    make the tree dirty. Put to Jaskaran (docs/handoff/2026-10-20-round13.md, Questions)
+    make the tree dirty. Put to Jaskaran (docs/handoff/2026-10-20-round13.md, Questions). Round 14 (26 Oct 2026):
+    question 30's answer (c) is taken, untracked code only (spec-dirty-flag-counts-untracked-code)
   rationale: >-
     The round 13 brief (Jaskaran, 19 Oct 2026), Task 6: "The C list: fix what is a documentation or record error." The
     review (docs/reviews/2026-10-19-review.md), C32: the provenance comment says the state at first asking describes
@@ -7744,6 +7748,9 @@ decisions:
     tracked file is modified), that pass does not start, the configs left are not finished, run_tree_changed records
     the pass and the tree, and the batch ends NOT ALL COMPLETE with exit 95. A change seen after the last pass ends the
     batch so too (after_pass). Untracked files are left out, as at the start: finished runs leave untracked outputs.
+    Round 14 (26 Oct 2026): untracked code under src/, scripts/, odisha_script/ and configs/ is counted, at the start
+    (exit 92) and before and after each pass, by the run tree's own fmu.utils.provenance.untracked_code, and the git
+    blocks add untracked_code; other untracked files are still left out (spec-dirty-flag-counts-untracked-code).
   alternatives_considered:
   - >-
     Read the tree once, at the start, and write dirty false (the wrapper before round 13): not kept; a commit or an edit
@@ -8362,3 +8369,90 @@ decisions:
   source: >-
     Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 42, Claude Code's recommendation (a), by the brief's
     rule 'Every other question: your recommendation'
+- id: spec-dirty-flag-counts-untracked-code
+  title: >-
+    Untracked code under src/, scripts/, odisha_script/ and configs/ makes a run's record say dirty, and the batch
+    wrapper refuses a run tree that holds it
+  decision: >-
+    fmu.utils.provenance.git_state and git_state_now set dirty when a tracked file is modified, staged, deleted or
+    renamed relative to HEAD, as before, or when the checkout holds untracked code under src/, scripts/, odisha_script/
+    or configs/: an untracked, non-ignored file whose suffix is a source or config file's (_CODE_SUFFIXES, the list the
+    round 13 C34 ordering already used: .py, .sh, .yaml and the like), in an untracked folder or not, and a repository
+    inside one of the four folders, whose files git does not list. git status names an untracked folder without its
+    files, so the new untracked_code() lists the untracked files of the four folders (git ls-files --others
+    --exclude-standard -z) and a folder counts by the code it holds. The git block adds untracked_code (the paths,
+    sorted, at most 50) and untracked_code_truncated; untracked is unchanged. odisha_script/run_passes_safely.py puts
+    the run tree's src first on sys.path before it reads the tree, and its tree_state takes untracked_code from the run
+    tree's own fmu.utils.provenance, so that the wrapper refuses a tree by the rule the dirty flag of its runs' records
+    follows: a run tree with untracked code is refused at the start (exit 92, the paths named), untracked code that
+    appears during a batch stops it before the next pass (exit 95, the check of review C32), and the state file's git
+    blocks add untracked_code. A run tree whose fmu has no untracked_code (one from before round 14) is refused (exit
+    92). No cache key moves: the git block is no input of any step.
+  alternatives_considered:
+  - >-
+    (a) Leave the flag on tracked files only, with the code listed first (round 13, review C34): not chosen; round 2's
+    answer (b) to question 19 stays undone, and an untracked module is listed but not flagged
+  - >-
+    (b) Count every untracked file under the four folders, as round 2's answer was worded: not chosen;
+    odisha_script/phase2_vectors/ holds every run's outputs, so almost every batch manifest after a first export pass
+    would say dirty, and the flag would stop telling code changes apart
+  - >-
+    Count every untracked folder under the four folders, as answer (c) can also be read: not chosen; git lists a
+    __pycache__ folder (in a checkout with no .gitignore, as the wrapper's test run trees are) and a new folder of run
+    outputs as untracked folders, so both would set the flag, against the answer's own case for (c), that outputs
+    never set it. A folder counts when it holds a code file; a repository inside the checkout, whose files git does
+    not list, counts as if it did
+  - >-
+    Count untracked code anywhere in the checkout (tests/, docs/, the top level): not chosen; the answer names the four
+    folders. Such code is listed under untracked, not counted
+  - >-
+    Decide by a file's content (a shebang, a parse) rather than its suffix: not chosen; the answer goes by suffix, and,
+    as its case against (c) says, a new kind of code file must be added to _CODE_SUFFIXES
+  - >-
+    Give the wrapper a copy of the rule: not chosen; two copies could drift apart, and the wrapper would then refuse
+    by another rule than the one its runs' records follow
+  rationale: >-
+    The round 14 brief (Jaskaran, 26 Oct 2026, docs/handoff/2026-10-26-round14.md), Task 1: "Every other question:
+    your recommendation", and among the code changes to make before R3, "Q30 (c)". Round 13's question 30
+    (docs/handoff/2026-10-20-round13.md, Questions for Jaskaran) recommended (c): "Count as dirty only untracked code
+    files (by suffix: .py, .sh, .yaml and the like) and untracked folders under those four folders, and have the batch
+    wrapper refuse such a run tree. For: it catches an untracked module or config, which is what your answer guards
+    against, and outputs never set the flag." The new tests fail on the code before the change:
+    tests/test_dirty_counts_untracked_code.py (an untracked src/x.py, a folder scripts/newdir/ that holds a .py, a
+    config and a shell script, a repository in src/ and 60 untracked scripts: "assert False is True"; the three cases
+    that must stay clean, and a tracked change listed apart from untracked code, fail on the missing key: "KeyError:
+    'untracked_code'") and tests/test_run_passes_safely_run_tree.py (a run
+    tree with an untracked odisha_script/new.py ran its batch: "assert 0 == 92"; a module written into src/ during a
+    pass: "assert 0 == 95"; a run tree whose fmu has no untracked_code: "assert 1 == 92"). Untracked run outputs,
+    __pycache__ folders and code outside the four folders leave the flag false, and a batch on such a tree runs as
+    before. In tests/test_provenance_untracked_order.py an untracked src/fmu/new_stage.py past 50 outputs now makes
+    the tree dirty, by design. No step key moves (the git block feeds no cache key), and no committed record is
+    rewritten: the records written before round 14 counted tracked files only. No batch was run (no Earth Engine). No
+    paper was searched for this decision.
+  evidence:
+  - path: src/fmu/utils/provenance.py
+    what: _CODE_FOLDERS, _is_code, untracked_code, and git_state's dirty, untracked_code and untracked_code_truncated
+  - path: odisha_script/run_passes_safely.py
+    what: >-
+      tree_state's untracked_code, the run tree's src put first before the tree is read, and the two refusals with
+      exit 92
+  - path: tests/test_dirty_counts_untracked_code.py
+    what: What makes the tree dirty and what does not; fails on the code before
+  - path: tests/test_run_passes_safely_run_tree.py
+    what: >-
+      The real wrapper on a run tree with untracked code, at the start and during a pass, on run outputs and
+      __pycache__ folders, and on a run tree whose fmu has no rule; fails on the code before
+  - path: docs/outputs.md
+    what: The git block's keys
+  - path: docs/running.md
+    what: The wrapper's paragraph
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Questions for Jaskaran, question 30
+  - path: docs/handoff/2026-10-26-round14.md
+    what: The round 14 brief, Task 1
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 30, Claude Code's recommendation (c), by the brief's rule
+    'Every other question: your recommendation'

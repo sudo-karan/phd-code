@@ -230,6 +230,7 @@ class TestPipelineSmokeRun:
         git = json.loads((tmp_path / "manifest.json").read_text())["git"]
         assert set(git) == {
             "commit", "dirty", "modified", "modified_truncated",
+            "untracked_code", "untracked_code_truncated",
             "untracked", "untracked_truncated", "root", "error",
         }
         assert git["commit"] is None or len(git["commit"]) == 40
