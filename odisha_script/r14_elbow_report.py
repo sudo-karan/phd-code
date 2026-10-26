@@ -48,6 +48,9 @@ the order angul, dhenkanal, kendujhar, koraput, and within a district in its tab
 stand label: k-means++ depends on the order of the rows); each row keeps its in_fit. The four
 tables must have the same label column and the same candidate bands in the same order, and their
 records the same log_rule, skewness_threshold and cyclic_decomposition_log, or the script stops.
+Every run's record, the pools' and the others', must have one log_rule, right_skew (the rule the
+report's paragraph on how the numbers are made describes), and one skewness_threshold, which the
+paragraph gives, or the script stops.
 The pooled table is preprocessed by fmu.utils.stand_table.preprocess with that rule, threshold and
 angle pairs, over every row, and k is swept on its rows in the fit with the fit's own starts,
 fmu.stages.k_elbow.fit_space_sweep(rows, every_row, k_min=2, k_max=12, seed=42, n_starts=25), the
@@ -55,7 +58,9 @@ knee by fmu.stages.k_elbow.knee. The pipeline never fits the pooled rows; the re
 elbow because the declaration asks for it.
 
 WRITES, in --out-dir, and refuses to write over any of these unless --overwrite (a refusal writes
-nothing; so does a stop):
+nothing; so does a stop). They are written into a folder of their own beside them (.<stem>.*,
+removed after) and put in place once all are written, the run record last, so that a failure that
+is not a stop (a full disk, Ctrl-C) leaves none of them:
   <stem>.csv          one row per area, arm and k: area, arm, stand_size, k, wcss, ari_median,
                       ari_min, is_knee, n_rows_fitted (the pools as the areas pooled_3ha and
                       pooled_10ha)
@@ -79,9 +84,12 @@ import datetime
 import hashlib
 import io
 import json
+import os
 import re
 import shlex
+import shutil
 import sys
+import tempfile
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -119,6 +127,8 @@ LABEL_COLUMNS = ("stand_lbl", "snic_label")
 RECORD_KEYS = ("log_rule", "skewness_threshold", "cyclic_decomposition_log", "candidate_bands",
                "n_table_rows", "n_rows_fitted")
 POOL_KEYS = ("log_rule", "skewness_threshold", "cyclic_decomposition_log")
+# The rule the report's paragraph on how the numbers are made describes (one_rule).
+RULE_DESCRIBED = "right_skew"
 # A value holding a date and time, as scripts/copy_run_results.py looks for one.
 STAMP = re.compile(r"20\d\d-\d\d-\d\dT\d\d:|20\d{6}_\d{6}")
 
@@ -345,6 +355,24 @@ def load_run(records: Path, run: str, reads: list[Read]) -> RunRecords | None:
         raise SystemExit(f"{run}: its table of stands has {len(table.labels)} rows, {int(table.in_fit.sum())} "
                          f"in the fit; {where} says {record['n_table_rows']} and {record['n_rows_fitted']}")
     return RunRecords(run=run, elbow=elbow, label_name=label_name, table=table, record=record)
+
+
+def one_rule(runs: dict[str, RunRecords]) -> tuple[str, float]:
+    """The log rule and skewness threshold of every run's preprocessing record, which the report's
+    paragraph on how the numbers are made gives once: the script stops if the runs have two, or a
+    rule the paragraph does not describe. With no run, the R3 configs' own, right_skew above 1.0."""
+    found: dict[tuple[str, float], list[str]] = {}
+    for r in runs.values():
+        found.setdefault((str(r.record["log_rule"]), float(r.record["skewness_threshold"])), []).append(r.run)
+    if len(found) > 1:
+        raise SystemExit("the runs' preprocessing differs in its rule or threshold, which the report "
+                         "gives once: " + "; ".join(f"{rule} above {t!r} in {', '.join(names)}"
+                                                    for (rule, t), names in sorted(found.items())))
+    ((rule, threshold),) = found or {(RULE_DESCRIBED, 1.0): []}
+    if rule != RULE_DESCRIBED:
+        raise SystemExit(f"the runs' preprocessing rule is {rule}; the report's paragraph on how the "
+                         f"numbers are made describes {RULE_DESCRIBED} only")
+    return rule, threshold
 
 
 # ---------------------------------------------------------------------- the sweeps
@@ -613,8 +641,10 @@ def _bands(names: Sequence[str]) -> str:
 
 def report_text(*, stem: str, records: Path, series: dict[str, dict[str, Series]],
                 pools: dict[tuple[str, str], Pool | None], runs: dict[str, RunRecords],
-                missing: list[str], run_check: bool) -> str:
-    """<stem>_report.md (results only: no date, time or commit)."""
+                missing: list[str], run_check: bool, rule: str = RULE_DESCRIBED,
+                threshold: float = 1.0) -> str:
+    """<stem>_report.md (results only: no date, time or commit); rule and threshold are the
+    runs' (one_rule)."""
     n_runs = sum(len(a.runs) for a in AREAS)
     lines = [
         "# The elbow report of R3's first half (round 14, Task 6)",
@@ -651,19 +681,22 @@ def report_text(*, stem: str, records: Path, series: dict[str, dict[str, Series]
         "",
         "Each run's elbow is the k elbow step's (`k_elbow.in_fit_space` on; `fmu.stages.k_elbow`). It "
         "takes the run's table of stands (one row per stand, its mean in every candidate band) and "
-        "preprocesses it over every stand by the declared rule (`clustering.log_rule` right_skew: a band "
-        "whose IQR is 0 is dropped; only a band skewed to the right, skew above 1.0, is logged, as "
-        "log1p((x - min) / IQR); the sine and cosine of an angle are never logged, and each such pair is "
-        "scaled by one shared spread; every band is centred by its median and divided by its IQR, exact "
-        "quartiles). It then fits k-means on the fit's own rows in that space (the stands under 1 ha "
-        f"left out), for each k from {K_MIN} to {K_MAX}: {N_STARTS} k-means++ starts from seed {SEED}, "
-        "each refined by Lloyd's algorithm (scikit-learn, one thread), the start with the lowest "
-        "within-cluster sum of squares kept. That sum, rounded to 6 decimals, is the curve, and the knee "
-        "is the k farthest from the chord between the curve's first and last points "
+        f"preprocesses it over every stand by the runs' rule (`clustering.log_rule` {rule}: a band "
+        f"whose IQR is 0 is dropped; only a band skewed to the right, skew above {threshold!r}, is "
+        "logged, as log1p((x - min) / IQR); the sine and cosine of an angle are never logged; each other "
+        "band is centred by its median and divided by its IQR, and the sine and cosine of an angle by "
+        "their medians and by the root mean square of their two IQRs, one spread for the pair; exact "
+        "quartiles). It then fits k-means on the fit's own rows in that space (the stands below the "
+        "merge's minimum area, 1 ha in every R3 config, left out), for each k from "
+        f"{K_MIN} to {K_MAX}: {N_STARTS} k-means++ starts from seed {SEED}, each refined by Lloyd's "
+        "algorithm (scikit-learn, one thread), the start with the lowest within-cluster sum of squares "
+        "kept. That sum, rounded to 6 decimals (as the csv gives it; the tables below, to 2), is the "
+        "curve, and the knee is the k farthest from the chord between the curve's first and last points "
         "(`fmu.stages.k_elbow.knee`). At each k the adjusted Rand index of every pair of the "
         f"{N_STARTS} starts ({N_PAIRS} pairs) says how much the starts agree with each other: a "
         "diagnostic of the clustering, not a field score. Its median and lowest are given, rounded to 6 "
-        "decimals. The pooled elbow of an arm and stand size puts the four districts' tables of stands "
+        "decimals in the csv and to 4 in the tables. The pooled elbow of an arm and stand size puts the "
+        "four districts' tables of stands "
         "together, each row keyed by its district and stand label (labels repeat across districts), in "
         "the order Angul, Dhenkanal, Kendujhar, Koraput and within each by stand label, each row keeping "
         "whether it is in its run's fit. It preprocesses them together by the runs' own rule, threshold "
@@ -728,9 +761,14 @@ def _area_section(area: Area, arms: dict[str, Series], pools: dict[tuple[str, st
 
 
 def _caption(arms: dict[str, Series]) -> str:
-    """A figure's caption: how its sums of squares are scaled, and its colours."""
+    """A figure's caption: how its sums of squares are scaled, its index's scale as draw_figure
+    sets it (below 0 when an index is), and its colours."""
+    low = min(min(s.elbow.ari_min + s.elbow.ari_median) for s in arms.values())
+    scale = ("on a scale from 0 to 1." if low >= 0 else
+             f"on a scale from 0 to 1 taken below 0, to the lowest, {_ari(low)}, where two starts agree "
+             "less than chance would.")
     bottom = (f"Bottom: the adjusted Rand index of the {N_PAIRS} pairs of the {N_STARTS} starts, the "
-              "median (solid, with points) and the lowest (dashed), on a scale from 0 to 1.")
+              f"median (solid, with points) and the lowest (dashed), {scale}")
     if len(arms) > 1:
         return ("*Top: each arm's within-cluster sum of squares (the best of the starts) divided by its "
                 "own value at k = 2, as the two arms' sums are in different spaces, on a scale from 0; "
@@ -870,6 +908,7 @@ def main(argv: list[str] | None = None) -> int:
     if missing and not args.allow_missing:
         raise SystemExit(f"no records of {len(missing)} run(s) in {args.records}: {', '.join(missing)} "
                          "(--allow-missing writes the report without them)")
+    rule, threshold = one_rule(runs)
     if not args.no_run_check:
         for run, records in runs.items():
             print(f"  {run}: its elbow made again from its table of stands", flush=True)
@@ -886,26 +925,39 @@ def main(argv: list[str] | None = None) -> int:
     series = area_series(runs, pools)
     table = csv_text(series)
     report = report_text(stem=args.stem, records=args.records, series=series, pools=pools, runs=runs,
-                         missing=missing, run_check=not args.no_run_check)
+                         missing=missing, run_check=not args.no_run_check, rule=rule, threshold=threshold)
     for name, text in ((csv_path.name, table), (report_path.name, report)):
         if STAMP.search(text):
             raise SystemExit(f"{name}: a value holding a date and time; results only")
 
+    # Everything is written into a folder of its own beside the outputs, and put in place only once
+    # it all is, so that a failure that is not a stop (a full disk, Ctrl-C) leaves no part of them
+    # (the gate's review, part 3); the run record goes in last.
     args.out_dir.mkdir(parents=True, exist_ok=True)
-    fig_dir.mkdir(parents=True, exist_ok=True)
-    figures = []
-    for area in AREAS:
-        if series[area.key]:
-            draw_figure(area, series[area.key], fig_dir / f"{area.key}.png")
-            figures.append(f"{args.stem}/{area.key}.png")
-        else:  # no arm has an elbow: an earlier run's figure of the area (--overwrite) is not left
-            (fig_dir / f"{area.key}.png").unlink(missing_ok=True)
-    csv_path.write_text(table, encoding="utf-8")
-    report_path.write_text(report, encoding="utf-8")
-    record = run_record(argv=argv_given, started=started,
-                        result_files=[csv_path.name, report_path.name, *figures], reads=reads,
-                        run_check=not args.no_run_check, missing=missing)
-    record_path.write_text(json.dumps(record, indent=1) + "\n", encoding="utf-8")
+    work = Path(tempfile.mkdtemp(prefix=f".{args.stem}.", dir=args.out_dir))
+    try:
+        (work / fig_dir.name).mkdir()
+        figures = []
+        for area in AREAS:
+            if series[area.key]:
+                draw_figure(area, series[area.key], work / fig_dir.name / f"{area.key}.png")
+                figures.append(f"{args.stem}/{area.key}.png")
+        (work / csv_path.name).write_text(table, encoding="utf-8")
+        (work / report_path.name).write_text(report, encoding="utf-8")
+        record = run_record(argv=argv_given, started=started,
+                            result_files=[csv_path.name, report_path.name, *figures], reads=reads,
+                            run_check=not args.no_run_check, missing=missing)
+        (work / record_path.name).write_text(json.dumps(record, indent=1) + "\n", encoding="utf-8")
+        fig_dir.mkdir(exist_ok=True)
+        for area in AREAS:
+            if series[area.key]:
+                os.replace(work / fig_dir.name / f"{area.key}.png", fig_dir / f"{area.key}.png")
+            else:  # no arm has an elbow: an earlier run's figure of the area (--overwrite) is not left
+                (fig_dir / f"{area.key}.png").unlink(missing_ok=True)
+        for path in (csv_path, report_path, record_path):
+            os.replace(work / path.name, path)
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
 
     print(f"wrote {shown(csv_path)}, {shown(report_path)}, {len(figures)} figures in {shown(fig_dir)}, "
           f"and {shown(record_path)}")
