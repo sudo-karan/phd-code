@@ -65,6 +65,12 @@ NULL (Step 7), as fixed in PHASE2_PREDICTIONS.md
             puts an originally assigned plot outside every stand polygon is redrawn. For 6.3, a
             realisation that puts a typed plot on a polygon with no cluster_id is not used (its
             label statistics would be over a different plot set); the count used is printed.
+            The null is SCORED on the plots the observed statistic is computed on: a plot the
+            observed map leaves unassigned is left out of every null statistic too, although a
+            realisation may put it on a stand (as Phase 3 scores on its observed-assigned set `As`).
+            Until round 13 (review of 19 Oct 2026, A8) 6.1 and its null structure scored the null on
+            every plot a realisation placed, so in a layer with unassigned plots the observed value
+            and its null covered different plots. The draws themselves are unchanged.
   The noise-SNIC null is excluded by recorded decision: it failed its size check before any
   statistic existed (odisha_phase2_4_results.txt).
 
@@ -107,8 +113,9 @@ Run:  python odisha_phase2_5_stats.py [--set pilot|districts] [--rotations 1999]
                                       [--checkpoint-dir D] [--fresh] [--progress-every N]
                                       [--null-draw-cap-scale F] [--first-failure-exit]
                                       [--vectors-dir D] [--aoi-dir D] [--out-dir D]
-Writes: odisha_phase2_5_results[_districts].txt, odisha_phase2_5_summary[_districts].csv,
-        odisha_phase2_5_{primary_r2_null,arms_excess,pairwise_bands}[_districts].png
+Writes: odisha_phase2_5_results[_districts]_r13.txt, odisha_phase2_5_summary[_districts]_r13.csv,
+        odisha_phase2_5_{primary_r2_null,arms_excess,pairwise_bands}[_districts]_r13.png
+        (OUTPUT_TAG, below). The files without _r13 were written before the A8 fix and are kept as they are.
 """
 from __future__ import annotations
 
@@ -161,6 +168,17 @@ MIN_CELL = 3            # n_same or n_diff <= this: 6.2 cell is uninformative
 BDIST_SEARCH_M = 1000.0  # as the join
 FIRST_RUN = "8d4c2ed"
 GEOD = Geod(ellps="WGS84")
+# Every file a run writes carries this tag after the set's own suffix. The A8 fix (round 13) moves committed numbers,
+# so the files written before it keep their names as the record from before the fix (CLAUDE.md: never overwrite a
+# committed result). The tag is in the default names rather than behind an option because the documented commands
+# (PHASE2_STATUS.md, docs/reproducibility.md) carry no option: run as written, they must write beside those files.
+OUTPUT_TAG = "_r13"
+
+
+def output_suffix(spec: dict) -> str:
+    """The suffix of every output name of a run of this set: the set's own, then OUTPUT_TAG."""
+    return spec["suffix"] + OUTPUT_TAG
+
 
 # reference palette (dataviz skill): ink, muted, series slots
 INK, INK2, MUTED, GRID = "#0b0b0b", "#52514e", "#898781", "#e1e0d9"
@@ -1000,9 +1018,9 @@ def analyse_partition(C: Ctx, part_obj: Partition, n_rot: int, primary: bool) ->
             f"set to unassigned")
     n_obs_assigned = int((~np.isnan(ids)).sum())
     if n_obs_assigned < part_obj.n_in_loaded:
-        say(f"  NOTE: observed assigned plots {n_obs_assigned} < {part_obj.n_in_loaded} plots in loaded districts; the "
-            f"rotation null may assign the other {part_obj.n_in_loaded - n_obs_assigned} (it forces only the observed-"
-            f"assigned plots to land on a stand)")
+        say(f"  NOTE: observed assigned plots {n_obs_assigned} < {part_obj.n_in_loaded} plots in loaded districts; every "
+            f"statistic, observed and null alike, leaves out the other {part_obj.n_in_loaded - n_obs_assigned}: the "
+            f"rotation null forces only the observed-assigned plots onto a stand and is scored on them only")
     pol = part_obj.polys
     areas = pol.groupby("key").area_ha.sum().astype(float)
     untyped = pol.cluster_id.isna()
@@ -1070,6 +1088,14 @@ def analyse_partition(C: Ctx, part_obj: Partition, n_rot: int, primary: bool) ->
         fr = {k: f"{v[2]:.3f}" for k, v in att.items() if v[1] != "plain"}
         say(f"    sampler: plain rejection in every part" if not fr else
             f"    sampler: feasible-region (exact; plain geometric acceptance < {PLAIN_MIN_ACCEPT}) in {fr}; plain elsewhere")
+    # The null is scored on the plots the observed statistic is computed on (review A8, round 13). A plot the observed
+    # map leaves unassigned is NaN in `ids`, so no observed statistic sees it; rotation_null does not force it onto a
+    # stand, but a realisation may still put it on one, and before this line 6.1 and its null structure then scored it.
+    # Masked here, it is NaN in every realisation too, as Phase 3 scores on As. The draws are unchanged, and where the
+    # observed map assigns every plot (the pilot; every merged layer of the committed runs) nothing changes. 6.2 selects
+    # observed-assigned pairs (ok = assigned) except in the merged layer's same-stand pairs by AOI part, which the mask
+    # now restricts the same way; 6.3 reads the realisations' labels at the typed plots only.
+    rid = np.where(observed_ok, rid, np.nan)
 
     # ---------------- 6.1
     Y = {v: plots[v].to_numpy(float) for v in YVARS}
@@ -2014,7 +2040,7 @@ def main() -> int:
         ap.error("--null-draw-cap-scale must be > 0")
     apply_runtime_args(args)
     spec = apply_path_args(args)
-    suffix = spec["suffix"]
+    suffix = output_suffix(spec)     # results, summary, log and figures alike: never the names from before the A8 fix
     out_dir = spec["out_dir"]
     t_start = time.time()
 

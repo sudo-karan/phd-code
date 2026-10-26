@@ -249,6 +249,20 @@ def test_isolated_orphans_are_reported_separately():
     assert "no 4-connected neighbour" in w[0]
 
 
+def test_the_isolated_gloss_in_the_manifest_says_no_4_connected_neighbour():
+    """Review C16. The merge's graph is 4-connected (tests/test_adjacency.py,
+    test_diagonal_contacts_are_not_edges), so a stand that meets another only at a
+    corner, as two stands of one 8-connected kept patch can, is filed `isolated`. The
+    gloss every run writes into its manifest says that, not that the stand touches no
+    other stand."""
+    gloss = {s.name: s.description for s in MergeStage.summary_numbers}[
+        "stands_below_min_area_by_cause"
+    ]
+    isolated = gloss.split("isolated:")[1].split("area_blocked:")[0]
+    assert "touches no other stand" not in isolated
+    assert "4-connected" in isolated and "corner" in isolated
+
+
 def test_iteration_cap_is_reported_as_such():
     w = _warnings_from({**_CLEAN, "orphans_no_attribute_match": 2}, _Params())
     assert "ran out of its 60 iterations" in w[0]
@@ -840,6 +854,67 @@ def _run_stage_on_a_wedged_region(monkeypatch, *, soft_ceiling: bool):
     ctx.set("roi", "<roi>")
     ctx.set("snic_clusters", _FakeImage([]))
     return MergeStage().run(ctx, _Config()), seen
+
+
+def test_the_recorded_joint_admit_rate_is_the_share_of_pairs_the_gate_admits(monkeypatch):
+    """Review C14. The merge's gate rejects a pair with fewer than
+    merge.min_defined_criteria criteria defined on both sides, however alike the one
+    it shares, so the joint admit rate the stage records must not count it. Pair
+    (0, 1) has no canopy height on one side and the same std on both; (1, 2) and
+    (2, 3) pass both criteria: the gate admits 2 of the 3 pairs."""
+    n_pixels = [200, 200, 200, 200]
+    rows = [{"ch": None, "std": 0.5}, {"ch": 10.0, "std": 0.5},
+            {"ch": 10.0, "std": 0.5}, {"ch": 10.5, "std": 0.55}]
+    graph = SuperpixelGraph(raw_labels=[100, 101, 102, 103], n_pixels=n_pixels,
+                            edges={(0, 1): 5, (1, 2): 5, (2, 3): 5}, scale_m=10)
+    means = {i: {**r, "longitude": 77.0 + i * 0.001, "latitude": 28.5} for i, r in enumerate(rows)}
+    counts = {i: {b: (0 if v is None else n_pixels[i]) for b, v in means[i].items()} for i in means}
+
+    class _Params:
+        criteria = ()
+        max_superpixels = 50_000
+        relax_factor = 1.75
+        min_area_ha = 1.0
+        max_area_ha = 10.0
+        min_defined_criteria = 2
+        min_frac_valid = 0.5
+        max_pass2_iterations = 60
+        pass2_skip_at_min_area = False
+        pass2_soft_ceiling = False
+
+        def tolerances(self):
+            return {"ch": 2.0, "std": 0.45}
+
+    class _Config:
+        merge = _Params()
+        export = type("_Export", (), {"analysis_scale_m": 10})()
+        segmentation = type("_Segmentation", (), {"mask_before_snic": False})()
+
+        def max_component_pixels(self):
+            return 1000
+
+    class _EE:
+        class Image:
+            @staticmethod
+            def pixelLonLat():  # noqa: N802 - mirrors the ee API
+                return "<lonlat>"
+
+    monkeypatch.setattr(merge_module, "ee", _EE)
+    monkeypatch.setattr(merge_module, "assert_components_fit", lambda *a, **k: None)
+    monkeypatch.setattr(merge_module, "extract_superpixel_graph", lambda *a, **k: graph)
+    monkeypatch.setattr(
+        merge_module, "extract_superpixel_attributes", lambda *a, **k: (means, counts)
+    )
+    monkeypatch.setattr(merge_module, "_criteria_image", lambda ctx, params: _FakeImage([]))
+    ctx = PipelineContext()
+    ctx.set("roi", "<roi>")
+    ctx.set("snic_clusters", _FakeImage([]))
+    result = MergeStage().run(ctx, _Config())
+    d = result.outputs["merge_diagnostics"]
+    assert d["pass1_pairs_blocked_by_undefined_criteria_round1"] == 1
+    for recorded in (d["threshold_calibration"], result.metadata["threshold_calibration"]):
+        assert recorded["n_pairs_with_any_defined_criterion"] == 3
+        assert recorded["joint_admit_rate_pct"] == 66.67
 
 
 def test_the_stage_passes_the_soft_ceiling_through_and_records_it(monkeypatch):

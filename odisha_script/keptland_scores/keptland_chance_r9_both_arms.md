@@ -58,3 +58,18 @@ Beside the primary's score 4, outside the Holm correction, no pass or fail (`odi
 | hand-crafted (_r9) | `odisha_v120_3ha_squares_angul_keptland_s1desc_r9`, `odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r9`, `odisha_v120_3ha_squares_kendujhar_keptland_s1desc_r9`, `odisha_v120_3ha_squares_koraput_keptland_s1desc_r9` | declared | 1999 | `v120_3ha_squares_keptland_s1desc` | yes | 264, 257 | 411 |
 | AlphaEarth (_r9) | `odisha_alphaearth_3ha_squares_angul_keptland_r9`, `odisha_alphaearth_3ha_squares_dhenkanal_keptland_r9`, `odisha_alphaearth_3ha_squares_kendujhar_keptland_r9`, `odisha_alphaearth_3ha_squares_koraput_keptland_r9` | declared | 1999 | `alphaearth_3ha_squares_keptland` | yes | 264, 257 | 451 |
 | rehearsal, pre-fix stands | `odisha_v120_3ha_squares_angul_keptland_s1desc`, `odisha_v120_3ha_squares_dhenkanal_keptland_s1desc`, `odisha_v120_3ha_squares_kendujhar_keptland_s1desc`, `odisha_v120_3ha_squares_koraput_keptland_s1desc` | rehearsal | 1999 | `v120_3ha_squares_keptland_s1desc` | yes | 264, 257 | 411 |
+
+## Note added 20 Oct 2026 (round 13, review A1, A4, A5, A6, B13, B14, B16, B17 and B18)
+
+The numbers above are as first written. All three sets here are on stands from before the round 13
+fixes (`docs/handoff/2026-10-20-round13.md`, Done). "Pre-fix" in the title and in the third set's
+name means round 7's stands, made before round 9's cache fix, not before these. The hand-crafted
+(_r9) set's inputs were affected by A1, A4 and A5, and B13 reaches it too; its runs are to be re-run
+(roadmap R3). The AlphaEarth (_r9) set is not affected by A1, A5 or B13, and is affected by A4 in
+Koraput only, through the merge's NDVI amplitude (question 1 of that record; until it is answered,
+noted as affected, by an amount not measured); whether roadmap R3 re-runs it is put to Jaskaran in
+that record. The merge and clustering fixes B14, B16, B17 and B18 reach both. The rehearsal's
+stands, round 7's, have none of the round 13 fixes either; they stay as history. How far any fix
+moves a score, a null, a p or a difference was not measured; it needs Earth Engine. The note at the
+end of each chance file says more. `README.md` here lists every file noted. No number here is
+changed.

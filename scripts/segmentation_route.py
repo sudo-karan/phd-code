@@ -19,8 +19,13 @@ What it prints. For each config, every run in the folders given that
 
   - ran that config (the manifest's config name),
   - computed `snic_clusters` and submitted its export, and
-  - wrote it under the config's CURRENT fingerprint (the fingerprint is in the asset name, so
-    a run made before the config's content changed is left out),
+  - wrote it under the config's CURRENT key in the run's cache layout (the key is in the asset
+    name, so a run made before the key moved is left out): the legacy fingerprint for a run of
+    the legacy layout, and the stage's step key (`fmu.utils.caching.step_key`, "s" and ten hex
+    digits) for a run of the per-step layout, which a manifest records as `cache_layout` since
+    round 9. Until round 13 every per-step run was reported "not recorded" (review C42). A step
+    key also moves when a fix raises the revision of a step upstream (STEP_REVISION), so a run
+    made before such a fix is left out too: its asset is not the one the config names today.
 
 with the route it took:
 
@@ -88,22 +93,29 @@ def route_of(stages: list[dict[str, Any]], stage_name: str = SEGMENTATION,
 
 def exported_fingerprint(stages: list[dict[str, Any]], stage_name: str = SEGMENTATION,
                          output: str = SUPERPIXELS) -> str | None:
-    """The fingerprint in the name of the asset this run exported for `output`, if it exported one."""
+    """The key in the name of the asset this run exported for `output`, if it exported one: a
+    legacy fingerprint (hex digits) or a per-step key ("s" and hex digits)."""
     for stage in stages:
         if stage.get("name") != stage_name:
             continue
         for task in stage.get("export_tasks") or []:
-            found = re.search(rf"/{re.escape(output)}__([0-9a-f]+)$", str(task.get("asset_path", "")))
+            found = re.search(rf"/{re.escape(output)}__(s?[0-9a-f]+)$", str(task.get("asset_path", "")))
             if found:
                 return found.group(1)
     return None
 
 
 def routes(config_name: str, fingerprint: str, runs_dirs: list[Path], stage_name: str = SEGMENTATION,
-           output: str = SUPERPIXELS) -> dict[str, Any]:
-    """Every run of `config_name` in `runs_dirs` that made its `output` asset under `fingerprint`."""
+           output: str = SUPERPIXELS, *, step_key: str | None = None) -> dict[str, Any]:
+    """Every run of `config_name` in `runs_dirs` that made its `output` asset under the config's key.
+
+    A run of the per-step layout (its manifest's `cache_layout`) is matched on `step_key`, any
+    other run on the legacy `fingerprint`. The record names `step_key` only when the folders
+    hold a per-step run of the config, so a record of legacy runs is what it was before round 13.
+    """
     found: list[dict[str, Any]] = []
     unreadable: list[str] = []
+    per_step_seen = False
     for runs_dir in runs_dirs:
         for manifest in sorted(runs_dir.glob("*/manifest.json")):
             try:
@@ -113,9 +125,12 @@ def routes(config_name: str, fingerprint: str, runs_dirs: list[Path], stage_name
                 continue
             if record.get("config_name") != config_name:
                 continue
+            per_step = record.get("cache_layout") == "per_step"
+            per_step_seen = per_step_seen or per_step
             stages = record.get("stages") or []
             took = route_of(stages, stage_name, output)
-            if took is None or exported_fingerprint(stages, stage_name, output) != fingerprint:
+            key = step_key if per_step else fingerprint
+            if took is None or key is None or exported_fingerprint(stages, stage_name, output) != key:
                 continue
             route, inputs = took
             found.append({"run": manifest.parent.name, "route": route, "inputs": inputs})
@@ -124,6 +139,7 @@ def routes(config_name: str, fingerprint: str, runs_dirs: list[Path], stage_name
     return {
         "config": config_name,
         "fingerprint": fingerprint,
+        **({"step_key": step_key} if per_step_seen else {}),
         **asked,
         # The last run to export the asset is the one whose superpixels the cache holds,
         # unless an earlier export was still in the queue; all are listed.
@@ -135,7 +151,8 @@ def routes(config_name: str, fingerprint: str, runs_dirs: list[Path], stage_name
 
 def describe(result: dict[str, Any]) -> list[str]:
     """Plain lines for one config. Pure Python, so it is testable offline."""
-    head = f"{result['config']} (fingerprint {result['fingerprint']}): "
+    step = f", step key {result['step_key']}" if "step_key" in result else ""
+    head = f"{result['config']} (fingerprint {result['fingerprint']}{step}): "
     if not result["runs"]:
         what = f"`{result['output']}`" if "output" in result else "superpixel"
         return [head + f"not recorded: no run in these folders made its {what} asset"]
@@ -159,7 +176,7 @@ def main() -> None:
     args = ap.parse_args()
 
     from fmu.config import load_config
-    from fmu.utils.caching import config_fingerprint
+    from fmu.utils.caching import STEP_SETTINGS, config_fingerprint, step_key
 
     missing = [str(d) for d in args.runs_dir if not d.is_dir()]
     if missing:
@@ -167,7 +184,9 @@ def main() -> None:
     results = []
     for path in args.config:
         cfg = load_config(path)
-        result = routes(cfg.name, config_fingerprint(cfg), args.runs_dir, args.stage, args.output)
+        key = step_key(cfg, args.stage) if args.stage in STEP_SETTINGS else None
+        result = routes(cfg.name, config_fingerprint(cfg), args.runs_dir, args.stage, args.output,
+                        step_key=key)
         results.append(result)
         print("\n".join(describe(result)))
     if args.out:

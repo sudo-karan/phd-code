@@ -183,7 +183,10 @@ def format_table(rows: list[dict[str, Any]], limit: int | None = None) -> list[s
 # What each cause of an undersized stand calls for. Same three causes as the
 # stage's summary numbers.
 _CAUSE_ADVICE = {
-    "isolated": "touches no other stand, so nothing can be merged into it",
+    "isolated": (
+        "shares no edge with another stand (no 4-connected neighbour in the merge's "
+        "graph; it may meet one at a corner), so nothing can be merged into it"
+    ),
     "area_blocked": (
         "every neighbour is already too big to take it under merge.max_area_ha "
         "(plus merge.min_area_ha with merge.pass2_soft_ceiling on); this points "

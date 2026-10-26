@@ -60,13 +60,13 @@ directly. It's around 300 lines and self-documenting.
 | `datasets` | GEE dataset IDs | All stages that hit a specific collection |
 | `cloud_mask` | S2 cloud filtering | `data_load` |
 | `data_load` | S1 acquisition geometry, S2 composite reducer | `data_load` |
-| `masking` | Habitat class definition (IndiaSAT primary, WorldCover fallback) + water threshold | `masking` |
+| `masking` | Habitat class definition (IndiaSAT primary, WorldCover fallback) + water threshold | `masking`; the water threshold also `features_static` |
 | `features_*` | Per-feature-stage toggles and parameters | The matching `features_*` stage |
 | `segmentation` | SNIC parameters *and its input band stack* | `segmentation`, `pipeline.default_stage_names` |
-| `merge` | Stand-aggregation rules and area bounds | `merge`; also derives the `reduceConnectedComponents` cap used by `clustering` and `metrics` |
+| `merge` | Stand-aggregation rules and area bounds | `merge`; also derives the `reduceConnectedComponents` cap used by `metrics` (and by `clustering` until round 13) |
 | `clustering` | k-means hyperparameters and preprocessing | `clustering` |
 | `normalization` | `robust` vs `zscore` scaling | `clustering` |
-| `features` | High-level on/off toggles per feature family | Currently informational; future use |
+| `features` | High-level on/off toggles per feature family | Read by nothing: a `false` changes no stage and no per-step key, only the legacy fingerprint (review C20) |
 | `export` | Whether to export GeoTIFF, target scale | `export` |
 | `metrics` | Reference config to compare against, sampling sizes | `metrics` |
 
@@ -247,7 +247,16 @@ it is, see [design_notes.md](design_notes.md).
 - `name`: short tag for the ROI (informational; appears in manifest).
 - `roi_file`: path to a GeoJSON polygon in EPSG:4326. Loaded via
   `fmu.utils.gee.load_roi_geometry`. Capped at GEE's inline-geometry
-  limit (~5 MB).
+  limit (~5 MB). The path is read relative to the working directory, so
+  run from the repo root (or the run tree's root). Nothing checks the file
+  when the config is loaded. The per-step cache keys hash its content, and a
+  file they cannot read hashes as nothing, with no warning: from another
+  folder every per-step key changes while the legacy fingerprint, which
+  hashes the path, does not (the 10 km tile config: masking `s354522a974`
+  from the repo root, `s4a47c8b2cc` from `docs/`, fingerprint `5772fb6133`
+  from both). A run then stops when it loads the ROI (`FileNotFoundError`),
+  or the pass runner reports every upstream asset as missing (exit 3), which
+  names the wrong cause (review C40).
 
 ### `dates`
 
@@ -305,9 +314,11 @@ for the full inventory.
   **fallback**, applied only where IndiaSAT has no data (default
   `[10, 20, 30]` = tree cover, shrubland, grassland).
 - `jrc_water_occurrence_threshold`: minimum % of months a pixel was
-  water for it to count as permanent water (default 50.0). Builds
-  `water_mask` for the **distance-to-water feature only**; it does not
-  affect the habitat mask.
+  water for it to count as permanent water (default 50.0). Defines the
+  water of masking's `water_mask` and of the **distance-to-water
+  feature**, which `features_static` builds itself over the ROI buffered by
+  the transform's reach (round 13, review A1); it does not affect the
+  habitat mask.
 
 ### `features_optical`
 
@@ -316,10 +327,15 @@ for the full inventory.
 - `include_trend`: add a linear-in-time term to the regression.
 - `time_reference`: date (default `2017-01-01`). Reference epoch for the
   time variable `t` in the harmonic regression (`t` = years since this
-  date). Shifts the numeric value of `phase_*` features by a constant
-  but does **not** affect amplitudes, the trend coefficient, or any
-  clustering outcome. Keep identical across configs you intend to
-  compare phases between — the metrics stage relies on this.
+  date). Moving it leaves the amplitudes and the trend coefficient as they
+  are and shifts `phase_*` by the same angle at every pixel. With
+  `include_trend` on (every shipped config) it also changes `<index>_mean`
+  by trend × the shift in years, a different amount at each pixel: that
+  band is the intercept, the trend line's value on this date, not the mean
+  over the window. Both reach the clustering, so a different reference
+  date **can** change the stand types (review C9 and B13; until round 13
+  this entry said it could not). Keep identical across configs you intend
+  to compare — the metrics stage relies on this for phases.
 
 ### `features_radar`
 
@@ -358,8 +374,9 @@ embedding mode this single pretrained per-pixel image replaces the four
 hand-crafted feature images (optical / radar / structure / static).
 
 - `collapse_reducer`: `mean` (default) or `median`. How an annual embedding
-  ImageCollection (AlphaEarth ships one image per year) is collapsed to a single
-  image over the `dates.phenology` window. `mean` matches the 2017-2022
+  ImageCollection (AlphaEarth ships one image per year for each tile it covers,
+  so a ROI over two tiles reads two a year; review C11) is collapsed, per pixel,
+  to a single image over the `dates.phenology` window. `mean` matches the 2017-2022
   averaging the hand-crafted arm rests on. Ignored for a single uploaded Image
   (Tessera), which is loaded as-is.
 - `band_names`: list of band names, or `null` (default) to keep every band the
@@ -440,7 +457,10 @@ masked, those units are absent from `cluster_labels` too — holes in the map,
 not mistyped stands. The stage logs the split and the manifest records it as
 `n_training_units`, `n_units_total`, `n_units_in_habitat`,
 `n_units_outside_habitat` and `n_units_dropped_null_band`, alongside
-`training_unit_key`. Read the shortfall before reading a silhouette: a cluster
+`training_unit_key`. In the runs of record `n_units_dropped_null_band` counted
+the stands at the ROI's edge with no pixel whose centre is inside the ROI,
+which have no row and no polygon, not units with a band gap (review C15;
+`docs/outputs.md`). Read the shortfall before reading a silhouette: a cluster
 definition rests only on the units that reached the fit. With
 `fit_excludes_stands_below_min_area` on (below) there is a third, made on
 purpose: the stands below `merge.min_area_ha` are left out of the fit, though
@@ -457,7 +477,8 @@ decks — that number was always 10,000 pixels.
   is band-name-agnostic and runs identically for both, so the two arms are
   directly comparable through the metrics stage.
 - `skewness_threshold`: bands with `|skew|` above this get log-transformed
-  (default 1.0 per DEC-004).
+  (default 1.0 per DEC-004). The sin and cos of a harmonic phase band are not
+  tested and never logged (review B13).
 - `fit_excludes_stands_below_min_area`: whether the stands the merge leaves
   below `merge.min_area_ha` are rows of the k-means fit. `false` (default, and
   the behaviour of every run made before the setting existed): every stand is a
@@ -493,7 +514,10 @@ now derived as `ceil(merge.max_area_ha × 10000 / analysis_scale_m²) × 1.2`
 (1200 px at the defaults), with `merge.max_area_ha + merge.min_area_ha` in place
 of `merge.max_area_ha` when `merge.pass2_soft_ceiling` is on (1320 px at the
 defaults), and asserted against the actual labels at stage entry, so an
-undersized cap raises instead of deleting stands.
+undersized cap raises instead of deleting stands. Since round 13 the clustering
+stage's unit means no longer call `reduceConnectedComponents` (review B14): it
+takes one mean per stand label with a grouped reduction, which has no size cap,
+so the cap is the metrics stage's alone.
 
 ### `merge`
 
@@ -552,14 +576,24 @@ a two-tier threshold scheme.
   what the component-size cap above is derived from, so the pass-2 fallback
   respects it too. The one exception is `pass2_soft_ceiling`, below, and the cap
   then allows for it.
-- `min_defined_criteria`: a pass-1 merge needs at least this many criteria
-  defined on both sides (default 2). One criterion is too weak a similarity
-  test; pairs that fall short drop to pass 2.
+- `min_defined_criteria`: a merge needs at least this many criteria defined on
+  both sides (default 2), in pass 1 and under pass 2's relaxed tolerances
+  alike. One criterion is too weak a similarity test. A pair that falls short
+  never merges on its attributes: a region below `min_area_ha` can still join
+  such a neighbour by the shared-edge fallback, which ignores attributes, and
+  two regions both at or above the minimum do not merge. (Corrected 20 Oct
+  2026, review C13: this said that pairs that fall short drop to pass 2.)
 - `min_frac_valid`: below this fraction of valid pixels for a band, profiling
   emits null for that band rather than a mean over territory that has none
   (default 0.5).
-- `tie_break`: `shared_edge_length` (the only value). Xiong's eliminate-pass
-  fallback, and what prevents orphans. Shared edge is counted with
+- `tie_break`: `shared_edge_length` (the only value): the second pass's
+  fallback when no neighbour passes the relaxed tolerances, and what prevents
+  orphans. Xiong's eliminating rule (Eq. 2) ends on the longest common side
+  too, but takes its conditions one at a time, where the second pass here
+  applies the relaxed tolerances at once and takes the closest neighbour that
+  passes; that order of choice is this pipeline's own (the module docstring of
+  `src/fmu/utils/region_merge.py`; corrected 20 Oct 2026, review C62, from
+  "Xiong's eliminate-pass fallback"). Shared edge is counted with
   4-connectivity even though SNIC runs `connectivity: 8` — a diagonal contact
   has zero shared boundary length.
 - `max_pass2_iterations`: cap so a pathological AOI logs its stragglers instead
@@ -602,8 +636,16 @@ a two-tier threshold scheme.
 
 ### `features`
 
-High-level on/off toggles. Currently informational. All four are read
-by the stage code but with `true` defaults rarely changed:
+High-level on/off toggles, read by nothing. No stage, script or test reads
+`Config.features` except the test of its defaults (`tests/test_config.py`).
+Which feature stages run is set by `clustering.feature_source`,
+`segmentation.input_bands` and `merge.criteria`. A `false` loads without a
+warning and changes no stage and no per-step cache key; it moves only the
+legacy fingerprint, which hashes the block (all four `false` on the 10 km tile
+config: `5772fb6133` becomes `7a438bf989`, every per-step key the same). Every
+config that sets them sets all four `true`. Until round 13 this section said
+all four are read by the stage code (review C20). Removing the block would move
+every legacy fingerprint, the 14 pinned `_repro` ones among them.
 
 - `optical_harmonic`, `radar`, `canopy_height`, `terrain`
 
@@ -660,11 +702,13 @@ ValidationError: clustering.k -> ensure this value is greater than 1
 ```
 Invalid value. `k=1` is meaningless for clustering.
 
-```
-ValidationError: roi.roi_file -> file does not exist
-```
-The path is wrong, or you're running from a different cwd than where
-the YAML expects.
+A missing or unreadable `roi.roi_file` is **not** caught when the config is
+loaded: nothing checks it then (review C40; until round 13 this section showed
+a `ValidationError: roi.roi_file -> file does not exist` that no code raises).
+It shows up when a run loads the ROI (`FileNotFoundError: ROI file not found:
+...`), or, from the wrong working directory, as every upstream asset reported
+missing by the pass runner (exit 3), because the per-step keys then hash no
+ROI file (see `roi_file` above).
 
 ```
 ValidationError: dates.phenology -> end must be after start

@@ -5,7 +5,8 @@ each of type label mod 3, built from pixel coordinates. Stand 101's types are al
 no row in the fit); half of stand 202's are (it has one). What this pins is how Earth Engine
 answers the calls `_stand_row_types` and `_take_the_fit_rows_types` make: the grouped reduction's
 keys (a group whose values are all masked comes back without a "mode", seen on 19 Oct 2026), the
-label keys formatted with "%d", and the lookup that retypes a polygon. The fake-raster tests in
+label keys formatted with "%d", the lookup that retypes a polygon, and, since round 13, the null
+type a polygon gets when its stand has no row. The fake-raster tests in
 tests/test_export_stand_type_from_fit_row.py cover the rule itself.
 """
 
@@ -48,10 +49,12 @@ def test_every_stand_with_a_typed_pixel_has_its_row_type_and_no_other_stand_does
     assert got == {str(s): s % 3 for s in LABELS if s != 101}
 
 
-def test_a_polygon_takes_its_stands_row_type_where_the_stand_has_one(images):
+def test_a_polygon_takes_its_stands_row_type_and_a_stand_without_one_is_null(images):
     """Every polygon is first given a wrong type, 9, as a vote that took a neighbour's type
     would be; then the stands with a row take their row's type, and the stand without one
-    (101), or left out of the row types (0 and 102), keeps the 9."""
+    (101), or left out of the dictionary (0 and 102), gets a null type, not the 9 (round 13).
+    The layer is read feature by feature, so that a null type is read as the stand's, not
+    dropped from a list of values zipped with the labels."""
     labels, types, region = images
     polygons = labels.reduceToVectors(
         geometry=region, scale=10, geometryType="polygon", eightConnected=True,
@@ -61,9 +64,10 @@ def test_a_polygon_takes_its_stands_row_type_where_the_stand_has_one(images):
 
     def typed(fit_row_types):
         fc = export_mod._take_the_fit_rows_types(polygons, fit_row_types)
-        return {int(a): b for a, b in fc.aggregate_array("stand_lbl").zip(fc.aggregate_array("cluster_id")).getInfo()}
+        features = fc.select(["stand_lbl", "cluster_id"], None, False).getInfo()["features"]
+        return {int(f["properties"]["stand_lbl"]): f["properties"].get("cluster_id") for f in features}
 
-    assert typed(row_types) == {s: (9 if s == 101 else s % 3) for s in LABELS}
+    assert typed(row_types) == {s: (None if s == 101 else s % 3) for s in LABELS}
     assert typed(row_types.remove(["0", "102"], True)) == {
-        s: (9 if s in (0, 101, 102) else s % 3) for s in LABELS
+        s: (None if s in (0, 101, 102) else s % 3) for s in LABELS
     }

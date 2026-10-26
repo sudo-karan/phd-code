@@ -201,7 +201,7 @@ one easy contrast, which is why check S1 exists.
 | Number of stand types (`clustering.k`) | 6 | 5 |
 | Stands in the four districts | 1,039 | 1,954 |
 | Median stand size | 3.09 hectares | 2.35 hectares |
-| Stands larger than 3 hectares | 529 of 1,039 (50.9%) | 41 of 1,954 (2.1%), each by at most 0.04 hectares |
+| Stands larger than 3 hectares | 529 of 1,039 (50.9%) | 41 of 1,954 (2.1%), each by at most 0.04 hectares (see the note of 20 Oct 2026 at the end) |
 | Stands holding at least one plot | 144 | 198 |
 | Stands holding two or more plots | 61, holding 184 plots | 44, holding 113 plots |
 
@@ -222,7 +222,7 @@ put down to stand size alone.
 **The cost of smaller stands.** Fewer plots share a stand: 113 plots in 44 stands against 184 in
 61. The test of whether a stand holds plots that are alike has less to work with at 3 hectares.
 
-**Number of stand types.** The elbow rule on each stand size's own stands, satellite features only:
+**Number of stand types.** The elbow rule on each stand size's own stands, satellite features only (see the note of 20 Oct 2026 at the end):
 
 | | Angul | Dhenkanal | Kendujhar | Koraput | All four pooled | Used |
 |---|---|---|---|---|---|---|
@@ -704,5 +704,58 @@ Re-joining the plots after a new run:
 | `phase3_3ha/` | The 3 hectare stands joined to the plots |
 | `phase3_before_regroup/` | Chance tests run on 2026-10-07 on PR #40's stand files (6 stand types at 3 hectares). Not results; see its README |
 | `phase2_vectors/odisha_v120_3ha_*` | The 3 hectare stand files, now with 5 stand types |
-| `odisha_phase3_stands_unchanged.txt`, `check_stands_unchanged.py` | The outline by outline comparison of the stand files before and after the regroup (the script's printed output, saved from a run with `--ref main` before this branch was merged), and the script |
+| `odisha_phase3_stands_unchanged.txt`, `check_stands_unchanged.py` | The outline by outline comparison of the stand files before and after the regroup (the script's printed output of `--ref cff45d9 --expect-new-run`, saved as printed: commit `37aed39`, 14 Oct 2026; the first copy, committed in `f4ca143`, was saved from a run with `--ref main` before this branch was merged and ended with a hand-added dated line), and the script |
 | `copy_upstream_cache.py`, `run_config_passes.sh` | The two helpers for Earth Engine runs |
+
+---
+
+## Note of 20 Oct 2026 (round 13, review A6): stand areas
+
+The median stand sizes and the stands larger than 3 hectares in the table of the two stand sizes,
+and the stands over 10 hectares in the sentence under it, come from `area_ha` in the stand files,
+which Earth Engine's `area()` gave; for a polygon whose hole touches its outer ring at a vertex,
+`area()` added the hole instead of subtracting it. With the holes subtracted (recomputed offline
+from `phase2_vectors/`), 37 of the 1,954 3 hectare stands are larger than 3 hectares (1.9%), not
+41; the other figures there do not change. Since round 13 the export gives a polygon's area as its
+pixel count on the analysis grid times 0.01 hectares, which for these stands is also 0.2% to 0.3%
+below `area()`. On that measure the medians are 3.08 and 2.34 hectares; 528 of the 1,039 10
+hectare stands (50.8%) and 7 of the 1,954 3 hectare stands (0.4%) are larger than 3 hectares, the
+7 by at most 0.03 hectares (3 pixels); and 3 of the 10 hectare stands exceed 10 hectares, by at
+most 0.05 (5 pixels). 30 of the 41 are stands of exactly 300 pixels, 3 hectares on the grid. The
+3 hectare plot table, `phase3_3ha/phase2_plots_joined_districts.csv`, holds 23 area cells that the
+holes change (19 of `v120_3ha_merged_area_ha`, 4 of `v120_3ha_snic_area_ha`); no score reads them.
+The numbers above are as first written.
+
+## Note of 20 Oct 2026 (round 13, review A7): the elbow behind the number of stand types
+
+The elbows under "Number of stand types" (lines 225-242), and the lines that quote them (111-116,
+437-442, 547-548, 568-569 and 608-609), come from the elbow script's own preprocessing
+(`odisha_phase3_2_stand_k_elbow.py`, now its default `--space script`). That preprocessing
+departs from the clustering stage's in five ways (review A7), and it is not the min-max geometry
+`wekaKMeans` fits in (review A2). The pooled silhouette values of lines 244-247 and 439 come from
+the same space. Recomputed in the stage's space, in both geometries, neither named as the one of
+record; in brackets, the same rows in reverse order where the elbow differs:
+
+| | Angul | Dhenkanal | Kendujhar | Koraput | All four pooled |
+|---|---|---|---|---|---|
+| 10 hectare stands, the table above | 6 | 6 | 6 | 5 | 5 |
+| 10 hectare stands, stage's space, (x − median)/IQR | 5 | 6 | 7 | 5 | 5 |
+| 10 hectare stands, stage's space, min-max | 6 | 6 | 5 | 5 | 5 |
+| 3 hectare stands, the table above | 5 | 5 | 5 | 5 | 5 |
+| 3 hectare stands, stage's space, (x − median)/IQR | 6 | 6 | 6 (8) | 5 | 5 |
+| 3 hectare stands, stage's space, min-max | 5 | 6 | 6 | 6 | 5 |
+
+These are rebuilt from the stand files of the table above (`odisha_phase3_2_k_elbow_<arm>_stage.txt`).
+The stand files hold mean angles, where the stage takes sin and cos per pixel (review C10), so the
+rebuilt rows approximate the stage's. The stage's own rows exist offline only for the `_repro`
+stands, which are not these stands, and come from a fit made again from the cache. On them the
+3 hectare elbows are 5, 6, 6 and 5 as the stage scaled them, and 5, 6, 6 and 5 min-max. The
+10 hectare ones are 6, 5, 6 and 5, and 5, 6, 6 and 5 (`odisha_phase3_2_k_elbow_<arm>_stage_rows.txt`).
+
+So "5 everywhere" at 3 hectares holds only in the script's own space. On these stand files, the
+rule as the committed files applied it (the median of the district and pooled elbows) would give
+6 at 3 hectares and 5 at 10 hectares in the stage's space. Koraput's 10 hectare elbow is 5 in
+every line. Nothing here changes: k is 6 and 5, as `PHASE3_PREDECLARED.md` declared before any
+score was computed, and no score reads the elbow. Which geometry is of record is review A2, a
+method decision. The comparison, its limits and the commands are in
+`odisha_phase3_2_k_elbow_comparison.md`. The numbers above this note are as first written.

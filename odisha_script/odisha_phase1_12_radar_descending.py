@@ -10,7 +10,8 @@ Sampling is READ-ONLY on Earth Engine: one sampleRegions over the 274 plots and 
 per district; no task. It writes odisha_plots_sampled_s1desc.csv. The analysis reads that file
 and Phase 1's own ascending sample (odisha_plots_sampled_v2.csv), and writes
 odisha_phase1_12_radar_descending_results.txt (results only: no date, no run time) and, beside
-it, odisha_phase1_12_radar_descending_run.json (the command, the date, the commit).
+it, odisha_phase1_12_radar_descending_run.json (the command, the date, the commit; and, under
+`sampling_run`, those of the run that sampled, which an --offline run keeps as it found them).
 
 Run from the repo root (fmu reads .env from the working directory).
 """
@@ -175,6 +176,11 @@ def main() -> int:
     ap.add_argument("--offline", action="store_true", help="analyse the saved sample; no Earth Engine")
     args = ap.parse_args()
 
+    from fmu.utils.provenance import git_state, git_state_now
+
+    # Which code: read before the sample or a result is written (review C32), and again at the end.
+    started = {k: v for k, v in git_state().items() if k != "root"}
+
     if args.offline:
         desc = pd.read_csv(SAMPLE)
         per_district = json.loads(RUN.read_text())["images_per_district"]
@@ -219,21 +225,27 @@ def main() -> int:
     RESULTS.write_text("\n".join(lines) + "\n")
     print("\n".join(lines))
 
-    from fmu.utils.provenance import git_state
-
     run = {
         "result_file": RESULTS.name,
         "sample_file": SAMPLE.name,
         "declaration": "odisha_script/PHASE1_RADAR_DESCENDING_PREDECLARED.md",
         "command_line": "python " + " ".join(shlex.quote(x) for x in sys.argv),
         "date": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
-        "git": {k: v for k, v in git_state().items() if k != "root"},
+        "git": started,
+        "git_at_end": {k: v for k, v in git_state_now().items() if k != "root"},
         "images_per_district": per_district,
     }
+    # The Earth Engine sampling run's own record (its command, date and git block) is kept by
+    # every later --offline run, beside that run's own. Until round 13 an --offline run kept only
+    # 'sampled' and 'images_per_district', so the sampling run's git block was lost (review C26).
     if args.offline and RUN.exists():
-        run["sampled"] = json.loads(RUN.read_text()).get("sampled", run["date"])
+        previous = json.loads(RUN.read_text())
+        run["sampled"] = previous.get("sampled", run["date"])
+        if "sampling_run" in previous:
+            run["sampling_run"] = previous["sampling_run"]
     else:
         run["sampled"] = run["date"]
+        run["sampling_run"] = {k: run[k] for k in ("command_line", "date", "git")}
     RUN.write_text(json.dumps(run, indent=1) + "\n")
     print(f"\nwrote {RESULTS.name}, {SAMPLE.name if not args.offline else ''} and {RUN.name}")
     return 0

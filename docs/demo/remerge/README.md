@@ -114,12 +114,23 @@ a stand with a row in the k-means fit takes its row's type (register entry
 `spec-export-stand-type-from-its-fit-row`); the stands counted here have no row, keep the vote, and are counted as
 before (question 1 of `docs/handoff/2026-10-19-round12.md`).
 
+Note of 20 Oct 2026 (round 13): since round 13 they no longer keep the vote. A stand with no typed pixel of its own
+gets a null type in every layout (question 1, answered (b); register entry
+`spec-export-stand-type-from-its-own-row-or-null`). Counted offline from the re-merge's per-stand files (off git,
+`outputs/demo/remerge/<run>/clustering_new.json`, `stand_type_by_pixel_centres`), a re-export would give every
+stand counted here a null type but one of the 33 of `odisha_v120_handcrafted_koraput_repro`, which holds typed pixel
+centres of its own and keeps the type it had; and two stands with a row in the fit that hold no typed pixel centre
+on the type grid, one in `odisha_v120_3ha_dhenkanal_repro` and one in `odisha_v120_handcrafted_dhenkanal_repro`,
+would lose the type the vote gave them, which was their row's. The counts above are of the layers as built at
+`5c8dcad`, and stay as they are.
+
 ## 5. The type map moves a great deal when the stands move a little
 
 The two fits made here, on the old stands and on the new, share their inputs and differ only
 in the 1.9% to 16.5% of stand area that changed stand. Over the pixels typed in both, their
 agreement (adjusted Rand index) runs from 0.31 (`sanjay_van_alphaearth_repro`) to 0.94
-(`odisha_v120_handcrafted_dhenkanal_repro`), with a median of 0.53.
+(`odisha_v120_handcrafted_dhenkanal_repro`), with a median of 0.52 (`types_old_against_new` in
+the 14 summaries; the median is 0.5216).
 
 ## 6. k and the elbow
 
@@ -162,3 +173,13 @@ The files here were written by `--all` at commit `5c8dcad`; their `old_rule_chec
 rewritten by `--recheck` and `--saved-fit` with the comparisons of the stand types added in the
 commit after it. `tests/test_remerge_demo_set.py` checks that the tables above are the tables
 the tool prints from these files.
+
+Note of 20 Oct 2026 (round 13, review C44): the last column of section 3's table ("Agreement over
+pixels") and `type_pixels_against_the_saved_type_raster` in every summary are `--recheck`'s
+values, which compare every pixel of the saved type rasters (each ROI part's bounding box, widened
+by three superpixel cells) typed in both. A run with `--run` or `--all` compares only the pixels
+whose centre lies in a stand of the old rule, and so gives other values: over the 14 runs the
+adjusted Rand index differs by at most 0.0122, and at two decimals only in
+`odisha_alphaearth_angul_repro` (0.42 here; 0.43, or 0.4289 against 0.4167, over a full run's
+pixels). Recomputed offline from the saved rasters under `outputs/demo/remerge/`; the files here
+are unchanged.

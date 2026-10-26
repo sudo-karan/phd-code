@@ -31,6 +31,7 @@ from fmu.stages.segmentation import SegmentationStage, _mean_square_over_pairs
 from fmu.utils.adjacency import SuperpixelGraph
 from fmu.utils.caching import config_fingerprint
 from fmu.utils.kept_land import tabulate_kept_land_coverage
+from fmu.utils.region_merge import merge_superpixels
 
 REPO = Path(__file__).resolve().parent.parent
 BASELINE_YAML = REPO / "configs" / "sanjay_van_baseline.yaml"
@@ -149,6 +150,41 @@ def test_the_smallest_patch_is_the_smallest_stand_in_pixels():
     raw = on.model_dump(mode="json")
     raw["merge"]["min_area_ha"] = 0.55
     assert Config.model_validate(raw).kept_patch_min_pixels() == 55
+
+
+def test_the_smallest_patch_is_the_smallest_the_merge_counts_as_a_stand():
+    """Review B19: the minimum in pixels follows the merge's own arithmetic, so a patch
+    of exactly the minimum, a stand to the merge, is not left out before SNIC.
+    Rounding up min_area_ha * 10_000 / scale^2 gave 112 px for 1.11 ha at 10 m
+    (111.00000000000001 rounded up), where the merge counts 111 px as a stand, and
+    5 px for 0.45 ha at 30 m, which the merge counts as below the minimum (5 * 0.09
+    is 0.44999999999999996): a decimal-exact ceil would be wrong there too."""
+    on = _config(mask_before_snic=True, drop_kept_patches_below_min_area=True)
+
+    def at(min_area_ha: float, scale: int) -> int:
+        merge = on.merge.model_copy(update={"min_area_ha": min_area_ha})
+        export = on.export.model_copy(update={"analysis_scale_m": scale})
+        return on.model_copy(update={"merge": merge, "export": export}).kept_patch_min_pixels()
+
+    assert (at(1.11, 10), at(0.56, 10), at(0.45, 30)) == (111, 56, 6)
+
+    def below(n: int, min_area_ha: float, scale: int) -> bool:
+        """Whether the merge leaves one isolated region of n pixels below the minimum."""
+        graph = SuperpixelGraph(raw_labels=[1], n_pixels=[n], edges={}, scale_m=scale)
+        result = merge_superpixels(
+            graph, {}, {}, criteria={}, relax_factor=1.75, min_area_ha=min_area_ha,
+            max_area_ha=10 * min_area_ha, min_defined_criteria=1, min_frac_valid=0.5,
+            max_pass2_iterations=1,
+        )
+        return result.diagnostics["stands_below_min_area"] == 1
+
+    disagree = []
+    for scale in (10, 20, 30):
+        for cents in range(1, 501):  # 0.01 to 5.00 ha
+            n = at(cents / 100, scale)
+            if below(n, cents / 100, scale) or not below(n - 1, cents / 100, scale):
+                disagree.append((scale, cents / 100, n))
+    assert disagree == []
 
 
 def test_the_mask_is_made_before_segmentation_in_every_stage_list():

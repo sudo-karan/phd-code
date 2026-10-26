@@ -393,3 +393,49 @@ def test_tiny_validation_repeats_and_is_complete(tmp_path):
     assert reference[("d", "unrelated")] > 0.1
     text = outputs[0][1].decode()
     assert "## 2. Size" in text and "## 5. No reference data" in text
+
+
+def _load_script_copy(tmp_path, name, edit=None):
+    """Import a copy of the validation script, with one edit made to its text."""
+    import importlib.util
+
+    text = Path(esv.__file__).read_text()
+    if edit is not None:
+        assert edit[0] in text
+        text = text.replace(edit[0], edit[1], 1)
+    path = tmp_path / f"{name}.py"
+    path.write_text(text)
+    spec = importlib.util.spec_from_file_location(name, path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        del sys.modules[name]
+    return module
+
+
+def test_the_cache_key_follows_the_code(tmp_path):
+    """B25 (review of 19 Oct 2026): cached data sets were keyed by a hand-set CACHE_VERSION and the
+    design, so a run resumed after a change to a worker read results the old code wrote. The key now
+    holds a hash of the script's and fmu.evaluation's sources."""
+    per_set = replace(TINY, name="", n_recovery=0, n_size=0, n_power=0, power_effects=())
+    before = _load_script_copy(tmp_path, "esv_before")
+    after = _load_script_copy(
+        tmp_path, "esv_after", ("data_seed, null_seed = dataset_seed(root, key).spawn(2)",
+                                "data_seed, null_seed = dataset_seed(root + 1, key).spawn(2)"),
+    )
+    same = _load_script_copy(tmp_path, "esv_same")
+    key = (per_set, esv.ROOT_SEED, TINY_LAYOUT, TINY_PARAMS)
+    assert before._fingerprint(*key) == same._fingerprint(*key)
+    assert before._fingerprint(*key) != after._fingerprint(*key)
+
+
+def test_the_cache_key_reads_every_module_of_the_evaluation_package():
+    """B25: the hashed sources are the script and every module of fmu.evaluation."""
+    import fmu.evaluation
+
+    package = Path(fmu.evaluation.__file__).parent
+    files = {path.resolve() for _, path in esv._source_files()}
+    assert files == {Path(esv.__file__).resolve(), *(f.resolve() for f in package.glob("*.py"))}

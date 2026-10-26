@@ -179,15 +179,14 @@ def fake_ee(monkeypatch):
     monkeypatch.setattr(
         export_mod, "_renumber_by_centroid", lambda fc, *, id_field: fc
     )
-    # Nor is the type each stand takes from its row in the fit (round 12), which
-    # tests/test_export_stand_type_from_fit_row.py runs on a fake raster. Here it
-    # is recorded where the builder asks for it, and gives no row types, so each
-    # stand keeps the vote.
+    # Nor is the type each stand takes from its own row (rounds 12 and 13), which
+    # tests/test_export_stand_type_from_fit_row.py runs on a fake raster. Here the
+    # request for the row types is recorded where the builder makes it.
     monkeypatch.setattr(
         export_mod,
-        "_fit_row_types",
-        lambda ctx, config, cluster_labels, unit_labels, region, scale: cluster_labels.calls.append(
-            "fit_row_types"
+        "_stand_row_types",
+        lambda cluster_labels, unit_labels, region, scale: cluster_labels.calls.append(
+            "stand_row_types"
         ),
     )
     return _FakeEE
@@ -303,19 +302,19 @@ def test_export_does_not_require_the_provenance():
 def test_without_provenance_the_builder_makes_these_calls_and_no_more(
     fake_ee, monkeypatch
 ):
-    """The builder's calls with no `stand_provenance` in the context: the two
-    renames, the vectorisation, the map that names the vote cluster_id, the
-    request for the fit's row types (round 12; the fake gives none, so no stand
-    is retyped here) and the two maps of geometry and bookkeeping, and nothing
-    after them: no provenance step."""
+    """The builder's calls with no `stand_provenance` in the context: the rename
+    and the vectorisation of the stand labels, the request for the stands' row
+    types, the map that sets each stand's cluster_id from them, and the two maps
+    of geometry and bookkeeping, and nothing after them: no provenance step.
+    Since round 13 there is no vote (no rename to cluster_id and no map naming
+    the vote cluster_id): a stand with no row gets a null type."""
     calls: list = []
     _run_builder(export_mod._build_merged_feature_collection, calls, monkeypatch)
     assert calls == [
         ("rename", "stand_lbl"),
         ("labelProperty", "stand_lbl"),
-        ("rename", "cluster_id"),
+        "stand_row_types",
         "map",
-        "fit_row_types",
         "map",
         "map",
     ]

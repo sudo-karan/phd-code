@@ -56,3 +56,46 @@ plots without any comparison; the field check declared for these runs
 files are on the Mac, in the run tree's `odisha_script/phase2_vectors/`.
 
 `python scripts/describe_keptland_runs.py` prints each run's descriptive numbers from these files.
+
+**Note added 20 Oct 2026 (round 13, review C16; the manifests here are as first written).** Each
+`_manifest_*.json` here glosses the summary number `stands_below_min_area_by_cause` as "isolated:
+it touches no other stand". `isolated` means no 4-connected neighbour in the merge's graph, which
+counts shared edges only, so a stand that meets another stand only at a corner is isolated too.
+Counted from the merged layers here and Koraput's `_s1desc` layer off git (hash-checked against
+its record): 23 of the 2,065 stands filed `isolated` that have a polygon (2,091 in the ten run
+records) touch another stand at a corner only, and none along an edge; in Sanjay Van baseline,
+2 of 388 (390 in its record, which `docs/handoff/2026-10-15-round5.md` calls "all isolated
+(no kept-land neighbour)"). No result changes: no step of the pipeline reads `below_why`. Since round 13 the
+merge stage writes "isolated: it shares no edge with another stand (no 4-connected neighbour; it
+may meet one at a corner)".
+
+**Note added 20 Oct 2026 (round 13, review C14; the records here are as first written).**
+`threshold_calibration.joint_admit_rate_pct` in the run records and manifests here was computed
+before round 13's fix: it counted as admitted a pair with fewer than `merge.min_defined_criteria`
+criteria defined on both sides that passed the ones it had, a pair the gate rejects. A record's
+rate is above the fixed one by at most `pass1_pairs_blocked_by_undefined_criteria_round1` plus
+`pass1_pairs_blocked_by_area_round1` over `n_pairs_with_any_defined_criterion`, all from the same
+record: 0, the same rate, in 15 of the 30 records here, and at most 0.22 points in the others
+(Dhenkanal's round 6 run, 1 + 14 of 6,809 pairs). The copies in `ui_data/` are left as they are.
+
+**Note of 20 Oct 2026 (round 13, review C30): the two Koraput records written by the read-back
+tool.** `odisha_v120_3ha_squares_koraput_keptland_run.json` and
+`odisha_v120_3ha_squares_koraput_keptland_s1desc_run.json` were written by
+`odisha_script/odisha_read_back_export.py`, as their `read_back` block says: each export pass ended
+after it wrote the stands layer (`read_back.layers_the_run_wrote` lists `stands_merged` only). In
+both, `export_vector_layers` holds the tool's own counts of what it read back, not the export
+stage's. Checked against the export stage's manifest beside each record
+(`<run>_manifest_export.json`, `vector_layers`): every `n_features`, and the stands layer's
+`n_stands` and `n_stands_split_into_pieces`, are equal to the export stage's. But under
+`stands_snic`, `n_stands` (8,723 in both) and `n_stands_split_into_pieces` (14 and 19) are counts
+the export stage never makes: its manifest has none there, and a record the runner writes holds
+null. Since round 13 the tool writes the export stage's counts under `export_vector_layers` and
+its own under `read_back.layer_counts`. The two records are kept as written; no number changed.
+
+**Note of 20 Oct 2026 (round 13, review C36): `snic_distance_scale` is null in all ten run records
+here.** The record is written by the export pass (or the read-back tool), which reads the
+superpixels from the cache, so the segmentation stage's metadata there holds no scale. The scale
+each run's superpixels were drawn with is in `<run>_manifest_segmentation.json` beside its record
+(the segmentation stage's `metadata.distance_scale`), and it is there for all ten. Since round 13
+the runner and the read-back tool read it from that pass's manifest, and `snic_distance_scale_from`
+says where. The records are kept as written; no number changed.

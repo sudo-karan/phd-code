@@ -106,10 +106,13 @@ features_optical:
   index: ndvi
   harmonic_mode: single
   include_trend: true
-  # Reference epoch for the harmonic regression's time variable t. Shifts
-  # the numeric value of phase_annual by a constant; does NOT affect amplitude,
-  # trend, or any clustering outcome. Keep identical across configs that you
-  # want to compare phases between (the metrics stage relies on this).
+  # Reference epoch for the harmonic regression's time variable t. Moving it
+  # shifts phase_annual by the same angle everywhere and, with include_trend
+  # on, changes ndvi_mean by trend x the shift in years (ndvi_mean is the trend
+  # line's value on this date, not the window mean), so it can change the
+  # clustering; amplitude and trend do not move (review C9; until round 13
+  # this comment said no clustering outcome moves). Keep identical across
+  # configs that you want to compare (the metrics stage relies on it for phases).
   time_reference: 2017-01-01
 
 # Radar features from the S1 collection. Statistical reducers over the

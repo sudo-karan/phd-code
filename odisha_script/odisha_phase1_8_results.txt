@@ -127,6 +127,12 @@ Verdict
   spatially-compact null should land almost exactly on it -- and does. That is the
   null being calibrated rather than passed.
 
+  NOTE ADDED 20 Oct 2026 (round 13, review C4; the lines above are as first written):
+  distance_to_water's excess of +0.012 is the second smallest only among the 17 bands that
+  survive (only vv_p90's +0.008 is smaller). In the whole table of 22 bands it is the sixth
+  smallest: vv_p90 and the five bands that do not survive (-0.008 to -0.059) are below it.
+  The script still prints the sentence as first written.
+
   USE IT AS THE FLOOR. A known-null band scores +0.012 here, so any band whose
   excess is below about 0.012 is not distinguishable from it. On that reading the
   bottom of the SURVIVE list -- vv_p90 (+0.008) and vv_p50 (+0.014) -- should be read

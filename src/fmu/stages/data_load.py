@@ -43,6 +43,16 @@ _REDUCERS = {
 }
 
 
+def _day_after(last_day: Any) -> ee.Date:
+    """The end to give filterDate for a window whose last day is `last_day`.
+
+    filterDate's end is exclusive, and a config's window includes its end date, so
+    the filter ends the day after it, as features_embedding's does (review A4: the
+    windows stopped a day early before round 13).
+    """
+    return ee.Date(str(last_day)).advance(1, "day")
+
+
 def _composite_window(roi: ee.Geometry, config: Config) -> ee.ImageCollection:
     """The Sentinel-2 images the static composite is built from, before the SCL mask.
 
@@ -54,7 +64,7 @@ def _composite_window(roi: ee.Geometry, config: Config) -> ee.ImageCollection:
     return (
         ee.ImageCollection(config.datasets.optical_composite_collection)
         .filterBounds(roi)
-        .filterDate(str(dates.start), str(dates.end))
+        .filterDate(str(dates.start), _day_after(dates.end))
         .filter(ee.Filter.lte("CLOUDY_PIXEL_PERCENTAGE", config.cloud_mask.max_cloud_pct))
     )
 
@@ -122,6 +132,7 @@ class DataLoadStage(Stage):
             metadata={
                 "s2_dataset": config.datasets.phenology_collection,
                 "s1_dataset": config.datasets.radar_collection,
+                # First and last day, both included (`_day_after`).
                 "s2_phenology_window": (
                     f"{config.dates.phenology.start} to {config.dates.phenology.end}"
                 ),
@@ -150,7 +161,7 @@ class DataLoadStage(Stage):
         coll = (
             ee.ImageCollection(ds)
             .filterBounds(roi)
-            .filterDate(str(dates.start), str(dates.end))
+            .filterDate(str(dates.start), _day_after(dates.end))
             .filter(ee.Filter.lte("CLOUDY_PIXEL_PERCENTAGE", cm.max_cloud_pct))
         )
 
@@ -187,7 +198,7 @@ class DataLoadStage(Stage):
         coll = (
             ee.ImageCollection(ds)
             .filterBounds(roi)
-            .filterDate(str(dates.start), str(dates.end))
+            .filterDate(str(dates.start), _day_after(dates.end))
             .filter(ee.Filter.eq("instrumentMode", params.s1_instrument_mode))
             .filter(ee.Filter.eq("orbitProperties_pass", params.s1_orbit))
         )

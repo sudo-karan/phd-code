@@ -49,7 +49,10 @@ the command, the date, the git commit and whether the tree was dirty, and whethe
 finished. The kept-land runs' manifests show the copied assets as plain cache hits; this record is
 what ties them to their sources. If a copy stops part way, `--execute --resume` skips each
 destination the record says was copied from the same source, and still refuses any other
-destination that exists.
+destination that exists. A resume keeps every copy the record holds for a config it is not given
+(they come first, as recorded), and its run record keeps those of the earlier runs, oldest first,
+under `earlier_runs`. Until round 13 a resume with other configs than the record's dropped their
+copies, and its run record replaced the earlier one (review C43).
 
 WHICH CODE. The tool puts its own checkout's src/ first on sys.path and refuses if fmu is imported
 from anywhere else, so the fingerprints, stage lists and outputs it plans with are this checkout's,
@@ -298,7 +301,8 @@ def run_record_path(record: Path) -> Path:
     return record.with_name(record.stem + "_run.json")
 
 
-def write_run_record(record: Path, argv: list[str], *, completed: bool) -> None:
+def write_run_record(record: Path, argv: list[str], *, completed: bool,
+                     earlier: list[dict[str, Any]] | None = None) -> None:
     import datetime
     import shlex
 
@@ -310,15 +314,31 @@ def write_run_record(record: Path, argv: list[str], *, completed: bool) -> None:
         "date": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
         "git": {k: v for k, v in git_state().items() if k != "root"},
         "completed": completed,
+        # The run records of the earlier runs of this record, oldest first (a resume).
+        "earlier_runs": list(earlier or []),
     }
     run_record_path(record).write_text(json.dumps(run, indent=1) + "\n")
 
 
+def earlier_run_records(record: Path) -> list[dict[str, Any]]:
+    """The run records a resume of `record` keeps: the last one and those it kept, oldest first."""
+    path = run_record_path(record)
+    if not path.exists():
+        return []
+    last = json.loads(path.read_text())
+    return [*last.pop("earlier_runs", []), last]
+
+
+def recorded_copies(record: Path) -> list[dict[str, str]]:
+    """The copies a record says were made, as recorded; empty if there is none."""
+    if not record.exists():
+        return []
+    return list(json.loads(record.read_text())["copies"])
+
+
 def read_record(record: Path) -> dict[str, str]:
     """{destination: source} of the copies a record says were made; empty if there is none."""
-    if not record.exists():
-        return {}
-    return {c["destination"]: c["source"] for c in json.loads(record.read_text())["copies"]}
+    return {c["destination"]: c["source"] for c in recorded_copies(record)}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -410,13 +430,18 @@ def main(argv: list[str] | None = None) -> int:
         for x in present:
             print(f"  already there: {x}")
         return 3
-    copies = [{"config": p.name, "stage": c.stage, "key": c.key, "source": c.source,
-               "destination": c.destination}
-              for p in plans for c in p.copies if c.destination in already]
+    # A resume given other configs than the record holds keeps their copies as recorded (C43).
+    planned = {c.destination for p in plans for c in p.copies}
+    carried = ([c for c in recorded_copies(args.record) if c["destination"] not in planned]
+               if args.resume else [])
+    earlier = earlier_run_records(args.record) if args.resume else []
+    copies = carried + [{"config": p.name, "stage": c.stage, "key": c.key, "source": c.source,
+                         "destination": c.destination}
+                        for p in plans for c in p.copies if c.destination in already]
     record = {"what": "Assets copied by scripts/reuse_upstream_assets.py, one entry per copy",
               "copies": copies}
     args.record.parent.mkdir(parents=True, exist_ok=True)
-    write_run_record(args.record, argv, completed=False)
+    write_run_record(args.record, argv, completed=False, earlier=earlier)
     n_new = 0
     for plan in plans:
         for c in plan.copies:
@@ -432,7 +457,7 @@ def main(argv: list[str] | None = None) -> int:
             n_new += 1
             print(f"  copied {plan.name} {c.stage}/{c.key}")
     args.record.write_text(json.dumps(record, indent=1) + "\n")
-    write_run_record(args.record, argv, completed=True)
+    write_run_record(args.record, argv, completed=True, earlier=earlier)
     write_plan()
     print(f"copied {n_new} asset(s); {len(copies)} recorded in {args.record}")
     return 0

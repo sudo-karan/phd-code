@@ -16,56 +16,91 @@
     {}
    ],
    [
-    "ee.Terrain.products",
-    [
-     "ee.Image().select()"
-    ],
+    "ee.Image().select().toFloat",
+    [],
     {}
    ],
    [
-    "ee.Terrain.products().select",
+    "ee.Image().select().toFloat().rename",
     [
      "'elevation'"
     ],
     {}
    ],
    [
-    "ee.Terrain.products().select().rename",
+    "ee.Terrain.slope",
     [
-     "'elevation'"
+     "ee.Image().select().toFloat()"
     ],
     {}
    ],
    [
-    "ee.Terrain.products().select",
-    [
-     "'slope'"
-    ],
-    {}
-   ],
-   [
-    "ee.Terrain.products().select().rename",
+    "ee.Terrain.slope().rename",
     [
      "'slope'"
     ],
     {}
    ],
    [
-    "ee.Terrain.products().select",
+    "ee.Terrain.aspect",
+    [
+     "ee.Image().select().toFloat()"
+    ],
+    {}
+   ],
+   [
+    "ee.Terrain.aspect().rename",
     [
      "'aspect'"
     ],
     {}
    ],
    [
-    "ee.Terrain.products().select().rename",
+    "ee.Image",
     [
-     "'aspect'"
+     "'JRC/GSW1_4/GlobalSurfaceWater'"
     ],
     {}
    ],
    [
-    "water_mask.fastDistanceTransform",
+    "roi.buffer",
+    [
+     "14292"
+    ],
+    {
+     "maxError": "1"
+    }
+   ],
+   [
+    "ee.Image().select",
+    [
+     "'occurrence'"
+    ],
+    {}
+   ],
+   [
+    "ee.Image().select().clip",
+    [
+     "roi.buffer()"
+    ],
+    {}
+   ],
+   [
+    "ee.Image().select().clip().gte",
+    [
+     "50.0"
+    ],
+    {}
+   ],
+   [
+    "ee.Image().select().clip().gte().unmask",
+    [
+     "0"
+    ],
+    {}
+   ],
+   [
+    "ee.Image().select().clip().gte().unmask().fastDistanceTransform",
     [
      "1000",
      "'pixels'",
@@ -74,19 +109,19 @@
     {}
    ],
    [
-    "water_mask.fastDistanceTransform().sqrt",
+    "ee.Image().select().clip().gte().unmask().fastDistanceTransform().sqrt",
     [],
     {}
    ],
    [
-    "water_mask.fastDistanceTransform().sqrt().multiply",
+    "ee.Image().select().clip().gte().unmask().fastDistanceTransform().sqrt().multiply",
     [
      "10"
     ],
     {}
    ],
    [
-    "water_mask.fastDistanceTransform().sqrt().multiply().rename",
+    "ee.Image().select().clip().gte().unmask().fastDistanceTransform().sqrt().multiply().rename",
     [
      "'distance_to_water'"
     ],
@@ -130,10 +165,10 @@
     "ee.Image.cat",
     [
      [
-      "ee.Terrain.products().select().rename()",
-      "ee.Terrain.products().select().rename()",
-      "ee.Terrain.products().select().rename()",
-      "water_mask.fastDistanceTransform().sqrt().multiply().rename()",
+      "ee.Image().select().toFloat().rename()",
+      "ee.Terrain.slope().rename()",
+      "ee.Terrain.aspect().rename()",
+      "ee.Image().select().clip().gte().unmask().fastDistanceTransform().sqrt().multiply().rename()",
       "ee.ImageCollection().filterDate().sum().divide().rename()"
      ]
     ],
@@ -184,56 +219,91 @@
     {}
    ],
    [
-    "ee.Terrain.products",
-    [
-     "ee.Image().select()"
-    ],
+    "ee.Image().select().toFloat",
+    [],
     {}
    ],
    [
-    "ee.Terrain.products().select",
+    "ee.Image().select().toFloat().rename",
     [
      "'elevation'"
     ],
     {}
    ],
    [
-    "ee.Terrain.products().select().rename",
+    "ee.Terrain.slope",
     [
-     "'elevation'"
+     "ee.Image().select().toFloat()"
     ],
     {}
    ],
    [
-    "ee.Terrain.products().select",
-    [
-     "'slope'"
-    ],
-    {}
-   ],
-   [
-    "ee.Terrain.products().select().rename",
+    "ee.Terrain.slope().rename",
     [
      "'slope'"
     ],
     {}
    ],
    [
-    "ee.Terrain.products().select",
+    "ee.Terrain.aspect",
+    [
+     "ee.Image().select().toFloat()"
+    ],
+    {}
+   ],
+   [
+    "ee.Terrain.aspect().rename",
     [
      "'aspect'"
     ],
     {}
    ],
    [
-    "ee.Terrain.products().select().rename",
+    "ee.Image",
     [
-     "'aspect'"
+     "'JRC/GSW1_4/GlobalSurfaceWater'"
     ],
     {}
    ],
    [
-    "water_mask.fastDistanceTransform",
+    "roi.buffer",
+    [
+     "14292"
+    ],
+    {
+     "maxError": "1"
+    }
+   ],
+   [
+    "ee.Image().select",
+    [
+     "'occurrence'"
+    ],
+    {}
+   ],
+   [
+    "ee.Image().select().clip",
+    [
+     "roi.buffer()"
+    ],
+    {}
+   ],
+   [
+    "ee.Image().select().clip().gte",
+    [
+     "50.0"
+    ],
+    {}
+   ],
+   [
+    "ee.Image().select().clip().gte().unmask",
+    [
+     "0"
+    ],
+    {}
+   ],
+   [
+    "ee.Image().select().clip().gte().unmask().fastDistanceTransform",
     [
      "1000",
      "'pixels'",
@@ -242,19 +312,19 @@
     {}
    ],
    [
-    "water_mask.fastDistanceTransform().sqrt",
+    "ee.Image().select().clip().gte().unmask().fastDistanceTransform().sqrt",
     [],
     {}
    ],
    [
-    "water_mask.fastDistanceTransform().sqrt().multiply",
+    "ee.Image().select().clip().gte().unmask().fastDistanceTransform().sqrt().multiply",
     [
      "10"
     ],
     {}
    ],
    [
-    "water_mask.fastDistanceTransform().sqrt().multiply().rename",
+    "ee.Image().select().clip().gte().unmask().fastDistanceTransform().sqrt().multiply().rename",
     [
      "'distance_to_water'"
     ],
@@ -298,10 +368,10 @@
     "ee.Image.cat",
     [
      [
-      "ee.Terrain.products().select().rename()",
-      "ee.Terrain.products().select().rename()",
-      "ee.Terrain.products().select().rename()",
-      "water_mask.fastDistanceTransform().sqrt().multiply().rename()",
+      "ee.Image().select().toFloat().rename()",
+      "ee.Terrain.slope().rename()",
+      "ee.Terrain.aspect().rename()",
+      "ee.Image().select().clip().gte().unmask().fastDistanceTransform().sqrt().multiply().rename()",
       "ee.ImageCollection().filterDate().sum().divide().rename()"
      ]
     ],
@@ -352,56 +422,91 @@
     {}
    ],
    [
-    "ee.Terrain.products",
-    [
-     "ee.Image().select()"
-    ],
+    "ee.Image().select().toFloat",
+    [],
     {}
    ],
    [
-    "ee.Terrain.products().select",
+    "ee.Image().select().toFloat().rename",
     [
      "'elevation'"
     ],
     {}
    ],
    [
-    "ee.Terrain.products().select().rename",
+    "ee.Terrain.slope",
     [
-     "'elevation'"
+     "ee.Image().select().toFloat()"
     ],
     {}
    ],
    [
-    "ee.Terrain.products().select",
-    [
-     "'slope'"
-    ],
-    {}
-   ],
-   [
-    "ee.Terrain.products().select().rename",
+    "ee.Terrain.slope().rename",
     [
      "'slope'"
     ],
     {}
    ],
    [
-    "ee.Terrain.products().select",
+    "ee.Terrain.aspect",
+    [
+     "ee.Image().select().toFloat()"
+    ],
+    {}
+   ],
+   [
+    "ee.Terrain.aspect().rename",
     [
      "'aspect'"
     ],
     {}
    ],
    [
-    "ee.Terrain.products().select().rename",
+    "ee.Image",
     [
-     "'aspect'"
+     "'JRC/GSW1_4/GlobalSurfaceWater'"
     ],
     {}
    ],
    [
-    "water_mask.fastDistanceTransform",
+    "roi.buffer",
+    [
+     "14292"
+    ],
+    {
+     "maxError": "1"
+    }
+   ],
+   [
+    "ee.Image().select",
+    [
+     "'occurrence'"
+    ],
+    {}
+   ],
+   [
+    "ee.Image().select().clip",
+    [
+     "roi.buffer()"
+    ],
+    {}
+   ],
+   [
+    "ee.Image().select().clip().gte",
+    [
+     "50.0"
+    ],
+    {}
+   ],
+   [
+    "ee.Image().select().clip().gte().unmask",
+    [
+     "0"
+    ],
+    {}
+   ],
+   [
+    "ee.Image().select().clip().gte().unmask().fastDistanceTransform",
     [
      "1000",
      "'pixels'",
@@ -410,19 +515,19 @@
     {}
    ],
    [
-    "water_mask.fastDistanceTransform().sqrt",
+    "ee.Image().select().clip().gte().unmask().fastDistanceTransform().sqrt",
     [],
     {}
    ],
    [
-    "water_mask.fastDistanceTransform().sqrt().multiply",
+    "ee.Image().select().clip().gte().unmask().fastDistanceTransform().sqrt().multiply",
     [
      "10"
     ],
     {}
    ],
    [
-    "water_mask.fastDistanceTransform().sqrt().multiply().rename",
+    "ee.Image().select().clip().gte().unmask().fastDistanceTransform().sqrt().multiply().rename",
     [
      "'distance_to_water'"
     ],
@@ -466,10 +571,10 @@
     "ee.Image.cat",
     [
      [
-      "ee.Terrain.products().select().rename()",
-      "ee.Terrain.products().select().rename()",
-      "ee.Terrain.products().select().rename()",
-      "water_mask.fastDistanceTransform().sqrt().multiply().rename()",
+      "ee.Image().select().toFloat().rename()",
+      "ee.Terrain.slope().rename()",
+      "ee.Terrain.aspect().rename()",
+      "ee.Image().select().clip().gte().unmask().fastDistanceTransform().sqrt().multiply().rename()",
       "ee.ImageCollection().filterDate().sum().divide().rename()"
      ]
     ],

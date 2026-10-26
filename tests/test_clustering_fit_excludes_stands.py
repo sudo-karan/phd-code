@@ -129,10 +129,29 @@ def _upstream(log: list, obj: Any) -> list[Call]:
     return found
 
 
+def _label_masks(log: list) -> list[Call]:
+    """The remaps that mask stands: of the stand labels, with a default value. The unit
+    means remap the labels too (review B14), with no default: they mask no stand."""
+    return [c for c in calls(log, ".remap") if len(c.args) == 3]
+
+
 def _masks(log: list) -> tuple[Call, Call]:
     """The two remaps of the stand labels: 1 on the other stands, then 1 on these."""
-    others, themselves = calls(log, ".remap")
+    others, themselves = _label_masks(log)
     return others, themselves
+
+
+def _masked_by_label(log: list, obj: Any) -> bool:
+    return any(c in _label_masks(log) for c in _upstream(log, obj))
+
+
+def _label_reads(log: list) -> list[Call]:
+    """The stand labels read back from a sample: the rows of the stands left out. A sample's
+    other columns are read for the scaling's quartiles (review B16), and the unit means'
+    aggregate_array calls are of a collection of means, never read back (review B14)."""
+    return [
+        c for c in calls(log, ".stratifiedSample().aggregate_array") if c.args == (LABEL_BAND,)
+    ]
 
 
 # ---------------------------------------------------------------- which rows, which image
@@ -159,16 +178,15 @@ def test_the_preprocessing_samples_still_take_every_unit():
     """The log transform is log(x - min + 0.001), min the minimum of its sample: a stand
     left out of that sample could lie below it and get the log of a negative number."""
     _, log, _ = _run_on()
-
-    def masked_by_label(obj: Any) -> bool:
-        return any(c.attr == "remap" for c in _upstream(log, obj))
-
     samples = calls(log, ".stratifiedSample")
     assert len(samples) == 5  # skewness and offsets, scaling, all rows, fit rows, rows left out
-    assert [masked_by_label(s.out) for s in samples] == [False, False, False, True, True]
+    assert [_masked_by_label(log, s.out) for s in samples] == [False, False, False, True, True]
+    # The skewness and the log offsets (reduceColumns), and the scaling's columns, read back
+    # for its exact quartiles since review B16.
     columns = calls(log, ".reduceColumns")
-    assert columns, "no statistic was taken"
-    assert not [c.args for c in columns if masked_by_label(c.out)]
+    scaling = [c for c in calls(log, ".stratifiedSample().aggregate_array") if c not in _label_reads(log)]
+    assert columns and scaling, "no statistic was taken"
+    assert not [c.args for c in columns + scaling if _masked_by_label(log, c.out)]
 
 
 def test_every_unit_is_typed_by_the_trained_clusterer():
@@ -176,8 +194,7 @@ def test_every_unit_is_typed_by_the_trained_clusterer():
     (cluster,) = calls(log, ".cluster")
     (train,) = calls(log, ".train")
     assert cluster.args == (train.out,)
-    upstream = _upstream(log, cluster.owner)
-    assert not [c for c in upstream if c.attr == "remap"]
+    assert not _masked_by_label(log, cluster.owner)
     # The image typed is the one every row was sampled from.
     all_rows = calls(log, ".stratifiedSample")[2]
     assert owner_call(log, all_rows).owner is cluster.owner
@@ -188,8 +205,7 @@ def test_the_stands_left_out_are_read_from_a_sample_of_them_alone():
     others, themselves = _masks(log)
     assert themselves.owner is ctx.get("stand_clusters")
     assert themselves.args == ([4, 9, 12, 15], [1, 1, 1, 1], 0)
-    (array,) = calls(log, ".aggregate_array")
-    assert array.args == (LABEL_BAND,)
+    (array,) = _label_reads(log)
     upstream = _upstream(log, array.out)
     assert themselves in upstream and others not in upstream
     asked = [c.kwargs["context"] for c in log if c.name == "getInfo" and c.args == (array.out,)]
@@ -267,7 +283,7 @@ def test_the_stage_metadata_records_the_setting_on_and_off():
 def test_with_no_stand_below_the_minimum_the_fit_takes_every_row_and_counts_zeros():
     """Nothing more is asked of Earth Engine: the calls are those of the default path."""
     _, log, _ = run_stage(clustering, _config(), merge_outputs=_merge_outputs({}))
-    assert not calls(log, ".remap") and not calls(log, ".aggregate_array")
+    assert not _label_masks(log) and not _label_reads(log)
     samples = calls(log, ".stratifiedSample")
     assert len(samples) == 3
     (train,) = calls(log, ".train")

@@ -96,3 +96,17 @@ tested (`odisha_script/PHASE_KEPTLAND_PREDECLARED.md`).
 - covered by a stand (no 30 m rule): 252 (hand-crafted (_r9)), 252 (AlphaEarth (_r9)), 252 in both.
   - only hand-crafted (_r9): none
   - only AlphaEarth (_r9): none
+
+## Note added 20 Oct 2026 (round 13, review A1, A4, A5, A6, B13, B14, B16, B17 and B18)
+
+The numbers above are as first written. Both sides of these tables are runs from before the round 13
+fixes (`docs/handoff/2026-10-20-round13.md`, Done), and so are the differences between them. The
+hand-crafted runs' inputs were affected by A1, A4 and A5, and B13 reaches them too; they are to be
+re-run (roadmap R3). The AlphaEarth runs are not affected by A1, A5 or B13, and are affected by A4
+in Koraput only, through the merge's NDVI amplitude (question 1 of that record; until it is
+answered, noted as affected, by an amount not measured). Whether roadmap R3 re-runs them is put to
+Jaskaran in that record. The merge and clustering fixes B14, B16, B17 and B18 reach both sides, and
+the stand counts above, from the run records, are from before them. How far any fix moves a stand, a
+type, a score or a difference was not measured; it needs Earth Engine. The note at the end of each
+scores file says more (`keptland_s1desc_r9_scores.txt`, `keptland_alphaearth_r9_scores.txt`).
+`README.md` here lists every file noted. No number here is changed.

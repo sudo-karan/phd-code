@@ -26,13 +26,13 @@ estimated.
 ### The ETH problem is dynamic range, not noise
 
 Field means run 3.45 → 37.75 m across the height bins. ETH runs **14.30 → 22.47 m**. Its
-entire span over a real 3–38 m range is about 8 m, with slope 0.30. So a 2.0 m tolerance
+entire span over the field's 3–38 m of bin means is about 8 m, with slope 0.30. So a 2.0 m tolerance
 is roughly a quarter of the product's whole usable range, not a fine structural
 distinction — and the Sanjay Van calibration (`tol 2.0 = p54.5 of pair differences`)
 looked reasonable only because the pair differences are small. The product is compressed;
 the forest is not homogeneous.
 
-Aggregation does not rescue it. Plot-level R² 0.207 → site-level 0.100 → **0.013** with
+Aggregation does not rescue it. Plot-level R² 0.207 → site-level 0.100 → **0.014** with
 Meta-zero plots excluded. Of every product tested, ETH is the one aggregation destroys.
 
 ### Meta is quantised to integer metres — new this session
@@ -261,9 +261,9 @@ that the stands are *structurally meaningful* rests on the measurement, not the 
 
    Both acceptance checks pass: `gedi_n_50m > 0` holds for exactly the 89 rows carrying an
    `rh98`, and the coverage line equals the regression's n. All 10 previously-published rows
-   are still covered and their values barely move (e.g. 21.30 → 21.84, 12.13 → 11.73), so the
-   old column was a 10-row *subset*, not a set of wrong values — the defect suppressed
-   coverage, it did not corrupt what little it returned. Coverage is uneven by district:
+   are still covered; nine move by at most 0.92 m (e.g. 21.30 → 21.84, 12.13 → 11.73) and one
+   by 3.42 m (16.11 → 12.69), so the old column was mainly a 10-row *subset*: the defect
+   suppressed coverage, and one of the ten values it returned moved too. Coverage is uneven by district:
    ANGUL 23/40, DHENKANAL 30/76, KENDUJHAR 4/12, KORAPUT 32/146.
 
    **This makes the structural conclusion stronger, not weaker.** R²=0.404 at n=10 was the
@@ -449,6 +449,29 @@ python odisha_phase1_11_survey_date_check.py    # fully offline; reads the raw O
 Each of these five writes `odisha_phase1_<n>_results.txt` beside itself; step 8 also writes
 `odisha_phase1_8_separation_null.png`. Step 10 imports `pick_plots` from step 7 rather than
 reimplementing the selection, so the two cannot drift apart.
+
+Step 12 (round 9, Task E: Test 5 on the descending orbit, declared in
+`PHASE1_RADAR_DESCENDING_PREDECLARED.md`) is the exception to "from inside `odisha_script/`":
+run it from the repo root, since its sampling reads `.env` there through `fmu`.
+
+```bash
+python odisha_script/odisha_phase1_12_radar_descending.py            # needs GEE; read-only: one sampleRegions and four counts, no task; rewrites odisha_plots_sampled_s1desc.csv, then analyses
+python odisha_script/odisha_phase1_12_radar_descending.py --offline  # fully offline; analyses the committed sample
+```
+
+Both write `odisha_phase1_12_radar_descending_results.txt` and the run record
+`odisha_phase1_12_radar_descending_run.json`. The sampling run overwrites the committed sample,
+so, as for steps 1, 3 and 5, run it in a copy and compare. **Which commit sampled.** The
+committed run record is that of an `--offline` run (10:46 IST, 18 Oct 2026, from `453d338` with
+three files modified; committed in `5bd4a7f`). Until round 13 an `--offline` run kept only the
+sampling run's date (`sampled`, 23:42:30 IST, 17 Oct 2026) and its image counts, so the sampling
+run's own command line, commit and dirty flag are in no committed record. The round 9 brief
+(`docs/handoff/2026-10-17-round9.md`, Task E) records that it sampled from `4c4bc97`, the commit
+of the declaration (23:41:56 IST). The first committed record (`212b4f9`), of an `--offline` run
+40 seconds after the sampling (23:43:10 IST), was made at that same commit with no tracked file
+modified and only the run's three outputs untracked; whether the sampling run's own tree was
+clean is not recorded. Since round 13 the script writes the sampling run's command line, date
+and git block under `sampling_run`, and an `--offline` run keeps that block as it found it.
 
 The verdict figures above can be re-derived from the committed artifacts without Earth
 Engine:

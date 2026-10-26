@@ -1,13 +1,17 @@
 """Non-live tests for scripts/fetch_drive_vectors.py pure logic.
 
-Only the filename normalization + newest-per-layer selection are tested here;
-the Drive API calls need auth and are exercised manually.
+The filename normalization + newest-per-layer selection, and main() against a
+stubbed Drive service (the folder query, and the check of each layer against its
+run manifest). The real Drive API calls need auth and are exercised manually.
 """
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
@@ -100,3 +104,107 @@ def test_the_cli_default_matches_the_function_default():
     src = inspect.getsource(mod.main)
     for layer in sig_default:
         assert f'"{layer}"' in src, f"--layers default is missing {layer!r}"
+
+
+# ---------- B28 (review 2026-10-19): the folder, and the file against the run ----------
+#
+# main() is run against a stubbed Drive service: no network call, no credentials.
+
+_FOLDER_MIME = "application/vnd.google-apps.folder"
+
+
+class _Request:
+    def __init__(self, resp: dict):
+        self.resp = resp
+
+    def execute(self) -> dict:
+        return self.resp
+
+
+class _Files:
+    """`files().list(...)`: the folder query and the folder listing, each in pages."""
+
+    def __init__(self, folder_pages: list[list[dict]], file_pages: list[list[dict]]):
+        self.folder_pages, self.file_pages = folder_pages, file_pages
+
+    def list(self, q: str, **kw):  # fields, pageSize, pageToken: Drive's own spelling
+        pages = self.folder_pages if _FOLDER_MIME in q else self.file_pages
+        i = int(kw.get("pageToken") or 0)
+        resp: dict = {"files": pages[i]}
+        if i + 1 < len(pages):
+            resp["nextPageToken"] = str(i + 1)
+        return _Request(resp)
+
+
+class _Service:
+    def __init__(self, files: _Files):
+        self._files = files
+
+    def files(self) -> _Files:
+        return self._files
+
+
+def _geojson(n: int) -> bytes:
+    feats = [{"type": "Feature", "properties": {"stand_id": i + 1}, "geometry": None} for i in range(n)]
+    return json.dumps({"type": "FeatureCollection", "features": feats}).encode()
+
+
+def _write_run(runs: Path, config: str, n_by_layer: dict[str, int]) -> None:
+    """A run folder as the pipeline writes it: manifest.json with the export stage's manifest."""
+    run_dir = runs / f"{config}_20261001_120000"
+    run_dir.mkdir(parents=True)
+    layers = {f"stands_{layer}": {"n_features": n} for layer, n in n_by_layer.items()}
+    manifest = {"stages": [{"name": "export", "metadata": {"manifest": {"vector_layers": layers}}}]}
+    (run_dir / "manifest.json").write_text(json.dumps(manifest))
+
+
+def _run_main(monkeypatch, tmp_path, service, contents: dict[str, bytes], *extra: str):
+    import fetch_drive_vectors as mod
+
+    def download(_service, file_id: str, dest: Path) -> None:
+        dest.write_bytes(contents[file_id])
+
+    monkeypatch.setattr(mod, "_drive_service", lambda: service)
+    monkeypatch.setattr(mod, "_download", download)
+    # Run folders are found where the pipeline writes them, outputs/runs/ in the working directory.
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", ["fetch_drive_vectors.py", "--dest", str(tmp_path / "clean"), *extra])
+    mod.main()
+
+
+def test_several_folders_of_the_name_stop_the_fetch(monkeypatch, tmp_path):
+    """Drive gives no order, so "the first" of two same-named folders is either. The
+    second sits on the query's second page, which the fetcher used not to read."""
+    files = [{"id": "a", "name": "c_stands_merged.geojson", "modifiedTime": "2026-10-01T12:00:00Z"}]
+    service = _Service(_Files(folder_pages=[[{"id": "f1", "name": "fmu_exports"}],
+                                            [{"id": "f2", "name": "fmu_exports"}]],
+                              file_pages=[files]))
+    _write_run(tmp_path / "outputs" / "runs", "c", {"merged": 2})
+    with pytest.raises(SystemExit) as exc:
+        _run_main(monkeypatch, tmp_path, service, {"a": _geojson(2)}, "--layers", "merged")
+    assert exc.value.code not in (0, None)
+    assert "2 Drive folders named 'fmu_exports'" in str(exc.value.code)
+
+
+def test_the_folder_query_is_read_to_its_last_page(monkeypatch, tmp_path):
+    files = [{"id": "a", "name": "c_stands_merged.geojson", "modifiedTime": "2026-10-01T12:00:00Z"}]
+    service = _Service(_Files(folder_pages=[[], [{"id": "f1", "name": "fmu_exports"}]],
+                              file_pages=[files]))
+    _write_run(tmp_path / "outputs" / "runs", "c", {"merged": 2})
+    _run_main(monkeypatch, tmp_path, service, {"a": _geojson(2)}, "--layers", "merged")
+    assert (tmp_path / "clean" / "c_stands_merged.geojson").read_bytes() == _geojson(2)
+
+
+def test_a_file_whose_polygon_count_differs_from_the_run_stops_the_fetch(monkeypatch, tmp_path):
+    """The newest copy on Drive can be an older run's layer. Its polygon count is checked
+    against the run manifest's n_features, and on a mismatch nothing is saved under the
+    clean name."""
+    files = [{"id": "a", "name": "c_stands_merged.geojson", "modifiedTime": "2026-10-01T12:00:00Z"}]
+    service = _Service(_Files(folder_pages=[[{"id": "f1", "name": "fmu_exports"}]],
+                              file_pages=[files]))
+    _write_run(tmp_path / "outputs" / "runs", "c", {"merged": 3})
+    with pytest.raises(SystemExit) as exc:
+        _run_main(monkeypatch, tmp_path, service, {"a": _geojson(2)}, "--layers", "merged")
+    assert exc.value.code not in (0, None)
+    assert "2 polygons" in str(exc.value.code) and "n_features 3" in str(exc.value.code)
+    assert not (tmp_path / "clean" / "c_stands_merged.geojson").exists()

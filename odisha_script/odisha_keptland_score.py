@@ -18,7 +18,7 @@ its size (docs/decisions.yaml, spec-files-over-5-mb-off-git) is read from where 
 (<run>_files_off_git.json) says, after its SHA-256 is checked.
 
 THE PLOTS: the 267 inside the boxes (aois/odisha_squares_<district>.geojson), each joined only to
-its own district's run.
+its own district's run. Each must have a field type in both typologies, or the script stops.
 
 THE JOIN, as declared. A plot takes the stand that covers it; where several do, the lowest stand id
 (the Phase 2 rule of odisha_phase2_3_join.py: stand id `stand_lbl`, `cluster_id` rounded, distances
@@ -197,7 +197,9 @@ def five_scores(d: pd.DataFrame) -> dict[str, Any]:
     out: dict[str, Any] = {"delin_all": float(ari(d.skey, d.field_type))}
     multi = d.groupby("skey").skey.transform("size").to_numpy() > 1
     sub = d[multi]
-    out["delin_multi"] = float(ari(sub.skey, sub.field_type))
+    # No stand holding two plots: not answerable (NaN, as multi_ari gives), where scikit-learn
+    # would give 1.0 for the two empty labelings (review of 19 Oct 2026, B21).
+    out["delin_multi"] = float(ari(sub.skey, sub.field_type)) if len(sub) >= 2 else float("nan")
     sizes = d.groupby("skey").size()
     alike = d.groupby(["skey", "field_type"]).size()
     out["prec"] = float((alike * (alike - 1) / 2).sum() / (sizes * (sizes - 1) / 2).sum())
@@ -235,7 +237,14 @@ def analyses(plots: pd.DataFrame, joined: pd.DataFrame, box: pd.DataFrame,
              runs: str = RUNS) -> list[dict[str, Any]]:
     """The primary analysis and the declared checks, each a row of numbers."""
     k4 = pd.read_csv(FIELD_TYPES_K4)[["plot_key", "field_type"]].rename(columns={"field_type": "ft_k4"})
-    base = plots.merge(joined, on="plot_key", validate="1:1").merge(k4, on="plot_key", validate="1:1")
+    base = plots.merge(joined, on="plot_key", validate="1:1").merge(k4, on="plot_key", how="left",
+                                                                    validate="1:1")
+    # A plot without a type would drop out of every analysis unseen; stop instead, as
+    # odisha_keptland_chance.load_plots does (review of 19 Oct 2026, B30).
+    if base.field_type.isna().any() or base.ft_k4.isna().any():
+        missing = sorted(base.plot_key[base.field_type.isna() | base.ft_k4.isna()])
+        raise SystemExit(f"a plot inside the boxes has no field type in {FIELD_TYPES.name} or "
+                         f"{FIELD_TYPES_K4.name}: {missing}")
     scored = base[base.sid.notna()]
     rows = []
 
@@ -295,18 +304,34 @@ def text(result: dict[str, Any], runs: str = RUNS) -> str:
     return "\n".join(lines) + "\n"
 
 
-def write_run_record(out_dir: Path, argv: list[str], stem: str = STEM) -> None:
+def git_block(now: bool = False) -> dict[str, Any]:
+    """This checkout's git state as a run record holds it: as the process found it first, or read
+    again now (`now`). main() asks first, before it writes anything (review C32)."""
+    sys.path.insert(0, str(REPO / "src"))
+    from fmu.utils.provenance import git_state, git_state_now
+
+    state = git_state_now(HERE) if now else git_state(HERE)
+    return {k: v for k, v in state.items() if k != "root"}
+
+
+def write_run_record(out_dir: Path, argv: list[str], stem: str = STEM,
+                     git: dict[str, Any] | None = None) -> None:
+    """The run record beside the results. `git` is the state the run started from (main() reads it
+    first); `git_at_end` is read now, after the results were written."""
     import datetime
     import shlex
 
     sys.path.insert(0, str(REPO / "src"))
-    from fmu.utils.provenance import git_state
+    from fmu.utils.provenance import environment_state
 
     run = {"result_files": [f"{stem}_joined.csv", f"{stem}_scores.json", f"{stem}_scores.txt"],
            "command_line": "python " + " ".join(shlex.quote(a) for a in
                                                 ["odisha_script/odisha_keptland_score.py", *argv]),
            "date": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
-           "git": {k: v for k, v in git_state(HERE).items() if k != "root"}}
+           "git": git if git is not None else git_block(),
+           "git_at_end": git_block(now=True),
+           # The Python environment, as the pipeline's manifests record it (review C37).
+           "environment": environment_state()}
     (out_dir / f"{stem}_scores_run.json").write_text(json.dumps(run, indent=1) + "\n")
 
 
@@ -321,6 +346,7 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
     if "{district}" not in args.runs:
         ap.error("--runs must hold {district}")
+    started = git_block()  # before any result is written (review C32)
     plots = plots_in_boxes()
     inputs: dict[str, str] = {}
     joined, box = [], []
@@ -348,7 +374,7 @@ def main(argv: list[str] | None = None) -> int:
     table.drop(columns=["epsg"]).to_csv(args.out_dir / f"{args.stem}_joined.csv", index=False)
     (args.out_dir / f"{args.stem}_scores.json").write_text(json.dumps(result, indent=1) + "\n")
     (args.out_dir / f"{args.stem}_scores.txt").write_text(text(result, args.runs))
-    write_run_record(args.out_dir, list(sys.argv[1:] if argv is None else argv), args.stem)
+    write_run_record(args.out_dir, list(sys.argv[1:] if argv is None else argv), args.stem, git=started)
     print(text(result, args.runs))
     return 0
 

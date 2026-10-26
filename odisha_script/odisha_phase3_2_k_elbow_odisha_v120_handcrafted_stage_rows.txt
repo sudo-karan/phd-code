@@ -1,0 +1,102 @@
+====================================================================================================
+PHASE 3 STEP 2 -- k for the stand types by elbow, arm=odisha_v120_handcrafted, on the clustering stage's own rows
+====================================================================================================
+  rows: the k-means rows of the clustering stage fitted again, every input read from the
+    cache, on the stands of the _repro runs (scripts/remerge_demo_set.py, the old rule;
+    docs/demo/remerge/README.md). Not the stands of record in phase2_vectors, nor the fit that
+    typed them. Off git, in the folder the README names (outputs/demo):
+    remerge/odisha_v120_handcrafted_angul_repro/clustering_old.json    89 rows      45376 bytes
+                                                               sha256 f5c0b2740e1f9dccca0b0daf1ddcd137f66d75f55eb54f1a012a8f97e65065d9
+    remerge/odisha_v120_handcrafted_dhenkanal_repro/clustering_old.json   209 rows     107486 bytes
+                                                               sha256 9a2346ef711fbe731468577a1f7e0d55dfe79810f17fdb69660444e8a6b69f15
+    remerge/odisha_v120_handcrafted_kendujhar_repro/clustering_old.json    93 rows      47116 bytes
+                                                               sha256 52e200a0dd4b91278d201e1f98e4920b18fef4fb0acd73cc194d04253ee57c46
+    remerge/odisha_v120_handcrafted_koraput_repro/clustering_old.json   442 rows     200399 bytes
+                                                               sha256 5630d3b2bb642fc77f615701606387b251b6209290ce0ff4a4b277e7baf4ebe3
+  the same runs' stand layers, for the rebuild from the layers on the same stands:
+    vectors_old/odisha_v120_handcrafted_angul_repro_stands_merged.geojson    98 polygons     599358 bytes
+                                                               sha256 c416c979c899157eb6663bb14541774b95d00e03cee955bbbb771f22a071e153
+    vectors_old/odisha_v120_handcrafted_dhenkanal_repro_stands_merged.geojson   243 polygons    1419581 bytes
+                                                               sha256 1e5dd4134ca81b9ca2c1b6d5b5a6eb410247d3170dcc8cb13ed8d77a324c53ec
+    vectors_old/odisha_v120_handcrafted_kendujhar_repro_stands_merged.geojson   106 polygons     566812 bytes
+                                                               sha256 72dc80fee8d720a69532c0451bce931a517d385431453fbae9475e136ec9ec22
+    vectors_old/odisha_v120_handcrafted_koraput_repro_stands_merged.geojson   629 polygons    3462990 bytes
+                                                               sha256 f3fd7d6bd4e0cb9c93525f5f8ea913c5ec596fd7322fb670232ee72c2f985ce2
+  no field measurement is read in this file.
+
+----------------------------------------------------------------------------------------------------
+THE REBUILD'S RULES, CHECKED ON THE STAGE'S OWN ROWS
+----------------------------------------------------------------------------------------------------
+  angul      logged by the stage (6): vv_iqr, vh_iqr, vv_minus_vh_median, canopy_height_std, slope, ndvi_phase_annual_cos; dropped: distance_to_water
+             its log decisions on the active bands, by |G1| > 1.0: all reproduced; by |g1|: all reproduced
+             its log offsets = -min over the rows + 0.001: all
+             its spread against the exact IQR of its own post-log rows: 0.931 to 1.010 (review B16)
+             stands in several typed pieces with a row: the row is the largest piece's in 1, another piece's in 0, not told apart in 0
+  dhenkanal  logged by the stage (12): ndvi_mean, ndvi_trend, vv_p10, vh_p10, vv_p50, vh_p50, vh_p90, vv_iqr, vv_minus_vh_median, canopy_height_std, slope, ndvi_phase_annual_cos; dropped: none
+             its log decisions on the active bands, by |G1| > 1.0: all reproduced; by |g1|: all reproduced
+             its log offsets = -min over the rows + 0.001: all
+             its spread against the exact IQR of its own post-log rows: 0.888 to 1.167 (review B16)
+             stands in several typed pieces with a row: the row is the largest piece's in 8, another piece's in 0, not told apart in 0
+  kendujhar  logged by the stage (1): canopy_height_std; dropped: distance_to_water
+             its log decisions on the active bands, by |G1| > 1.0: all reproduced; by |g1|: all reproduced
+             its log offsets = -min over the rows + 0.001: all
+             its spread against the exact IQR of its own post-log rows: 0.988 to 1.005 (review B16)
+             stands in several typed pieces with a row: the row is the largest piece's in 1, another piece's in 0, not told apart in 1
+  koraput    logged by the stage (3): canopy_height_std, elevation, ndvi_phase_annual_cos; dropped: distance_to_water, vh_iqr, vv_iqr
+             its log decisions on the active bands, by |G1| > 1.0: all reproduced; by |g1|: all reproduced
+             its log offsets = -min over the rows + 0.001: all
+             its spread against the exact IQR of its own post-log rows: 0.982 to 1.018 (review B16)
+             stands in several typed pieces with a row: the row is the largest piece's in 4, another piece's in 0, not told apart in 2
+
+----------------------------------------------------------------------------------------------------
+ELBOW (k-means: seed 42, 25 starts, k 2 to 12; the knee of the inertia curve)
+  on the stage's own rows:
+    (i) as scaled:  the rows as the stage scaled them (its recorded centre and spread)
+    (i) exact:      the same post-log rows, (x - median) / IQR with exact quantiles (DEC-003)
+    (ii):           the same post-log rows, each band min-max normalised over the rows, as
+                    wekaKMeans does (review A2)
+  rebuilt from the same runs' layers by --space stage's rules: layer (i), layer (ii)
+----------------------------------------------------------------------------------------------------
+  angul rows (i)s      n=   89   elbow k=6   silhouette k=3   Calinski k=2   Davies-B k=3
+  angul rows (i)x      n=   89   elbow k=6   silhouette k=3   Calinski k=2   Davies-B k=9
+  angul rows (ii)      n=   89   elbow k=5   silhouette k=2   Calinski k=2   Davies-B k=2
+                       rebuilt from the layer: 93 rows, 88 of them stands with a row in the stage's fit; logged (6): aspect_cos, canopy_height_std, slope, vh_iqr, vv_iqr, vv_minus_vh_median; G1 and g1 disagree on vh_iqr, vv_iqr
+  angul layer (i)      n=   93   elbow k=6   silhouette k=4   Calinski k=2   Davies-B k=4
+  angul layer (ii)     n=   93   elbow k=6   silhouette k=2   Calinski k=2   Davies-B k=12
+  dhenkanal rows (i)s  n=  209   elbow k=5   silhouette k=2   Calinski k=2   Davies-B k=2
+  dhenkanal rows (i)x  n=  209   elbow k=5   silhouette k=2   Calinski k=2   Davies-B k=2
+  dhenkanal rows (ii)  n=  209   elbow k=6   silhouette k=2   Calinski k=2   Davies-B k=2
+                       rebuilt from the layer: 215 rows, 209 of them stands with a row in the stage's fit; logged (13): aspect_cos, canopy_height_std, ndvi_mean, ndvi_phase_annual_sin, ndvi_trend, slope, vh_p10, vh_p50, vh_p90, vv_iqr, vv_minus_vh_median, vv_p10, vv_p50; G1 and g1 disagree on vv_iqr
+  dhenkanal layer (i)  n=  215   elbow k=6   silhouette k=2   Calinski k=2   Davies-B k=2
+  dhenkanal layer (ii) n=  215   elbow k=6   silhouette k=2   Calinski k=2   Davies-B k=2
+  kendujhar rows (i)s  n=   93   elbow k=6   silhouette k=2   Calinski k=2   Davies-B k=12
+  kendujhar rows (i)x  n=   93   elbow k=6   silhouette k=2   Calinski k=2   Davies-B k=12
+  kendujhar rows (ii)  n=   93   elbow k=6   silhouette k=7   Calinski k=2   Davies-B k=11
+                       rebuilt from the layer: 96 rows, 93 of them stands with a row in the stage's fit; logged (0): none
+  kendujhar layer (i)  n=   96   elbow k=6   silhouette k=2   Calinski k=2   Davies-B k=11
+  kendujhar layer (ii) n=   96   elbow k=5   silhouette k=8   Calinski k=2   Davies-B k=11
+  koraput rows (i)s    n=  442   elbow k=5   silhouette k=2   Calinski k=2   Davies-B k=2
+  koraput rows (i)x    n=  442   elbow k=5   silhouette k=2   Calinski k=2   Davies-B k=12
+  koraput rows (ii)    n=  442   elbow k=5   silhouette k=3   Calinski k=2   Davies-B k=11
+                       rebuilt from the layer: 474 rows, 442 of them stands with a row in the stage's fit; logged (2): canopy_height_std, elevation
+  koraput layer (i)    n=  474   elbow k=5   silhouette k=2   Calinski k=2   Davies-B k=2
+  koraput layer (ii)   n=  474   elbow k=5   silhouette k=5   Calinski k=2   Davies-B k=12
+  (i)s: as the stage scaled them; (i)x: exact quantiles. Each (i)s line gives the inertia and
+  the elbow committed in docs/demo/remerge/<run>.json (elbow.old), checked to 6 decimals.
+
+----------------------------------------------------------------------------------------------------
+ELBOWS SIDE BY SIDE (each also with the same rows in reverse order; pooled: none, the
+stage scales each district's rows on their own)
+----------------------------------------------------------------------------------------------------
+                                    angul  dhenkanal  kendujhar    koraput
+  stage rows (i) as scaled              6          5          6          5
+    in reverse order                    6          5          6          5
+  stage rows (i) exact                  6          5          6          5
+    in reverse order                    7          5          6          5
+  stage rows (ii) min-max               5          6          6          5
+    in reverse order                    5          6          6          5
+  rebuilt from layer (i)                6          6          6          5
+    in reverse order                    6          6          6          5
+  rebuilt from layer (ii)               6          6          5          5
+    in reverse order                    6          6          5          5
+  k in the configs: 6. No k is chosen here.

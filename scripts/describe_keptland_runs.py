@@ -2,8 +2,9 @@
 
     python scripts/describe_keptland_runs.py [<run_id> ...]
 
-For each run (default: every run with a run record in docs/reproducibility/keptland_runs/), from
-docs/reproducibility/keptland_runs/<run>_run.json and <run>_manifest_export.json:
+For each run (default: every run in docs/reproducibility/keptland_runs/, a run being a run record
+with its export-pass manifest beside it), from docs/reproducibility/keptland_runs/<run>_run.json
+and <run>_manifest_export.json:
   - stands: how many, the smallest and the largest (ha), how many have no pixel in the merge's
     count and so 0 ha (superpixels on the ROI edge, of pixels the ROI covers only in part), and
     the smallest of the rest;
@@ -64,9 +65,19 @@ def describe(run: dict[str, Any], manifest: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def run_ids(runs_dir: Path = RUNS_DIR) -> list[str]:
+    """Every run in `runs_dir`: a `<run>_run.json` with `<run>_manifest_export.json` beside it.
+
+    A `*_run.json` with no export manifest is the record of a script, not of a run: for example
+    `sanjay_van_alphaearth_keptland_stand_means_run.json`, written by
+    scripts/alphaearth_stand_means.py, on which the default run stopped until round 13 (review C42).
+    """
+    runs = (p.name.removesuffix("_run.json") for p in runs_dir.glob("*_run.json"))
+    return sorted(r for r in runs if (runs_dir / f"{r}_manifest_export.json").exists())
+
+
 def main(argv: list[str] | None = None) -> int:
-    runs = (argv if argv is not None else sys.argv[1:]) or sorted(
-        p.name.removesuffix("_run.json") for p in RUNS_DIR.glob("*_run.json"))
+    runs = (argv if argv is not None else sys.argv[1:]) or run_ids()
     for run_id in runs:
         run = json.loads((RUNS_DIR / f"{run_id}_run.json").read_text())
         manifest = json.loads((RUNS_DIR / f"{run_id}_manifest_export.json").read_text())

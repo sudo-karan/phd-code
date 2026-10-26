@@ -83,8 +83,9 @@ def test_default_area_bounds_and_relaxation():
 
 
 def test_pass1_needs_at_least_two_defined_criteria():
-    """One criterion is too weak a similarity test to justify a pass-1 merge;
-    pairs that fall short drop to pass 2, which is the right destination."""
+    """One criterion is too weak a similarity test to justify a merge. The floor
+    holds in both passes, so a pair that falls short of it merges only by pass
+    2's shared-edge fallback (review C13; tests/test_region_merge.py)."""
     assert MergeParams().min_defined_criteria == 2
 
 

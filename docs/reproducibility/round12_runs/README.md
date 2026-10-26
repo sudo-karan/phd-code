@@ -29,3 +29,107 @@ changing only `segmentation.size` (6 to 10) and `merge.max_area_ha` (3 to 10)
 | `cost_<run>.json` (and `_run.json`) | the run's EECU-hours, batch by stage and online by pass, and per 1,000 ha (`scripts/eecu_by_stage.py`); the record holds the pass spans and when they were read |
 | `<run>_run.json` | the run record: merge diagnostics, per-stand attributes and provenance, export counts, cache layout, step keys, git, environment |
 | `<run>_manifest_features.json`, `_segmentation`, `_clustering`, `_export` | the manifests of the wrapper's four passes |
+
+**Note of 20 Oct 2026 (round 13; review A1, A4, A5, A6, B13, B14, B16, B17 and B18): these runs are
+from before the round 13 fixes.** Their files here are kept as the runs wrote them, the record from
+before the fixes; no number is changed. The round 13 brief (`docs/handoff/2026-10-20-round13.md`,
+Done) says what each fix changes, and that the hand-crafted 10 ha runs will be re-run (roadmap R3);
+whether R3 re-runs the AlphaEarth 10 ha runs is put to Jaskaran there. Which fixes reach which run
+(the 3 ha runs' note, in `docs/reproducibility/r9_runs/README.md`, says more):
+- **The four hand-crafted runs** (`odisha_v120_10ha_squares_<district>_keptland_s1desc_r9`): A1
+  (Angul's 134 stand polygons all read the 10 km cap, and the band was dropped as constant; in
+  Dhenkanal 145 of 330 and in Koraput 673 of 990 are at the cap, upper bounds), A4 (one Sentinel-1
+  scene of 31 Dec 2022 left out over the Angul, Dhenkanal and Kendujhar boxes, two Sentinel-2 scenes
+  over the Koraput boxes; read-only call 4 of the brief), A5 (slope and aspect in whole degrees, a
+  flat cell read as facing north) and B13 (the NDVI phase's cosine log-transformed in every run, its
+  sine too in Angul).
+- **The four AlphaEarth runs** (`odisha_alphaearth_10ha_squares_<district>_keptland_r9`): A1, A5 and
+  B13 do not reach them. A4 reaches the Koraput run only, through the merge's NDVI amplitude
+  (question 1 of the brief; noted as affected until it is answered, by an amount not measured).
+- **All eight runs:**
+  - B14: stands whose label has more than one polygon in the merged layer, hand-crafted Angul 0,
+    Dhenkanal 1, Kendujhar 3, Koraput 7; AlphaEarth Angul 0, Dhenkanal 0, Kendujhar 0, Koraput 2. A
+    unit with no data in a band was given 0 there; whether these runs had such a unit was not
+    checked.
+  - B16: where it was checked, no drop decision of these runs changes; the recorded centres and
+    spreads do.
+  - B17: every run record here has stands with a `frac_valid_<band>` above 1 (the largest 2 to 4 per
+    run) and 1 to 13 stands of 0 pixels.
+  - B18: at 10 ha the float sum judged 32 of the 999 ways to split exactly 10 ha into two
+    whole-pixel areas as over the limit (review); not checked for these runs.
+  - A6: in the committed layers here, 137 of 9,951 polygons are off by more than 1% (+63.10 ha in
+    all; 47 of the 3,555 stand polygons, +8.73 ha; the brief's count), and every other polygon's
+    area moves by 0.1% to 0.3% on the export's new measure. No score reads them.
+  - The 32 manifests give the three windows as 2017-01-01 to 2022-12-31; the runs' filters stopped
+    on 30 Dec 2022 (A4).
+- How far any fix moves a stand, a type or a score was not measured; it needs Earth Engine. Round
+  13's Task 1 changes no type of these runs. The cost files record what the runs cost and are not
+  affected.
+
+**Note added 20 Oct 2026 (round 13, review C16; the manifests here are as first written).** Each
+`_manifest_*.json` here glosses the summary number `stands_below_min_area_by_cause` as "isolated:
+it touches no other stand". `isolated` means no 4-connected neighbour in the merge's graph, which
+counts shared edges only, so a stand that meets another stand only at a corner is isolated too.
+Counted from the merged layers here: 7 of the 1,283 stands filed `isolated` that have a polygon
+(1,311 in the eight run records) touch another stand at a corner only, and none along an edge.
+No result changes: no step of the pipeline reads `below_why` (the fit leaves out stands by
+`below_min`, whatever the cause). Since round 13 the merge stage writes "isolated: it shares no
+edge with another stand (no 4-connected neighbour; it may meet one at a corner)".
+
+**Note of 20 Oct 2026 (round 13, review C36): `snic_distance_scale` is null in all eight run
+records here.** The record is written by the export pass, which reads the superpixels from the
+cache, so the segmentation stage's metadata there holds no scale. The scale each run's superpixels
+were drawn with is in `<run>_manifest_segmentation.json` beside its record (the segmentation
+stage's `metadata.distance_scale`), and it is there for all eight. Since round 13 the runner reads
+it from that pass's manifest, and `snic_distance_scale_from` says where. The records are kept as
+written; no number changed.
+
+**Note of 20 Oct 2026 (round 13, review C38): the git block of the eight cost records.** Until
+round 13 `scripts/eecu_by_stage.py` read git in the working directory, after it had written the
+cost file, as `{commit, tracked_files_modified}`. For the eight cost records here that did no
+harm: each command line gives relative paths, so it was run from the repo root, and each cost
+file was new when it was written (first committed after its `read_at`), so writing it changed no
+tracked file. Two of them, Dhenkanal and Koraput of the AlphaEarth arm, hold
+`tracked_files_modified: true`: other tracked files of the checkout were modified when they were
+read, and the record does not say which. Since round 13 the script records the block every run
+record has (`fmu.utils.provenance.git_state` of its own checkout, read before it writes). The
+records are kept as written; no number changed.
+
+## Notes added 20 Oct 2026 (round 13)
+
+The files above are kept as their runs wrote them. These notes say how to read some of their
+fields, after the review of 19 Oct 2026 (`docs/reviews/2026-10-19-review.md`; finding ids in bold).
+
+- **C11, the AlphaEarth collapse.** The AlphaEarth runs' `_manifest_features.json` give the
+  embedding's collapse as "mean over N annual image(s)", and N as `n_source_images`. N is the
+  number of images the filtered collection held, one per tile of the collection per year, not a
+  number of years: the Dhenkanal run's 12 are the twelve its 3 ha run lists
+  (`docs/reproducibility/r9_runs/README.md`), over the six years 2017 to 2022; every other run's 6
+  is one tile. The mean is taken per pixel, as declared.
+- **C15, `units_dropped_missing_band`.** In every run here the clustering manifest's
+  `units_dropped_missing_band` (`n_units_dropped_null_band` in `clustering_metadata`) equals the
+  number of stands with no polygon in `stands_merged`, 2 or 5 per run: stands at the ROI's edge with
+  no pixel whose centre is inside the ROI (0 to 2 pixels in `stand_attributes`). None is a stand
+  with a band gap, the case the name says it counts: until round 13 a stand with no data in a band
+  got 0 there and kept its row (review B14). See `docs/outputs.md`, "What
+  `units_dropped_missing_band` has counted".
+- **C17, stands in pieces.** Where the "Stand polygons" column gives two numbers, the second is
+  the stands that have a polygon, and the difference is the stands in two polygons: Kendujhar 3,
+  Koraput 7 and Dhenkanal 1 (hand-crafted), Koraput 2 (AlphaEarth). SNIC labels the edge pixels
+  the ROI only partly covers, and the export keeps only pixels whose centre is inside the ROI,
+  which can cut a stand drawn through them; every smaller piece here lies within 4.7 m of the
+  ROI's edge. The joins key on `stand_lbl`, so no score changes. See `docs/outputs.md`, "Stands
+  and superpixels in pieces".
+- **C31, the masking summary.** The masking stage's `area_ha` and `share_kept`
+  (`transparency.summary_numbers`) differ between the manifests of one run. The features pass,
+  which computed the masks (masking's cache status `miss-exported`), tabulated them live; every
+  pass that read them from the cache (`hit`) tabulated the cached masks, which lie on the ROI's UTM
+  grid, on the EPSG:4326 grid the summary uses. `area_ha` is 0.032% to 0.074% lower in the passes
+  that read the cache, `share_kept` 2.6e-5 to 3e-4 higher. The Dhenkanal hand-crafted run's four
+  manifests all read the masks from the cache, and agree. No stand, type or score reads these
+  numbers. See `mask_provenance_areas` in `src/fmu/stages/masking.py`.
+- **C33, the left-out pip line.** Each record's `environment.pip_freeze_left_out` is this
+  package's own `pip freeze` line, left out of `pip_freeze_sha256`. Its commit is the one the
+  venv's editable install pointed at when the run read its environment (the live checkout,
+  `/Users/karan/Desktop/phd-code`), not the run tree's commit that `git` records: the two differ in
+  34 of the 40 records here that hold both blocks. Nothing reads the line.

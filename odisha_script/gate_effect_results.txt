@@ -139,3 +139,16 @@ WHAT THIS SHOWS
 
   No threshold was tuned to bring the arms together. Where the stand count moves,
   that is the measurement.
+
+  NOTE ADDED 20 Oct 2026 (round 13, review C14; the numbers above are as first written): the
+  three joint_admit_rate figures (arm A 34.3%, arm B 44.77%, arm C 44.27%) count as admitted a
+  pair that passes the criteria defined on both sides although fewer than min_defined_criteria
+  (2) are defined, a pair the merge's gate rejects. Such pairs are those blocked by undefined
+  criteria above: 323 of 3,601 in arms A and B, whose canopy height (and in arm A canopy height
+  std) is undefined on a side (n_defined 3,278 of 3,601), so that only ndvi_amplitude_annual is
+  left, and 370 of 3,632 in arm C (3,262). The gate's admit rate is therefore below the printed
+  rate by at most 8.97 points in arms A and B and 10.19 points in arm C; by how much is not known
+  without the pairs' values, which need Earth Engine. The change from arm A to arm B (+10.47
+  points as printed) holds: the two arms share the superpixel graph and these 323 pairs, with
+  the same values, so the pairs are counted alike in both. Since round 13 calibrate_thresholds
+  applies the floor, so a re-run of scripts/gate_effect.py prints the gate's own rate.

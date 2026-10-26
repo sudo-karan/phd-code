@@ -16,8 +16,9 @@ Three deliverable classes, all driven by toggles in `config.export`:
      deliverable. Toggled via `export_vector_merged`; written only when
      `merge.enabled`, since without merge the stand *is* the superpixel and
      `stands_snic` already is that layer. Unlike `stands_snic`, stands that
-     clustering could not type are kept with a null `cluster_id`. A stand with
-     a row in the k-means fit takes that row's type (round 12).
+     clustering could not type are kept with a null `cluster_id`. A stand takes
+     its own row's type (round 12), a stand left out of the k-means fit too,
+     and a stand with no row a null type (round 13).
 
   3. **SNIC superpixel vectors** (`stands_snic`): one polygon per SNIC
      superpixel with all per-superpixel feature means attached. The
@@ -160,6 +161,10 @@ class ExportStage(Stage):
         "cluster_profiles",
     }
     produces = {"export_manifest"}
+    # Nothing cached, so the orchestrator submits no export for this stage and its
+    # StageRecord.export_tasks is empty. The Drive tasks it submits itself are in its
+    # metadata (drive_task_ids) and the manifest (drive_exports); nothing waits on
+    # them, the pass runner's --wait included (review C39).
     cacheable_outputs: ClassVar[set[str]] = set()  # always run; no GEE asset
 
     def validate(self, ctx: PipelineContext, config: Config) -> None:
@@ -981,17 +986,23 @@ def _build_merged_feature_collection(
     So `cluster_id` is null on exactly those stands, which makes the coverage gap
     visible in the layer itself rather than only in the log.
 
-    How a stand gets its `cluster_id` (round 12, register entry
-    `spec-export-stand-type-from-its-fit-row`): a stand whose row the k-means fit
-    was trained on takes that row's type (`_fit_row_types`). Every other stand
-    gets the vote it got before: the commonest type among the typed pixels its
-    polygon touches, each weighted by its share inside the polygon. On the
-    analysis grid a polygon touches only its own stand's pixels, so the two give
-    the same type, except on the pieces of a stand whose pieces carry different
-    types (`_stand_row_types`), which now all take one, and on a piece with no
+    How a stand gets its `cluster_id` (register entries
+    `spec-export-stand-type-from-its-fit-row`, round 12, and
+    `spec-export-stand-type-from-its-own-row-or-null`, round 13): a stand with a
+    row takes that row's type, read as the type most of its own typed pixels
+    carry (`_stand_row_types`), and so does a stand left out of the k-means fit
+    with clustering.fit_excludes_stands_below_min_area on, whose row the fitted
+    clusters type too. A stand with no typed pixel of its own has no row and gets
+    a null type, in every cache layout. Until round 12 every stand got a vote,
+    the commonest type among the typed pixels its polygon touches, each weighted
+    by its share inside the polygon, and until round 13 the stands with no row
+    and those left out of the fit still did. On the analysis grid a polygon
+    touches only its own stand's pixels, so the vote and the row's type agree,
+    except on the pieces of a stand whose pieces carry different types (cluster
+    labels made before round 13), which now all take one, and on a piece with no
     typed pixel of a stand that has a row elsewhere, which was null and now takes
-    the stand's type; on the legacy cache layout the vote could take in slivers
-    of a neighbour's pixels.
+    the stand's type; on the legacy cache layout the vote could take in slivers of
+    a neighbour's pixels.
 
     `region` (default: the ROI) is the area vectorised: one part of the ROI when
     the layer is built a part at a time (`_layer_by_part`).
@@ -1002,7 +1013,10 @@ def _build_merged_feature_collection(
 
     # Step 1: vectorize the stand labels. `stand_lbl` rather than `stand_label`
     # so the name survives SHP's 10-character field limit unchanged, and both
-    # formats therefore carry the same column name.
+    # formats therefore carry the same column name. reduceToVectors keeps the
+    # pixels whose centre is inside `roi`, while SNIC labelled the edge pixels the
+    # ROI clip keeps too, so a stand drawn through them can come out in more
+    # than one polygon, and one with no pixel centre inside gets none (review C17).
     stand_label_image = stand_clusters.toInt().rename("stand_lbl")
     polygons = stand_label_image.reduceToVectors(
         geometry=roi,
@@ -1013,7 +1027,10 @@ def _build_merged_feature_collection(
         maxPixels=int(1e9),
     )
 
-    # Step 2: per-stand feature means, same exclusions as the SNIC layer.
+    # Step 2: per-stand feature means, same exclusions as the SNIC layer. Plain means
+    # of the pixel values, the angle bands too: aspect (degrees) and *_phase_* (radians)
+    # come out as arithmetic means of angles, not circular means (review C10). The
+    # clustering does not read them; it takes sine and cosine per pixel.
     all_features = _feature_source_image(ctx)
     kept_feature_bands = all_features.bandNames().removeAll(
         ee.List(["ndvi_obs_count", "nirv_obs_count"])
@@ -1024,19 +1041,15 @@ def _build_merged_feature_collection(
         scale=scale,
     )
 
-    # Step 3: attach cluster_id via mode. Null where clustering never reached
-    # the stand -- non-habitat, or a band with no data over it. Not filtered.
-    cluster_id_img = cluster_labels.toInt().rename("cluster_id")
-    polygons_with_cluster = cluster_id_img.reduceRegions(
-        collection=polygons_with_features,
-        reducer=ee.Reducer.mode(),
-        scale=scale,
-    )
-    # Then a stand with a row in the k-means fit takes that row's type instead
-    # of the vote (round 12). A stand with no row in the fit keeps the vote.
+    # Step 3: attach cluster_id, the type of the stand's own row (round 12), read
+    # from its own typed pixels. Null where the stand has no typed pixel of its
+    # own -- clustering never reached it: non-habitat, or a band with no data over
+    # it (on the legacy cache layout, see _stand_row_types) -- in every cache
+    # layout, with no vote over the pixels its polygon touches (round 13). Not
+    # filtered.
     polygons_typed = _take_the_fit_rows_types(
-        polygons_with_cluster.map(_rename_mode_to_cluster_id),
-        _fit_row_types(ctx, config, cluster_labels, stand_clusters, roi, scale),
+        polygons_with_features,
+        _stand_row_types(cluster_labels, stand_clusters, roi, scale),
     )
 
     # Steps 4-5: geometry attributes, drop bookkeeping, renumber by centroid.
@@ -1055,25 +1068,27 @@ def _stand_row_types(
 ) -> ee.Dictionary:
     """{stand label as "%d": its row's type} for every stand with a typed pixel.
 
-    The clustering stage averages the features over each connected piece of a
-    stand (reduceConnectedComponents), trains k-means on one row per stand (the
-    means at one of its pixels inside the habitat mask where no band is
-    missing, drawn at random) and then types every pixel of the image those rows
-    were drawn from. A stand in one piece has the same means at each of its
-    pixels, so every typed pixel of it carries the type the fitted clusters give
-    its row, and on the analysis grid it has typed pixels exactly when it has a
-    row: the commonest type over its own typed pixels is its row's type. A stand
-    in several pieces can carry different types on different pieces, and its row
-    is on one of them; for it this gives the commonest type over its typed
-    pixels, which is its row's type unless the row was drawn on a piece of
-    another type (the clustering stage does not record which pixel it drew;
-    question 3 of docs/handoff/2026-10-19-round12.md). Grouped by label, not
+    The clustering stage averages the features over each stand, all of its
+    pieces together, trains k-means on one row per stand (the means at one of
+    its pixels inside the habitat mask where no band is missing, drawn at
+    random) and then types every pixel of the image those rows were drawn from.
+    A stand has the same means at each of its pixels, so every typed pixel of it
+    carries the type the fitted clusters give its row, and on the analysis grid
+    it has typed pixels exactly when it has a row: the commonest type over its
+    own typed pixels is its row's type. Until round 13 the clustering stage
+    averaged each connected piece of a stand on its own (reduceConnectedComponents;
+    review B14), so in its cluster labels a stand in several pieces can carry
+    different types on different pieces, with its row on one of them; for it
+    this gives the commonest type over its typed pixels, which is its row's type
+    unless the row was drawn on a piece of another type (the clustering stage
+    does not record which pixel it drew; question 3 of
+    docs/handoff/2026-10-19-round12.md). Grouped by label, not
     voted over the polygon: only the stand's own pixels count. On the legacy
     cache layout the type image lies on another grid than the labels, so a
     stand's pixels there are those whose centres it holds on the type grid: a
-    stand with a row may then have none (it keeps the vote), and a stand with
-    no row may have some. The clusterer itself is not kept, so the type is read
-    from the typed pixels.
+    stand with a row may then have none (it then gets a null type, round 13),
+    and a stand with no row may have some (it then takes their type). The
+    clusterer itself is not kept, so the type is read from the typed pixels.
 
     One reduction over `region`, in the grid of `cluster_labels`. A stand whose
     pixels are all untyped still forms a group, but one without a "mode" (seen
@@ -1100,57 +1115,19 @@ def _stand_row_types(
     )
 
 
-def _fit_row_types(
-    ctx: PipelineContext,
-    config: Config,
-    cluster_labels: ee.Image,
-    unit_labels: ee.Image,
-    region: ee.Geometry,
-    scale: int,
-) -> ee.Dictionary | None:
-    """{stand label as "%d": its row's type} for every stand whose row the fit was trained on.
-
-    Every stand with a row (`_stand_row_types`) but, with
-    clustering.fit_excludes_stands_below_min_area on, not the stands the merge
-    left below merge.min_area_ha: k-means was not trained on their rows
-    (clustering's `_stands_below_min_area`, from the same `stand_provenance`).
-    Whether those count as having "a row in the fit" is question 2 of
-    docs/handoff/2026-10-19-round12.md; until it is answered they keep the vote,
-    as they did before. So does a stand with no row at all (question 1).
-
-    None when the setting is on and the context holds no `stand_provenance`, so
-    the fit's rows cannot be told from the others: then every stand keeps the
-    vote. A pipeline run always has it (the merge stage writes it).
-    """
-    excludes = config.clustering.fit_excludes_stands_below_min_area
-    if excludes and not ctx.has("stand_provenance"):
-        log.warning(
-            "  stands_merged: clustering.fit_excludes_stands_below_min_area is on but "
-            "the context has no stand_provenance, so the stands left out of the fit "
-            "cannot be told apart; every stand keeps the type its polygon's pixels give it."
-        )
-        return None
-    row_types = _stand_row_types(cluster_labels, unit_labels, region, scale)
-    if not excludes:
-        return row_types
-    left_out = sorted(
-        str(sid) for sid, record in ctx.get("stand_provenance").items() if record["below_min"]
-    )
-    return row_types.remove(left_out, True) if left_out else row_types
-
-
 def _take_the_fit_rows_types(
-    fc: ee.FeatureCollection, fit_row_types: ee.Dictionary | None
+    fc: ee.FeatureCollection, fit_row_types: ee.Dictionary
 ) -> ee.FeatureCollection:
-    """Set each polygon's `cluster_id` to its stand's row type, where the stand has one.
+    """Set each polygon's `cluster_id` to its stand's row type, or to null where the stand has none.
 
-    Looked up by `stand_lbl`, as the provenance is, so every piece of a stand in
-    several pieces takes the same type. A polygon whose stand is not in
-    `fit_row_types` keeps the `cluster_id` it has. With `fit_row_types` None, the
-    collection is returned untouched.
+    `fit_row_types` is `_stand_row_types`: every stand with a typed pixel of its
+    own, the stands left out of the k-means fit among them, whose rows the fitted
+    clusters type too (round 13, question 2 of docs/handoff/2026-10-19-round12.md
+    answered (b)). Looked up by `stand_lbl`, as the provenance is, so every piece
+    of a stand in several pieces takes the same type. A polygon whose stand is not
+    in `fit_row_types` gets a null `cluster_id`, whatever typed pixels it touches
+    (round 13, question 1 answered (b)).
     """
-    if fit_row_types is None:
-        return fc
 
     def retype(feature: ee.Feature) -> ee.Feature:
         key = ee.Number(feature.get("stand_lbl")).format("%d")
@@ -1161,7 +1138,7 @@ def _take_the_fit_rows_types(
             ee.Algorithms.If(
                 fit_row_types.contains(key),
                 feature.set("cluster_id", fit_row_types.get(key, -1)),
-                feature,
+                feature.set({"cluster_id": None}),
             )
         )
 
@@ -1244,9 +1221,10 @@ def _build_snic_feature_collection(
          clustered polygons back to SNIC, so unclustered SNIC has no
          place here. Typical drop rate: ~40-50% for an AOI with
          significant non-habitat (water, built).
-      5. Add geometry-derived attributes (area_ha, perim_m, n_pixels,
-         centroid_lat, centroid_lon). Drop GEE's auto-added 'count'
-         and reducer-leftover 'mode' via explicit property selection.
+      5. Add n_pixels and area_ha from reduceToVectors' 'count', and
+         perim_m, centroid_lat and centroid_lon from the geometry. Then
+         drop 'count' and the reducer-leftover 'mode' via explicit
+         property selection.
       6. Sort by centroid (lat desc, lon asc) and renumber stand_id 1..N.
 
     Returns a FeatureCollection with all attributes attached. The caller
@@ -1259,6 +1237,9 @@ def _build_snic_feature_collection(
 
     # Step 1: vectorize SNIC labels. Rename to a known band name so
     # labelProperty is deterministic regardless of segmentation's band naming.
+    # Only pixels whose centre is inside `roi` are kept, so a superpixel drawn
+    # through the ROI's partly covered edge pixels can come out in more than one
+    # polygon (review C17), as in the merged layer.
     snic_label_image = snic_clusters.toInt().rename("snic_label")
     polygons = snic_label_image.reduceToVectors(
         geometry=roi,
@@ -1269,7 +1250,8 @@ def _build_snic_feature_collection(
         maxPixels=int(1e9),
     )
 
-    # Step 2: attach per-superpixel feature means.
+    # Step 2: attach per-superpixel feature means: plain means, so aspect and
+    # *_phase_* are arithmetic means of angles here too (review C10).
     # ee.Image.cat concatenates multi-band images; band names must be unique
     # across the inputs, which they are by construction (ndvi_*, vv_*, vh_*,
     # canopy_*, elevation/slope/aspect/...). We drop the obs_count metadata
@@ -1307,9 +1289,10 @@ def _build_snic_feature_collection(
         ee.Filter.notNull(["mode"])
     ).map(_rename_mode_to_cluster_id)
 
-    # Step 5: geometry-derived attributes, then drop bookkeeping properties
-    # we don't want to ship (GEE's auto-added 'count' from reduceToVectors,
-    # plus 'mode' which is now a duplicate of cluster_id).
+    # Step 5: size and geometry attributes (n_pixels and area_ha from the
+    # 'count' reduceToVectors added), then drop bookkeeping properties we
+    # don't want to ship ('count', now n_pixels, plus 'mode' which is now a
+    # duplicate of cluster_id).
     polygons_with_geom = polygons_clustered.map(
         lambda f: _add_geom_attrs(f, scale)
     ).map(_drop_internal_properties)
@@ -1330,7 +1313,8 @@ def _build_dissolved_feature_collection(
     Steps (all server-side except cluster_profiles lookup table construction):
       1. Vectorize cluster_labels via reduceToVectors with eightConnected=True;
          each polygon = one connected same-cluster region.
-      2. Add geometry-derived attributes (area_ha, perim_m, n_pixels, centroid).
+      2. Add n_pixels and area_ha from reduceToVectors' 'count', and perim_m
+         and the centroid from the geometry.
       3. Filter by vector_min_stand_pixels (drops speckle).
       4. Attach profile_<band>_p50 columns from the cluster_profiles list of
          dicts, joined by cluster_id.
@@ -1355,9 +1339,9 @@ def _build_dissolved_feature_collection(
         maxPixels=int(1e9),
     )
 
-    # Step 2: geometry-derived attributes, then drop GEE's auto-added
-    # 'count' bookkeeping property (duplicates our 'n_pixels' but uses a
-    # subtly different counting method; we ship n_pixels for consistency).
+    # Step 2: size and geometry attributes, then drop GEE's auto-added
+    # 'count' bookkeeping property, which _add_geom_attrs has copied to
+    # 'n_pixels' (round 13, review A6).
     polygons_with_geom = polygons.map(
         lambda f: _add_geom_attrs(f, scale)
     ).map(_drop_internal_properties)
@@ -1408,22 +1392,37 @@ def _build_dissolved_feature_collection(
 def _add_geom_attrs(feature: ee.Feature, scale: int) -> ee.Feature:
     """Server-side: attach area_ha, perim_m, n_pixels, centroid_lat, centroid_lon.
 
-    `n_pixels` is computed from area at the analysis scale (area_m² / scale²),
-    not from a separate pixel count, so it stays consistent with area_ha for
-    consumers who derive one from the other.
+    `n_pixels` is the 'count' reduceToVectors puts on every polygon it makes, its
+    pixels at the analysis scale, and `area_ha` is that count at the analysis
+    scale (n_pixels x scale² / 10,000): the area on the analysis grid, consistent
+    with n_pixels. Until round 13 both came from the geometry's area(), which for
+    some polygons with a hole that touches the outer ring at a vertex adds the
+    hole instead of subtracting it (review A6: stand 83 of
+    sanjay_van_alphaearth_keptland_r9, 823 pixels, read 1,827 pixels and
+    18.27 ha). The perimeter and the centroid are still the geometry's. The
+    perimeter is right on those polygons (the rings' length, the hole's included),
+    but the centroid has the same hole error as area(): it is the centroid with the
+    hole counted as area (on the merged layers of r9 and round 12, 54 of 7,371
+    centroids are more than 1 m from the hole-subtracted one, 52 of them at the
+    holes-added one, up to 35 m), and `_renumber_by_centroid` numbers stand_id by
+    it. That is not changed in round 13 (its brief, question 21). So the
+    builders run this before `_drop_internal_properties` drops 'count', and no
+    reduction in between writes a property of that name. On the legacy cache
+    layout `stands_dissolved` vectorises a type image on a geographic grid, whose
+    pixels are not scale² in area, so there its area_ha is the pixel count at
+    the nominal scale.
     """
     geom = feature.geometry()
-    area_m2 = geom.area(maxError=1)
     perimeter_m = geom.perimeter(maxError=1)
     centroid_coords = geom.centroid(maxError=1).coordinates()
-    pixel_area_m2 = scale * scale
+    n_pixels = ee.Number(feature.get("count"))
     # ee.Feature(...) is a cast: Element.set() is typed as returning Element, and
     # every one of these helpers is annotated -> ee.Feature because it is handed to
     # FeatureCollection.map(). Same wrap at the three sites below.
     return ee.Feature(feature.set({
-        "area_ha": area_m2.divide(10000),
+        "area_ha": n_pixels.multiply(scale * scale).divide(10000),
         "perim_m": perimeter_m,
-        "n_pixels": area_m2.divide(pixel_area_m2).round(),
+        "n_pixels": n_pixels,
         "centroid_lat": centroid_coords.get(1),
         "centroid_lon": centroid_coords.get(0),
     }))
@@ -1444,7 +1443,7 @@ def _rename_mode_to_cluster_id(feature: ee.Feature) -> ee.Feature:
 
 # Properties to strip from the SNIC feature collection before export.
 # - 'count' is auto-added by reduceToVectors (it's the source pixel count
-#   per polygon, which we already expose as 'n_pixels' from the geometry).
+#   per polygon, which _add_geom_attrs has already copied to 'n_pixels').
 # - 'mode' is the leftover from reduceRegions(mode); we already copied its
 #   value to 'cluster_id' via _rename_mode_to_cluster_id.
 # Listing these explicitly is more robust than feature.set(k, None), which

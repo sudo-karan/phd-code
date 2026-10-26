@@ -1,0 +1,71 @@
+====================================================================================================
+PHASE 3 STEP 2 -- k for the stand types by elbow, arm=odisha_v120_3ha, in the clustering stage's space
+====================================================================================================
+  districts: angul, dhenkanal, kendujhar, koraput   polygons: {'angul': 203, 'dhenkanal': 473, 'kendujhar': 186, 'koraput': 1131}
+  rows, one per stand with a type (its largest piece): {'angul': 191, 'dhenkanal': 448, 'kendujhar': 173, 'koraput': 887}
+  feature bands (20): aspect, canopy_height, canopy_height_max, canopy_height_std, distance_to_water, elevation, ndvi_amplitude_annual, ndvi_mean, ndvi_phase_annual, ndvi_trend, slope, vh_iqr, vh_p10, vh_p50, vh_p90, vv_iqr, vv_minus_vh_median, vv_p10, vv_p50, vv_p90
+  as sin/cos pairs: aspect, ndvi_phase_annual, from the layers' arithmetic mean angles;
+    the stage takes sin and cos per pixel, before the mean (review C10)
+  from the configs: skewness threshold 1.0, robust scaling, stands below the minimum left out of the fit: no
+  no field measurement is read in this file.
+
+----------------------------------------------------------------------------------------------------
+PREPROCESSING, AS THE CLUSTERING STAGE (each district on its own rows; pooled on all rows)
+----------------------------------------------------------------------------------------------------
+  angul      rows 191, fit rows 191, bands 21
+             logged (8): aspect_cos, canopy_height_std, ndvi_phase_annual_sin, ndvi_trend, slope, vh_iqr, vv_iqr, vv_p90
+             dropped, IQR 0 (1): distance_to_water
+  dhenkanal  rows 448, fit rows 448, bands 22
+             logged (11): aspect_cos, canopy_height_std, ndvi_mean, ndvi_phase_annual_sin, slope, vh_p10, vh_p50, vh_p90, vv_minus_vh_median, vv_p10, vv_p50
+             dropped, IQR 0 (0): none
+  kendujhar  rows 173, fit rows 173, bands 21
+             logged (3): canopy_height_std, vh_iqr, vv_iqr
+             dropped, IQR 0 (1): distance_to_water
+  koraput    rows 887, fit rows 887, bands 19
+             logged (2): canopy_height_std, elevation
+             dropped, IQR 0 (3): distance_to_water, vh_iqr, vv_iqr
+  pooled     rows 1699, fit rows 1699, bands 21
+             logged (2): canopy_height_std, distance_to_water
+             dropped, IQR 0 (1): distance_to_water
+
+----------------------------------------------------------------------------------------------------
+ELBOW IN TWO GEOMETRIES (k-means: seed 42, 25 starts, k 2 to 12; the knee of the inertia curve)
+  (i)  declared: the stage's preprocessing, then (x - median) / IQR over the rows (DEC-003)
+  (ii) the fit's: the stage's preprocessing, then each band min-max normalised over the fit
+       rows, as wekaKMeans does (review A2)
+----------------------------------------------------------------------------------------------------
+  angul (i)            n=  191   elbow k=6   silhouette k=2   Calinski k=3   Davies-B k=2
+  angul (ii)           n=  191   elbow k=5   silhouette k=2   Calinski k=2   Davies-B k=3
+  dhenkanal (i)        n=  448   elbow k=6   silhouette k=2   Calinski k=2   Davies-B k=2
+  dhenkanal (ii)       n=  448   elbow k=6   silhouette k=2   Calinski k=2   Davies-B k=2
+  kendujhar (i)        n=  173   elbow k=6   silhouette k=2   Calinski k=2   Davies-B k=8
+  kendujhar (ii)       n=  173   elbow k=6   silhouette k=8   Calinski k=2   Davies-B k=11
+  koraput (i)          n=  887   elbow k=5   silhouette k=2   Calinski k=2   Davies-B k=2
+  koraput (ii)         n=  887   elbow k=6   silhouette k=2   Calinski k=2   Davies-B k=12
+  pooled (i)           n= 1699   elbow k=5   silhouette k=3   Calinski k=3   Davies-B k=3
+  pooled (ii)          n= 1699   elbow k=5   silhouette k=2   Calinski k=2   Davies-B k=12
+
+  pooled, by k:
+    k   (i) inertia  (ii) inertia
+    2       14926.7      1122.875
+    3       12244.3       950.010
+    4       10815.9       858.968
+    5        9879.9       779.205
+    6        9258.6       731.645
+    7        8842.0       689.163
+    8        8450.3       647.584
+    9        8132.8       613.432
+   10        7824.4       587.272
+   11        7549.0       566.973
+   12        7284.5       548.101
+
+----------------------------------------------------------------------------------------------------
+ELBOWS SIDE BY SIDE (each also with the same rows in reverse order: k-means' best of 25
+starts, and so the knee, can depend on the order of the rows)
+----------------------------------------------------------------------------------------------------
+                                    angul  dhenkanal  kendujhar    koraput     pooled
+  (i) declared                          6          6          6          5          5
+    in reverse order                    6          6          8          5          5
+  (ii) the fit's (min-max)              5          6          6          6          5
+    in reverse order                    5          6          6          6          5
+  k in the configs: 5. No k is chosen here.

@@ -50,4 +50,4 @@ True colour is Sentinel-2 red, green and blue (B4_median, B3_median, B2_median) 
 - ROI file: `aois/odisha_habitations_koraput.geojson`, 7 parts
 - `habitat_mask`, the mask the rest of the pipeline uses: read from the cached asset
 - `mask_provenance`, the reason and deciding-map layer: computed live
-- The code, the cached asset ids, the date and the command line are in `run_record.json` beside this file.
+- The code, the cached asset ids, the date and the command line are in `mask_run_record.json` beside this file.

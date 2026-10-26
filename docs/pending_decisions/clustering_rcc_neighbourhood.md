@@ -1,5 +1,11 @@
 # DRAFT decisions.md entry: clustering passes a measured reduceConnectedComponents neighbourhood
 
+**Note, 20 Oct 2026 (round 13, review B14):** the clustering stage no longer calls
+`reduceConnectedComponents`. It takes one mean per unit label with a grouped reduction,
+which has no `maxSize`, so the neighbourhood below, its measurement and the check of the
+labels against the cap went with it (`docs/reviews/2026-10-19-review.md`, B14). This draft
+is kept as the record of the change it describes.
+
 Status: draft for phd-notebook/decisions.md. The code change is committed and
 reaches `main` through the combined integration PR (src/fmu/stages/clustering.py,
 tests/test_clustering_neighbourhood.py, tests/test_clustering_live.py, docs);

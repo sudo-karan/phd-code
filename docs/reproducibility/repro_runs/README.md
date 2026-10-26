@@ -12,6 +12,11 @@ read from its own cached assets without submitting anything to Earth Engine:
   superpixels it is made of, how many of its merges were first-pass, relaxed second-pass and
   shared-edge fallback merges, and whether and why it ended below the minimum size.
 
+The masking script writes the first two as `summary.md` and `run_record.json`; they were renamed
+when copied here. Since 19 Oct 2026 (round 13, review C29) the last line of each
+`mask_summary.md` names `mask_run_record.json`, the file beside it, where the script writes
+`run_record.json`. That line is the only change made to them since they were committed.
+
 The map images are not committed here. The masks of the re-runs are the same, pixel for pixel,
 as the masks of the original configs (`docs/reproducibility.md`), whose maps are in
 `docs/transparency/`. The images and rasters of the re-runs are on the Mac under

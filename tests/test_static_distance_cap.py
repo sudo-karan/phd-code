@@ -3,10 +3,14 @@
 docs/decisions.yaml, spec-static-cap-distance-to-water. Where the distance transform finds no
 water within features_static.max_water_distance_pixels it returns its fill value, sqrt(2^31 - 1)
 pixels (463,409.5 m at 10 m), not a distance. With the setting on, the band is capped at that
-reach, 10 km. Off, the stage makes the calls it made before the
-setting existed: tests/data/features_static_off_calls.json holds them as recorded from the stage
-at commit 6ad5055 (main at 3a51763), for three shipped configs. Earth Engine is replaced by the
-recorder of tests/_ee_recorder.py.
+reach, 10 km. Off, nothing is capped and the stage makes the calls
+tests/data/features_static_off_calls.json holds for three shipped configs. They were recorded from
+the stage at commit 6ad5055 (main at 3a51763), before the setting existed, and recorded again in
+round 13: when the fix of review A1 gave the transform its own water input (all three cases
+changed, in the water input's calls and the names made from them only), and when the fix of
+review A5 took slope and aspect from ee.Terrain.slope and ee.Terrain.aspect on the DEM as float
+(all three changed, in the terrain calls and the names made from them only).
+Earth Engine is replaced by the recorder of tests/_ee_recorder.py.
 """
 
 from __future__ import annotations

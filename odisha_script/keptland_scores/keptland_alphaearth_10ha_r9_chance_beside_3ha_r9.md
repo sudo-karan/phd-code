@@ -57,3 +57,16 @@ Beside the primary's score 4, outside the Holm correction, no pass or fail (`odi
 |---|---|---|---|---|---|---|---|
 | AlphaEarth, 3 ha (_r9) | `odisha_alphaearth_3ha_squares_angul_keptland_r9`, `odisha_alphaearth_3ha_squares_dhenkanal_keptland_r9`, `odisha_alphaearth_3ha_squares_kendujhar_keptland_r9`, `odisha_alphaearth_3ha_squares_koraput_keptland_r9` | declared | 1999 | `alphaearth_3ha_squares_keptland` | yes | 264, 257 | 451 |
 | AlphaEarth, 10 ha | `odisha_alphaearth_10ha_squares_angul_keptland_r9`, `odisha_alphaearth_10ha_squares_dhenkanal_keptland_r9`, `odisha_alphaearth_10ha_squares_kendujhar_keptland_r9`, `odisha_alphaearth_10ha_squares_koraput_keptland_r9` | declared | 1999 | `alphaearth_10ha_squares_keptland` | yes | 264, 257 | 436 |
+
+## Note added 20 Oct 2026 (round 13, review A1, A4, A5, A6, B13, B14, B16, B17 and B18)
+
+The numbers above are as first written. Both sets are on AlphaEarth stands from before the round 13
+fixes (`docs/handoff/2026-10-20-round13.md`, Done), and so are the differences between them. A1, A5
+and B13 do not reach this arm. A4 reaches its Koraput runs, at both sizes, through the merge's NDVI
+amplitude (question 1 of that record; until it is answered, noted as affected, by an amount not
+measured), and no other run of it. The merge and clustering fixes B14, B16, B17 and B18 reach every
+run. Whether roadmap R3 re-runs this arm is put to Jaskaran in that record. How far any fix moves a
+score, a null, a p or a difference was not measured; it needs Earth Engine. The note at the end of
+each chance file says more (`keptland_alphaearth_r9_chance.txt`,
+`keptland_alphaearth_10ha_r9_chance.txt`). `README.md` here lists every file noted. No number here
+is changed.

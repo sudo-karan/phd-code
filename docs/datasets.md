@@ -82,8 +82,8 @@ features via a CNN (Lang et al., 2023).
   of the two merge criteria** that aggregate superpixels into stands.
 - **Field validation (Odisha, 274 plots) — read this before treating ETH canopy height
   as a measurement.** Against field Lorey's height it scores **R² = 0.207, slope 0.30**,
-  with its range compressed to **14.30–22.47 m against a real field span of
-  3.45–37.75 m** — a +10.85 m bias on the shortest plots and −15.29 m on the tallest.
+  with its height-bin means compressed to **14.30–22.47 m against the field's bin means of
+  3.45–37.75 m** (the plots span 0.16–45.52 m) — a +10.85 m bias in the shortest bin and −15.29 m in the tallest.
   It remains a default merge criterion and a default SNIC band, but a 2 m tolerance is
   roughly a quarter of the product's whole usable range, not a fine structural
   distinction. `canopy_height_std` was a default until the same validation measured it
@@ -100,12 +100,22 @@ features via a CNN (Lang et al., 2023).
 `NASA/NASADEM_HGT/001`. Reprocessed SRTM, 30 m global elevation in
 meters.
 
-- **Derived bands via `ee.Terrain.products()`:** `elevation`, `slope`
-  (degrees), `aspect` (degrees 0-360).
+- **Derived bands:** `elevation`, `slope` (degrees), `aspect` (degrees
+  0-360). Since round 13 slope and aspect come from `ee.Terrain.slope()` and
+  `ee.Terrain.aspect()` on the DEM cast to float, in fractional degrees. The
+  runs before took them from `ee.Terrain.products()`, which gives them as
+  whole degrees (integer bands) on an integer and on a float DEM alike (read
+  on Earth Engine in round 13; review A5 had inferred the integer `elevation`
+  band as the cause).
 - **Aspect is cyclic.** It's emitted as raw degrees in `features_static`;
   the clustering stage converts to `aspect_sin` / `aspect_cos`
   before k-means. Euclidean distance on raw degrees would treat 0 and
   359 as maximally different despite being identical compass directions.
+  A flat cell (slope 0) has no aspect (`ee.Terrain.products` gave it 0);
+  the clustering stage gives it no direction, `aspect_sin` = `aspect_cos` =
+  0 (review A5). The stand layers' `aspect` column is not decomposed: it is
+  the plain mean of the stand's pixel degrees, an arithmetic mean of angles
+  (review C10; `docs/outputs.md`).
 
 ## CoRE Stack LULC (IndiaSAT)
 
@@ -163,11 +173,18 @@ use.
 
 - **In masking:** builds `water_mask` only
   (`occurrence >= jrc_water_occurrence_threshold`, default 50%, = permanent
-  water). This mask is **not** used for habitat exclusion — habitat comes
-  from the IndiaSAT classes alone. `water_mask` exists solely to feed the
-  downstream distance-to-water feature.
-- **In features_static:** `water_mask` from masking is reused as the
-  source for `distance_to_water`. `fastDistanceTransform` returns
+  water, over the ROI; `jrc_water_mask`). This mask is **not** used for
+  habitat exclusion — habitat comes from the IndiaSAT classes alone.
+  `water_mask` is drawn in `landcover_summary`.
+- **In features_static:** the source for `distance_to_water`, built with the
+  same definition (`jrc_water_mask`) but over the ROI buffered by the
+  transform's reach, ceil(sqrt(2) x `max_water_distance_pixels`) pixels
+  (14,150 m by default), so that water outside the ROI counts; only the result
+  is clipped to the ROI. The buffer is 1% past the reach (14,292 m by default),
+  because `buffer()` measures on Earth Engine's sphere and the reach is in the
+  analysis grid's metres (round 13, a check of the A1 fix). Until round 13 it was masking's `water_mask`, which
+  ends at the ROI, so water outside the ROI was never seen (review A1).
+  `fastDistanceTransform` returns
   squared-euclidean distance in pixels; we sqrt and multiply by scale
   to get meters. It looks within `max_water_distance_pixels *
   analysis_scale_m` (default 10 km), and off the axes a little further (real
@@ -199,8 +216,9 @@ distance-to-water feature.
 ## AlphaEarth Satellite Embedding
 
 `GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL`. A pretrained per-pixel embedding:
-a 64-band annual ImageCollection (one image per year from 2017, bands
-`A00`..`A63`) at 10 m, learned from multi-sensor satellite time series.
+a 64-band annual ImageCollection (one image per year from 2017 for each tile
+the collection is cut into, bands `A00`..`A63`) at 10 m, learned from
+multi-sensor satellite time series.
 
 - **Embedding mode only.** Read solely by `features_embedding`, which
   runs only when `clustering.feature_source: embedding`. In the default
@@ -209,7 +227,12 @@ a 64-band annual ImageCollection (one image per year from 2017, bands
   are filtered to `dates.phenology` (2017-2022) and reduced to a single
   embedding image by `features_embedding.collapse_reducer` (default
   `mean`; `median` available), matching the 2017-2022 averaging the
-  hand-crafted features rest on.
+  hand-crafted features rest on. The reduction is per pixel. The run's
+  manifest records how many images the filtered collection held
+  (`n_source_images`, and the note "mean over N annual image(s)"): one per
+  tile per year, so not a number of years. The Dhenkanal box runs record 12,
+  the six images the Angul and Kendujhar runs also list and six others, for
+  the six years 2017-2022 (review C11).
 - **All 64 bands by default.** `features_embedding.band_names: null`
   keeps every embedding dimension; the dimensions are jointly meaningful,
   so restricting to a subset is rarely useful.

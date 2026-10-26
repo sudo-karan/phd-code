@@ -31,10 +31,14 @@ Where the paper does not say, and what this module does instead (each is a
 question for the evaluation stage, not a finding):
 
   - **Which pixel belongs to which stand.** A pixel belongs to the stand its
-    CENTRE lies in (the GDAL / rasterio rule with `all_touched=False`). A
-    pixel whose centre lies in no stand is in no stand. Stands that overlap
-    are an error, not resolved: on overlapping stands a pixel's stand is not
-    defined.
+    CENTRE lies in, a centre on the stand's boundary included (tested on the
+    polygons, `stand_raster`; GDAL's `all_touched=False` burn decides centres
+    on an edge by its own scanline rule). A centre on an edge two stands
+    share goes to the first of them in the order given, and a sliver
+    of overlap no deeper than a declared tolerance is resolved the same way.
+    A pixel whose centre lies in no stand is in no stand. Stands that overlap
+    more deeply are an error, not resolved: on overlapping stands a pixel's
+    stand is not defined.
   - **Which pixels are used.** Those with a stand and a height (finite, and
     `valid` where a mask is given). Both sums are over exactly these pixels,
     so the mean in SS_total is the mean of the pixels with a stand. Xiong
@@ -51,12 +55,14 @@ compared on R2 alone. Nothing here knows about any site and nothing is tuned.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
 import numpy.typing as npt
+import shapely
 
 from fmu.evaluation._common import IntArray
 from fmu.evaluation.segmentation_accuracy import _as_polygons
@@ -96,43 +102,80 @@ def stand_raster(
     stands: Sequence[Any],
     transform: Transform6,
     shape: tuple[int, int],
+    *,
+    sliver_tolerance: float = 0.0,
 ) -> IntArray:
     """The stand map on a raster's grid: `labels[row, col]` is the position in
-    `stands` of the stand whose polygon holds the pixel's centre, or -1.
+    `stands` of the stand that holds the pixel's centre, or -1.
 
     `stands` are shapely polygons or multipolygons in the raster's projected
     coordinate system (one per stand; an empty geometry covers nothing).
     `transform` is the raster's affine transform (see `Transform6`); `shape`
-    is `(rows, cols)`. Two stands holding the same pixel centre raise
-    `ValueError`, with the number of such pixels: a pixel's stand is then not
-    defined, and no rule is picked here to define it.
-    """
-    import rasterio.features
-    from affine import Affine
-    from rasterio.enums import MergeAlg
+    is `(rows, cols)`.
 
+    A stand holds a centre that lies in its polygon or on its boundary (a hole
+    is outside the stand, its edge on the stand's boundary). The centre is
+    DEEP in the stand when it lies strictly inside it and more than
+    `sliver_tolerance` (map units, default 0) from its boundary (outside a
+    buffer of the boundary with 16 segments per quarter circle). Then:
+
+      - a centre deep in one stand is in that stand;
+      - a centre held by stands but deep in none (on a shared edge, or in a
+        sliver of overlap no deeper than the tolerance) is in the FIRST of
+        them in the order of `stands`: the tie rule;
+      - a centre deep in two or more stands is a real overlap, and raises
+        `ValueError` with the number of such pixels: a pixel's stand is then
+        not defined, and no rule is picked here to define it.
+
+    The tolerance must be declared before the map is scored, never tuned on a
+    result; 0 accepts only exact shared edges.
+    """
     polys, positions = _as_polygons(stands, "stands")
     rows, cols = int(shape[0]), int(shape[1])
     if rows <= 0 or cols <= 0:
         raise ValueError(f"shape must be two positive integers, got {shape}")
-    aff = Affine(*(float(v) for v in transform))
+    tol = float(sliver_tolerance)
+    if not (math.isfinite(tol) and tol >= 0):
+        raise ValueError(f"sliver_tolerance must be a finite distance >= 0, got {sliver_tolerance!r}")
+    a, b, c, d, e, f = (float(v) for v in transform)
+    det = a * e - b * d
+    if not (math.isfinite(det) and det != 0):
+        raise ValueError(f"transform {transform} is not invertible")
     labels = np.full((rows, cols), -1, dtype=np.int64)
-    if polys.size == 0:
-        return labels
-    count = rasterio.features.rasterize(
-        ((g, 1) for g in polys), out_shape=(rows, cols), transform=aff, fill=0,
-        all_touched=False, merge_alg=MergeAlg.add, dtype="int32",
-    )
-    if (count > 1).any():
+    n_deep = np.zeros((rows, cols), dtype=np.int64)       # stands each centre is deep in
+    deep_in = np.full((rows, cols), -1, dtype=np.int64)   # the stand it is deep in, where it is one
+    for g, p in zip(polys, positions, strict=True):
+        # the window of pixels whose centres can lie within `tol` of the stand, one pixel wider all round
+        x0, y0, x1, y1 = (float(v) for v in shapely.bounds(g))
+        corners = [(x0 - tol, y0 - tol), (x0 - tol, y1 + tol), (x1 + tol, y0 - tol), (x1 + tol, y1 + tol)]
+        cs = [(e * (x - c) - b * (y - f)) / det for x, y in corners]
+        rs = [(-d * (x - c) + a * (y - f)) / det for x, y in corners]
+        c_lo, c_hi = max(math.floor(min(cs)) - 1, 0), min(math.ceil(max(cs)) + 1, cols)
+        r_lo, r_hi = max(math.floor(min(rs)) - 1, 0), min(math.ceil(max(rs)) + 1, rows)
+        if c_lo >= c_hi or r_lo >= r_hi:
+            continue
+        cc, rr = np.meshgrid(np.arange(c_lo, c_hi) + 0.5, np.arange(r_lo, r_hi) + 0.5)
+        x, y = a * cc + b * rr + c, d * cc + e * rr + f
+        shapely.prepare(g)
+        held = shapely.intersects_xy(g, x, y)
+        deep = shapely.contains_xy(g, x, y)
+        if tol > 0:
+            near = shapely.buffer(shapely.boundary(g), tol, quad_segs=16)
+            shapely.prepare(near)
+            deep &= ~shapely.intersects_xy(near, x, y)
+        win = (slice(r_lo, r_hi), slice(c_lo, c_hi))
+        lab_w, n_w, in_w = labels[win], n_deep[win], deep_in[win]
+        lab_w[held & (lab_w < 0)] = p                     # the first stand that holds it
+        n_w += deep
+        in_w[deep] = p
+    overlap = n_deep > 1
+    if overlap.any():
         raise ValueError(
-            f"{int((count > 1).sum())} pixel centre(s) lie in more than one stand; "
-            "a pixel's stand is not defined on overlapping stands"
+            f"{int(overlap.sum())} pixel centre(s) lie inside more than one stand, deeper than "
+            f"sliver_tolerance={tol:g} in each; a pixel's stand is not defined on overlapping stands"
         )
-    burnt = rasterio.features.rasterize(
-        ((g, int(p)) for g, p in zip(polys, positions, strict=True)),
-        out_shape=(rows, cols), transform=aff, fill=-1, all_touched=False, dtype="int64",
-    )
-    labels[:] = burnt
+    one = n_deep == 1
+    labels[one] = deep_in[one]
     return labels
 
 

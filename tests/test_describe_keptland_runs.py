@@ -41,3 +41,16 @@ def test_the_numbers_of_a_run():
     assert got["excess_over_max_area_each_ha_in_merge_diagnostics"] == [0.5]
     assert (got["stands_left_out_of_fit"], got["area_ha_left_out_of_fit"]) == (2, 1.1)
     assert got["kept_land_ha"] == 25.0 and got["kept_land_ha_without_superpixel"] == 0.0
+
+
+def test_the_documented_command_describes_every_run_and_no_other_record(capsys):
+    """Review C42: `python scripts/describe_keptland_runs.py`, with no run named, stopped on
+    sanjay_van_alphaearth_keptland_stand_means_run.json, the run record of a script
+    (scripts/alphaearth_stand_means.py), which has no export manifest beside it."""
+    mod = _load()
+    assert mod.main([]) == 0
+    printed = [line for line in capsys.readouterr().out.splitlines() if not line.startswith(" ")]
+    runs = sorted(p.name.removesuffix("_manifest_export.json")
+                  for p in mod.RUNS_DIR.glob("*_manifest_export.json"))
+    assert printed == runs and len(runs) == 10
+    assert "sanjay_van_alphaearth_keptland_stand_means" not in printed

@@ -9,6 +9,14 @@ the folder, keeps the **newest** copy of each `<config>_stands_<layer>.geojson`
 (normalizing away the `(n)` suffixes), and downloads it under the clean name
 `report.py` expects. SHP/DBF and older duplicates are ignored.
 
+It stops (non-zero exit) rather than guess (B28, round 13):
+  - if several Drive folders carry the name (Drive lists them in no set order);
+  - if a downloaded layer's polygon count is not the `n_features` the config's
+    run manifest records for it (the newest copy on Drive can be an older run's).
+    The manifest is the newest `<runs-root>/<config>_2*/manifest.json` whose export
+    stage recorded the layer; a config with no such run is not fetched either.
+    A layer that fails the check is not saved under the clean name.
+
 Auth uses Application Default Credentials with a Drive read scope — no OAuth
 client / client_secret.json needed. Grant the scope once (you likely already
 have gcloud from the GCS/Tessera steps):
@@ -22,11 +30,13 @@ Usage:
     python scripts/fetch_drive_vectors.py
     python scripts/fetch_drive_vectors.py --configs sanjay_van_baseline sanjay_van_alphaearth
     python scripts/fetch_drive_vectors.py --folder fmu_exports --dest fmu_exports_clean
+    python scripts/fetch_drive_vectors.py --runs-root outputs/runs
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import re
 from pathlib import Path
 
@@ -93,20 +103,32 @@ def _drive_service():
 
 
 def _find_folder_id(service, name: str) -> str:
-    resp = (
-        service.files()
-        .list(
-            q=f"mimeType='{_FOLDER_MIME}' and name='{name}' and trashed=false",
-            fields="files(id,name)",
-            pageSize=20,
+    folders: list[dict] = []
+    token = None
+    while True:  # every page: a second folder of the name can sit on any of them
+        resp = (
+            service.files()
+            .list(
+                q=f"mimeType='{_FOLDER_MIME}' and name='{name}' and trashed=false",
+                fields="nextPageToken, files(id,name)",
+                pageSize=20,
+                pageToken=token,
+            )
+            .execute()
         )
-        .execute()
-    )
-    folders = resp.get("files", [])
+        folders.extend(resp.get("files", []))
+        token = resp.get("nextPageToken")
+        if not token:
+            break
     if not folders:
         raise SystemExit(f"No Drive folder named {name!r} found for this account.")
     if len(folders) > 1:
-        print(f"  note: {len(folders)} folders named {name!r}; using the first.")
+        # Drive lists them in no set order, so "the first" could be either.
+        raise SystemExit(
+            f"{len(folders)} Drive folders named {name!r} (ids "
+            f"{', '.join(f['id'] for f in folders)}). Rename or remove all but one, "
+            "or give --folder a name only one of them has."
+        )
     return folders[0]["id"]
 
 
@@ -129,6 +151,32 @@ def _list_folder_files(service, folder_id: str) -> list[dict]:
         if not token:
             break
     return files
+
+
+def run_n_features(runs_root: Path, config: str, layer: str) -> tuple[int, Path]:
+    """The polygon count the config's run recorded for a layer, and the manifest it is from.
+
+    The newest run folder `<runs_root>/<config>_2*/` (as report.py picks them) whose
+    manifest.json has an export stage that recorded `stands_<layer>`. Stops if none has.
+    """
+    for path in sorted(runs_root.glob(f"{config}_2*/manifest.json"), reverse=True):
+        stages = json.loads(path.read_text()).get("stages", [])
+        export = next((st for st in stages if st.get("name") == "export"), None)
+        if export is None:
+            continue
+        layers = export.get("metadata", {}).get("manifest", {}).get("vector_layers", {})
+        if f"stands_{layer}" in layers:
+            return int(layers[f"stands_{layer}"]["n_features"]), path
+    raise SystemExit(
+        f"No run manifest under {runs_root}/{config}_2*/ records stands_{layer}, so the "
+        "file on Drive cannot be checked against its run. Give --runs-root, or leave the "
+        "config out with --configs."
+    )
+
+
+def count_polygons(path: Path) -> int:
+    """The number of features in a GeoJSON FeatureCollection."""
+    return len(json.loads(path.read_text())["features"])
 
 
 def _download(service, file_id: str, dest: Path) -> None:
@@ -154,6 +202,9 @@ def main() -> None:
                     help="only fetch these config names (default: all found)")
     ap.add_argument("--layers", nargs="+", default=["merged", "dissolved", "snic"],
                     help="which vector layers to fetch (default: merged dissolved snic)")
+    ap.add_argument("--runs-root", type=Path, default=Path("outputs/runs"),
+                    help="the run folders whose manifests each layer is checked against "
+                    "(default outputs/runs)")
     args = ap.parse_args()
 
     service = _drive_service()
@@ -173,9 +224,22 @@ def main() -> None:
     args.dest.mkdir(parents=True, exist_ok=True)
     print(f"Downloading {len(targets)} file(s) -> {args.dest}/")
     for clean_name, f in sorted(targets.items()):
+        config, layer = clean_name.removesuffix(".geojson").rsplit("_stands_", 1)
+        expected, manifest = run_n_features(args.runs_root, config, layer)
         dest = args.dest / clean_name
-        _download(service, f["id"], dest)
-        print(f"  {clean_name}  (Drive name: {f['name']}, modified {f.get('modifiedTime', '?')})")
+        part = dest.with_name(dest.name + ".part")
+        _download(service, f["id"], part)
+        got = count_polygons(part)
+        if got != expected:
+            part.unlink()
+            raise SystemExit(
+                f"{f['name']} on Drive (modified {f.get('modifiedTime', '?')}) has {got} polygons, "
+                f"but its run manifest {manifest} records n_features {expected}: it is not that "
+                f"run's layer. Nothing was saved as {dest}."
+            )
+        part.replace(dest)
+        print(f"  {clean_name}  (Drive name: {f['name']}, modified {f.get('modifiedTime', '?')}, "
+              f"{got} polygons as in {manifest})")
 
     print("Done. Now build the report, e.g.:")
     print("  python scripts/report.py --multi --reference sanjay_van_baseline "

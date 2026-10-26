@@ -187,6 +187,18 @@ def asset_exists(path: str) -> bool:
     (most reliable across GEE client versions); falls back to string-
     matching the EE error message for older versions where the wrapped
     cause is unreachable.
+
+    What it does with earthengine-api 1.7.35, the version every manifest
+    records (review C41; this docstring corrected in round 13): `ee.data`
+    raises its EEException inside `except HttpError` without `from`, so
+    `__cause__` is None (the HttpError is on `__context__`) and the status
+    branch below never runs. Every answer comes from the message: an error
+    whose text contains "not found", "does not exist" or "404" returns False,
+    among them a 403 that says "does not exist or doesn't allow this
+    operation" and a 500 whose request id holds "404"; any other error, a
+    plain 403 "Permission denied" or a 401 for example, is raised. A wrong
+    False leads to a recompute whose export then fails, or to the pass
+    runner's exit 3; it cannot make a stale asset be read.
     """
     try:
         ee.data.getAsset(path)
@@ -195,7 +207,8 @@ def asset_exists(path: str) -> bool:
         # Prefer the underlying HttpError status when available; GEE's
         # Python client wraps googleapiclient HttpError into EEException,
         # and the cause's response status is more reliable than message
-        # text.
+        # text. With earthengine-api 1.7.35 __cause__ is None, so this branch
+        # is not reached (review C41; see the docstring).
         cause = getattr(e, "__cause__", None)
         if cause is not None:
             status = getattr(getattr(cause, "resp", None), "status", None)
@@ -420,8 +433,11 @@ STEP_SETTINGS: dict[str, tuple[str, ...]] = {
     "features_optical": ("features_optical",),
     "features_radar": ("features_radar",),
     "features_structure": ("datasets.canopy_height", "features_structure"),
+    # The water settings: features_static builds its own water input since round 13
+    # (review A1), with masking's definition, and reads no masking output.
     "features_static": (
-        "dates.climate", "datasets.dem", "datasets.climate", "features_static",
+        "dates.climate", "datasets.dem", "datasets.climate", "datasets.water",
+        "masking.jrc_water_occurrence_threshold", "features_static",
     ),
     "features_embedding": ("dates.phenology", "datasets.embedding", "features_embedding"),
     "segmentation": (
@@ -431,9 +447,12 @@ STEP_SETTINGS: dict[str, tuple[str, ...]] = {
         "merge", "segmentation.mask_before_snic", "segmentation.connectivity",
         "segmentation.drop_kept_patches_below_min_area",
     ),
-    # merge.max_area_ha, min_area_ha and pass2_soft_ceiling through
-    # Config.max_component_pixels(), which clustering reads with the merge on
-    # or off (with it on, the merge's own key covers them too).
+    # merge.max_area_ha, min_area_ha and pass2_soft_ceiling for
+    # Config.max_component_pixels(), which clustering read, with the merge on or
+    # off, until round 13 (review B14 took its reduceConnectedComponents call
+    # out). They stay listed: taking them out would change every config's
+    # clustering key, which tests/test_step_keys_of_record.py pins with the
+    # revisions emptied; with the merge on, the merge's own key covers them too.
     "clustering": (
         "clustering", "normalization", "merge.enabled", "merge.max_area_ha",
         "merge.min_area_ha", "merge.pass2_soft_ceiling",
@@ -444,6 +463,49 @@ STEP_SETTINGS: dict[str, tuple[str, ...]] = {
         "merge.max_area_ha", "merge.min_area_ha", "merge.pass2_soft_ceiling", "k_elbow",
     ),
 }
+
+# Settings added after round 9 to a block or field that STEP_SETTINGS lists, keyed
+# (block, field) -> default, where the block may be a sub-block ("dates.phenology").
+# The per-step layout's counterpart of `_OMITTED_AT_DEFAULT` (review B11): a step's
+# key hashes what STEP_SETTINGS lists for it as dumped, defaults included, so a
+# field added to one of those blocks would move the key of that step and of every
+# step downstream of it, in every config at once, and the assets they cached could
+# no longer be found by name. A field listed here is left out of the hash while it
+# holds its default, which must be the behaviour the saved assets were made with;
+# any other value is hashed. A field added to a block both layouts hash goes in
+# both tables. Empty: no field has been added since round 9, so no key moves;
+# tests/test_step_keys_of_record.py pins the keys the runs recorded.
+_STEP_OMITTED_AT_DEFAULT: dict[tuple[str, str], Any] = {}
+
+# A step's revision, raised when what the step computes changes for configs whose
+# settings do not (round 13): its key, and through `step_upstream` the key of every
+# step downstream of it, then moves, so that the assets cached before the change
+# are not read back. Review A4 notes that its fix would otherwise move no key. A
+# step not listed is at revision 0 and its payload carries none, so its key is the
+# one it had before round 13; STEP_KEY_VERSION, above, would move every key of every
+# step at once. Each raise has a register entry (docs/decisions.yaml).
+STEP_REVISION: dict[str, int] = {
+    "data_load": 1,  # A4, round 13: the date windows' end is inclusive
+    # A1, round 13: water seen past the ROI, out to the transform's reach (1);
+    # A5, round 13: slope and aspect in fractional degrees, on the DEM as float (2);
+    # A1 again, round 13: the buffer 1% past the reach, as buffer() measures on a sphere (3)
+    "features_static": 3,
+    # Round 13. 1, A5: a flat cell's aspect sin and cos are both 0. 2, B13: a harmonic
+    # phase's sin and cos are kept out of the skew test and the log. 3, B14: one mean
+    # per unit label, not per connected piece. 4, B16: the robust scaling's median and
+    # IQR are exact quartiles, for the constant-band test as for the scaling.
+    "clustering": 4,
+    # Round 13: 1, B17, the superpixel pixel counts on one inclusion rule;
+    # 2, B18, the area bounds compared in whole pixels.
+    "merge": 2,
+}
+
+# Steps that read another step's output without having it upstream, and so take
+# that step's revision with their own: k_elbow reads clustering's cached scaled
+# feature stack (fmu.stages.k_elbow.training_rows), but its key leaves k out, so
+# clustering's key cannot be one of its inputs.
+_REVISION_ALSO_FROM: dict[str, tuple[str, ...]] = {"k_elbow": ("clustering",)}
+
 
 # Which step produces each context key that a SNIC input band or a merge
 # criterion can name (SnicInputBand.source, MergeCriterion.source).
@@ -473,12 +535,15 @@ def step_upstream(config: Any, step: str) -> tuple[str, ...]:
     it. The k_elbow step reads what clustering reads (it re-samples clustering's
     scaled feature image, which does not depend on k).
     """
-    if step in ("masking", "data_load", "features_structure", "features_embedding"):
+    # features_static read masking's water_mask until round 13; it now builds its
+    # own water input (review A1), so a masking setting it does not read (the
+    # habitat classes, say) no longer moves its key.
+    if step in (
+        "masking", "data_load", "features_structure", "features_static", "features_embedding",
+    ):
         return ()
     if step in ("features_optical", "features_radar"):
         return ("data_load",)
-    if step == "features_static":
-        return ("masking",)
     ups: set[str]
     if step == "segmentation":
         ups = {SOURCE_STEP[s] for s in config.segmentation.input_sources()}
@@ -514,6 +579,14 @@ def _roi_file_sha256(config: Any) -> str | None:
     The legacy fingerprint hashes the ROI file's path only. None when the file
     cannot be read (an ROI given as an asset, or a test config whose file does
     not exist).
+
+    The path is read as the config gives it, relative to the working directory,
+    and any error reading it gives None, with no warning (review C40; this
+    docstring corrected in round 13). So from a directory where a config's
+    relative path does not resolve, every per-step key changes while the legacy
+    fingerprint does not. Every entry point then fails safe, with a misleading
+    reason: the ROI loader raises, or the pass runner reports every upstream
+    asset as missing (exit 3). Run from the repo root or the run tree's root.
     """
     roi_file = getattr(config.roi, "roi_file", None)
     if roi_file is None:
@@ -528,8 +601,9 @@ def step_key(config: Any, step: str) -> str:
     """The per-step cache key of `step` for `config`: "s" and ten hex digits.
 
     A hash of the settings `STEP_SETTINGS` lists for the step, the ones every
-    step depends on (the ROI and the analysis scale), the ROI file's content, and
-    the keys of the steps upstream of it. The config's name, description, export
+    step depends on (the ROI and the analysis scale), the ROI file's content (read
+    from the working directory, see `_roi_file_sha256`), and the keys of the steps
+    upstream of it. The config's name, description, export
     plumbing and metrics are in none of them, so two configs that differ only in
     name have the same keys.
 
@@ -541,16 +615,35 @@ def step_key(config: Any, step: str) -> str:
     return _step_key(config, dumped, step, {})
 
 
+def _omit_step_defaults(settings: dict[str, Any]) -> dict[str, Any]:
+    """`settings` without the fields `_STEP_OMITTED_AT_DEFAULT` lists, while each holds its default.
+
+    A field is found inside its block, where a step's settings list the whole
+    block ("masking"), or as a setting of its own ("masking.new_field").
+    """
+    out = dict(settings)
+    for (block, field), default in _STEP_OMITTED_AT_DEFAULT.items():
+        values = out.get(block)
+        if isinstance(values, dict) and field in values and values[field] == default:
+            out[block] = {k: v for k, v in values.items() if k != field}
+        path = f"{block}.{field}"
+        if path in out and out[path] == default:
+            del out[path]
+    return out
+
+
 def _step_key(config: Any, dumped: dict[str, Any], step: str, memo: dict[str, str]) -> str:
     if step in memo:
         return memo[step]
     if step in STEP_SETTINGS:
-        settings = {p: _setting(dumped, p) for p in (*_EVERY_STEP, *STEP_SETTINGS[step])}
+        settings = _omit_step_defaults(
+            {p: _setting(dumped, p) for p in (*_EVERY_STEP, *STEP_SETTINGS[step])}
+        )
         upstream = {u: _step_key(config, dumped, u, memo) for u in step_upstream(config, step)}
     else:
         settings = {"legacy_fingerprint_payload": _legacy_payload(config)}
         upstream = {}
-    payload = {
+    payload: dict[str, Any] = {
         "layout": PER_STEP_LAYOUT,
         "version": STEP_KEY_VERSION,
         "step": step,
@@ -558,6 +651,12 @@ def _step_key(config: Any, dumped: dict[str, Any], step: str, memo: dict[str, st
         "roi_file_sha256": _roi_file_sha256(config),
         "upstream": upstream,
     }
+    also = _REVISION_ALSO_FROM.get(step, ())
+    if not also:
+        if STEP_REVISION.get(step, 0):
+            payload["revision"] = STEP_REVISION[step]
+    elif any(STEP_REVISION.get(s, 0) for s in (step, *also)):
+        payload["revision"] = {s: STEP_REVISION.get(s, 0) for s in (step, *also)}
     encoded = json.dumps(payload, sort_keys=True, default=str).encode()
     memo[step] = STEP_KEY_PREFIX + hashlib.sha256(encoded).hexdigest()[:10]
     return memo[step]

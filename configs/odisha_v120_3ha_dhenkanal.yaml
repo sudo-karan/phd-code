@@ -30,6 +30,10 @@
 # pooled (odisha_phase3_2_stand_k_elbow.py --arm odisha_v120_3ha), so 6 was the wrong
 # number for this arm. Only the labelling depends on k; stand boundaries do not.
 # Changed 2026-10-07; the k = 6 results are kept in PHASE3_STATUS.md for comparison.
+# Note added 20 Oct 2026 (round 13, review A7): that elbow is in the elbow script's own
+# space. In the clustering stage's space the 3 ha elbows are 6, 6, 6 and 5 (5 pooled) with
+# (x - median)/IQR and 5, 6, 6 and 6 (5 pooled) min-max; k stays 5 as declared. See
+# odisha_script/odisha_phase3_2_k_elbow_comparison.md.
 #
 # merge is part of the cache fingerprint, so this name gets its own asset namespace and
 # recomputes features, segmentation and clustering rather than reusing the 10 ha assets.

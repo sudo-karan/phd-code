@@ -95,7 +95,7 @@ result.
 | configs | three method versions written as configs, not as reverts. `odisha_v120_handcrafted`: the pre-Odisha method (six-band SNIC, three-criterion merge). `odisha_current_handcrafted`: the same with `canopy_height_std` removed. `odisha_alphaearth`: embedding delineation with the same merge rule as v120 | — | commit `aa4d647` |
 | AOIs | **pilot:** six Dhenkanal site polygons, +200 m, 6 parts, 912.0 ha, **60 plots**. **Full:** 21 habitations with ≥ 5 plots, hull +300 m, 4298.7 ha, **267 plots** (261 intended plus 6 from smaller habitations inside the hulls; included by decision) | exit conditions PASS | `odisha_phase2_0_results.txt` |
 | habitat mask | MaskingStage run over discs around every plot | **257 of 274 plots kept = 93.8%** (floor 80%). Pilot 60 of 60. KENDUJHAR lowest at 8 of 12 (66.7%). `meta_chm == 0` plots 106 of 122. 15 of the 17 dropped plots are IndiaSAT cropland, 2 are built-up | `odisha_phase2_1_results.txt` |
-| pipeline passes | three cache passes per config (segmentation → clustering → export), so each cached asset is computed from the asset upstream of it. The full set runs **per district** — twelve configs, four district AOIs × three arms — because one combined AOI's bounding box exceeds the 1 bn-pixel export cap (decision of 2026-09-14) | **Pilot:** v120 933 superpixels → **197 merged stands**; current 932 → 188; AlphaEarth 929 → 184. **Full set**, four districts combined: v120 3596 → **1039**; current 3604 → 975; AlphaEarth 3589 → 1061 | `odisha_phase2_2_run_pipeline.py`, `odisha_phase2_3_results.txt` |
+| pipeline passes | three cache passes per config (segmentation → clustering → export), so each cached asset is computed from the asset upstream of it. The full set runs **per district** — twelve configs, four district AOIs × three arms — because one combined AOI's bounding box exceeds the 1 bn-pixel export cap (decision of 2026-09-14) | **Pilot:** v120 933 superpixels → **197 merged stands**; current 932 → 188; AlphaEarth 929 → 184. **Full set**, four districts combined: v120 4384 → **1039**; current 4385 → 975; AlphaEarth 4374 → 1061 (superpixels into the merge, summed over the four districts' `merge:` lines of `odisha_phase2_3_results_districts.txt`, as for the pilot; corrected 20 Oct 2026, round 13, review C23: this cell first gave the `stands_snic` polygon counts 3596, 3604 and 3589, which are in the table below) | `odisha_phase2_2_run_pipeline.py`, `odisha_phase2_3_results.txt` |
 | field table and join | plots joined to stand polygons by geometry, never by name. Field table reproduces Phase 1 Lorey's height, top-5 height and crown cover exactly (max \|Δ\| = 0) | **Pilot:** vector stand id equals the raster at the plot pixel for **60 of 60** plots in every merged and SNIC layer; 0 boundary-ambiguous plots. **Full set:** 267 plots over 20 AOI parts, all assigned on every merged layer (per-layer counts in the table below) | `odisha_phase2_3_results.txt`, join commit `2cd076e` |
 | null | **rotation null, 1999 realisations**, offline: rigid rotation plus translation of the stand map within each AOI part. Plots and their field values stay in place; draws that leave a plot off every polygon are redrawn. **Size-matched by construction** (the same stand polygons, moved), but **not matched on how often plots share a stand**: pilot 46 same-stand pairs observed vs null median 25; full set **247 vs 201** (primary arm, both). On the full set it **cannot be built at all** for the dissolved layer, in the same two AOI parts in every arm. The noise-SNIC null **failed its size check** before any statistic existed and is excluded by recorded decision | — | `PHASE2_PREDICTIONS.md` (Null models), `odisha_phase2_4_results.txt`, `odisha_phase2_5_results.txt`, `odisha_phase2_5_results_districts.txt` |
 
@@ -139,7 +139,7 @@ adequately powered where the pilot's 13 stands holding 35 plots were not.
 
 Primary partition: `stands_merged` from `odisha_v120_handcrafted`. **1039 stands**, area p10 1.22 /
 median 3.09 / p90 9.18 ha, all 267 plots assigned, **61 multi-plot stands holding 184 of the 267
-plots** (the pilot had 13 holding 35). 187 of 1068 polygons (486.81 of 4313.70 ha) carry no
+plots** (the pilot had 13 holding 35). 187 of 1068 polygons (486.81 of 4313.70 ha; see the note of 20 Oct 2026 at the end) carry no
 `cluster_id`. Rotation null: 1999 realisations, seed `crc32('v120/stands_merged')`, 184 s, every
 AOI part placed. Figures: `odisha_phase2_5_{primary_r2_null,arms_excess,pairwise_bands}_districts.png`.
 
@@ -431,7 +431,7 @@ stands hold 186 plots. 6.1 percentiles 60.4 / 61.9 / 21.7 / 84.3 / 54.8 / 53.2 /
   condition fails from the other side.
 
 **`stands_snic`.** v120: 3596 stands, 265 of 267 plots assigned, 38 multi-plot superpixels holding
-93 plots. 6.1 percentiles 30.3 / 36.3 / 20.6 / 69.2 / **2.8** / 23.6 / 14.6. **6.2 Bray–Curtis
+93 plots. 6.1 percentiles 30.3 / 36.3 / 20.6 / 69.2 / **2.8** / 23.6 / 14.6 (before the A8 fix; see the note of 20 Oct 2026 at the end). **6.2 Bray–Curtis
 `beta_same` +0.0304, percentile 38.7** on 76 same-stand pairs — **the ~1 ha layer, which is far too
 small to express a village, shows nothing in the primary arm.** That is the cleanest corroboration
 that the merged layer's composition exceedance is a village-scale contrast. current gives 97.5 and
@@ -1361,6 +1361,9 @@ python odisha_script/odisha_phase2_5_stats.py --set districts --jobs 4
 Steps 0, 1, 3, 5 and 6, and step 4 with `--size-check`, write `odisha_phase2_<n>_results.txt`
 beside themselves. Step 2 writes `phase2_vectors/<config>_*`. Step 5 also writes
 `odisha_phase2_5_summary.csv` and the three figures. The first run used `--rotations 999`.
+Since round 13, step 5 ends every name it writes with `_r13` (`odisha_phase2_5_results_r13.txt`,
+`odisha_phase2_5_summary_districts_r13.csv` and so on): the review's finding A8 changed what its
+rotation null is scored on, and the files without `_r13` are kept as written before that fix.
 
 `--set districts` writes the same outputs with a `_districts` suffix and computes the nine
 arm × layer partitions in parallel, checkpointing each to `phase2_5_checkpoints/districts/` as it
@@ -1373,3 +1376,57 @@ The first run's output can be compared with the corrected one without re-running
 ```bash
 git show 8d4c2ed:odisha_script/odisha_phase2_5_results.txt
 ```
+
+---
+
+## Note of 20 Oct 2026 (round 13, review A6): stand areas
+
+The areas quoted in this file come from `area_ha` in the stand layers of `phase2_vectors/`, which
+Earth Engine's `area()` gave; for a polygon whose hole touches its outer ring at a vertex, `area()`
+added the hole instead of subtracting it. With the holes subtracted (recomputed offline from those
+layers), the full set's primary partition has a p90 of 9.16 ha, not 9.18, and its 187 polygons
+with no `cluster_id` hold 486.63 of 4,311.31 ha, not 486.81 of 4,313.70 (under "PRIMARY RESULT —
+the full set"); in the pilot the polygons with no `cluster_id` hold 22.40 of 914.72 ha (v120),
+18.43 of 914.72 ha (current) and 16.18 of 914.72 ha (AlphaEarth), not of 915.02, 915.38 and
+914.76 ha. No other area quoted here changes (the notes at the end of
+`odisha_phase2_5_results_districts.txt` and `odisha_phase2_5_results.txt` give every line that
+changes there), and no statistic reads `area_ha`. The plot tables
+`phase2_plots_joined_districts.csv` and `phase2_plots_joined.csv` hold 23 and 10 area cells that
+the holes change. Since round 13 the export gives a polygon's area as its pixel count on the
+analysis grid times 0.01 ha, which for these layers is also 0.2% to 0.3% below `area()` for every
+polygon, so on that measure every area here moves by about that much (the full set's primary
+partition: p10 1.22 / median 3.08 / p90 9.13 ha, and 485.22 of 4,299.05 ha). The numbers above
+are as first written.
+
+## Note of 20 Oct 2026 (round 13): the 6.1 null scored on the observed-assigned plots (review A8)
+
+The review of 19 Oct 2026 (`docs/reviews/2026-10-19-review.md`, A8) found that the statistics
+script scored the 6.1 rotation null, and its null structure, on every plot a realisation put on a
+stand, while the observed value leaves out a plot the observed map leaves unassigned. The null
+forces only the observed-assigned plots onto a stand, so the other plots could enter the null but
+never the observed value. Since commit `57235ca` the script scores the null on the
+observed-assigned plots only, as Phase 3 does, and ends every name it writes with `_r13`. The files
+without `_r13` are kept as written before the fix.
+
+- **What moves: one secondary layer.** On the full set, v120 `stands_snic` (265 of 267 plots
+  assigned). Its 6.1 percentiles, given above in "SECONDARY arms and layers, full set" as
+  30.3 / 36.3 / 20.6 / 69.2 / **2.8** / 23.6 / 14.6, are 30.4 / 36.6 / 20.6 / 69.2 / **2.9** /
+  23.6 / 14.7 with the fix. `loreys_h_tree_m`'s excess is −0.026 (it was −0.027); the other
+  excesses print as before. The null structure's percentiles are k 78.6 (was 77.7), n 91.8
+  (91.2), largest multi-plot group 25.1 (24.9) and same-stand pairs 90.2 (89.6). No observed value
+  changes. `odisha_phase2_5_summary_districts.csv` and `odisha_phase2_5_summary_districts_r13.csv`
+  differ in 26 cells, all in the seven 6.1 rows of this layer (null median, p5, p95, excess and
+  percentile).
+- **What does not move.** AlphaEarth `stands_snic` also leaves a plot unassigned (266 of 267), but
+  none of its numbers changes. The three `stands_dissolved` layers leave 14 or 15 plots unassigned
+  and have no null (NOT BUILT). The merged layers assign every plot, so the primary result, the
+  arms comparison and the three figures are as before, and so is every 6.2 and 6.3 value. The
+  pilot assigns all 60 plots on every layer: its five `_r13` files are the same bytes as the files
+  without `_r13` as committed at `c368eb7` (the pilot's results text has since gained A6's dated
+  note at its end).
+- **No conclusion moves.** `n_species` stays in the low tail (2.9: below 5, above 2.5), no other
+  percentile moves by more than 0.9, and the reading of this layer above rests on 6.2, which is
+  unchanged.
+
+Every changed line and cell, before and after: `odisha_phase2_5_r13_vs_before.md`. The results file
+from before the fix, `odisha_phase2_5_results_districts.txt`, carries a dated note at its end.

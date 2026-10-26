@@ -95,7 +95,10 @@ log = get_logger(__name__)
 # pixelLonLat()'s band names. Carried through the attribute reduction so stand
 # centroids come free, and used as the merge's deterministic tie-break: the two
 # arms' tessellations diverge run to run, so SNIC label order is not a stable
-# thing to sort by, but a centroid is.
+# thing to sort by, but a centroid is. One tie does not use them (review C12,
+# 20 Oct 2026): two neighbours sharing equally long boundaries in the pass-2
+# shared-edge fallback go to the lower root index, which is SNIC label order
+# (`order_key` in fmu.utils.region_merge).
 _LON_BAND = "longitude"
 _LAT_BAND = "latitude"
 
@@ -217,8 +220,9 @@ class MergeStage(Stage):
         ),
         SummaryNumber(
             "stands_below_min_area_by_cause",
-            "Why those stands stayed small. isolated: it touches no other "
-            "stand. area_blocked: every neighbour is already too big to take it "
+            "Why those stands stayed small. isolated: it shares no edge with "
+            "another stand (no 4-connected neighbour; it may meet one at a "
+            "corner). area_blocked: every neighbour is already too big to take it "
             "under the ceiling that applies to it: the maximum size, or the "
             "maximum plus the minimum with merge.pass2_soft_ceiling on. "
             "iteration_cap: it still had a neighbour it "
@@ -255,8 +259,9 @@ class MergeStage(Stage):
         # The cap is derived from merge.max_area_ha (plus merge.min_area_ha with
         # merge.pass2_soft_ceiling on), so checking it against the *input*
         # superpixels is the weaker half; the output stands are checked where
-        # they are reduced over, by clustering and metrics, which is where a
-        # violation would actually bite.
+        # they are reduced over with the cap, by metrics, which is where a
+        # violation would actually bite. (clustering did too until round 13,
+        # when its unit means stopped calling reduceConnectedComponents.)
         max_component_px = config.max_component_pixels()
         assert_components_fit(
             snic_clusters, roi, scale, max_component_px, context="merge input"
@@ -322,7 +327,9 @@ class MergeStage(Stage):
         }
 
         tolerances = params.tolerances()
-        calibration = calibrate_thresholds(graph, means, tolerances)
+        calibration = calibrate_thresholds(
+            graph, means, tolerances, min_defined_criteria=params.min_defined_criteria
+        )
         _log_calibration(calibration)
 
         result = merge_superpixels(

@@ -53,6 +53,13 @@ Sources and what they support (CLAUDE.md, "Sources"):
   or reflections, and from the fgeo.analyze reference page for tt_test (read
   17 Oct 2026).
 
+Checked again on 20 Oct 2026 (review C5): Crossref gives the title above,
+first author Kyle E. Harms, Journal of Ecology 89(6) 947-959, issued December
+2001. docs/evaluation_metrics.md (13 Oct 2026) says the full text was read
+there and named the rotations and mirror images as the paper's; that is not
+settled, and the full text could not be read on 20 Oct 2026 either (the
+publisher's page refused the request).
+
 UNVERIFIED, and a question for the evaluation stage (not a finding): whether
 the 2001 paper also used rotated and mirrored copies of the habitat map
 beside the translations (the 2011 script does not). `orientations` therefore
@@ -198,7 +205,8 @@ def torus_shift_test(
         n_gt = n_lt = n_eq = 0
     else:
         # ties within the tolerance permutation_p_value uses, so the counts and p agree on what a tie is
-        tol = P_VALUE_ATOL + P_VALUE_RTOL * abs(observed)
+        # (none for an infinite value: inf - inf is NaN, and every map would count as a tie)
+        tol = 0.0 if np.isinf(observed) else P_VALUE_ATOL + P_VALUE_RTOL * abs(observed)
         n_gt = int(np.count_nonzero(defined < observed - tol))
         n_lt = int(np.count_nonzero(defined > observed + tol))
         n_eq = int(defined.size) - n_gt - n_lt + 1
