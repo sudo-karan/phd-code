@@ -1046,7 +1046,9 @@ degrees, and a flat cell (slope 0) given the aspect pair (0, 0), no direction.
 A stand's direction is atan2(`<band>_sin`, `<band>_cos`), and the length of the
 pair says how far its pixels agree (1 when they all point one way; for aspect it
 is shortened by the share of flat cells too): the stand facing 350° and 10° has
-`aspect_cos` 0.98, north. The embedding arm has no angle band and no such
+`aspect_cos` 0.98, north. A stand whose cells are all flat has the aspect pair
+(0, 0) and no direction: atan2(0, 0) is 0, which would read as north, so read a
+direction only where the pair's length is above 0. The embedding arm has no angle band and no such
 column. GeoJSON only: the shapefile keeps its columns (`ndvi_phase_annual_sin`
 is longer than ten characters), and the layers exported before round 14 lack the
 new columns (register entry `spec-export-stand-means-of-angle-sin-and-cos`).

@@ -9024,12 +9024,17 @@ decisions:
     approx(...)"), and a stack with aspect and no slope "DID NOT RAISE ValueError". The clustering is not changed. A
     stand's direction
     is atan2 of its sine and cosine means, and the length of the mean vector says how far its cells agree (shortened by
-    its share of flat cells, for aspect); the site reading them is a later step (the brief's out of scope: the website
-    and ui_data/). Layers exported before round 14 lack the new columns. Scripts that read every column of a layer that
-    is not an id as a feature would read the new ones too if run on a new layer:
-    odisha_script/odisha_phase3_2_stand_k_elbow.py, whose stage space would take ndvi_phase_annual_sin and _cos for
-    angles (its is_cyclic matches "_phase_"), and scripts/build_ui_early_data.py, which would show them as features.
-    Neither is run on a new layer this round. No paper was searched for this decision.
+    its share of flat cells, for aspect); a stand whose cells are all flat has the aspect pair (0, 0) and no direction
+    (atan2(0, 0) is 0, which would read as north), so a direction is read only where the pair's length is above 0
+    (added 26 Oct 2026 after the gate's review, second part; docs/datasets.md, docs/outputs.md). The site reading them
+    is a later step (the brief's out of scope: the website and ui_data/). Layers exported before round 14 lack the new
+    columns. Scripts that read every column of a layer that is not an id as a feature would read the new ones too if
+    run on a new layer: odisha_script/odisha_phase3_2_stand_k_elbow.py, whose stage space would take
+    ndvi_phase_annual_sin and _cos for angles (its is_cyclic matches "_phase_", which adds four spurious columns) and
+    whose aspect pair, taken first from the mean aspect, would be written over without a word by the new aspect_sin and
+    aspect_cos (they are not "cyclic" there); and scripts/build_ui_early_data.py, which would show them as features.
+    Neither is run on a new layer this round (round 14's record, Questions, item 7). No paper was searched for this
+    decision.
   evidence:
   - path: src/fmu/stages/export.py
     what: _with_angle_sin_cos, and step 2 of _build_merged_feature_collection and _build_snic_feature_collection

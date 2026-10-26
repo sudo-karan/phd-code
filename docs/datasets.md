@@ -118,7 +118,10 @@ meters.
   (review C10; `docs/outputs.md`). Since round 14 the layers also give
   `aspect_sin` and `aspect_cos`, the stand's means of its cells' sine and
   cosine by the clustering stage's rule, a flat cell (0, 0); the stand faces
-  atan2(`aspect_sin`, `aspect_cos`).
+  atan2(`aspect_sin`, `aspect_cos`), where that pair is not (0, 0): a stand
+  whose cells are all flat has the pair (0, 0) and no direction (atan2(0, 0)
+  is 0, which would read as north), so read the direction only where the
+  pair's length, sqrt(`aspect_sin`² + `aspect_cos`²), is above 0.
 
 ## CoRE Stack LULC (IndiaSAT)
 
