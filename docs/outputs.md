@@ -1341,6 +1341,17 @@ stand layers it pulls down. Keys: `config`, `fingerprint`, `git`, `run_dir`,
 The run records committed so far were written before these two keys existed and
 have neither. A record written from the current code has both.
 
+`drive_exports` holds the Drive tasks the export stage submitted, not how they
+ended: nothing in a batch waits on them (review C39). Since round 14,
+`scripts/drive_export_states.py`, run after the batch, reads each task's state
+(read-only) and writes it beside the record (`docs/running.md`):
+`<config>_drive_exports.json`, results only (`what`, `config`; `files`, for each
+file of `drive_exports` under the same key its `filename`, `folder`, `task_id`,
+`description`, `state` and `error_message`; `states`, the count of each state;
+`all_completed`; and `files_with_no_task_id`), and
+`<config>_drive_exports_run.json` (`result_file`, `run_record`, `command_line`,
+`read_at` and `git`).
+
 ## Evaluation outputs (`scripts/run_evaluation.py`)
 
 Written to `--out-dir`. The script has not been run on any real site; see

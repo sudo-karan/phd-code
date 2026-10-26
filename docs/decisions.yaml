@@ -8605,3 +8605,81 @@ decisions:
   source: >-
     Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 37, Claude Code's recommendation (a), by the brief's rule
     'Every other question: your recommendation'
+- id: spec-drive-export-states-read-after-a-batch
+  title: >-
+    After a batch, a read-only script reads how each Drive export of a run ended and writes it beside the run record
+  decision: >-
+    scripts/drive_export_states.py (new; a script that reads a run, not a pipeline module) takes one or more run
+    records of export passes, <config>_run.json as odisha_script/odisha_phase2_2_run_pipeline.py writes them under
+    odisha_script/phase2_vectors/, and asks Earth Engine the state of every Drive task id in each record's
+    drive_exports (ee.data.getTaskStatus, after scripts/ee_read_only.forbid_writes(); read-only). Beside each record it
+    writes <config>_drive_exports.json, results only, with no times or dates: for each Drive file, under the record's
+    key, the file name, its Drive folder, the task id, the task's description, its state (COMPLETED, FAILED or
+    CANCELLED; READY, RUNNING or CANCEL_REQUESTED if it has not ended; UNKNOWN if Earth Engine has no task of that id)
+    and its error message, then the count of each state, whether every task completed and the files with no task id;
+    and <config>_drive_exports_run.json, with the command, when the states were read (UTC) and the git block of the
+    script's checkout (fmu.utils.provenance.git_state, without its root), read before anything is written. Every
+    record is read before any file is written. It exits 0 when every task completed; 1 when a task failed, was
+    cancelled or is unknown, or a file has no task id; 2 when none of those but a task has not ended (read again
+    later); 3 when a record cannot be read or placed (not JSON, no drive_exports, a name not ending in _run.json, a
+    config that is not the name's), before Earth Engine is set up; 4 when Earth Engine cannot be set up or read. With
+    3 or 4 nothing is written. It reads the older records keyed by file name (folder, task_id, kind) too. The batch is
+    unchanged: the export pass still does not wait on its Drive tasks, a config still counts as finished once they are
+    submitted, and no stage, runner, wrapper or record format changes. No step key moves.
+  alternatives_considered:
+  - >-
+    Make the export pass wait on its Drive task ids and record each task's end state in the run record (question 40
+    (a)): not chosen; the batch would hold until Drive finishes, and the runner and the hand-over of the ids from the
+    pipeline or the export stage (src/fmu/stages/export.py, a Locked module) would change
+  - >-
+    Leave it, documented (question 40 (c), the state after round 13): not chosen; how each Drive file ended would be
+    recorded nowhere but on the Earth Engine task list
+  - >-
+    Read the states with ee.data.listOperations, the call scripts/eecu_by_stage.py makes, and match the ids: not
+    chosen; it lists every task of the project, where ee.data.getTaskStatus asks for the record's ids only and answers
+    UNKNOWN for an id Earth Engine does not hold, as the pass runner's wait on its cache exports already does
+  rationale: >-
+    The round 14 brief (Jaskaran, 26 Oct 2026), Task 1: "Every other question: your recommendation." Round 13's
+    question 40 (docs/handoff/2026-10-20-round13.md, Questions for Jaskaran) recommends (b): "A read-only script, run
+    after a batch, that reads the end state of every Drive task id in each run record and writes it beside the record.
+    For: no change to the batch. Against: one more step to remember." The review (docs/reviews/2026-10-19-review.md,
+    C39) found that nothing waits on the export stage's Drive tasks, so a config is done, and the batch ALL CONFIGS
+    COMPLETE, with its Drive files only submitted (with a stand-in ee whose Drive tasks all fail, the wrapper recorded
+    the config done with nine tasks still PENDING); its fix: "either wait on drive_task_ids in the export pass, or
+    record their final states in a later check". Round 13 corrected the texts (docs/running.md, the
+    runner's docstring, the shell header, the wrapper's docstring). The 19 cases of tests/test_drive_export_states.py
+    fail on the code before with "FileNotFoundError: [Errno 2] No such file or directory" for
+    scripts/drive_export_states.py, and pass after. They run the script on copies of two committed records
+    (odisha_script/phase2_vectors/odisha_alphaearth_angul_run.json as the pass runner writes it, and
+    docs/reproducibility/r9_runs/sanjay_van_baseline_keptland_r9_run.json as scripts/copy_run_results.py copies it), on
+    the older form of record and on made-up ones, with a stand-in for ee.data.getTaskStatus (and with set-up or reads
+    that fail, which write nothing), and one runs the script's own Earth Engine reader against a stand-in ee module, to
+    check that writes are forbidden before the first read. The script has not been run on Earth Engine (no
+    Earth Engine call was made for it). No paper was searched for this decision.
+  evidence:
+  - path: scripts/drive_export_states.py
+    what: The script; its docstring gives what it writes and its exit codes
+  - path: tests/test_drive_export_states.py
+    what: >-
+      The states of two committed records and of made-up ones, results only, the refusals, and the Earth Engine
+      reader that forbids writes before it reads; fails on the code before
+  - path: scripts/ee_read_only.py
+    what: forbid_writes, called before the first read
+  - path: docs/running.md
+    what: The wrapper's paragraph, and the one after it on reading how the Drive exports ended
+  - path: docs/outputs.md
+    what: <config>_run.json (Odisha run records), the files written beside a record
+  - path: MODULES.md
+    what: Scripts that read a run
+  - path: docs/reviews/2026-10-19-review.md
+    what: C39
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 6, C39 (documentation part); question 40
+  - path: docs/handoff/2026-10-26-round14.md
+    what: 'Task 1: "Every other question: your recommendation"'
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 40, Claude Code's recommendation (b), by the brief's rule
+    'Every other question: your recommendation'

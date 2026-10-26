@@ -406,8 +406,9 @@ it. A config counts as finished, in the state file and in the log's `ALL CONFIGS
 COMPLETE`, when its export stage exits 0: its Drive exports have then been
 submitted, not finished. Nothing in the batch waits on them or records how they
 ended (the runner's `--wait` covers the cache exports only, and the export call
-is not given it), so read their states on the Earth Engine task list; their ids
-are in the config's run record, `drive_exports` (review C39). It does not retry
+is not given it); their ids are in the config's run record, `drive_exports`
+(review C39). So after the batch, read how they ended with
+`scripts/drive_export_states.py` (the paragraph after this one). It does not retry
 a config whose export stage failed, allows one batch at a time on the machine
 (before anything else it takes a lock on `~/.fmu/run_passes_safely.lock`,
 whatever the run tree or the log folder, and refuses to start, exit 90, while
@@ -438,6 +439,35 @@ after the pass, and the change that stopped the batch, if one did); `--log-dir`
 defaults to
 `<run-tree>/logs`, which is git-ignored. It needs live Earth Engine and submits
 tasks.
+
+After the batch, record how each finished config's Drive exports ended. Once the
+Earth Engine task list shows none of the batch's Drive tasks queued or running,
+run, from the run tree's root (the tool reads `.env` there, and reads the tasks
+in the project it names), on the run records of the configs the batch finished:
+
+```bash
+python scripts/drive_export_states.py odisha_script/phase2_vectors/<config>_run.json \
+    [odisha_script/phase2_vectors/<another>_run.json ...]
+```
+
+It is read-only on Earth Engine: after `ee_read_only.forbid_writes()` it asks
+`ee.data.getTaskStatus` for the task ids in each record's `drive_exports`. Beside
+each record it writes `<config>_drive_exports.json`, results only (no times or
+dates): for each Drive file, its name and folder, the task id, the task's
+description, its state (`COMPLETED`, `FAILED` or `CANCELLED`; `READY`, `RUNNING`
+or `CANCEL_REQUESTED` if it has not ended; `UNKNOWN` if Earth Engine has no task
+of that id) and its error message, and the count of each state; and
+`<config>_drive_exports_run.json`, with the command, when the states were read and
+the git block of the tool's checkout. It exits 0 when every task completed, 1 when
+one failed, was cancelled or is unknown, or a file has no task id, and 2 when none
+of those but a task has not ended yet (read again later); with 3 (a record it
+cannot read, or one with no `drive_exports`) or 4 (Earth Engine could not be set
+up or read) it writes nothing. `scripts/copy_run_results.py` does not copy the
+two files out of the run tree, but the copies of the records it makes under
+`docs/reproducibility/` keep `drive_exports`, so the tool can also be run from the
+repo root on those copies, to write the states beside them. Round 14 (round 13's
+question 40, answer (b); review C39). The batch itself is unchanged: it still
+does not wait on the Drive tasks.
 
 Then compare. Two general tools, and an Odisha wrapper:
 
