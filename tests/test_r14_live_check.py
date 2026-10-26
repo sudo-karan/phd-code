@@ -443,6 +443,90 @@ def test_stands_snic_and_dissolved_are_reported_and_not_part_of_the_pass(mod, re
 
 
 # ---------------------------------------------------------------------------
+# 1: a geometry is compared in normal form
+# ---------------------------------------------------------------------------
+
+
+def _ring(points: list[tuple[float, float]]) -> list[list[float]]:
+    return [list(p) for p in points] + [list(points[0])]
+
+
+OUTER = [(84.6, 20.8), (84.61, 20.8), (84.61, 20.81), (84.6, 20.81)]
+HOLE_1 = [(84.601, 20.801), (84.601, 20.802), (84.602, 20.802), (84.602, 20.801)]
+HOLE_2 = [(84.605, 20.805), (84.605, 20.806), (84.606, 20.806), (84.606, 20.805)]
+APART = [(84.62, 20.8), (84.63, 20.8), (84.63, 20.81), (84.62, 20.81)]
+WITH_HOLES = {"type": "Polygon", "coordinates": [_ring(OUTER), _ring(HOLE_1), _ring(HOLE_2)]}
+IN_PARTS = {"type": "MultiPolygon", "coordinates": [[_ring(OUTER), _ring(HOLE_1)], [_ring(APART)]]}
+LISTED_OTHERWISE = {
+    "the holes in another order": (
+        WITH_HOLES, {"type": "Polygon", "coordinates": [_ring(OUTER), _ring(HOLE_2), _ring(HOLE_1)]}),
+    "a ring started at another vertex": (
+        WITH_HOLES, {"type": "Polygon", "coordinates": [_ring(OUTER[2:] + OUTER[:2]), _ring(HOLE_1),
+                                                        _ring(HOLE_2)]}),
+    "a ring turned the other way": (
+        WITH_HOLES, {"type": "Polygon", "coordinates": [_ring(OUTER[::-1]), _ring(HOLE_1), _ring(HOLE_2)]}),
+    "the parts in another order": (
+        IN_PARTS, {"type": "MultiPolygon", "coordinates": [[_ring(APART)], [_ring(OUTER), _ring(HOLE_1)]]}),
+}
+
+
+def _set_geometry(path: Path, index: int, geometry: dict[str, Any]) -> None:
+    def change(gj):
+        gj["features"][index]["geometry"] = copy.deepcopy(geometry)
+    _edit_json(path, change)
+
+
+@pytest.mark.parametrize("what", list(LISTED_OTHERWISE))
+def test_one_polygon_listed_otherwise_in_the_two_runs_is_the_same_stand(mod, records, what):
+    """Earth Engine lists a polygon's holes, and a multipolygon's parts, in an order that differs
+    between two from-scratch runs (round 9's two runs, below): a geometry is compared in normal
+    form, which changes no coordinate."""
+    in_a, in_b = LISTED_OTHERWISE[what]
+    _set_geometry(records / f"{RUN_A}_stands_merged.geojson", 1, in_a)
+    _set_geometry(_b(records, "stands_merged.geojson"), 1, in_b)
+    code, result = _run(mod, records)
+    assert result is not None and code == 2
+    stands = result["criteria"]["1_same_stands_and_types"]
+    merged = stands["stands_merged"]
+    assert stands["passes"] is True and merged["passes"] is True
+    assert (merged["geometry_differs"], merged["geometry_differs_as_read"]) == (0, 1)
+    assert merged["same_canonical_sha256"] is True
+
+
+def test_a_moved_vertex_of_a_hole_is_another_stand(mod, records):
+    moved = copy.deepcopy(WITH_HOLES)
+    moved["coordinates"][2][1][1] += 1e-9
+    _set_geometry(records / f"{RUN_A}_stands_merged.geojson", 1, WITH_HOLES)
+    _set_geometry(_b(records, "stands_merged.geojson"), 1, moved)
+    code, result = _run(mod, records)
+    assert result is not None and code == 1
+    merged = result["criteria"]["1_same_stands_and_types"]["stands_merged"]
+    assert merged["geometry_differs"] == 1 and merged["same_canonical_sha256"] is False
+    assert merged["passes"] is False
+
+
+ROUND9 = REPO / "docs" / "reproducibility" / "round9_cache_test"
+R9 = "odisha_v120_3ha_squares_kendujhar_keptland_s1desc_r9"
+
+
+@pytest.mark.parametrize("layer, listed_otherwise", [("stands_merged", 4), ("stands_dissolved", 9)])
+def test_round_9s_two_runs_from_scratch_have_the_same_polygons_in_normal_form(mod, layer, listed_otherwise):
+    """Round 9's two from-scratch runs of one Kendujhar config, their labels the same pixel for
+    pixel (docs/reproducibility/round9_cache_test/): as read, a few polygons list their holes or
+    parts in another order; in normal form none differs, and the merged layers are the same stands.
+    (Their dissolved layers' area_ha came from the geometry's area() then, and differ by up to
+    1e-8 relative; since round 13 it is the pixel count's.)"""
+    a = json.loads((ROUND9 / f"{R9}_{layer}.geojson").read_text())
+    b = json.loads((ROUND9 / f"{R9}_check_{layer}.geojson").read_text())
+    got = mod.compare_layer(a, b, layer)
+    assert got["geometry_differs_as_read"] == listed_otherwise
+    assert got["geometry_differs"] == 0 and got["same_canonical_sha256"] is True
+    assert got["n_pixels_differs"] == got["cluster_id_differs"] == 0
+    if layer == "stands_merged":
+        assert got["pairs"] == 547 and got["area_ha_differs"] == 0 and got["passes"] is True
+
+
+# ---------------------------------------------------------------------------
 # 0: the first pass of each kind
 # ---------------------------------------------------------------------------
 
@@ -758,12 +842,23 @@ def test_an_asset_that_is_not_the_one_the_run_recorded_fails(mod, records):
     assert result["criteria"]["5_slope_and_aspect_decimals"]["passes"] is False
 
 
+CARDINAL = [[1.5, a] for a in (0.0, 90.0, 180.0, 270.0)]
+DIAGONAL = [[2.25, a] for a in (45.0, 135.0, 225.0, 315.0)]
+
+
 @pytest.mark.parametrize("values, passes", [
     ([[3.0 + i, 180.5] for i in range(5000)], False),            # slope whole numbers
     ([[3.5, 180.0 + i] for i in range(5000)], False),            # aspect whole numbers
+    ([[1.5, float(a)] for a in range(360)] * 10, False),          # aspect rounded to whole degrees
     ([[0.0, 0.0]] * 4000 + [[1.5, 90.5]] * 1000, True),           # slope 0 is left out
     ([[1.5, 90.5]] * 99 + [[2.0, 90.5]], True),                   # 99 of 100: at the share
-    ([[1.5, 90.5]] * 98 + [[2.0, 90.0]] * 2, False),              # 98 of 100: below it
+    ([[1.5, 90.5]] * 98 + [[2.0, 90.0]] * 2, False),              # slope 98 of 100: below it
+    ([[1.5, 90.5]] * 98 + [[1.5, 91.0]] * 2, False),              # aspect 98 of 100: below it
+    # A correct run on a DEM of whole metres: a gradient component exactly 0 gives an aspect of
+    # exactly 0, 90, 180 or 270, and equal components on a grid of equal spacings 45, 135, ...
+    ([[1.5, 90.5]] * 850 + CARDINAL * 38, True),
+    ([[1.5, 90.5]] * 300 + CARDINAL * 150 + DIAGONAL * 25, True),
+    ([[1.5, 90.0]] * 100, False),                                 # every aspect set aside
     ([[0.0, 12.5]] * 10, False),                                  # no pixel with slope above 0
     ([], False),
 ])
@@ -771,6 +866,37 @@ def test_5_slope_and_aspect_decimals(mod, records, values, passes):
     _, result = _run(mod, records, reader=StandIn(values=values))
     assert result is not None
     assert result["criteria"]["5_slope_and_aspect_decimals"]["passes"] is passes
+
+
+def test_5_counts_the_aspects_set_aside_and_the_pixels_the_sample_gave(mod, records):
+    values = [[1.5, 90.5]] * 300 + CARDINAL * 150 + DIAGONAL * 25 + [[0.0, 0.0]] * 37
+    _, result = _run(mod, records, reader=StandIn(values=values))
+    assert result is not None
+    five = result["criteria"]["5_slope_and_aspect_decimals"]
+    assert five["sample"] == {"asked": 10_000, "limit": 5000, "seed": 42}
+    assert (five["pixels_sampled"], five["pixels_with_slope_above_0"]) == (1037, 1000)
+    assert (five["slope_not_a_whole_number"], five["aspect_at_a_multiple_of_45"]) == (1000, 700)
+    assert (five["aspect_not_at_a_multiple_of_45"], five["aspect_not_a_whole_number"]) == (300, 300)
+    assert (five["share_slope_not_whole"], five["share_aspect_not_whole"]) == (1.0, 1.0)
+
+
+def test_a_static_features_asset_not_on_earth_engine_fails_5_and_the_results_are_written(
+        mod, records, monkeypatch):
+    """The script's own reader, with no such asset: criterion 5 fails, naming it, as 2 iii does."""
+    import fmu.utils.caching
+
+    monkeypatch.setattr(fmu.utils.caching, "asset_exists", lambda path: False)
+    real = mod.EarthEngineReader(None, [])
+
+    class NotThere(StandIn):
+        def sample(self, path: str, **kw: Any) -> list[list[Any]]:
+            return real.sample(path, **kw)
+
+    code, result = _run(mod, records, reader=NotThere())
+    assert result is not None and code == 1
+    five = result["criteria"]["5_slope_and_aspect_decimals"]
+    assert five["passes"] is False and five["not_on_earth_engine"] == [five["asset"]]
+    assert (records / "r14_live_check_run.json").exists()
 
 
 def test_a_failure_to_read_earth_engine_writes_nothing(mod, records):
@@ -874,6 +1000,10 @@ def test_the_docstring_declares_every_criterion_and_the_rule(mod):
                     "6. The four settings on.", "The check passes only if 0 to 6 all pass."):
         assert heading in doc, heading
     assert "|a - b| <= 1e-9 x max(|a|, |b|)" in doc and "|a - b| <= 1e-12" in doc
+    # As amended on 27 Oct 2026, before the batch (the gate's review, part 3).
+    words = " ".join(doc.split())
+    assert "exactly equal in normal form (shapely.normalize" in words
+    assert "whose aspect is not at a multiple of 45 degrees" in words
     assert (mod.RELATIVE, mod.FLOOR, mod.S1_SCENES, mod.DECIMALS_SHARE) == (1e-9, 1e-12, 189, 0.99)
     assert (mod.SAMPLE_PIXELS, mod.SAMPLE_ASKED, mod.SAMPLE_SEED) == (5000, 10_000, 42)
 

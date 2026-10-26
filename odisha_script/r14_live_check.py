@@ -30,6 +30,21 @@ task and writes no asset.
 THE PASS RULES, declared on 26 Oct 2026, before the batch ran (round 14, Task 4)
 ------------------------------------------------------------------------------
 
+Amended on 27 Oct 2026, still before the batch ran, after the gate's review (part 3) found that
+two correct runs would fail two of the rules as first declared. Criterion 1 compared each pair of
+geometries as read, but Earth Engine lists a polygon's holes, and a multipolygon's parts, in an
+order that differs between two from-scratch runs of one config: round 9's two runs of the
+Kendujhar 3 ha config (docs/reproducibility/round9_cache_test/), their labels the same pixel for
+pixel, differ as read in 4 of 547 merged polygons and 9 of 111 dissolved, and in none in normal
+form. So criterion 1 now compares, and hashes, each geometry in normal form. Criterion 5 counted
+every whole aspect as one without decimals, but on a DEM of whole metres a correct aspect is a
+whole number at a multiple of 45 degrees (below), about 15 % of Angul's pixels with slope above 0
+if Earth Engine takes the gradient on the DEM's own grid and 68 % if on the 10 m grid (worked
+offline on SRTM's 1-arcsecond tile N20E084, the grid NASADEM reprocesses, over the Angul boxes).
+So criterion 5 now sets those aspects aside. An aspect rounded to whole degrees, as before round
+13's A5, still fails it. Criterion 5 also fails now, naming it, when check_a's static_features is
+not on Earth Engine, where it stopped the check (exit 4, nothing written). Nothing else changed.
+
 Numbers agree. Two values a and b agree when |a - b| <= 1e-9 x max(|a|, |b|) (the brief's 1e-9
 relative) or |a - b| <= 1e-12. The second clause is an absolute floor, for values at or near 0,
 where the relative rule alone fails any difference at all (1e-15 against -1e-15 differ by twice
@@ -66,16 +81,20 @@ manifest of a kind is its _1 if there is one, else the one with no number.
 1. The same stands, and the same type for every stand. The two runs' stands_merged layers have
    the same number of polygons, more than 0, and the same number of distinct stand_lbl. Paired by
    (stand_lbl, stand_id), every polygon of either layer has a partner in the other (no pair key
-   twice in a layer), and in each pair the geometry is exactly equal (the GeoJSON geometry objects
-   equal as read: the same type and the same coordinates, number for number) and so are n_pixels
-   and area_ha (stand_lbl and stand_id are the pair's key). The SHA-256 of each layer's canonical
-   form are equal: the JSON text (sorted keys, no spaces) of the list of [stand_lbl, geometry] of
-   every polygon, the items sorted by their own JSON text. The same type: cluster_id is equal in
-   every pair (null equal to null), and the two runs' <run>_clustering_fit_rows.csv hold the same
-   unit labels (the first column; more than 0) with the same value in the "type" column each.
+   twice in a layer), and in each pair the geometry is exactly equal in normal form
+   (shapely.normalize of the GeoJSON geometry, as WKB, little-endian, byte for byte: the same type
+   and the same coordinates, number for number, whatever the order in which a polygon's rings and
+   a multipolygon's parts are listed, the vertex a ring starts at and the way it turns; no
+   coordinate is changed) and so are n_pixels and area_ha (stand_lbl and stand_id are the pair's
+   key). The SHA-256 of each layer's canonical form are equal: the JSON text (sorted keys, no
+   spaces) of the list of [stand_lbl, the geometry's normal form as hexadecimal WKB] of every
+   polygon, the items sorted by their own JSON text. The same type: cluster_id is equal in every
+   pair (null equal to null), and the two runs' <run>_clustering_fit_rows.csv hold the same unit
+   labels (the first column; more than 0) with the same value in the "type" column each.
    Reported, not part of the pass: stands_snic, paired by (snic_label, stand_id), and
    stands_dissolved, paired by unit_id, compared the same way (their canonical forms with
-   snic_label and cluster_id in place of stand_lbl); and in the merged pairs, the merge provenance
+   snic_label and cluster_id in place of stand_lbl); in each layer, the pairs whose geometries
+   differ as read; and in the merged pairs, the merge provenance
    (fmu.utils.region_merge.PROVENANCE_FIELDS, exactly) and perim_m and the centroid (the largest
    relative difference).
 
@@ -123,9 +142,17 @@ manifest of a kind is its _1 if there is one, else the one with no number.
 5. Slope and aspect have decimals. Read-only on Earth Engine, check_a's cached static_features (its
    path as in 2 iii): Image.sample of its slope and aspect over the ROI on the asset's own grid,
    10,000 pixels asked for, seed 42, a pixel with either band masked dropped; then 5,000 of them at
-   random (randomColumn with seed 42, the 5,000 lowest). Among the pixels with slope above 0: the
-   number whose slope is not a whole number, and the number whose aspect is not a whole number.
-   Passes when there is such a pixel and both shares are at least 0.99.
+   random (randomColumn with seed 42, the 5,000 lowest), or as many as there are (their number is
+   reported). Among the pixels with slope above 0: the number whose slope is not a whole number;
+   and, of those whose aspect is not at a multiple of 45 degrees (0, 45, 90, ..., 315, which are
+   counted and set aside), the number whose aspect is not a whole number. A whole number is a
+   finite one with no fraction. Passes when there is a pixel with slope above 0 and one whose
+   aspect is not at a multiple of 45 degrees, and both shares are at least 0.99. The multiples of
+   45 are set aside because there a correct aspect is a whole number: NASADEM's elevations are
+   whole metres, so the two components of the 4-neighbour gradient are whole-metre differences
+   over the grid's spacings; where one is exactly 0 the aspect is exactly 0, 90, 180 or 270, and
+   where the two spacings are equal and the two differences equal in size, exactly 45, 135, 225 or
+   315. If check_a's static_features is not on Earth Engine, criterion 5 fails, naming it.
 
 6. The four settings on. Every manifest of each run has config.clustering.fit_outside_earth_engine
    true, config.clustering.log_rule "right_skew", config.features_optical.mean_over_window true and
@@ -167,6 +194,9 @@ from collections.abc import Callable, Iterable, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol, TypeGuard, cast
+
+import shapely
+from shapely.geometry import shape
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
@@ -507,13 +537,23 @@ def _key(feature: dict[str, Any], fields: Sequence[str]) -> str:
     return json.dumps([(feature.get("properties") or {}).get(f) for f in fields])
 
 
+def normal_form(geometry: dict[str, Any] | None) -> bytes | None:
+    """A GeoJSON geometry in normal form: shapely.normalize, as WKB (little-endian). It puts the
+    rings of a polygon and the parts of a multipolygon in one order, starts each ring at one vertex
+    and turns it one way, and changes no coordinate: two geometries have one normal form only when
+    they have the same type and the same coordinates, number for number, however they are listed."""
+    if geometry is None:
+        return None
+    return cast(bytes, shapely.to_wkb(shapely.normalize(shape(geometry)), byte_order=1))
+
+
 def canonical_sha256(features: list[dict[str, Any]], label: str) -> str:
-    items = sorted(
-        json.dumps([(f.get("properties") or {}).get(label), f.get("geometry")], sort_keys=True,
-                   separators=(",", ":"))
-        for f in features
-    )
-    return sha256(("[" + ",".join(items) + "]").encode())
+    def item(f: dict[str, Any]) -> str:
+        form = normal_form(f.get("geometry"))
+        return json.dumps([(f.get("properties") or {}).get(label), None if form is None else form.hex()],
+                          sort_keys=True, separators=(",", ":"))
+
+    return sha256(("[" + ",".join(sorted(item(f) for f in features)) + "]").encode())
 
 
 def compare_values(pairs: list[tuple[dict[str, Any], dict[str, Any], str]],
@@ -558,7 +598,8 @@ def compare_layer(a: dict[str, Any], b: dict[str, Any], layer: str) -> dict[str,
              zip(pairs, common, strict=True)]
     labels_a = {(f.get("properties") or {}).get(label) for f in fa}
     labels_b = {(f.get("properties") or {}).get(label) for f in fb}
-    geometry_differs = sum(x.get("geometry") != y.get("geometry") for x, y in pairs)
+    geometry_differs = sum(normal_form(x.get("geometry")) != normal_form(y.get("geometry")) for x, y in pairs)
+    geometry_differs_as_read = sum(x.get("geometry") != y.get("geometry") for x, y in pairs)
     size_differs = {f: sum(pa.get(f) != pb.get(f) for pa, pb, _ in props) for f in ("n_pixels", "area_ha")}
     cluster_differs = sum(pa.get("cluster_id") != pb.get("cluster_id") for pa, pb, _ in props)
     sha = [canonical_sha256(fa, label), canonical_sha256(fb, label)]
@@ -577,6 +618,7 @@ def compare_layer(a: dict[str, Any], b: dict[str, Any], layer: str) -> dict[str,
         "only_in_a": len(set(ia) - set(ib)),
         "only_in_b": len(set(ib) - set(ia)),
         "geometry_differs": geometry_differs,
+        "geometry_differs_as_read": geometry_differs_as_read,
         "n_pixels_differs": size_differs["n_pixels"],
         "area_ha_differs": size_differs["area_ha"],
         "cluster_id_differs": cluster_differs,
@@ -826,8 +868,14 @@ def per_run(fn: Callable[[str], dict[str, Any]], runs: Sequence[str]) -> dict[st
 # ---------------------------------------------------------------------------
 
 
+class NoSuchAssetError(LookupError):
+    """An asset criterion 5 samples is not on Earth Engine (its path, the argument)."""
+
+
 class AssetReader(Protocol):
-    """What the Earth Engine parts ask of Earth Engine (EarthEngineReader; a stand-in in the tests)."""
+    """What the Earth Engine parts ask of Earth Engine (EarthEngineReader; a stand-in in the tests).
+    For an asset that is not there, compare answers {"missing": [...]} and sample raises
+    NoSuchAssetError."""
 
     def cache_layout(self, config: Any) -> str: ...
 
@@ -922,23 +970,36 @@ def cached_assets(reader: AssetReader, cfg_a: Any, cfg_b: Any, mans_a: Manifests
             "passes": bool(rows) and all(r["passes"] for r in rows)}
 
 
+def has_decimals(v: Any) -> bool:
+    """A finite number that is not a whole number."""
+    return is_number(v) and math.isfinite(v) and not float(v).is_integer()
+
+
+def at_a_multiple_of_45(v: Any) -> bool:
+    return is_number(v) and math.isfinite(v) and float(v) % 45 == 0
+
+
 def decimals(values: Sequence[Sequence[Any]]) -> dict[str, Any]:
-    """5: among the sampled pixels with slope above 0, the shares whose slope and aspect are not
-    whole numbers."""
+    """5: among the sampled pixels with slope above 0, the share whose slope is not a whole
+    number; and, of those whose aspect is not at a multiple of 45 degrees (set aside: on a DEM of
+    whole metres a correct aspect is a whole number there), the share whose aspect is not one."""
     sloped = [(float(s), a) for s, a in values if is_number(s) and s > 0]
     n = len(sloped)
-    slope_decimal = sum(not s.is_integer() for s, _ in sloped)
-    aspect_decimal = sum(is_number(a) and not float(a).is_integer() for _, a in sloped)
+    slope_decimal = sum(has_decimals(s) for s, _ in sloped)
+    judged = [a for _, a in sloped if not at_a_multiple_of_45(a)]
+    aspect_decimal = sum(has_decimals(a) for a in judged)
     share_slope = slope_decimal / n if n else None
-    share_aspect = aspect_decimal / n if n else None
+    share_aspect = aspect_decimal / len(judged) if judged else None
     return {
         "pixels_sampled": len(values),
         "pixels_with_slope_above_0": n,
         "slope_not_a_whole_number": slope_decimal,
+        "aspect_at_a_multiple_of_45": n - len(judged),
+        "aspect_not_at_a_multiple_of_45": len(judged),
         "aspect_not_a_whole_number": aspect_decimal,
         "share_slope_not_whole": share_slope,
         "share_aspect_not_whole": share_aspect,
-        "passes": bool(n) and share_slope is not None and share_aspect is not None
+        "passes": share_slope is not None and share_aspect is not None
         and share_slope >= DECIMALS_SHARE and share_aspect >= DECIMALS_SHARE,
     }
 
@@ -949,9 +1010,12 @@ def slope_and_aspect(reader: AssetReader, cfg_a: Any, mans_a: Manifests,
     path, why = asset_path(reader, cfg_a, stage, key, mans_a, layouts)
     if path is None:
         return {"not_the_recorded_asset": why, "passes": False}
-    values = reader.sample(path, roi_file=cfg_a.roi.roi_file, bands=SLOPE_ASPECT, n=SAMPLE_PIXELS,
-                           asked=SAMPLE_ASKED, seed=SAMPLE_SEED)
-    return {"asset": path, "sample": {"asked": SAMPLE_ASKED, "kept": SAMPLE_PIXELS, "seed": SAMPLE_SEED},
+    try:
+        values = reader.sample(path, roi_file=cfg_a.roi.roi_file, bands=SLOPE_ASPECT, n=SAMPLE_PIXELS,
+                               asked=SAMPLE_ASKED, seed=SAMPLE_SEED)
+    except NoSuchAssetError:
+        return {"asset": path, "not_on_earth_engine": [path], "passes": False}
+    return {"asset": path, "sample": {"asked": SAMPLE_ASKED, "limit": SAMPLE_PIXELS, "seed": SAMPLE_SEED},
             **decimals(values)}
 
 
@@ -1043,7 +1107,7 @@ class EarthEngineReader:
 
         ee = self.ee
         if not asset_exists(path):
-            raise RuntimeError(f"{path}: no such asset")
+            raise NoSuchAssetError(path)
         drawn = ee.Image(path).select(list(bands)).sample(
             region=self._roi(roi_file), numPixels=asked, seed=seed, dropNulls=True,
             geometries=False, tileScale=4)

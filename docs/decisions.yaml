@@ -10140,6 +10140,12 @@ decisions:
     when it ran, the git block (read at the start of main()) and the SHA-256 of every file read. Read-only on
     Earth Engine after scripts/ee_read_only.forbid_writes(); --offline runs all but 2's Earth Engine part and 5,
     marked "not run".
+    Round 14 (27 Oct 2026), before the batch, after the gate's review (part 3, two high findings): criterion 1
+    compares, and hashes, each geometry in normal form (shapely.normalize, as WKB, byte for byte; no coordinate
+    changed), and criterion 5 judges the aspect only where it is not at a multiple of 45 degrees, where a correct
+    aspect is a whole number on a DEM of whole metres (one component of the 4-neighbour gradient exactly 0, or the
+    two equal in size on a grid of equal spacings); criterion 5 fails, naming it, when check_a's static_features is
+    not on Earth Engine, and reports the number of pixels its sample gave.
   alternatives_considered:
   - >-
     The stand layers by the SHA-256 of their files alone (the brief: "by SHA-256 or polygon by polygon"): not
@@ -10151,6 +10157,25 @@ decisions:
   - >-
     From scratch by each asset's creation time on Earth Engine against the batch's start: not chosen; the manifests
     already say, offline, whether each pass found each output (hit) or computed and exported it (miss-exported)
+  - >-
+    Each pair of geometries compared as read (declared on 26 Oct 2026): replaced before the batch (27 Oct 2026, the
+    gate's review, part 3); Earth Engine lists a polygon's holes, and a multipolygon's parts, in an order that
+    differs between two from-scratch runs: round 9's two runs of the Kendujhar 3 ha config, their labels the same
+    pixel for pixel, differ as read in 4 of 547 merged polygons and 9 of 111 dissolved, and in none in normal form,
+    so two correct runs would have failed criterion 1
+  - >-
+    Every whole aspect counted as one without decimals (declared on 26 Oct 2026): replaced before the batch (27 Oct
+    2026, the gate's review, part 3); in about half of Angul's one-pixel stands with slope above 0 in the _r9
+    layers the aspect is exactly 0, 90, 180 or 270, and worked offline on SRTM's 1-arcsecond tile N20E084 (the grid
+    NASADEM reprocesses) over the Angul boxes, 15 % of the pixels with slope above 0 have a whole aspect if Earth
+    Engine takes the gradient on the DEM's own grid and 68 % if on the 10 m grid, all at a multiple of 45 degrees, so
+    two correct runs would have failed criterion 5; with them set aside the share is 1.0 in both, and 0 for aspects
+    rounded to whole degrees
+  - >-
+    Only 0, 90, 180 and 270 set aside (the review's suggestion): not chosen; on a grid of equal spacings the
+    diagonals 45, 135, 225 and 315 are whole too where the two differences are equal in size (9 % of the pixels with
+    slope above 0 on the 10 m grid, worked as above), and it is not known on which grid Earth Engine takes the
+    gradient
   rationale: >-
     The round 14 brief (Jaskaran, 26 Oct 2026), Task 4: "Run _r14_check_a and _r14_check_b in full, both from
     scratch, in one wrapper batch, at the config's current k, with the k_elbow pass included. It passes only if all
@@ -10168,10 +10193,18 @@ decisions:
     one run (a polygon's geometry, a cluster_id, a band value by 1e-6 relative, a byte of k_elbow.csv, every
     distance_to_water at 10,000, an s1 count of 188, a setting off, a hit in a first pass), test the agreement
     rule at its edges, and run the Earth Engine parts with a stand-in reader; the script's own reader is checked
-    to forbid writes before it reads. On the records of the Angul _r9 run copied under the two check names, the
-    offline criteria read the real formats (criteria 3, 4 and 6 fail there, as the _r9 run predates the fixes).
-    The script has not been run on Earth Engine (no Earth Engine call was made for it). No paper was searched for
-    this decision.
+    to forbid writes before it reads. On the records of the Angul _r9 run copied under the two check names (the
+    same files twice), the script read the real manifests of four pass kinds and the three stand layers: criterion
+    0 fails there for want of a k_elbow manifest, criteria 1 and 2 for want of round 14's stage files (the layers
+    pair, being one file twice, and 2 ii passes), and criteria 3, 4 and 6 fail, as the _r9 run predates the fixes;
+    being one run twice, that could not test two runs' agreement, and round 14's stage files and a k_elbow
+    manifest have been read only from the tests' made-up records, which fmu's own writers write (the gate's review,
+    part 3). Since 27 Oct 2026 the tests also give one polygon listed otherwise in the two runs (its holes or parts
+    in another order, a ring started at another vertex or turned the other way), which is the same stand, and a
+    moved vertex of a hole, which is not; round 9's two from-scratch runs are the same stands in normal form; and
+    criterion 5 passes on whole aspects at multiples of 45 degrees among decimal ones and fails on aspects rounded
+    to whole degrees. The script has not been run on Earth Engine (no Earth Engine call was made for it). No paper
+    was searched for this decision.
   evidence:
   - path: odisha_script/r14_live_check.py
     what: The script; its docstring declares the pass rules
@@ -10191,6 +10224,10 @@ decisions:
     what: Task 4, the live check; "Keep every run's data"
   - path: docs/handoff/2026-10-20-round13.md
     what: Task 2, A4 (the date windows include their end date); read-only call 4 (the scene it adds over Angul)
+  - path: docs/reproducibility/round9_cache_test/
+    what: >-
+      Round 9's two from-scratch runs of one config, whose polygons list their holes or parts in another order
+      (27 Oct 2026)
   papers: []
   status: adopted
   design_notes_section: null
