@@ -189,6 +189,13 @@ _SUMMARY_FROM_METADATA: dict[str, str] = {
 # zero, not a gap.
 _LEFT_OUT_OF_FIT_NUMBER = "units_left_out_of_fit"
 _LEFT_OUT_OF_FIT_KEY = "n_stands_left_out_of_fit"
+# The seventh (round 14, round 13's question 35): the units inside the habitat mask
+# with no habitat pixel whose centre is inside the ROI, which can have no row. Until
+# round 14 n_units_dropped_null_band counted them with the band gaps; an asset made
+# before has no such key, and its number is absent (None), not 0, since nothing splits
+# the old count afterwards.
+_NO_CENTRE_NUMBER = "units_with_no_pixel_centre_in_roi"
+_NO_CENTRE_KEY = "n_units_no_pixel_centre_in_roi"
 
 
 def read_clustering_metadata(cluster_labels: ee.Image) -> dict[str, Any]:
@@ -220,10 +227,13 @@ def tabulate_clustering_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
     """Clustering's summary numbers, picked out of `clustering_metadata`.
 
     Raises if a count is absent, which it is on an asset made before the fit
-    reported its coverage: a missing count must not be read as zero. The one
-    exception is the count of stands left out of the fit, which is zero when
+    reported its coverage: a missing count must not be read as zero. Two
+    exceptions: the count of stands left out of the fit, which is zero when
     the metadata does not record clustering.fit_excludes_stands_below_min_area
-    as on: the setting off, or an asset made before it existed.
+    as on (the setting off, or an asset made before it existed); and the count
+    of units with no habitat pixel centre inside the ROI, which is None on an
+    asset made before round 14, whose n_units_dropped_null_band holds those
+    units as well as the band gaps (round 13's question 35).
     """
     setting_on = bool(metadata.get("fit_excludes_stands_below_min_area"))
     missing = sorted(
@@ -240,11 +250,14 @@ def tabulate_clustering_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
             f"cannot be given. The cached asset was made by an older "
             f"clustering stage."
         )
-    numbers = {
+    numbers: dict[str, int | None] = {
         name: int(metadata[key]) for name, key in _SUMMARY_FROM_METADATA.items()
     }
     numbers[_LEFT_OUT_OF_FIT_NUMBER] = (
         int(metadata[_LEFT_OUT_OF_FIT_KEY]) if setting_on else 0
+    )
+    numbers[_NO_CENTRE_NUMBER] = (
+        int(metadata[_NO_CENTRE_KEY]) if metadata.get(_NO_CENTRE_KEY) is not None else None
     )
     return numbers
 
@@ -320,9 +333,21 @@ class ClusteringStage(Stage):
         ),
         SummaryNumber(
             "units_dropped_missing_band",
-            "Units inside the habitat mask that the fit left out because a "
-            "feature band has no data over them. They have no type on the "
-            "map: holes, not mistyped stands",
+            "Units inside the habitat mask, with a habitat pixel whose centre is "
+            "inside the ROI, that the fit left out because a feature band has no "
+            "data over them (a band gap). They have no type on the map: holes, "
+            "not mistyped stands. On an asset made before round 14 this count "
+            "also holds the units with no habitat pixel centre inside the ROI, "
+            "and units_with_no_pixel_centre_in_roi is null",
+            "count",
+        ),
+        SummaryNumber(
+            _NO_CENTRE_NUMBER,
+            "Units inside the habitat mask with no habitat pixel whose centre is "
+            "inside the ROI, at its edge: the one-pixel sample takes pixel "
+            "centres, so they have no row, and the export gives them no polygon. "
+            "Null on an asset made before round 14, which counted them in "
+            "units_dropped_missing_band",
             "count",
         ),
         SummaryNumber(
@@ -331,8 +356,9 @@ class ClusteringStage(Stage):
             "clustering.fit_excludes_stands_below_min_area on; 0 with it off. "
             "They are on the map, typed by the nearest fitted cluster. With "
             "the setting on, units_in_habitat is units_fitted plus "
-            "units_dropped_missing_band plus these, and the stage's log warns "
-            "when its samples do not add up to that",
+            "units_dropped_missing_band plus units_with_no_pixel_centre_in_roi "
+            "plus these, and the stage's log warns when its samples do not add "
+            "up to that",
             "count",
         ),
     )
@@ -1070,15 +1096,19 @@ def _train_and_apply_kmeans(
     #     is masked, those units are missing from `cluster_labels` too. They
     #     become holes in the map, not mistyped stands.
     #
-    # What the second count held in the runs of record (review C15): the units at
-    # the ROI's edge with no pixel whose centre is inside the ROI. _count_units'
-    # frequency histogram counts a pixel by its share inside the ROI, so it lists
-    # them, and the one-pixel sample, which takes pixel centres, has no row for
-    # them (nor does the export give them a polygon). Until round 13 a unit with
-    # no data in a band got 0 there and kept its row, so no band gap was counted;
-    # since B14 such a unit is masked and is counted here too. The name is kept.
+    # A third cause, counted apart since round 14 (round 13's question 35, review
+    # C15): a unit inside the habitat mask with no habitat pixel whose centre is
+    # inside the ROI, at its edge. _count_units' frequency histogram counts a pixel
+    # by its share inside the ROI, so it lists such a unit, and the one-pixel
+    # sample, which takes pixel centres, has no row for it (nor does the export
+    # give it a polygon). In every per-step run of record the units without a row
+    # were all of this kind, and n_units_dropped_null_band counted them; it now
+    # counts the band gaps only (since B14 a unit with no data in a band is
+    # masked there, and has no row). The units with a habitat pixel centre inside
+    # the ROI are counted with an unweighted histogram, by pixel centre, as the
+    # sample takes them (_split_by_cause).
     #
-    # Both are counted against every row, before the stands below the minimum
+    # All are counted against every row, before the stands below the minimum
     # are left out (clustering.fit_excludes_stands_below_min_area), or those
     # stands would be counted as missing band data.
     n_total = _count_units(unit_labels, roi, scale, context=f"{unit_key} in ROI")
@@ -1088,18 +1118,36 @@ def _train_and_apply_kmeans(
         scale,
         context=f"{unit_key} in habitat",
     )
+    n_with_a_centre = _count_units(
+        unit_labels.updateMask(habitat_mask),
+        roi,
+        scale,
+        context=f"{unit_key} in habitat by pixel centre",
+        unweighted=True,
+    )
     n_non_habitat = max(n_total - n_in_habitat, 0)
-    n_null_dropped = max(n_in_habitat - n_units, 0)
+    n_no_centre, n_null_dropped = _split_by_cause(
+        n_in_habitat=n_in_habitat, n_with_a_centre=n_with_a_centre, n_rows=n_units
+    )
 
     log.info(
-        "  k-means training rows: %d of %d %s (%d outside habitat, %d dropped "
-        "for missing band data)",
+        "  k-means training rows: %d of %d %s (%d outside habitat, %d with no "
+        "habitat pixel centre in the ROI, %d dropped for missing band data)",
         n_units,
         n_total,
         unit_key,
         n_non_habitat,
+        n_no_centre,
         n_null_dropped,
     )
+    if n_no_centre:
+        log.info(
+            "  %d %s unit(s) inside the habitat mask have no habitat pixel whose "
+            "centre is inside the ROI (at its edge), so the one-pixel sample has "
+            "no row for them; they have no type and no polygon.",
+            n_no_centre,
+            unit_key,
+        )
     if n_null_dropped:
         log.warning(
             "  %d %s unit(s) sit inside the habitat mask but contributed no "
@@ -1161,6 +1209,7 @@ def _train_and_apply_kmeans(
         "n_units_in_habitat": n_in_habitat,
         "n_units_outside_habitat": n_non_habitat,
         "n_units_dropped_null_band": n_null_dropped,
+        _NO_CENTRE_KEY: n_no_centre,
         # Only with the setting on: what was left out of the fit.
         **(fit_report or {}),
     }
@@ -1329,18 +1378,34 @@ def _leave_out_of_fit(
 
 
 def _count_units(
-    labels: ee.Image, roi: ee.Geometry, scale: int, *, context: str
+    labels: ee.Image,
+    roi: ee.Geometry,
+    scale: int,
+    *,
+    context: str,
+    unweighted: bool = False,
 ) -> int:
     """How many distinct unit labels are present in `labels` over `roi`.
 
     A frequency histogram rather than a distinct-count reducer: EE has no
     `countDistinct` over an image, and the histogram's keys are the label set.
+    Weighted (the default), a pixel counts by its share inside the ROI, so a
+    unit with only an edge pixel whose centre is outside is listed. With
+    `unweighted`, a pixel counts whole if its centre is inside the ROI and not
+    at all otherwise, as the one-pixel sample takes pixels (round 14); an
+    unweighted histogram also counts the masked pixels, under the key "null"
+    (read on Earth Engine in round 13, fmu.utils.adjacency), which is no unit's
+    and is left out.
     """
     band = safe_get_info(labels.bandNames(), context=f"{context} band name")[0]
     hist = (
         safe_get_info(
             labels.select([band]).reduceRegion(
-                reducer=ee.Reducer.frequencyHistogram(),
+                reducer=(
+                    ee.Reducer.frequencyHistogram().unweighted()
+                    if unweighted
+                    else ee.Reducer.frequencyHistogram()
+                ),
                 geometry=roi,
                 scale=scale,
                 maxPixels=1e9,
@@ -1349,4 +1414,18 @@ def _count_units(
         ).get(band)
         or {}
     )
+    if unweighted:
+        return len([key for key in hist if key != "null"])
     return len(hist)
+
+
+def _split_by_cause(*, n_in_habitat: int, n_with_a_centre: int, n_rows: int) -> tuple[int, int]:
+    """(units with no habitat pixel centre in the ROI, units with a band gap).
+
+    `n_in_habitat` counts the unit labels inside the habitat mask by the share of
+    each pixel inside the ROI, `n_with_a_centre` those with a habitat pixel whose
+    centre is inside it, and `n_rows` the k-means rows. The counts come from
+    different reductions, so each difference is clamped at 0, as the split between
+    habitat and non-habitat units is. Pure Python.
+    """
+    return max(n_in_habitat - n_with_a_centre, 0), max(n_with_a_centre - n_rows, 0)

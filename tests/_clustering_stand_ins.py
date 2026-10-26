@@ -73,7 +73,11 @@ NO_SPREAD = frozenset({"distance_to_water", "A63"})
 
 UNITS_IN_ROI = 25
 UNITS_IN_HABITAT = 22
-TRAINING_ROWS = 20  # so two units inside the habitat mask have no row: missing band data
+# Units with a habitat pixel whose centre is inside the ROI (round 14, round 13's question 35):
+# one of the 22 has none, so it can have no row; the other units without a row (one) have a
+# band gap.
+UNITS_WITH_A_CENTRE = 21
+TRAINING_ROWS = 20  # so two units inside the habitat mask have no row: one per cause
 
 # The two requests that only the path with the setting on makes.
 FIT_ROW_COUNT = "k-means training row count without the stands below the minimum"
@@ -120,6 +124,10 @@ def answers(
             return {unit_band: {str(i): 10.0 for i in range(UNITS_IN_ROI)}}
         if context.endswith(" in habitat label histogram"):
             return {unit_band: {str(i): 10.0 for i in range(UNITS_IN_HABITAT)}}
+        if context.endswith(" in habitat by pixel centre label histogram"):
+            # Unweighted, so it also counts the masked pixels, under "null" (adjacency.py).
+            labels = {str(i): 10.0 for i in range(UNITS_WITH_A_CENTRE)}
+            return {unit_band: {**labels, "null": 37.0}}
         if context == FIT_ROW_COUNT and fit_rows is not None:
             return fit_rows
         if context == LEFT_OUT_ROWS and left_out_rows is not None:

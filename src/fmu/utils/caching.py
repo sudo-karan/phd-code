@@ -494,7 +494,9 @@ STEP_REVISION: dict[str, int] = {
     # phase's sin and cos are kept out of the skew test and the log. 3, B14: one mean
     # per unit label, not per connected piece. 4, B16: the robust scaling's median and
     # IQR are exact quartiles, for the constant-band test as for the scaling.
-    "clustering": 4,
+    # Round 14. 5, round 13's question 35: the units without a row are counted by
+    # cause in clustering_metadata (no habitat pixel centre in the ROI, a band gap).
+    "clustering": 5,
     # Round 13: 1, B17, the superpixel pixel counts on one inclusion rule;
     # 2, B18, the area bounds compared in whole pixels.
     "merge": 2,

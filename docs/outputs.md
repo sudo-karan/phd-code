@@ -262,10 +262,11 @@ default" in a description means the default segmentation bands and merge
 criteria, which a config can replace. The stand-type legend names ten types
 and a run uses the first `clustering.k` of them.
 
-**Clustering** reports six counts, read from the `clustering_metadata`
+**Clustering** reports seven counts, read from the `clustering_metadata`
 property of `cluster_labels` (one small request, no reduction): `k`,
 `units_total`, `units_in_habitat`, `units_fitted`,
-`units_dropped_missing_band` and `units_left_out_of_fit`. A unit is a stand, or
+`units_dropped_missing_band`, `units_with_no_pixel_centre_in_roi` (since round
+14) and `units_left_out_of_fit`. A unit is a stand, or
 a superpixel in a run without merge. On a cached `cluster_labels` made before
 the fit recorded its coverage, the counts are absent and the record carries a
 `summary_error`. `units_left_out_of_fit` is the number of stands below
@@ -274,10 +275,13 @@ the fit recorded its coverage, the counts are absent and the record carries a
 in `clustering_metadata`), and 0 when `clustering_metadata` does not record the
 setting as on: the setting off, or an asset made before it existed. So
 `units_in_habitat` is `units_fitted` plus `units_dropped_missing_band` plus
-`units_left_out_of_fit`; with the setting on, the stage's log warns when its
-samples do not add up to that. The area of the stands left out, and how many
-stands the merge marked below the minimum, are in `clustering_metadata` (under
-`export_manifest_<config>.json` below), not among these six.
+`units_with_no_pixel_centre_in_roi` plus `units_left_out_of_fit`; with the
+setting on, the stage's log warns when its samples do not add up to that. On an
+asset made before round 14 `units_with_no_pixel_centre_in_roi` is null and
+`units_dropped_missing_band` holds both causes (below). The area of the stands
+left out, and how many stands the merge marked below the minimum, are in
+`clustering_metadata` (under `export_manifest_<config>.json` below), not among
+these seven.
 
 **What `units_dropped_missing_band` has counted** (review C15). Its name and its
 description say: units inside the habitat mask that the fit left out because a
@@ -295,9 +299,21 @@ means gave a unit with no data in a band 0 there, so it kept its row (round 13,
 review B14). Since round 13 such a unit is masked in that band, has no row and
 is counted here too, and the merge puts a superpixel with no pixel whose centre
 is inside the ROI in no stand (review B17); neither has run on Earth Engine yet.
-The legacy-layout runs (`docs/demo/remerge`) were not checked. The name, the
-description and the stage's log line are unchanged; renaming the count, or
-counting the two causes apart, is a question for Jaskaran (round 13).
+The legacy-layout runs (`docs/demo/remerge`) were not checked.
+
+**Since round 14 the two causes are counted apart** (round 13's question 35,
+answered (a) by the round 14 brief's rule; register entry
+`spec-clustering-units-dropped-counted-by-cause`). The stage counts, with an
+unweighted histogram of the habitat-masked unit labels, the units with a
+habitat pixel whose centre is inside the ROI. The units inside the habitat
+mask without one are `n_units_no_pixel_centre_in_roi` in `clustering_metadata`
+(the summary number `units_with_no_pixel_centre_in_roi`), and
+`n_units_dropped_null_band` (`units_dropped_missing_band`) counts only the
+units with such a pixel and no row: the band gaps. Each count is clamped at 0,
+as the counts come from different reductions. On an asset made before round 14
+the first is absent (the summary number is null) and the second is as recorded,
+both causes together. Clustering's step revision is 5, so the clustering and
+k_elbow keys of every config moved.
 
 These counts are distinct unit labels on the analysis grid, as the fit saw
 them. They are not counts of the polygons in the exported stand layer, and the
@@ -580,7 +596,8 @@ With the setting on, `n_training_units` counts the rows the fit was trained on,
 the stands left out not among them, and `n_units_dropped_null_band` is still
 counted against every row, so the stands left out are not counted as missing
 band data. Normally `n_units_in_habitat` is then `n_training_units` +
-`n_units_dropped_null_band` + `n_stands_left_out_of_fit`; the stage logs a
+`n_units_dropped_null_band` + `n_units_no_pixel_centre_in_roi` (since round 14)
++ `n_stands_left_out_of_fit`; the stage logs a
 warning when the rows of the fit and the rows of the stands left out do not add
 up to the rows of every unit.
 
@@ -977,7 +994,8 @@ over it. The clustering stage logs the split, and the counts are in the run
 manifest as `n_units_outside_habitat` and `n_units_dropped_null_band`. In the
 runs of record the second counted stands at the ROI's edge with no polygon, not
 stands with a band gap ("What `units_dropped_missing_band` has counted", above;
-review C15). Note
+review C15); since round 14 those stands are `n_units_no_pixel_centre_in_roi`
+and the second counts the band gaps only. Note
 that SHP cannot represent a null integer — read the GeoJSON if you need to
 tell null from 0. Such a stand has no row in the k-means fit, and since round 13
 its type is null in every cache layout, whatever typed pixels its polygon

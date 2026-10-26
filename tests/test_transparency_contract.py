@@ -1122,6 +1122,10 @@ _CANNED_COUNTS = {
     # Not in the metadata of a run with clustering.fit_excludes_stands_below_min_area
     # off, as this one was: nothing was left out of its fit.
     "units_left_out_of_fit": 0,
+    # Not in the metadata of a run made before round 14 (round 13's question 35), as
+    # this one was: its n_units_dropped_null_band counted both causes, so the count by
+    # cause is absent, not 0.
+    "units_with_no_pixel_centre_in_roi": None,
 }
 
 

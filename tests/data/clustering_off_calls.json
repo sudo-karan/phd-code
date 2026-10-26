@@ -8513,6 +8513,65 @@
 }
 ],
 [
+"stand_clusters.updateMask",
+[
+"habitat_mask"
+],
+{}
+],
+[
+"stand_clusters.updateMask().bandNames",
+[],
+{}
+],
+[
+"getInfo",
+[
+"stand_clusters.updateMask().bandNames()"
+],
+{
+"context": "'stand_clusters in habitat by pixel centre band name'"
+}
+],
+[
+"stand_clusters.updateMask().select",
+[
+[
+"'stand_clusters'"
+]
+],
+{}
+],
+[
+"ee.Reducer.frequencyHistogram",
+[],
+{}
+],
+[
+"ee.Reducer.frequencyHistogram().unweighted",
+[],
+{}
+],
+[
+"stand_clusters.updateMask().select().reduceRegion",
+[],
+{
+"geometry": "roi",
+"maxPixels": "1000000000.0",
+"reducer": "ee.Reducer.frequencyHistogram().unweighted()",
+"scale": "10"
+}
+],
+[
+"getInfo",
+[
+"stand_clusters.updateMask().select().reduceRegion()"
+],
+{
+"context": "'stand_clusters in habitat by pixel centre label histogram'"
+}
+],
+[
 "ee.Clusterer.wekaKMeans",
 [],
 {
@@ -8611,7 +8670,7 @@
 "ee.Image.cat().updateMask().cluster().rename().set",
 [
 "'clustering_metadata'",
-"'{\"active_bands\": [\"A00\", \"A01\", \"A02\", \"A03\", \"A04\", \"A05\", \"A06\", \"A07\", \"A08\", \"A09\", \"A10\", \"A11\", \"A12\", \"A13\", \"A14\", \"A15\", \"A16\", \"A17\", \"A18\", \"A19\", \"A20\", \"A21\", \"A22\", \"A23\", \"A24\", \"A25\", \"A26\", \"A27\", \"A28\", \"A29\", \"A30\", \"A31\", \"A32\", \"A33\", \"A34\", \"A35\", \"A36\", \"A37\", \"A38\", \"A39\", \"A40\", \"A41\", \"A42\", \"A43\", \"A44\", \"A45\", \"A46\", \"A47\", \"A48\", \"A49\", \"A50\", \"A51\", \"A52\", \"A53\", \"A54\", \"A55\", \"A56\", \"A57\", \"A58\", \"A59\", \"A60\", \"A61\", \"A62\"], \"cyclic_decomposition_log\": [], \"dropped_constant_bands\": [\"A63\"], \"feature_source\": \"embedding\", \"k\": 6, \"log_offsets\": {\"A03\": 1.501, \"A10\": 1.501, \"A42\": 1.501}, \"log_transformed_bands\": [\"A03\", \"A10\", \"A42\"], \"n_training_units\": 20, \"n_units_dropped_null_band\": 2, \"n_units_in_habitat\": 22, \"n_units_outside_habitat\": 3, \"n_units_total\": 25, \"normalization_method\": \"robust\", \"raw_band_names\": [\"A00\", \"A01\", \"A02\", \"A03\", \"A04\", \"A05\", \"A06\", \"A07\", \"A08\", \"A09\", \"A10\", \"A11\", \"A12\", \"A13\", \"A14\", \"A15\", \"A16\", \"A17\", \"A18\", \"A19\", \"A20\", \"A21\", \"A22\", \"A23\", \"A24\", \"A25\", \"A26\", \"A27\", \"A28\", \"A29\", \"A30\", \"A31\", \"A32\", \"A33\", \"A34\", \"A35\", \"A36\", \"A37\", \"A38\", \"A39\", \"A40\", \"A41\", \"A42\", \"A43\", \"A44\", \"A45\", \"A46\", \"A47\", \"A48\", \"A49\", \"A50\", \"A51\", \"A52\", \"A53\", \"A54\", \"A55\", \"A56\", \"A57\", \"A58\", \"A59\", \"A60\", \"A61\", \"A62\", \"A63\"], \"scaling\": {\"A00\": {\"center\": 0.5, \"spread\": 0.75}, \"A01\": {\"center\": 0.5, \"spread\": 0.75}, \"A02\": {\"center\": 0.5, \"spread\": 0.75}, \"A03\": {\"center\": 0.5, \"spread\": 0.75}, \"A04\": {\"center\": 0.5, \"spread\": 0.75}, \"A05\": {\"center\": 0.5, \"spread\": 0.75}, \"A06\": {\"center\": 0.5, \"spread\": 0.75}, \"A07\": {\"center\": 0.5, \"spread\": 0.75}, \"A08\": {\"center\": 0.5, \"spread\": 0.75}, \"A09\": {\"center\": 0.5, \"spread\": 0.75}, \"A10\": {\"center\": 0.5, \"spread\": 0.75}, \"A11\": {\"center\": 0.5, \"spread\": 0.75}, \"A12\": {\"center\": 0.5, \"spread\": 0.75}, \"A13\": {\"center\": 0.5, \"spread\": 0.75}, \"A14\": {\"center\": 0.5, \"spread\": 0.75}, \"A15\": {\"center\": 0.5, \"spread\": 0.75}, \"A16\": {\"center\": 0.5, \"spread\": 0.75}, \"A17\": {\"center\": 0.5, \"spread\": 0.75}, \"A18\": {\"center\": 0.5, \"spread\": 0.75}, \"A19\": {\"center\": 0.5, \"spread\": 0.75}, \"A20\": {\"center\": 0.5, \"spread\": 0.75}, \"A21\": {\"center\": 0.5, \"spread\": 0.75}, \"A22\": {\"center\": 0.5, \"spread\": 0.75}, \"A23\": {\"center\": 0.5, \"spread\": 0.75}, \"A24\": {\"center\": 0.5, \"spread\": 0.75}, \"A25\": {\"center\": 0.5, \"spread\": 0.75}, \"A26\": {\"center\": 0.5, \"spread\": 0.75}, \"A27\": {\"center\": 0.5, \"spread\": 0.75}, \"A28\": {\"center\": 0.5, \"spread\": 0.75}, \"A29\": {\"center\": 0.5, \"spread\": 0.75}, \"A30\": {\"center\": 0.5, \"spread\": 0.75}, \"A31\": {\"center\": 0.5, \"spread\": 0.75}, \"A32\": {\"center\": 0.5, \"spread\": 0.75}, \"A33\": {\"center\": 0.5, \"spread\": 0.75}, \"A34\": {\"center\": 0.5, \"spread\": 0.75}, \"A35\": {\"center\": 0.5, \"spread\": 0.75}, \"A36\": {\"center\": 0.5, \"spread\": 0.75}, \"A37\": {\"center\": 0.5, \"spread\": 0.75}, \"A38\": {\"center\": 0.5, \"spread\": 0.75}, \"A39\": {\"center\": 0.5, \"spread\": 0.75}, \"A40\": {\"center\": 0.5, \"spread\": 0.75}, \"A41\": {\"center\": 0.5, \"spread\": 0.75}, \"A42\": {\"center\": 0.5, \"spread\": 0.75}, \"A43\": {\"center\": 0.5, \"spread\": 0.75}, \"A44\": {\"center\": 0.5, \"spread\": 0.75}, \"A45\": {\"center\": 0.5, \"spread\": 0.75}, \"A46\": {\"center\": 0.5, \"spread\": 0.75}, \"A47\": {\"center\": 0.5, \"spread\": 0.75}, \"A48\": {\"center\": 0.5, \"spread\": 0.75}, \"A49\": {\"center\": 0.5, \"spread\": 0.75}, \"A50\": {\"center\": 0.5, \"spread\": 0.75}, \"A51\": {\"center\": 0.5, \"spread\": 0.75}, \"A52\": {\"center\": 0.5, \"spread\": 0.75}, \"A53\": {\"center\": 0.5, \"spread\": 0.75}, \"A54\": {\"center\": 0.5, \"spread\": 0.75}, \"A55\": {\"center\": 0.5, \"spread\": 0.75}, \"A56\": {\"center\": 0.5, \"spread\": 0.75}, \"A57\": {\"center\": 0.5, \"spread\": 0.75}, \"A58\": {\"center\": 0.5, \"spread\": 0.75}, \"A59\": {\"center\": 0.5, \"spread\": 0.75}, \"A60\": {\"center\": 0.5, \"spread\": 0.75}, \"A61\": {\"center\": 0.5, \"spread\": 0.75}, \"A62\": {\"center\": 0.5, \"spread\": 0.75}, \"A63\": {\"center\": 5.0, \"spread\": 0.0}}, \"seed\": 42, \"skewness_threshold\": 1.0, \"training_unit_key\": \"stand_clusters\"}'"
+"'{\"active_bands\": [\"A00\", \"A01\", \"A02\", \"A03\", \"A04\", \"A05\", \"A06\", \"A07\", \"A08\", \"A09\", \"A10\", \"A11\", \"A12\", \"A13\", \"A14\", \"A15\", \"A16\", \"A17\", \"A18\", \"A19\", \"A20\", \"A21\", \"A22\", \"A23\", \"A24\", \"A25\", \"A26\", \"A27\", \"A28\", \"A29\", \"A30\", \"A31\", \"A32\", \"A33\", \"A34\", \"A35\", \"A36\", \"A37\", \"A38\", \"A39\", \"A40\", \"A41\", \"A42\", \"A43\", \"A44\", \"A45\", \"A46\", \"A47\", \"A48\", \"A49\", \"A50\", \"A51\", \"A52\", \"A53\", \"A54\", \"A55\", \"A56\", \"A57\", \"A58\", \"A59\", \"A60\", \"A61\", \"A62\"], \"cyclic_decomposition_log\": [], \"dropped_constant_bands\": [\"A63\"], \"feature_source\": \"embedding\", \"k\": 6, \"log_offsets\": {\"A03\": 1.501, \"A10\": 1.501, \"A42\": 1.501}, \"log_transformed_bands\": [\"A03\", \"A10\", \"A42\"], \"n_training_units\": 20, \"n_units_dropped_null_band\": 1, \"n_units_in_habitat\": 22, \"n_units_no_pixel_centre_in_roi\": 1, \"n_units_outside_habitat\": 3, \"n_units_total\": 25, \"normalization_method\": \"robust\", \"raw_band_names\": [\"A00\", \"A01\", \"A02\", \"A03\", \"A04\", \"A05\", \"A06\", \"A07\", \"A08\", \"A09\", \"A10\", \"A11\", \"A12\", \"A13\", \"A14\", \"A15\", \"A16\", \"A17\", \"A18\", \"A19\", \"A20\", \"A21\", \"A22\", \"A23\", \"A24\", \"A25\", \"A26\", \"A27\", \"A28\", \"A29\", \"A30\", \"A31\", \"A32\", \"A33\", \"A34\", \"A35\", \"A36\", \"A37\", \"A38\", \"A39\", \"A40\", \"A41\", \"A42\", \"A43\", \"A44\", \"A45\", \"A46\", \"A47\", \"A48\", \"A49\", \"A50\", \"A51\", \"A52\", \"A53\", \"A54\", \"A55\", \"A56\", \"A57\", \"A58\", \"A59\", \"A60\", \"A61\", \"A62\", \"A63\"], \"scaling\": {\"A00\": {\"center\": 0.5, \"spread\": 0.75}, \"A01\": {\"center\": 0.5, \"spread\": 0.75}, \"A02\": {\"center\": 0.5, \"spread\": 0.75}, \"A03\": {\"center\": 0.5, \"spread\": 0.75}, \"A04\": {\"center\": 0.5, \"spread\": 0.75}, \"A05\": {\"center\": 0.5, \"spread\": 0.75}, \"A06\": {\"center\": 0.5, \"spread\": 0.75}, \"A07\": {\"center\": 0.5, \"spread\": 0.75}, \"A08\": {\"center\": 0.5, \"spread\": 0.75}, \"A09\": {\"center\": 0.5, \"spread\": 0.75}, \"A10\": {\"center\": 0.5, \"spread\": 0.75}, \"A11\": {\"center\": 0.5, \"spread\": 0.75}, \"A12\": {\"center\": 0.5, \"spread\": 0.75}, \"A13\": {\"center\": 0.5, \"spread\": 0.75}, \"A14\": {\"center\": 0.5, \"spread\": 0.75}, \"A15\": {\"center\": 0.5, \"spread\": 0.75}, \"A16\": {\"center\": 0.5, \"spread\": 0.75}, \"A17\": {\"center\": 0.5, \"spread\": 0.75}, \"A18\": {\"center\": 0.5, \"spread\": 0.75}, \"A19\": {\"center\": 0.5, \"spread\": 0.75}, \"A20\": {\"center\": 0.5, \"spread\": 0.75}, \"A21\": {\"center\": 0.5, \"spread\": 0.75}, \"A22\": {\"center\": 0.5, \"spread\": 0.75}, \"A23\": {\"center\": 0.5, \"spread\": 0.75}, \"A24\": {\"center\": 0.5, \"spread\": 0.75}, \"A25\": {\"center\": 0.5, \"spread\": 0.75}, \"A26\": {\"center\": 0.5, \"spread\": 0.75}, \"A27\": {\"center\": 0.5, \"spread\": 0.75}, \"A28\": {\"center\": 0.5, \"spread\": 0.75}, \"A29\": {\"center\": 0.5, \"spread\": 0.75}, \"A30\": {\"center\": 0.5, \"spread\": 0.75}, \"A31\": {\"center\": 0.5, \"spread\": 0.75}, \"A32\": {\"center\": 0.5, \"spread\": 0.75}, \"A33\": {\"center\": 0.5, \"spread\": 0.75}, \"A34\": {\"center\": 0.5, \"spread\": 0.75}, \"A35\": {\"center\": 0.5, \"spread\": 0.75}, \"A36\": {\"center\": 0.5, \"spread\": 0.75}, \"A37\": {\"center\": 0.5, \"spread\": 0.75}, \"A38\": {\"center\": 0.5, \"spread\": 0.75}, \"A39\": {\"center\": 0.5, \"spread\": 0.75}, \"A40\": {\"center\": 0.5, \"spread\": 0.75}, \"A41\": {\"center\": 0.5, \"spread\": 0.75}, \"A42\": {\"center\": 0.5, \"spread\": 0.75}, \"A43\": {\"center\": 0.5, \"spread\": 0.75}, \"A44\": {\"center\": 0.5, \"spread\": 0.75}, \"A45\": {\"center\": 0.5, \"spread\": 0.75}, \"A46\": {\"center\": 0.5, \"spread\": 0.75}, \"A47\": {\"center\": 0.5, \"spread\": 0.75}, \"A48\": {\"center\": 0.5, \"spread\": 0.75}, \"A49\": {\"center\": 0.5, \"spread\": 0.75}, \"A50\": {\"center\": 0.5, \"spread\": 0.75}, \"A51\": {\"center\": 0.5, \"spread\": 0.75}, \"A52\": {\"center\": 0.5, \"spread\": 0.75}, \"A53\": {\"center\": 0.5, \"spread\": 0.75}, \"A54\": {\"center\": 0.5, \"spread\": 0.75}, \"A55\": {\"center\": 0.5, \"spread\": 0.75}, \"A56\": {\"center\": 0.5, \"spread\": 0.75}, \"A57\": {\"center\": 0.5, \"spread\": 0.75}, \"A58\": {\"center\": 0.5, \"spread\": 0.75}, \"A59\": {\"center\": 0.5, \"spread\": 0.75}, \"A60\": {\"center\": 0.5, \"spread\": 0.75}, \"A61\": {\"center\": 0.5, \"spread\": 0.75}, \"A62\": {\"center\": 0.5, \"spread\": 0.75}, \"A63\": {\"center\": 5.0, \"spread\": 0.0}}, \"seed\": 42, \"skewness_threshold\": 1.0, \"training_unit_key\": \"stand_clusters\"}'"
 ],
 {}
 ],
@@ -8720,8 +8779,9 @@
 "A42"
 ],
 "n_training_units": 20,
-"n_units_dropped_null_band": 2,
+"n_units_dropped_null_band": 1,
 "n_units_in_habitat": 22,
+"n_units_no_pixel_centre_in_roi": 1,
 "n_units_outside_habitat": 3,
 "n_units_total": 25,
 "normalization_method": "robust",
@@ -12519,6 +12579,65 @@
 }
 ],
 [
+"stand_clusters.updateMask",
+[
+"habitat_mask"
+],
+{}
+],
+[
+"stand_clusters.updateMask().bandNames",
+[],
+{}
+],
+[
+"getInfo",
+[
+"stand_clusters.updateMask().bandNames()"
+],
+{
+"context": "'stand_clusters in habitat by pixel centre band name'"
+}
+],
+[
+"stand_clusters.updateMask().select",
+[
+[
+"'stand_clusters'"
+]
+],
+{}
+],
+[
+"ee.Reducer.frequencyHistogram",
+[],
+{}
+],
+[
+"ee.Reducer.frequencyHistogram().unweighted",
+[],
+{}
+],
+[
+"stand_clusters.updateMask().select().reduceRegion",
+[],
+{
+"geometry": "roi",
+"maxPixels": "1000000000.0",
+"reducer": "ee.Reducer.frequencyHistogram().unweighted()",
+"scale": "10"
+}
+],
+[
+"getInfo",
+[
+"stand_clusters.updateMask().select().reduceRegion()"
+],
+{
+"context": "'stand_clusters in habitat by pixel centre label histogram'"
+}
+],
+[
 "ee.Clusterer.wekaKMeans",
 [],
 {
@@ -12575,7 +12694,7 @@
 "ee.Image.cat().updateMask().cluster().rename().set",
 [
 "'clustering_metadata'",
-"'{\"active_bands\": [\"ndvi_mean\", \"ndvi_amplitude_annual\", \"ndvi_trend\", \"vv_p10\", \"vh_p10\", \"vv_p50\", \"vh_p50\", \"vv_p90\", \"vh_p90\", \"vv_iqr\", \"vh_iqr\", \"vv_minus_vh_median\", \"canopy_height\", \"canopy_height_std\", \"canopy_height_max\", \"elevation\", \"slope\", \"ndvi_phase_annual_sin\", \"ndvi_phase_annual_cos\", \"aspect_sin\", \"aspect_cos\"], \"cyclic_decomposition_log\": [\"ndvi_phase_annual\", \"aspect\"], \"dropped_constant_bands\": [\"distance_to_water\"], \"feature_source\": \"handcrafted\", \"k\": 5, \"log_offsets\": {\"canopy_height_max\": 1.501, \"slope\": 1.501, \"vh_iqr\": 1.501}, \"log_transformed_bands\": [\"vh_iqr\", \"canopy_height_max\", \"slope\"], \"n_training_units\": 20, \"n_units_dropped_null_band\": 2, \"n_units_in_habitat\": 22, \"n_units_outside_habitat\": 3, \"n_units_total\": 25, \"normalization_method\": \"robust\", \"raw_band_names\": [\"ndvi_mean\", \"ndvi_amplitude_annual\", \"ndvi_phase_annual\", \"ndvi_trend\", \"vv_p10\", \"vh_p10\", \"vv_p50\", \"vh_p50\", \"vv_p90\", \"vh_p90\", \"vv_iqr\", \"vh_iqr\", \"vv_minus_vh_median\", \"canopy_height\", \"canopy_height_std\", \"canopy_height_max\", \"elevation\", \"slope\", \"aspect\", \"distance_to_water\"], \"scaling\": {\"aspect_cos\": {\"center\": 0.5, \"spread\": 0.75}, \"aspect_sin\": {\"center\": 0.5, \"spread\": 0.75}, \"canopy_height\": {\"center\": 0.5, \"spread\": 0.75}, \"canopy_height_max\": {\"center\": 0.5, \"spread\": 0.75}, \"canopy_height_std\": {\"center\": 0.5, \"spread\": 0.75}, \"distance_to_water\": {\"center\": 5.0, \"spread\": 0.0}, \"elevation\": {\"center\": 0.5, \"spread\": 0.75}, \"ndvi_amplitude_annual\": {\"center\": 0.5, \"spread\": 0.75}, \"ndvi_mean\": {\"center\": 0.5, \"spread\": 0.75}, \"ndvi_phase_annual_cos\": {\"center\": 0.5, \"spread\": 0.75}, \"ndvi_phase_annual_sin\": {\"center\": 0.5, \"spread\": 0.75}, \"ndvi_trend\": {\"center\": 0.5, \"spread\": 0.75}, \"slope\": {\"center\": 0.5, \"spread\": 0.75}, \"vh_iqr\": {\"center\": 0.5, \"spread\": 0.75}, \"vh_p10\": {\"center\": 0.5, \"spread\": 0.75}, \"vh_p50\": {\"center\": 0.5, \"spread\": 0.75}, \"vh_p90\": {\"center\": 0.5, \"spread\": 0.75}, \"vv_iqr\": {\"center\": 0.5, \"spread\": 0.75}, \"vv_minus_vh_median\": {\"center\": 0.5, \"spread\": 0.75}, \"vv_p10\": {\"center\": 0.5, \"spread\": 0.75}, \"vv_p50\": {\"center\": 0.5, \"spread\": 0.75}, \"vv_p90\": {\"center\": 0.5, \"spread\": 0.75}}, \"seed\": 42, \"skewness_threshold\": 1.0, \"training_unit_key\": \"stand_clusters\"}'"
+"'{\"active_bands\": [\"ndvi_mean\", \"ndvi_amplitude_annual\", \"ndvi_trend\", \"vv_p10\", \"vh_p10\", \"vv_p50\", \"vh_p50\", \"vv_p90\", \"vh_p90\", \"vv_iqr\", \"vh_iqr\", \"vv_minus_vh_median\", \"canopy_height\", \"canopy_height_std\", \"canopy_height_max\", \"elevation\", \"slope\", \"ndvi_phase_annual_sin\", \"ndvi_phase_annual_cos\", \"aspect_sin\", \"aspect_cos\"], \"cyclic_decomposition_log\": [\"ndvi_phase_annual\", \"aspect\"], \"dropped_constant_bands\": [\"distance_to_water\"], \"feature_source\": \"handcrafted\", \"k\": 5, \"log_offsets\": {\"canopy_height_max\": 1.501, \"slope\": 1.501, \"vh_iqr\": 1.501}, \"log_transformed_bands\": [\"vh_iqr\", \"canopy_height_max\", \"slope\"], \"n_training_units\": 20, \"n_units_dropped_null_band\": 1, \"n_units_in_habitat\": 22, \"n_units_no_pixel_centre_in_roi\": 1, \"n_units_outside_habitat\": 3, \"n_units_total\": 25, \"normalization_method\": \"robust\", \"raw_band_names\": [\"ndvi_mean\", \"ndvi_amplitude_annual\", \"ndvi_phase_annual\", \"ndvi_trend\", \"vv_p10\", \"vh_p10\", \"vv_p50\", \"vh_p50\", \"vv_p90\", \"vh_p90\", \"vv_iqr\", \"vh_iqr\", \"vv_minus_vh_median\", \"canopy_height\", \"canopy_height_std\", \"canopy_height_max\", \"elevation\", \"slope\", \"aspect\", \"distance_to_water\"], \"scaling\": {\"aspect_cos\": {\"center\": 0.5, \"spread\": 0.75}, \"aspect_sin\": {\"center\": 0.5, \"spread\": 0.75}, \"canopy_height\": {\"center\": 0.5, \"spread\": 0.75}, \"canopy_height_max\": {\"center\": 0.5, \"spread\": 0.75}, \"canopy_height_std\": {\"center\": 0.5, \"spread\": 0.75}, \"distance_to_water\": {\"center\": 5.0, \"spread\": 0.0}, \"elevation\": {\"center\": 0.5, \"spread\": 0.75}, \"ndvi_amplitude_annual\": {\"center\": 0.5, \"spread\": 0.75}, \"ndvi_mean\": {\"center\": 0.5, \"spread\": 0.75}, \"ndvi_phase_annual_cos\": {\"center\": 0.5, \"spread\": 0.75}, \"ndvi_phase_annual_sin\": {\"center\": 0.5, \"spread\": 0.75}, \"ndvi_trend\": {\"center\": 0.5, \"spread\": 0.75}, \"slope\": {\"center\": 0.5, \"spread\": 0.75}, \"vh_iqr\": {\"center\": 0.5, \"spread\": 0.75}, \"vh_p10\": {\"center\": 0.5, \"spread\": 0.75}, \"vh_p50\": {\"center\": 0.5, \"spread\": 0.75}, \"vh_p90\": {\"center\": 0.5, \"spread\": 0.75}, \"vv_iqr\": {\"center\": 0.5, \"spread\": 0.75}, \"vv_minus_vh_median\": {\"center\": 0.5, \"spread\": 0.75}, \"vv_p10\": {\"center\": 0.5, \"spread\": 0.75}, \"vv_p50\": {\"center\": 0.5, \"spread\": 0.75}, \"vv_p90\": {\"center\": 0.5, \"spread\": 0.75}}, \"seed\": 42, \"skewness_threshold\": 1.0, \"training_unit_key\": \"stand_clusters\"}'"
 ],
 {}
 ],
@@ -12645,8 +12764,9 @@
 "slope"
 ],
 "n_training_units": 20,
-"n_units_dropped_null_band": 2,
+"n_units_dropped_null_band": 1,
 "n_units_in_habitat": 22,
+"n_units_no_pixel_centre_in_roi": 1,
 "n_units_outside_habitat": 3,
 "n_units_total": 25,
 "normalization_method": "robust",
@@ -16232,6 +16352,65 @@
 }
 ],
 [
+"stand_clusters.updateMask",
+[
+"habitat_mask"
+],
+{}
+],
+[
+"stand_clusters.updateMask().bandNames",
+[],
+{}
+],
+[
+"getInfo",
+[
+"stand_clusters.updateMask().bandNames()"
+],
+{
+"context": "'stand_clusters in habitat by pixel centre band name'"
+}
+],
+[
+"stand_clusters.updateMask().select",
+[
+[
+"'stand_clusters'"
+]
+],
+{}
+],
+[
+"ee.Reducer.frequencyHistogram",
+[],
+{}
+],
+[
+"ee.Reducer.frequencyHistogram().unweighted",
+[],
+{}
+],
+[
+"stand_clusters.updateMask().select().reduceRegion",
+[],
+{
+"geometry": "roi",
+"maxPixels": "1000000000.0",
+"reducer": "ee.Reducer.frequencyHistogram().unweighted()",
+"scale": "10"
+}
+],
+[
+"getInfo",
+[
+"stand_clusters.updateMask().select().reduceRegion()"
+],
+{
+"context": "'stand_clusters in habitat by pixel centre label histogram'"
+}
+],
+[
 "ee.Clusterer.wekaKMeans",
 [],
 {
@@ -16288,7 +16467,7 @@
 "ee.Image.cat().updateMask().cluster().rename().set",
 [
 "'clustering_metadata'",
-"'{\"active_bands\": [\"ndvi_mean\", \"ndvi_amplitude_annual\", \"ndvi_trend\", \"vv_p10\", \"vh_p10\", \"vv_p50\", \"vh_p50\", \"vv_p90\", \"vh_p90\", \"vv_iqr\", \"vh_iqr\", \"vv_minus_vh_median\", \"canopy_height\", \"canopy_height_std\", \"canopy_height_max\", \"elevation\", \"slope\", \"ndvi_phase_annual_sin\", \"ndvi_phase_annual_cos\", \"aspect_sin\", \"aspect_cos\"], \"cyclic_decomposition_log\": [\"ndvi_phase_annual\", \"aspect\"], \"dropped_constant_bands\": [\"distance_to_water\"], \"feature_source\": \"handcrafted\", \"k\": 6, \"log_offsets\": {\"canopy_height_max\": 1.501, \"slope\": 1.501, \"vh_iqr\": 1.501}, \"log_transformed_bands\": [\"vh_iqr\", \"canopy_height_max\", \"slope\"], \"n_training_units\": 20, \"n_units_dropped_null_band\": 2, \"n_units_in_habitat\": 22, \"n_units_outside_habitat\": 3, \"n_units_total\": 25, \"normalization_method\": \"robust\", \"raw_band_names\": [\"ndvi_mean\", \"ndvi_amplitude_annual\", \"ndvi_phase_annual\", \"ndvi_trend\", \"vv_p10\", \"vh_p10\", \"vv_p50\", \"vh_p50\", \"vv_p90\", \"vh_p90\", \"vv_iqr\", \"vh_iqr\", \"vv_minus_vh_median\", \"canopy_height\", \"canopy_height_std\", \"canopy_height_max\", \"elevation\", \"slope\", \"aspect\", \"distance_to_water\"], \"scaling\": {\"aspect_cos\": {\"center\": 0.5, \"spread\": 0.75}, \"aspect_sin\": {\"center\": 0.5, \"spread\": 0.75}, \"canopy_height\": {\"center\": 0.5, \"spread\": 0.75}, \"canopy_height_max\": {\"center\": 0.5, \"spread\": 0.75}, \"canopy_height_std\": {\"center\": 0.5, \"spread\": 0.75}, \"distance_to_water\": {\"center\": 5.0, \"spread\": 0.0}, \"elevation\": {\"center\": 0.5, \"spread\": 0.75}, \"ndvi_amplitude_annual\": {\"center\": 0.5, \"spread\": 0.75}, \"ndvi_mean\": {\"center\": 0.5, \"spread\": 0.75}, \"ndvi_phase_annual_cos\": {\"center\": 0.5, \"spread\": 0.75}, \"ndvi_phase_annual_sin\": {\"center\": 0.5, \"spread\": 0.75}, \"ndvi_trend\": {\"center\": 0.5, \"spread\": 0.75}, \"slope\": {\"center\": 0.5, \"spread\": 0.75}, \"vh_iqr\": {\"center\": 0.5, \"spread\": 0.75}, \"vh_p10\": {\"center\": 0.5, \"spread\": 0.75}, \"vh_p50\": {\"center\": 0.5, \"spread\": 0.75}, \"vh_p90\": {\"center\": 0.5, \"spread\": 0.75}, \"vv_iqr\": {\"center\": 0.5, \"spread\": 0.75}, \"vv_minus_vh_median\": {\"center\": 0.5, \"spread\": 0.75}, \"vv_p10\": {\"center\": 0.5, \"spread\": 0.75}, \"vv_p50\": {\"center\": 0.5, \"spread\": 0.75}, \"vv_p90\": {\"center\": 0.5, \"spread\": 0.75}}, \"seed\": 42, \"skewness_threshold\": 1.0, \"training_unit_key\": \"stand_clusters\"}'"
+"'{\"active_bands\": [\"ndvi_mean\", \"ndvi_amplitude_annual\", \"ndvi_trend\", \"vv_p10\", \"vh_p10\", \"vv_p50\", \"vh_p50\", \"vv_p90\", \"vh_p90\", \"vv_iqr\", \"vh_iqr\", \"vv_minus_vh_median\", \"canopy_height\", \"canopy_height_std\", \"canopy_height_max\", \"elevation\", \"slope\", \"ndvi_phase_annual_sin\", \"ndvi_phase_annual_cos\", \"aspect_sin\", \"aspect_cos\"], \"cyclic_decomposition_log\": [\"ndvi_phase_annual\", \"aspect\"], \"dropped_constant_bands\": [\"distance_to_water\"], \"feature_source\": \"handcrafted\", \"k\": 6, \"log_offsets\": {\"canopy_height_max\": 1.501, \"slope\": 1.501, \"vh_iqr\": 1.501}, \"log_transformed_bands\": [\"vh_iqr\", \"canopy_height_max\", \"slope\"], \"n_training_units\": 20, \"n_units_dropped_null_band\": 1, \"n_units_in_habitat\": 22, \"n_units_no_pixel_centre_in_roi\": 1, \"n_units_outside_habitat\": 3, \"n_units_total\": 25, \"normalization_method\": \"robust\", \"raw_band_names\": [\"ndvi_mean\", \"ndvi_amplitude_annual\", \"ndvi_phase_annual\", \"ndvi_trend\", \"vv_p10\", \"vh_p10\", \"vv_p50\", \"vh_p50\", \"vv_p90\", \"vh_p90\", \"vv_iqr\", \"vh_iqr\", \"vv_minus_vh_median\", \"canopy_height\", \"canopy_height_std\", \"canopy_height_max\", \"elevation\", \"slope\", \"aspect\", \"distance_to_water\"], \"scaling\": {\"aspect_cos\": {\"center\": 0.5, \"spread\": 0.75}, \"aspect_sin\": {\"center\": 0.5, \"spread\": 0.75}, \"canopy_height\": {\"center\": 0.5, \"spread\": 0.75}, \"canopy_height_max\": {\"center\": 0.5, \"spread\": 0.75}, \"canopy_height_std\": {\"center\": 0.5, \"spread\": 0.75}, \"distance_to_water\": {\"center\": 5.0, \"spread\": 0.0}, \"elevation\": {\"center\": 0.5, \"spread\": 0.75}, \"ndvi_amplitude_annual\": {\"center\": 0.5, \"spread\": 0.75}, \"ndvi_mean\": {\"center\": 0.5, \"spread\": 0.75}, \"ndvi_phase_annual_cos\": {\"center\": 0.5, \"spread\": 0.75}, \"ndvi_phase_annual_sin\": {\"center\": 0.5, \"spread\": 0.75}, \"ndvi_trend\": {\"center\": 0.5, \"spread\": 0.75}, \"slope\": {\"center\": 0.5, \"spread\": 0.75}, \"vh_iqr\": {\"center\": 0.5, \"spread\": 0.75}, \"vh_p10\": {\"center\": 0.5, \"spread\": 0.75}, \"vh_p50\": {\"center\": 0.5, \"spread\": 0.75}, \"vh_p90\": {\"center\": 0.5, \"spread\": 0.75}, \"vv_iqr\": {\"center\": 0.5, \"spread\": 0.75}, \"vv_minus_vh_median\": {\"center\": 0.5, \"spread\": 0.75}, \"vv_p10\": {\"center\": 0.5, \"spread\": 0.75}, \"vv_p50\": {\"center\": 0.5, \"spread\": 0.75}, \"vv_p90\": {\"center\": 0.5, \"spread\": 0.75}}, \"seed\": 42, \"skewness_threshold\": 1.0, \"training_unit_key\": \"stand_clusters\"}'"
 ],
 {}
 ],
@@ -16358,8 +16537,9 @@
 "slope"
 ],
 "n_training_units": 20,
-"n_units_dropped_null_band": 2,
+"n_units_dropped_null_band": 1,
 "n_units_in_habitat": 22,
+"n_units_no_pixel_centre_in_roi": 1,
 "n_units_outside_habitat": 3,
 "n_units_total": 25,
 "normalization_method": "robust",

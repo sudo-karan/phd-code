@@ -23,7 +23,12 @@ cos are not tested for skew: the same two configs ask two skews fewer), B14 (one
 unit label, with no reduceConnectedComponents, from grouped sums of the bands unmasked over
 their pixels with data: the calls of all three configs changed, and their stage metadata lost
 the five keys that described its maxSize) and B16 (each band's column is read back for exact
-quartiles, in place of Earth Engine's percentiles: the calls of all three configs).
+quartiles, in place of Earth Engine's percentiles: the calls of all three configs). Rewritten
+in round 14 by round 13's question 35 (the units without a row counted by cause: each config
+makes one more request, an unweighted histogram of the habitat-masked unit labels, eight
+recorded calls inserted after the habitat histogram, and its clustering_metadata gains
+n_units_no_pixel_centre_in_roi, 1 on the stand-ins, while n_units_dropped_null_band goes from
+2 to 1; nothing else in the file changed).
 """
 
 from __future__ import annotations

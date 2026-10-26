@@ -5212,7 +5212,10 @@ decisions:
     whose centre is inside the ROI, which the coverage-weighted label histograms count and the one-pixel sample
     cannot draw. They are not stands with a band gap: until round 13 a stand with no data in a band got 0 there
     and kept its row (round 13, review B14). The count's name and description are unchanged; whether to rename
-    it or count the two causes apart is put to Jaskaran (question 35 of the round 13 brief).
+    it or count the two causes apart is put to Jaskaran (question 35 of the round 13 brief). Round 14 (26 Oct 2026):
+    answered (a), by the round 14 brief's rule (Claude Code's recommendation): the two causes are counted apart
+    (spec-clustering-units-dropped-counted-by-cause), and units_in_habitat is units_fitted plus
+    units_dropped_missing_band plus units_with_no_pixel_centre_in_roi plus units_left_out_of_fit.
   evidence:
   - path: src/fmu/stages/clustering.py
     what: >-
@@ -7763,3 +7766,60 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 19 Oct 2026 (round 13 brief)
+- id: spec-clustering-units-dropped-counted-by-cause
+  title: >-
+    The clustering stage counts the units with no k-means row by cause: no habitat pixel centre inside the ROI, or a
+    band gap
+  decision: >-
+    The clustering stage (src/fmu/stages/clustering.py, a Locked module) counts, with one more request, the unit labels
+    inside the habitat mask that have a habitat pixel whose centre is inside the ROI: an unweighted frequency
+    histogram of the unit labels masked to the habitat mask (_count_units with unweighted on), whose "null" key, the
+    masked pixels, is no unit's and is left out. The units inside the habitat mask without such a pixel are
+    n_units_no_pixel_centre_in_roi in clustering_metadata, a new summary number units_with_no_pixel_centre_in_roi; the
+    one-pixel sample takes pixel centres, so they can have no row, and the export gives them no polygon.
+    n_units_dropped_null_band (the summary number units_dropped_missing_band) counts the units with such a pixel and
+    no row only, the band gaps, as its name says. Each count is clamped at 0, the counts coming from different
+    reductions (_split_by_cause). units_in_habitat is units_fitted plus units_dropped_missing_band plus
+    units_with_no_pixel_centre_in_roi plus units_left_out_of_fit. On a cluster_labels asset made before round 14 the
+    new key is absent: its summary number is null, not 0, and units_dropped_missing_band is as recorded, both causes
+    together. Clustering's step revision is raised to 5 (STEP_REVISION in src/fmu/utils/caching.py), which moves the
+    clustering and k_elbow keys of every config and no other key; the legacy fingerprint does not move.
+  alternatives_considered:
+  - >-
+    Rename the count, for example units_without_a_fit_row, with a description that names both causes: not chosen;
+    still one number for two things (round 13 question 35, option (b))
+  - 'Keep it, documented: not chosen; the name and the description say something else (option (c))'
+  - >-
+    Keep n_units_dropped_null_band as the total and add two new keys: not chosen; the summary number's name would
+    still not say what it counts
+  rationale: >-
+    Round 13's question 35 (docs/handoff/2026-10-20-round13.md, Questions), answered (a), "Count the two causes apart:
+    units with no pixel centre inside the ROI, and units with a band gap. For: each number means one thing, and at
+    district scale both will be common", by the round 14 brief's rule "Every other question: your recommendation"
+    (Jaskaran, 26 Oct 2026), and listed among the code changes before R3. Review C15 found that in every per-step run
+    of record the count held the stands at the ROI's edge with no pixel centre inside it, not band gaps. The new test
+    fails on the code before the change (KeyError 'n_units_no_pixel_centre_in_roi'; units_dropped_missing_band 2 where
+    1 is expected) and passes after it. Off the R3 settings the stage makes one more request, eight recorded calls,
+    and writes the new key (tests/data/clustering_off_calls.json, rewritten from the new code; nothing else in it
+    changed). No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/clustering.py
+    what: _count_units (unweighted), _split_by_cause, _train_and_apply_kmeans, the summary numbers and tabulate_clustering_metadata
+  - path: src/fmu/utils/caching.py
+    what: STEP_REVISION, clustering at 5
+  - path: tests/test_clustering_units_dropped_by_cause.py
+    what: The two causes counted apart, the unweighted histogram of the habitat-masked labels, the "null" key, the summary numbers; fails on the old code
+  - path: tests/data/clustering_off_calls.json
+    what: The recorded calls of the three configs, one more request each
+  - path: docs/outputs.md
+    what: The clustering counts, and "Since round 14 the two causes are counted apart"
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Questions, item 35
+  - path: docs/reviews/2026-10-19-review.md
+    what: C15
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 35, Claude Code's recommendation (a), by the brief's rule
+    'Every other question: your recommendation'

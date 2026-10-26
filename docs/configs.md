@@ -460,7 +460,9 @@ not mistyped stands. The stage logs the split and the manifest records it as
 `training_unit_key`. In the runs of record `n_units_dropped_null_band` counted
 the stands at the ROI's edge with no pixel whose centre is inside the ROI,
 which have no row and no polygon, not units with a band gap (review C15;
-`docs/outputs.md`). Read the shortfall before reading a silhouette: a cluster
+`docs/outputs.md`). Since round 14 those stands are counted apart, as
+`n_units_no_pixel_centre_in_roi`, and `n_units_dropped_null_band` counts the
+band gaps only (round 13's question 35). Read the shortfall before reading a silhouette: a cluster
 definition rests only on the units that reached the fit. With
 `fit_excludes_stands_below_min_area` on (below) there is a third, made on
 purpose: the stands below `merge.min_area_ha` are left out of the fit, though
