@@ -10262,3 +10262,45 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 26 Oct 2026 (round 14 brief), Task 6
+- id: process-gate-item-1-accepted-from-a078f3e
+  title: >-
+    Round 14's gate, item 1 ("CI green on every commit"): Jaskaran accepts a078f3e, from which every commit is green,
+    and the round goes on to the Earth Engine runs
+  decision: >-
+    The round 14 brief's gate before any Earth Engine run asks, as its item 1, "CI green on every commit", and says
+    "If any fails, write it under Blocked, finish the record, and stop. Start no Earth Engine work." ruff check
+    src/ tests/ scripts/ fails on the 18 pushed commits dbc8fa4 to 1abc3a5, on one unused import in
+    tests/test_run_passes_k_elbow.py (F401), which dbc8fa4 added; pytest and mypy pass on each of them, and a078f3e
+    removes the import, from which commit every check passes, on GitHub's CI too. Pushed commits are not rewritten
+    (CLAUDE.md), so the item cannot hold as written on this branch. The round stopped before any Earth Engine task
+    and put it to Jaskaran; he chose to accept a078f3e for item 1 and go on, once the gate's review leaves no high or
+    medium finding open. The 18 commits stay as they are, and the record and the PR say which they are.
+  alternatives_considered:
+  - >-
+    Keep the round stopped, no Earth Engine work this round: not chosen; the gate as written, but R3 would wait and
+    October's unused hours (377.35 left) do not carry into November
+  - >-
+    Make the round's commits again on a new branch from main so that each passes ruff, with a new PR: not chosen; every
+    commit green as written, but two PRs for one round, every commit id in the record changes, and CLAUDE.md names one
+    work branch
+  rationale: >-
+    Jaskaran, 26 Oct 2026, in the Claude Code session (about 22:30 IST), answering the round 14 record's question 0
+    (docs/handoff/2026-10-26-round14.md, Questions): "Accept a078f3e, go on". The question gave the facts (lint
+    only, in a test file; pytest and mypy pass on every commit; nothing that runs differs) and, against it, that it
+    reads the gate less strictly than written, where round 13 read the same rule strictly (it rewrote 52 commits not
+    yet pushed so that mypy passed on each). The gate's review, its second part, found the record had not drawn the
+    consequence (a medium finding, held by a second reader), which this decision answers. The per-commit checks had
+    kept only the last lines of their output, so ruff's failure went unseen; since a078f3e each check's exit code is
+    recorded. No paper was searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-26-round14.md
+    what: The brief's gate; Done, "How the code was made" and "The gate"; Blocked; Questions, item 0, answered
+  - path: tests/test_run_passes_k_elbow.py
+    what: The unused import, removed in a078f3e
+  - path: .github/workflows/ci.yml
+    what: CI's lint step, ruff check src/ tests/ scripts/
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026, in the Claude Code session: the round 14 record's question 0, answered (a)
