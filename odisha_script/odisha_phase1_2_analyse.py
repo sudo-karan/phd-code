@@ -11,6 +11,11 @@ Test 2  NDVI amplitude vs Sal (Shorea robusta) dominance
 Test 3  ETH 3x3 roughness vs field crown cover
         -> does canopy_height_std track canopy closure?
 
+RMSE and bias are printed only where both sides are heights in metres (Test 1). Tests 2 and 3
+print n, r, R2 and slope: a Sal fraction subtracted from NDVI amplitude, or crown cover in per
+cent from roughness in metres, means nothing (round 13 question 18 (a), 26 Oct 2026, the rule
+round 10 applied to step 12).
+
 Run:  python odisha_phase1_2_analyse.py
 """
 import numpy as np
@@ -25,7 +30,9 @@ df = pd.read_csv(IN)
 out = []
 def say(s=""): out.append(s); print(s)
 
-def fit(x, y, label):
+def fit(x, y, label, *, heights_m=False):
+    """n, r, R2, slope of y on x; RMSE and bias (y - x) too only with heights_m, that is when
+    x and y are both heights in metres."""
     m = x.notna() & y.notna()
     x, y = x[m].to_numpy(float), y[m].to_numpy(float)
     if len(x) < 5:
@@ -33,9 +40,11 @@ def fit(x, y, label):
     if np.ptp(x) == 0 or np.ptp(y) == 0:
         say(f"  {label:38} n={len(x):>3}  (no variance in x or y — skipped)"); return None
     r = stats.linregress(x, y)
-    rmse = np.sqrt(np.mean((y - x) ** 2)); bias = np.mean(y - x)
-    say(f"  {label:38} n={len(x):>3}  r={r.rvalue:+.3f}  R2={r.rvalue**2:.3f}  "
-        f"slope={r.slope:.2f}  RMSE={rmse:5.2f}  bias(pred-field)={bias:+5.2f}")
+    line = f"  {label:38} n={len(x):>3}  r={r.rvalue:+.3f}  R2={r.rvalue**2:.3f}  slope={r.slope:.2f}"
+    if heights_m:
+        rmse = np.sqrt(np.mean((y - x) ** 2)); bias = np.mean(y - x)
+        line += f"  RMSE={rmse:5.2f}  bias(pred-field)={bias:+5.2f}"
+    say(line)
     return r
 
 # ================================================================ TEST 1
@@ -43,13 +52,13 @@ say("=" * 78)
 say("TEST 1 — ETH canopy height (3x3 mean) vs field height")
 say("=" * 78)
 say("Against Lorey's height (basal-area weighted; ETH predicts canopy TOP so this or top-5 is the right target):")
-fit(df.loreys_h_m, df.eth_chm_3x3, "all plots")
+fit(df.loreys_h_m, df.eth_chm_3x3, "all plots", heights_m=True)
 for d, g in df.groupby("district"):
-    fit(g.loreys_h_m, g.eth_chm_3x3, f"  {d}")
+    fit(g.loreys_h_m, g.eth_chm_3x3, f"  {d}", heights_m=True)
 say("\nAgainst top-5 mean height:")
-fit(df.h_top5_m, df.eth_chm_3x3, "all plots")
+fit(df.h_top5_m, df.eth_chm_3x3, "all plots", heights_m=True)
 say("\nAgainst simple mean height (for reference only — includes saplings, NOT the right target):")
-fit(df.h_mean_m, df.eth_chm_3x3, "all plots")
+fit(df.h_mean_m, df.eth_chm_3x3, "all plots", heights_m=True)
 
 say("\nBias by field-height bin  (this is where GEDI-trained models are known to fail):")
 bins = [0, 5, 8, 12, 16, 20, 30, 60]

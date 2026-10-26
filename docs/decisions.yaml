@@ -8790,3 +8790,64 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 26 Oct 2026 (round 14 brief), "Keep every run's data"
+- id: field-phase1-rmse-and-bias-only-between-heights
+  title: >-
+    Phase 1 steps 2 and 6 print RMSE and bias only where both sides are heights in metres
+  decision: >-
+    odisha_script/odisha_phase1_2_analyse.py (step 2) and odisha_script/odisha_phase1_6_closeout.py (step 6, the
+    close-out) print an RMSE or a bias only where both sides are heights in metres, the rule round 10 applied to step
+    12's radar file. Step 2: Test 1 (ETH canopy height against field Lorey's, top-5 and mean height) keeps its RMSE and
+    bias; Test 2 (NDVI amplitude against the Sal dominance fraction) and Test 3 (ETH 3x3 roughness in metres against
+    crown cover in per cent) print n, r, R2 and slope only. The close-out, which prints no RMSE: section A/B keeps the
+    bias against Lorey's height of its eight height products (eth_chm_3x3, meta_chm_3x3, the four meta_* samplings,
+    glad_chm, gedi_rh98_50m) and prints none for vh_iqr and vv_iqr, radar spreads in dB. Nothing else either script
+    computes or prints changes, and the names of the files they write do not change. No pipeline module, config or
+    cache key is touched.
+  alternatives_considered:
+  - >-
+    (b) Leave the scripts alone and add a dated note to each committed file saying which RMSE and bias lines compare
+    different units: not chosen; the numbers would still be printed on every re-run and could still be misread
+  - >-
+    (c) Leave everything as it is: not chosen; it is inconsistent with round 10's rule for step 12
+  rationale: >-
+    The review of 19 Oct 2026 (docs/reviews/2026-10-19-review.md, C21): the Phase 1 result files print RMSE and bias
+    across mismatched units, "NDVI amplitude minus a Sal fraction, metres minus per cent, dB minus metres", and nothing
+    quotes these columns. Round 13 put it to Jaskaran as question 18 (docs/handoff/2026-10-20-round13.md), recommending
+    (a) "as round 10 decided for step 12": in round 10 (docs/handoff/2026-10-18-round10.md, Q3 (b), Jaskaran, 18 Oct
+    2026) odisha_phase1_12_radar_descending.py stopped writing the per-band RMSE and bias, which for radar subtract
+    metres from dB, and kept the RMSE of its multi-band line (predicted against measured height, both in metres). Step
+    4 (odisha_phase1_4_analyse_v2.py) already printed neither for its radar and seasonal fits. The round 14 brief
+    (docs/handoff/2026-10-26-round14.md, Task 1) answers every round 13 question it does not name by the
+    recommendation, and question 18's does not say "in a later round". The tests of tests/test_phase1_rmse_bias_units.py
+    run each script in a temporary folder on its committed input. On the code before the change they fail with
+    "AssertionError: assert ['  amplitude...=-37.89', ...] == []" (step 2: the eight fit lines of Tests 2 and 3 print
+    RMSE and bias) and "AssertionError: assert ['  vh_iqr   ...  bias=-8.06'] == []" (the close-out: vh_iqr and vv_iqr
+    print a bias), and the two tests that no other line changes fail on those lines only (step 2 at index 35, the
+    close-out at index 12); all four pass after it. No paper was searched for this decision.
+  evidence:
+  - path: odisha_script/odisha_phase1_2_analyse.py
+    what: fit(..., heights_m=...); Test 1's seven fits pass heights_m=True
+  - path: odisha_script/odisha_phase1_6_closeout.py
+    what: both(..., heights_m=...) and IN_METRES, the eight height products
+  - path: tests/test_phase1_rmse_bias_units.py
+    what: >-
+      Each script on its committed input: RMSE and bias only between heights in metres, and every other line as the
+      committed file holds it; fails on the code before the change
+  - path: odisha_script/odisha_phase1_12_radar_descending.py
+    what: fit and line, the rule as round 10 applied it to step 12
+  - path: odisha_script/odisha_phase1_4_analyse_v2.py
+    what: fit(..., bias=True); its radar and seasonal fits pass bias=False
+  - path: docs/reviews/2026-10-19-review.md
+    what: C21
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Questions for Jaskaran, question 18
+  - path: docs/handoff/2026-10-18-round10.md
+    what: Decisions (Jaskaran, 18 Oct), Q3 (b)
+  - path: docs/handoff/2026-10-26-round14.md
+    what: 'Task 1: "Every other question: your recommendation"'
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 18, Claude Code's recommendation (a), by the brief's rule
+    'Every other question: your recommendation'
