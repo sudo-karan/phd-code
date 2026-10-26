@@ -4951,7 +4951,9 @@ decisions:
     ROI's edge, but for a few stray pieces of 1 to 41 pixels against a line a multiple of 256 pixels from the ROI's
     south-west pixel corner (4 superpixels and 2 stands in the 10 km tile, and 1 superpixel in each of three
     AlphaEarth layers), which the review reads as a line between Earth Engine's computation tiles. The joins key
-    on stand_lbl, so no score changes; whether to change anything is put to Jaskaran.
+    on stand_lbl, so no score changes; whether to change anything is put to Jaskaran. Round 14 (26 Oct 2026): round
+    13's question 36 answered (a) now, by the round 14 brief's rule (Claude Code's recommendation): left as it is,
+    recorded, and to be looked at again at district scale (spec-pieces-in-the-vector-layers-left-until-district-scale).
   evidence:
   - path: src/fmu/stages/segmentation.py
     what: >-
@@ -5887,7 +5889,9 @@ decisions:
     git block records. In a run-tree batch the code is imported from the run tree (PYTHONPATH=<run tree>/src), so
     the two differ: in 92 of the 108 committed JSON records that hold both blocks at their top level (counted 20
     Oct 2026). The line is left out of the hash, so the hash is unaffected, and nothing reads it. The docstring of
-    environment_state says so since round 13; whether to drop the line is put to Jaskaran.
+    environment_state says so since round 13; whether to drop the line is put to Jaskaran. Round 14 (26 Oct 2026):
+    round 13's question 39 answered (b) now, and (a) if the line is misread, by the round 14 brief's rule (Claude
+    Code's recommendation): the line stays, documented (spec-manifest-keeps-the-left-out-pip-line).
   evidence:
   - path: src/fmu/utils/provenance.py
     what: environment_state
@@ -6936,7 +6940,10 @@ decisions:
   - >-
     Sum ee.Image.pixelArea() over each polygon in reduceToVectors: exact on any grid, the legacy layout's geographic
     type grid included, at the cost of a second band and reducer in every vectorisation; not what the brief asks
-    (question for Jaskaran in the round 13 record)
+    (question for Jaskaran in the round 13 record). Round 14 (26 Oct 2026): not chosen; round 13's question 4 answered
+    (a), by the round 14 brief's rule (Claude Code's recommendation), with a warning on an image not on a metric grid
+    to be added first if legacy exports are ever planned
+    (spec-export-legacy-dissolved-areas-left-on-the-geographic-grid)
   rationale: >-
     The round 13 brief (Jaskaran, 19 Oct 2026), Task 2: "A6: take n_pixels from reduceToVectors' count, and area_ha
     from it." Review A6 (docs/reviews/2026-10-19-review.md): "For some polygons with a hole that touches the outer ring
@@ -7388,7 +7395,10 @@ decisions:
     be over a 0.29 ha bound
   - >-
     Compare the minimum in whole pixels too: not done. The review lists the sums only, and its fix for B19 has
-    Config.kept_patch_min_pixels() follow the merge's own arithmetic for the minimum; left as a question for Jaskaran
+    Config.kept_patch_min_pixels() follow the merge's own arithmetic for the minimum; left as a question for Jaskaran.
+    Round 14 (26 Oct 2026): round 13's question 10 answered (b), in a later round with its own failing test, by the
+    round 14 brief's rule (Claude Code's recommendation); nothing is done in round 14
+    (spec-merge-minimum-in-whole-pixels-in-a-later-round)
   rationale: >-
     The round 13 brief (Jaskaran, 19 Oct 2026), Task 4: "B18 (area bounds compared in whole pixels)", and "Regenerate
     golden files only where the fix requires it, and say how many cases changed." The review
@@ -7443,7 +7453,10 @@ decisions:
     the two-decimal minima from 0.01 to 20.00 ha at 30 m)
   - >-
     Make the merge's own minimum exact in whole pixels, so that both follow the decimal: not done; a question for
-    Jaskaran (spec-merge-area-bounds-in-whole-pixels compares the ceilings so, not the minimum)
+    Jaskaran (spec-merge-area-bounds-in-whole-pixels compares the ceilings so, not the minimum). Round 14 (26 Oct
+    2026): round 13's question 10 answered (b), in a later round with its own failing test, by the round 14 brief's
+    rule (Claude Code's recommendation); nothing is done in round 14
+    (spec-merge-minimum-in-whole-pixels-in-a-later-round)
   rationale: >-
     The round 13 brief (Jaskaran, 19 Oct 2026), Task 4: "B19 (the kept-patch minimum)". The review
     (docs/reviews/2026-10-19-review.md, B19): "1.11 ha at 10 m gives 111.00000000000001 px, which rounds up to 112. With
@@ -7585,7 +7598,9 @@ decisions:
     Task 1 changes no type of these runs. A4, B17 and B18 can move the stand outlines and so every score; A1, A5, B13,
     B14 and B16 reach only the stand types and so only the labelling scores. How far any fix moves a stand, a type or
     a score was not measured. Whether R3 re-runs the AlphaEarth arm, which B14, B16, B17 and B18 reach, is a question
-    for Jaskaran in the round 13 brief (question 22).
+    for Jaskaran in the round 13 brief (question 22). Round 14 (26 Oct 2026): questions 1 and 22 answered by the round
+    14 brief: the note on the two Koraput AlphaEarth runs stands, and R3 re-runs the AlphaEarth arm too, Koraput's runs
+    included (field-r3-reruns-the-alphaearth-arm-koraput-included).
   alternatives_considered:
   - >-
     Note only the hand-crafted results, as the brief's sentence reads, and leave the AlphaEarth arm's files without a
@@ -7771,7 +7786,9 @@ decisions:
   - >-
     Record the change and carry on with the next pass: not chosen; a batch is run from a run tree pinned to one commit
     (CLAUDE.md), and exit 92 already refuses a modified tree at the start. Put to Jaskaran
-    (docs/handoff/2026-10-20-round13.md, Questions)
+    (docs/handoff/2026-10-20-round13.md, Questions). Round 14 (26 Oct 2026): round 13's question 29 answered (a), keep
+    the stop, by the round 14 brief's rule (Claude Code's recommendation)
+    (spec-batch-wrapper-stop-on-a-changed-run-tree-kept)
   rationale: >-
     The round 13 brief (Jaskaran, 19 Oct 2026), Task 6: "The C list: fix what is a documentation or record error." The
     review (docs/reviews/2026-10-19-review.md, C32): in the wrapper, read the git state before each pass, and refuse (or
@@ -9035,3 +9052,1037 @@ decisions:
   source: >-
     Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 33, Claude Code's recommendation (a), by the brief's rule
     'Every other question: your recommendation'
+- id: field-r3-reruns-the-alphaearth-arm-koraput-included
+  title: >-
+    R3 re-runs the AlphaEarth arm too, its two Koraput runs among them; the note that A4 reaches those two runs stands
+  decision: >-
+    Round 13's note on the two Koraput AlphaEarth runs (3 ha _r9 and round 12's 10 ha) stands: A4 reaches them through
+    the merge, since the two Sentinel-2 scenes of 31 Dec 2022 over the Koraput boxes that data_load's exclusive end
+    left out enter the phenology collection and so ndvi_amplitude_annual, one of the merge's criteria, by an amount
+    not measured; the other AlphaEarth runs are not affected by A4. R3 re-runs the AlphaEarth arm as well as the
+    hand-crafted arm, so that both arms of each R3 set come from the same code: the round 14 brief's Task 3 copies all
+    19 _r9 configs under the suffix _r14, among them the eight AlphaEarth box configs
+    (odisha_alphaearth_3ha_squares_<district>_keptland_r9 and odisha_alphaearth_10ha_squares_<district>_keptland_r9,
+    Koraput's two included) and sanjay_van_alphaearth_keptland_r9. The committed AlphaEarth results stay as first
+    written, with their dated notes, as the record from before the round 13 fixes
+    (field-keptland-r9-and-10ha-results-kept-from-before-the-round-13-fixes).
+  alternatives_considered:
+  - >-
+    Note the effect on the two Koraput runs but do not re-run them (option (b) of round 13 question 1): not chosen;
+    two images of several hundred in a harmonic fit, but the effect on the stands is not measured
+  - >-
+    Re-run the hand-crafted arm and only Koraput's two AlphaEarth runs, about 8.9 EECU-hours more than the
+    hand-crafted arm alone (option (b) of question 22): not chosen; each AlphaEarth set would mix code, Koraput (144
+    of the 264 plots scored) after the fixes and the other three districts before B14, B16, B17 and B18, and the
+    pooled scores and the side-by-side tables with them
+  - >-
+    Re-run the hand-crafted arm only, about 41.8 EECU-hours (option (c) of question 22): not chosen; the AlphaEarth
+    results would keep A4's two missing Sentinel-2 scenes in Koraput and the merge and clustering from before the
+    fixes, and the side-by-side tables would set new code beside old
+  rationale: >-
+    The round 14 brief (Jaskaran, 26 Oct 2026), Task 1: "Q22 (a): R3 re-runs the AlphaEarth arm too." and "For Q1, the
+    note stands, and R3 includes Koraput's AlphaEarth runs." Round 13's question 1
+    (docs/handoff/2026-10-20-round13.md, Questions) recommended (a): "Note them as affected by A4 and include them in
+    R3. For: the record says exactly what was touched." Its question 22 recommended (a): "The declaration compares the
+    two arms side by side, and with (b) or (c) they would differ in code as well as in features." The round 13 merge
+    and clustering fixes (B14, B16, B17 and B18) reach every AlphaEarth run, and A4 reaches its two Koraput runs; A1,
+    A5 and B13 do not reach the arm. Question 22 put (a) at about 35.8 EECU-hours more than (c): 18.84 for the four 10
+    ha runs, by their cost files, and about 17.0 for the four 3 ha runs, by round 10's readings of the running total.
+    How far any fix moves an AlphaEarth stand, type or score was not measured; the brief's amendment shows R3 beside
+    _r9 arm by arm and size by size, descriptive only, with no test of the difference (Task 2). No paper was searched
+    for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Questions, items 1 and 22, marked answered; read-only call 4, the images of 31 Dec 2022 each run left out
+  - path: docs/handoff/2026-10-26-round14.md
+    what: >-
+      The brief: Task 1, the amendment of Task 2, and Task 3 (the 19 _r9 configs copied under _r14)
+  - path: odisha_script/keptland_scores/keptland_alphaearth_r9_scores.txt
+    what: The AlphaEarth 3 ha scores of record, with the dated note on what reaches them
+  - path: odisha_script/keptland_scores/keptland_alphaearth_10ha_r9_scores.txt
+    what: The AlphaEarth 10 ha scores of record, with the same note
+  - path: docs/reproducibility/r9_runs/README.md
+    what: Per run, which fixes reach it
+  - path: configs/odisha_alphaearth_3ha_squares_koraput_keptland_r9.yaml
+    what: The Koraput AlphaEarth 3 ha config, one of the 19 copied for R3
+  - path: configs/odisha_alphaearth_10ha_squares_koraput_keptland_r9.yaml
+    what: The Koraput AlphaEarth 10 ha config, one of the 19 copied for R3
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 questions 1 and 22, answered: 'For Q1, the note stands, and R3
+    includes Koraput's AlphaEarth runs' and 'Q22 (a): R3 re-runs the AlphaEarth arm too'
+- id: spec-legacy-layout-keeps-reading-its-assets-after-a-fix
+  title: >-
+    A config whose cache is on the legacy layout still reads the assets it made after a fix raises a step's revision;
+    left so, recorded
+  decision: >-
+    No change. A fix that changes what a step computes raises that step's revision (STEP_REVISION in
+    fmu.utils.caching, spec-per-step-key-revision-of-a-step), which moves the per-step keys only, so no run of the
+    per-step layout, every run since round 9, reads an asset made before the fix. A config whose cache still holds
+    legacy assets (the runs before round 9, the _repro configs among them; fmu.pipeline.cache_layout_for gives it the
+    legacy layout) is keyed by its legacy fingerprint, which has no revision: re-run, it would read the cached
+    features it made before the fixes and compute the uncached steps, the merge and the export, with the new code.
+    Those configs are the record of the runs before round 9, read back and not re-run, and their pinned fingerprints
+    stay (tests/test_repro_fingerprints.py). The pipeline is not changed. A from-scratch re-run of such a config is a
+    copy under a new name, which gets the per-step layout and so the revisions (CLAUDE.md;
+    spec-cache-on-the-analysis-grid-with-per-step-keys).
+  alternatives_considered:
+  - >-
+    Make the pipeline refuse a legacy-layout run of a step whose revision is raised (option (b) of round 13 question
+    2): not chosen; no mixing, but one more change to a Locked module (src/fmu/pipeline.py) for runs nobody plans
+  rationale: >-
+    Round 13's question 2 (docs/handoff/2026-10-20-round13.md, Questions), answered (a), Claude Code's recommendation,
+    by the round 14 brief's rule "Every other question: your recommendation" (Jaskaran, 26 Oct 2026). Option (a):
+    "Leave it so, recorded. For: those configs are the record of runs before round 9, read back, not re-run; their
+    pinned fingerprints stay. Against: a re-run would mix old and new." No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/utils/caching.py
+    what: >-
+      STEP_REVISION, read by the per-step keys only; config_fingerprint, the legacy layout's key, which has no
+      revision
+  - path: src/fmu/pipeline.py
+    what: cache_layout_for, which gives a config the legacy layout when its cache holds an asset of that layout
+  - path: tests/test_repro_fingerprints.py
+    what: Pins the fingerprints of the _repro configs to those in the names of their saved assets
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 2, before the fixes (the legacy layout has no revision); Questions, item 2, marked answered
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 2, Claude Code's recommendation (a), by the brief's rule
+    'Every other question: your recommendation'
+- id: spec-export-legacy-stands-without-a-typed-pixel-left-null
+  title: >-
+    On the legacy cache layout a stand with a fit row but no typed pixel centre of its own keeps a null type, as coded
+  decision: >-
+    No change. The export types each stand of stands_merged from its own typed pixels, null where it holds none
+    (spec-export-stand-type-from-its-own-row-or-null); on the legacy cache layout these are the type-grid pixels whose
+    centres the stand holds. Two stands of the demo set's re-merge, one each in odisha_v120_3ha_dhenkanal_repro and
+    odisha_v120_handcrafted_dhenkanal_repro, under either merge rule, have a row in the fit but no such pixel, so a
+    re-export would give them a null type, although the fit typed their rows and round 12's vote gave them that same
+    type. They stay null: one reading in every layout, and no vote. No run since round 9 is on the legacy layout, and
+    none is to be exported again.
+  alternatives_considered:
+  - >-
+    Read the row types on the stand-label grid instead of the type grid (option (b) of round 13 question 3): not
+    chosen; every stand with a fit row would hold typed pixels, but a stand with no row could again take a neighbour's
+    type through its pixels' centres, which the answer to round 12's question 1 removed, and it changes round 12's
+    _stand_row_types
+  rationale: >-
+    Round 13's question 3, answered (a), "Leave them null, as coded. For: one reading in every layout, no vote.
+    Against: two legacy stands lose a correct type.", Claude Code's recommendation ("no run since round 9 is on the
+    legacy layout, and none is to be exported again"), by the round 14 brief's rule "Every other question: your
+    recommendation" (Jaskaran, 26 Oct 2026). The two stands were counted in round 13 from the demo re-merge's
+    per-stand files, off git (docs/handoff/2026-10-20-round13.md, Task 1). No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/export.py
+    what: _stand_row_types and _take_the_fit_rows_types
+  - path: docs/demo/remerge/README.md
+    what: Section 4, what a re-export of the legacy-layout runs would give
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 1, the two Dhenkanal stands; Questions, item 3, marked answered
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 3, Claude Code's recommendation (a), by the brief's rule
+    'Every other question: your recommendation'
+- id: spec-export-legacy-dissolved-areas-left-on-the-geographic-grid
+  title: >-
+    On the legacy cache layout stands_dissolved's area_ha stays the pixel count at the analysis scale, recorded; a
+    warning is to come first if legacy exports are ever planned
+  decision: >-
+    No change now. Since round 13 the export gives each polygon's area_ha as the pixel count reduceToVectors gives it
+    times analysis_scale_m² (spec-export-area-and-pixels-from-the-pixel-count). On the legacy cache layout
+    stands_dissolved is vectorised from the type image on a geographic grid (EPSG:4326, about 93 m² a pixel at 21° N
+    and 88 m² at Sanjay Van), so a re-export of such a run would give that layer's area_ha about 7.5% too large at 21°
+    N (about 14% at 28.5° N); stands_merged and stands_snic lie on UTM in both layouts, and are exact. Every run since
+    round 9 is on the analysis grid, where the count is exact, and no legacy run is to be exported again. If legacy
+    exports are ever planned, the export is first to warn when it vectorises an image that is not on a metric grid
+    (option (c) of the question). Nothing is done in round 14.
+  alternatives_considered:
+  - >-
+    Sum ee.Image.pixelArea() over each polygon in reduceToVectors, a second band and reducer (option (b) of round 13
+    question 4): not chosen; exact on any grid, but more work per vectorisation, beyond the round 13 brief's words
+  rationale: >-
+    Round 13's question 4, answered "(a), adding (c) if legacy exports are ever planned", Claude Code's
+    recommendation, by the round 14 brief's rule "Every other question: your recommendation" (Jaskaran, 26 Oct 2026).
+    Option (a): "Leave it: every run since round 9 is on the analysis grid, where the count is exact, and no legacy
+    run is to be exported again. For: the brief's fix as asked. Against: a trap if a legacy run is exported again."
+    Option (c): "Have the export warn when it vectorises an image that is not on a metric grid." No paper was searched
+    for this decision.
+  evidence:
+  - path: src/fmu/stages/export.py
+    what: _add_geom_attrs, and the stands_dissolved builder
+  - path: docs/outputs.md
+    what: Areas and pixel counts, and the geographic grid of stands_dissolved on the legacy layout
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 2, A6, found on the way; Questions, item 4, marked answered
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 4, Claude Code's recommendation (a), adding (c) if
+    legacy exports are ever planned, by the brief's rule 'Every other question: your recommendation'
+- id: field-a6-grid-areas-a-change-of-measure-not-an-error
+  title: >-
+    The 0.1% to 0.3% between the grid area A6 gives and Earth Engine's area() is a change of measure, not an error;
+    the notes annotate what the holes change
+  decision: >-
+    No change to the notes of round 13. Earth Engine's area() is the area on a sphere of radius 6,371 km; the area on
+    the analysis grid, which the export gives since A6, is 0.11% (Sanjay Van) to 0.31% (Odisha) below it for every
+    polygon, so far more printed figures would differ in a re-run than the hole error changes: for example 15 more
+    lines of odisha_phase2_3_results_districts.txt, and 8 lines of the pilot's odisha_phase2_3_results.txt, which the
+    holes leave unchanged. The difference is treated as a change of measure, not an error: the dated notes of round 13
+    correct the hole error and give the grid values for the lines they annotate, and list the other lines; files the
+    holes leave unchanged are not annotated. Nothing is regenerated for it, and no scored statistic reads area_ha.
+  alternatives_considered:
+  - >-
+    Treat every such figure as shown wrong and regenerate the affected results offline into new files beside the old
+    ones, as A7 and A8 do (option (b) of round 13 question 5): not chosen; one consistent set on the measure the code
+    now uses, but many files for a 0.3% descriptive shift
+  rationale: >-
+    Round 13's question 5, answered (a), Claude Code's recommendation, by the round 14 brief's rule "Every other
+    question: your recommendation" (Jaskaran, 26 Oct 2026). Option (a): "For: proportionate; no scored statistic reads
+    area_ha. Against: a reader of an unannotated file is not told of the 0.3%." No paper was searched for this
+    decision.
+  evidence:
+  - path: odisha_script/odisha_phase2_3_results_districts.txt
+    what: >-
+      The dated note of 20 Oct 2026 at its end, with the lines the holes change and the lines the grid measure moves
+  - path: odisha_script/odisha_phase2_3_results.txt
+    what: The pilot's file, which the holes leave unchanged and which carries no note
+  - path: odisha_script/odisha_phase2_5_results_districts.txt
+    what: The dated note of 20 Oct 2026 at its end (review A6)
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 2, A6; Questions, item 5, marked answered
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 5, Claude Code's recommendation (a), by the brief's rule
+    'Every other question: your recommendation'
+- id: spec-batch-wrapper-reads-its-log-on-start-in-a-later-round
+  title: >-
+    For a wrapper killed outright, the batch wrapper is to read the label's log on start for the exit lines its state
+    file lacks, in a later round
+  decision: >-
+    Decided, to be done in a later round; nothing is done in round 14. A batch wrapper killed outright (kill -9, or
+    the Mac crashing) cannot record its last pass: its shell script and runner run on and finish that pass holding the
+    lock (review B5), but the label's state file does not know which configs they finished, so the same command
+    started again would run those configs again and send their Drive exports twice. odisha_script/run_passes_safely.py
+    is, on start, also to read the label's log for export exit= lines the state file lacks and treat them as the state
+    file would (option (b) of the question), with a test in the wrapper's harness. Until then the wrapper is as round
+    13 left it (option (a)): a restart after such a stop relies on a person reading the log before restarting, or
+    using a new label.
+  alternatives_considered:
+  - >-
+    Leave it (option (a) of round 13 question 6): no new code, kill -9 is rare, and the log shows each export exit=0;
+    kept only until the later round, since it relies on a person reading the log before restarting
+  - >-
+    Have the wrapper follow the log while a pass runs and save the state after each exit line (option (c)): not
+    chosen; the state file would always be current, but with more code in the wrapper
+  rationale: >-
+    Round 13's question 6, answered "(b), in a later round", Claude Code's recommendation, by the round 14 brief's
+    rule "Every other question: your recommendation" (Jaskaran, 26 Oct 2026), with its rule "Where it says 'in a later
+    round', do not do it this round." Option (b): "On start, also read the label's log for export exit= lines the
+    state file lacks, and treat them as the state file would. For: small, testable with the new harness; covers kill
+    -9 and crashes. Against: the log becomes a second record to trust." No paper was searched for this decision.
+  evidence:
+  - path: odisha_script/run_passes_safely.py
+    what: The label's state file read on start (review B4), and the lock the children hold (review B5)
+  - path: tests/_wrapper_harness.py
+    what: The harness the change's test would use, the real wrapper and shell script against a modelled Earth Engine
+  - path: docs/running.md
+    what: The wrapper's paragraph
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 3, B4, a wrapper killed with SIGKILL; Questions, item 6, marked answered
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 6, Claude Code's recommendation (b), in a later round,
+    by the brief's rule 'Every other question: your recommendation'
+- id: process-claude-md-batch-sentence-reworded
+  title: >-
+    CLAUDE.md's sentence on batches says what the wrapper does since B4, that under the same label a finished config
+    is skipped; for Jaskaran's approval at merge
+  decision: >-
+    CLAUDE.md (Earth Engine) said: "A new batch does not know what an earlier one finished, so do not list a finished
+    config in it: its export stage would send its Drive files again." Since review B4 (round 13) a batch under the
+    same label reads the label's state file and skips what an earlier batch finished, so the sentence is true across
+    labels only. It is reworded as option (b) of round 13's question 7 gives it: "A batch under another label does not
+    know what an earlier one finished, so do not list a finished config in it; under the same label it is skipped
+    (docs/running.md)." Nothing else in CLAUDE.md changes. The change is in a commit of its own (a8a0c03), quoted in
+    the PR, for Jaskaran's approval at merge, and can be dropped on its own; this entry is pending until he approves
+    it.
+  alternatives_considered:
+  - >-
+    Leave it (option (a) of round 13 question 7): not chosen; still safe advice, but it no longer says what the
+    wrapper does
+  rationale: >-
+    Round 13's question 7, answered (b), Claude Code's recommendation, by the round 14 brief's rule "Every other
+    question: your recommendation" (Jaskaran, 26 Oct 2026); the brief, Task 1: "For Q7, put the CLAUDE.md wording in
+    one separate commit, quoted in the PR, for approval at merge." Option (b): "For: accurate. Against: CLAUDE.md is
+    yours to change." No paper was searched for this decision.
+  evidence:
+  - path: CLAUDE.md
+    what: Earth Engine, the sentence on batches (reworded in a8a0c03, for approval at merge)
+  - path: docs/running.md
+    what: The wrapper's paragraph, a batch under the same label skipping what an earlier one finished
+  - path: odisha_script/run_passes_safely.py
+    what: The label's state file, read on start (review B4)
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Questions, item 7, marked answered
+  papers: []
+  status: pending
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 7, Claude Code's recommendation (b), by the brief's rule
+    'Every other question: your recommendation'; the CLAUDE.md wording for his approval at merge
+- id: spec-clustering-exact-quartiles-kept-for-the-scaling
+  title: >-
+    B16's exact quartiles stay in the robust scaling's centre and spread, not only in the constant-band test
+  decision: >-
+    No change. As committed in round 13 (spec-clustering-exact-quartiles-for-the-robust-scaling), one set of exact
+    quartiles of the one-row-per-unit sample feeds both the drop test (a spread of at most 1e-9 is a constant band)
+    and the scaling, (x - median) / IQR, the median and IQR that DEC-003 declares (dn-median-iqr-scaling-dec-003).
+    Under A2, wekaKMeans min-max-normalises every band over the fit rows, which cancels any per-band (x - c) / s with
+    s > 0, so the fitted types change only through the drop decision; the stored scaled stack, and with it the k
+    elbow's inertia, and the recorded centres and spreads change too. The round 14 brief's k-means outside Earth
+    Engine uses the same median/IQR scaling with exact quartiles (its Task 2, item 1).
+  alternatives_considered:
+  - >-
+    Exact quartiles for the drop test only and histogram quartiles for the scaling, with the exact spread used only
+    where the histogram spread is 0 (option (b) of round 13 question 9): not chosen; the scaling as before wherever it
+    was defined, but two sets of quartiles, and a special case
+  rationale: >-
+    Round 13's question 9, answered (a), Claude Code's recommendation, by the round 14 brief's rule "Every other
+    question: your recommendation" (Jaskaran, 26 Oct 2026). The question was whether B16 stays inside the round 13
+    brief's line on A2 ("exact quartiles for the constant-band test", and A2, the scaling, not to be changed). Option
+    (a): "Keep it as committed. For: the drop test alone would leave a band it keeps to be divided by a histogram
+    spread that can be 0; one exact set of quartiles is what DEC-003 declares. Against: it changes numbers A2's
+    decision may make moot." No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/clustering.py
+    what: _apply_scaling and _exact_quartiles
+  - path: tests/test_clustering_exact_quartiles.py
+    what: A band whose exact IQR is 0.1 and whose histogram quartiles coincide is kept, and scaled by that IQR
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 4, B16; Questions, item 9, marked answered
+  - path: docs/handoff/2026-10-26-round14.md
+    what: The brief, Task 2, item 1, median/IQR scaling with exact quartiles
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 9, Claude Code's recommendation (a), by the brief's rule
+    'Every other question: your recommendation'
+- id: spec-merge-minimum-in-whole-pixels-in-a-later-round
+  title: >-
+    The merge's minimum is to be judged in whole pixels too, with Config.kept_patch_min_pixels() following it, in a
+    later round
+  decision: >-
+    Decided, to be done in a later round with its own failing test; nothing is done in round 14. Since B18 the merge
+    compares every ceiling in whole pixels, worked out exactly from the bound as written
+    (spec-merge-area-bounds-in-whole-pixels); the minimum, merge.min_area_ha, is still judged in floats (n x hectares
+    per pixel < minimum), and since B19 Config.kept_patch_min_pixels() follows that
+    (spec-kept-patch-minimum-by-the-merges-arithmetic). The minimum is to be judged exactly too, as the fewest whole
+    pixels at or above the minimum as written, with kept_patch_min_pixels() returning that (option (b) of the
+    question). Until then the float judgement stands. It is safe while every run is at 10 m: no config is affected
+    (1.0 ha at 10 m is exact either way), and at 10 m the float judgement is off the written minimum for none of the
+    two-decimal minima from 0.01 to 20.00 ha, while at 30 m it is one pixel off for 54 of them (for 0.45 ha, 5 pixels
+    are exactly 0.45 ha but count as below it).
+  alternatives_considered:
+  - >-
+    Leave it (option (a) of round 13 question 10): no change, and no config is affected; kept only until the later
+    round, since the merge then has two arithmetics
+  rationale: >-
+    Round 13's question 10, answered "(b), in a later round, with its own failing test; (a) is safe while every run is
+    at 10 m", Claude Code's recommendation, by the round 14 brief's rule "Every other question: your recommendation"
+    (Jaskaran, 26 Oct 2026), with its rule "Where it says 'in a later round', do not do it this round." Option (b):
+    "For: one rule for every area bound. Against: one more change to two Locked modules; it may move golden digests
+    (not computed)." No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/utils/region_merge.py
+    what: _whole_pixels_within for the ceilings; the minimum compared in floats
+  - path: src/fmu/config.py
+    what: Config.kept_patch_min_pixels
+  - path: tests/test_region_merge.py
+    what: The ceilings in whole pixels (review B18)
+  - path: tests/test_mask_before_snic.py
+    what: test_the_smallest_patch_is_the_smallest_the_merge_counts_as_a_stand (review B19)
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 4, B18 and B19; Questions, item 10, marked answered
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 10, Claude Code's recommendation (b), in a later round,
+    with its own failing test, by the brief's rule 'Every other question: your recommendation'
+- id: spec-cost-script-failed-pass-span-kept-to-the-next-header
+  title: >-
+    The cost script keeps B26's rule, that a failed pass's span runs to the next stage header, its wait for the queue
+    included
+  decision: >-
+    No change. Since B26 (round 13) scripts/eecu_by_stage.py ends a pass's span at the next stage header of any
+    config, or at its batch's end, so a failed pass's span includes the wait for the queue before the next pass: in
+    round 2's squares log Koraput's first segmentation pass gets 1.25 h, about 66 minutes of it waiting. Cloud
+    Monitoring counts the project's online use by anyone, and the batch uses almost none while it waits. The ten
+    committed cost records regenerate unchanged under the rule.
+  alternatives_considered:
+  - >-
+    End a pass at the wrapper's pass N exit= line, leaving the wait out (option (b) of round 13 question 11): not
+    chosen; tighter spans, but the committed Dhenkanal hand-crafted record's failed features pass would end 4 s
+    earlier, so its online figure could change if regenerated
+  rationale: >-
+    Round 13's question 11, answered (a), Claude Code's recommendation, by the round 14 brief's rule "Every other
+    question: your recommendation" (Jaskaran, 26 Oct 2026). Option (a): "Keep the rule. For: the ten committed cost
+    records regenerate unchanged. Against: a long wait inflates the failed pass's online figure." No paper was
+    searched for this decision.
+  evidence:
+  - path: scripts/eecu_by_stage.py
+    what: The pass spans, each ended at the next stage header or at its batch's end
+  - path: tests/test_eecu_by_stage.py
+    what: The spans, and the refusal of a pass whose batch has no end line
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 5, B26; Questions, item 11, marked answered
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 11, Claude Code's recommendation (a), by the brief's
+    rule 'Every other question: your recommendation'
+- id: spec-drive-vector-fetcher-stops-kept-newest-run-checked
+  title: >-
+    fetch_drive_vectors.py keeps B28's two stops; a --manifest flag is to be added only if a correct file is ever
+    refused
+  decision: >-
+    No change now. (i) A config whose run folder is not on this machine stops the fetch
+    (scripts/fetch_drive_vectors.py), so the script run with no --configs stops at the first such config; nothing
+    unchecked is saved under the clean name, and --configs must name the runs this machine has. (ii) Each layer is
+    checked against the newest local run folder whose export stage recorded it, as report.py picks the newest run; if
+    a newer export pass than the one on Drive exists locally, a correct file is refused. A --manifest flag to name the
+    run is to be added if that case appears.
+  alternatives_considered:
+  - >-
+    For (i), skip a config with no local run folder, with a note (option (b)), or fetch it unchecked with a warning,
+    the old behaviour (option (c)): not chosen
+  - >-
+    For (ii), add a --manifest flag to name the run now (option (b)): not now; to be added if the case appears
+  rationale: >-
+    Round 13's question 12, answered "(i) (a); (ii) (a) now, (b) if the case appears", Claude Code's recommendation,
+    by the round 14 brief's rule "Every other question: your recommendation" (Jaskaran, 26 Oct 2026). Its (i) (a):
+    "Stop, as now: nothing unchecked is saved under the clean name, but --configs must name the runs this machine
+    has". In round 13 the fetcher was not checked against real Drive (no Drive call). No paper was searched for this
+    decision.
+  evidence:
+  - path: scripts/fetch_drive_vectors.py
+    what: The two stops, and each layer's polygon count checked against n_features of the config's newest run manifest
+  - path: tests/test_fetch_drive_vectors.py
+    what: main() against a stubbed Drive service
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 5, B28; Questions, item 12, marked answered
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 12, Claude Code's recommendation (i) (a); (ii) (a) now,
+    (b) if the case appears, by the brief's rule 'Every other question: your recommendation'
+- id: spec-rebuild-cache-failed-listing-stays-loud
+  title: >-
+    A dry run of rebuild_cache.py keeps exiting non-zero when a folder listing fails, a config never run among them
+  decision: >-
+    No change. Since B32 (round 13) rebuild_cache.py exits non-zero when any folder listing fails, a dry run included,
+    and so for a config never run, whose folder does not exist (for example the default sanjay_van_nirv_dual). Earth
+    Engine's "not found" for a config's top folder is not read as zero assets.
+  alternatives_considered:
+  - >-
+    Read Earth Engine's "not found" for a config's top folder as zero assets (option (b) of round 13 question 13): not
+    chosen; worth it only if the defaults were often run on configs never run
+  rationale: >-
+    Round 13's question 13, answered "(a), unless the defaults are often run on configs never run", Claude Code's
+    recommendation, by the round 14 brief's rule "Every other question: your recommendation" (Jaskaran, 26 Oct 2026).
+    Option (a): "Keep that: any failed listing is loud". No paper was searched for this decision.
+  evidence:
+  - path: rebuild_cache.py
+    what: DEFAULT_CONFIGS, the listing and deletion counts, and the exit code on a failed listing
+  - path: tests/test_rebuild_cache.py
+    what: A failed listing exits non-zero, on a fake ee
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 5, B32; Questions, item 13, marked answered
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 13, Claude Code's recommendation (a), by the brief's
+    rule 'Every other question: your recommendation'
+- id: eval-stand-raster-tolerance-0-and-order-rule-kept
+  title: >-
+    stand_raster keeps its default sliver tolerance of 0 and its first-stand rule for a centre on a shared edge; a
+    tolerance is declared when height R² is first run on a site
+  decision: >-
+    No change now. (i) fmu.evaluation.reference_height.stand_raster keeps sliver_tolerance at 0 by default, as the
+    package's other sliver threshold defaults to 0: exact shared edges and hole edges are accepted, and the real
+    sliver overlaps the review found in exported layers are refused until the caller declares a tolerance. A tolerance
+    is to be declared in the predeclared file when height R² is first run on a site, after measuring the sliver depth
+    of one exported layer. (ii) A pixel centre on a shared edge goes to the first stand in the order given, as coded.
+    No result uses stand_raster yet.
+  alternatives_considered:
+  - >-
+    For (i), a positive default tied to the grid, say 1% of the pixel (option (b)): not chosen
+  - >-
+    For (ii), give a centre on a shared edge to the stand it lies deeper in, with the order for exact ties only: not
+    chosen
+  rationale: >-
+    Round 13's question 14, answered "(i) (a); (ii) keep the order rule", Claude Code's recommendation, by the round
+    14 brief's rule "Every other question: your recommendation" (Jaskaran, 26 Oct 2026). How deep the slivers of real
+    exported layers are was not measured in round 13. No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/evaluation/reference_height.py
+    what: stand_raster, its sliver_tolerance and its tie rule
+  - path: tests/test_evaluation_reference_height.py
+    what: test_the_sliver_tolerance, and the shared edges
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 5, B23; Questions, item 14, marked answered
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 14, Claude Code's recommendation (i) (a); (ii) keep the
+    order rule, by the brief's rule 'Every other question: your recommendation'
+- id: field-a8-note-kept-at-the-end-of-the-results-file
+  title: >-
+    The A8 note stays at the end of odisha_phase2_5_results_districts.txt, as committed, so that no line the review
+    cites moves
+  decision: >-
+    No change. Round 13's dated note (review A8) on the v120 stands_snic block of
+    odisha_script/odisha_phase2_5_results_districts.txt (lines 259 to 325) stays at the end of the file, where it was
+    committed, not right after the block. No line moves, so every line number the review cites in the file still
+    points at the same text (A8's 270-276 and 281-284; A6's 46, 409 and 771). The note names its block and lines, and
+    odisha_script/PHASE2_STATUS.md points to it. The file is the record from before the fix; the statistics script
+    writes its _r13 files beside it.
+  alternatives_considered:
+  - >-
+    Put the note right after the block, after line 288 (option (b) of round 13 question 16): not chosen; readers of
+    the block would see it at once, but every later line would move down 11, lines 409 and 771 among them
+  rationale: >-
+    Round 13's question 16, answered (a), Claude Code's recommendation, by the round 14 brief's rule "Every other
+    question: your recommendation" (Jaskaran, 26 Oct 2026). Option (a)'s against: "someone reading the block does not
+    see the note unless they read to the end." The recommendation: "The file is now the record from before the fix,
+    the script writes _r13 beside it, and readers reach these numbers through PHASE2_STATUS.md, which points to the
+    note." No paper was searched for this decision.
+  evidence:
+  - path: odisha_script/odisha_phase2_5_results_districts.txt
+    what: The note at the end of the file (review A8)
+  - path: odisha_script/odisha_phase2_5_results_districts_r13.txt
+    what: The statistics with the fix, beside the old file
+  - path: odisha_script/PHASE2_STATUS.md
+    what: The pointer to the note
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 6, A8; Questions, item 16, marked answered
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 16, Claude Code's recommendation (a), by the brief's
+    rule 'Every other question: your recommendation'
+- id: field-phase1-step8-rank-sentence-fixed-in-a-later-round
+  title: >-
+    The Phase 1 step 8 script is to name the rank it computes, with its own test, in a later round; the committed file
+    keeps its note
+  decision: >-
+    Decided, to be done in a later round with its own test; nothing is done in round 14.
+    odisha_script/odisha_phase1_8_separation_null.py prints of distance_to_water's excess under the spatial null,
+    +0.012, "which is the second smallest in the table"; it is the second smallest only among the 17 bands that
+    survive, and the sixth smallest of all 22 (review C4). The committed odisha_script/odisha_phase1_8_results.txt
+    carries round 13's dated note, but a re-run would print the wrong sentence again. The script is to name the rank
+    it computes (for example "second smallest of the bands that survive"), with a test, which means pulling the
+    verdict text out of main(). The committed file will then differ from the script's output in one line, and its
+    reproducibility row will stop being "reproduced exactly", like the C3 and C22 rows.
+  alternatives_considered:
+  - >-
+    Leave the script and keep the note (option (b) of round 13 question 17): not chosen; no code change, and the row
+    stays "reproduced exactly", but the false sentence comes back on every re-run
+  rationale: >-
+    Round 13's question 17, answered "(a), in a later round, with its own test", Claude Code's recommendation, by the
+    round 14 brief's rule "Every other question: your recommendation" (Jaskaran, 26 Oct 2026), with its rule "Where it
+    says 'in a later round', do not do it this round." No paper was searched for this decision.
+  evidence:
+  - path: odisha_script/odisha_phase1_8_separation_null.py
+    what: The verdict sentence, printed by main()
+  - path: odisha_script/odisha_phase1_8_results.txt
+    what: The dated note of round 13 (review C4) at lines 129-134
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 6, C4; Questions, item 17, marked answered
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 17, Claude Code's recommendation (a), in a later round,
+    with its own test, by the brief's rule 'Every other question: your recommendation'
+- id: field-keptland-chance-open-rules-accepted-as-run
+  title: >-
+    The six rules the kept-land chance test applied where its declaration is silent are accepted as run, after the
+    results they gave existed
+  decision: >-
+    The six rules the declared kept-land chance test applied where PHASE_KEPTLAND_PREDECLARED.md is silent, each the
+    village test's rule adopted by reference (odisha_script/odisha_keptland_chance.py, its docstring's Q1 to Q8), are
+    accepted as run: 1. each realisation scores only the 264 plots the observed join scores, and the 3 plots with no
+    stand within 30 m move but are never scored (Q1); 2. the conditional labelling null has its own seed, and on kept
+    land it is the unconditional null with a different random stream (Q2); 3. S1 and S2 use the same realisations,
+    masked at scoring time, with Holm within each (Q4); 4. Holm runs over the estimable tests only (Q8); 5. far-apart
+    pairs are fixed from the real positions and used in a realisation when both plots are typed there (Q3); 6. the
+    seed rule (Q6), which Jaskaran answered on 18 Oct 2026 (round 10's question 4), after the declared run of 18 Oct
+    20:18 IST. The acceptance came on 26 Oct 2026, by the round 14 brief's rule, after the results these rules gave
+    existed: the rehearsal (f041170 / 647a133, 17 Oct 2026), the declared 3 ha runs (e992d62, 18 Oct) and the 10 ha
+    runs (a333dfa, 19 Oct). In every declared run all 15 tests had 1,999 usable realisations, so rule 4 changed
+    nothing; every Holm p is 1.000 but two, at 0.695 (AlphaEarth 10 ha). No result changes and nothing is re-run. R3's
+    declared chance tests (the round 14 brief, Task 8) are to apply the same rules, which for R3 are accepted before
+    any R3 result exists.
+  alternatives_considered:
+  - >-
+    Reject one or more and declare a change, then re-run the offline chance test, about 20 minutes per run, with no
+    Earth Engine (option (b) of round 13 question 19): not chosen; each rule would get a decision of its own, but the
+    change would be declared after the results are known, which is what the declaration exists to prevent
+  rationale: >-
+    Round 13's question 19 (review C6), answered (a), Claude Code's recommendation, by the round 14 brief's rule
+    "Every other question: your recommendation" (Jaskaran, 26 Oct 2026). Option (a): "Accept all six as run, with one
+    recorded line in the register and the brief saying the results already existed when you accepted. For: they are
+    the village test's rules, and no re-run is needed. Against: the acceptance comes after the results, and the record
+    has to say so plainly." This entry is that line, and the mark on question 19 in docs/handoff/2026-10-20-round13.md
+    says the same. The acceptance is the brief's rule for every question it does not answer by name, not an answer
+    given to this question alone. No paper was searched for this decision.
+  evidence:
+  - path: odisha_script/odisha_keptland_chance.py
+    what: The docstring's Q1 to Q8, the rules used where the declaration is silent
+  - path: odisha_script/PHASE_KEPTLAND_PREDECLARED.md
+    what: The declaration the rules fill in
+  - path: odisha_script/keptland_scores/keptland_s1desc_r9_chance.txt
+    what: The declared chance test of the hand-crafted 3 ha runs
+  - path: odisha_script/keptland_scores/keptland_alphaearth_10ha_r9_chance.txt
+    what: The declared chance test of the AlphaEarth 10 ha runs, with the two Holm p of 0.695
+  - path: docs/handoff/2026-10-17-round9-chat.md
+    what: The questions under which the docstring's points were asked
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 6, C21 and C6; Questions, item 19, marked answered
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 19, Claude Code's recommendation (a), by the brief's
+    rule 'Every other question: your recommendation'; accepted after the results existed
+- id: field-three-outlying-plots-kept-until-fes-replies
+  title: >-
+    The three outlying plot positions of Barakanti, Khasuguda and Bhanradi Sahi are kept, with the fact recorded,
+    until FES replies
+  decision: >-
+    In three habitations one plot lies far from all the others: Barakanti (Koraput) 18.69107_82.868956, 9.3 km from
+    the nearest other plot of its habitation; Khasuguda (Koraput) 18.624624_82.933586, 3.9 km; Bhanradi Sahi
+    (Kendujhar) 21.614841_85.407242, 4.7 km. Every other plot of these habitations is within 360 m of another.
+    IndiaSAT puts each of the three on built-up land (Barakanti, Bhanradi Sahi) or cropland (Khasuguda) in every year
+    from 2017 to 2021; between them they add 4,599 of the 8,248 ha of boxes and cause the null's largest moves;
+    Khasuguda's plot is scored in the kept-land test, the other two are not. The three are kept at their recorded
+    positions, with the fact recorded (round 13, review C8), until FES replies. No position is changed, no correction
+    is declared and nothing is re-run; the R3 configs keep the boxes as they are. What is done after FES replies is
+    not decided here.
+  alternatives_considered:
+  - >-
+    Check the three against the field sheets or GPS logs and, if they are wrong, declare a correction and re-run the
+    boxes and everything downstream, which needs Earth Engine (option (a) of round 13 question 20, recommended there):
+    not taken now; the brief keeps the plots until FES replies
+  - >-
+    Keep them now and declare beforehand a sensitivity check without the three plots, offline for the chance test, new
+    boxes needing Earth Engine (option (c)): not chosen
+  rationale: >-
+    The round 14 brief (Jaskaran, 26 Oct 2026), Task 1: "Q20 (b): keep the three plots, with the fact recorded, until
+    FES replies." Round 13's question 20 called it a field-data question only Jaskaran can answer, and recommended
+    "(a), then (b) or (c) depending on what the sheets say". Option (b): "Keep them, with the fact recorded (done in
+    round 13). For: no change to any result. Against: three boxes keep an extra 4,599 ha set by possibly wrong
+    positions." No paper was searched for this decision.
+  evidence:
+  - path: odisha_script/odisha_squares_0_aois.py
+    what: The docstring's record of the three plots (round 13, review C8)
+  - path: odisha_script/keptland_scores/README.md
+    what: Why three boxes have the largest moves
+  - path: odisha_script/keptland_scores/keptland_s1desc_r9_chance.txt
+    what: The note after the move table, p90 beside the median
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 6, C8; Questions, item 20, marked answered
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 20, answered (b), 'keep the three plots, with the fact
+    recorded, until FES replies'
+- id: site-r3-notes-at-the-next-site-build
+  title: >-
+    At the next site build the site says the _r9 results are from before round 13's fixes, says "share no edge" of
+    isolated stands, and labels ndvi_mean for what it is
+  decision: >-
+    Decided for the next site build; the site and ui_data/ are not changed in round 14 (its brief leaves the website
+    and ui_data/ to a later step). At that build: (1) the site's pages that show the hand-crafted _r9 runs and round
+    12's 10 ha runs get a single sentence saying that their results are from before round 13's fixes, pointing to the
+    round 13 record, as the committed result files' dated notes say (question 23); (2) ui/explorer.html says that the
+    stands below the minimum stayed small "because they share no edge with another stand", not "because they touch no
+    other stand", which is wrong for the 21 of the 1,293 isolated stands of the 3 ha box runs that meet another stand
+    at a corner (question 25); (3) the explorer's label for ndvi_mean, "Average greenness (NDVI)", is changed so that
+    the site says what the number is, worded after question 31's answer (c): with round 14's setting on, the band is
+    the fitted curve's mean over the window (spec-optical-mean-over-the-window), while in the runs of record it is the
+    trend line's value on 1 Jan 2017 (question 32).
+  alternatives_considered:
+  - >-
+    Leave the site as it is until R3's results go on it (option (b) of round 13 question 23): not chosen; until then
+    the site would show results the record calls superseded, without saying so
+  - >-
+    Leave the explorer's sentence (option (b) of question 25): not chosen; it is wrong for just under 2% of those
+    stands
+  - >-
+    Leave the label (option (b) of question 32): not chosen; readers of the site read a mean
+  rationale: >-
+    The round 14 brief (Jaskaran, 26 Oct 2026), Task 1: "Q23, Q25, Q32: yes, at the next site build. Not this round."
+    Each of the three questions of round 13 recommended (a): question 23 "a single sentence, since no date is set for
+    R3", question 25 "with the next site build", and question 32 "worded after your answer to the question above". The
+    sentence of question 23 goes stale once R3's results replace these runs on the site. No paper was searched for
+    this decision.
+  evidence:
+  - path: ui/explorer.html
+    what: The sentence on the stands below the minimum, and the label of ndvi_mean
+  - path: ui_data/index.json
+    what: The site's data, not changed in round 14
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Questions, items 23, 25 and 32, marked answered
+  - path: docs/handoff/2026-10-26-round14.md
+    what: The brief, Task 1 and Out of scope
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 questions 23, 25 and 32, answered 'yes, at the next site build.
+    Not this round.'
+- id: eval-harms-2001-rotations-wait-for-the-pdf
+  title: >-
+    Whether Harms et al. 2001 also turned and mirrored the habitat map stays UNVERIFIED until the paper's PDF is read
+  decision: >-
+    Waiting for the Harms 2001 PDF. Until it is read, the records keep saying that the procedure followed is Kyle
+    Harms's 2011 script, which translates the map only, and that whether the 2001 paper also turned and mirrored it is
+    UNVERIFIED (round 13, review C5): src/fmu/evaluation/torus_shift.py, src/fmu/evaluation/spatial_null.py and
+    docs/evaluation_metrics.md. torus_shift_test's orientations default to the translation alone ("identity"), and the
+    three other orientations of a rectangle stay available when named, marked UNVERIFIED as the paper's. No result
+    uses torus_shift_test yet. When the PDF is read the question is settled, and the records, and torus_shift_test's
+    default orientations if need be, follow the paper.
+  alternatives_considered:
+  - >-
+    Leave it UNVERIFIED for good (option (b) of round 13 question 26): not chosen; no result uses torus_shift_test
+    yet, but the metrics document would keep an open point before the evaluation is declared for a site
+  rationale: >-
+    The round 14 brief (Jaskaran, 26 Oct 2026), Task 1: "Q26: waits for the Harms 2001 PDF." Round 13's question 26 is
+    still round 9's question 11, which has waited for the PDF since 17 Oct 2026
+    (docs/handoff/2026-10-17-round9-chat.md). Round 13 recommended (a): "Send the PDF, or read the methods section,
+    and settle it. For: torus_shift_test's default orientations can follow the paper." The full text was not read in
+    round 13: the publisher's page refused the request on 20 Oct 2026. No other paper was searched for this decision.
+  evidence:
+  - path: src/fmu/evaluation/torus_shift.py
+    what: ORIENTATIONS and torus_shift_test's default, the translations alone; the docstring's sources
+  - path: src/fmu/evaluation/spatial_null.py
+    what: torus_translation_null and its docstring on Harms et al. (2001)
+  - path: docs/evaluation_metrics.md
+    what: Section 1.6, the paper's entry and its note of 20 Oct 2026; the references table
+  - path: docs/handoff/2026-10-17-round9-chat.md
+    what: Question 11, waiting for the Harms 2001 PDF
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 6, C5; Questions, item 26, marked answered
+  papers:
+  - doi: 10.1111/j.1365-2745.2001.00615.x
+    title: Habitat associations of trees and shrubs in a 50-ha neotropical forest plot
+    first_author: Harms
+    year: 2001
+    verified: true
+    supports: used
+    supports_what: >-
+      Source of the torus-translation test, the closest published relative of the rotation null; the repo offers
+      torus_shift_test for comparison with it. Which paper it is: Crossref gave this title and first author Harms when
+      the repo checked it on 17 Oct 2026 (src/fmu/evaluation/torus_shift.py), and the title, first author Kyle E.
+      Harms and Journal of Ecology 89(6), 947-959, issued December 2001, when round 13 checked it again on 20 Oct 2026
+      (review C5); not looked up again in round 14, which made no network call. In this entry the repo cites it for:
+      whether its test also turned the habitat map by 180 degrees and mirrored it, as well as translating it. Check of
+      that claim: UNVERIFIED. The full text was not read on 17 or 20 Oct 2026 (on 20 Oct the publisher's page refused
+      the request); docs/evaluation_metrics.md says it was read on 13 Oct 2026 and named the rotations and mirror
+      images, which the later records could not confirm. Kyle Harms's own R script of 2011 translates the map only.
+    cited_in: >-
+      src/fmu/evaluation/torus_shift.py:44; src/fmu/evaluation/spatial_null.py:13; docs/evaluation_metrics.md:540
+  status: pending
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 26, answered 'waits for the Harms 2001 PDF'
+- id: spec-merge-second-pass-kept-not-xiongs-order
+  title: >-
+    The merge's second pass keeps its own order of choice, not Xiong et al. 2024's eliminating rule taken one
+    condition at a time
+  decision: >-
+    No change. The second pass (fmu.utils.region_merge) tests all the relaxed tolerances at once, takes the closest
+    neighbour that passes, and uses the longest boundary only when none passes. Xiong et al. 2024's eliminating rule
+    takes its conditions one at a time (same species, tree proportion, stand height, then the longest common side),
+    going on to the next condition when no neighbour, or more than one, matches. The second pass is the declared
+    method and stays as it is, so no stand changes. Since round 13 the record says that its order of choice is this
+    pipeline's own, and what the paper supports (spec-merge-two-pass-hard-gate, review C62).
+  alternatives_considered:
+  - >-
+    Follow Xiong's order (option (b) of round 13 question 27): not chosen; it is the published rule, but a method
+    change that changes every stand map, and the paper's sentence leaves details open (for example, which neighbours
+    the next condition is tried on)
+  rationale: >-
+    Round 13's question 27, answered (a), Claude Code's recommendation, by the round 14 brief's rule "Every other
+    question: your recommendation" (Jaskaran, 26 Oct 2026). Option (a): "Keep the second pass as it is. For: it is the
+    declared method, and no stand changes. Against: it is not the published rule the design cites." The reading of the
+    paper is round 13's, on the publisher's page on 20 Oct 2026, recorded in spec-merge-two-pass-hard-gate; it was not
+    read again in round 14. No other paper was searched for this decision.
+  evidence:
+  - path: src/fmu/utils/region_merge.py
+    what: >-
+      merge_superpixels, pass 2, and pass2_partner; the module docstring on what Xiong et al. 2024 support (round 13)
+  - path: docs/configs.md
+    what: The merge block
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 6, C62; Questions, item 27, marked answered
+  papers:
+  - doi: 10.14214/sf.23014
+    title: Forest stand delineation using airborne LiDAR and hyperspectral data
+    first_author: Xiong
+    year: 2024
+    verified: true
+    supports: used
+    supports_what: >-
+      Source of the merge design (spec-merge-two-pass-hard-gate). In this entry the repo cites it for: its eliminating
+      rule (Eq. 2) is evaluated one condition at a time, going on to the next condition when no neighbour or more than
+      one matches, which is not the order of choice of this pipeline's second pass. Check of that claim: read on the
+      publisher's page on 20 Oct 2026 (round 13, review C62; the text under Eq. 2 is quoted in
+      spec-merge-two-pass-hard-gate); not read again in round 14. Crossref (10.14214/sf.23014) was checked on 20 Oct
+      2026, giving the title above and Hao Xiong as the first person author; not looked up again in round 14, which
+      made no network call.
+    cited_in: >-
+      src/fmu/utils/region_merge.py module docstring; docs/configs.md, the merge block
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 27, Claude Code's recommendation (a), by the brief's
+    rule 'Every other question: your recommendation'
+- id: spec-ui-data-build-record-in-docs-in-a-later-round
+  title: >-
+    The ui_data builder is to write a run record outside ui_data/, as docs/reproducibility/ui_data_build_run.json, in
+    the round that next changes the site
+  decision: >-
+    Decided for the round that next changes the site; nothing is done in round 14, whose brief leaves the website and
+    ui_data/ to a later step. scripts/build_ui_early_data.py builds ui_data/ (its index.json says "commit": "early
+    build") and records nothing about which commit and packages built it. On that build it is to write a run record
+    (command, date, git block, environment) outside ui_data/, for example as
+    docs/reproducibility/ui_data_build_run.json, so that the site itself is unchanged.
+  alternatives_considered:
+  - >-
+    Write ui_data/build_run.json beside the data (option (a) of round 13 question 28): not chosen; the record would
+    sit beside the data it describes, but it would be published with the site
+  - >-
+    Leave it (option (c)): not chosen; which code built the site's data would stay unrecorded
+  rationale: >-
+    Round 13's question 28, answered "(b), in the round that next changes the site", Claude Code's recommendation, by
+    the round 14 brief's rule "Every other question: your recommendation" (Jaskaran, 26 Oct 2026); the brief's Out of
+    scope: "The website and ui_data/ (a later step)". Option (b): "For: the site is unchanged. Against: the record
+    sits away from the data." No paper was searched for this decision.
+  evidence:
+  - path: scripts/build_ui_early_data.py
+    what: The builder of ui_data/
+  - path: ui_data/index.json
+    what: Its "commit" field, which reads "early build"
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Questions, item 28, marked answered
+  - path: docs/handoff/2026-10-26-round14.md
+    what: The brief, Out of scope
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 28, Claude Code's recommendation (b), in the round that
+    next changes the site, by the brief's rule 'Every other question: your recommendation'
+- id: spec-batch-wrapper-stop-on-a-changed-run-tree-kept
+  title: >-
+    The batch wrapper keeps stopping, with exit 95, when its run tree changes during a batch
+  decision: >-
+    No change. Since round 13 (spec-batch-wrapper-starts-no-pass-on-a-changed-run-tree)
+    odisha_script/run_passes_safely.py reads the run tree before and after each pass; if the tree has changed since
+    the batch started (a new commit, or an edited tracked file), it starts no further pass, records the change in the
+    state file and ends with exit 95. A batch runs on one commit, as CLAUDE.md asks and as exit 92 already checks at
+    the start, and the same command resumes it (B4).
+  alternatives_considered:
+  - >-
+    Record the change and carry on (option (b) of round 13 question 29): not chosen; a batch would never stop for it,
+    but the later passes would run other code than the earlier ones, and a fix that raises a step's revision would
+    make them recompute under new keys, at Earth Engine cost
+  rationale: >-
+    Round 13's question 29, answered (a), Claude Code's recommendation, by the round 14 brief's rule "Every other
+    question: your recommendation" (Jaskaran, 26 Oct 2026). Option (a): "Keep it. For: a batch runs on one commit, as
+    CLAUDE.md asks and as exit 92 already checks at the start. Against: an edit to the run tree mid-batch stops a long
+    batch. That should be rare, since run trees are clean clones, and the same command resumes it (B4)." No paper was
+    searched for this decision.
+  evidence:
+  - path: odisha_script/run_passes_safely.py
+    what: The run tree read before and after each pass; exit 95
+  - path: tests/test_run_passes_safely_run_tree.py
+    what: The real wrapper and shell script on a run tree that changes while the batch runs
+  - path: docs/running.md
+    what: The wrapper's paragraph
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 6, C32; Questions, item 29, marked answered
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 29, Claude Code's recommendation (a), by the brief's
+    rule 'Every other question: your recommendation'
+- id: spec-embedding-years-and-tiles-recorded-in-a-later-round
+  title: >-
+    The embedding stage is to record the numbers of years and of tiles beside its image count, in a later round
+  decision: >-
+    Decided, to be done in a later round; nothing is done in round 14. features_embedding records the size of the
+    filtered collection as n_source_images and in its note "mean over N annual image(s)": images, one per tile per
+    year, not years, so Dhenkanal's box runs record 12 for 2017-2022, 2 tiles x 6 years (review C11; the docs say so
+    since round 13). The stage is to record the number of distinct years and of tiles beside the image count, and word
+    the note "mean over 6 years (12 images, 2 tiles)" (option (a) of the question), with its test and register entry;
+    it is manifest metadata only, so no key is to move.
+  alternatives_considered:
+  - >-
+    Leave it, now documented (option (b) of round 13 question 34): what the stage does until the later round; a reader
+    who does not read the docs reads years
+  rationale: >-
+    Round 13's question 34, answered "(a), in a later round", Claude Code's recommendation, by the round 14 brief's
+    rule "Every other question: your recommendation" (Jaskaran, 26 Oct 2026), with its rule "Where it says 'in a later
+    round', do not do it this round." Option (a): "For: the record says what it means; district runs will record 18,
+    24 and so on. Against: a code change to features_embedding (manifest metadata only, no key moves), with its test
+    and register entry." No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/features_embedding.py
+    what: n_source_images, and the note it writes
+  - path: docs/current_flow.md
+    what: The embedding stage, the count being images, one per tile per year
+  - path: docs/reproducibility/r9_runs/README.md
+    what: The dated note beside the manifests (round 13, review C11)
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 6, C11; Questions, item 34, marked answered
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 34, Claude Code's recommendation (a), in a later round,
+    by the brief's rule 'Every other question: your recommendation'
+- id: spec-pieces-in-the-vector-layers-left-until-district-scale
+  title: >-
+    Stands and superpixels that come out in more than one polygon are left as they are, recorded; to be looked at
+    again at district scale
+  decision: >-
+    No change now. A stand or superpixel can come out in more than one polygon in the vector layers: at the ROI's
+    edge, since reduceToVectors keeps only the pixels whose centre is inside the ROI while SNIC labels the edge pixels
+    the clip keeps (0 to 7 stands and 0 to 14 superpixels per run in the runs of record), and in a large ROI as a
+    stray piece of a few pixels on a computation-tile line (the 10 km tile, and three AlphaEarth layers). No score
+    changes, because the joins use stand_lbl; the docs and READMEs say so since round 13 (review C17). It is to be
+    looked at again at district scale, where the ROI's edge is long.
+  alternatives_considered:
+  - >-
+    Before SNIC, mask the edge pixels whose centre lies outside the ROI, the rule reduceToVectors uses, so that the
+    vectors keep every labelled pixel (option (b) of round 13 question 36): not chosen now; no edge pieces, but it
+    changes segmentation for every new run (keys move), and it does not remove the tile-line strays
+  rationale: >-
+    Round 13's question 36, answered "(a) now; look again at district scale, where the edge is long", Claude Code's
+    recommendation, by the round 14 brief's rule "Every other question: your recommendation" (Jaskaran, 26 Oct 2026).
+    Option (a): "Leave it, recorded. For: no change, and no score is affected. Against: a few stands stay in more than
+    one polygon." No paper was searched for this decision.
+  evidence:
+  - path: docs/outputs.md
+    what: Stands and superpixels in pieces
+  - path: src/fmu/stages/export.py
+    what: The vectorisation with reduceToVectors, and the two comments on pieces (round 13)
+  - path: docs/reproducibility/r9_runs/README.md
+    what: Each run's count of stands and superpixels in pieces (round 13, review C17)
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 6, C17; Questions, item 36, marked answered
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 36, Claude Code's recommendation (a) now; look again at
+    district scale, by the brief's rule 'Every other question: your recommendation'
+- id: spec-masking-summary-on-the-cache-grid-in-a-later-round
+  title: >-
+    The masking summary is to be tabulated on the grid of the config's cache layout, in a later round
+  decision: >-
+    Decided, to be done in a later round; nothing is done in round 14. mask_provenance_areas
+    (src/fmu/stages/masking.py) tabulates the masking summary (area_ha, share_kept) on EPSG:4326, while per-step
+    caches lie on the ROI's UTM grid, so the pass that computed the masks and the passes that read them from the cache
+    record slightly different numbers, up to 0.074% in area_ha and 3e-4 in share_kept (review C31; the docs say which
+    pass records which since round 13). No stand, type or score reads them. The summary is to be tabulated on the grid
+    of the config's cache layout (UTM in the per-step layout), so that every pass of a run records the same numbers
+    (option (a) of the question); new runs' numbers will then differ from those of record by up to 0.07%.
+  alternatives_considered:
+  - >-
+    Leave it, now documented (option (b) of round 13 question 38): what the code does until the later round; two
+    numbers per run stay in the record
+  rationale: >-
+    Round 13's question 38, answered "(a), in a later round", Claude Code's recommendation, by the round 14 brief's
+    rule "Every other question: your recommendation" (Jaskaran, 26 Oct 2026), with its rule "Where it says 'in a later
+    round', do not do it this round." Option (a): "For: one number per run. Against: a change to masking (a Locked
+    module), and new runs' numbers differ from those of record by up to 0.07%." No paper was searched for this
+    decision.
+  evidence:
+  - path: src/fmu/stages/masking.py
+    what: mask_provenance_areas and its docstring (round 13, review C31)
+  - path: scripts/transparency_masking.py
+    what: The comments on which pass counts what
+  - path: docs/outputs.md
+    what: The transparency rasters
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 6, C31; Questions, item 38, marked answered
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 38, Claude Code's recommendation (a), in a later round,
+    by the brief's rule 'Every other question: your recommendation'
+- id: spec-manifest-keeps-the-left-out-pip-line
+  title: >-
+    The environment block keeps the pip freeze line it leaves out of the hash, documented; the line is to be dropped
+    if it is misread
+  decision: >-
+    No change now. environment_state's pip_freeze_left_out (src/fmu/utils/provenance.py) keeps this package's own pip
+    freeze line, which the hash leaves out (-e git+...@<commit>#egg=fmu). In run-tree batches its commit is that of
+    the checkout the venv's editable install points at, the live checkout, not the run tree's commit that the git
+    block records: in 92 of the 108 committed JSON records that hold both blocks at their top level. Nothing reads the
+    line, and the docstring and the READMEs say so since round 13 (review C33). It stays in the record, and shows
+    which checkout the venv was installed from. If it is misread, it is to be dropped from the environment block
+    (option (a) of the question).
+  alternatives_considered:
+  - >-
+    Drop the line from the environment block (option (a) of round 13 question 39): not now; no line that looks like
+    the run's commit when it is not, but a change to the record format, and old records keep the line; to be done if
+    the line is misread
+  - >-
+    Give each run tree its own venv, with the run tree installed in it (option (c)): not chosen; the line and the git
+    block would agree, but with a venv per batch
+  rationale: >-
+    Round 13's question 39, answered "(b) now, and (a) if the line is misread", Claude Code's recommendation, by the
+    round 14 brief's rule "Every other question: your recommendation" (Jaskaran, 26 Oct 2026). Option (b): "Keep it,
+    now documented. For: no change, and it shows which checkout the venv was installed from. Against: easy to
+    misread." No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/utils/provenance.py
+    what: environment_state, pip_freeze_left_out and its docstring (round 13, review C33)
+  - path: docs/reproducibility/r9_runs/README.md
+    what: The dated note on the left-out line (round 13, review C33)
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 6, C33; Questions, item 39, marked answered
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 39, Claude Code's recommendation (b) now, and (a) if the
+    line is misread, by the brief's rule 'Every other question: your recommendation'
