@@ -983,9 +983,10 @@ def at_a_multiple_of_45(v: Any) -> bool:
 
 
 def decimals(values: Sequence[Sequence[Any]]) -> dict[str, Any]:
-    """5: among the sampled pixels with slope above 0, the share whose slope is not a whole
-    number; and, of those whose aspect is not at a multiple of 45 degrees (set aside: on a DEM of
-    whole metres a correct aspect is a whole number there), the share whose aspect is not one."""
+    """5: among the sampled pixels with slope above 0, the share whose slope has decimals; and, of
+    those whose aspect is not at a multiple of 45 degrees (set aside: on a DEM of whole metres a
+    correct aspect is a whole number there), the share whose aspect has decimals. A value has
+    decimals when it is a finite number that is not a whole number (has_decimals)."""
     sloped = [(float(s), a) for s, a in values if is_number(s) and s > 0]
     n = len(sloped)
     slope_decimal = sum(has_decimals(s) for s, _ in sloped)
@@ -996,12 +997,12 @@ def decimals(values: Sequence[Sequence[Any]]) -> dict[str, Any]:
     return {
         "pixels_sampled": len(values),
         "pixels_with_slope_above_0": n,
-        "slope_not_a_whole_number": slope_decimal,
+        "slope_with_decimals": slope_decimal,
         "aspect_at_a_multiple_of_45": n - len(judged),
         "aspect_not_at_a_multiple_of_45": len(judged),
-        "aspect_not_a_whole_number": aspect_decimal,
-        "share_slope_not_whole": share_slope,
-        "share_aspect_not_whole": share_aspect,
+        "aspect_with_decimals": aspect_decimal,
+        "share_slope_with_decimals": share_slope,
+        "share_aspect_with_decimals": share_aspect,
         "passes": share_slope is not None and share_aspect is not None
         and share_slope >= DECIMALS_SHARE and share_aspect >= DECIMALS_SHARE,
     }

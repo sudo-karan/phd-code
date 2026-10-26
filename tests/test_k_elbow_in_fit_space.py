@@ -217,6 +217,11 @@ def test_every_file_the_step_writes_passes_the_copy_tools_results_only_check(fit
         if name.endswith(".json"):
             assert copy_tool.time_keys(json.loads(text)) == [], name
         assert not copy_tool.STAMP.search(text), name
+    # And its metadata, which the pipeline writes into the pass's manifest and the copy tool checks
+    # there after strip() (the gate's review, part 6).
+    metadata = copy_tool.strip(json.loads(json.dumps(result.metadata, default=str)))
+    assert copy_tool.time_keys(metadata) == []
+    assert not copy_tool.STAMP.search(json.dumps(metadata, default=str))
 
 
 def test_on_only_the_k_elbow_key_moves_and_off_none(monkeypatch):

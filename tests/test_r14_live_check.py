@@ -766,8 +766,8 @@ def test_with_earth_engine_alike_the_check_passes(mod, records, configs):
                                cache_key(configs[RUN_A], "features_static", "per_step"))
     assert reader.sampled == [(static, ("slope", "aspect"), 5000, 10_000, 42)]
     five = result["criteria"]["5_slope_and_aspect_decimals"]
-    assert (five["pixels_with_slope_above_0"], five["slope_not_a_whole_number"]) == (5000, 5000)
-    assert five["aspect_not_a_whole_number"] == 5000
+    assert (five["pixels_with_slope_above_0"], five["slope_with_decimals"]) == (5000, 5000)
+    assert five["aspect_with_decimals"] == 5000
     run = json.loads((records / "r14_live_check_run.json").read_text())
     assert run["offline"] is False and run["earth_engine_writes_forbidden"] == ["ee.batch.Task.start"]
 
@@ -879,9 +879,11 @@ def test_5_counts_the_aspects_set_aside_and_the_pixels_the_sample_gave(mod, reco
     five = result["criteria"]["5_slope_and_aspect_decimals"]
     assert five["sample"] == {"asked": 10_000, "limit": 5000, "seed": 42}
     assert (five["pixels_sampled"], five["pixels_with_slope_above_0"]) == (1037, 1000)
-    assert (five["slope_not_a_whole_number"], five["aspect_at_a_multiple_of_45"]) == (1000, 700)
-    assert (five["aspect_not_at_a_multiple_of_45"], five["aspect_not_a_whole_number"]) == (300, 300)
-    assert (five["share_slope_not_whole"], five["share_aspect_not_whole"]) == (1.0, 1.0)
+    assert (five["slope_with_decimals"], five["aspect_at_a_multiple_of_45"]) == (1000, 700)
+    assert (five["aspect_not_at_a_multiple_of_45"], five["aspect_with_decimals"]) == (300, 300)
+    assert (five["share_slope_with_decimals"], five["share_aspect_with_decimals"]) == (1.0, 1.0)
+    # The keys say what is counted: a value with decimals is a finite number that is not whole.
+    assert not [k for k in five if "whole" in k]
 
 
 def test_a_static_features_asset_not_on_earth_engine_fails_5_and_the_results_are_written(
