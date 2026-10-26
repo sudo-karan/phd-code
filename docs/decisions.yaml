@@ -4144,6 +4144,7 @@ decisions:
     satellite features alone, by the elbow of the k-means fit curve over 2 to 12 groups (seed 42). It
     is never chosen by which value agrees best. Result: 5 field types, 5 stand types for the 3 ha stands,
     and the 10 ha stands keep 6.
+    Round 14 (26 Oct 2026): for R3, k for each area is chosen by Jaskaran from the elbow report in the fit's space, before any R3 field score exists (field-r3-k-chosen-by-jaskaran-from-the-elbow-report).
   alternatives_considered:
   - 'Picking the number that gives the best agreement: named and ruled out'
   - >-
@@ -8683,3 +8684,72 @@ decisions:
   source: >-
     Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 40, Claude Code's recommendation (b), by the brief's rule
     'Every other question: your recommendation'
+- id: field-r3-run-before-the-meeting-with-prof-seth
+  title: >-
+    R3 is run in round 14, before Jaskaran's meeting with Prof. Seth, with the four method changes fixed before any R3
+    result exists
+  decision: >-
+    Roadmap R3 (the kept-land runs of both arms re-run on the code after the round 13 fixes) is run in round 14, before
+    Jaskaran's meeting with Prof. Seth, so that October's unused Earth Engine hours are not lost. The method changes it
+    uses (the k-means fit off Earth Engine, the log rule, ndvi_mean as the window mean, the elbow in the fit's space) were
+    each decided, built and declared before any R3 result existed (odisha_script/PHASE_KEPTLAND_PREDECLARED.md, the
+    change of 26 Oct 2026). The round runs unattended up to the elbow report and stops there for Jaskaran to choose k;
+    its budget is 150 EECU-hours, and no batch is submitted that would take October's remaining hours below 100.
+  alternatives_considered:
+  - >-
+    Wait for the meeting, and settle the method decisions there before R3 (round 13 question 22 noted that running R3
+    after those decisions avoids a second re-run): not chosen by Jaskaran; October's hours would be lost
+  rationale: >-
+    The round 14 brief (Jaskaran, 26 Oct 2026): "Jaskaran has decided to run R3 now, before his meeting with Prof. Seth,
+    so that October's unused Earth Engine hours are not lost. Every method choice below was made before any R3 result
+    exists. Record that decision in the register." At the round's start 377.35 EECU-hours were left in October on the
+    conservative count (docs/handoff/2026-10-26-round14.md, Setup). No paper was searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-26-round14.md
+    what: The brief, its opening paragraph and "Before you start"; the quota reading
+  - path: odisha_script/PHASE_KEPTLAND_PREDECLARED.md
+    what: The change of 26 Oct 2026 (round 14)
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 26 Oct 2026 (round 14 brief)
+- id: field-r3-k-chosen-by-jaskaran-from-the-elbow-report
+  title: >-
+    For R3, Jaskaran chooses k for each area from the elbow report, before any R3 field score exists; both arms of an
+    area take the same k unless he says otherwise
+  decision: >-
+    k for each R3 area (each Odisha district at 3 ha and at 10 ha, Sanjay Van, the 10 km tile) is chosen by Jaskaran from
+    the elbow report alone (odisha_script/keptland_scores/r14_elbow_report.md, with r14_elbow.csv and one figure per
+    area in r14_elbow/), before any R3 field score exists, and committed with his reason, in one commit with the
+    configs' pinned fingerprints, before the clustering pass. Unless he says otherwise both arms of an area take the
+    same k. The report reads no plot and computes no field score: for each area and arm, the within-cluster sum of
+    squares for k 2 to 12 in the fit's own space with its knee (the k farthest from the chord, fmu.stages.k_elbow.knee),
+    the 25 starts' median and lowest pairwise adjusted Rand index at each k, and the pooled elbow of the four districts
+    for each arm and size (their tables of stands pooled, then preprocessed together by the same rule). Until he
+    chooses, the R3 configs carry the _r9 k (5 on the boxes and the tile, 6 at Sanjay Van). This supersedes, for R3,
+    the declared k = 5 of the kept-land runs and the rule of field-number-of-types-by-elbow.
+  alternatives_considered:
+  - >-
+    Keep 5 at 3 ha and 6 at 10 ha (round 13 question 15, option (a)): not chosen by Jaskaran
+  - >-
+    Declare k for each stand size from the k_elbow step before November (option (b)): Jaskaran's answer takes its
+    elbow in the fit's space, area by area, with him choosing
+  - 'Run both 5 and 6 as a declared sensitivity (option (c)): not chosen'
+  rationale: >-
+    The round 14 brief (Jaskaran, 26 Oct 2026), Task 1: "Q15: for R3, Jaskaran chooses k for each area from the elbow
+    report (Task 6), before any R3 field score exists"; and Task 2's declaration: "k for each R3 area is chosen by
+    Jaskaran from the elbow report alone (Task 6), before any R3 field score exists, and committed with his reason
+    before the clustering pass. Unless he says otherwise, both arms of an area take the same k." Round 13's A7 found
+    that, taken in the clustering stage's space, the elbow no longer gave 5 in every district at 3 ha (question 15 of
+    the round 13 brief). No paper was searched for this decision.
+  evidence:
+  - path: odisha_script/PHASE_KEPTLAND_PREDECLARED.md
+    what: The change of 26 Oct 2026 (round 14), k
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Questions, item 15
+  - path: odisha_script/odisha_phase3_2_k_elbow_comparison.md
+    what: Round 13's elbows in the clustering stage's space (A7)
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 26 Oct 2026 (round 14 brief), Task 1 (Q15) and Task 2
