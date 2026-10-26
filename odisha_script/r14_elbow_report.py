@@ -59,8 +59,12 @@ elbow because the declaration asks for it.
 
 WRITES, in --out-dir, and refuses to write over any of these unless --overwrite (a refusal writes
 nothing; so does a stop). They are written into a folder of their own beside them (.<stem>.*,
-removed after) and put in place once all are written, the run record last, so that a failure that
-is not a stop (a full disk, Ctrl-C) leaves none of them:
+removed after) and put in place once all are written: the figures, the csv and the report, then,
+once the git state is read again, the run record. So a failure that is not a stop (a full disk,
+Ctrl-C) while they are made leaves none of them; one in the last second, while they are put in
+place or the git state is read, can leave the results without their run record (beside an earlier
+run's, with --overwrite). A kill that no finally block sees (SIGKILL) leaves the folder of their
+own, which the next run refuses to write over, as it does the outputs, and --overwrite removes:
   <stem>.csv          one row per area, arm and k: area, arm, stand_size, k, wcss, ari_median,
                       ari_min, is_knee, n_rows_fitted (the pools as the areas pooled_3ha and
                       pooled_10ha)
@@ -69,9 +73,9 @@ is not a stop (a full disk, Ctrl-C) leaves none of them:
                       and the starts' median and lowest pairwise adjusted Rand index
   <stem>_report.md    the report
   <stem>_run.json     the run's record: the command, when it ran, the git block of this checkout
-                      (fmu.utils.provenance.git_state, read at the start of main(), and again at
-                      the end), the environment, and every input read, with where it was, its
-                      size and its SHA-256
+                      (fmu.utils.provenance.git_state, read at the start of main(), and again once
+                      the csv, the report and the figures are in place), the environment, and
+                      every input read, with where it was, its size and its SHA-256
 stem is r14_elbow by default. The csv, the figures and the report hold results only (no date,
 time or commit), so that `git diff` after a re-run shows whether it reproduced.
 """
@@ -564,7 +568,7 @@ def draw_figure(area: Area, arms: dict[str, Series], path: Path) -> None:
         top, bottom = fig.subplots(2, 1, sharex=True, gridspec_kw=PANELS)
         fig.text(0.015, 0.975, area.title, ha="left", va="top", fontsize=13.5, fontweight="bold", color=INK)
         knees: dict[str, tuple[int, float]] = {}
-        low_ari, high_rel = 0.0, 1.0
+        high_rel = 1.0
         for arm, s in arms.items():
             e, colour = s.elbow, COLOUR[arm]
             ks = np.array(e.ks, dtype=float)
@@ -581,7 +585,6 @@ def draw_figure(area: Area, arms: dict[str, Series], path: Path) -> None:
             bottom.plot(ks, e.ari_median, color=colour, lw=1.8, marker="o", ms=6, mfc=colour,
                         mec="white", mew=1.0, zorder=3, clip_on=False, solid_capstyle="round")
             bottom.plot(ks, e.ari_min, color=colour, lw=1.1, ls=(0, (4, 2.5)), zorder=2, clip_on=False)
-            low_ari = min(low_ari, *e.ari_min, *e.ari_median)
             high_rel = max(high_rel, float(rel.max()))
         for text, xy, offset, ha, va in knee_labels(knees):
             top.annotate(text, xy=xy, xytext=offset, textcoords="offset points", ha=ha, va=va,
@@ -596,7 +599,7 @@ def draw_figure(area: Area, arms: dict[str, Series], path: Path) -> None:
                          "pairs of starts", loc="left")
         bottom.set_ylabel("Adjusted Rand index")
         bottom.set_xlabel("k, the number of stand types")
-        bottom.set_ylim(low_ari - 0.05 if low_ari < 0 else 0.0, 1.0)
+        bottom.set_ylim(ari_floor(arms), 1.0)
         bottom.legend(handles=[Line2D([], [], color=INK_2, lw=1.8, marker="o", ms=6, mec="white",
                                       label=f"median of the {N_PAIRS} pairs"),
                                Line2D([], [], color=INK_2, lw=1.1, ls=(0, (4, 2.5)), label="lowest pair")],
@@ -612,13 +615,31 @@ def draw_figure(area: Area, arms: dict[str, Series], path: Path) -> None:
         fig.savefig(path, format="png", dpi=FIG_DPI, facecolor="white", metadata={"Software": None})
 
 
+def lowest_ari(arms: dict[str, Series]) -> float:
+    """The lowest median or lowest pairwise index of an area's arms."""
+    return min(min(s.elbow.ari_min + s.elbow.ari_median) for s in arms.values())
+
+
+def ari_floor(arms: dict[str, Series]) -> float:
+    """The bottom of a figure's index panel: 0, or 0.05 below the lowest index where one is below
+    0 (two starts that agree less than chance would). The figure and its caption both use it."""
+    low = lowest_ari(arms)
+    return low - 0.05 if low < 0 else 0.0
+
+
 # ---------------------------------------------------------------------- the report
 def _num(v: float) -> str:
     return f"{v:,.2f}"
 
 
 def _ari(v: float) -> str:
-    return "1" if v == 1.0 else f"{v:.4f}"
+    """An index for the tables and captions: 4 decimals; 1 as 1; 0 without a sign; one between
+    -0.00005 and 0.00005 but not 0 with two significant figures, so that it shows its sign."""
+    if v == 1.0:
+        return "1"
+    if v == 0:
+        return "0.0000"
+    return f"{v:.1e}" if abs(v) < 5e-5 else f"{v:.4f}"
 
 
 def _knee_cell(area: Area, arm: str, arms: dict[str, Series]) -> str:
@@ -682,11 +703,12 @@ def report_text(*, stem: str, records: Path, series: dict[str, dict[str, Series]
         "Each run's elbow is the k elbow step's (`k_elbow.in_fit_space` on; `fmu.stages.k_elbow`). It "
         "takes the run's table of stands (one row per stand, its mean in every candidate band) and "
         f"preprocesses it over every stand by the runs' rule (`clustering.log_rule` {rule}: a band "
-        f"whose IQR is 0 is dropped; only a band skewed to the right, skew above {threshold!r}, is "
-        "logged, as log1p((x - min) / IQR); the sine and cosine of an angle are never logged; each other "
-        "band is centred by its median and divided by its IQR, and the sine and cosine of an angle by "
-        "their medians and by the root mean square of their two IQRs, one spread for the pair; exact "
-        "quartiles). It then fits k-means on the fit's own rows in that space (the stands below the "
+        "whose IQR is at most 1e-9 is dropped, and an angle's sine and cosine only together, when "
+        f"their shared spread is; only a band skewed to the right, skew above {threshold!r}, is logged, "
+        "as log1p((x - min) / IQR); the sine and cosine of an angle are never logged; each other band "
+        "is centred by its median and divided by its IQR, and the sine and cosine of an angle by their "
+        "medians and by their shared spread, the root mean square of their two IQRs; exact quartiles). "
+        "It then fits k-means on the fit's own rows in that space (the stands below the "
         "merge's minimum area, 1 ha in every R3 config, left out), for each k from "
         f"{K_MIN} to {K_MAX}: {N_STARTS} k-means++ starts from seed {SEED}, each refined by Lloyd's "
         "algorithm (scikit-learn, one thread), the start with the lowest within-cluster sum of squares "
@@ -763,10 +785,10 @@ def _area_section(area: Area, arms: dict[str, Series], pools: dict[tuple[str, st
 def _caption(arms: dict[str, Series]) -> str:
     """A figure's caption: how its sums of squares are scaled, its index's scale as draw_figure
     sets it (below 0 when an index is), and its colours."""
-    low = min(min(s.elbow.ari_min + s.elbow.ari_median) for s in arms.values())
+    low = lowest_ari(arms)
     scale = ("on a scale from 0 to 1." if low >= 0 else
-             f"on a scale from 0 to 1 taken below 0, to the lowest, {_ari(low)}, where two starts agree "
-             "less than chance would.")
+             f"on a scale from 0 to 1 taken down to {_ari(ari_floor(arms))}, below the lowest, {_ari(low)}, "
+             "where an index below 0 means two starts agree less than chance would.")
     bottom = (f"Bottom: the adjusted Rand index of the {N_PAIRS} pairs of the {N_STARTS} starts, the "
               f"median (solid, with points) and the lowest (dashed), {scale}")
     if len(arms) > 1:
@@ -843,10 +865,18 @@ def packages() -> dict[str, str | None]:
     return out
 
 
-def run_record(*, argv: list[str], started: dict[str, Any], result_files: list[str],
-               reads: list[Read], run_check: bool, missing: list[str]) -> dict[str, Any]:
+def environment() -> dict[str, Any]:
+    """The environment and the package versions, for the run record: read before any result is put
+    in place, as pip freeze takes seconds."""
     from fmu.utils.provenance import environment_state
 
+    return {"environment": environment_state(), "packages": packages()}
+
+
+def run_record(*, argv: list[str], started: dict[str, Any], result_files: list[str],
+               reads: list[Read], run_check: bool, missing: list[str],
+               env: dict[str, Any]) -> dict[str, Any]:
+    """The run record; git_at_end is read now, once the results are in place."""
     return {
         "result_files": result_files,
         "command_line": "python " + " ".join(shlex.quote(a) for a in
@@ -854,8 +884,8 @@ def run_record(*, argv: list[str], started: dict[str, Any], result_files: list[s
         "date": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
         "git": started,
         "git_at_end": git_block(now=True),
-        "environment": environment_state(),
-        "packages": packages(),
+        "environment": env["environment"],
+        "packages": env["packages"],
         "run_check": run_check,
         "missing_runs": missing,
         "inputs": [{"run": r.run, "file": r.file, "path": shown(r.path), "off_git": r.off_git,
@@ -889,6 +919,10 @@ def main(argv: list[str] | None = None) -> int:
     there = [p for p in (csv_path, report_path, record_path) if p.exists()]
     if fig_dir.exists() and any(fig_dir.iterdir()):
         there.append(fig_dir)
+    # The work folder of an earlier run that was killed while it wrote (SIGKILL, or a signal no
+    # finally block sees): part of that run's outputs (the gate's review, part 5).
+    leftover = sorted(args.out_dir.glob(f".{args.stem}.*")) if args.out_dir.is_dir() else []
+    there += leftover
     if there and not args.overwrite:
         raise SystemExit("refusing to write over " + ", ".join(shown(p) for p in there)
                          + " (--overwrite replaces them)")
@@ -931,9 +965,13 @@ def main(argv: list[str] | None = None) -> int:
             raise SystemExit(f"{name}: a value holding a date and time; results only")
 
     # Everything is written into a folder of its own beside the outputs, and put in place only once
-    # it all is, so that a failure that is not a stop (a full disk, Ctrl-C) leaves no part of them
-    # (the gate's review, part 3); the run record goes in last.
+    # it all is, so that a failure that is not a stop (a full disk, Ctrl-C) while the figures are
+    # drawn or the environment read leaves no part of them (the gate's review, part 3). Then the
+    # figures, the csv and the report are put in place, the git state is read again, and the run
+    # record goes in last (part 5).
     args.out_dir.mkdir(parents=True, exist_ok=True)
+    for old in leftover:
+        shutil.rmtree(old, ignore_errors=True)
     work = Path(tempfile.mkdtemp(prefix=f".{args.stem}.", dir=args.out_dir))
     try:
         (work / fig_dir.name).mkdir()
@@ -944,18 +982,20 @@ def main(argv: list[str] | None = None) -> int:
                 figures.append(f"{args.stem}/{area.key}.png")
         (work / csv_path.name).write_text(table, encoding="utf-8")
         (work / report_path.name).write_text(report, encoding="utf-8")
-        record = run_record(argv=argv_given, started=started,
-                            result_files=[csv_path.name, report_path.name, *figures], reads=reads,
-                            run_check=not args.no_run_check, missing=missing)
-        (work / record_path.name).write_text(json.dumps(record, indent=1) + "\n", encoding="utf-8")
+        env = environment()
         fig_dir.mkdir(exist_ok=True)
         for area in AREAS:
             if series[area.key]:
                 os.replace(work / fig_dir.name / f"{area.key}.png", fig_dir / f"{area.key}.png")
             else:  # no arm has an elbow: an earlier run's figure of the area (--overwrite) is not left
                 (fig_dir / f"{area.key}.png").unlink(missing_ok=True)
-        for path in (csv_path, report_path, record_path):
+        for path in (csv_path, report_path):
             os.replace(work / path.name, path)
+        record = run_record(argv=argv_given, started=started,
+                            result_files=[csv_path.name, report_path.name, *figures], reads=reads,
+                            run_check=not args.no_run_check, missing=missing, env=env)
+        (work / record_path.name).write_text(json.dumps(record, indent=1) + "\n", encoding="utf-8")
+        os.replace(work / record_path.name, record_path)
     finally:
         shutil.rmtree(work, ignore_errors=True)
 

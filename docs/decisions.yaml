@@ -10269,13 +10269,19 @@ decisions:
     SHA-256). It reads no plot, computes no field score and recommends no k. A run with no records stops the script
     unless --allow-missing, which writes the report without it, says so, and leaves out a pool that needs it.
     Round 14 (27 Oct 2026), after the gate's review (part 3, five low): the caption gives the index's scale as the
-    figure draws it, below 0 where an index is (two starts that agree less than chance would, as at k = 2 on the _r9
-    10 ha tables); the paragraph on how the numbers are made gives the runs' rule and threshold, which must be one
+    figure draws it, below 0 where an index is (two starts that agree less than chance would, as at k = 2 on three of
+    the eight _r9 10 ha tables in the review's offline sweep of them); the paragraph on how the numbers are made gives the runs' rule and threshold, which must be one
     for every run and the rule right_skew (else the script stops), and says how an angle's sine and cosine are
     scaled (their medians, and the root mean square of their two IQRs) and how the numbers are rounded (6 decimals in
     the csv, 2 and 4 in the tables); the outputs are written in a folder of their own beside them and put in place
     once all are, the run record last, so a failure that is not a stop leaves none; tests of the pool's other three
-    refusals (threshold, angle pairs, label column) and of the report reading the copy tool's records.
+    refusals (threshold, angle pairs, label column) and of the report reading the copy tool's records. After its
+    part 5 (all low): the figure and its caption take the index's axis from one function (ari_floor), and the caption
+    gives the axis's bottom; an index that would print as -0.0000 prints with two significant figures; the paragraph
+    says when a band is dropped (an IQR at most 1e-9, an angle's sine and cosine only together); the environment is
+    read before any result is put in place and the git state at the end after the csv, the report and the figures
+    are, the run record last; and a work folder an earlier run left when killed is refused, or removed with
+    --overwrite.
   alternatives_considered:
   - >-
     Pool the saved fit rows (<run>_k_elbow_fit_rows.csv): not chosen; those rows are each run's own preprocessing,

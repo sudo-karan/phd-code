@@ -511,13 +511,21 @@ def test_a_crash_while_writing_leaves_nothing_and_the_next_run_writes_everything
     def interrupted(*a, **k):
         raise KeyboardInterrupt
 
-    monkeypatch.setattr(R, "run_record", interrupted)
+    # The environment (pip freeze, seconds) is read before anything is put in place.
+    monkeypatch.setattr(R, "environment", interrupted)
     with pytest.raises(KeyboardInterrupt):
         R.main(args(records, tmp_path, "--no-run-check"))
     assert list(tmp_path.iterdir()) == []
     monkeypatch.undo()
     monkeypatch.setattr(R, "fit_space_sweep", sweeps)
-    assert R.main(args(records, tmp_path, "--no-run-check")) == 0
+    # A kill no finally block sees (SIGKILL) leaves the work folder: the next run refuses it, and
+    # --overwrite removes it (the gate's review, part 5).
+    left = tmp_path / ".r14_elbow.abcd1234"
+    (left / "r14_elbow").mkdir(parents=True)
+    (left / "r14_elbow" / "angul_3ha.png").write_bytes(b"part of a run")
+    with pytest.raises(SystemExit, match=r"refusing to write over .*\.r14_elbow\.abcd1234"):
+        R.main(args(records, tmp_path, "--no-run-check"))
+    assert R.main(args(records, tmp_path, "--no-run-check", "--overwrite")) == 0
     assert sorted(p.name for p in tmp_path.iterdir()) == ["r14_elbow", "r14_elbow.csv", "r14_elbow_report.md",
                                                           "r14_elbow_run.json"]
     assert len(list((tmp_path / "r14_elbow").iterdir())) == 12
@@ -580,30 +588,44 @@ def test_the_report_gives_each_pools_row_counts(records, written):
         assert "preprocessed together by the runs' rule (`right_skew`" in section
 
 
-def test_the_caption_gives_the_ari_scale_the_figure_has():
-    """Two starts can agree less than chance would (an ARI below 0, as at k = 2 on the _r9 10 ha
-    tables): the bottom panel then goes below 0, and the caption says so (the gate's review, part 3)."""
+def test_the_caption_gives_the_ari_scale_the_figure_has(tmp_path, monkeypatch):
+    """Two starts can agree less than chance would (an ARI below 0, as at k = 2 on three of the eight
+    _r9 10 ha tables in the gate review's offline sweep of them, part 3): the bottom panel then goes
+    below 0, and the caption gives the axis the figure draws (part 5)."""
+    from matplotlib.figure import Figure
+
     area = R.AREAS[0]
+    drawn: list[tuple[float, float]] = []
+    monkeypatch.setattr(Figure, "savefig", lambda fig, *a, **k: drawn.append(fig.axes[1].get_ylim()))
 
     def arms(low: float) -> dict[str, R.Series]:
         e = R.Elbow(ks=[2, 3], wcss=[10.0, 5.0], ari_median=[0.9, 0.8], ari_min=[low, 0.5], knee=None)
         return {"handcrafted": R.Series(area=area, arm="handcrafted", elbow=e, n_rows_fitted=10,
                                         n_table_rows=12, source="x")}
 
-    assert "on a scale from 0 to 1." in R._caption(arms(0.2))
-    below = " ".join(R._caption(arms(-0.0986)).split())
-    assert "on a scale from 0 to 1." not in below
-    assert "below 0, to the lowest, -0.0986" in below
+    for low, said in ((0.2, "on a scale from 0 to 1."),
+                      (-0.0986, "on a scale from 0 to 1 taken down to -0.1486, below the lowest, -0.0986,"),
+                      (-4e-05, "on a scale from 0 to 1 taken down to -0.0500, below the lowest, -4.0e-05,")):
+        R.draw_figure(area, arms(low), tmp_path / "figure.png")
+        assert drawn[-1] == (R.ari_floor(arms(low)), 1.0)
+        caption = " ".join(R._caption(arms(low)).split())
+        assert said in caption, caption
+        assert ("on a scale from 0 to 1." in caption) is (low >= 0)
+    # An index that would print as -0.0000, or as 0 with a minus sign, does not.
+    assert (R._ari(-4e-05), R._ari(-0.0), R._ari(0.0), R._ari(1.0), R._ari(0.12345)) == (
+        "-4.0e-05", "0.0000", "0.0000", "1", "0.1235")
 
 
 def test_the_paragraph_on_how_the_numbers_are_made_says_the_runs_rule(records, written, sweeps, tmp_path):
     """The rule and threshold are the records', one for every run, and the paragraph says how each
     band is scaled and how the numbers are rounded (the gate's review, part 3)."""
     report = " ".join((written.out / "r14_elbow_report.md").read_text().split())
-    assert "`clustering.log_rule` right_skew: a band whose IQR is 0 is dropped; only a band skewed to " \
-           "the right, skew above 1.0, is logged" in report
+    assert "`clustering.log_rule` right_skew: a band whose IQR is at most 1e-9 is dropped, and an angle's " \
+           "sine and cosine only together, when their shared spread is; only a band skewed to the right, " \
+           "skew above 1.0, is logged" in report
     assert "each other band is centred by its median and divided by its IQR" in report
-    assert "the sine and cosine of an angle by their medians and by the root mean square of their two IQRs" in report
+    assert "the sine and cosine of an angle by their medians and by their shared spread, the root mean square " \
+           "of their two IQRs" in report
     assert "6 decimals in the csv" in report and "4 in the tables" in report
     # Every run at another threshold: the paragraph gives it.
     folder = tmp_path / "records"
@@ -677,6 +699,24 @@ def test_the_results_hold_no_date_time_or_commit_and_the_record_does(written):
     assert record["result_files"][:2] == ["r14_elbow.csv", "r14_elbow_report.md"] and len(record["result_files"]) == 14
     assert record["run_check"] is False and record["missing_runs"] == []
     assert set(record["packages"]) == {"numpy", "scikit-learn", "matplotlib"}
+
+
+def test_the_git_state_at_the_end_is_read_once_the_results_are_in_place(records, sweeps, tmp_path, monkeypatch):
+    """git_at_end is read after the csv, the report and the figures are in place and before the run
+    record is, so that a re-run that rewrites committed results shows them, and the work folder,
+    empty by then, does not show (the gate's review, part 5)."""
+    seen: list[list[str]] = []
+    real = R.git_block
+
+    def spy(now: bool = False) -> dict[str, Any]:
+        if now:
+            seen.append(sorted(p.name for p in tmp_path.iterdir() if not p.name.startswith(".")))
+            seen.append([p.name for p in tmp_path.glob(".r14_elbow.*/**/*") if p.is_file()])
+        return real(now)
+
+    monkeypatch.setattr(R, "git_block", spy)
+    assert R.main(args(records, tmp_path, "--no-run-check")) == 0
+    assert seen == [["r14_elbow", "r14_elbow.csv", "r14_elbow_report.md"], []]
 
 
 def test_a_run_with_no_record_stops_the_script_unless_it_is_allowed(records, sweeps, tmp_path, monkeypatch):
