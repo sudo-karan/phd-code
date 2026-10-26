@@ -113,9 +113,11 @@ SCENARIO = json.loads((D / "scenario.json").read_text()) if (D / "scenario.json"
 CACHED = {
     "features": FEATURE_OUTPUTS,
     "segmentation": ("segmentation_snic_clusters", "segmentation_snic_means"),
+    "k_elbow": ("k_elbow_k_elbow",),
     "clustering": ("clustering_cluster_labels", "clustering_feature_stack"),
 }
-UPSTREAM = {"features": (), "segmentation": ("features",), "clustering": ("features", "segmentation"),
+UPSTREAM = {"features": (), "segmentation": ("features",), "k_elbow": ("features", "segmentation"),
+            "clustering": ("features", "segmentation"),
             "export": ("features", "segmentation", "clustering")}
 DRIVE = DRIVE_FILES
 
@@ -329,11 +331,18 @@ class Harness:
 
     # ---------- the run tree ----------
 
-    def config(self, name: str, path: str | None = None) -> str:
-        """A copy of a real config with `name:` set; its path relative to the run tree."""
+    def config(self, name: str, path: str | None = None, *, elbow_in_fit_space: bool = False) -> str:
+        """A copy of a real config with `name:` set; its path relative to the run tree. With
+        `elbow_in_fit_space`, the k elbow in the fit's space on (round 14), with the fit off
+        Earth Engine it needs."""
         rel = path or f"configs/{name}.yaml"
         text, n = re.subn(r"(?m)^name:.*$", f"name: {name}", REAL_CONFIG.read_text(), count=1)
         assert n == 1
+        if elbow_in_fit_space:
+            text, n = re.subn(r"(?m)^clustering:\n", "clustering:\n  fit_outside_earth_engine: true\n",
+                              text, count=1)
+            assert n == 1
+            text += "\nk_elbow:\n  in_fit_space: true\n"
         (self.rt / rel).parent.mkdir(parents=True, exist_ok=True)
         (self.rt / rel).write_text(text)
         return rel

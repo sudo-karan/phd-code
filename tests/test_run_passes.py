@@ -74,8 +74,10 @@ def test_the_alphaearth_features_pass_holds_the_merge_criteria():
 
 def test_the_pass_scripts_run_the_features_pass_first():
     text = (REPO / "odisha_script" / "run_config_passes.sh").read_text()
-    assert "for stage in features segmentation clustering export; do" in text
-    assert runner.PASSES == ("features", "segmentation", "clustering", "export")
+    # Round 14: the stages come from the wrapper (STAGES); the default is the four of before.
+    assert "STAGES=${STAGES:-features segmentation clustering export}" in text
+    assert "for stage in $STAGES; do" in text
+    assert runner.PASSES == ("features", "segmentation", "k_elbow", "clustering", "export")
     line = "--- PASS1 odisha_x_r9 features exit=0 ---"
     m = run_passes_safely.STAGE_EXIT.match(line)
     assert m and m.group(2) == "features"

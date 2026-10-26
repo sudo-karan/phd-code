@@ -363,9 +363,23 @@ it. Start every batch with the wrapper:
 
 ```bash
 python odisha_script/run_passes_safely.py --label <name> \
-    [--run-tree <clean checkout>] [--log-dir <dir>] [--passes 3] \
+    [--run-tree <clean checkout>] [--log-dir <dir>] [--passes 3] [--through export|k_elbow] \
     configs/<config>_repro.yaml [configs/<another>_repro.yaml ...]
 ```
+
+**A batch that stops after the k elbow** (round 14). With `k_elbow.in_fit_space` on in every
+config, the k elbow step reads the clustering stage's inputs, not its outputs, so each config's
+stages are features, segmentation, k_elbow, clustering and export, and `--through k_elbow` stops
+after the elbow: features, segmentation and k_elbow, with the merge run inside the elbow's pass,
+and no clustering, profiling or export task (no Drive file). The runner's k_elbow pass copies the
+step's files (the elbow, the table of units, the scaled rows keyed by stand label, the types at
+every k, the preprocessing) from the run folder to `odisha_script/phase2_vectors/<config>_k_elbow*`,
+beside a run record `<config>_k_elbow_run.json`, and refuses (exit 4) a config whose setting is off.
+The wrapper refuses (exit 93) `--through k_elbow` with a config whose setting is off, and a batch
+whose configs differ in it. It counts a config as done when its last stage exits 0, records the
+batch's `--through` and stages in the state file, and skips an earlier batch's configs only when
+that batch went as far (the same `--through`), so a config done through the elbow is run by a later
+full batch of the same label.
 
 The wrapper runs one pass at a time and, before each, waits until Earth Engine
 has no queued or running task whose description starts with the name of a

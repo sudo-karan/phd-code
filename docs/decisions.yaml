@@ -8153,3 +8153,63 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 26 Oct 2026 (round 14 brief), Task 2, item 4
+- id: spec-batch-through-the-k-elbow
+  title: >-
+    A batch can stop after the k elbow (--through k_elbow) when every config has the elbow in the fit's space; the
+    wrapper gives the shell script its stages
+  decision: >-
+    odisha_script/odisha_phase2_2_run_pipeline.py gains the pass k_elbow (PASSES): the stages of
+    default_stage_names(through="k_elbow"), which with k_elbow.in_fit_space on are masking, data_load, the feature
+    stages, segmentation, the merge and k_elbow, with no clustering stage; it needs every feature asset and the
+    superpixels cached first (prerequisites, as the clustering pass) and refuses (exit 4) a config whose setting is
+    off, as that step would read the clustering stage's outputs and the pass would compute and export them. After any
+    pass the runner copies the files the stages that ran wrote into the run folder (StageResult.files) to
+    odisha_script/phase2_vectors/<config>_<file>, beside the stand layers, and the k_elbow pass writes a run record,
+    <config>_k_elbow_run.json (the config, fingerprint, layout, step keys, git, environment, run folder, cache status,
+    the elbow as computed or read back, and the files copied). odisha_script/run_config_passes.sh takes its stages from
+    STAGES (the four of before round 14 by default), refusing an unknown stage (exit 97) after the check that the
+    wrapper started it. odisha_script/run_passes_safely.py takes --through export (the default) or k_elbow, and gives
+    the shell script the stages: features, segmentation, clustering, export as before; features, segmentation,
+    k_elbow, clustering, export when every config has k_elbow.in_fit_space on; features, segmentation, k_elbow with
+    --through k_elbow. It refuses (exit 93) a batch whose configs differ in the setting and --through k_elbow with a
+    config whose setting is off. A config is done when its batch's last stage exits 0. The state file records the
+    batch's --through and stages, and a config an earlier batch of the label finished, or put under needs attention, is
+    skipped only when that batch went as far (the same --through; a state file from before records none and counts as
+    export), so a config done through the elbow is run by a later full batch of the same label. Off, nothing changes:
+    a batch of configs with the setting off gets the four stages of before (pass_env sets STAGES always).
+  alternatives_considered:
+  - >-
+    A k_elbow pass on a config with the setting off, after a clustering pass: not chosen; the round 14 brief asks for a
+    pass that submits no clustering, and with the setting off the step reads the clustering stage's outputs
+  - >-
+    Per-config stage lists in one batch: not chosen; one list per batch keeps the shell script's loop as it was, and
+    the R3 batches have the setting on in every config
+  - >-
+    Skip an earlier batch's configs whatever its --through: not chosen; a config done through the elbow would then
+    never be exported under that label
+  rationale: >-
+    The round 14 brief (Jaskaran, 26 Oct 2026), Task 2, item 4: "Add a pass that stops after it (--through k_elbow in the
+    runner and the wrapper): it runs the merge and the elbow, and submits no clustering, profiling or export." Task 4
+    runs the live check "in full ... with the k_elbow pass included", Task 5 the R3 configs "through k_elbow only", and
+    Task 7 the clustering, profiling and export passes with "the elbow ... read back from the cache". The new tests
+    (tests/test_run_passes_k_elbow.py) fail on the code before the change (argparse: invalid choice 'k_elbow'; no
+    stages_for, no copy_stage_files) and pass after it; they run the real wrapper and shell script against the modelled
+    Earth Engine of tests/_wrapper_harness.py, whose stand-in runner learnt the pass. No paper was searched for this
+    decision.
+  evidence:
+  - path: odisha_script/odisha_phase2_2_run_pipeline.py
+    what: PASSES, prerequisites, ELBOW_NEEDS_THE_SETTING, copy_stage_files, the k_elbow run record
+  - path: odisha_script/run_config_passes.sh
+    what: STAGES and the check of its names
+  - path: odisha_script/run_passes_safely.py
+    what: --through, stages_for, pass_env, the refusals, the done rule, the state file's through and stages, the skip rule
+  - path: tests/test_run_passes_k_elbow.py
+    what: The runner's pass, the shell script's stages, the wrapper's batches through the elbow and in full; fails on the old code
+  - path: tests/_wrapper_harness.py
+    what: The stand-in runner's k_elbow pass; configs with the setting on
+  - path: docs/running.md
+    what: A batch that stops after the k elbow
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 26 Oct 2026 (round 14 brief), Task 2, item 4

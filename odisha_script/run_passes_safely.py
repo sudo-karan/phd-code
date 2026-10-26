@@ -1,7 +1,7 @@
 """Run run_config_passes.sh one pass at a time, never while earlier tasks are still queued.
 
     python odisha_script/run_passes_safely.py --label <name> [--run-tree <dir>] [--log-dir <dir>]
-        [--passes 3] <config.yaml> [<config.yaml> ...]
+        [--passes 3] [--through export|k_elbow] <config.yaml> [<config.yaml> ...]
 
 WHY THIS EXISTS
 ---------------
@@ -54,8 +54,18 @@ RUN_PASSES_SAFELY=1 for the script (`pass_env`), which refuses to start without 
     the tree's state before and after it, and the change that stopped the batch if one did,
     to <log-dir>/<label>.state.json beside the log, after the record of the label's earlier
     batches. A pass cut short (Ctrl-C) still records the configs it finished;
+  - runs each config's stages in the order run_config_passes.sh is given (STAGES, round 14):
+    features, segmentation, clustering, export, as before; with k_elbow.in_fit_space on in every
+    config, features, segmentation, k_elbow, clustering, export; and with --through k_elbow,
+    features, segmentation, k_elbow only, which submits no clustering, profiling or export task
+    and needs the setting on in every config. A batch whose configs differ in the setting, or a
+    --through k_elbow batch with a config whose setting is off, is refused (exit 93). The state
+    file records the batch's --through and stages; a config an earlier batch of the label finished
+    or put under needs attention is skipped only if that batch went as far (the same --through; a
+    state file from before round 14 counts as --through export);
   - counts a config as finished ("done" in the state file, and "ALL CONFIGS COMPLETE" in the
-    log once every config is) when its export stage exits 0. That means its Drive exports were
+    log once every config is) when its last stage exits 0: its export stage, or with --through
+    k_elbow its k_elbow stage. For the export stage that means its Drive exports were
     submitted, not that they completed: nothing in the batch waits on them or records how they
     ended, since the runner's --wait covers cache exports only and the export call is not given
     it (review C39, round 13). Their task ids are in the config's run record (drive_exports);
@@ -84,9 +94,13 @@ import time
 from pathlib import Path
 
 ACTIVE_STATES = ("PENDING", "RUNNING", "CANCELLING")
-STAGE_EXIT = re.compile(r"^--- PASS1 (\S+) (features|segmentation|clustering|export) exit=(\d+) ---$")
+STAGE_EXIT = re.compile(
+    r"^--- PASS1 (\S+) (features|segmentation|k_elbow|clustering|export) exit=(\d+) ---$")
 # The line run_config_passes.sh writes as it starts a stage.
-STAGE_START = re.compile(r"^##### PASS1 (\S+) :: (features|segmentation|clustering|export) :: .* #####$")
+STAGE_START = re.compile(
+    r"^##### PASS1 (\S+) :: (features|segmentation|k_elbow|clustering|export) :: .* #####$")
+# The stages of a config, in order, as run_config_passes.sh is given them (round 14).
+STAGES_BEFORE_ROUND_14 = ("features", "segmentation", "clustering", "export")
 POLL_S = 60
 # The variable run_config_passes.sh checks before it does anything (round 12).
 STARTED_BY_THE_WRAPPER = "RUN_PASSES_SAFELY"
@@ -96,11 +110,23 @@ LOCK_FILE = Path(".fmu") / "run_passes_safely.lock"  # under the home folder
 STOP_SIGNALS = (signal.SIGTERM, signal.SIGHUP, signal.SIGINT)
 
 
-def pass_env(python: str, run_tree: Path) -> dict[str, str]:
+def stages_for(through: str, *, elbow: bool) -> tuple[str, ...]:
+    """The stages of each config of a batch (round 14): `elbow` is whether its configs have
+    k_elbow.in_fit_space on, which puts the elbow's pass before clustering; --through k_elbow
+    stops after it."""
+    if through == "k_elbow":
+        return ("features", "segmentation", "k_elbow")
+    if elbow:
+        return ("features", "segmentation", "k_elbow", "clustering", "export")
+    return STAGES_BEFORE_ROUND_14
+
+
+def pass_env(python: str, run_tree: Path, *, stages: tuple[str, ...] = STAGES_BEFORE_ROUND_14) -> dict[str, str]:
     """The environment run_config_passes.sh runs in: one pass, this interpreter, the run tree's
-    code, and RUN_PASSES_SAFELY=1, without which the script refuses to start."""
+    code, the stages (always set, so that a STAGES left in the environment changes no batch), and
+    RUN_PASSES_SAFELY=1, without which the script refuses to start."""
     return dict(os.environ, PYTHON=python, MAX_PASSES="1", PYTHONPATH=str(run_tree / "src"),
-                **{STARTED_BY_THE_WRAPPER: "1"})
+                STAGES=" ".join(stages), **{STARTED_BY_THE_WRAPPER: "1"})
 
 
 def take_lock(path: Path) -> int | None:
@@ -160,6 +186,8 @@ def main() -> int:
                     help="where the log and state file go (default <run-tree>/logs)")
     ap.add_argument("--passes", type=int, default=3)
     ap.add_argument("--python", default=sys.executable)
+    ap.add_argument("--through", choices=("export", "k_elbow"), default="export",
+                    help="export (default): every stage; k_elbow: stop after the k elbow (round 14)")
     args = ap.parse_args()
 
     # Taken first, before git, `import ee` and ee.Initialize (review B6), and held to the end.
@@ -197,12 +225,15 @@ def main() -> int:
     # so the wait before a pass, the state file and the skip of an earlier batch's configs go by
     # it. run_config_passes.sh names the exit lines after the file stem, so the two must agree.
     name_of: dict[str, str] = {}
+    elbow_of: dict[str, bool] = {}  # k_elbow.in_fit_space, per config (round 14)
     for c in args.configs:
         if Path(c).suffix != ".yaml":
             print(f"REFUSING: {c} is not a .yaml file (run_config_passes.sh takes a config's "
                   f"name from its file name less .yaml)")
             return 93
-        name = load_config(rt / c).name
+        loaded = load_config(rt / c)
+        name = loaded.name
+        elbow_of[c] = bool(getattr(loaded.k_elbow, "in_fit_space", False))
         if name != Path(c).stem:
             print(f"REFUSING: {c} has name: {name}, not its file stem {Path(c).stem}; its tasks "
                   f"are named after name:, its exit lines after the file stem")
@@ -211,6 +242,19 @@ def main() -> int:
             print(f"REFUSING: {name} is listed twice")
             return 93
         name_of[c] = name
+    # One list of stages per batch (round 14): the configs must agree on the elbow's pass.
+    if len(set(elbow_of.values())) > 1:
+        print("REFUSING: the configs differ in k_elbow.in_fit_space ("
+              + ", ".join(f"{name_of[c]} {'on' if on else 'off'}" for c, on in elbow_of.items())
+              + "); run them in batches of their own")
+        return 93
+    elbow = all(elbow_of.values())
+    if args.through == "k_elbow" and not elbow:
+        print("REFUSING: --through k_elbow needs k_elbow.in_fit_space on in every config: with it "
+              "off the k elbow step reads the clustering stage's outputs, which the pass would "
+              "compute and export")
+        return 93
+    stages = stages_for(args.through, elbow=elbow)
     # The earlier batches of this label (review B4): a config one of them finished, or put under
     # needs attention, is not run again. Read before anything is written, so that a state file
     # that cannot be read stops the batch here and is left as it is.
@@ -221,6 +265,11 @@ def main() -> int:
     done_before: dict[str, str] = {}  # config -> the commit of the batch that finished it
     attention_before: dict[str, str] = {}  # config -> why it needs attention
     for b in earlier:
+        # A batch that went less far, or further, than this one did not finish what this one
+        # does (round 14: a config done through the elbow is not done for a full batch). A state
+        # file from before round 14 records no --through: it went through export.
+        if b.get("through", "export") != args.through:
+            continue
         c7 = str((b.get("git") or {}).get("commit") or b.get("commit") or "")[:7]
         done_before.update({n: c7 for n in b.get("done", [])})
         attention_before.update(b.get("needs_attention", {}))
@@ -313,6 +362,9 @@ def main() -> int:
         # (the disk full, the machine down) leaves the earlier state whole: B4's resume reads it.
         text = json.dumps({
             "label": args.label,
+            # How far each config goes, and its stages (round 14).
+            "through": args.through,
+            "stages": list(stages),
             # As the batch started; each pass adds how the tree stood before and after it (C32).
             "git": started,
             "configs": [name_of[c] for c in args.configs],
@@ -350,9 +402,10 @@ def main() -> int:
                 exports_started.add(m.group(1))
         history.append({"pass": p, "exit": rc, "stage_exits": exits,
                         "git_before": git_before, "git_after": tree_state(rt)})
+        last = stages[-1]  # export, or k_elbow for a batch that stops after it (round 14)
         for c in list(remaining):
             st = exits.get(name_of[c], {})
-            if st.get("export") == 0:
+            if st.get(last) == 0:
                 done.append(c)
                 remaining.remove(c)
             elif "export" in st:
@@ -366,10 +419,11 @@ def main() -> int:
 
     try:
         say(f"batch {args.label} started from commit {commit} (tracked files unmodified); "
-            f"{len(args.configs)} config(s), up to {args.passes} pass(es)")
+            f"{len(args.configs)} config(s), up to {args.passes} pass(es); stages "
+            f"{' '.join(stages)} (--through {args.through})")
         for c, why in skipped.items():
             say(f"{name_of[c]}: skipped, {why}")
-        env = pass_env(args.python, rt)
+        env = pass_env(args.python, rt, stages=stages)
         for p in range(1, args.passes + 1):
             if not remaining or stopped_by:
                 break
