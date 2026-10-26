@@ -415,7 +415,7 @@ python odisha_phase1_6_closeout.py         # fully offline; reads the v2 CSV as 
 |---|---|---|---|
 | 0 | no | `Odisha_samples.csv`, `Odisha_sites.csv` | `odisha_plots_clean.csv` |
 | 1 | **yes** | `odisha_plots_clean.csv` | `odisha_plots_sampled.csv` |
-| 2 | no | `odisha_plots_sampled.csv` | `odisha_phase1_results.txt`, `odisha_phase1_figs.png` |
+| 2 | no | `odisha_plots_sampled.csv` | `odisha_phase1_results.txt` (committed since round 14 as `odisha_phase1_results_r14.txt`; see below), `odisha_phase1_figs.png` |
 | 3 | **yes** | `odisha_plots_sampled.csv` | `odisha_plots_sampled_v2.csv` |
 | 4 | no | `odisha_plots_sampled_v2.csv` | `odisha_phase1_tests456_results.txt`, `odisha_phase1_tests456_figs.png` |
 | 5 | **yes** | `odisha_plots_sampled_v2.csv` | the same file, with four `meta_*` columns added |
@@ -432,6 +432,14 @@ advance:
   7 read it, and step 9 writes the corrected columns to `odisha_plots_sampled_v3.csv` instead.
 - Step 3 starts again from `odisha_plots_sampled.csv`, so the four `meta_*` columns of step 5
   are missing until step 5 has run again.
+
+Step 2's committed `odisha_phase1_results.txt` is kept as first written, with a dated note at
+its end. Since round 14 (26 Oct 2026; round 13 question 18 (a), review C21) the script prints
+RMSE and bias only where both sides are heights in metres (Test 1), as step 12 has since round 10,
+and what it writes now is committed beside the old file as `odisha_phase1_results_r14.txt`; it
+differs only in the eight fit lines of Tests 2 and 3, each without its RMSE and bias
+(`odisha_phase1_results_r14_vs_before.md`). The script still writes the old name, so run it in a
+copy of the folder, as for steps 1, 3 and 5, and compare with the `_r14` file.
 
 What each of these files gave on a re-run is in `docs/reproducibility.md`, "Phase 1".
 

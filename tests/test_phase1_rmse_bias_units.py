@@ -11,6 +11,7 @@ brief's rule "Every other question: your recommendation": the rule round 10 appl
   spreads in dB, against Lorey's height in metres. The eight height products keep theirs.
 
 Nothing else may change: every other line is the one the committed file holds as first written.
+The script's output is committed beside the old file under a `_r14` name, and is checked here.
 Each script runs in a temporary folder on its committed input; no Earth Engine call.
 """
 
@@ -90,6 +91,11 @@ def test_step2_changes_no_other_line(step2):
     expected = [s.split("  RMSE=")[0] if i > test2 else s for i, s in enumerate(first)]
     assert sum(a != b for a, b in zip(first, expected, strict=True)) == 8
     assert step2 == expected
+
+
+def test_step2_writes_the_committed_r14_file(step2):
+    # odisha_phase1_results_r14.txt is this script's output, saved under its round 14 name
+    assert step2 == (SCRIPTS / "odisha_phase1_results_r14.txt").read_text().split("\n")
 
 
 # --------------------------------------------------------------------------- step 6
