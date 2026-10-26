@@ -2861,7 +2861,10 @@ decisions:
     fmu.utils.region_merge), and the dense index is the rank of the SNIC label (fmu.utils.adjacency numbers
     the sorted labels 0 to n - 1), so that tie follows SNIC label order; order_key also ends on the dense
     index, for two centroids equal to 7 decimals. Whether the code or this entry is to change is a question
-    for Jaskaran (round 13); until it is answered, the code is as it was.
+    for Jaskaran (round 13); until it is answered, the code is as it was. Round 14 (26 Oct 2026): the code
+    changed (round 13 question 24, answer (a)). The fallback's tie is now broken by order_key, centroid first,
+    as this entry decides, in both of the fallback's lists (spec-merge-fallback-tie-by-centroid); order_key
+    still ends on the dense index, for two centroids equal to 7 decimals.
   alternatives_considered:
   - 'Caching stand_clusters like other stage outputs: named and rejected'
   - 'Ordering by SNIC label: named and rejected'
@@ -2880,7 +2883,8 @@ decisions:
   - path: src/fmu/utils/region_merge.py
     what: >-
       order_key(): centroid rounded to 7 decimals, then the dense index; pass2_partner(): the fallback's ties to
-      the lower root index (both docstrings say so since round 13)
+      the lower root index (both docstrings say so since round 13). Round 14 (26 Oct 2026): pass2_partner() breaks
+      the fallback's ties by order_key, and both docstrings say so
   - path: src/fmu/utils/adjacency.py
     what: docstring lines 1-8; note on run-to-run differences at line 454
   - path: src/fmu/config.py
@@ -2891,7 +2895,9 @@ decisions:
     what: >-
       test_result_is_deterministic_across_runs, which reruns identical input and so cannot see a dependence on
       label order (review C12); test_a_fallback_tie_goes_to_the_lower_root_index_the_snic_label_order (round 13),
-      which pins the fallback's tie by label order and fails on a version that breaks it by centroid
+      which pins the fallback's tie by label order and fails on a version that breaks it by centroid. Round 14
+      (26 Oct 2026): that test is replaced by test_a_fallback_tie_goes_by_centroid_however_the_ground_is_labelled,
+      which labels the same ground every way round and fails on the code before the change
   - path: README.md
     what: 'line 209: why merge is not cached'
   - path: docs/reviews/2026-10-19-review.md
@@ -2901,7 +2907,8 @@ decisions:
   design_notes_section: null
   source: >-
     src/fmu/stages/merge.py docstring ('How it runs') and comments at lines 94-97 and 160-166; the sentence of 20 Oct
-    2026 from review C12 (round 13 brief, Task 6)
+    2026 from review C12 (round 13 brief, Task 6); the sentence of 26 Oct 2026 from round 13 question 24, Claude
+    Code's recommendation (a), by the round 14 brief's rule 'Every other question: your recommendation'
 - id: spec-analysis-grid-utm-from-roi
   title: 'All raster measurements use one grid: the UTM zone of the region of interest'
   decision: >-
@@ -8455,4 +8462,84 @@ decisions:
   design_notes_section: null
   source: >-
     Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 30, Claude Code's recommendation (c), by the brief's rule
+    'Every other question: your recommendation'
+- id: spec-merge-fallback-tie-by-centroid
+  title: >-
+    In the merge's second pass, of two neighbours sharing boundaries of the same length the shared-edge fallback takes
+    the one whose centroid comes first, not the one SNIC numbered lower
+  decision: >-
+    fmu.utils.region_merge (Locked, part of the merge stage): when no neighbour of a region below the minimum passes
+    the relaxed tolerances, pass2_partner takes the neighbour sharing the longest boundary, and of two or more sharing
+    boundaries of the same length the one order_key puts first: the centroid's longitude, then its latitude, each
+    rounded to 7 decimals, then the dense index. It does so in both of the fallback's lists, the neighbours that keep
+    the result at most max_area_ha and, with merge.pass2_soft_ceiling on, those that take it over. Until 26 Oct 2026
+    such a tie went to the lower root index, the rank of the root superpixel's SNIC label, so the same ground labelled
+    the other way round could give other stands. Nothing else changes: the closest relaxed match, pass 1, the root a
+    merge keeps and the numbering of the stands keep their tie-breaks. The merge's revision (STEP_REVISION in
+    fmu.utils.caching) is raised to 3, which moves the merge, clustering and k_elbow keys of all 74 configs under
+    configs/ and configs/experiments/ (all have the merge on) and no other key; the legacy fingerprint has no revision
+    and does not move. 20 of the 200 golden graphs of tests/test_region_merge_provenance.py (seeds 6, 19, 25, 26, 54,
+    76, 77, 95, 98, 109, 124, 126, 157, 158, 168, 171, 173, 177, 183 and 194) and 67 of the 516 graphs of
+    tests/test_region_merge_soft_ceiling.py (32 random, 10 tight and 25 crowded) give new digests, pinned in those tests
+    (DIGESTS_SINCE_Q24, OFF_DIGESTS_SINCE_Q24); the two fixture files keep what the merge gave at their commits.
+  alternatives_considered:
+  - >-
+    Change the register to say what the code did, the tie to the lower root index (round 13 question 24, option (b)):
+    not chosen. No code change and nothing recomputed, but the reason spec-merge-runs-client-side-uncached gives against
+    label order, that SNIC numbers its superpixels differently from run to run, would then apply to this tie
+  - >-
+    Break the tie by the distance under the relaxed tolerances, the closest of the neighbours that tie: not possible
+    as the merge computes it; every neighbour that reaches the fallback fails those tolerances, and compare gives each
+    such pair an infinite distance
+  rationale: >-
+    The round 14 brief (Jaskaran, 26 Oct 2026), Task 1: "Every other question: your recommendation", and "Then make the
+    code changes the answers call for before R3: ... Q24". Round 13 question 24 recommended (a), "Change the code to
+    break that tie by centroid, as the register says", before R3, since every merge key moves this round anyway; its
+    option (a) says the merge's revision is raised, which moves the merge, clustering and k_elbow keys of all 74
+    configs. The review (docs/reviews/2026-10-19-review.md, C12): "Break ties by order_key (centroid first), or amend
+    the register. Test with permuted labels." The new test of tests/test_region_merge.py labels the same ground every
+    way round, under max_area_ha and over it with the soft ceiling on, and fails on the code before the change with
+    "assert 'east' == 'west'": labelled the other way round, the fragment went to the other side. When the change was
+    made, on all 200 golden graphs and all 516 soft-ceiling graphs (the setting off) the merge gave what the merge
+    before it gives with only the fallback's tie rule changed, and what the fixtures' commits (1da0614, 363ea6d) give
+    with B18's comparison and this tie rule put in them, so the provenance and the soft ceiling off still change
+    nothing else. A tie in the fallback was decided the other way on every graph that moved, and on 6 golden and 12
+    soft-ceiling graphs more whose outputs came out the same. With the soft ceiling on, which every _r9 config and so
+    every R3 copy of one has, 70 of the 516 graphs move (measured, not pinned). The slow tier of
+    tests/test_region_merge_soft_ceiling.py (9000 more graphs, all four rules) passes. How often such a tie decided a
+    stand of record is not known: it needs each run's graph, on Earth Engine. No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/utils/region_merge.py
+    what: >-
+      pass2_partner, the fallback's choice by (longest boundary, order_key); the docstrings of order_key and
+      pass2_partner
+  - path: src/fmu/utils/caching.py
+    what: STEP_REVISION, the merge at revision 3
+  - path: src/fmu/stages/merge.py
+    what: The comment on pixelLonLat's band names, the merge's tie-break
+  - path: tests/test_region_merge.py
+    what: >-
+      test_a_fallback_tie_goes_by_centroid_however_the_ground_is_labelled, under max_area_ha and over it; fails on the
+      code before
+  - path: tests/test_region_merge_provenance.py
+    what: DIGESTS_SINCE_Q24
+  - path: tests/test_region_merge_soft_ceiling.py
+    what: OFF_DIGESTS_SINCE_Q24
+  - path: tests/test_step_keys_of_record.py
+    what: >-
+      test_the_merge_at_revision_3_moves_the_merge_clustering_and_elbow_keys_of_every_config, which fails on the code
+      before; test_a_revision_of_the_merge_moves_clustering_and_the_elbow_too
+  - path: docs/configs.md
+    what: merge.tie_break
+  - path: docs/reviews/2026-10-19-review.md
+    what: C12
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 6, C12; Questions for Jaskaran, question 24
+  - path: docs/handoff/2026-10-26-round14.md
+    what: The brief, Task 1
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 24, Claude Code's recommendation (a), by the brief's rule
     'Every other question: your recommendation'

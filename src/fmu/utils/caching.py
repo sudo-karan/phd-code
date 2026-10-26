@@ -541,8 +541,9 @@ STEP_REVISION: dict[str, int] = {
     # cause in clustering_metadata (no habitat pixel centre in the ROI, a band gap).
     "clustering": 5,
     # Round 13: 1, B17, the superpixel pixel counts on one inclusion rule;
-    # 2, B18, the area bounds compared in whole pixels.
-    "merge": 2,
+    # 2, B18, the area bounds compared in whole pixels. Round 14: 3, round 13
+    # question 24, a tie in pass 2's shared-edge fallback broken by centroid.
+    "merge": 3,
 }
 
 # Steps that read another step's output without having it upstream, and so take

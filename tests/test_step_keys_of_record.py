@@ -333,6 +333,43 @@ def test_a_revision_of_clustering_moves_the_elbow_too(monkeypatch):
     assert {s for s in a if a[s] != b[s]} == {"clustering"}
 
 
+def test_a_revision_of_the_merge_moves_clustering_and_the_elbow_too(monkeypatch):
+    """With the merge on, clustering and k_elbow read the merge's stands, so a change to
+    what the merge computes moves their keys with the merge's, and no other key."""
+    monkeypatch.chdir(REPO)
+    for path in (HANDCRAFTED, ALPHAEARTH):
+        cfg = load_config(path)
+        assert _moved_by(cfg, {"merge": 1}, monkeypatch) == {"merge", "clustering", "k_elbow"}
+
+
+ALL_CONFIGS = sorted([*CONFIGS.glob("*.yaml"), *(CONFIGS / "experiments").glob("*.yaml")])
+
+
+def test_the_merge_at_revision_3_moves_the_merge_clustering_and_elbow_keys_of_every_config(
+    monkeypatch,
+):
+    """Round 14 (round 13 question 24, answer (a); register entry
+    spec-merge-fallback-tie-by-centroid): the shared-edge fallback's tie broken by
+    centroid raised the merge from revision 2 to 3. Against the keys at revision 2 that
+    moves the merge, clustering and k_elbow keys of a config with the merge on, which
+    all 74 configs had when it was made, and no other key; the legacy fingerprint has
+    no revision. (With the merge off, clustering reads the superpixels, and only the
+    merge's own key, which no stage then reads, would move.)"""
+    monkeypatch.chdir(REPO)
+    revision = caching.STEP_REVISION["merge"]
+    assert revision >= 3
+    assert len(ALL_CONFIGS) >= 74
+    for path in ALL_CONFIGS:
+        cfg = load_config(path)
+        now, fingerprint = step_keys(cfg), config_fingerprint(cfg)
+        monkeypatch.setitem(caching.STEP_REVISION, "merge", 2)
+        at_2, fingerprint_at_2 = step_keys(cfg), config_fingerprint(cfg)
+        monkeypatch.setitem(caching.STEP_REVISION, "merge", revision)
+        moves = {"merge", "clustering", "k_elbow"} if cfg.merge.enabled else {"merge"}
+        assert {s for s in now if now[s] != at_2[s]} == moves, path
+        assert fingerprint == fingerprint_at_2, path
+
+
 def test_each_raise_gives_a_new_key_and_revision_zero_is_no_revision(monkeypatch):
     monkeypatch.chdir(REPO)
     cfg = load_config(HANDCRAFTED)

@@ -20,6 +20,8 @@ wrong and impossible to notice from a stand map:
 
 from __future__ import annotations
 
+import itertools
+
 import pytest
 
 from fmu.utils.adjacency import SuperpixelGraph
@@ -397,30 +399,41 @@ def test_shared_edge_fallback_picks_the_longest_boundary():
     assert r.assignment[1] != r.assignment[0]
 
 
-def test_a_fallback_tie_goes_to_the_lower_root_index_the_snic_label_order():
-    """Pins what the code does (review C12; a question for Jaskaran). A fragment
-    between two stands it shares boundaries of the same length with, and matches
-    neither: the fallback takes the neighbour with the lower root index. Dense
-    indices follow the sorted SNIC labels, so the same ground labelled the other
-    way round sends the fragment to the other side: the tie is broken by label
-    order, not by centroid as spec-merge-runs-client-side-uncached says. A tie
-    broken by `order_key` (centroid first) would send it west both times, and
-    this test would fail."""
+@pytest.mark.parametrize("over_max_area", [False, True], ids=["under max_area_ha", "over it"])
+def test_a_fallback_tie_goes_by_centroid_however_the_ground_is_labelled(over_max_area):
+    """Round 14 (round 13 question 24, answer (a); review C12; register entry
+    spec-merge-fallback-tie-by-centroid). A fragment between two stands it shares
+    boundaries of the same length with, and matches neither: the fallback takes
+    the neighbour that comes first by `order_key`, centroid longitude, then
+    latitude, then the dense index, which is the western stand here. The same
+    ground labelled any other way round sends the fragment to the same side.
+    Before round 14 the tie went to the lower root index, the rank of the SNIC
+    label, so the same ground labelled the other way round sent it to the other
+    side, and this test failed. Both of the fallback's lists: the neighbours that
+    keep the result at most max_area_ha, and with pass2_soft_ceiling on those that
+    take it over (a 0.5 ha fragment between two 9.9 ha stands, 10.4 ha either
+    way)."""
 
-    def side_taken(west: int, east: int) -> str:
-        # West to east: a 2 ha stand, a 0.2 ha fragment (index 1), a 2 ha stand.
-        lon = {west: 77.000, 1: 77.001, east: 77.002}
-        ch = {west: 30.0, 1: 10.0, east: 50.0}  # over the relaxed 3.5 m either way
-        px = [20 if i == 1 else 200 for i in range(3)]
+    def side_taken(west: int, fragment: int, east: int) -> str:
+        # West to east: a stand, the fragment, a stand; dense indices as given.
+        lon = {west: 77.000, fragment: 77.001, east: 77.002}
+        ch = {west: 30.0, fragment: 10.0, east: 50.0}  # over the relaxed 3.5 m either way
+        stand_px, fragment_px = (990, 50) if over_max_area else (200, 20)
+        px = [fragment_px if i == fragment else stand_px for i in range(3)]
         means, counts = _attrs([{"ch": ch[i], "std": 0.5} for i in range(3)], px)
-        edges = {tuple(sorted((west, 1))): 5, tuple(sorted((1, east))): 5}
+        edges = {tuple(sorted((west, fragment))): 5, tuple(sorted((fragment, east))): 5}
         r = _run(_graph(px, edges), means, counts, {"ch": 2.0, "std": 0.45},
-                 centroids={i: (lon[i], 28.5) for i in range(3)})
+                 centroids={i: (lon[i], 28.5) for i in range(3)},
+                 pass2_soft_ceiling=over_max_area)
         assert r.diagnostics["pass2_fallback_merges"] == 1 and r.n_stands == 2
-        return "west" if r.assignment[1] == r.assignment[west] else "east"
+        if over_max_area:
+            assert r.diagnostics["pass2_fallback_merges_over_max_area"] == 1
+        return "west" if r.assignment[fragment] == r.assignment[west] else "east"
 
-    assert side_taken(west=0, east=2) == "west"  # the western stand has the lower index
-    assert side_taken(west=2, east=0) == "east"  # now the eastern one has it
+    assert side_taken(west=0, fragment=1, east=2) == "west"
+    assert side_taken(west=2, fragment=1, east=0) == "west"  # the other way round
+    labellings = list(itertools.permutations(range(3)))
+    assert [side_taken(*order) for order in labellings] == ["west"] * len(labellings)
 
 
 def test_isolated_undersized_region_is_reported_not_merged():

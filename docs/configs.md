@@ -671,7 +671,12 @@ a two-tier threshold scheme.
   `src/fmu/utils/region_merge.py`; corrected 20 Oct 2026, review C62, from
   "Xiong's eliminate-pass fallback"). Shared edge is counted with
   4-connectivity even though SNIC runs `connectivity: 8` — a diagonal contact
-  has zero shared boundary length.
+  has zero shared boundary length. Of two neighbours sharing boundaries of the
+  same length, the fallback takes the one whose centroid comes first
+  (longitude, then latitude, to 7 decimals; where both agree, the one SNIC
+  numbered lower), since round 14 (26 Oct 2026; round 13 question 24); until
+  then it took the one SNIC had numbered lower (register entry
+  `spec-merge-fallback-tie-by-centroid`).
 - `max_pass2_iterations`: cap so a pathological AOI logs its stragglers instead
   of looping (default 60).
 - `pass2_skip_at_min_area`: what pass 2 does with a region that was undersized
