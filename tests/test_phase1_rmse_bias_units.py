@@ -10,8 +10,11 @@ brief's rule "Every other question: your recommendation": the rule round 10 appl
 - The close-out (`odisha_phase1_6_closeout.py`) printed a bias for vh_iqr and vv_iqr, radar
   spreads in dB, against Lorey's height in metres. The eight height products keep theirs.
 
-Nothing else may change: every other line is the one the committed file holds as first written.
-Each script's output is committed beside its old file under a `_r14` name, and is checked here.
+Nothing else changes: step 2's whole output is its committed file as first written but for the
+eight Test 2 and Test 3 lines, and the close-out's section A/B is its committed file's but for the
+two radar lines. The close-out's section C differs from its file as first written in four lines,
+from round 13's C22 (docs/reproducibility.md), so it is checked against the `_r14` file only. Each
+script's output is committed beside its old file under a `_r14` name, and is checked here.
 Each script runs in a temporary folder on its committed input; no Earth Engine call.
 """
 

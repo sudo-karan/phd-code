@@ -8889,9 +8889,12 @@ decisions:
       Oct 2026 at its end
   - path: tests/test_phase1_rmse_bias_units.py
     what: >-
-      Each script on its committed input: RMSE and bias only between heights in metres, and every other line as the
-      committed file holds it; fails on the code before the change. Since the regenerations it also checks that each
-      script writes its _r14 file byte for byte
+      Each script on its committed input: RMSE and bias only between heights in metres; step 2's whole output is its
+      committed file as first written but for the eight Test 2 and Test 3 lines, and the close-out's section A/B is its
+      committed file's but for its two radar lines (its section C differs from the file as first written in four lines,
+      round 13's C22, as docs/reproducibility.md records, and is checked against the _r14 file only); fails on the code
+      before the change. Since the regenerations it also checks that each script writes its _r14 file byte for byte
+      (wording made exact on 26 Oct 2026 after the gate's review, part 1)
   - path: odisha_script/odisha_phase1_12_radar_descending.py
     what: fit and line, the rule as round 10 applied it to step 12
   - path: odisha_script/odisha_phase1_4_analyse_v2.py
