@@ -478,9 +478,12 @@ the Drive exports ended, and, for every run folder of the run (a pass that faile
 manifest (without timings), its `fmu.log` (as `<run>_log_<kind>.txt`, a log, which keeps its
 times) and its `input_images.json`. With `--through k_elbow`, for a batch that stopped after the
 elbow, it needs the features, segmentation and k_elbow passes and copies `<run>_k_elbow_run.json`
-and the elbow's files in place of the layers and the run record. Copy a batch's runs before its
-run tree could be deleted, each batch into a folder of its own (the first and second halves of a
-run have passes of the same kinds).
+and the elbow's files in place of the layers and the run record; a full batch with the elbow pass
+(the live check, R3's second half) has `<run>_k_elbow_run.json` too, and the export mode copies it.
+Every file is checked for times (a key one of whose words is a time word, or whose last word is
+"at"; a value holding a date and time) before any is written, so a refusal leaves nothing copied
+(round 14, the gate's review). Copy a batch's runs before its run tree could be deleted, each batch
+into a folder of its own (the first and second halves of a run have passes of the same kinds).
 
 **The elbow report of R3's first half** (round 14, Task 6). Once the nineteen `_r14` runs of the
 first half are copied (`--through k_elbow`, `--dest docs/reproducibility/r14_runs/first_half`), run

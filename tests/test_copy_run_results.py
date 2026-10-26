@@ -222,3 +222,76 @@ def test_a_batch_through_the_k_elbow_without_its_elbow_pass_is_refused(mod, tmp_
     (d / "manifest.json").write_text(json.dumps({"stages": [{"name": "segmentation"}], "config": {}}))
     with pytest.raises(SystemExit, match="k_elbow"):
         mod.copy(tree, RUN, tmp_path / "dest", tmp_path / "off", through="k_elbow")
+
+
+# ---------- round 14, the gate's review (part 1): the elbow's records, and nothing half-written ----------
+
+
+def _elbow_tree(tmp_path: Path) -> Path:
+    """A batch through the k elbow whose preprocessing record has the keys the step writes
+    (fmu.stages.k_elbow: the preprocessing's own record, then cyclic_decomposition_log,
+    raw_band_names, candidate_bands, n_table_rows, n_rows_fitted, unit_key)."""
+    tree = tmp_path / "tree"
+    vec = tree / "odisha_script" / "phase2_vectors"
+    vec.mkdir(parents=True)
+    for name in ("k_elbow.csv", "k_elbow_stand_table.csv", "k_elbow_fit_rows.csv", "k_elbow_types.csv"):
+        (vec / f"{RUN}_{name}").write_text("k,wcss\n2,1.0\n")
+    (vec / f"{RUN}_k_elbow_preprocessing.json").write_text(json.dumps({
+        "log_rule": "right_skew", "skewness_threshold": 1.0, "active_bands": ["elevation"],
+        "skew_before": {"elevation": 0.4}, "skew_after": {"elevation": 0.4},
+        "cyclic_decomposition_log": ["aspect -> aspect_sin, aspect_cos"], "raw_band_names": ["elevation"],
+        "candidate_bands": ["elevation"], "n_table_rows": 3, "n_rows_fitted": 2, "unit_key": "stand_clusters",
+    }, indent=1, sort_keys=True))
+    (vec / f"{RUN}_k_elbow_run.json").write_text(json.dumps({"run_dir": "runs/x_20261027_100000", "k_elbow": {}}))
+    for i, last in enumerate(["features_static", "segmentation", "k_elbow"]):
+        d = tree / "runs" / f"{RUN}_20261027_1000{i:02d}"
+        d.mkdir(parents=True)
+        (d / "manifest.json").write_text(json.dumps({"stages": [{"name": last}], "config": {}}))
+    return tree
+
+
+def test_the_elbows_preprocessing_record_is_not_taken_for_a_time(mod, tmp_path):
+    """'candidate_bands' holds 'date' as letters, not as a word: until the gate's review the check
+    refused every R3 run's elbow record."""
+    dest = tmp_path / "dest"
+    done = mod.copy(_elbow_tree(tmp_path), RUN, dest, tmp_path / "off", through="k_elbow")
+    assert f"{RUN}_k_elbow_preprocessing.json" in done["in_repo"]
+    assert json.loads((dest / f"{RUN}_k_elbow_preprocessing.json").read_text())["candidate_bands"] == ["elevation"]
+
+
+def test_a_time_word_is_a_whole_word_of_the_key(mod):
+    keys = {"candidate_bands": 1, "validate": 1, "mean_over_window": 1, "time_reference": 1, "dates": 1,
+            "elapsed_sec": 1, "total_elapsed_sec": 1, "run_timestamp": 1, "submitted_at": 1, "read_at": 1,
+            "startTime": 1, "updateTime": 1, "date": 1, "duration_s": 1, "started": 1, "finished": 1,
+            "seconds": 1, "datetime": 1}
+    flagged = {p.lstrip("/") for p in mod.time_keys(keys)}
+    assert flagged == {"elapsed_sec", "total_elapsed_sec", "run_timestamp", "submitted_at", "read_at",
+                       "startTime", "updateTime", "date", "duration_s", "started", "finished", "seconds",
+                       "datetime"}
+
+
+def test_a_file_refused_leaves_nothing_written(mod, tmp_path):
+    """Every file is checked before any is written: a refusal leaves no part of the run copied,
+    in the repo or off git (the gate's review: the check ran inside the write loop)."""
+    tree = _tree(tmp_path, mod.LIMIT + 1)  # its snic layer goes off git
+    last = sorted((tree / "runs").glob(f"{RUN}_2*"))[-2]  # the export pass, copied last
+    manifest = json.loads((last / "manifest.json").read_text())
+    manifest["stages"][0]["metadata"]["made"] = "2026-10-15T13:41:00"
+    (last / "manifest.json").write_text(json.dumps(manifest))
+    dest, off = tmp_path / "dest", tmp_path / "off"
+    with pytest.raises(SystemExit, match="date and time"):
+        mod.copy(tree, RUN, dest, off)
+    assert not (dest.exists() and any(dest.iterdir()))
+    assert not (off.exists() and any(off.iterdir()))
+
+
+def test_a_full_batch_keeps_the_elbows_run_record_too(mod, tmp_path):
+    """The live check and R3's second half are full batches with the elbow pass: the runner writes
+    <run>_k_elbow_run.json beside <run>_run.json, and the export mode keeps it (the gate's review)."""
+    tree = _tree(tmp_path, 10)
+    vec = tree / "odisha_script" / "phase2_vectors"
+    (vec / f"{RUN}_k_elbow_run.json").write_text(json.dumps({"run_dir": "runs/x_20261027_100000", "k_elbow": {"k": 5}}))
+    dest = tmp_path / "dest"
+    done = mod.copy(tree, RUN, dest, tmp_path / "off")
+    assert f"{RUN}_k_elbow_run.json" in done["in_repo"]
+    assert json.loads((dest / f"{RUN}_k_elbow_run.json").read_text()) == {"k_elbow": {"k": 5}}

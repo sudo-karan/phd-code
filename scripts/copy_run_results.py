@@ -39,8 +39,11 @@ kept with the run's other files; no declared score reads it.
 Files over 5 MB (docs/decisions.yaml, spec-files-over-5-mb-off-git) are written to --off-git, never
 into --dest; --dest gets <run>_files_off_git.json instead: for each such file its name, size in
 bytes, SHA-256 and where it is, and its Drive copy ("drive"), once one is checked and recorded, which
-a later copy of the same file keeps. Results only: the check at the end refuses a key naming a time or a
-value holding a date and time in what it wrote to --dest.
+a later copy of the same file keeps. Results only: before it writes anything, it refuses a key naming
+a time (one of whose words, split at "_" and at a capital, is a time word, or whose last word is "at")
+or a value holding a date and time in any file it would write, logs and image lists aside, so that a
+refusal leaves nothing copied. A full batch with the k elbow pass also has <run>_k_elbow_run.json,
+copied in either mode (round 14, the gate's review).
 """
 
 from __future__ import annotations
@@ -58,7 +61,12 @@ REPO = Path(__file__).resolve().parent.parent
 # file over 5 MB on any reading is kept off.
 LIMIT = 5_000_000
 DROP = {"run_dir", "total_elapsed_sec", "elapsed_sec", "run_timestamp", "submitted_at"}
-TIME_WORDS = ("time", "elapsed", "date", "duration", "started", "finished", "_sec")
+# A key names a time when one of its words is one of these, or its last word is "at" (submitted_at).
+# Whole words, split at "_" and at a capital (startTime): until round 14's gate review the check took
+# them as letters anywhere in the key, which refused "candidate_bands" (candi-date) in every R3
+# elbow's record (round 14).
+TIME_WORDS = ("time", "timestamp", "datetime", "date", "elapsed", "duration", "started", "finished",
+              "sec", "secs", "seconds", "runtime")
 SETTINGS = ("dates", "time_reference")  # config keys that are settings, not timings
 STAMP = re.compile(r"20\d\d-\d\d-\d\dT\d\d:|20\d{6}_\d{6}")
 LAYERS = ("stands_merged", "stands_snic", "stands_dissolved")
@@ -84,12 +92,24 @@ def strip(obj: Any) -> Any:
     return obj
 
 
+def key_words(key: str) -> list[str]:
+    """The words of a key, lower-cased: split at "_" and other non-letters, and at a capital."""
+    return [w.lower() for w in re.findall(r"[A-Z]+(?![a-z])|[A-Z]?[a-z]+|\d+", key)]
+
+
+def is_time_key(key: str) -> bool:
+    if key in SETTINGS:
+        return False
+    words = key_words(key)
+    return any(w in TIME_WORDS for w in words) or (len(words) > 1 and words[-1] == "at")
+
+
 def time_keys(obj: Any, path: str = "") -> list[str]:
     found = []
     if isinstance(obj, dict):
         for k, v in obj.items():
             p = f"{path}/{k}"
-            if any(w in k.lower() for w in TIME_WORDS) and k not in SETTINGS:
+            if is_time_key(k):
                 found.append(p)
             found += time_keys(v, p)
     elif isinstance(obj, list):
@@ -176,10 +196,13 @@ def copy(tree: Path, run_id: str, dest: Path, off_git: Path, through: str = "exp
                 files[name] = (vec / name).read_bytes()
                 if name.endswith("_run.json"):
                     not_results.add(name)
-    else:
-        record = vec / f"{run_id}_k_elbow_run.json"
-        if not record.exists():
-            raise SystemExit(f"{run_id}: no {record.name} in {vec}")
+    record = vec / f"{run_id}_k_elbow_run.json"
+    if through == "k_elbow" and not record.exists():
+        raise SystemExit(f"{run_id}: no {record.name} in {vec}")
+    if record.exists():
+        # The k elbow pass's run record: a batch through the elbow writes no other, and a full batch
+        # with the elbow pass (the live check, R3's second half) writes it beside <run>_run.json,
+        # which until round 14's gate review the export mode did not copy.
         files[record.name] = (json.dumps(strip(json.loads(record.read_text())), indent=1,
                                          default=str) + "\n").encode()
     for name in STAGE_FILES:
@@ -203,8 +226,8 @@ def copy(tree: Path, run_id: str, dest: Path, off_git: Path, through: str = "exp
         for n, (_, manifest) in enumerate(earlier, start=1):
             files[f"{run_id}_manifest_{kind}_{n}.json"] = (json.dumps(manifest, indent=1, default=str)
                                                             + "\n").encode()
-    dest.mkdir(parents=True, exist_ok=True)
-    off: list[dict[str, Any]] = []
+    # Every file is checked before any is written, so a refusal leaves no part of the run copied
+    # (until round 14's gate review the check ran inside the loop that writes).
     for name, data in files.items():
         if name not in not_results:
             if name.endswith(".json"):
@@ -213,6 +236,9 @@ def copy(tree: Path, run_id: str, dest: Path, off_git: Path, through: str = "exp
                     raise SystemExit(f"{name}: keys naming a time left: {left[:5]}")
             if STAMP.search(data.decode(errors="replace")):
                 raise SystemExit(f"{name}: a value holding a date and time is left")
+    dest.mkdir(parents=True, exist_ok=True)
+    off: list[dict[str, Any]] = []
+    for name, data in files.items():
         if len(data) > LIMIT:
             off_git.mkdir(parents=True, exist_ok=True)
             (off_git / name).write_bytes(data)

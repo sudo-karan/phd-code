@@ -8787,7 +8787,13 @@ decisions:
     left out of the check that no result holds a time. A pass ending at the k elbow is a kind of its own. With
     --through k_elbow it copies a batch that stopped after the elbow: the features, segmentation and k_elbow passes,
     <run>_k_elbow_run.json and the elbow's files, in place of the layers and the run record, which such a batch does
-    not write. Files over 5 MB stay off git with their size and SHA-256, as before.
+    not write. Files over 5 MB stay off git with their size and SHA-256, as before. Round 14 (26 Oct 2026), after the
+    gate's review (part 1, a high and a medium finding, each held by a second reader): the check that no result
+    holds a time takes a key's words whole (split at "_" and at a capital; a time word, or a last word "at"), as the
+    letters "date" in candidate_bands made it refuse the preprocessing record of every R3 elbow; every file is checked
+    before any is written, so a refusal leaves nothing copied, where it had written the files before the refused one
+    (and none of the off-git record); and the export mode also copies <run>_k_elbow_run.json, which a full batch with
+    the elbow pass writes (tests/test_copy_run_results.py, four tests that fail on the code before).
   alternatives_considered:
   - >-
     Leave the logs and image lists in the run trees: not chosen; the brief asks for every pass's fmu.log and
