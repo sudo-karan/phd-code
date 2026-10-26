@@ -227,21 +227,46 @@ def test_a_batch_through_the_k_elbow_without_its_elbow_pass_is_refused(mod, tmp_
 # ---------- round 14, the gate's review (part 1): the elbow's records, and nothing half-written ----------
 
 
-def _elbow_tree(tmp_path: Path) -> Path:
-    """A batch through the k elbow whose preprocessing record has the keys the step writes
-    (fmu.stages.k_elbow: the preprocessing's own record, then cyclic_decomposition_log,
-    raw_band_names, candidate_bands, n_table_rows, n_rows_fitted, unit_key)."""
+def _preprocessing_record(arm: str) -> str:
+    """The record fmu.stages.k_elbow writes beside its table (k_elbow._in_fit_space), of a made-up
+    table of stands with the bands of an R3 arm (tests/_clustering_stand_ins.py): the
+    preprocessing's own record (st.preprocess, right_skew above 1.0, the hand-crafted arm's two
+    angle pairs; some bands logged, a constant one dropped), then the step's own keys, written by
+    st.json_text as the step writes it (the gate's review, part 3)."""
+    import numpy as np
+
+    from _clustering_stand_ins import EMBEDDING_BANDS, HANDCRAFTED_DECOMPOSED, HANDCRAFTED_KEPT
+    from fmu.utils import stand_table as st
+
+    hand = arm == "handcrafted"
+    bands = list(HANDCRAFTED_DECOMPOSED if hand else EMBEDDING_BANDS)
+    decomposed = ["ndvi_phase_annual", "aspect"] if hand else []
+    n = 40
+    rng = np.random.default_rng(14)
+    values = rng.lognormal(0.0, 0.9, (n, len(bands)))
+    for d in decomposed:
+        angle = rng.uniform(0.0, 2 * np.pi, n)
+        values[:, bands.index(f"{d}_sin")] = np.sin(angle)
+        values[:, bands.index(f"{d}_cos")] = np.cos(angle)
+    values[:, 0] = 1.0
+    table = st.StandTable(labels=np.arange(1, n + 1, dtype=np.int64), bands=bands, values=values,
+                          in_fit=np.arange(n) % 5 != 0)
+    pre = st.preprocess(table, rule="right_skew", threshold=1.0, decomposed=decomposed)
+    return st.json_text({
+        **pre.record, "cyclic_decomposition_log": decomposed,
+        "raw_band_names": list(HANDCRAFTED_KEPT if hand else EMBEDDING_BANDS), "candidate_bands": bands,
+        "n_table_rows": n, "n_rows_fitted": int(table.in_fit.sum()), "unit_key": "stand_clusters",
+    })
+
+
+def _elbow_tree(tmp_path: Path, arm: str = "handcrafted") -> Path:
+    """A batch through the k elbow whose preprocessing record is the step's (above)."""
     tree = tmp_path / "tree"
     vec = tree / "odisha_script" / "phase2_vectors"
     vec.mkdir(parents=True)
     for name in ("k_elbow.csv", "k_elbow_stand_table.csv", "k_elbow_fit_rows.csv", "k_elbow_types.csv"):
         (vec / f"{RUN}_{name}").write_text("k,wcss\n2,1.0\n")
-    (vec / f"{RUN}_k_elbow_preprocessing.json").write_text(json.dumps({
-        "log_rule": "right_skew", "skewness_threshold": 1.0, "active_bands": ["elevation"],
-        "skew_before": {"elevation": 0.4}, "skew_after": {"elevation": 0.4},
-        "cyclic_decomposition_log": ["aspect -> aspect_sin, aspect_cos"], "raw_band_names": ["elevation"],
-        "candidate_bands": ["elevation"], "n_table_rows": 3, "n_rows_fitted": 2, "unit_key": "stand_clusters",
-    }, indent=1, sort_keys=True))
+    (vec / f"{RUN}_k_elbow_preprocessing.json").write_text(_preprocessing_record(arm))
     (vec / f"{RUN}_k_elbow_run.json").write_text(json.dumps({"run_dir": "runs/x_20261027_100000", "k_elbow": {}}))
     for i, last in enumerate(["features_static", "segmentation", "k_elbow"]):
         d = tree / "runs" / f"{RUN}_20261027_1000{i:02d}"
@@ -250,13 +275,18 @@ def _elbow_tree(tmp_path: Path) -> Path:
     return tree
 
 
-def test_the_elbows_preprocessing_record_is_not_taken_for_a_time(mod, tmp_path):
+@pytest.mark.parametrize("arm", ["handcrafted", "alphaearth"])
+def test_the_elbows_preprocessing_record_is_not_taken_for_a_time(mod, tmp_path, arm):
     """'candidate_bands' holds 'date' as letters, not as a word: until the gate's review the check
-    refused every R3 run's elbow record."""
+    refused every R3 run's elbow record. The record is the step's, with every key it writes."""
     dest = tmp_path / "dest"
-    done = mod.copy(_elbow_tree(tmp_path), RUN, dest, tmp_path / "off", through="k_elbow")
+    done = mod.copy(_elbow_tree(tmp_path, arm), RUN, dest, tmp_path / "off", through="k_elbow")
     assert f"{RUN}_k_elbow_preprocessing.json" in done["in_repo"]
-    assert json.loads((dest / f"{RUN}_k_elbow_preprocessing.json").read_text())["candidate_bands"] == ["elevation"]
+    record = json.loads((dest / f"{RUN}_k_elbow_preprocessing.json").read_text())
+    assert {"log_transformed_bands", "log1p_params", "angle_pairs", "scaling", "dropped_constant_bands",
+            "skew_before", "skew_after", "candidate_bands", "raw_band_names"} <= set(record)
+    assert record["log_transformed_bands"] and record["dropped_constant_bands"]
+    assert bool(record["angle_pairs"]) is (arm == "handcrafted")
 
 
 def test_a_time_word_is_a_whole_word_of_the_key(mod):
