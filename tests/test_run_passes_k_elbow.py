@@ -29,7 +29,7 @@ sys.path.insert(0, str(REPO / "odisha_script"))
 import odisha_phase2_2_run_pipeline as runner  # noqa: E402
 import run_passes_safely  # noqa: E402
 
-from fmu.config import Config, load_config  # noqa: E402
+from fmu.config import Config  # noqa: E402
 from fmu.pipeline import feature_stage_names  # noqa: E402
 
 needs_bash = pytest.mark.skipif(shutil.which("bash") is None, reason="needs bash")
