@@ -41,7 +41,7 @@ features_static: { include_climate, max_water_distance_pixels, cap_distance_to_w
 features_embedding: { collapse_reducer, band_names }
 segmentation: { size, compactness, connectivity, neighborhood_size, normalize_inputs, normalize_distance_scale, input_bands, mask_before_snic, drop_kept_patches_below_min_area }
 merge: { enabled, criteria, relax_factor, min_area_ha, max_area_ha, min_defined_criteria, min_frac_valid, tie_break, max_pass2_iterations, max_superpixels, pass2_skip_at_min_area, pass2_soft_ceiling }
-clustering: { k, seed, feature_source, skewness_threshold, fit_excludes_stands_below_min_area }
+clustering: { k, seed, feature_source, skewness_threshold, fit_excludes_stands_below_min_area, fit_outside_earth_engine }
 normalization: { method }
 features: { optical_harmonic, radar, canopy_height, terrain }
 export: { export_geotiff, export_gee_asset, analysis_scale_m, drive_folder, export_vector_merged, export_vector_snic, export_vector_dissolved, vector_formats, vector_min_stand_pixels }
@@ -505,6 +505,30 @@ decks — that number was always 10,000 pixels.
   (`docs/reproducibility/fit_excludes_stands_kendujhar.json`, 15 Oct 2026). The default is left out of the cache fingerprint, so
   existing configs keep their cached assets; a config that sets it to `true`
   gets a new fingerprint.
+- `fit_outside_earth_engine` (round 14, Task 2.1; reviews A2 and B15): where
+  k-means is fitted. `false` (default, and every run before round 14):
+  `ee.Clusterer.wekaKMeans` in Earth Engine, one start, which min-max normalises
+  each band over its training rows. `true`: the stage reads its table of units
+  back from Earth Engine in one request (one row per unit with a habitat pixel
+  centre in the ROI and data in every candidate band, the rows its preprocessing
+  statistics take), does the declared preprocessing there (the log rule of the
+  stage, then median/IQR scaling with exact quartiles), and fits k-means with
+  scikit-learn on the rows of the fit: k-means++, 25 starts from `seed`, the start
+  with the lowest within-cluster sum of squares kept, on one thread. The stands
+  left out of the fit (`fit_excludes_stands_below_min_area`) get the nearest
+  centre. Each unit's type is written back to the image by its label (`remap`,
+  masked to the habitat mask). `clustering_metadata` then also holds the best
+  start's within-cluster sum of squares (`kmeans_wcss`) and how much the 25
+  starts agree with each other (`kmeans_starts_ari_median`, `kmeans_starts_ari_min`,
+  the adjusted Rand index of every pair of starts; a diagnostic of the
+  clustering, not a field score), and the stage writes the table, the rows after
+  the preprocessing with each unit's type, and the fit into its run folder
+  (`clustering_stand_table.csv`, `clustering_fit_rows.csv`,
+  `clustering_kmeans.json`). It needs `normalization.method: robust`. The code is
+  `fmu.utils.stand_table`; register entry
+  `spec-clustering-kmeans-outside-earth-engine`. While `false` it is left out of
+  the cache fingerprint and the per-step keys, so no existing config's assets
+  move; `true` moves the clustering and k_elbow keys.
 
 `superpixel_max_size` **no longer exists** and a config still carrying it will
 fail to load. It was the `maxSize` argument to `reduceConnectedComponents`,

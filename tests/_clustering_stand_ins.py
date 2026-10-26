@@ -82,6 +82,33 @@ TRAINING_ROWS = 20  # so two units inside the habitat mask have no row: one per 
 # The two requests that only the path with the setting on makes.
 FIT_ROW_COUNT = "k-means training row count without the stands below the minimum"
 LEFT_OUT_ROWS = "stands below the minimum with a training row"
+# The one request of the path with clustering.fit_outside_earth_engine on (round 14): the
+# table of units, a row per unit with its label first. Its labels come in this order, not
+# sorted, so a test can see the stage sort them.
+TABLE_OF_UNITS = "the table of units"
+TABLE_LABELS = (7, 3, 19, 0, 12, 5, 16, 1, 9, 14, 2, 18, 6, 11, 4, 17, 8, 13, 10, 15)
+
+
+def table_value(band: str, label: int) -> float:
+    """The made-up mean of a unit in a band: skewed where SKEW says so, flat where NO_SPREAD
+    does, in [-1, 1] for an angle's sin and cos."""
+    import math
+
+    x = (label * 37 + sum(map(ord, band)) * 11) % 101 / 100.0  # 0.00 .. 1.00, spread
+    if band in NO_SPREAD:
+        return 5.0
+    if band.endswith(("_sin", "_cos")):
+        return math.sin(6.283185307179586 * x) if band.endswith("_sin") else math.cos(6.283185307179586 * x)
+    if SKEW.get(band, 0.0) > 1.0:
+        return math.exp(4.0 * x)  # a long right tail
+    if SKEW.get(band, 0.0) < -1.0:
+        return -math.exp(4.0 * x)  # a long left tail
+    return x
+
+
+def table_rows(bands: tuple[str, ...] | list[str]) -> list[list[float]]:
+    """The table of units the stand-ins answer: [label, value of each band] per unit."""
+    return [[float(lbl), *(table_value(b, lbl) for b in bands)] for lbl in TABLE_LABELS]
 
 
 def answers(
@@ -132,6 +159,8 @@ def answers(
             return fit_rows
         if context == LEFT_OUT_ROWS and left_out_rows is not None:
             return list(left_out_rows)
+        if context == TABLE_OF_UNITS:
+            return {"list": table_rows(decomposed)}
         raise AssertionError(f"unexpected request: {context}")
 
     def get_info(obj: Any, context: str = "") -> Any:

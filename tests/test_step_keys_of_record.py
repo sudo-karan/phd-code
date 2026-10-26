@@ -190,12 +190,11 @@ HASHED_BLOCKS = _hashed_blocks()
 
 
 def _list(monkeypatch, block: str, field: str, default: Any) -> None:
-    """List a field the way a new setting is to be listed: in both tables."""
+    """List a field the way a new setting is to be listed: in both tables, beside the
+    fields listed there already (round 14 listed the first ones)."""
     if "." not in block:
         monkeypatch.setitem(caching._OMITTED_AT_DEFAULT, (block, field), default)
-    monkeypatch.setattr(
-        caching, "_STEP_OMITTED_AT_DEFAULT", {(block, field): default}, raising=False
-    )
+    monkeypatch.setitem(caching._STEP_OMITTED_AT_DEFAULT, (block, field), default)
 
 
 def test_the_blocks_tried_are_the_hashed_ones():
@@ -264,8 +263,22 @@ def test_an_unlisted_field_still_moves_the_keys(monkeypatch):
     assert {s for s in keys if keys[s] != added[s]} == {"merge", "clustering", "k_elbow"}
 
 
-def test_the_table_is_empty_so_no_key_has_moved():
-    assert caching._STEP_OMITTED_AT_DEFAULT == {}
+def test_the_table_lists_round_14s_settings_at_their_model_defaults():
+    """Empty until round 14 (review B11). Each field listed since is a setting added to a
+    hashed block, off by default; its default in the table is the model's own, so a config
+    that leaves it off hashes as before (the record tests above pin that the keys of
+    record do not move)."""
+    from fmu.config import Config
+
+    assert caching._STEP_OMITTED_AT_DEFAULT
+    fields = Config.model_fields
+    for (block, field), default in caching._STEP_OMITTED_AT_DEFAULT.items():
+        model: Any = Config
+        for part in block.split("."):
+            model = model.model_fields[part].annotation
+        assert field in model.model_fields, (block, field)
+        assert model.model_fields[field].default == default, (block, field)
+    assert fields  # the model is the one the configs load
 
 
 # ---------------------------------------------------------------------

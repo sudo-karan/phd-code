@@ -311,6 +311,27 @@ is counted here too, and the merge puts a superpixel with no pixel whose centre
 is inside the ROI in no stand (review B17); neither has run on Earth Engine yet.
 The legacy-layout runs (`docs/demo/remerge`) were not checked.
 
+**With `clustering.fit_outside_earth_engine` on** (round 14,
+`docs/configs.md`), `clustering_metadata` holds the same keys, computed off
+Earth Engine on the table of units, and also `fit_outside_earth_engine` (true),
+`log_rule`, `kmeans_wcss` (the best start's within-cluster sum of squares, in
+the scaled space the fit used), `kmeans_starts_ari_median` and
+`kmeans_starts_ari_min` (the median and lowest adjusted Rand index over the 300
+pairs of the 25 starts: how much the starts agree, a diagnostic of the
+clustering, not a field score) and `kmeans` (the library, the number of starts,
+the seed, which start was kept and each start's sum of squares). The units
+without a row are counted against the rows of the table, which have data in
+every candidate band; on Earth Engine they are counted against the training
+rows, which need data in the active bands only, so a unit with a gap only in a
+band the scaling drops as constant has a row there and none here. And a unit
+with no habitat pixel centre inside the ROI, at its edge, is typed pixel by
+pixel by `cluster()` on Earth Engine, though it has no row and no polygon; here
+it has no row, so its pixels have no type. The run
+folder holds the stage's three files (`clustering_stand_table.csv`: each unit's
+label, whether it is a row of the fit, and its mean in each candidate band;
+`clustering_fit_rows.csv`: the same rows after the preprocessing, with each
+unit's type; `clustering_kmeans.json`: the centres and the starts).
+
 **Since round 14 the two causes are counted apart** (round 13's question 35,
 answered (a) by the round 14 brief's rule; register entry
 `spec-clustering-units-dropped-counted-by-cause`). The stage counts, with an

@@ -109,6 +109,8 @@ _OMITTED_AT_DEFAULT: dict[tuple[str, str], Any] = {
     ("segmentation", "drop_kept_patches_below_min_area"): False,
     ("clustering", "fit_excludes_stands_below_min_area"): False,
     ("features_static", "cap_distance_to_water"): False,
+    # Round 14, Task 2.1 (spec-clustering-kmeans-outside-earth-engine).
+    ("clustering", "fit_outside_earth_engine"): False,
 }
 
 
@@ -461,6 +463,8 @@ STEP_SETTINGS: dict[str, tuple[str, ...]] = {
         "clustering.seed", "clustering.feature_source", "clustering.skewness_threshold",
         "clustering.fit_excludes_stands_below_min_area", "normalization", "merge.enabled",
         "merge.max_area_ha", "merge.min_area_ha", "merge.pass2_soft_ceiling", "k_elbow",
+        # Round 14, each left out at its default (_STEP_OMITTED_AT_DEFAULT).
+        "clustering.fit_outside_earth_engine",
     ),
 }
 
@@ -473,9 +477,15 @@ STEP_SETTINGS: dict[str, tuple[str, ...]] = {
 # no longer be found by name. A field listed here is left out of the hash while it
 # holds its default, which must be the behaviour the saved assets were made with;
 # any other value is hashed. A field added to a block both layouts hash goes in
-# both tables. Empty: no field has been added since round 9, so no key moves;
-# tests/test_step_keys_of_record.py pins the keys the runs recorded.
-_STEP_OMITTED_AT_DEFAULT: dict[tuple[str, str], Any] = {}
+# both tables. Empty until round 14; its settings, each off by default, are listed
+# here, so no key of a config that leaves them off moves;
+# tests/test_step_keys_of_record.py pins the keys the runs recorded. The steps that
+# STEP_SETTINGS does not list (profiling, export) hash the legacy blocks
+# (_legacy_payload), which leave these fields out at their defaults too.
+_STEP_OMITTED_AT_DEFAULT: dict[tuple[str, str], Any] = {
+    # Round 14, Task 2.1 (spec-clustering-kmeans-outside-earth-engine).
+    ("clustering", "fit_outside_earth_engine"): False,
+}
 
 # A step's revision, raised when what the step computes changes for configs whose
 # settings do not (round 13): its key, and through `step_upstream` the key of every
@@ -665,8 +675,17 @@ def _step_key(config: Any, dumped: dict[str, Any], step: str, memo: dict[str, st
 
 
 def _legacy_payload(config: Any) -> dict[str, Any]:
+    """The blocks the legacy fingerprint hashes, as the key of a step STEP_SETTINGS does not
+    list (profiling, export). The fields added since round 14 (_STEP_OMITTED_AT_DEFAULT, top-level
+    blocks) are left out while they hold their defaults, so that those keys of the runs of record
+    do not move; the fields of _OMITTED_AT_DEFAULT before round 14 stay in, as those keys were
+    recorded with them."""
     dumped = config.model_dump(mode="json")
     payload: dict[str, Any] = {block: dumped.get(block) for block in sorted(_CACHE_RELEVANT_BLOCKS)}
+    for (block, field), default in _STEP_OMITTED_AT_DEFAULT.items():
+        values = payload.get(block)
+        if isinstance(values, dict) and field in values and values[field] == default:
+            payload[block] = {k: v for k, v in values.items() if k != field}
     payload["export"] = {f: getattr(config.export, f) for f in _CACHE_RELEVANT_EXPORT_FIELDS}
     return payload
 

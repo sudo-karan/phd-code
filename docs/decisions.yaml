@@ -7863,3 +7863,86 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 26 Oct 2026 (round 14 brief), Task 2, item 4
+- id: spec-clustering-kmeans-outside-earth-engine
+  title: >-
+    With clustering.fit_outside_earth_engine on, k-means is fitted off Earth Engine with scikit-learn, 25 k-means++
+    starts, on the table of units read back once
+  decision: >-
+    A setting clustering.fit_outside_earth_engine, false by default (src/fmu/config.py, a Locked module). With it on, the
+    clustering stage (src/fmu/stages/clustering.py, a Locked module) takes its steps 1 to 4 as before (the raw stack, the
+    sin and cos of the cyclic bands, one mean per unit label, the habitat mask), then reads the table of units back in
+    one request (read_stand_table: the one-point-per-unit sample of the habitat-masked unit means, every candidate band,
+    dropNulls, as one reduceColumns with a list reducer, so the columns cannot come apart; rows sorted by unit label).
+    The rest is plain Python (src/fmu/utils/stand_table.py): the declared preprocessing over every row, the stands left
+    out of the fit included (the stage's rule: |skew| above the threshold, Earth Engine's moment coefficient g1, logged
+    as log(x - min + 0.001); the phase pair not tested; median and IQR scaling with exact quartiles; a band whose IQR is
+    at most 1e-9 dropped); k-means on the rows of the fit, the stands below merge.min_area_ha left out with
+    fit_excludes_stands_below_min_area on: 25 k-means++ starts from clustering.seed, made as scikit-learn's
+    KMeans(n_init=25, random_state=seed) makes them, one by one, each refined by Lloyd's algorithm, the start
+    scikit-learn keeps (the lowest within-cluster sum of squares) kept, on one thread so a run repeats bit for bit;
+    every unit of the table typed by the nearest centre of that start, the stands left out included. Each unit's type
+    is written back to the image by its label (unit labels remapped to types, masked to the habitat mask, renamed
+    cluster_id), so a unit with no row has no type. feature_stack is the preprocessing applied to the per-unit means
+    image server-side. clustering_metadata keeps its keys and adds fit_outside_earth_engine, log_rule, kmeans_wcss (the
+    best start's within-cluster sum of squares), kmeans_starts_ari_median and kmeans_starts_ari_min (the median and
+    lowest adjusted Rand index over the 300 pairs of the 25 starts: a diagnostic of the clustering, not a field score)
+    and kmeans (the library, the starts, the seed, the start kept, each start's sum of squares). The stage writes the
+    table, the rows after the preprocessing with each unit's type, and the fit into its run folder
+    (clustering_stand_table.csv, clustering_fit_rows.csv, clustering_kmeans.json; StageResult.files). Two differences
+    from the Earth Engine path, both at the edges: the units without a row are counted against the table's rows (data
+    in every candidate band), not the training rows (data in the active bands); and a unit with no habitat pixel
+    centre inside the ROI, which has no row and no polygon, gets no type where cluster() typed its pixels. It needs
+    normalization.method robust. False is left out of the cache fingerprint and the per-step keys (_OMITTED_AT_DEFAULT,
+    _STEP_OMITTED_AT_DEFAULT, the first field of the latter, and _legacy_payload for the profiling and export keys), so
+    no key of any config that leaves it off moves; true moves the clustering and k_elbow keys and the fingerprint. Off,
+    the stage makes the calls it made before (tests/test_clustering_off_golden.py, unchanged).
+  alternatives_considered:
+  - >-
+    Keep wekaKMeans with one start: not chosen; the brief chooses scikit-learn (review A2: Weka min-max normalises
+    each band over the training rows, which undoes the declared median/IQR scaling; review B15: one start)
+  - >-
+    The k elbow step's rows (the clustering stage's cached scaled feature image, re-sampled): not chosen for the fit;
+    the fit needs the unscaled table to preprocess, and with the setting on the stage reads it in one request rather
+    than one per band
+  - >-
+    Seed the 25 starts with seed, seed + 1, ...: not chosen; the starts of KMeans(n_init=25, random_state=seed) are the
+    ones the elbows so far used (k_elbow.elbow_sweep), and they are kept one by one so their agreement can be measured
+  rationale: >-
+    The round 14 brief (Jaskaran, 26 Oct 2026), Task 2, item 1: "k-means outside Earth Engine (A2, B15). Fit k-means on
+    the stand table with scikit-learn, on the rows the fit uses today: one row per stand, the stands below the minimum
+    size left out of the fit and given the nearest centre. Use the declared preprocessing, median/IQR scaling with exact
+    quartiles. Use k-means++ with 25 starts, seed 42, and keep the start with the lowest within-cluster sum of squares.
+    Write each stand's type back to the image by its stand label. ... Record in the clustering metadata: the best
+    start's within-cluster sum of squares, how much the 25 starts agree with each other (the median and lowest pairwise
+    ARI). This is a diagnostic of the clustering, not a field score." Each change "sits behind a config setting that is
+    off by default. Off, the code does exactly what it does now". Earth Engine's Reducer.skew was read on 26 Oct 2026
+    (read-only, three small lists): it is the moment coefficient g1, so the rule decides off Earth Engine as on it.
+    tests/test_stand_table.py checks the starts against scikit-learn's own KMeans(n_init=25, random_state=42) at k 2,
+    3, 5 and 8 (the same sum of squares and partition). The new stage tests (tests/test_clustering_outside_earth_engine.py)
+    fail on the code before the change (ValidationError: the setting does not exist) and pass after it. Not run on
+    Earth Engine before the gate; the live check of round 14 (Task 4) is its first run. The adjusted Rand index is
+    scikit-learn's adjusted_rand_score and the k-means++ starts are scikit-learn's kmeans_plusplus; no paper was cited
+    or searched for this decision.
+  evidence:
+  - path: src/fmu/stages/clustering.py
+    what: _units_in_habitat, read_stand_table, _result_outside_earth_engine, _scaled_stack_from, KMEANS_STARTS
+  - path: src/fmu/utils/stand_table.py
+    what: The table, the preprocessing, kmeans_starts, best_start, starts_agreement, fit_types, the files
+  - path: src/fmu/config.py
+    what: ClusteringParams.fit_outside_earth_engine and the validator that it needs robust scaling
+  - path: src/fmu/utils/caching.py
+    what: _OMITTED_AT_DEFAULT, _STEP_OMITTED_AT_DEFAULT, STEP_SETTINGS["k_elbow"], _legacy_payload
+  - path: tests/test_clustering_outside_earth_engine.py
+    what: One table read, no Weka; the types written back by label; the metadata; the stands left out; the files; keys
+  - path: tests/test_stand_table.py
+    what: The skewness against Earth Engine's, the table, the rule, the starts against scikit-learn's KMeans
+  - path: tests/test_step_keys_of_record.py
+    what: The keys of record unchanged with the field listed; the listed defaults are the model's
+  - path: docs/configs.md
+    what: The clustering block, fit_outside_earth_engine
+  - path: docs/reviews/2026-10-19-review.md
+    what: A2 and B15
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 26 Oct 2026 (round 14 brief), Task 2, item 1

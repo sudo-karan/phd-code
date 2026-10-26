@@ -466,6 +466,20 @@ class ClusteringParams(BaseModel):
     # existing config's cached assets; a config that sets it to true gets a new
     # fingerprint.
     fit_excludes_stands_below_min_area: bool = False
+    # Round 14 (Task 2.1; reviews A2 and B15): where k-means is fitted. False (the default,
+    # and every run before round 14): ee.Clusterer.wekaKMeans in Earth Engine, one start,
+    # which min-max normalises each band over its training rows. True: the stage reads its
+    # table of units back (one row per unit, as its preprocessing statistics take them), does
+    # the declared preprocessing there (median/IQR scaling with exact quartiles), and fits
+    # k-means with scikit-learn: k-means++, 25 starts from the seed, the start with the lowest
+    # within-cluster sum of squares kept; the stands left out of the fit get the nearest
+    # centre; each unit's type is written back to the image by its label. The best start's
+    # sum of squares and the starts' agreement (median and lowest pairwise adjusted Rand
+    # index) go into clustering_metadata (fmu.utils.stand_table). Needs normalization.method
+    # robust. Left out of the cache fingerprint and of the per-step keys while false, so no
+    # existing config's assets move; true moves the clustering and k_elbow keys
+    # (docs/decisions.yaml, spec-clustering-kmeans-outside-earth-engine).
+    fit_outside_earth_engine: bool = False
     # NOTE: `superpixel_max_size` used to live here as the `maxSize` argument to
     # reduceConnectedComponents. It is now DERIVED -- see
     # `Config.max_component_pixels()` -- because (a) the name stopped being true
@@ -1102,6 +1116,16 @@ class Config(BaseModel):
                 "clustering.fit_excludes_stands_below_min_area needs merge.enabled: "
                 "without the merge there are no stands, and nothing marks a stand "
                 "as below merge.min_area_ha."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _fit_outside_earth_engine_needs_robust_scaling(self) -> Config:
+        if self.clustering.fit_outside_earth_engine and self.normalization.method != "robust":
+            raise ValueError(
+                "clustering.fit_outside_earth_engine needs normalization.method robust: the "
+                "preprocessing done off Earth Engine is the declared one, median/IQR scaling "
+                "with exact quartiles (fmu.utils.stand_table)."
             )
         return self
 
