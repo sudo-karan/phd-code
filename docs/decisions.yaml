@@ -8543,3 +8543,65 @@ decisions:
   source: >-
     Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 24, Claude Code's recommendation (a), by the brief's rule
     'Every other question: your recommendation'
+- id: spec-config-refuses-a-false-features-toggle
+  title: >-
+    A config with a features toggle set to false fails to load, with a message that names the settings which choose
+    the features
+  decision: >-
+    FeatureToggles (src/fmu/config.py, a Locked module) has a validator, _no_toggle_is_false, that refuses a config in
+    which any of features.optical_harmonic, features.radar, features.canopy_height or features.terrain is false,
+    however the config is built (load_config, Config.model_validate or FeatureToggles itself) and however the YAML
+    spells false. The message names each toggle set false and the settings that do choose the features:
+    clustering.feature_source (the hand-crafted features or the embedding), segmentation.input_bands (the bands SNIC
+    segments on) and merge.criteria (the bands the merge compares), with the features_* blocks, which set what each of
+    those stages computes. The four fields, their default (true) and the block stay as they were, so the dumped
+    config, and with it the legacy fingerprint and every per-step key, is unchanged for every config that loads. No
+    config under configs/ or configs/experiments/ sets a toggle false, so none is refused, and the 74 legacy
+    fingerprints and 814 per-step keys (11 steps of 74 configs) are the same before and after the change. No step's
+    revision is raised; nothing a stage computes changes.
+  alternatives_considered:
+  - >-
+    Remove the block (question 37 (b)): not chosen; it moves every legacy fingerprint, the 14 pinned _repro ones among
+    them, so their cached assets could no longer be found
+  - >-
+    Leave it, documented (question 37 (c), the state after round 13): not chosen; a false still loads without a word,
+    and a reader could think it had switched a feature family off
+  - >-
+    Make each toggle a Literal[True]: not chosen; pydantic's own message ("Input should be True") would not name the
+    settings that choose the features, which the answer asks for
+  rationale: >-
+    The round 14 brief (Jaskaran, 26 Oct 2026), Task 1: "Every other question: your recommendation." Round 13's
+    question 37 (docs/handoff/2026-10-20-round13.md, Questions for Jaskaran) recommends (a): "Make a config with any
+    toggle false fail to load, with a message that names the settings which do choose the features. For: nobody can
+    think a toggle did something; no config sets one false, so nothing moves." The review
+    (docs/reviews/2026-10-19-review.md, C20) found that nothing reads the four toggles; round 13 recorded that in
+    docs/configs.md and in the comment above FeatureToggles (all four false on the 10 km tile config moved the legacy
+    fingerprint, 5772fb6133 to 7a438bf989, and no per-step key). The new tests of tests/test_features_toggle_refused.py
+    fail on the code before with "Failed: DID NOT RAISE ValidationError" (9 of 13 cases); the 4 cases of a config
+    whose toggles are true or left out, and of every config under configs/, pass before and after. One test of
+    tests/test_cache_layout.py set features.radar false to show that a stage with no settings of its own is keyed on
+    every setting the legacy fingerprint hashes; it now changes normalization.method. No paper was searched for this
+    decision.
+  evidence:
+  - path: src/fmu/config.py
+    what: FeatureToggles._no_toggle_is_false, and the comment above FeatureToggles
+  - path: tests/test_features_toggle_refused.py
+    what: >-
+      A false toggle is refused, with the toggle and the settings that choose the features named; fails on the code
+      before
+  - path: tests/test_cache_layout.py
+    what: test_a_stage_without_settings_is_keyed_on_everything, which now changes normalization.method
+  - path: docs/configs.md
+    what: The features row of the table of blocks, and the features section
+  - path: docs/reviews/2026-10-19-review.md
+    what: C20
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 6, C20; question 37
+  - path: docs/handoff/2026-10-26-round14.md
+    what: 'Task 1: "Every other question: your recommendation"'
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 37, Claude Code's recommendation (a), by the brief's rule
+    'Every other question: your recommendation'

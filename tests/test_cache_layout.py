@@ -463,7 +463,9 @@ def test_cache_key_by_layout():
 def test_a_stage_without_settings_is_keyed_on_everything():
     raw = _raw()
     a = step_key(_cfg(raw), "not_a_pipeline_stage")
-    raw["features"] = {"radar": False}
+    # A features toggle set to false did this until round 14, when a false came to be
+    # refused at load (round 13 question 37); any setting the legacy fingerprint hashes will do.
+    raw["normalization"] = {"method": "zscore"}
     assert step_key(_cfg(raw), "not_a_pipeline_stage") != a
 
 

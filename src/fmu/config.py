@@ -839,10 +839,12 @@ class KElbowParams(BaseModel):
 
 # Read by nothing (review C20): which feature stages run is set by
 # clustering.feature_source, segmentation.input_bands and merge.criteria, and a
-# toggle set to false changes no stage and no per-step key. The legacy
-# fingerprint hashes the block, so a false moves it, and removing the block, or
-# a toggle, would move every legacy fingerprint, the 14 pinned _repro ones among
-# them.
+# toggle set to false changed no stage and no per-step key, only the legacy
+# fingerprint. Since round 14 a false is refused when the config loads, with a
+# message naming those three settings (round 13 question 37 (a)), so no toggle
+# can seem to have switched a feature family off. The block stays, all true: the
+# legacy fingerprint hashes it, and removing the block, or a toggle, would move
+# every legacy fingerprint, the 14 pinned _repro ones among them.
 class FeatureToggles(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -850,6 +852,22 @@ class FeatureToggles(BaseModel):
     radar: bool = True
     canopy_height: bool = True
     terrain: bool = True
+
+    @model_validator(mode="after")
+    def _no_toggle_is_false(self) -> FeatureToggles:
+        off = [name for name in type(self).model_fields if getattr(self, name) is False]
+        if off:
+            raise ValueError(
+                f"{', '.join(f'features.{name}' for name in off)} "
+                f"{'is' if len(off) == 1 else 'are'} false, but nothing reads the features "
+                "toggles, so a false would switch nothing off. Which feature stages run is "
+                "chosen by clustering.feature_source (the hand-crafted features or the "
+                "embedding), segmentation.input_bands (the bands SNIC segments on) and "
+                "merge.criteria (the bands the merge compares), and the features_* blocks set "
+                "what each of those stages computes. Set those, and leave the toggles true or "
+                "out of the config (round 13 question 37)."
+            )
+        return self
 
 
 class ExportParams(BaseModel):
