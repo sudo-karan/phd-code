@@ -193,6 +193,27 @@ def copy_stage_files(config_name: str, run_dir: Path, stages: list) -> dict:
     return copied
 
 
+
+def write_k_elbow_record(path: Path, record: dict) -> bool:
+    """Write the k elbow pass's run record; False if it keeps the one there.
+
+    A pass that read the elbow back from the cache (a later pass of a full batch, or a batch
+    resumed) does not replace the record of the pass that computed that elbow, which names the
+    elbow's files and its run folder (round 14, the gate's review): its own run folder and cache
+    status are in its manifest. A record of another elbow (its step key moved) is replaced.
+    """
+    if path.exists() and not record.get("k_elbow_computed_in_this_pass"):
+        try:
+            before = json.loads(path.read_text())
+        except (OSError, ValueError):
+            before = {}
+        same_elbow = ((before.get("step_keys") or {}).get("k_elbow")
+                      == (record.get("step_keys") or {}).get("k_elbow"))
+        if before.get("k_elbow_computed_in_this_pass") is True and same_elbow:
+            return False
+    path.write_text(json.dumps(record, indent=1, default=str))
+    return True
+
 def wait_for(task_ids: list[str]) -> bool:
     if not task_ids:
         print("  no export tasks submitted by this pass")
@@ -358,8 +379,11 @@ def main() -> int:
         }
         path = VECTOR_DIR / f"{cfg.name}_k_elbow_run.json"
         VECTOR_DIR.mkdir(exist_ok=True)
-        path.write_text(json.dumps(record, indent=1, default=str))
-        print(f"  wrote {path.name}")
+        if write_k_elbow_record(path, record):
+            print(f"  wrote {path.name}")
+        else:
+            print(f"  kept {path.name}: the record of the pass that computed this elbow (this pass "
+                  "read it back; its manifest records it)")
 
     if args.through == "export":
         ctx = result.context

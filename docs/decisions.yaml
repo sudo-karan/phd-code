@@ -8216,6 +8216,10 @@ decisions:
     skipped only when that batch went as far (the same --through; a state file from before records none and counts as
     export), so a config done through the elbow is run by a later full batch of the same label. Off, nothing changes:
     a batch of configs with the setting off gets the four stages of before (pass_env sets STAGES always).
+    Round 14 (26 Oct 2026), after the gate's review (part 1, low): a pass that reads the elbow back from the cache
+    (a later pass of a full batch, or a batch resumed) no longer replaces the record of the pass that computed that
+    elbow, which names its files and run folder; a record of another elbow (its step key moved) is replaced
+    (write_k_elbow_record; tests/test_run_passes_k_elbow.py).
   alternatives_considered:
   - >-
     A k_elbow pass on a config with the setting off, after a clustering pass: not chosen; the round 14 brief asks for a

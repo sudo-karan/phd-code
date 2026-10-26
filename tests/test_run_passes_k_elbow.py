@@ -78,6 +78,27 @@ def test_the_files_of_a_stage_that_ran_are_copied_beside_the_layers(tmp_path, mo
     assert copied == {"cfg_r14_k_elbow_fit_rows.csv": {"bytes": 20, "sha256": "x"}}
 
 
+def _elbow_record(computed: bool, elbow_key: str = "s1", run_dir: str = "runs/x_1") -> dict:
+    return {"config": "cfg_r14", "step_keys": {"k_elbow": elbow_key}, "run_dir": run_dir,
+            "k_elbow_computed_in_this_pass": computed, "files": {"k_elbow.csv": {}} if computed else {}}
+
+
+def test_a_pass_that_reads_the_elbow_back_keeps_the_record_of_the_pass_that_computed_it(tmp_path):
+    """The gate's review (part 1): a later pass of a full batch (or a resumed one) reads the elbow
+    back from the cache, and its record named no files and another run folder in place of the
+    computing pass's. It is kept now, unless the elbow's key has moved (another elbow)."""
+    path = tmp_path / "cfg_r14_k_elbow_run.json"
+    assert runner.write_k_elbow_record(path, _elbow_record(True, run_dir="runs/x_1")) is True
+    assert runner.write_k_elbow_record(path, _elbow_record(False, run_dir="runs/x_2")) is False
+    assert json.loads(path.read_text())["run_dir"] == "runs/x_1"
+    # Another elbow (its key moved): the read-back record is the one of record now.
+    assert runner.write_k_elbow_record(path, _elbow_record(False, "s2", run_dir="runs/x_3")) is True
+    assert json.loads(path.read_text())["run_dir"] == "runs/x_3"
+    # A pass that computes the elbow always writes its record.
+    assert runner.write_k_elbow_record(path, _elbow_record(True, "s2", run_dir="runs/x_4")) is True
+    assert json.loads(path.read_text())["run_dir"] == "runs/x_4"
+
+
 # ---------- the shell script ----------
 
 
