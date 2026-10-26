@@ -861,7 +861,7 @@ DIAGONAL = [[2.25, a] for a in (45.0, 135.0, 225.0, 315.0)]
     ([[1.5, 90.0]] * 100, False),                                 # every aspect set aside
     # A value has decimals only when it is finite (the declared words, 27 Oct 2026).
     ([[1.5, 90.5]] * 98 + [[1.5, float("inf")]] * 2, False),      # aspect: 98 of 100
-    ([[1.5, 90.5]] * 99 + [[1.5, float("nan")]], True),           # aspect: 99 of 100
+    ([[1.5, 90.5]] * 98 + [[1.5, float("nan")]] * 2, False),      # aspect: 98 of 100
     ([[1.5, 90.5]] * 98 + [[float("inf"), 90.5]] * 2, False),     # slope: 98 of 100
     ([[0.0, 12.5]] * 10, False),                                  # no pixel with slope above 0
     ([], False),

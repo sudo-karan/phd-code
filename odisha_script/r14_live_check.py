@@ -42,9 +42,10 @@ whole number at a multiple of 45 degrees (below), about 15 % of Angul's pixels w
 if Earth Engine takes the gradient on the DEM's own grid and 68 % if on the 10 m grid (worked
 offline on SRTM's 1-arcsecond tile N20E084, the grid NASADEM reprocesses, over the Angul boxes).
 So criterion 5 now sets those aspects aside. An aspect rounded to whole degrees, as before round
-13's A5, still fails it. A value counts as having decimals only when it is finite (an infinite one
-counted as having them). Criterion 5 also fails now, naming it, when check_a's static_features is
-not on Earth Engine, where it stopped the check (exit 4, nothing written). Nothing else changed.
+13's A5, still fails it. A value counts as having decimals only when it is a finite number; as
+first declared, an infinite value or a NaN was not a whole number, and so counted as having
+decimals. Criterion 5 also fails now, naming it, when check_a's static_features is not on Earth
+Engine, where it stopped the check (exit 4, nothing written). Nothing else changed.
 
 Numbers agree. Two values a and b agree when |a - b| <= 1e-9 x max(|a|, |b|) (the brief's 1e-9
 relative) or |a - b| <= 1e-12. The second clause is an absolute floor, for values at or near 0,

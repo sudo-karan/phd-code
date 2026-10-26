@@ -10144,8 +10144,10 @@ decisions:
     compares, and hashes, each geometry in normal form (shapely.normalize, as WKB, byte for byte; no coordinate
     changed), and criterion 5 judges the aspect only where it is not at a multiple of 45 degrees, where a correct
     aspect is a whole number on a DEM of whole metres (one component of the 4-neighbour gradient exactly 0, or the
-    two equal in size on a grid of equal spacings); criterion 5 fails, naming it, when check_a's static_features is
-    not on Earth Engine, and reports the number of pixels its sample gave.
+    two equal in size on a grid of equal spacings), and counts a value as having decimals only when it is a finite
+    number that is not a whole number (as first declared, an infinite value or a NaN counted as having them);
+    criterion 5 fails, naming it, when check_a's static_features is not on Earth Engine, and reports the number of
+    pixels its sample gave.
   alternatives_considered:
   - >-
     The stand layers by the SHA-256 of their files alone (the brief: "by SHA-256 or polygon by polygon"): not
