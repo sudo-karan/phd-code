@@ -21,7 +21,17 @@ export_manifest_<config>.json           after export stage
 cluster_profiles.csv                    after profiling stage
 metrics_<config>.json                   after metrics stage (via inspect script)
 merge_provenance.csv, .json             after scripts/inspect_merge.py
+input_images.json                       when a stage computed an output live
+<stage>_*.csv, <stage>_*.json           a stage's result files (round 14), below
 ```
+
+A stage can hand the orchestrator result files (`StageResult.files`, round 14): tables too
+large for the manifest, such as the k-means rows of the clustering stage with
+`clustering.fit_outside_earth_engine` on and of the k elbow step with `k_elbow.in_fit_space`
+on. They are written into the run folder as the stage returns, and the stage's manifest entry
+names each under `files`, with its size and SHA-256; a stage that wrote none has no `files`
+key. They hold results only, no dates or times. A stage served from the cache does not run
+and writes none.
 
 The directory is gitignored; checking outputs into git is not the
 intended workflow. Reproducibility is via `manifest.json` (the inputs)

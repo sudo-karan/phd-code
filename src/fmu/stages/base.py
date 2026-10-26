@@ -308,11 +308,20 @@ class PipelineContext:
 
 @dataclass
 class StageResult:
-    """What a stage returns. outputs must match its `produces` declaration."""
+    """What a stage returns. outputs must match its `produces` declaration.
+
+    `files` (round 14): text files, by file name, that the orchestrator writes into the run
+    folder beside manifest.json as soon as the stage returns, and names in the manifest with
+    their size and SHA-256. For result tables too large for the manifest (the k-means rows of
+    the clustering stage and the k elbow step). Results only: no dates or times. A stage
+    served from the cache does not run, and writes none. Empty by default, which leaves a
+    stage's manifest entry as it was.
+    """
 
     outputs: dict[str, Any] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
+    files: dict[str, str] = field(default_factory=dict)
 
 
 _stage_registry: dict[str, type[Stage]] = {}

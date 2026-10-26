@@ -82,7 +82,9 @@ class ClusteringStage(Stage):
   mixed-output stages.
 - **`run(ctx, config) -> StageResult`**: the actual logic. Reads from `ctx`,
   reads from `config`, returns `StageResult(outputs={...}, metadata={...},
-  warnings=[...])`.
+  warnings=[...])`, and, since round 14, optionally `files={name: text}`:
+  result files the orchestrator writes into the run folder and names in the
+  manifest (`docs/outputs.md`).
 
 The optional `validate(ctx, config)` method runs before `run()`. The
 default checks that every `required_inputs` key is present in the

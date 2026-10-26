@@ -7823,3 +7823,43 @@ decisions:
   source: >-
     Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 35, Claude Code's recommendation (a), by the brief's rule
     'Every other question: your recommendation'
+- id: spec-stage-result-files-written-into-the-run-folder
+  title: >-
+    A stage can hand the orchestrator result files, which it writes into the run folder and names in the manifest
+  decision: >-
+    StageResult (src/fmu/stages/base.py, a Locked module) gains files, a map of file name to text, empty by default.
+    The orchestrator (src/fmu/pipeline.py, a Locked module) writes each into the run folder, beside manifest.json, as
+    soon as the stage returns, so that a later stage that fails does not lose them, and the stage's manifest entry
+    names each under files with its size and SHA-256. A name must be a plain file name new in the folder (not a path,
+    not manifest.json or input_images.json, not one an earlier stage of the run wrote). A stage served from the cache
+    does not run and writes none. A stage that hands over no file leaves its manifest entry with the keys it always
+    had. No computation and no cache key changes: the legacy fingerprint and the step keys of all 74 configs are as
+    before.
+  alternatives_considered:
+  - >-
+    Put the rows in the stage metadata: not chosen; they would land in manifest.json (several MB for 64 AlphaEarth bands
+    and a few thousand stands), which the run records copy into the repo under the 5 MB rule
+  - >-
+    A further output of the k elbow step, not cached: not chosen; a stage is skipped from the cache only when every
+    output it produces is cacheable (Pipeline._run_one), so the step would run again in every pass
+  - >-
+    A further cached table: not chosen; one more export task per run, and a miss for every config cached before
+  rationale: >-
+    The round 14 brief (Jaskaran, 26 Oct 2026), Task 2, item 4: "Also save each run's fit rows, after preprocessing and
+    keyed by stand label, as a result file (off git if over 5 MB), so a fit at another k can later be scored offline with
+    no Earth Engine." Stages are given no run folder; only Pipeline.run writes files there. The new test fails on the code
+    before the change (TypeError: StageResult got an unexpected keyword argument 'files') and passes after it. No paper
+    was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/base.py
+    what: StageResult.files
+  - path: src/fmu/pipeline.py
+    what: Pipeline._write_stage_files, StageRecord.files, the manifest's files key
+  - path: tests/test_pipeline_stage_files.py
+    what: The files written and named, no key without files, bad names refused, two stages one name refused, written before a later stage fails
+  - path: docs/outputs.md
+    what: The run folder's contents
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 26 Oct 2026 (round 14 brief), Task 2, item 4
