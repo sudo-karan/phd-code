@@ -935,12 +935,21 @@ on the analysis grid. Until then both came from the geometry's area
 instead of subtracting the hole of some polygons whose hole touches the outer
 ring at a vertex (`sanjay_van_alphaearth_keptland_r9`, stand 83: 18.27 ha and
 1,827 pixels in its layer, 8.23 ha and 823 pixels on the grid); the layers
-exported before round 13 carry those values. `perim_m` and the centroid are the
-geometry's. `perim_m` is right on those polygons, but the centroid has the same
-hole error as the area: it is the centroid with the hole counted as area (up to
-35 m off on the committed merged layers of `_r9` and round 12, where 54 of 7,371
-centroids are more than 1 m off), and `stand_id` is numbered by the centroid, so
-a few stands' ids follow the error. Not changed in round 13. On the legacy cache layout `stands_dissolved` is vectorised from a
+exported before round 13 carry those values. `perim_m` is the geometry's, and
+right on those polygons. Since round 14 (round 13's question 21, answered (a))
+`centroid_lat` and `centroid_lon` are the mean position of the polygon's pixel
+centres: the same `reduceToVectors` call that counts the pixels averages
+`ee.Image.pixelLonLat()` over them. Until then the centroid was the geometry's,
+which has the same hole error as the area: it is the centroid with the hole
+counted as area (up to 35 m off on the committed merged layers of `_r9` and round
+12, where 54 of 7,371 centroids are more than 1 m off; stand 83 above, 35.1 m,
+whose 823 pixel centres average to within 1 cm of its centroid with the hole
+subtracted). `stand_id` and `unit_id` are numbered by the centroid, so in the
+layers exported before round 14 a few ids follow the error, and a layer exported
+since can number a few polygons differently from an earlier export of the same
+geometry (numbered by their pixel centres, 88 of the 14,371 polygons of the
+merged layers of `_r9` and round 12 would take another `stand_id`; register
+entry `spec-export-centroid-from-pixel-centres`). On the legacy cache layout `stands_dissolved` is vectorised from a
 type image on a geographic grid, whose pixels are smaller than
 `analysis_scale_m`² away from the equator (about 93 m² at 10 m and 21° N), so
 there its `area_ha` overstates the area (by about 7.5% at 21° N).
@@ -975,7 +984,7 @@ SHP attributes (capped at 10-char field-name limit):
 
 | Field | Type | Meaning |
 |---|---|---|
-| `stand_id` | int | Sequential 1..N. Sorted by centroid lat desc / lon asc. **Deterministic** — the same merged geometry always produces the same numbering. |
+| `stand_id` | int | Sequential 1..N. Sorted by centroid lat desc / lon asc, the centroid being the mean of the polygon's pixel centres since round 14 (see "Areas and pixel counts" above). **Deterministic** — the same merged geometry always produces the same numbering. |
 | `stand_lbl` | int | Raw merge label. Use to cross-reference with the `stand_clusters` raster. `stand_id` is a renumbering and cannot be joined back to the raster; this can. |
 | `cluster_id` | int | The k-means cluster (0 to k-1) assigned to this stand: the commonest type over the stand's own typed pixels, which on the analysis grid is the type the fitted clusters give its row (since round 12; for a stand whose pieces carry different types, see question 3 of `docs/handoff/2026-10-19-round12.md`). Since round 13 this holds for a stand left out of the fit too (`clustering.fit_excludes_stands_below_min_area`), and a stand with no typed pixel of its own has a null type; until then both took the commonest type among the typed pixels their polygon touches. **May be null** — see below. |
 | `area_ha` | float | Polygon area in hectares on the analysis grid: `n_pixels × (analysis_scale_m)² / 10,000` (since round 13; see "Areas and pixel counts" above). |
@@ -1017,7 +1026,9 @@ carries the config name, the cache fingerprint, the merge summary numbers, the
 stand-size distribution and the stands and area under each `merge_kind`.
 
 GeoJSON attributes: every SHP attribute, **plus** per-stand means of every
-features_* band, plus centroid lat/lon. Each is the plain mean of the band's
+features_* band, plus `centroid_lat` and `centroid_lon` (the mean position of
+the polygon's pixel centres since round 14, the geometry's centroid before; see
+"Areas and pixel counts" above). Each feature mean is the plain mean of the band's
 pixel values over the polygon (`ee.Reducer.mean()` in `reduceRegions`), the
 angle bands too: `aspect` (degrees, 0 to 360) and `<index>_phase_annual`
 (radians, −π to π; `<index>_phase_semi` too in a dual-harmonic run) are
@@ -1059,7 +1070,7 @@ SHP attributes (capped at 10-char field-name limit):
 
 | Field | Type | Meaning |
 |---|---|---|
-| `stand_id` | int | Sequential 1..N. Sorted by centroid lat desc / lon asc. **Deterministic** — same SNIC geometry always produces the same numbering. Use as a stable ID across runs of the same config. |
+| `stand_id` | int | Sequential 1..N. Sorted by centroid lat desc / lon asc, the centroid being the mean of the polygon's pixel centres since round 14. **Deterministic** — same SNIC geometry always produces the same numbering. Use as a stable ID across runs of the same config. |
 | `snic_label` | int | Raw SNIC superpixel hash. Use to cross-reference with the `snic_clusters` raster asset. |
 | `cluster_id` | int | The k-means cluster (0 to k-1) that this superpixel was assigned to. |
 | `area_ha` | float | As in `stands_merged`: `n_pixels × (analysis_scale_m)² / 10,000` (since round 13). |
@@ -1071,7 +1082,8 @@ of every features_* band (ndvi_mean, ndvi_amplitude_annual, vv_p50,
 canopy_height, elevation, etc.) — typically 25-30 additional columns.
 The angle bands (`aspect`, `<index>_phase_*`) are arithmetic means of angles
 here too, as in `stands_merged` (review C10).
-Centroid lat/lon are also included for convenience.
+Centroid lat/lon are also included for convenience: the mean position of
+the polygon's pixel centres since round 14, as in `stands_merged`.
 
 #### `stands_dissolved`
 
@@ -1104,7 +1116,11 @@ unit, with cluster-level summary statistics attached for symbology.
 Both layers carry a sequential id (`stand_id`, `unit_id`) that is
 **deterministic but not stable across config changes**. If you change
 SNIC parameters, the superpixel boundaries shift, centroids shift, and
-the numbering changes. Use `snic_label` (raw SNIC hash) for stable
+the numbering changes. Nor across the round 14 change of centroid (the
+mean of the pixel centres in place of the geometry's): a layer exported
+since numbers a polygon whose old centroid was off, and those it passes
+in the order, differently from an earlier export of the same geometry.
+Use `snic_label` (raw SNIC hash) for stable
 cross-run reference within the same SNIC configuration, and the
 sequential IDs for display / printable maps where 1..N is more
 readable than the raw hash.

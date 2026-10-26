@@ -6920,7 +6920,11 @@ decisions:
     property of that name (the feature means are named after their bands, the vote 'mode'); a test pins that order for
     the three builders. On the legacy cache layout stands_dissolved is vectorised from a type image on a geographic grid,
     whose pixels are smaller than analysis_scale_m² away from the equator, so there its area_ha overstates the area
-    (about 7.5% at 21° N); stands_merged and stands_snic lie on a UTM grid in both layouts.
+    (about 7.5% at 21° N); stands_merged and stands_snic lie on a UTM grid in both layouts. Round 14 (26 Oct 2026): the
+    centroid is no longer the geometry's but the mean position of the polygon's pixel centres, and the reducer is no
+    longer the default: countEvery is named in the call, combined with the mean of ee.Image.pixelLonLat()'s two bands,
+    and still gives 'count', the same count (round 13's question 21, answered (a);
+    spec-export-centroid-from-pixel-centres). perim_m is still the geometry's.
   alternatives_considered:
   - >-
     Keep the geometry's area() for area_ha, and n_pixels derived from it (the export before round 13): not chosen;
@@ -8878,4 +8882,81 @@ decisions:
   design_notes_section: null
   source: >-
     Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 18, Claude Code's recommendation (a), by the brief's rule
+    'Every other question: your recommendation'
+- id: spec-export-centroid-from-pixel-centres
+  title: >-
+    Each exported polygon's centroid is the mean position of its pixel centres, from the reduceToVectors call that counts
+    its pixels
+  decision: >-
+    The export stage (src/fmu/stages/export.py, a Locked module) vectorises each of its three layers (stands_merged,
+    stands_snic, stands_dissolved) with one call, _vectorise_with_pixel_centres: the label band with
+    ee.Image.pixelLonLat()'s two bands added after it, and as reduceToVectors' reducer countEvery combined with the mean of
+    each of those bands, ee.Reducer.countEvery().combine(ee.Reducer.mean().forEach(['pixel_lon', 'pixel_lat'])). Every
+    polygon gets 'count', its pixel count as before (spec-export-area-and-pixels-from-the-pixel-count), and the mean
+    longitude and latitude of its pixel centres. _add_geom_attrs takes centroid_lon and centroid_lat from the two means,
+    in place of the geometry's centroid(maxError=1), and _drop_internal_properties drops them with 'count', so no layer
+    gains a property. stand_id (stands_merged, stands_snic) and unit_id (stands_dissolved) are numbered by these
+    centroids by the rule as before (_renumber_by_centroid: latitude descending, then longitude ascending), the whole
+    layer too when it is built a ROI part at a time. perim_m is still the geometry's, and the shapefiles' columns are
+    unchanged (the centroid is in the GeoJSON only, as before). The export is not cached, so no step key moves.
+  alternatives_considered:
+  - >-
+    Keep the geometry's centroid, documented (option (b) of round 13's question 21): not chosen; a few centroids stay
+    tens of metres off, and their ids follow the error
+  rationale: >-
+    The round 14 brief (Jaskaran, 26 Oct 2026), Task 1: "Every other question: your recommendation", and among the code
+    changes the answers call for before R3, Q21. Round 13's question 21 (docs/handoff/2026-10-20-round13.md) recommended
+    (a): "In the round before R3, take the centroid from the pixels, as A6 takes the area (the mean position of each
+    polygon's pixel centres, from the same reduceToVectors call), with a test on stand 83." After a check of its A6 fix,
+    round 13 found that the geometry's centroid has A6's hole error: on a polygon whose hole touches the outer ring at a
+    vertex it is the centroid with the hole counted as area. Stand 83 (stand_id 223) of sanjay_van_alphaearth_keptland_r9
+    sits 35.1 m from its centroid with the hole subtracted and 0.0002 m from the one with it added, and 54 of the 7,371
+    centroids of the merged layers of _r9 and round 12 in git are more than 1 m off. The new test reads stand 83's
+    committed polygon, projects it to its run's analysis grid (EPSG:32643, pixel edges on multiples of 10 m,
+    fmu.utils.grid) and finds the centres of the grid's pixels inside it with shapely: 823, the pixel count of its merge
+    record. Their mean longitude and latitude lie 0.0009 m from its centroid with the hole subtracted and 35.1 m from the
+    committed centroid; given those means beside the count, _add_geom_attrs before the fix returned the committed
+    centroid (the test fails with "assert 35.10534490988752 < 0.01"). Read on Earth Engine before the change by the main
+    Claude Code session (26 Oct 2026, read-only, a synthetic 6 x 4 labelled image on a 10 m UTM 45N grid, crsTransform
+    given): with this reducer every polygon's 'count' equals the default reducer's (12, 6 and 6), and the two means equal
+    the grouped reduceRegion means of pixelLonLat by label exactly; for those hole-free rectangles the geometry's
+    centroid agreed with them to about 1e-9 degrees. The merge stage already takes its superpixels' centroids, its
+    tie-break, as means of pixelLonLat (src/fmu/stages/merge.py), so the export now follows the same rule. Measured
+    offline (shapely and pyproj) on the committed layers of docs/reproducibility/r9_runs and round12_runs, all three
+    layers of each of the 19 runs, the ones off git read where their records say with their SHA-256 checked: numbering
+    each layer by its committed centroids gives every committed id; numbering it by its pixel centres' means changes 88
+    of the 14,371 stand_ids of stands_merged, in 8 of the 19 layers (Sanjay Van AlphaEarth 5 of 560, though not stand
+    83, since no other stand's centroid lies in the 34 m its own moves south; the 10 km tile 40 of 3,743), 714 of the
+    66,850 of stands_snic and 15 of the 3,515 unit_ids of
+    stands_dissolved, and moves centroids by up to 35.1 m in stands_merged, 7.9 m in stands_snic and 57.0 m in
+    stands_dissolved. No scored statistic reads the centroid, stand_id or unit_id as a value: the joins key on stand_lbl
+    (stands_merged) and snic_label (stands_snic); the Phase 2 join (odisha_script/odisha_phase2_3_join.py) keys
+    stands_dissolved on unit_id, a label, so its scores are unchanged by a renumbering, and its tie rule (the lowest id
+    where several polygons cover a plot) met no such plot in any committed join (boundary-ambiguous plots 0). Not checked
+    on Earth Engine: the call on a polygon with a hole (tests/test_export_centroid_from_pixel_centres_live.py, written in
+    round 14 and not run), nor whether the mean weights a pixel the ROI's edge cuts. No paper was searched for this
+    decision.
+  evidence:
+  - path: src/fmu/stages/export.py
+    what: _vectorise_with_pixel_centres, _add_geom_attrs and _SNIC_INTERNAL_PROPERTIES_TO_DROP, used by the three builders
+  - path: tests/test_export_centroid_from_pixel_centres.py
+    what: >-
+      Stand 83's pixel centres from its committed polygon (fails on the export before the fix with "assert
+      35.10534490988752 < 0.01"), the builders' call and numbering on a fake Earth Engine, and the request built with the
+      real client offline
+  - path: tests/test_export_centroid_from_pixel_centres_live.py
+    what: The reducer's count and means on Earth Engine, on a synthetic ring; written in round 14, not run
+  - path: docs/reproducibility/r9_runs/sanjay_van_alphaearth_keptland_r9_stands_merged.geojson
+    what: Stand 83 (stand_lbl 83, stand_id 223), its centroid 35.1 m from its centroid with the hole subtracted
+  - path: docs/outputs.md
+    what: '"Areas and pixel counts", stand_id of stands_merged and stands_snic, and "Renumbering caveat"'
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 2, A6 (the centroid has the same hole error), and question 21
+  - path: docs/handoff/2026-10-26-round14.md
+    what: The brief, Task 1
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 21, Claude Code's recommendation (a), by the brief's rule
     'Every other question: your recommendation'

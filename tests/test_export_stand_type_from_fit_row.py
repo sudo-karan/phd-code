@@ -140,8 +140,20 @@ class _Reducer:
     def mode():
         return _Reducer("mode")
 
+    @staticmethod
+    def countEvery():  # noqa: N802 - mirrors the ee API
+        return _Reducer("countEvery")
+
     def group(self, groupField, groupName):  # noqa: N803 - mirrors the ee API
         return _Reducer(self.name, {"field": groupField, "name": groupName})
+
+    # The vectorisation's reducer since round 14: countEvery combined with the mean of the pixel
+    # centres' coordinates (what it gives is tests/test_export_centroid_from_pixel_centres.py's).
+    def combine(self, reducer2, outputPrefix=None, sharedInputs=None):  # noqa: N803
+        return _Reducer(f"{self.name}+{reducer2.name}")
+
+    def forEach(self, outputNames):  # noqa: N802, N803 - mirrors the ee API
+        return _Reducer(f"{self.name}({','.join(outputNames)})")
 
 
 def _weighted_mode(values: list[tuple[int | None, float]]) -> int | None:
@@ -182,7 +194,8 @@ class _Image:
         return self
 
     def reduceToVectors(self, **kw):  # noqa: N802 - mirrors the ee API
-        assert self.layers == ["label"] and kw["labelProperty"] == "stand_lbl"
+        # The stand labels, with the pixels' coordinates beside them since round 14.
+        assert self.layers == ["label", "lonlat"] and kw["labelProperty"] == "stand_lbl"
         stands: dict[int, list[int]] = {}
         for px, (label, _) in PIXELS.items():
             stands.setdefault(label, []).append(px)
@@ -224,6 +237,11 @@ class _FakeEE:
     Reducer = _Reducer
     Dictionary = _Dict
     Algorithms = _Algorithms
+
+    class Image:  # noqa: N801 - stands in for ee.Image
+        @staticmethod
+        def pixelLonLat():  # noqa: N802 - mirrors the ee API
+            return _Image(["lonlat"])
 
     @staticmethod
     def List(items):  # noqa: N802 - mirrors the ee API
@@ -273,7 +291,7 @@ def _types(*, excludes: bool, provenance: bool) -> dict[int, Any]:
 
 def _votes() -> dict[int, int | None]:
     """What the vote alone gives each stand: the layer's types before round 12."""
-    polygons = _Image(["label"]).reduceToVectors(labelProperty="stand_lbl")
+    polygons = _Image(["label"]).addBands(_FakeEE.Image.pixelLonLat()).reduceToVectors(labelProperty="stand_lbl")
     voted = _Image(["type"]).reduceRegions(collection=polygons, reducer=_Reducer.mode(), scale=10)
     return {f.props["stand_lbl"]: f.props["mode"] for f in voted.features}
 

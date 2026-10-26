@@ -138,6 +138,10 @@ class _FakeImage:
         self.calls.append(("rename", name))
         return self
 
+    def addBands(self, other):  # noqa: N802 - mirrors the ee API
+        self.calls.append(("addBands", other))
+        return self
+
     def bandNames(self):  # noqa: N802 - mirrors the ee API
         return _FakeList(self._bands)
 
@@ -155,13 +159,25 @@ class _FakeImage:
 @pytest.fixture
 def fake_ee(monkeypatch):
     class _Reducer:
+        """Any reducer; the vectorisation's (round 14) is tests/test_export_centroid_from_pixel_centres.py's."""
+
         @staticmethod
         def mean():
-            return object()
+            return _Reducer()
 
         @staticmethod
         def mode():
-            return object()
+            return _Reducer()
+
+        @staticmethod
+        def countEvery():  # noqa: N802 - mirrors the ee API
+            return _Reducer()
+
+        def combine(self, reducer2, outputPrefix=None, sharedInputs=None):  # noqa: N803
+            return _Reducer()
+
+        def forEach(self, outputNames):  # noqa: N802, N803 - mirrors the ee API
+            return _Reducer()
 
     class _Filter:
         @staticmethod
@@ -172,6 +188,11 @@ def fake_ee(monkeypatch):
         Reducer = _Reducer
         Filter = _Filter
         List = _FakeList
+
+        class Image:  # noqa: N801 - stands in for ee.Image
+            @staticmethod
+            def pixelLonLat():  # noqa: N802 - mirrors the ee API
+                return "<pixelLonLat>"
 
     monkeypatch.setattr(export_mod, "ee", _FakeEE)
     # Not under test here, and its server-side sort/iterate chain would need a
@@ -307,11 +328,14 @@ def test_without_provenance_the_builder_makes_these_calls_and_no_more(
     types, the map that sets each stand's cluster_id from them, and the two maps
     of geometry and bookkeeping, and nothing after them: no provenance step.
     Since round 13 there is no vote (no rename to cluster_id and no map naming
-    the vote cluster_id): a stand with no row gets a null type."""
+    the vote cluster_id): a stand with no row gets a null type. Since round 14
+    the stand labels are vectorised with the pixels' coordinates beside them
+    (ee.Image.pixelLonLat), whose means over a polygon are its centroid."""
     calls: list = []
     _run_builder(export_mod._build_merged_feature_collection, calls, monkeypatch)
     assert calls == [
         ("rename", "stand_lbl"),
+        ("addBands", "<pixelLonLat>"),
         ("labelProperty", "stand_lbl"),
         "stand_row_types",
         "map",
