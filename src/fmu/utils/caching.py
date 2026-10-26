@@ -42,6 +42,7 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 import ee
+from googleapiclient.errors import HttpError
 
 from fmu.utils.gee import asset_path, read_roi_file
 from fmu.utils.logging import get_logger
@@ -184,48 +185,67 @@ def cached_asset_path(
     return asset_path(key, subdir=f"{config_name}/{stage_name}")
 
 
+def _http_status(error: BaseException) -> int | None:
+    """The HTTP status of the googleapiclient HttpError behind `error`, or None if there is none.
+
+    Follows the error's chain to the nearest HttpError, taking at each link its
+    `__cause__` if set and its `__context__` otherwise, as a traceback does.
+    earthengine-api raises its EEException inside `except HttpError` without
+    `from` (1.7.35: `ee.data._execute_cloud_call`), so the HttpError is on
+    `__context__`; a client that raises `from` it puts it on `__cause__`, and an
+    EEException wrapped again (`fmu.utils.gee.safe_call`) has it a link further
+    down. An HttpError with no readable status gives None.
+    """
+    seen: set[int] = set()
+    link = error.__cause__ or error.__context__
+    while link is not None and id(link) not in seen:
+        seen.add(id(link))
+        if isinstance(link, HttpError):
+            status = getattr(getattr(link, "resp", None), "status", None)
+            try:
+                return int(status) if status is not None else None
+            except (TypeError, ValueError):
+                return None
+        link = link.__cause__ or link.__context__
+    return None
+
+
 def asset_exists(path: str) -> bool:
-    """True if the given GEE asset path exists and is readable.
+    """True if the given GEE asset path exists and is readable, False if it is not there.
 
-    Distinguishes "not found" (returns False) from permission errors and
-    other failures (re-raises). Tries the underlying HTTP status first
-    (most reliable across GEE client versions); falls back to string-
-    matching the EE error message for older versions where the wrapped
-    cause is unreachable.
+    When `ee.data.getAsset` fails, the HTTP status of the googleapiclient
+    HttpError behind its EEException decides (`_http_status`, which finds it on
+    `__cause__` or `__context__`): 404 is a missing asset, False; any other
+    status (401, 403, 429, 5xx, ...) is raised, so a refused or failed request
+    is not read as a cache miss. Only an error with no HttpError behind it is
+    judged by its message, as before: one whose text contains "not found",
+    "does not exist" or "404" is False, any other is raised.
 
-    What it does with earthengine-api 1.7.35, the version every manifest
-    records (review C41; this docstring corrected in round 13): `ee.data`
-    raises its EEException inside `except HttpError` without `from`, so
-    `__cause__` is None (the HttpError is on `__context__`) and the status
-    branch below never runs. Every answer comes from the message: an error
-    whose text contains "not found", "does not exist" or "404" returns False,
-    among them a 403 that says "does not exist or doesn't allow this
-    operation" and a 500 whose request id holds "404"; any other error, a
-    plain 403 "Permission denied" or a 401 for example, is raised. A wrong
-    False leads to a recompute whose export then fails, or to the pass
-    runner's exit 3; it cannot make a stale asset be read.
+    Round 14 (round 13 question 42, review C41). Until then only `__cause__` was
+    looked at, and earthengine-api 1.7.35, the version every manifest records,
+    raises its EEException without `from`, so the status was never read and
+    every answer came from the text: a 403 that says "does not exist or doesn't
+    allow this operation" and a 500 whose request id holds "404" read as missing.
+    A wrong False led to a recompute whose export failed, or to the pass runner's
+    exit 3; it could not make a stale asset be read.
     """
     try:
         ee.data.getAsset(path)
         return True
     except ee.EEException as e:
-        # Prefer the underlying HttpError status when available; GEE's
-        # Python client wraps googleapiclient HttpError into EEException,
-        # and the cause's response status is more reliable than message
-        # text. With earthengine-api 1.7.35 __cause__ is None, so this branch
-        # is not reached (review C41; see the docstring).
-        cause = getattr(e, "__cause__", None)
-        if cause is not None:
-            status = getattr(getattr(cause, "resp", None), "status", None)
-            if status == 404:
-                return False
-            if status in (401, 403):
-                # Permission issue; propagate so the user fixes it.
-                raise
+        # The status of the HttpError behind the error decides when there is one:
+        # earthengine-api leaves it on __context__ (it raises without `from`), a
+        # client that chains with `from` on __cause__ (review C41, round 14).
+        status = _http_status(e)
+        if status == 404:
+            return False
+        if status is not None:
+            # Refused (401, 403) or failed (429, 5xx, ...): not a missing asset.
+            raise
 
-        # Fallback: match the message text. GEE's "not found" / "does not
-        # exist" / "404" phrasing has been stable across the versions we
-        # support, but it's not formally guaranteed.
+        # No HttpError behind it: match the message text, as before round 14.
+        # GEE's "not found" / "does not exist" / "404" phrasing has been stable
+        # across the versions we support, but it's not formally guaranteed.
         msg = str(e).lower()
         if "not found" in msg or "does not exist" in msg or "404" in msg:
             return False

@@ -8296,3 +8296,69 @@ decisions:
   source: >-
     Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 41, Claude Code's recommendation (a), by the brief's
     rule 'Every other question: your recommendation'
+- id: spec-asset-exists-reads-the-http-status
+  title: >-
+    asset_exists decides by the HTTP status behind a failed getAsset: 404 is a missing asset, any other status is
+    raised, and the message text decides only when there is no HttpError behind the error
+  decision: >-
+    fmu.utils.caching.asset_exists (Locked, asset caching), when ee.data.getAsset raises an EEException, finds the
+    googleapiclient HttpError behind it and reads its status (_http_status: along the error's chain, at each link
+    __cause__ if set and __context__ otherwise, as a traceback does, to the nearest HttpError). 404 is a missing asset
+    (False). Any other status, 401, 403, 429 and 5xx among them, is raised, as the EEException Earth Engine gave.
+    Only an error with no HttpError behind it is judged by its message, as before: "not found", "does not exist" or
+    "404" in the text is False, any other text is raised. An asset that answers is True, as before.
+    ensure_parent_folders, which goes on to create a folder whose check raises, makes a new config's cache folders
+    as before. googleapiclient, which earthengine-api requires, is imported for the HttpError class. Nothing a stage
+    computes changes, and no fingerprint or step key moves.
+  alternatives_considered:
+  - >-
+    Leave it, documented (option (b) of round 13 question 42): not chosen; a 403 or a 500 read as a cache miss
+  - >-
+    Read only __context__, where earthengine-api 1.7.35 leaves the HttpError: not chosen; a client that raises from the
+    HttpError puts it on __cause__, the place the code read before, and an EEException wrapped again has it a link
+    further down
+  - >-
+    Keep reading a 403 whose text says "does not exist or doesn't allow this operation" as missing: not chosen; the
+    text says the asset does not exist or the caller may not use it, so it does not tell a missing asset from a
+    refused request, and question 42's answer (a) raises for 401 and 403
+  rationale: >-
+    The round 14 brief (Jaskaran, 26 Oct 2026), Task 1: "Every other question: your recommendation", with Q42 among
+    the code changes to make before R3. Round 13's question 42 (docs/handoff/2026-10-20-round13.md, Questions for
+    Jaskaran): "(a) Read the status from the HttpError on __context__: 404 means missing, 401 and 403 raise, and other
+    statuses raise; keep the text test only when no status is found. For: a 403 or a 500 no longer reads as a cache
+    miss. Against: a change to caching.py (a Locked module), with tests on real HttpErrors. (b) Leave it, now
+    documented. Recommendation: (a)." Review C41 (docs/reviews/2026-10-19-review.md): earthengine-api 1.7.35 raises
+    its EEException without chaining, so __cause__ is None and the status branch never ran.
+    tests/test_asset_exists_http_status.py sends real HttpErrors through ee.data._execute_cloud_call by a stand-in
+    request (round 13's method; nothing goes over the network) and fails on the code before the change, 5 of its 16
+    cases: a 403 "does not exist or doesn't allow this operation", a 500 whose request id holds "404" and a 500 on
+    __cause__ whose text holds "404" were read as missing ("Failed: DID NOT RAISE EEException"), and a 404 whose text
+    has none of the words, directly and wrapped again, was raised ("EEException: Requested entity was deleted.").
+    A 404 "not found", a 403 "Permission denied", a 401, a 503, the errors with no HttpError behind them and the
+    folders of a new config give what they gave before. Not checked on Earth Engine: that a cache asset which is not
+    there, in particular one under a folder that does not exist yet, as at the first run of every new config, is
+    answered 404. If it were answered 403, that run would stop at its first cache check with the 403 raised, before
+    any task is submitted. tests/test_asset_exists_live.py (live_gee, read-only) checks it; it was written in round
+    14 and not run by the agent that wrote it, which had no Earth Engine access. No paper was searched for this
+    decision.
+  evidence:
+  - path: src/fmu/utils/caching.py
+    what: asset_exists and _http_status
+  - path: tests/test_asset_exists_http_status.py
+    what: Real HttpErrors through ee.data._execute_cloud_call; fails on the code before the change
+  - path: tests/test_asset_exists_live.py
+    what: A missing cache asset is answered 404 on Earth Engine (live_gee, read-only)
+  - path: docs/architecture.md
+    what: The caching layer, the row of asset_exists
+  - path: docs/reviews/2026-10-19-review.md
+    what: C41
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Question 42, and Task 6, C41 (documentation part)
+  - path: docs/handoff/2026-10-26-round14.md
+    what: The brief, Task 1
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 42, Claude Code's recommendation (a), by the brief's
+    rule 'Every other question: your recommendation'
