@@ -41,7 +41,7 @@ features_static: { include_climate, max_water_distance_pixels, cap_distance_to_w
 features_embedding: { collapse_reducer, band_names }
 segmentation: { size, compactness, connectivity, neighborhood_size, normalize_inputs, normalize_distance_scale, input_bands, mask_before_snic, drop_kept_patches_below_min_area }
 merge: { enabled, criteria, relax_factor, min_area_ha, max_area_ha, min_defined_criteria, min_frac_valid, tie_break, max_pass2_iterations, max_superpixels, pass2_skip_at_min_area, pass2_soft_ceiling }
-clustering: { k, seed, feature_source, skewness_threshold, fit_excludes_stands_below_min_area, fit_outside_earth_engine }
+clustering: { k, seed, feature_source, skewness_threshold, fit_excludes_stands_below_min_area, fit_outside_earth_engine, log_rule }
 normalization: { method }
 features: { optical_harmonic, radar, canopy_height, terrain }
 export: { export_geotiff, export_gee_asset, analysis_scale_m, drive_folder, export_vector_merged, export_vector_snic, export_vector_dissolved, vector_formats, vector_min_stand_pixels }
@@ -529,6 +529,29 @@ decks — that number was always 10,000 pixels.
   `spec-clustering-kmeans-outside-earth-engine`. While `false` it is left out of
   the cache fingerprint and the per-step keys, so no existing config's assets
   move; `true` moves the clustering and k_elbow keys.
+- `log_rule` (round 14, Task 2.2; reviews A3 and B12, round 13's question 8):
+  which bands are logged before the scaling, and how. `abs_skew` (default, the
+  rule of every run before round 14, DEC-004 as built since round 13): a band
+  whose |skew| is above `skewness_threshold` becomes log(x - min + 0.001), min
+  over every unit; the sin and cos of a harmonic phase are not skew-tested
+  (review B13), aspect's are; each band is then scaled by its own median and
+  IQR. `right_skew`: a band whose IQR is 0 (at most 1e-9) is dropped as constant
+  first; only a right-skewed band (skew above the threshold) is logged, as
+  log1p((x - min) / IQR), with min over every unit, the stands left out of the
+  fit included, and IQR the band's own before the log, so the log is defined for
+  every unit; a left-skewed band is not transformed; the sin and cos of an angle
+  (a harmonic phase, aspect) are never skew-tested or logged, and each such pair
+  is centred by its own medians and divided by one shared spread, the root mean
+  square of the two IQRs, so the circle is scaled alike along both axes and not
+  stretched (a pair is dropped only when that spread is 0); `clustering_metadata`
+  records each band's skew before and after the log (`skew_before`,
+  `skew_after`), the log's minimum and IQR per band (`log1p_params`) and the
+  pairs' shared spreads (`angle_pairs`). The skew is the moment coefficient g1,
+  as Earth Engine's `Reducer.skew` computes it. `right_skew` is applied off Earth
+  Engine, so it needs `fit_outside_earth_engine: true`. Register entry
+  `spec-clustering-log-rule-right-skewed-bands`. Left out of the fingerprint and
+  the per-step keys at its default; `right_skew` moves the clustering and k_elbow
+  keys.
 
 `superpixel_max_size` **no longer exists** and a config still carrying it will
 fail to load. It was the `maxSize` argument to `reduceConnectedComponents`,

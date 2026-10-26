@@ -111,6 +111,8 @@ _OMITTED_AT_DEFAULT: dict[tuple[str, str], Any] = {
     ("features_static", "cap_distance_to_water"): False,
     # Round 14, Task 2.1 (spec-clustering-kmeans-outside-earth-engine).
     ("clustering", "fit_outside_earth_engine"): False,
+    # Round 14, Task 2.2 (spec-clustering-log-rule-right-skewed-bands).
+    ("clustering", "log_rule"): "abs_skew",
 }
 
 
@@ -464,7 +466,7 @@ STEP_SETTINGS: dict[str, tuple[str, ...]] = {
         "clustering.fit_excludes_stands_below_min_area", "normalization", "merge.enabled",
         "merge.max_area_ha", "merge.min_area_ha", "merge.pass2_soft_ceiling", "k_elbow",
         # Round 14, each left out at its default (_STEP_OMITTED_AT_DEFAULT).
-        "clustering.fit_outside_earth_engine",
+        "clustering.fit_outside_earth_engine", "clustering.log_rule",
     ),
 }
 
@@ -485,6 +487,8 @@ STEP_SETTINGS: dict[str, tuple[str, ...]] = {
 _STEP_OMITTED_AT_DEFAULT: dict[tuple[str, str], Any] = {
     # Round 14, Task 2.1 (spec-clustering-kmeans-outside-earth-engine).
     ("clustering", "fit_outside_earth_engine"): False,
+    # Round 14, Task 2.2 (spec-clustering-log-rule-right-skewed-bands).
+    ("clustering", "log_rule"): "abs_skew",
 }
 
 # A step's revision, raised when what the step computes changes for configs whose

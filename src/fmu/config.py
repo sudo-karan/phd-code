@@ -480,6 +480,19 @@ class ClusteringParams(BaseModel):
     # existing config's assets move; true moves the clustering and k_elbow keys
     # (docs/decisions.yaml, spec-clustering-kmeans-outside-earth-engine).
     fit_outside_earth_engine: bool = False
+    # Round 14 (Task 2.2; reviews A3, B12, round 13's question 8): which bands are logged, and
+    # how, before the scaling. "abs_skew" (the default, DEC-004 as built since round 13): a
+    # band whose |skew| is above skewness_threshold is logged as log(x - min + 0.001); the sin
+    # and cos of a harmonic phase are not skew-tested, aspect's are; each band is scaled by its
+    # own median and IQR. "right_skew": a band whose IQR is 0 is dropped as constant first;
+    # only a right-skewed band (skew above the threshold) is logged, as log1p((x - min) / IQR),
+    # min over every unit; a left-skewed band is not transformed; the sin and cos of an angle
+    # (a harmonic phase, aspect) are never skew-tested or logged, and each such pair is scaled
+    # with one shared spread (the root mean square of their IQRs), so the circle is not
+    # stretched; each band's skew is recorded before and after. "right_skew" is done off Earth
+    # Engine, so it needs fit_outside_earth_engine. Left out of the cache fingerprint and the
+    # per-step keys at its default (docs/decisions.yaml, spec-clustering-log-rule-right-skewed-bands).
+    log_rule: Literal["abs_skew", "right_skew"] = "abs_skew"
     # NOTE: `superpixel_max_size` used to live here as the `maxSize` argument to
     # reduceConnectedComponents. It is now DERIVED -- see
     # `Config.max_component_pixels()` -- because (a) the name stopped being true
@@ -1116,6 +1129,15 @@ class Config(BaseModel):
                 "clustering.fit_excludes_stands_below_min_area needs merge.enabled: "
                 "without the merge there are no stands, and nothing marks a stand "
                 "as below merge.min_area_ha."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _right_skew_rule_needs_the_fit_outside_earth_engine(self) -> Config:
+        if self.clustering.log_rule == "right_skew" and not self.clustering.fit_outside_earth_engine:
+            raise ValueError(
+                "clustering.log_rule right_skew needs clustering.fit_outside_earth_engine: the "
+                "rule is applied to the table of units off Earth Engine (fmu.utils.stand_table)."
             )
         return self
 

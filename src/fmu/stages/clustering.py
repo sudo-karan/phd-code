@@ -436,7 +436,7 @@ class ClusteringStage(Stage):
                 seed=params.seed,
                 feature_source=params.feature_source,
                 skewness_threshold=params.skewness_threshold,
-                log_rule="abs_skew",
+                log_rule=params.log_rule,
                 method=config.normalization.method,
                 unit_key=unit_key,
                 below_min=below_min,

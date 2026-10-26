@@ -13,13 +13,25 @@ not depend on the order Earth Engine returns them in (k-means++ does depend on r
 `in_fit` is False for the stands that clustering.fit_excludes_stands_below_min_area leaves out
 of the fit; they are preprocessed with the other rows and typed by the nearest fitted centre.
 
-The preprocessing rule:
+The two preprocessing rules (`clustering.log_rule`):
 
   "abs_skew" (the default, DEC-004 as the clustering stage has built it since round 13):
     a band whose |skew| is above the threshold is logged as log(x - min + 0.001), min over
     every row; the sin and cos of a harmonic phase are not skew-tested (review B13), aspect's
     are; then each band is scaled by its own median and IQR, exact quartiles (DEC-003, review
     B16), and a band whose IQR is at most 1e-9 is dropped as constant.
+
+  "right_skew" (round 14, Task 2.2; reviews A3, B12, round 13's question 8):
+    a band whose IQR is at most 1e-9 is dropped as constant first; then only a right-skewed
+    band (skew above the threshold) is logged, as log1p((x - min) / IQR), with min over every
+    row and IQR the band's own before the log, so that the log is defined for every row; a
+    left-skewed band is not transformed. The sin and cos of an angle (a harmonic phase,
+    aspect) are never skew-tested or logged. Each band is then centred by its median and
+    divided by its IQR (exact quartiles), except that the two components of an angle are each
+    centred by their own median and divided by one shared spread, the root mean square of
+    their two IQRs, so that the circle is scaled the same way along both axes and not
+    stretched. An angle pair is dropped only when that shared spread is at most 1e-9. Each
+    band's skew is recorded before and after the log.
 
 The skew is the moment coefficient g1 = m3 / m2^1.5, which is what Earth Engine's
 Reducer.skew computes (read on Earth Engine on 26 Oct 2026 on three small lists, matching g1
@@ -53,7 +65,7 @@ import numpy as np
 SPREAD_EPSILON = 1e-9
 # The offset of the default rule's log, log(x - min + 0.001) (DEC-004).
 LOG_EPSILON = 1e-3
-RULES = ("abs_skew",)
+RULES = ("abs_skew", "right_skew")
 
 
 @dataclass
@@ -170,7 +182,9 @@ def preprocess(
     for a, b in pairs:
         if a not in table.bands or b not in table.bands:
             raise ValueError(f"preprocess: the angle pair {a}, {b} is not in the table")
-    return _abs_skew(table, threshold=threshold, decomposed=decomposed)
+    if rule == "abs_skew":
+        return _abs_skew(table, threshold=threshold, decomposed=decomposed)
+    return _right_skew(table, threshold=threshold, pairs=pairs)
 
 
 def _column(table: StandTable, band: str) -> np.ndarray:
@@ -207,6 +221,70 @@ def _abs_skew(table: StandTable, *, threshold: float, decomposed: Sequence[str])
         "dropped_constant_bands": sorted(set(table.bands) - set(active)),
     }
     return Preprocessed(bands=active, values=values, record=record)
+
+
+def _right_skew(
+    table: StandTable, *, threshold: float, pairs: list[tuple[str, str]]
+) -> Preprocessed:
+    in_pair = {c for pair in pairs for c in pair}
+    raw = {b: _column(table, b) for b in table.bands}
+    raw_q = {b: exact_quartiles(raw[b]) for b in table.bands}
+    raw_iqr = {b: raw_q[b][2] - raw_q[b][0] for b in table.bands}
+    # 1. Constant bands first: a band, or an angle pair, with no spread.
+    shared_raw = {pair: _rms(raw_iqr[pair[0]], raw_iqr[pair[1]]) for pair in pairs}
+    dropped = {b for b in table.bands if b not in in_pair and raw_iqr[b] <= SPREAD_EPSILON}
+    dropped |= {c for pair, s in shared_raw.items() if s <= SPREAD_EPSILON for c in pair}
+    # 2. Only right-skewed bands are logged, never an angle's sin or cos.
+    tested = [b for b in table.bands if b not in in_pair and b not in dropped]
+    columns = {b: raw[b].copy() for b in table.bands}
+    skew_before = {b: skewness(raw[b]) for b in tested}
+    logged: dict[str, dict[str, float]] = {}
+    for b in tested:
+        if skew_before[b] > threshold:
+            low, iqr = float(raw[b].min()), raw_iqr[b]
+            logged[b] = {"min": low, "iqr": iqr}
+            columns[b] = np.log1p((raw[b] - low) / iqr)
+    skew_after = {b: (skewness(columns[b]) if b in logged else skew_before[b]) for b in tested}
+    # 3. The scaling: median and IQR, one shared spread for the two components of an angle.
+    scaling: dict[str, dict[str, float]] = {}
+    for b in table.bands:
+        if b in in_pair:
+            continue
+        p25, p50, p75 = exact_quartiles(columns[b])
+        scaling[b] = {"center": p50, "spread": p75 - p25}
+        if b not in dropped and p75 - p25 <= SPREAD_EPSILON:
+            dropped.add(b)
+    pair_record = []
+    for (a, c), s in shared_raw.items():
+        for comp in (a, c):
+            scaling[comp] = {"center": raw_q[comp][1], "spread": s}
+        pair_record.append(
+            {"bands": [a, c], "iqr": [raw_iqr[a], raw_iqr[c]], "shared_spread": s}
+        )
+    active = [b for b in table.bands if b not in dropped]
+    if not active:
+        raise ValueError("All feature bands have zero spread; nothing left to cluster on.")
+    values = np.column_stack(
+        [(columns[b] - scaling[b]["center"]) / scaling[b]["spread"] for b in active]
+    )
+    record = {
+        "log_rule": "right_skew",
+        "skewness_threshold": threshold,
+        "log_transformed_bands": [b for b in table.bands if b in logged],
+        "log1p_params": logged,
+        "skew_before": skew_before,
+        "skew_after": skew_after,
+        "angle_pairs": pair_record,
+        "scaling": {b: scaling[b] for b in table.bands},
+        "active_bands": active,
+        "dropped_constant_bands": sorted(dropped),
+    }
+    return Preprocessed(bands=active, values=values, record=record)
+
+
+def _rms(a: float, b: float) -> float:
+    """Root mean square of two spreads: the shared spread of an angle's sin and cos."""
+    return math.sqrt((a * a + b * b) / 2.0)
 
 
 # ---------------------------------------------------------------------

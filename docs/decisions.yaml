@@ -1873,6 +1873,7 @@ decisions:
   title: Replace cyclic bands (phase, aspect) with sin and cos pairs
   decision: >-
     Before clustering, replace each phase band and the aspect band with a sin/cos pair.
+    Round 14 (26 Oct 2026): with clustering.log_rule right_skew, a setting off by default that needs clustering.fit_outside_earth_engine, the rule of spec-clustering-log-rule-right-skewed-bands applies instead (only right-skewed bands logged, as log1p((x - min) / IQR); no angle component tested; each angle pair scaled with one shared spread). The default is unchanged.
   alternatives_considered:
   - no decomposition (the raw angle as a linear feature)
   rationale: >-
@@ -1897,7 +1898,9 @@ decisions:
   source: docs/design_notes.md lines 488-493
 - id: dn-log-transform-skewed-dec-004
   title: Log-transform right-skewed bands before scaling (DEC-004)
-  decision: Log-transform a band before scaling when its skewness exceeds a threshold.
+  decision: >-
+    Log-transform a band before scaling when its skewness exceeds a threshold.
+    Round 14 (26 Oct 2026): with clustering.log_rule right_skew, a setting off by default that needs clustering.fit_outside_earth_engine, the rule of spec-clustering-log-rule-right-skewed-bands applies instead (only right-skewed bands logged, as log1p((x - min) / IQR); no angle component tested; each angle pair scaled with one shared spread). The default is unchanged.
   alternatives_considered:
   - median/IQR scaling alone, without a log transform
   rationale: >-
@@ -1921,7 +1924,9 @@ decisions:
   source: docs/design_notes.md lines 495-501
 - id: dn-median-iqr-scaling-dec-003
   title: Scale features by median and IQR, not z-score (DEC-003)
-  decision: Scale each clustering feature as (x - median) / IQR.
+  decision: >-
+    Scale each clustering feature as (x - median) / IQR.
+    Round 14 (26 Oct 2026): with clustering.log_rule right_skew, a setting off by default that needs clustering.fit_outside_earth_engine, the rule of spec-clustering-log-rule-right-skewed-bands applies instead (only right-skewed bands logged, as log1p((x - min) / IQR); no angle component tested; each angle pair scaled with one shared spread). The default is unchanged.
   alternatives_considered:
   - z-score (mean and standard deviation), as the notebook used
   rationale: >-
@@ -7037,6 +7042,7 @@ decisions:
     offset (review B12, unchanged). Aspect's sin and cos are tested as before. The scaling of the pair, each component
     by its own median and IQR, is unchanged (review A2). Clustering's revision is raised to 2 (STEP_REVISION in
     src/fmu/utils/caching.py), which moves the clustering and k_elbow keys of every config and no other key.
+    Round 14 (26 Oct 2026): with clustering.log_rule right_skew, a setting off by default that needs clustering.fit_outside_earth_engine, the rule of spec-clustering-log-rule-right-skewed-bands applies instead (only right-skewed bands logged, as log1p((x - min) / IQR); no angle component tested; each angle pair scaled with one shared spread). The default is unchanged.
   alternatives_considered:
   - >-
     Keep aspect's sin and cos out of the skew test and the log too: not chosen, since the brief names the phase only.
@@ -7946,3 +7952,73 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 26 Oct 2026 (round 14 brief), Task 2, item 1
+- id: spec-clustering-log-rule-right-skewed-bands
+  title: >-
+    With clustering.log_rule right_skew, only right-skewed bands are logged, as log1p((x - min) / IQR); no angle's sin or
+    cos is tested or logged, and each angle pair shares one spread
+  decision: >-
+    A setting clustering.log_rule, "abs_skew" by default (the rule of every run before round 14), and "right_skew" (round
+    14), applied off Earth Engine to the table of units (src/fmu/utils/stand_table.py), so it needs
+    clustering.fit_outside_earth_engine. Over every row of the table, the stands left out of the fit included: (1) a band
+    whose IQR, exact quartiles, is at most 1e-9 is dropped as constant first (the threshold the Earth Engine path's
+    constant test uses for a spread of 0); (2) of the other bands, every one but the sin and cos of an angle is
+    skew-tested, the skew being the moment coefficient g1 (what Earth Engine's Reducer.skew computes), and only a
+    right-skewed band, skew above clustering.skewness_threshold, is logged, as log1p((x - min) / IQR), with min and IQR
+    the band's own before the log, so the log is defined for every row; a left-skewed band is not transformed; (3) the
+    sin and cos of an angle (a band named aspect, or with "_phase_" in its name, as the cyclic decomposition takes them:
+    the NDVI phase and aspect, round 13's question 8) are never skew-tested or logged; (4) each band is then centred by
+    its median and divided by its IQR (exact quartiles), except that the two components of an angle are each centred by
+    their own median and divided by one shared spread, the root mean square of their two IQRs, so that the circle is
+    scaled alike along both axes and not stretched, and the pair keeps the weight in the Euclidean distance of two bands
+    scaled by their own IQRs; a pair is dropped only when that shared spread is at most 1e-9. clustering_metadata records
+    the rule (log_rule), the bands logged with the minimum and IQR of each (log1p_params, in place of log_offsets),
+    each tested band's skew before and after the log (skew_before, skew_after), and each angle pair with its two IQRs
+    and the shared spread (angle_pairs). feature_stack applies the same transform server-side. The default is left out
+    of the cache fingerprint and the per-step keys, so no config that keeps it moves; right_skew moves the clustering
+    and k_elbow keys and the fingerprint.
+  alternatives_considered:
+  - >-
+    Implement the rule on Earth Engine too: not chosen; every round 14 config that uses it fits off Earth Engine, and
+    the rule needs each band's exact quartiles and minimum, which the table already holds
+  - >-
+    The shared spread as the mean of the two IQRs, or the larger of them: not chosen; the root mean square keeps the
+    pair's total squared spread, its weight in the distance k-means uses, equal to that of two bands scaled by their own
+    IQRs. The brief says "one shared spread" without naming it: put to Jaskaran under Questions (round 14 brief)
+  - >-
+    An IQR of exactly 0, not at most 1e-9, for "constant": not chosen; the Earth Engine path's constant test has always
+    been a spread of at most 1e-9, and a band within that of constant cannot be scaled
+  rationale: >-
+    The round 14 brief (Jaskaran, 26 Oct 2026), Task 2, item 2: "The log rule (A3, B12, Q8). Log only right-skewed bands
+    (skew above the threshold), as log1p((x - min) / IQR). Take the minimum over every stand, fitted or not, so the log is
+    defined for all of them; a band whose IQR is 0 is dropped as constant before this. Do not transform left-skewed
+    bands. Never log or skew-test the sine and cosine of an angle (the NDVI phase, aspect), and scale each such pair with
+    one shared spread, so the circle is not stretched. Record each band's skew before and after." Round 13's question 8
+    (aspect's sin and cos kept out of the skew test and the log) is part of this rule, as the brief says ("Q8 (as part of
+    Task 2's log rule)"), so with the default rule aspect's pair is tested as before. Review A3: the rule logged bands
+    by |skew|, so left-skewed bands were logged, which makes their skew worse; review B12: the offset 0.001 made the log
+    depend on a band's units. The new stage tests (tests/test_clustering_log_rule.py) fail on the code before the change
+    (ValidationError: the setting does not exist) and pass after it; tests/test_stand_table.py tests the rule itself. No
+    paper was searched for this decision.
+  evidence:
+  - path: src/fmu/utils/stand_table.py
+    what: _right_skew, _rms, preprocess
+  - path: src/fmu/config.py
+    what: ClusteringParams.log_rule and the validator that right_skew needs the fit off Earth Engine
+  - path: src/fmu/stages/clustering.py
+    what: _result_outside_earth_engine (the rule passed on), _scaled_stack_from (log1p server-side)
+  - path: src/fmu/utils/caching.py
+    what: _OMITTED_AT_DEFAULT, _STEP_OMITTED_AT_DEFAULT, STEP_SETTINGS["k_elbow"]
+  - path: tests/test_clustering_log_rule.py
+    what: The rule through the stage; the feature stack; the keys; fails on the old code
+  - path: tests/test_stand_table.py
+    what: The rule on planted tables
+  - path: docs/configs.md
+    what: The clustering block, log_rule
+  - path: docs/reviews/2026-10-19-review.md
+    what: A3 and B12
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Questions, item 8
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 26 Oct 2026 (round 14 brief), Task 2, item 2, and round 13 question 8

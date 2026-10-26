@@ -319,7 +319,12 @@ the scaled space the fit used), `kmeans_starts_ari_median` and
 `kmeans_starts_ari_min` (the median and lowest adjusted Rand index over the 300
 pairs of the 25 starts: how much the starts agree, a diagnostic of the
 clustering, not a field score) and `kmeans` (the library, the number of starts,
-the seed, which start was kept and each start's sum of squares). The units
+the seed, which start was kept and each start's sum of squares). With
+`clustering.log_rule: right_skew` it holds `log1p_params` (the minimum and IQR
+of each logged band) in place of `log_offsets`, `skew_before` and `skew_after`
+(the skew, g1, of each band tested, before and after the log) and
+`angle_pairs` (each angle's sin and cos with their IQRs and the shared spread
+both are divided by). The units
 without a row are counted against the rows of the table, which have data in
 every candidate band; on Earth Engine they are counted against the training
 rows, which need data in the active bands only, so a unit with a gap only in a

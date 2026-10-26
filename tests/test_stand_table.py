@@ -112,10 +112,112 @@ def test_the_default_rule_logs_by_absolute_skew_with_the_old_offset():
 
 
 def test_the_default_rule_still_tests_aspects_pair():
-    """The default rule tests aspect's pair, as the Earth Engine path does."""
+    """Only the new rule keeps aspect's pair out of the test (round 13's question 8)."""
     t = _hand_table()
     pre = st.preprocess(t, rule="abs_skew", threshold=0.0, decomposed=DECOMPOSED)
     assert {"aspect_sin", "aspect_cos"} <= set(pre.record["log_transformed_bands"])
+
+
+# ---------------------------------------------------------------- the new rule
+
+
+def test_only_right_skewed_bands_are_logged_as_log1p_over_the_iqr():
+    t = _hand_table()
+    pre = st.preprocess(t, rule="right_skew", threshold=1.0, decomposed=DECOMPOSED)
+    r = pre.record
+    assert r["log_transformed_bands"] == ["right"]
+    raw = st._column(t, "right")
+    q25, _, q75 = st.exact_quartiles(raw)
+    assert r["log1p_params"]["right"] == {"min": raw.min(), "iqr": q75 - q25}
+    logged = np.log1p((raw - raw.min()) / (q75 - q25))
+    l25, l50, l75 = st.exact_quartiles(logged)
+    assert pre.values[:, pre.bands.index("right")] == pytest.approx((logged - l50) / (l75 - l25))
+    # A left-skewed band is not transformed: only centred and scaled.
+    left = st._column(t, "left")
+    p25, p50, p75 = st.exact_quartiles(left)
+    assert pre.values[:, pre.bands.index("left")] == pytest.approx((left - p50) / (p75 - p25))
+
+
+def test_the_minimum_is_over_every_row_so_the_log_holds_for_the_rows_left_out():
+    """The lowest value sits on a row left out of the fit; its log is still defined."""
+    t = _hand_table()
+    lowest = int(np.argmin(st._column(t, "right")))
+    t = _hand_table(left_out={int(t.labels[lowest])})
+    pre = st.preprocess(t, rule="right_skew", threshold=1.0, decomposed=DECOMPOSED)
+    assert not t.in_fit[lowest]
+    assert np.all(np.isfinite(pre.values))
+    assert pre.record["log1p_params"]["right"]["min"] == st._column(t, "right").min()
+
+
+def test_a_constant_band_is_dropped_before_the_skew_test():
+    t = _hand_table()
+    pre = st.preprocess(t, rule="right_skew", threshold=1.0, decomposed=DECOMPOSED)
+    assert "flat" in pre.record["dropped_constant_bands"]
+    assert "flat" not in pre.record["skew_before"]
+    assert "flat" not in pre.bands
+
+
+def test_no_angle_component_is_skew_tested_or_logged():
+    t = _hand_table()
+    pre = st.preprocess(t, rule="right_skew", threshold=0.0, decomposed=DECOMPOSED)
+    r = pre.record
+    for comp in ("ndvi_phase_annual_sin", "ndvi_phase_annual_cos", "aspect_sin", "aspect_cos"):
+        assert comp not in r["skew_before"] and comp not in r["log_transformed_bands"], comp
+
+
+def test_an_angles_pair_shares_one_spread_so_the_circle_is_not_stretched():
+    t = _hand_table()
+    pre = st.preprocess(t, rule="right_skew", threshold=1.0, decomposed=DECOMPOSED)
+    raw_s, raw_c = st._column(t, "aspect_sin"), st._column(t, "aspect_cos")
+    iqr = [st.exact_quartiles(v)[2] - st.exact_quartiles(v)[0] for v in (raw_s, raw_c)]
+    shared = math.sqrt((iqr[0] ** 2 + iqr[1] ** 2) / 2)
+    (pair,) = [p for p in pre.record["angle_pairs"] if p["bands"] == ["aspect_sin", "aspect_cos"]]
+    assert pair["shared_spread"] == pytest.approx(shared)
+    s = pre.values[:, pre.bands.index("aspect_sin")]
+    c = pre.values[:, pre.bands.index("aspect_cos")]
+    # One factor along both axes: the scaled differences are the raw ones over one spread.
+    assert np.diff(s) == pytest.approx(np.diff(raw_s) / shared)
+    assert np.diff(c) == pytest.approx(np.diff(raw_c) / shared)
+    assert pre.record["scaling"]["aspect_sin"]["center"] == st.exact_quartiles(raw_s)[1]
+
+
+def test_an_angle_pair_with_one_constant_component_is_kept_and_with_two_is_dropped():
+    n = 20
+    rng = _rng(3)
+    base = rng.normal(0, 1, n)
+    one = _table(
+        ["x", "aspect_sin", "aspect_cos"],
+        np.column_stack([base, np.zeros(n), rng.normal(0, 1, n)]).tolist(),
+    )
+    pre = st.preprocess(one, rule="right_skew", threshold=1.0, decomposed=["aspect"])
+    assert {"aspect_sin", "aspect_cos"} <= set(pre.bands)
+    both = _table(
+        ["x", "aspect_sin", "aspect_cos"], np.column_stack([base, np.zeros(n), np.zeros(n)]).tolist()
+    )
+    pre = st.preprocess(both, rule="right_skew", threshold=1.0, decomposed=["aspect"])
+    assert pre.bands == ["x"]
+    assert pre.record["dropped_constant_bands"] == ["aspect_cos", "aspect_sin"]
+
+
+def test_the_skew_is_recorded_before_and_after():
+    t = _hand_table()
+    pre = st.preprocess(t, rule="right_skew", threshold=1.0, decomposed=DECOMPOSED)
+    r = pre.record
+    raw = st._column(t, "right")
+    assert r["skew_before"]["right"] == pytest.approx(st.skewness(raw))
+    q25, _, q75 = st.exact_quartiles(raw)
+    assert r["skew_after"]["right"] == pytest.approx(
+        st.skewness(np.log1p((raw - raw.min()) / (q75 - q25)))
+    )
+    assert r["skew_after"]["left"] == r["skew_before"]["left"]
+
+
+def test_an_unknown_rule_or_a_missing_pair_is_refused():
+    t = _hand_table()
+    with pytest.raises(ValueError, match="unknown rule"):
+        st.preprocess(t, rule="log_everything", threshold=1.0, decomposed=DECOMPOSED)
+    with pytest.raises(ValueError, match="angle pair"):
+        st.preprocess(t, rule="right_skew", threshold=1.0, decomposed=["ndvi_phase_semi"])
 
 
 # ---------------------------------------------------------------- k-means
@@ -190,7 +292,7 @@ def test_too_few_rows_for_k_is_refused():
 
 def test_the_files_hold_the_rows_keyed_by_label():
     t = _hand_table(n=12, left_out={3})
-    pre = st.preprocess(t, rule="abs_skew", threshold=1.0, decomposed=DECOMPOSED)
+    pre = st.preprocess(t, rule="right_skew", threshold=1.0, decomposed=DECOMPOSED)
     raw = list(csv.reader(io.StringIO(st.table_csv(t))))
     assert raw[0] == ["stand_lbl", "in_fit", *t.bands]
     assert raw[4][:2] == ["3", "0"]
@@ -198,11 +300,3 @@ def test_the_files_hold_the_rows_keyed_by_label():
     rows = list(csv.reader(io.StringIO(st.rows_csv(t, pre, types=np.arange(12) % 3))))
     assert rows[0] == ["stand_lbl", "in_fit", "type", *pre.bands]
     assert len(rows) == 13 and rows[2][2] == "1"
-
-
-def test_an_unknown_rule_or_a_missing_pair_is_refused():
-    t = _hand_table()
-    with pytest.raises(ValueError, match="unknown rule"):
-        st.preprocess(t, rule="log_everything", threshold=1.0, decomposed=DECOMPOSED)
-    with pytest.raises(ValueError, match="angle pair"):
-        st.preprocess(t, rule="abs_skew", threshold=1.0, decomposed=["ndvi_phase_semi"])
