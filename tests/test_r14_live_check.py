@@ -831,9 +831,16 @@ def test_live_the_earth_engine_reader_on_an_r9_run_s_own_assets(mod, monkeypatch
         cfg = load_config(REPO / "configs" / "odisha_v120_3ha_squares_angul_keptland_s1desc_r9.yaml")
         layout = reader.cache_layout(cfg)
         assert layout == "per_step"
+        # The assets the _r9 run made, by the cache keys its manifest recorded: round 13's fixes
+        # moved some of its steps' keys (features_static's among them), so the key the config
+        # gives today names no asset there (26 Oct 2026, the first run of this test).
+        manifest = json.loads((REPO / "docs" / "reproducibility" / "r9_runs" /
+                               f"{cfg.name}_manifest_features.json").read_text())
+        recorded = {s["name"]: s["cache_key"] for s in manifest["stages"] if s.get("cache_key")}
+        assert recorded["masking"] == cache_key(cfg, "masking", layout)  # unmoved since _r9
 
         def path(stage: str, key: str) -> str:
-            return cached_asset_path(cfg.name, stage, key, cache_key(cfg, stage, layout))
+            return cached_asset_path(cfg.name, stage, key, recorded[stage])
 
         for stage, key, label_like in (("masking", "habitat_mask", True),
                                        ("features_static", "static_features", False)):
