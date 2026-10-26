@@ -57,6 +57,17 @@ def _config(*, in_fit_space: bool = True, **clustering_settings: Any) -> Config:
     return Config.model_validate(raw)
 
 
+# Stands the merge left below the minimum (the R3 configs leave them out of the fit): their areas;
+# 99 has no row in the table of units.
+BELOW_MIN = {4: 0.12, 9: 0.5, 12: 0.03, 15: 0.8, 99: 0.2}
+
+
+def _merge_outputs() -> dict[str, Any]:
+    provenance = {sid: {"below_min": int(sid in BELOW_MIN)} for sid in range(100)}
+    attributes = {sid: {"area_ha": BELOW_MIN.get(sid, 2.0)} for sid in range(100)}
+    return {"stand_provenance": provenance, "stand_attributes": attributes}
+
+
 def _run(config: Config):
     log: list = []
     saved = {(m, n): getattr(m, n) for m in (k_elbow, clustering) for n in ("ee", "safe_get_info")}
@@ -67,6 +78,9 @@ def _run(config: Config):
         ctx = PipelineContext()
         for key in sorted(inputs(config)):
             ctx.set(key, Rec(key, log))
+        if config.clustering.fit_excludes_stands_below_min_area:
+            for key, value in _merge_outputs().items():
+                ctx.set(key, value)
         result = k_elbow.KElbowStage().run(ctx, config)
     finally:
         for (m, n), v in saved.items():
@@ -140,15 +154,29 @@ def test_the_elbow_is_the_sweep_of_the_fit_rows_with_25_starts_and_the_starts_ag
     assert {"ari_median", "ari_min", "in_fit_space"} <= set(features[0])
 
 
-def test_at_the_configs_k_the_elbow_is_the_clustering_stages_own_fit():
-    """Same rows, same space, same starts: the elbow's sum of squares at k is the fit's."""
-    config = _config()
+@pytest.mark.parametrize("fit_excludes", [False, True], ids=["every stand fitted", "stands below the minimum left out"])
+def test_at_the_configs_k_the_elbow_is_the_clustering_stages_own_fit(fit_excludes):
+    """Same rows, same space, same starts: the elbow's sum of squares at k is the fit's, and its
+    rows and every unit's type at k are the clustering stage's own, with the stands below the
+    minimum left out of both fits as every R3 config leaves them (the gate's review, part 1)."""
+    config = _config(fit_excludes_stands_below_min_area=fit_excludes)
     result, _ = _run(config)
-    _, log, _ = run_stage(clustering, config)
+    merge = _merge_outputs() if fit_excludes else None
+    fitted, log, _ = run_stage(clustering, config, merge_outputs=merge)
     (stamp,) = [c for c in log if c.attr == "set" and c.args[:1] == ("clustering_metadata",)]
     fit_wcss = json.loads(stamp.args[1])["kmeans_wcss"]
     k = config.clustering.k
     assert result.metadata["inertia"][result.metadata["ks"].index(k)] == round(fit_wcss, 6)
+    # The rows of the two fits, in_fit included, and each unit's type at k.
+    elbow_rows = list(csv.reader(io.StringIO(result.files["k_elbow_fit_rows.csv"])))
+    fit_rows = list(csv.reader(io.StringIO(fitted.files["clustering_fit_rows.csv"])))
+    at = fit_rows[0].index("type")  # the fit's rows carry each unit's type after in_fit
+    assert [r[:at] + r[at + 1:] for r in fit_rows] == elbow_rows
+    left = {r[0] for r in elbow_rows[1:] if r[1] == "0"}
+    assert left == ({"4", "9", "12", "15"} if fit_excludes else set())
+    types = list(csv.DictReader(io.StringIO(result.files["k_elbow_types.csv"])))
+    fit_types = {r[fit_rows[0][0]]: r["type"] for r in csv.DictReader(io.StringIO(fitted.files["clustering_fit_rows.csv"]))}
+    assert {r["stand_lbl"]: r[f"type_k{k}"] for r in types} == fit_types
 
 
 def test_the_step_writes_the_elbow_the_table_the_rows_and_the_types_at_each_k():
