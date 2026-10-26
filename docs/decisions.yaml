@@ -8949,10 +8949,13 @@ decisions:
     stands_dissolved. No scored statistic reads the centroid, stand_id or unit_id as a value: the joins key on stand_lbl
     (stands_merged) and snic_label (stands_snic); the Phase 2 join (odisha_script/odisha_phase2_3_join.py) keys
     stands_dissolved on unit_id, a label, so its scores are unchanged by a renumbering, and its tie rule (the lowest id
-    where several polygons cover a plot) met no such plot in any committed join (boundary-ambiguous plots 0). Not checked
-    on Earth Engine: the call on a polygon with a hole (tests/test_export_centroid_from_pixel_centres_live.py, written in
-    round 14 and not run), nor whether the mean weights a pixel the ROI's edge cuts. No paper was searched for this
-    decision.
+    where several polygons cover a plot) met no such plot in any committed join (boundary-ambiguous plots 0). Checked
+    on Earth Engine on 26 Oct 2026 by the main session, read-only (docs/handoff/2026-10-26-round14.md, Done, read-only
+    calls 5 and 6): the call on a polygon with a hole (tests/test_export_centroid_from_pixel_centres_live.py, written in
+    round 14: 3 passed); and the mean weights no pixel the region's edge cuts: a pixel is taken whole when its centre
+    is inside the region and left out when it is not, by the count and the means alike (a region cutting a column of
+    pixels at 30% of their width left the column out, count 42 of 48 and the means of the other seven columns exactly;
+    cutting it at 70% took it whole, count 48). No paper was searched for this decision.
   evidence:
   - path: src/fmu/stages/export.py
     what: _vectorise_with_pixel_centres, _add_geom_attrs and _SNIC_INTERNAL_PROPERTIES_TO_DROP, used by the three builders
@@ -8962,7 +8965,7 @@ decisions:
       35.10534490988752 < 0.01"), the builders' call and numbering on a fake Earth Engine, and the request built with the
       real client offline
   - path: tests/test_export_centroid_from_pixel_centres_live.py
-    what: The reducer's count and means on Earth Engine, on a synthetic ring; written in round 14, not run
+    what: The reducer's count and means on Earth Engine, on a synthetic ring; written in round 14, and run on 26 Oct 2026 by the main session (read-only, 3 passed)
   - path: docs/reproducibility/r9_runs/sanjay_van_alphaearth_keptland_r9_stands_merged.geojson
     what: Stand 83 (stand_lbl 83, stand_id 223), its centroid 35.1 m from its centroid with the hole subtracted
   - path: docs/outputs.md
