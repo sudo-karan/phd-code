@@ -58,10 +58,10 @@ open work PR. The PR description is the running handoff note.
 - Start Earth Engine batch runs only with `odisha_script/run_passes_safely.py`, from a run tree
   pinned to one commit (`docs/running.md`). It runs `odisha_script/run_config_passes.sh` one pass
   at a time and, before each pass, waits until no task of its configs is queued or running; the
-  shell script refuses to start without it. A new batch does not know what an earlier one
-  finished, so do not list a finished config in it: its export stage would send its Drive files
-  again. A first pass on an empty cache often hits Earth Engine's memory limit; the next pass
-  completes from cache.
+  shell script refuses to start without it. A batch under another label does not know what an
+  earlier one finished, so do not list a finished config in it; under the same label it is
+  skipped (`docs/running.md`). A first pass on an empty cache often hits Earth Engine's memory
+  limit; the next pass completes from cache.
 - Cached assets live at `{asset_root}/{config_name}/{stage}/{key}__{fingerprint}`. A re-run of
   the same config reads the old assets back, so it is not a reproducibility test. To recompute
   from scratch, copy the config under a new name (for example with a `_repro` suffix), changing
