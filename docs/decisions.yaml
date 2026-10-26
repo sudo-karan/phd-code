@@ -10095,3 +10095,90 @@ decisions:
   source: >-
     Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 39, Claude Code's recommendation (b) now, and (a) if the
     line is misread, by the brief's rule 'Every other question: your recommendation'
+- id: spec-live-check-of-two-runs-from-scratch-declared-pass-rules
+  title: >-
+    The live check of round 14: two from-scratch runs of the Angul 3 ha check config, judged by pass rules declared
+    in odisha_script/r14_live_check.py before the batch
+  decision: >-
+    odisha_script/r14_live_check.py (new; a script that reads two runs' records, not a pipeline module) judges the
+    batch of odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a and _check_b from their records, as
+    scripts/copy_run_results.py (export mode) copies them into docs/reproducibility/r14_runs/live_check/, by rules
+    its docstring declares before the batch runs. Two values agree when |a - b| <= 1e-9 x max(|a|, |b|) or |a - b|
+    <= 1e-12 (an absolute floor for values at or near 0). 0, both runs from scratch: in the first manifest of each
+    of the features, segmentation, k_elbow and clustering passes, every cacheable output of the stages that pass
+    adds is "miss-exported" (a hit is accepted only on an asset a failed pass of the same run logged exporting),
+    and each stage has one cache key in all the run's manifests. 1, the same stands and types: the stands_merged
+    layers paired by (stand_lbl, stand_id), every polygon paired, each pair's geometry, n_pixels, area_ha and
+    cluster_id equal, the same number of polygons and of stand labels, equal SHA-256 of a canonical form of the
+    labels and geometries, and the same type for every unit label in clustering_fit_rows.csv (stands_snic and
+    stands_dissolved reported, not judged). 2, the feature values and the elbows: the k elbow's and the clustering
+    stage's tables of units label by label and every feature mean of the paired stands agree; read-only on Earth
+    Engine, the two configs' cached assets (masking, the S2 composite, the four feature images, snic_clusters and
+    snic_means, cluster_labels and feature_stack) at fmu's paths, checked against the keys the runs recorded, pixel
+    by pixel on their own grid (reduceRegion unweighted, maxPixels 1e10, tileScale 4): no mask differs, no label
+    differs, no value outside the agreement; k_elbow.csv and k_elbow_types.csv byte-identical. 3: in each run, not
+    every stands_merged polygon is at exactly 10,000 m from water, and there is more than one value. 4: every s1
+    count of features_radar's input images in each run's manifests is 189, the first features pass's among them.
+    5: of 5,000 pixels of check_a's cached static_features drawn with a fixed seed (Image.sample of 10,000, then a
+    random 5,000), those with slope above 0 have a slope and an aspect that is not a whole number in at least 99 %
+    of cases each. 6: every manifest of both runs has the four round 14 settings on. The check passes only if 0 to
+    6 all pass. Its results file (r14_live_check.json) holds the numbers and a pass for each criterion, no times
+    or dates, and is not written over without --overwrite; r14_live_check_run.json beside it holds the command,
+    when it ran, the git block (read at the start of main()) and the SHA-256 of every file read. Read-only on
+    Earth Engine after scripts/ee_read_only.forbid_writes(); --offline runs all but 2's Earth Engine part and 5,
+    marked "not run".
+  alternatives_considered:
+  - >-
+    The stand layers by the SHA-256 of their files alone (the brief: "by SHA-256 or polygon by polygon"): not
+    chosen alone; a file's bytes depend on the order of its polygons and the text of its numbers, so the check
+    pairs the polygons and also hashes a canonical form of them, and both must hold
+  - >-
+    The 1e-9 relative rule alone: not chosen; at or near 0 it fails any difference at all, so an absolute floor of
+    1e-12 is added and declared
+  - >-
+    From scratch by each asset's creation time on Earth Engine against the batch's start: not chosen; the manifests
+    already say, offline, whether each pass found each output (hit) or computed and exported it (miss-exported)
+  rationale: >-
+    The round 14 brief (Jaskaran, 26 Oct 2026), Task 4: "Run _r14_check_a and _r14_check_b in full, both from
+    scratch, in one wrapper batch, at the config's current k, with the k_elbow pass included. It passes only if all
+    of these hold: 1. The two runs give the same stands (the same count, and the same stand layer by SHA-256 or
+    polygon by polygon) and the same type for every stand. 2. Their feature values agree to within 1e-9 relative,
+    and their elbows are identical. 3. distance_to_water is no longer exactly 10,000 m in every Angul stand, and it
+    varies. 4. The manifests record 189 Sentinel-1 scenes over the Angul boxes. 5. Slope and aspect have decimals.
+    6. The manifests record the four new settings on. Write the results to a results file (no times; times go to
+    the logs)." CLAUDE.md: analyses are declared before they are run, so the rules are fixed in the script's
+    docstring before the batch. 189 scenes, not the 188 of the Angul _r9 manifests: round 13's A4 made the date
+    windows include their end date, and its read-only call 4 found one descending Sentinel-1 scene over the Angul
+    boxes dated 31 Dec 2022 that the exclusive end had left out (docs/handoff/2026-10-20-round13.md, read-only
+    calls). The tests (tests/test_r14_live_check.py) make the records of two identical runs
+    and pass every criterion on them, then fail each criterion, and only it, when one of its inputs is changed in
+    one run (a polygon's geometry, a cluster_id, a band value by 1e-6 relative, a byte of k_elbow.csv, every
+    distance_to_water at 10,000, an s1 count of 188, a setting off, a hit in a first pass), test the agreement
+    rule at its edges, and run the Earth Engine parts with a stand-in reader; the script's own reader is checked
+    to forbid writes before it reads. On the records of the Angul _r9 run copied under the two check names, the
+    offline criteria read the real formats (criteria 3, 4 and 6 fail there, as the _r9 run predates the fixes).
+    The script has not been run on Earth Engine (no Earth Engine call was made for it). No paper was searched for
+    this decision.
+  evidence:
+  - path: odisha_script/r14_live_check.py
+    what: The script; its docstring declares the pass rules
+  - path: tests/test_r14_live_check.py
+    what: >-
+      Identical records pass; each criterion fails alone on its perturbed input; the agreement rule at its edges;
+      the Earth Engine parts with a stand-in reader; the reader forbids writes before it reads
+  - path: docs/running.md
+    what: The live check
+  - path: scripts/copy_run_results.py
+    what: The records the check reads, and the results-only check it reuses
+  - path: scripts/compare_cached_assets.py
+    what: The reductions 2 iii follows
+  - path: scripts/ee_read_only.py
+    what: forbid_writes, called before the first read
+  - path: docs/handoff/2026-10-26-round14.md
+    what: Task 4, the live check; "Keep every run's data"
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Task 2, A4 (the date windows include their end date); read-only call 4 (the scene it adds over Angul)
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 26 Oct 2026 (round 14 brief), Task 4

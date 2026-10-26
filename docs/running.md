@@ -514,6 +514,31 @@ changes `_repro`.
 Results of the re-runs made so far are in
 [reproducibility.md](reproducibility.md) and `docs/reproducibility/`.
 
+**The live check** (round 14, Task 4). Once the batch of
+`odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a` and `_check_b` has ended (one wrapper
+batch, from a new run tree, the k_elbow pass included) and each run has been copied with
+`scripts/copy_run_results.py <run tree> <run> --dest docs/reproducibility/r14_runs/live_check
+--off-git <folder>`, run from the repo root:
+
+```bash
+python odisha_script/r14_live_check.py [--records docs/reproducibility/r14_runs/live_check] \
+    [--config-a configs/<check_a>.yaml] [--config-b configs/<check_b>.yaml] [--offline] [--overwrite]
+```
+
+It applies the pass rules its docstring declares, criteria 0 to 6 (both runs from scratch; the same
+stands and the same type for every stand; feature values within 1e-9 relative, with an absolute
+floor of 1e-12, and identical elbows; `distance_to_water` no longer 10,000 m everywhere; 189
+Sentinel-1 scenes; slope and aspect with decimals; the four round 14 settings on), and writes into
+the records folder `r14_live_check.json`, results only, and `r14_live_check_run.json`, with the
+command, when it ran, the git block and the SHA-256 of every file it read. It refuses to write over
+either without `--overwrite`. Two parts read the cached assets on Earth Engine, read-only after
+`ee_read_only.forbid_writes()`: 2 iii compares the two configs' assets pixel by pixel on their own
+grid, and 5 samples check_a's slope and aspect; `--offline` runs the rest and marks those two
+"not run". Exit 0 when the check passes, 1 when it fails, 2 when nothing failed but a part was not
+run, 3 when it refused (nothing written), 4 when Earth Engine could not be read (nothing written).
+`pytest -m live_gee tests/test_r14_live_check.py` tries its Earth Engine reader on the Angul `_r9`
+run's own assets (read-only, a few small requests; no task).
+
 ### Superpixels depend on whether the features were cached
 
 In the legacy cache layout a cached feature asset sits on a geographic grid,
