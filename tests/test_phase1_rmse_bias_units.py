@@ -11,7 +11,7 @@ brief's rule "Every other question: your recommendation": the rule round 10 appl
   spreads in dB, against Lorey's height in metres. The eight height products keep theirs.
 
 Nothing else may change: every other line is the one the committed file holds as first written.
-The script's output is committed beside the old file under a `_r14` name, and is checked here.
+Each script's output is committed beside its old file under a `_r14` name, and is checked here.
 Each script runs in a temporary folder on its committed input; no Earth Engine call.
 """
 
@@ -124,3 +124,8 @@ def test_closeout_changes_no_other_line_of_section_ab(closeout):
     assert closeout[:len(first)] == expected
     # section C follows at once, as before (it calls no fit that prints a bias)
     assert closeout[len(first)] == "" and closeout[len(first) + 1] == "=" * 96
+
+
+def test_closeout_writes_the_committed_r14_file(closeout):
+    # odisha_phase1_closeout_r14.txt is this script's output, saved under its round 14 name
+    assert closeout == (SCRIPTS / "odisha_phase1_closeout_r14.txt").read_text().split("\n")

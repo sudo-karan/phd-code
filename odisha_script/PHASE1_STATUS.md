@@ -419,7 +419,7 @@ python odisha_phase1_6_closeout.py         # fully offline; reads the v2 CSV as 
 | 3 | **yes** | `odisha_plots_sampled.csv` | `odisha_plots_sampled_v2.csv` |
 | 4 | no | `odisha_plots_sampled_v2.csv` | `odisha_phase1_tests456_results.txt`, `odisha_phase1_tests456_figs.png` |
 | 5 | **yes** | `odisha_plots_sampled_v2.csv` | the same file, with four `meta_*` columns added |
-| 6 | no | `odisha_plots_sampled_v2.csv`, after step 5 | `odisha_phase1_closeout.txt` |
+| 6 | no | `odisha_plots_sampled_v2.csv`, after step 5 | `odisha_phase1_closeout.txt` (committed since round 14 as `odisha_phase1_closeout_r14.txt`; see below) |
 
 Steps 1, 3 and 5 overwrite committed files that later steps read (`odisha_plots_sampled.csv`
 and `odisha_plots_sampled_v2.csv`). To check them, run in a copy of the folder and compare; do
@@ -433,13 +433,16 @@ advance:
 - Step 3 starts again from `odisha_plots_sampled.csv`, so the four `meta_*` columns of step 5
   are missing until step 5 has run again.
 
-Step 2's committed `odisha_phase1_results.txt` is kept as first written, with a dated note at
-its end. Since round 14 (26 Oct 2026; round 13 question 18 (a), review C21) the script prints
-RMSE and bias only where both sides are heights in metres (Test 1), as step 12 has since round 10,
-and what it writes now is committed beside the old file as `odisha_phase1_results_r14.txt`; it
-differs only in the eight fit lines of Tests 2 and 3, each without its RMSE and bias
-(`odisha_phase1_results_r14_vs_before.md`). The script still writes the old name, so run it in a
-copy of the folder, as for steps 1, 3 and 5, and compare with the `_r14` file.
+Steps 2 and 6 keep their committed text files as first written, with their dated notes.
+Since round 14 (26 Oct 2026; round 13 question 18 (a), review C21) both print RMSE and bias only
+where both sides are heights in metres, as step 12 has since round 10, and what they write now is
+committed beside the old files. `odisha_phase1_results_r14.txt` differs from step 2's file only
+in the eight fit lines of Tests 2 and 3, each without its RMSE and bias
+(`odisha_phase1_results_r14_vs_before.md`). `odisha_phase1_closeout_r14.txt` differs from the
+close-out's file in the two radar lines of section A/B, each without its bias, and also in the
+four site-level lines of round 13's C22 fix and in the file's two earlier notes
+(`odisha_phase1_closeout_r14_vs_before.md`). The scripts still write the old names, so run them
+in a copy of the folder, as for steps 1, 3 and 5, and compare with the `_r14` files.
 
 What each of these files gave on a re-run is in `docs/reproducibility.md`, "Phase 1".
 

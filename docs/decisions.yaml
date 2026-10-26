@@ -8806,7 +8806,12 @@ decisions:
     Oct 2026) at its end; the script's output, made in a scratch copy of the folder, is committed beside it as
     odisha_phase1_results_r14.txt and differs from it only in the eight fit lines of Tests 2 and 3, each without its
     RMSE and bias (odisha_script/odisha_phase1_results_r14_vs_before.md). Its figure comes out the same bytes and keeps
-    its name.
+    its name. The close-out's committed odisha_phase1_closeout.txt is kept the same way, with a third dated note at its
+    end, and its output is committed as odisha_phase1_closeout_r14.txt. That file differs from the committed one in the
+    two radar lines of section A/B, each without its bias, and also in the four site-level lines that round 13's C22 fix
+    changed (the values the committed file's note of 20 Oct 2026 gives) and in the file's two earlier notes, which no
+    script writes; the script as it was before this change writes the same file but for the two radar lines
+    (odisha_script/odisha_phase1_closeout_r14_vs_before.md).
   alternatives_considered:
   - >-
     (b) Leave the scripts alone and add a dated note to each committed file saying which RMSE and bias lines compare
@@ -8839,11 +8844,23 @@ decisions:
     what: The file from before the change, as first written, with the dated note of 26 Oct 2026 at its end
   - path: odisha_script/odisha_phase1_6_closeout.py
     what: both(..., heights_m=...) and IN_METRES, the eight height products
+  - path: odisha_script/odisha_phase1_closeout_r14.txt
+    what: >-
+      The close-out's output since the change, regenerated in a scratch copy and saved under the _r14 name; the first
+      committed output of the script with round 13's C22 fix too
+  - path: odisha_script/odisha_phase1_closeout_r14_vs_before.md
+    what: >-
+      Every line that differs from the file from before the change, and the change each comes from (this one, C22 or
+      a dated note), with the hashes of what was run
+  - path: odisha_script/odisha_phase1_closeout.txt
+    what: >-
+      The file from before the change, as first written, with its notes of 19 and 20 Oct 2026 and the dated note of 26
+      Oct 2026 at its end
   - path: tests/test_phase1_rmse_bias_units.py
     what: >-
       Each script on its committed input: RMSE and bias only between heights in metres, and every other line as the
-      committed file holds it; fails on the code before the change. Since the regeneration it also checks that step 2
-      writes odisha_phase1_results_r14.txt byte for byte
+      committed file holds it; fails on the code before the change. Since the regenerations it also checks that each
+      script writes its _r14 file byte for byte
   - path: odisha_script/odisha_phase1_12_radar_descending.py
     what: fit and line, the rule as round 10 applied it to step 12
   - path: odisha_script/odisha_phase1_4_analyse_v2.py

@@ -57,3 +57,12 @@ Read: compare each site-level R2 against the plot-level R2 above. A jump means a
   unrounded: eth_chm_3x3 r=+0.3157 R2=0.0997, glad_chm r=+0.5564 R2=0.3096, vh_iqr r=+0.3135
   R2=0.0983, vv_iqr r=+0.2709 R2=0.0734. The other five site-level lines, every Spearman value
   and the table are unchanged. Step 7 (odisha_phase1_7_results.txt, A6) gives 0.100 and 0.310.
+
+  NOTE ADDED 26 Oct 2026 (round 14: round 13 question 18 (a), review C21; the numbers above are
+  as first written): the bias of vh_iqr and vv_iqr in section A/B (lines 13 and 14) subtracts
+  Lorey's height in metres from a radar spread in dB, and means nothing. The script now prints a
+  bias only where both sides are heights in metres, the rule round 10 applied to step 12. Its
+  output is odisha_phase1_closeout_r14.txt. It differs from the 59 lines above in those two lines,
+  each without its bias; in the four site-level lines whose new values the note of 20 Oct 2026
+  gives (review C22); and in the two notes, which the script does not write. See
+  odisha_phase1_closeout_r14_vs_before.md.
