@@ -113,6 +113,8 @@ _OMITTED_AT_DEFAULT: dict[tuple[str, str], Any] = {
     ("clustering", "fit_outside_earth_engine"): False,
     # Round 14, Task 2.2 (spec-clustering-log-rule-right-skewed-bands).
     ("clustering", "log_rule"): "abs_skew",
+    # Round 14, Task 2.3 (spec-optical-mean-over-the-window).
+    ("features_optical", "mean_over_window"): False,
 }
 
 
@@ -420,7 +422,10 @@ _EVERY_STEP: tuple[str, ...] = ("roi", "export.analysis_scale_m")
 # A setting missing here would leave a step's key unchanged when it changes:
 # the stale-cache bug the fingerprint was made to prevent, for one step.
 # tests/test_cache_layout.py reads each stage's module and fails on any config
-# setting it reads that is not listed for it (or for the steps upstream of it).
+# setting it reads that is not listed for it, or for a step upstream of it in every
+# config (since round 14: data_load for features_optical, whose window mean reads
+# dates.phenology, the window data_load filters by; until then the comment said so of
+# every upstream step, and the test credited none).
 # The k_elbow step reads the clustering settings but `k`: what the elbow is
 # computed for does not depend on the k a config fits, so a config's elbow is
 # computed once and found again whatever its k (a test checks this list holds
@@ -489,6 +494,8 @@ _STEP_OMITTED_AT_DEFAULT: dict[tuple[str, str], Any] = {
     ("clustering", "fit_outside_earth_engine"): False,
     # Round 14, Task 2.2 (spec-clustering-log-rule-right-skewed-bands).
     ("clustering", "log_rule"): "abs_skew",
+    # Round 14, Task 2.3 (spec-optical-mean-over-the-window).
+    ("features_optical", "mean_over_window"): False,
 }
 
 # A step's revision, raised when what the step computes changes for configs whose

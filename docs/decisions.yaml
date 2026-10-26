@@ -835,6 +835,7 @@ decisions:
     by name, derives amplitude and phase for each harmonic pair, squares the RMS residual into residual_variance
     (a diagnostic band, left out of clustering), and returns one multi-band image whose band names carry
     the index name (ndvi_mean or nirv_mean).
+    Round 14 (26 Oct 2026): with features_optical.mean_over_window on (off by default), <index>_mean is the fitted curve's mean over the dates window instead of the intercept, computed analytically and the same whatever time_reference is (spec-optical-mean-over-the-window).
   alternatives_considered: []
   alternatives_note: not recorded in the source
   rationale: >-
@@ -3588,6 +3589,7 @@ decisions:
     features_optical.time_reference is the date used as t = 0 in the harmonic regression. It is a config
     field with the default 2017-01-01. It is not derived from the phenology date window. Before v1.1.0
     it was a constant in the module.
+    Round 14 (26 Oct 2026): with features_optical.mean_over_window on (off by default), <index>_mean is the fitted curve's mean over the dates window instead of the intercept, computed analytically and the same whatever time_reference is (spec-optical-mean-over-the-window).
   alternatives_considered:
   - 'A module-level constant (MODULES.md row 9: ''was a module-level constant'')'
   - 'Deriving it from dates.phenology.start (config.py: ''do NOT auto-derive this'')'
@@ -8022,3 +8024,67 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 26 Oct 2026 (round 14 brief), Task 2, item 2, and round 13 question 8
+- id: spec-optical-mean-over-the-window
+  title: >-
+    With features_optical.mean_over_window on, <index>_mean is the fitted curve's mean over the dates window, computed
+    analytically
+  decision: >-
+    A setting features_optical.mean_over_window, false by default (src/fmu/config.py, a Locked module). With it on, the
+    optical stage (src/fmu/stages/features_optical.py, a Locked module) makes <index>_mean the mean of the fitted curve
+    a + b cos(2 pi t) + c sin(2 pi t) [+ d cos(4 pi t) + e sin(4 pi t)] [+ f t] over the dates window, the window data_load
+    filters the phenology collection by (dates.phenology, its first day to the day after its last, review A4), in place
+    of the intercept a, the trend line's value on time_reference. It is computed analytically, as a weighted sum of the
+    regression's coefficients (window_mean_weights: the integral of the curve over the window divided by its length),
+    so it is the same whatever time_reference is; for a window of a whole number of years it is a + f x the window's
+    middle. The window's ends are in the regression's own time, Earth Engine's year of 365.2425 days (read on Earth
+    Engine on 26 Oct 2026, read-only), so the 2017-2022 window is 5.99875 years and its harmonic weights are about
+    -2.1e-4 (b, d) and under 2e-6 (c, e), not 0: the exact mean is taken, not a + f x the middle. Nothing else changes:
+    the fit, the amplitudes, the phases, the trend, the residual variance and the observation count are as before. The
+    stage metadata records the setting on every run, and the window and the weights when on. The stage reads
+    dates.phenology, which data_load's key hashes and data_load is upstream of features_optical in every config, so the
+    key covers it; tests/test_cache_layout.py credits a step always upstream (until round 14 the caching comment claimed
+    that credit for every upstream step and the test gave none). False is left out of the fingerprint and the per-step
+    keys, so no config that leaves it off moves; true moves the features_optical key and those after it, and the
+    fingerprint. Off, the stage makes the calls it made before (tests/test_features_optical_off_golden.py, recorded from
+    the stage at 284b73d).
+  alternatives_considered:
+  - >-
+    Set time_reference to the window's middle in the R3 configs (round 13 question 31, option (b)): not chosen; Jaskaran
+    answered (c)
+  - >-
+    a + f x the window's middle, as the brief gives it for a whole number of years: not taken as the formula, since
+    the 2017-2022 window is not a whole number of the regression's years; the exact mean equals it whenever the window
+    is, and differs from it here by at most about 2e-4 x the annual amplitude
+  - >-
+    Compute the window's ends on Earth Engine with ee.Date.difference: not chosen; the same year, read on Earth Engine,
+    computed here, keeps the weights plain numbers that the record holds and an offline test checks
+  rationale: >-
+    The round 14 brief (Jaskaran, 26 Oct 2026), Task 2, item 3: "ndvi_mean as the window mean (C9, Q31 (c)). The band is
+    the fitted curve's mean over the dates window, whatever time_reference is. Compute it analytically; for a whole
+    number of years it is a + f x the window's middle. This is in features_optical, a Locked module." Jaskaran's answer
+    (c) to round 13's question 31 (docs/handoff/2026-10-20-round13.md, Questions, item 31). The new tests
+    (tests/test_optical_mean_over_window.py) fail on the code before the change (no such setting; no window_mean_weights)
+    and pass after it: the weights against a numerical integral of the curve (single and dual, with and without the
+    trend, three windows), a whole number of years giving a + f x the middle, the mean the same for three reference
+    dates, and the stage's calls. No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/features_optical.py
+    what: DAYS_PER_YEAR, years_since, window_years, window_mean_weights; _derive_metrics with mean_weights; run()
+  - path: src/fmu/config.py
+    what: FeaturesOpticalParams.mean_over_window
+  - path: src/fmu/utils/caching.py
+    what: _OMITTED_AT_DEFAULT, _STEP_OMITTED_AT_DEFAULT; the comment on the always-upstream credit
+  - path: tests/test_optical_mean_over_window.py
+    what: The weights, the year, the reference invariance, the stage's calls, the keys; fails on the old code
+  - path: tests/test_features_optical_off_golden.py
+    what: The calls of the stage with the setting off, recorded from the stage at 284b73d
+  - path: tests/test_cache_layout.py
+    what: The always-upstream credit, checked for every config
+  - path: docs/configs.md
+    what: The features_optical block, mean_over_window
+  - path: docs/handoff/2026-10-20-round13.md
+    what: Questions, item 31
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 26 Oct 2026 (round 14 brief), Task 2, item 3, and his answer (c) to round 13 question 31

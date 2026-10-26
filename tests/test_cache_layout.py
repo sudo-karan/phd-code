@@ -62,6 +62,7 @@ from fmu.utils.caching import (
 
 REPO = Path(__file__).resolve().parent.parent
 STAGES_DIR = REPO / "src" / "fmu" / "stages"
+CONFIGS_DIR = REPO / "configs"
 CONFIG_DIR = REPO / "configs"
 KENDUJHAR = CONFIG_DIR / "odisha_v120_3ha_squares_kendujhar_keptland_s1desc.yaml"
 ALL_CONFIGS = sorted(CONFIG_DIR.glob("*.yaml"))
@@ -264,10 +265,32 @@ def _covered(path: str, declared: tuple[str, ...]) -> bool:
     return any(path == d or path.startswith(d + ".") for d in declared)
 
 
+# Steps upstream of a step in every config: a setting one of them hashes moves this step's
+# key through theirs (step_upstream), so the stage may read it. Round 14: features_optical
+# reads dates.phenology, the window data_load filters the collection by, for its window mean.
+_ALWAYS_UPSTREAM = {"features_optical": ("data_load",), "features_radar": ("data_load",)}
+
+
+def test_the_always_upstream_steps_are_upstream_in_every_config():
+    from fmu.config import load_config
+    from fmu.utils.caching import step_upstream
+
+    paths = sorted(CONFIGS_DIR.glob("*.yaml")) + sorted((CONFIGS_DIR / "experiments").glob("*.yaml"))
+    assert paths
+    for path in paths:
+        cfg = load_config(path)
+        for step, ups in _ALWAYS_UPSTREAM.items():
+            assert set(ups) <= set(step_upstream(cfg, step)), (path.name, step)
+
+
 @pytest.mark.parametrize("stage", sorted(STEP_SETTINGS))
 def test_every_setting_a_stage_reads_is_in_its_key(stage: str):
     module = STAGES_DIR / f"{stage}.py"
-    declared = (*_EVERY_STEP, *STEP_SETTINGS[stage])
+    declared = (
+        *_EVERY_STEP,
+        *STEP_SETTINGS[stage],
+        *(s for up in _ALWAYS_UPSTREAM.get(stage, ()) for s in STEP_SETTINGS[up]),
+    )
     reads = config_reads(module)
     assert reads, f"no config read found in {module.name}: the scan is broken"
     missing = sorted(p for p in reads if not _covered(p, declared))

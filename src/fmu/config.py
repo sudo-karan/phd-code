@@ -134,6 +134,13 @@ class FeaturesOpticalParams(BaseModel):
     # reason and accept that phase values become non-comparable to
     # configs using the default anchor.
     time_reference: date = Field(default_factory=lambda: date(2017, 1, 1))
+    # Round 14 (Task 2.3; review C9, round 13's question 31 (c)): `<index>_mean` as the fitted
+    # curve's mean over the dates window (dates.phenology, both days included), computed
+    # analytically, whatever time_reference is; for a whole number of years a + trend x the
+    # window's middle. False (the default, every run before round 14): the intercept, the
+    # trend line's value on time_reference. Left out of the fingerprint and the per-step keys
+    # while false (docs/decisions.yaml, spec-optical-mean-over-the-window).
+    mean_over_window: bool = False
 
 
 class FeaturesRadarParams(BaseModel):

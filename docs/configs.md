@@ -34,7 +34,7 @@ datasets: { phenology_collection, radar_collection, ... }
 cloud_mask: { max_cloud_pct, drop_scl_classes }
 data_load: { s1_orbit, s1_polarizations, s1_instrument_mode, s2_composite_reducer }
 masking: { indiasat_habitat_classes, indiasat_class_band, keep_worldcover_classes, jrc_water_occurrence_threshold }
-features_optical: { index, harmonic_mode, include_trend, time_reference }
+features_optical: { index, harmonic_mode, include_trend, time_reference, mean_over_window }
 features_radar: { percentiles, include_iqr, include_cross_pol_contrast }
 features_structure: { include_neighborhood_stats, neighborhood_kernel_size }
 features_static: { include_climate, max_water_distance_pixels, cap_distance_to_water }
@@ -336,6 +336,22 @@ for the full inventory.
   date **can** change the stand types (review C9 and B13; until round 13
   this entry said it could not). Keep identical across configs you intend
   to compare — the metrics stage relies on this for phases.
+- `mean_over_window` (round 14, Task 2.3; review C9, round 13's question 31,
+  answered (c)): `false` (default, every run before round 14) leaves
+  `<index>_mean` the intercept, the trend line's value on `time_reference`.
+  `true` makes it the fitted curve's mean over the dates window
+  (`dates.phenology`, its start to the day after its end, as `data_load`
+  filters the collection), computed analytically as a weighted sum of the
+  regression's coefficients, the same whatever `time_reference` is: for a
+  window of a whole number of years it is a + trend × the window's middle. In
+  the regression's own unit of time, Earth Engine's average year of 365.2425
+  days, the 2017-2022 window is 5.9988 years, so its harmonic terms are not
+  quite zero (at most about 2e-4 × the amplitude). Only the mean band changes:
+  amplitude, phase, trend and the residual variance are the fit's as before.
+  The stage's metadata records the window and the weights. Register entry
+  `spec-optical-mean-over-the-window`. Left out of the fingerprint and the
+  per-step keys while `false`; `true` moves the features_optical key and those
+  after it.
 
 ### `features_radar`
 
