@@ -482,6 +482,27 @@ and the elbow's files in place of the layers and the run record. Copy a batch's 
 run tree could be deleted, each batch into a folder of its own (the first and second halves of a
 run have passes of the same kinds).
 
+**The elbow report of R3's first half** (round 14, Task 6). Once the nineteen `_r14` runs of the
+first half are copied (`--through k_elbow`, `--dest docs/reproducibility/r14_runs/first_half`), run
+from the repo root, offline (no Earth Engine; it reads no plot and computes no field score):
+
+```bash
+python odisha_script/r14_elbow_report.py [--records docs/reproducibility/r14_runs/first_half] \
+    [--out-dir odisha_script/keptland_scores] [--stem r14_elbow] [--overwrite] [--no-run-check] [--allow-missing]
+```
+
+For each run it reads `<run>_k_elbow.csv`, `<run>_k_elbow_stand_table.csv` and
+`<run>_k_elbow_preprocessing.json` (a file over 5 MB from where `<run>_files_off_git.json` says, once
+its SHA-256 matches) and checks them against each other. Beside each run's own elbow it makes the
+pooled elbow of the four districts for each arm and stand size: their tables of stands put together,
+preprocessed together by the runs' rule, and swept by `fmu.stages.k_elbow.fit_space_sweep` with the
+runs' settings. By default it also makes each run's elbow again from its table and stops if a number
+differs (`--no-run-check` skips this). It writes `r14_elbow.csv`, one figure per area in
+`r14_elbow/`, `r14_elbow_report.md` and the run record `r14_elbow_run.json`, and refuses to write
+over them without `--overwrite`. A run with no records stops it; `--allow-missing` writes the report
+without that run and says so. Each sweep takes 15 to 40 s on the Mac whatever the table's size (the
+300 adjusted Rand indices at each k), so a full run, 23 sweeps, takes ten minutes or more.
+
 Then compare. Two general tools, and an Odisha wrapper:
 
 ```bash

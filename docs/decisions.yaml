@@ -10182,3 +10182,83 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 26 Oct 2026 (round 14 brief), Task 4
+- id: spec-elbow-report-of-the-r3-first-half
+  title: >-
+    The elbow report of R3's first half is written offline from the runs' k elbow records, with the pooled elbow of
+    the four districts made by the runs' own code
+  decision: >-
+    odisha_script/r14_elbow_report.py (new; an Odisha analysis script, offline, no Earth Engine) writes round 14's
+    Task 6 elbow report from the first half's records (by default docs/reproducibility/r14_runs/first_half/, written by
+    scripts/copy_run_results.py --through k_elbow): for each of the nineteen R3 runs, <run>_k_elbow.csv,
+    <run>_k_elbow_stand_table.csv and <run>_k_elbow_preprocessing.json, a file over 5 MB read from where its
+    <run>_files_off_git.json says once its SHA-256 matches (a mismatch stops the script). The three files are checked
+    against each other: k from 2 to at most 12, one knee flag that is fmu.stages.k_elbow.knee of the sums of squares,
+    the table's bands the record's candidate bands, its rows and rows in the fit the record's counts. The areas are
+    each Odisha district at 3 ha and at 10 ha, Sanjay Van (10 ha stands) and the 10 km tile in Angul (3 ha stands;
+    one arm, hand-crafted, as R3 has no AlphaEarth run of the tile), each with both arms. The pooled elbow of each arm
+    and stand size puts the four districts' tables of stands together (each row keyed by its district and stand
+    label, the districts in order and each in its label order, each row keeping its in_fit; the script stops unless
+    the four have the same label column and candidate bands in the same order, and the same log_rule,
+    skewness_threshold and cyclic_decomposition_log), preprocesses them together with
+    fmu.utils.stand_table.preprocess, and sweeps the rows in the fit with fmu.stages.k_elbow.fit_space_sweep(rows,
+    every_row, k_min=2, k_max=12, seed=42, n_starts=25), the knee by fmu.stages.k_elbow.knee. By default each run's
+    elbow is also made again from its table by the same code, and the script stops if the preprocessing differs from
+    the run's record or a number from the run's own elbow (--no-run-check skips this). It writes, and refuses to write
+    over without --overwrite: r14_elbow.csv (area, arm, stand_size, k, wcss, ari_median, ari_min, is_knee,
+    n_rows_fitted; the pools as the areas pooled_3ha and pooled_10ha); one PNG per area in r14_elbow/ (each arm's sum
+    of squares divided by its own value at k = 2, as the two arms' sums are in different spaces, on one axis from 0,
+    its knee ringed and labelled; the starts' median and lowest pairwise ARI from 0 to 1; Okabe-Ito blue #0072B2 for
+    the hand-crafted arm and vermillion #D55E00 for AlphaEarth; 1200 x 960 pixels, the Agg backend, no date or
+    software name); r14_elbow_report.md (what it is, how the numbers are made, the knees of every area and pool, and
+    per area its runs, its figure and its table of k against the sums of squares and the median and lowest ARI); the
+    three hold results only; and r14_elbow_run.json (the command, the date, the git block read at the start of main()
+    and again at the end, the environment and the package versions, and every input with its path, size and
+    SHA-256). It reads no plot, computes no field score and recommends no k. A run with no records stops the script
+    unless --allow-missing, which writes the report without it, says so, and leaves out a pool that needs it.
+  alternatives_considered:
+  - >-
+    Pool the saved fit rows (<run>_k_elbow_fit_rows.csv): not chosen; those rows are each run's own preprocessing,
+    scaled by that run's medians and IQRs, and the brief asks for the rows "pooled, then preprocessed together by the
+    same rules", which needs the tables of stands before the preprocessing
+  - >-
+    The two arms' sums of squares on two y axes: not chosen; two scales on one plot invite a comparison the numbers do
+    not support (the arms' sums are in different spaces); each is divided by its own value at k = 2, on one axis from
+    0, and the report's tables give the sums as they are
+  - >-
+    Take each run's elbow from its csv without making it again: kept as --no-run-check; by default the script makes
+    each again, so that the pooled elbows are shown to be made as the runs' are, number for number
+  - >-
+    Okabe-Ito orange (#E69F00) for the AlphaEarth arm, the brief's example: not chosen; it is 2.25:1 against the white
+    figure, below the 3:1 asked of a line, where vermillion (#D55E00) is above it and still far from the blue for
+    colour-blind readers (the dataviz palette validator, 26 Oct 2026)
+  rationale: >-
+    The round 14 brief (Jaskaran, 26 Oct 2026), Task 6: "Write three things, all committed and pushed to the round's
+    branch: odisha_script/keptland_scores/r14_elbow_report.md, the report; odisha_script/keptland_scores/r14_elbow/,
+    one PNG figure per area; odisha_script/keptland_scores/r14_elbow.csv, the numbers behind the figures, one row per
+    area, arm and k (within-cluster sum of squares, the starts' median and lowest pairwise ARI, and whether that k is
+    the knee). ... the pooled elbow of the four districts, for each arm and stand size (their rows pooled, then
+    preprocessed together by the same rules). Read no plot and compute no field score." The kept-land declaration's
+    change of 26 Oct 2026 fixes the knee rule (the k farthest from the chord between the first and last points,
+    fmu.stages.k_elbow.knee). One sweep with the runs' settings takes 15 s or more whatever the table's size (measured
+    26 Oct 2026: the 300 adjusted Rand indices at each k), so the tests run a stand-in sweep that records the script's
+    call and check that call, the pooled rows and that the csv holds what the sweep returns; a test marked slow runs a
+    pool and a run's check with the real sweep. The script has not been run on R3's records: none existed when it was
+    written. No paper was searched for this decision.
+  evidence:
+  - path: odisha_script/r14_elbow_report.py
+    what: The script; its docstring gives the inputs, the checks, the pools and what it writes
+  - path: tests/test_r14_elbow_report.py
+    what: >-
+      Made-up records of the nineteen runs: the csv's rows and knee flags, the pools' call and rows, an off-git file
+      and its SHA-256, the bands and rules that stop a pool, the check of each run, the refusals, the figures, the
+      report
+  - path: docs/running.md
+    what: The elbow report of R3's first half
+  - path: docs/handoff/2026-10-26-round14.md
+    what: Task 6
+  - path: odisha_script/PHASE_KEPTLAND_PREDECLARED.md
+    what: The change of 26 Oct 2026 (round 14), k
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 26 Oct 2026 (round 14 brief), Task 6
