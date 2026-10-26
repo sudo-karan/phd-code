@@ -515,7 +515,7 @@ def test_round_9s_two_runs_from_scratch_have_the_same_polygons_in_normal_form(mo
     pixel (docs/reproducibility/round9_cache_test/): as read, a few polygons list their holes or
     parts in another order; in normal form none differs, and the merged layers are the same stands.
     (Their dissolved layers' area_ha came from the geometry's area() then, and differ by up to
-    1e-8 relative; since round 13 it is the pixel count's.)"""
+    1.02e-8 relative; since round 13 it is the pixel count's.)"""
     a = json.loads((ROUND9 / f"{R9}_{layer}.geojson").read_text())
     b = json.loads((ROUND9 / f"{R9}_check_{layer}.geojson").read_text())
     got = mod.compare_layer(a, b, layer)
@@ -859,6 +859,10 @@ DIAGONAL = [[2.25, a] for a in (45.0, 135.0, 225.0, 315.0)]
     ([[1.5, 90.5]] * 850 + CARDINAL * 38, True),
     ([[1.5, 90.5]] * 300 + CARDINAL * 150 + DIAGONAL * 25, True),
     ([[1.5, 90.0]] * 100, False),                                 # every aspect set aside
+    # A value has decimals only when it is finite (the declared words, 27 Oct 2026).
+    ([[1.5, 90.5]] * 98 + [[1.5, float("inf")]] * 2, False),      # aspect: 98 of 100
+    ([[1.5, 90.5]] * 99 + [[1.5, float("nan")]], True),           # aspect: 99 of 100
+    ([[1.5, 90.5]] * 98 + [[float("inf"), 90.5]] * 2, False),     # slope: 98 of 100
     ([[0.0, 12.5]] * 10, False),                                  # no pixel with slope above 0
     ([], False),
 ])

@@ -42,7 +42,8 @@ whole number at a multiple of 45 degrees (below), about 15 % of Angul's pixels w
 if Earth Engine takes the gradient on the DEM's own grid and 68 % if on the 10 m grid (worked
 offline on SRTM's 1-arcsecond tile N20E084, the grid NASADEM reprocesses, over the Angul boxes).
 So criterion 5 now sets those aspects aside. An aspect rounded to whole degrees, as before round
-13's A5, still fails it. Criterion 5 also fails now, naming it, when check_a's static_features is
+13's A5, still fails it. A value counts as having decimals only when it is finite (an infinite one
+counted as having them). Criterion 5 also fails now, naming it, when check_a's static_features is
 not on Earth Engine, where it stopped the check (exit 4, nothing written). Nothing else changed.
 
 Numbers agree. Two values a and b agree when |a - b| <= 1e-9 x max(|a|, |b|) (the brief's 1e-9
@@ -143,12 +144,13 @@ manifest of a kind is its _1 if there is one, else the one with no number.
    path as in 2 iii): Image.sample of its slope and aspect over the ROI on the asset's own grid,
    10,000 pixels asked for, seed 42, a pixel with either band masked dropped; then 5,000 of them at
    random (randomColumn with seed 42, the 5,000 lowest), or as many as there are (their number is
-   reported). Among the pixels with slope above 0: the number whose slope is not a whole number;
-   and, of those whose aspect is not at a multiple of 45 degrees (0, 45, 90, ..., 315, which are
-   counted and set aside), the number whose aspect is not a whole number. A whole number is a
-   finite one with no fraction. Passes when there is a pixel with slope above 0 and one whose
-   aspect is not at a multiple of 45 degrees, and both shares are at least 0.99. The multiples of
-   45 are set aside because there a correct aspect is a whole number: NASADEM's elevations are
+   reported). Among the pixels with slope above 0: the number whose slope has decimals; and, of
+   those whose aspect is not at a multiple of 45 degrees (0, 45, 90, ..., 315, which are counted
+   and set aside), the number whose aspect has decimals. A value has decimals when it is a finite
+   number that is not a whole number (an infinite value, or one that is not a number, has none).
+   Passes when there is a pixel with slope above 0 and one whose aspect is not at a multiple of 45
+   degrees, and both shares are at least 0.99. The multiples of 45 are set aside because there a
+   correct aspect is a whole number: NASADEM's elevations are
    whole metres, so the two components of the 4-neighbour gradient are whole-metre differences
    over the grid's spacings; where one is exactly 0 the aspect is exactly 0, 90, 180 or 270, and
    where the two spacings are equal and the two differences equal in size, exactly 45, 135, 225 or
