@@ -462,12 +462,25 @@ the git block of the tool's checkout. It exits 0 when every task completed, 1 wh
 one failed, was cancelled or is unknown, or a file has no task id, and 2 when none
 of those but a task has not ended yet (read again later); with 3 (a record it
 cannot read, or one with no `drive_exports`) or 4 (Earth Engine could not be set
-up or read) it writes nothing. `scripts/copy_run_results.py` does not copy the
-two files out of the run tree, but the copies of the records it makes under
-`docs/reproducibility/` keep `drive_exports`, so the tool can also be run from the
+up or read) it writes nothing. Since round 14 `scripts/copy_run_results.py` copies
+the two files out of the run tree when they are there; the copies of the records it makes under
+`docs/reproducibility/` keep `drive_exports` too, so the tool can also be run from the
 repo root on those copies, to write the states beside them. Round 14 (round 13's
 question 40, answer (b); review C39). The batch itself is unchanged: it still
 does not wait on the Drive tasks.
+
+**Keeping every file a run writes** (round 14). `scripts/copy_run_results.py <run tree> <run>
+--dest <folder> --off-git <folder> [--through export|k_elbow]` copies a run's files out of its
+run tree into the repo, files over 5 MB to the off-git folder with their size and SHA-256: the
+three stand layers, `<run>_run.json` (without its run folder), `<run>_raster_at_plots.csv`, the
+stages' result files beside the layers (`<run>_clustering_*`, `<run>_k_elbow*`), the record of how
+the Drive exports ended, and, for every run folder of the run (a pass that failed included), its
+manifest (without timings), its `fmu.log` (as `<run>_log_<kind>.txt`, a log, which keeps its
+times) and its `input_images.json`. With `--through k_elbow`, for a batch that stopped after the
+elbow, it needs the features, segmentation and k_elbow passes and copies `<run>_k_elbow_run.json`
+and the elbow's files in place of the layers and the run record. Copy a batch's runs before its
+run tree could be deleted, each batch into a folder of its own (the first and second halves of a
+run have passes of the same kinds).
 
 Then compare. Two general tools, and an Odisha wrapper:
 

@@ -1,7 +1,19 @@
 """Copy a batch run's results and manifests into the repo, without timings; files over 5 MB stay off git.
 
     python scripts/copy_run_results.py <run tree> <run_id> [--dest docs/reproducibility/keptland_runs]
-        [--off-git outputs/<round>/results]
+        [--off-git outputs/<round>/results] [--through export|k_elbow]
+
+Round 14 (round 14 brief, "Keep every run's data"): it also copies, when the run tree has them,
+<run>_raster_at_plots.csv; the stages' result files beside the layers (<run>_clustering_*.csv and
+.json, <run>_k_elbow*.csv and .json, written by the runner from the run folders); the record of
+how the Drive exports ended (<run>_drive_exports.json and its _run.json, scripts/drive_export_states.py);
+and, for every run folder of the run, its fmu.log as <run>_log_<kind>[_n].txt (a log, which may
+hold times, so the results check leaves it out; a folder with no manifest, a pass that failed, as
+<run>_log_failed_<n>.txt) and its input_images.json as <run>_input_images_<kind>[_n].json. A pass
+that ends at the k elbow (round 14) is a kind of its own, k_elbow. With --through k_elbow, for a
+batch that stopped after the elbow, it needs the features, segmentation and k_elbow passes, and
+copies <run>_k_elbow_run.json and the k elbow's files in place of the layers and <run>_run.json,
+which no such batch writes.
 
 What it copies, from the run tree (a clean clone a batch ran from):
   - odisha_script/phase2_vectors/<run>_stands_merged.geojson, _stands_snic.geojson,
@@ -20,8 +32,9 @@ What it copies, from the run tree (a clean clone a batch ran from):
     last under <run>_manifest_<kind>.json, as before, and each earlier one as
     <run>_manifest_<kind>_<n>.json, n = 1, 2, ... in the order they ran: the pass that computed the
     cache, with its export tasks, is among them. Until round 13 only the last was copied (review C35).
-<run>_raster_at_plots.csv is not copied: it samples the stand rasters at the field plots, which joins
-plots to stands outside the declared field check.
+Until round 14 <run>_raster_at_plots.csv was not copied: it samples the stand rasters at the field
+plots, which joins plots to stands outside the declared field check. The round 14 brief asks for it
+kept with the run's other files; no declared score reads it.
 
 Files over 5 MB (docs/decisions.yaml, spec-files-over-5-mb-off-git) are written to --off-git, never
 into --dest; --dest gets <run>_files_off_git.json instead: for each such file its name, size in
@@ -50,6 +63,14 @@ SETTINGS = ("dates", "time_reference")  # config keys that are settings, not tim
 STAMP = re.compile(r"20\d\d-\d\d-\d\dT\d\d:|20\d{6}_\d{6}")
 LAYERS = ("stands_merged", "stands_snic", "stands_dissolved")
 PASSES = ("segmentation", "clustering", "export")
+# The passes a run needs, by how far its batch went (round 14): a full batch, or one that stopped
+# after the k elbow. A pass ending at k_elbow is a kind of its own either way.
+NEEDED = {"export": PASSES, "k_elbow": ("features", "segmentation", "k_elbow")}
+KINDS = ("features", "segmentation", "k_elbow", "clustering", "export")
+# The stages' result files beside the layers (StageResult.files, copied there by the runner).
+STAGE_FILES = ("clustering_stand_table.csv", "clustering_fit_rows.csv", "clustering_kmeans.json",
+               "k_elbow.csv", "k_elbow_stand_table.csv", "k_elbow_fit_rows.csv", "k_elbow_types.csv",
+               "k_elbow_preprocessing.json")
 # The first pass of a run since round 9 caches the feature stages and ends at one of them.
 FEATURE_PASS_ENDS = ("masking", "data_load", "features_optical", "features_radar",
                      "features_structure", "features_static", "features_embedding")
@@ -81,14 +102,16 @@ def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def passes(tree: Path, run_id: str) -> dict[str, list[tuple[str, dict]]]:
-    """Every manifest of each pass kind, by the stage it ends at, in the order the passes ran."""
-    out: dict[str, list[tuple[str, dict]]] = {}
+def run_folders(tree: Path, run_id: str) -> list[tuple[Path, str | None, dict | None]]:
+    """Every run folder of the run, in the order they ran: (folder, kind, manifest), kind None for
+    a folder with no manifest (a pass that failed) and the read-back tool's own folder left out."""
+    out: list[tuple[Path, str | None, dict | None]] = []
     for d in sorted((tree / "runs").glob(f"{run_id}_2*")):
         if not (d / "manifest.json").exists():
             # A pass that failed before writing its manifest (the first-pass memory limit on a
-            # cold cache, for one): its fmu.log stays on the Mac; a later pass of its kind counts.
-            print(f"  {d.name}: no manifest (a pass that failed), skipped")
+            # cold cache, for one): its fmu.log is kept (round 14); a later pass of its kind counts.
+            print(f"  {d.name}: no manifest (a pass that failed); its log is kept")
+            out.append((d, None, None))
             continue
         manifest = json.loads((d / "manifest.json").read_text())
         last = manifest["stages"][-1]["name"]
@@ -96,28 +119,83 @@ def passes(tree: Path, run_id: str) -> dict[str, list[tuple[str, dict]]]:
             continue  # the read-back tool's own run folder, not a pass
         if last in FEATURE_PASS_ENDS:
             last = "features"
-        elif last not in PASSES:
+        elif last not in KINDS:
             raise SystemExit(f"{d}: a pass ending at {last}")
-        out.setdefault(last, []).append((d.name, strip(manifest)))
-    missing = [k for k in PASSES if k not in out]
+        out.append((d, last, manifest))
+    return out
+
+
+def passes(tree: Path, run_id: str, through: str = "export") -> dict[str, list[tuple[str, dict]]]:
+    """Every manifest of each pass kind, by the stage it ends at, in the order the passes ran."""
+    out: dict[str, list[tuple[str, dict]]] = {}
+    for d, kind, manifest in run_folders(tree, run_id):
+        if kind is not None and manifest is not None:
+            out.setdefault(kind, []).append((d.name, strip(manifest)))
+    missing = [k for k in NEEDED[through] if k not in out]
     if missing:
         raise SystemExit(f"{run_id}: no {missing} pass in {tree / 'runs'}")
     return out
 
 
-def copy(tree: Path, run_id: str, dest: Path, off_git: Path) -> dict[str, Any]:
+def numbered(kinds: list[str | None]) -> list[str]:
+    """The suffix of each folder's files: its kind, and _n for every one of a kind but the last
+    (as the manifests are named); a folder that failed, failed_<n>."""
+    names: list[str] = []
+    failed = 0
+    for i, kind in enumerate(kinds):
+        if kind is None:
+            failed += 1
+            names.append(f"failed_{failed}")
+            continue
+        same = [j for j, k in enumerate(kinds) if k == kind]
+        names.append(kind if i == same[-1] else f"{kind}_{same.index(i) + 1}")
+    return names
+
+
+def copy(tree: Path, run_id: str, dest: Path, off_git: Path, through: str = "export") -> dict[str, Any]:
     """Write the run's files; return what went where."""
     vec = tree / "odisha_script" / "phase2_vectors"
     files: dict[str, bytes] = {}
-    for layer in LAYERS:
-        files[f"{run_id}_{layer}.geojson"] = (vec / f"{run_id}_{layer}.geojson").read_bytes()
-    run = strip(json.loads((vec / f"{run_id}_run.json").read_text()))
-    files[f"{run_id}_run.json"] = (json.dumps(run, indent=1, default=str) + "\n").encode()
-    read_back = vec / f"{run_id}_read_back.json"
-    if read_back.exists():
-        files[read_back.name] = (json.dumps(strip(json.loads(read_back.read_text())), indent=1,
-                                            default=str) + "\n").encode()
-    for kind, manifests in passes(tree, run_id).items():
+    # Logs, image lists and the record of a read of Drive: kept, but not results, so the
+    # check for times below leaves them out.
+    not_results: set[str] = set()
+    if through == "export":
+        for layer in LAYERS:
+            files[f"{run_id}_{layer}.geojson"] = (vec / f"{run_id}_{layer}.geojson").read_bytes()
+        run = strip(json.loads((vec / f"{run_id}_run.json").read_text()))
+        files[f"{run_id}_run.json"] = (json.dumps(run, indent=1, default=str) + "\n").encode()
+        read_back = vec / f"{run_id}_read_back.json"
+        if read_back.exists():
+            files[read_back.name] = (json.dumps(strip(json.loads(read_back.read_text())), indent=1,
+                                                default=str) + "\n").encode()
+        at_plots = vec / f"{run_id}_raster_at_plots.csv"
+        if at_plots.exists():
+            files[at_plots.name] = at_plots.read_bytes()
+        for name in (f"{run_id}_drive_exports.json", f"{run_id}_drive_exports_run.json"):
+            if (vec / name).exists():
+                files[name] = (vec / name).read_bytes()
+                if name.endswith("_run.json"):
+                    not_results.add(name)
+    else:
+        record = vec / f"{run_id}_k_elbow_run.json"
+        if not record.exists():
+            raise SystemExit(f"{run_id}: no {record.name} in {vec}")
+        files[record.name] = (json.dumps(strip(json.loads(record.read_text())), indent=1,
+                                         default=str) + "\n").encode()
+    for name in STAGE_FILES:
+        if (vec / f"{run_id}_{name}").exists():
+            files[f"{run_id}_{name}"] = (vec / f"{run_id}_{name}").read_bytes()
+    if through == "k_elbow" and f"{run_id}_k_elbow_fit_rows.csv" not in files:
+        raise SystemExit(f"{run_id}: no k elbow files in {vec}")
+    folders = run_folders(tree, run_id)
+    for (d, _, _), suffix in zip(folders, numbered([k for _, k, _ in folders]), strict=True):
+        if (d / "fmu.log").exists():
+            files[f"{run_id}_log_{suffix}.txt"] = (d / "fmu.log").read_bytes()
+            not_results.add(f"{run_id}_log_{suffix}.txt")
+        if (d / "input_images.json").exists():
+            files[f"{run_id}_input_images_{suffix}.json"] = (d / "input_images.json").read_bytes()
+            not_results.add(f"{run_id}_input_images_{suffix}.json")
+    for kind, manifests in passes(tree, run_id, through).items():
         # The last under the kind's own name, as before; the earlier ones numbered (review C35).
         *earlier, (_, last) = manifests
         files[f"{run_id}_manifest_{kind}.json"] = (json.dumps(last, indent=1, default=str)
@@ -128,12 +206,13 @@ def copy(tree: Path, run_id: str, dest: Path, off_git: Path) -> dict[str, Any]:
     dest.mkdir(parents=True, exist_ok=True)
     off: list[dict[str, Any]] = []
     for name, data in files.items():
-        if name.endswith(".json"):
-            left = time_keys(json.loads(data))
-            if left:
-                raise SystemExit(f"{name}: keys naming a time left: {left[:5]}")
-        if STAMP.search(data.decode(errors="replace")):
-            raise SystemExit(f"{name}: a value holding a date and time is left")
+        if name not in not_results:
+            if name.endswith(".json"):
+                left = time_keys(json.loads(data))
+                if left:
+                    raise SystemExit(f"{name}: keys naming a time left: {left[:5]}")
+            if STAMP.search(data.decode(errors="replace")):
+                raise SystemExit(f"{name}: a value holding a date and time is left")
         if len(data) > LIMIT:
             off_git.mkdir(parents=True, exist_ok=True)
             (off_git / name).write_bytes(data)
@@ -170,8 +249,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--dest", type=Path, default=REPO / "docs" / "reproducibility" / "keptland_runs")
     ap.add_argument("--off-git", type=Path, required=True,
                     help="where files over 5 MB go: a git-ignored folder on the Mac")
+    ap.add_argument("--through", choices=tuple(NEEDED), default="export",
+                    help="how far the run's batch went (round 14): export, or k_elbow")
     args = ap.parse_args(argv)
-    done = copy(args.tree, args.run_id, args.dest, args.off_git)
+    done = copy(args.tree, args.run_id, args.dest, args.off_git, args.through)
     for name in done["in_repo"]:
         print(f"  {name}: {(args.dest / name).stat().st_size / 1e6:.2f} MB, in the repo")
     for f in done["off_git"]:

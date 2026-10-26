@@ -52,10 +52,12 @@ def test_small_files_go_in_the_repo_without_timings(mod, tmp_path):
     done = mod.copy(_tree(tmp_path, 10), RUN, dest, off)
     assert done["off_git"] == [] and not (dest / f"{RUN}_files_off_git.json").exists()
     names = {p.name for p in dest.iterdir()}
+    # Round 14: the raster at the plots and every run folder's log (here the failed pass's) too.
     assert names == {f"{RUN}_{n}" for n in ("stands_merged.geojson", "stands_snic.geojson",
                                             "stands_dissolved.geojson", "run.json",
                                             "manifest_segmentation.json", "manifest_clustering.json",
-                                            "manifest_export.json")}
+                                            "manifest_export.json", "raster_at_plots.csv",
+                                            "log_failed_1.txt")}
     assert "run_dir" not in json.loads((dest / f"{RUN}_run.json").read_text())
     exp = json.loads((dest / f"{RUN}_manifest_export.json").read_text())
     assert "submitted_at" not in json.dumps(exp) and "elapsed_sec" not in json.dumps(exp)
@@ -156,3 +158,67 @@ def test_the_features_pass_of_a_round_9_run_is_copied_too(mod, tmp_path):
     copied = json.loads((dest / f"{RUN}_manifest_features.json").read_text())
     assert [s["name"] for s in copied["stages"]] == ["masking", "features_static"]
     assert "elapsed_sec" not in copied["stages"][0]
+
+
+
+# ---------- round 14: what the brief asks kept, and a batch that stopped after the k elbow ----------
+
+
+def _add_round_14_files(tree: Path) -> None:
+    vec = tree / "odisha_script" / "phase2_vectors"
+    for name in ("clustering_fit_rows.csv", "k_elbow.csv", "k_elbow_fit_rows.csv"):
+        (vec / f"{RUN}_{name}").write_text("stand_lbl,in_fit\n1,1\n")
+    (vec / f"{RUN}_drive_exports.json").write_text(json.dumps({"files": {"x": "COMPLETED"}}))
+    (vec / f"{RUN}_drive_exports_run.json").write_text(json.dumps({"read_at": "2026-10-27T10:00:00Z"}))
+    for d in sorted((tree / "runs").glob(f"{RUN}_2*")):
+        (d / "fmu.log").write_text("2026-10-27 10:00:00 stage x done\n")
+        (d / "input_images.json").write_text(json.dumps({"s2": ["20170103T050211_20170103T050848_T44QPF"]}))
+
+
+def test_the_stage_files_the_logs_the_image_lists_and_the_drive_states_are_kept(mod, tmp_path):
+    tree = _tree(tmp_path, 10)
+    _add_round_14_files(tree)
+    dest, off = tmp_path / "dest", tmp_path / "off"
+    done = mod.copy(tree, RUN, dest, off)
+    names = set(done["in_repo"])
+    for n in ("clustering_fit_rows.csv", "k_elbow.csv", "k_elbow_fit_rows.csv", "drive_exports.json",
+              "drive_exports_run.json", "log_segmentation.txt", "log_clustering.txt", "log_export.txt",
+              "log_failed_1.txt", "input_images_segmentation.json"):
+        assert f"{RUN}_{n}" in names, n
+    # The read-back tool's own folder is no pass: its log is not kept.
+    assert not any("profiling" in n for n in names)
+    assert (dest / f"{RUN}_log_export.txt").read_text().startswith("2026-10-27")  # a log keeps its times
+
+
+def test_a_batch_through_the_k_elbow_keeps_its_elbow_files_and_needs_no_layers(mod, tmp_path):
+    tree = tmp_path / "tree"
+    vec = tree / "odisha_script" / "phase2_vectors"
+    vec.mkdir(parents=True)
+    for name in ("k_elbow.csv", "k_elbow_stand_table.csv", "k_elbow_fit_rows.csv", "k_elbow_types.csv",
+                 "k_elbow_preprocessing.json"):
+        (vec / f"{RUN}_{name}").write_text("{}" if name.endswith(".json") else "k,wcss\n2,1.0\n")
+    (vec / f"{RUN}_k_elbow_run.json").write_text(json.dumps({"run_dir": "runs/x_20261027_100000", "k_elbow": {}}))
+    for i, last in enumerate(["features_static", "segmentation", "k_elbow"]):
+        d = tree / "runs" / f"{RUN}_20261027_1000{i:02d}"
+        d.mkdir(parents=True)
+        (d / "manifest.json").write_text(json.dumps({"stages": [{"name": last}], "config": {}}))
+    dest, off = tmp_path / "dest", tmp_path / "off"
+    done = mod.copy(tree, RUN, dest, off, through="k_elbow")
+    names = set(done["in_repo"])
+    assert {f"{RUN}_manifest_{k}.json" for k in ("features", "segmentation", "k_elbow")} <= names
+    assert f"{RUN}_k_elbow_fit_rows.csv" in names and f"{RUN}_k_elbow_run.json" in names
+    assert "run_dir" not in json.loads((dest / f"{RUN}_k_elbow_run.json").read_text())
+    assert not any(n.endswith(".geojson") for n in names)
+
+
+def test_a_batch_through_the_k_elbow_without_its_elbow_pass_is_refused(mod, tmp_path):
+    tree = tmp_path / "tree"
+    vec = tree / "odisha_script" / "phase2_vectors"
+    vec.mkdir(parents=True)
+    (vec / f"{RUN}_k_elbow_run.json").write_text("{}")
+    (vec / f"{RUN}_k_elbow_fit_rows.csv").write_text("stand_lbl\n")
+    d = tree / "runs" / f"{RUN}_20261027_100000"
+    d.mkdir(parents=True)
+    (d / "manifest.json").write_text(json.dumps({"stages": [{"name": "segmentation"}], "config": {}}))
+    with pytest.raises(SystemExit, match="k_elbow"):
+        mod.copy(tree, RUN, tmp_path / "dest", tmp_path / "off", through="k_elbow")

@@ -8753,3 +8753,40 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 26 Oct 2026 (round 14 brief), Task 1 (Q15) and Task 2
+- id: spec-run-records-keep-every-file-the-run-writes
+  title: >-
+    copy_run_results.py keeps every file a run writes: the raster at the plots, the stages' result files, the logs,
+    the image lists, the Drive states, and a batch that stopped after the k elbow
+  decision: >-
+    scripts/copy_run_results.py also copies, when the run tree has them: <run>_raster_at_plots.csv; the stages' result
+    files beside the layers (<run>_clustering_* and <run>_k_elbow*, written there by the runner from the run folders);
+    <run>_drive_exports.json and its _run.json (scripts/drive_export_states.py); and for every run folder of the run, a
+    pass that failed included, its fmu.log as <run>_log_<kind>[_n].txt and its input_images.json as
+    <run>_input_images_<kind>[_n].json. Logs, image lists and the record of a read of Drive are kept as they are and
+    left out of the check that no result holds a time. A pass ending at the k elbow is a kind of its own. With
+    --through k_elbow it copies a batch that stopped after the elbow: the features, segmentation and k_elbow passes,
+    <run>_k_elbow_run.json and the elbow's files, in place of the layers and the run record, which such a batch does
+    not write. Files over 5 MB stay off git with their size and SHA-256, as before.
+  alternatives_considered:
+  - >-
+    Leave the logs and image lists in the run trees: not chosen; the brief asks for every pass's fmu.log and
+    input_images.json, and run trees are deleted
+  rationale: >-
+    The round 14 brief (Jaskaran, 26 Oct 2026), "Keep every run's data, so later scores need no re-run": "Copy everything
+    the run writes into the repo, or off git with size and SHA-256 if a file is over 5 MB. Do this before any run tree
+    could be deleted. That means: the three stand layers, *_raster_at_plots.csv and *_run.json from
+    odisha_script/phase2_vectors/, every pass's manifest, fmu.log and input_images.json from runs/, the elbow table and
+    the saved fit rows. Earlier rounds left some of these only inside their run trees." The new tests
+    (tests/test_copy_run_results.py) fail on the code before the change and pass after it; the test that pinned the
+    names copied lists the two kinds of file a round 14 copy adds. No paper was searched for this decision.
+  evidence:
+  - path: scripts/copy_run_results.py
+    what: run_folders, passes, numbered, copy, --through
+  - path: tests/test_copy_run_results.py
+    what: The round 14 files kept; a batch through the k elbow; one with no elbow pass refused
+  - path: docs/running.md
+    what: Keeping every file a run writes
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 26 Oct 2026 (round 14 brief), "Keep every run's data"
