@@ -1,0 +1,203 @@
+# Round 14, Task 3 (26 Oct 2026): a copy of configs/sanjay_van_alphaearth_keptland_r9.yaml for R3 (roadmap R3), changing
+# only `name` and the four method settings of round 14's Task 2, each switched on:
+# clustering.fit_outside_earth_engine, clustering.log_rule (right_skew),
+# features_optical.mean_over_window and k_elbow.in_fit_space (tests/test_r14_configs.py;
+# odisha_script/PHASE_KEPTLAND_PREDECLARED.md, the change of 26 Oct 2026). k is the _r9 k until
+# Jaskaran chooses it from the elbow report (round 14, Task 7). The notes below are those of the
+# config it copies, and speak of it.
+#
+# Round 9 task G (run in round 10, 18 Oct 2026): a copy of configs/sanjay_van_alphaearth_keptland.yaml with only `name` changed
+# (tests/test_r9_configs.py). The notes below are those of the config it copies.
+#
+# KEPT LAND ONLY. SANJAY VAN, AlphaEarth embedding, 10 ha stand ceiling (the existing settings).
+#
+# Copy of configs/sanjay_van_alphaearth.yaml. SEVEN things differ (tests/test_keptland_configs.py);
+# everything else is identical, which keeps Sanjay Van at 10 ha (D4):
+#
+# 1. name and description.
+# 2. segmentation.mask_before_snic: true. SNIC sees kept land only (habitat_mask 1: trees or scrub),
+#    so superpixels and stands lie on kept land only. Small kept patches are not dropped:
+#    segmentation.drop_kept_patches_below_min_area stays false, its default. (D1)
+# 3. merge.pass2_soft_ceiling: true, in a merge block of its own: the source has none, so every
+#    other merge setting but item 6 is the default (stands of 1 to 10 ha). In the second pass a
+#    region below merge.min_area_ha may join a neighbour that takes it over merge.max_area_ha,
+#    never over max_area_ha + min_area_ha (11 ha here). (D2)
+# 4. clustering.fit_excludes_stands_below_min_area: true. Stands still below the minimum after the
+#    merge stay on the map, typed by the nearest cluster, but are left out of the k-means training
+#    rows. (D3)
+# 5. export.drive_folder: fmu_exports_kept_land.
+# 6. merge.pass2_skip_at_min_area: true, as the Odisha box configs have it and as the Sanjay Van
+#    demo stands were re-merged (spec-merge-pass2-skip-at-minimum): in the second pass a region
+#    already at merge.min_area_ha is left as it is. The source keeps the default, false. (Jaskaran,
+#    15 Oct 2026, round 4, answer to question 6 of docs/handoff/2026-10-14-round3.md.)
+# 7. metrics.reference_config_name: sanjay_van_baseline_keptland, the hand-crafted arm on kept land,
+#    in place of sanjay_van_baseline. Metrics are not in the cache fingerprint. (Jaskaran, 15 Oct
+#    2026, round 4, answer to question 7.)
+#
+# D1 to D4 are Jaskaran's decisions of 14 Oct 2026, recorded in docs/decisions.yaml
+# (spec-keptland-configs-mask-before-snic, spec-merge-pass2-soft-ceiling,
+# spec-clustering-fit-excludes-stands-below-min-area, spec-keptland-runs-sites-and-ceilings) and in
+# docs/handoff/2026-10-14-round3.md. The three settings give this config its own cache fingerprint.
+# Its masking, data-load and feature assets can be copied from those of
+# configs/sanjay_van_alphaearth_repro.yaml, the demo set's run of the same content
+# (scripts/reuse_upstream_assets.py): no stage before segmentation reads anything that differs.
+# sanjay_van_alphaearth has no cached assets under its own name (docs/reproducibility.md). Segmentation
+# and everything after it are computed afresh.
+#
+# Not run yet: no batch run until Jaskaran says go (round 3).
+
+name: sanjay_van_alphaearth_keptland_r14
+description: Sanjay Van, AlphaEarth embedding arm, on kept land only (mask before SNIC).
+
+roi:
+  name: sanjay_van
+  roi_file: aois/sanjay_van.geojson
+
+# Same unified 2017-2022 window as the baseline. dates.phenology doubles as the
+# collapse window for the annual embeddings (features_embedding averages the
+# yearly images over it), so the embedding rests on the same temporal support
+# as the hand-crafted features it is compared against.
+dates:
+  phenology:
+    start: 2017-01-01
+    end: 2022-12-31
+  radar:
+    start: 2017-01-01
+    end: 2022-12-31
+  optical_composite:
+    start: 2017-01-01
+    end: 2022-12-31
+  climate:
+    start: 1991-01-01
+    end: 2020-12-31
+
+datasets:
+  phenology_collection: COPERNICUS/S2_SR_HARMONIZED
+  optical_composite_collection: COPERNICUS/S2_SR_HARMONIZED
+  radar_collection: COPERNICUS/S1_GRD
+  canopy_height: users/nlang/ETH_GlobalCanopyHeight_2020_10m_v1
+  dem: NASA/NASADEM_HGT/001
+  # Habitat mask source, identical to baseline (CoRE Stack LULC_v4 folder).
+  indiasat: "projects/corestack-trees/assets/LULC_v4"
+  worldcover: ESA/WorldCover/v200
+  water: JRC/GSW1_4/GlobalSurfaceWater
+  climate: UCSB-CHG/CHIRPS/PENTAD
+  # AlphaEarth Satellite Embedding: 64-band annual per-pixel embedding.
+  embedding: GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL
+
+cloud_mask:
+  max_cloud_pct: 20.0
+  drop_scl_classes: [3, 8, 9, 10]
+
+data_load:
+  s1_orbit: ASCENDING
+  s1_polarizations: [VV, VH]
+  s1_instrument_mode: IW
+  s2_composite_reducer: median  # feeds SNIC (held identical to baseline)
+
+masking:
+  # Identical to baseline so the habitat mask is the same across arms.
+  indiasat_habitat_classes: [6, 12]
+  indiasat_class_band: predicted_label
+  indiasat_year_min: 2017
+  indiasat_year_max: 2021
+  keep_worldcover_classes: [10, 20, 30]
+  jrc_water_occurrence_threshold: 50.0
+
+# Optical and structure params still matter here, but NOT for the feature
+# vector — this arm segments and labels purely on the embedding. They matter
+# because the **merge criteria** are held identical across arms: "what makes two
+# adjacent patches one stand" is a fact about forestry, not about the sensor
+# pipeline, and holding the merge rule constant is what leaves delineation as
+# the only thing differing between the arms. So features_structure and
+# features_optical run to supply canopy_height and ndvi_amplitude_annual to the
+# merge gate.
+#
+# features_radar and features_static are read by nothing in this arm and do not
+# run; their params are kept at baseline values so the file stays diffable and
+# so re-enabling one gets the right parameters rather than silent defaults.
+features_radar:
+  percentiles: [10, 50, 90]
+  include_iqr: true
+  include_cross_pol_contrast: true
+
+features_structure:
+  include_neighborhood_stats: true
+  neighborhood_kernel_size: 3
+
+# Embedding feature source. Collapse the annual AlphaEarth images to one image
+# by mean over the 2017-2022 window; keep all 64 bands.
+features_embedding:
+  collapse_reducer: mean
+  band_names: null   # keep every embedding dimension (A00..A63)
+
+# SNIC runs on the embedding, not on the hand-crafted bands. This arm is a
+# fully independent pipeline: AlphaEarth draws its own boundaries and labels
+# its own stands, and the two arms' stand maps are compared as products.
+# Holding SNIC identical across arms (the earlier design) would have made the
+# embedding answer only "which labels does k-means give inside boundaries the
+# hand-crafted stack drew" — the delineation question, which is the thesis
+# question, was never actually put to it.
+#
+# 64 bands vs 6 is exactly why normalize_distance_scale matters: without it,
+# summed squared colour distance here is far larger than in the baseline, so
+# compactness 0.5 would buy a much weaker spatial term. Dividing by the
+# empirical RMS 4-neighbour distance makes the two comparable.
+segmentation:
+  size: 10
+  compactness: 0.5
+  connectivity: 8
+  neighborhood_size: 128
+  normalize_inputs: true
+  normalize_distance_scale: true
+  mask_before_snic: true
+  input_bands:
+    - {source: embedding_features, band: "*"}   # all 64 dimensions
+
+# New here: the source has no merge block (see the header, items 3 and 6).
+merge:
+  pass2_soft_ceiling: true
+  pass2_skip_at_min_area: true
+
+clustering:
+  feature_source: embedding   # labels on the embedding; SNIC segments on it too
+  k: 6
+  seed: 42
+  skewness_threshold: 1.0
+  fit_excludes_stands_below_min_area: true
+  # Round 14 (Task 2, items 1 and 2): k-means off Earth Engine, and the round 14 log rule.
+  fit_outside_earth_engine: true
+  log_rule: right_skew
+
+normalization:
+  method: robust
+
+export:
+  export_geotiff: true
+  export_gee_asset: false
+  analysis_scale_m: 10
+  drive_folder: fmu_exports_kept_land
+  # The merged-stand layer: the unit SNIC + merge delineate.
+  # Written only when merge.enabled; without merge it would duplicate
+  # stands_snic exactly.
+  export_vector_merged: true
+  export_vector_snic: true
+  export_vector_dissolved: true
+  vector_formats: [shp, geojson]
+  vector_min_stand_pixels: 4
+
+metrics:
+  # Compare the embedding clustering against the hand-crafted baseline: ARI,
+  # NMI, Hungarian correspondence, agreement map, and the per-stand confidence
+  # roll-up all come from this comparison. Here the baseline on kept land.
+  reference_config_name: sanjay_van_baseline_keptland
+  n_comparison_samples: 10000
+  n_silhouette_samples_per_cluster: 833
+
+# Round 14 (Task 2, item 3): ndvi_mean as the fitted curve's mean over the window.
+features_optical:
+  mean_over_window: true
+
+# Round 14 (Task 2, item 4): the k elbow in the fit's own space.
+k_elbow:
+  in_fit_space: true

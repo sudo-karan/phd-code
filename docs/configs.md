@@ -175,6 +175,20 @@ copy differs from its original in `name` only, has the same fingerprint, and
 resolves to a different asset path. How to run and compare them is in
 [running.md](running.md), "Re-running a config from scratch".
 
+## The R3 copies (`_r14`, round 14)
+
+`configs/<name>_r14.yaml` exists for each of the nineteen `_r9` configs (Sanjay Van both arms,
+the eight 3 ha and eight 10 ha box configs of both arms, the 10 km tile): each is its `_r9`
+config with `name` changed and the four method settings of round 14 switched on
+(`clustering.fit_outside_earth_engine`, `clustering.log_rule: right_skew`,
+`features_optical.mean_over_window`, `k_elbow.in_fit_space`), and a header note; k is the
+`_r9` k until Jaskaran chooses it from the elbow report. They are roadmap R3, declared in
+`odisha_script/PHASE_KEPTLAND_PREDECLARED.md` (the change of 26 Oct 2026).
+`configs/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a.yaml` and `_check_b` are
+the Angul hand-crafted 3 ha copy with only `name` changed, a throwaway pair for the round's live
+check, not scored. `tests/test_r14_configs.py` checks what differs and pins their fingerprints
+and step keys.
+
 ## Adding a new experiment
 
 1. **Copy** `configs/sanjay_van_baseline.yaml` to `configs/<your_name>.yaml`.
