@@ -10251,7 +10251,7 @@ decisions:
     their names changed, given in the same way; the pass rules are the same, and criterion 5 samples check_e's
     static_features. Before it, a smoke test that does not count as the live check finishes _check_c and _check_d
     through clustering and export from what their batch cached; the script run on its records fails criterion 0,
-    which the smoke test sets aside (the round 14 record, Done, the smoke test). The second check's records and
+    which the smoke test sets aside (the round 14 record, Done, the round resumed again). The second check's records and
     result stay as they are.
   alternatives_considered:
   - >-
@@ -10792,7 +10792,9 @@ decisions:
     12). With the setting off, the step's recorded calls (tests/data/k_elbow_off_calls.json, recorded at 284b73d) are
     rewritten from the new code: for each of the three configs one ee.Geometry.Point([0, 0]) call before the first
     feature, and each ee.Feature call given it in place of None; the table's properties, the metadata and every
-    other call are as recorded.
+    other call are as recorded. Not tried on Earth Engine (the gate's review, part 9): a table whose elbow_k is null
+    on every feature (too few rows for three values of k) and an empty one (k_min at or above the number of rows);
+    neither arises in R3 or the check copies, whose fits have more than a hundred rows.
   alternatives_considered:
   - >-
     The ROI, or its centroid, as each feature's geometry: not chosen; the table would carry a geometry that changes

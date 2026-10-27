@@ -594,7 +594,7 @@ it, as a smoke test that does not count as the live check, `_check_c` and `_chec
 through clustering and export from what their batch cached, under a label of its own; their
 records go in a folder of their own too, and the script run on them fails criterion 0 (their
 features and segmentation are read from the cache), which the smoke test sets aside (the record,
-Done, the smoke test).
+Done, the round resumed again).
 
 ### Superpixels depend on whether the features were cached
 

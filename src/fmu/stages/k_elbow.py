@@ -208,7 +208,7 @@ def _in_fit_space(
     for props, med, low in zip(features, sweep["ari_median"], sweep["ari_min"], strict=True):
         props.update({"ari_median": med, "ari_min": low, "in_fit_space": 1})
     table_fc = elbow_collection(features)
-    label_name ="stand_lbl" if unit_key == "stand_clusters" else "snic_label"
+    label_name = "stand_lbl" if unit_key == "stand_clusters" else "snic_label"
     return StageResult(
         outputs={"k_elbow": table_fc},
         metadata={

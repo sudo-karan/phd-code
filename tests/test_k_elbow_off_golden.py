@@ -1,4 +1,5 @@
-"""With k_elbow.in_fit_space off, the k elbow step does what it did before round 14.
+"""With k_elbow.in_fit_space off, the k elbow step does what it did before round 14, but for the
+fixed point each row of its table now has as its geometry (27 Oct 2026, below).
 
 tests/data/k_elbow_off_calls.json holds, for three shipped configs (a box config whose fit
 leaves the stands below the minimum out, the hand-crafted Sanjay Van baseline, and an
@@ -6,8 +7,9 @@ AlphaEarth config), what `KElbowStage.run()` does on stand-ins: every Earth Engi
 recorded by tests/_ee_recorder.py (name, arguments and keyword arguments, in order, its
 training_rows and the clustering helpers it calls included), every request it sends with the
 context it names, the table it builds (the properties of each feature) and its stage metadata.
-The file was written from the step as it was before round 14 (commit 284b73d, the round's
-first commit), before the setting existed:
+The file was first written from the step as it was before round 14 (commit 284b73d, the
+round's first commit), before the setting existed (the recipe then, which would now write the
+calls of before 27 Oct 2026 and fail the test):
 
     git show 284b73d:src/fmu/stages/k_elbow.py > /tmp/k_elbow_284b73d.py
     python tests/test_k_elbow_off_golden.py --write /tmp/k_elbow_284b73d.py
@@ -20,7 +22,9 @@ fixed point for every one (`k_elbow.elbow_collection`), as Earth Engine refused 
 table whose features had none (round 14's second live check). That is the only change: for
 each config one ee.Geometry.Point([0, 0]) call before the first feature, and each ee.Feature
 call given it in place of None; the table's properties, the metadata and every other call are
-as recorded at 284b73d.
+as recorded at 284b73d. It was rewritten from the step of 47215f3, from the repo's root:
+
+    python tests/test_k_elbow_off_golden.py --write src/fmu/stages/k_elbow.py
 """
 
 from __future__ import annotations

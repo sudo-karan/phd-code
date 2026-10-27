@@ -315,31 +315,68 @@ def test_the_third_live_check_judges_check_e_and_check_f_by_the_same_rules(mod, 
     assert set(result["criteria"]["0_both_runs_from_scratch"]["runs"]) == {RUN_E, RUN_F}
 
 
-def test_the_smoke_tests_records_fail_criterion_0_and_only_it(mod, tmp_path, configs):
-    """The smoke test before the third live check (his answer to question 13) finishes _check_c and
-    _check_d from the features and segmentation the second batch cached: every output of their
-    passes is a hit, so criterion 0 (both runs from scratch) fails, as the smoke test's declaration
-    says it must, and the check with it. Identical records still pass every other offline
-    criterion, which is what the smoke test reads of them."""
-    records = _write(tmp_path / "smoke_test", mod, configs, runs=(RUN_C, RUN_D))
+def _smoke_test_records(mod: types.ModuleType, folder: Path, configs: dict[str, Any]) -> Path:
+    """Records of _check_c and _check_d as the smoke test's batch writes them: its features and
+    segmentation passes read every output from the cache the second live check made."""
+    records = _write(folder, mod, configs, runs=(RUN_C, RUN_D))
+
+    def read_back(manifest: dict[str, Any]) -> None:
+        for stage in manifest["stages"]:
+            stage["cache_status"] = dict.fromkeys(stage["cache_status"], "hit")
+            for record in stage["input_images"].values():
+                record["source"] = "the cached asset"
+
     for run in (RUN_C, RUN_D):
         for kind in ("features", "segmentation"):
-            def read_back(manifest: dict[str, Any]) -> None:
-                for stage in manifest["stages"]:
-                    stage["cache_status"] = dict.fromkeys(stage["cache_status"], "hit")
-                    for record in stage["input_images"].values():
-                        record["source"] = "the cached asset"
             _edit_json(records / f"{run}_manifest_{kind}.json", read_back)
+    return records
+
+
+@pytest.mark.parametrize("offline", [True, False], ids=["offline", "Earth Engine alike"])
+def test_the_smoke_tests_records_fail_criterion_0_and_only_it(mod, tmp_path, configs, offline):
+    """The smoke test before the third live check (his answer to question 13) finishes _check_c and
+    _check_d from the features and segmentation the second batch cached: every output of those
+    passes is a hit, so criterion 0 (both runs from scratch) fails, and the check with it, in its
+    part (b) only and only in the first features and segmentation manifests; the k elbow and
+    clustering passes computed and exported their outputs, no hit is credited to a failed pass, and
+    each stage has one layout and one key. Every other criterion passes on identical records,
+    criterion 2's parts among them, and with the Earth Engine parts run (on the stand-in reader)
+    criteria 2 iii and 5 too: what the smoke test's declaration reads of its records (the round 14
+    record, Done, the round resumed again; the gate's review, part 9)."""
+    records = _smoke_test_records(mod, tmp_path / "smoke_test", configs)
+    out = records / "r14_smoke_test_live_check_rules.json"
     argv = ["--records", str(records), "--config-a", str(CONFIG_C), "--config-b", str(CONFIG_D),
-            "--offline"]
-    assert mod.main(argv) == 1
-    result = json.loads((records / "r14_live_check.json").read_text())
+            "--out", str(out)]
+    if offline:
+        code = mod.main([*argv, "--offline"])
+    else:
+        reader = StandIn()
+        code = mod.main(argv, reader=lambda: reader)
+    assert code == 1
+    result = json.loads(out.read_text())
     assert result["passes"] is False
     passes = _passes(result)
-    assert passes["0_both_runs_from_scratch"] is False
-    assert {name: passes[name] for name in OFFLINE[1:]} == dict.fromkeys(OFFLINE[1:], True)
-    first = result["criteria"]["0_both_runs_from_scratch"]["runs"][RUN_C]["first_manifests"]
-    assert "masking/habitat_mask" not in first["features"]["computed_in_it"]
+    assert passes.pop("0_both_runs_from_scratch") is False
+    assert set(passes.values()) == ({True, "not run"} if offline else {True})
+    values = result["criteria"]["2_feature_values_and_elbows"]
+    assert all(values[p]["passes"] is True
+               for p in ("i_tables_of_units", "ii_feature_means_of_stands_merged", "elbows"))
+    assert values["iii_cached_assets"]["passes"] == ("not run" if offline else True)
+    for run in (RUN_C, RUN_D):
+        scratch = result["criteria"]["0_both_runs_from_scratch"]["runs"][run]
+        first = scratch["first_manifests"]
+        for kind in ("features", "segmentation"):
+            assert first[kind]["passes"] is False and first[kind]["computed_in_it"] == []
+            assert {o["cache_status"] for o in first[kind]["not_computed_in_it"]} == {"hit"}
+        assert len(first["features"]["not_computed_in_it"]) == 9
+        assert [o["output"] for o in first["segmentation"]["not_computed_in_it"]] == [
+            "segmentation/snic_clusters", "segmentation/snic_means"]
+        assert first["k_elbow"]["passes"] is True and first["k_elbow"]["computed_in_it"] == ["k_elbow/k_elbow"]
+        assert first["clustering"]["passes"] is True
+        assert first["clustering"]["computed_in_it"] == ["clustering/cluster_labels", "clustering/feature_stack"]
+        assert scratch["hits_made_by_a_failed_pass"] == []
+        assert scratch["one_layout_and_one_key_per_stage"] is True
+        assert scratch["stages_fmu_does_not_have"] == []
 
 
 def test_the_results_hold_no_times_and_the_run_record_says_how_it_was_made(mod, records):
