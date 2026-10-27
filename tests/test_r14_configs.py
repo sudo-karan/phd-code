@@ -8,7 +8,10 @@ config, ..._r14_check_a and ..._r14_check_b, identical except for their names."
 odisha_script/PHASE_KEPTLAND_PREDECLARED.md, the change of 26 Oct 2026, declares the runs.
 
 The legacy fingerprints are pinned here and every step key in tests/data/r14_config_keys.json,
-both as computed when the configs were written. Task 7 sets k, which moves the fingerprint and
+both as computed when the configs were written, but the merge, clustering and k_elbow keys,
+pinned again on 27 Oct 2026, when the merge's revision 4 moved them (round 14's questions 11 and
+2: every count of the merge on the label image's own projection, and every tie of the merge by
+centroid); no other key and no fingerprint moved. Task 7 sets k, which moves the fingerprint and
 the clustering key, and not the k elbow's: it updates the pins in the same commit.
 """
 
@@ -28,6 +31,10 @@ CONFIGS = REPO / "configs"
 SOURCES = sorted(CONFIGS.glob("*_r9.yaml"))
 R3 = sorted(CONFIGS.glob("*_r14.yaml"))
 CHECKS = [CONFIGS / f"odisha_v120_3ha_squares_angul_keptland_s1desc_r14_{s}.yaml" for s in ("check_a", "check_b")]
+# Pinned again on 27 Oct 2026 (round 14): the merge's revision 4 moved the merge, clustering and
+# k_elbow keys of every config here (every count of the merge on the label image's own
+# projection, round 14's question 11, and pass 1's tie by centroid, question 2); the masking,
+# data_load, feature and segmentation keys and the legacy fingerprints did not move.
 KEYS = json.loads((REPO / "tests" / "data" / "r14_config_keys.json").read_text())
 FOUR = {
     ("clustering", "fit_outside_earth_engine"): True,

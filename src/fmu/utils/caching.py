@@ -542,8 +542,10 @@ STEP_REVISION: dict[str, int] = {
     "clustering": 5,
     # Round 13: 1, B17, the superpixel pixel counts on one inclusion rule;
     # 2, B18, the area bounds compared in whole pixels. Round 14: 3, round 13
-    # question 24, a tie in pass 2's shared-edge fallback broken by centroid.
-    "merge": 3,
+    # question 24, a tie in pass 2's shared-edge fallback broken by centroid;
+    # 4, round 14's questions 11 and 2 together, every count of the merge on the
+    # label image's own projection and pass 1's tie broken by centroid.
+    "merge": 4,
 }
 
 # Steps that read another step's output without having it upstream, and so take

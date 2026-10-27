@@ -370,6 +370,36 @@ def test_the_merge_at_revision_3_moves_the_merge_clustering_and_elbow_keys_of_ev
         assert fingerprint == fingerprint_at_2, path
 
 
+def test_the_merge_at_revision_4_moves_the_merge_clustering_and_elbow_keys_of_every_config(
+    monkeypatch,
+):
+    """Round 14 (27 Oct 2026; Jaskaran's answers to round 14's questions 11 and 2; register
+    entries spec-merge-pixel-counts-on-one-inclusion-rule and spec-merge-every-tie-by-centroid):
+    every count of the merge taken on the label image's own projection, and pass 1's tie broken
+    by centroid, raised the merge from revision 3 to 4, once for both. Against the keys at
+    revision 3 that moves the merge, clustering and k_elbow keys of a config with the merge on,
+    which all 95 configs had when it was made, and no other key: not profiling's or export's,
+    which hash the legacy blocks and read no other step's key; the legacy fingerprint has no
+    revision."""
+    monkeypatch.chdir(REPO)
+    revision = caching.STEP_REVISION["merge"]
+    assert revision >= 4
+    assert len(ALL_CONFIGS) >= 95
+
+    def keys(cfg: Any) -> dict[str, str]:
+        return {**step_keys(cfg), **{s: step_key(cfg, s) for s in ("profiling", "export")}}
+
+    for path in ALL_CONFIGS:
+        cfg = load_config(path)
+        now, fingerprint = keys(cfg), config_fingerprint(cfg)
+        monkeypatch.setitem(caching.STEP_REVISION, "merge", 3)
+        at_3, fingerprint_at_3 = keys(cfg), config_fingerprint(cfg)
+        monkeypatch.setitem(caching.STEP_REVISION, "merge", revision)
+        moves = {"merge", "clustering", "k_elbow"} if cfg.merge.enabled else {"merge"}
+        assert {s for s in now if now[s] != at_3[s]} == moves, path
+        assert fingerprint == fingerprint_at_3, path
+
+
 def test_each_raise_gives_a_new_key_and_revision_zero_is_no_revision(monkeypatch):
     monkeypatch.chdir(REPO)
     cfg = load_config(HANDCRAFTED)

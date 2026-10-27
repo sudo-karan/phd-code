@@ -7322,7 +7322,10 @@ decisions:
     pixels more on that grid than in the label histogram (valid counts 29 against 28, 97 against 96 and 3 against 1),
     and the check stopped the merge: "superpixel -1586256414 has 29 valid canopy_height pixels but 28 pixels in the
     label histogram". As each pixel counts as the analysis scale squared, a label image whose nominal scale is more than
-    1% from the analysis scale is refused; until then one was counted at the analysis scale.
+    1% from the analysis scale is refused; until then one was counted at the analysis scale. The merge's revision is
+    raised to 4 once for this change and round 14's tie by centroid (spec-merge-every-tie-by-centroid), which moves the
+    merge, clustering and k_elbow keys of all 95 configs under configs/ and configs/experiments/ and no other key; the
+    legacy fingerprint does not move.
   alternatives_considered:
   - >-
     Make the valid counts weighted instead, sums of weights like the histogram: not chosen. The counts would be
@@ -7392,7 +7395,9 @@ decisions:
     what: >-
       Round 14 (27 Oct 2026), run(): the component-size check given the label image's projection
   - path: src/fmu/utils/caching.py
-    what: STEP_REVISION, the merge at revision 1
+    what: >-
+      STEP_REVISION, the merge at revision 1; round 14 (27 Oct 2026): revision 4, for this change and
+      spec-merge-every-tie-by-centroid
   - path: tests/test_adjacency_edge_pixels.py
     what: >-
       The counts at the ROI edge on a fake Earth Engine that follows the documented rules and the "null" key; no masked
@@ -7409,7 +7414,10 @@ decisions:
       test_refuses_a_label_image_not_at_the_analysis_scale, which replaces test_tolerates_modest_scale_mismatch; both fail
       on the code before
   - path: tests/test_step_keys_of_record.py
-    what: The recorded keys downstream of the merge move, and no other
+    what: >-
+      The recorded keys downstream of the merge move, and no other. Round 14 (27 Oct 2026):
+      test_the_merge_at_revision_4_moves_the_merge_clustering_and_elbow_keys_of_every_config, which fails on the code
+      before
   - path: docs/reviews/2026-10-19-review.md
     what: B17
   - path: docs/handoff/2026-10-20-round13.md
@@ -10621,7 +10629,13 @@ decisions:
     200 golden graphs of tests/test_region_merge_provenance.py (seeds 0, 17, 23, 28, 48, 53, 64, 73, 79, 81, 84, 86, 100,
     110, 122, 128, 130, 133, 151, 155, 177 and 186) and 42 of the 516 graphs of tests/test_region_merge_soft_ceiling.py
     with the setting off (33 random and 9 tight) give new digests, pinned in those tests (DIGESTS_SINCE_PASS1_TIE,
-    OFF_DIGESTS_SINCE_PASS1_TIE); the two fixture files keep what the merge gave at their commits.
+    OFF_DIGESTS_SINCE_PASS1_TIE); the two fixture files keep what the merge gave at their commits. The merge's revision
+    (STEP_REVISION in fmu.utils.caching) is raised to 4 once for this change and round 14's counts on the label image's
+    own projection (spec-merge-pixel-counts-on-one-inclusion-rule), which moves the merge, clustering and k_elbow keys
+    of all 95 configs under configs/ and configs/experiments/ (all have the merge on) and no other key, the profiling
+    and export keys included, as they hash the legacy blocks and read no other step's key; the legacy fingerprint has
+    no revision and does not move. The keys tests/test_r14_configs.py pins for the 19 R3 configs and the two
+    live-check copies are pinned again (tests/data/r14_config_keys.json).
   alternatives_considered:
   - >-
     Record the tie in the register and leave the code (round 14 question 2, option (b), Claude Code's recommendation
@@ -10667,6 +10681,14 @@ decisions:
     what: DIGESTS_SINCE_PASS1_TIE
   - path: tests/test_region_merge_soft_ceiling.py
     what: OFF_DIGESTS_SINCE_PASS1_TIE
+  - path: src/fmu/utils/caching.py
+    what: STEP_REVISION, the merge at revision 4
+  - path: tests/test_step_keys_of_record.py
+    what: >-
+      test_the_merge_at_revision_4_moves_the_merge_clustering_and_elbow_keys_of_every_config, which fails on the code
+      before
+  - path: tests/data/r14_config_keys.json
+    what: The merge, clustering and k_elbow keys of the R3 and live-check configs, pinned again at revision 4
   - path: docs/configs.md
     what: merge.tie_break, the sentence on every other tie
   - path: docs/handoff/2026-10-26-round14.md
