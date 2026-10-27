@@ -10624,8 +10624,10 @@ decisions:
     Round 14 (27 Oct 2026), after Jaskaran's answer to question 13: the estimate is amended for the smoke test (0.14)
     and the third live check (7.94), with the 15.72 EECU-hours the two failed live checks used; the rule is unchanged,
     r being the third live check's charged cost over 7.94. The first half is then expected to end below the stop while
-    it costs up to about 1.39 times its estimate (1.62 before the 15.72 were used); the round keeps 150 and the stop as
-    declared, the brief's default for the record's question 14, which asks whether to raise it.
+    it costs up to about 1.39 times its estimate (1.59 before the 15.72 were used), and the declared forecast, the
+    first half at 1.5 times its estimate, expects the stop, which would cut the last config or two of the brief's order;
+    the round keeps 150 and the stop as declared, the brief's default for the record's question 14, which asks whether
+    to raise it (figures corrected after the gate's review, part 9).
   alternatives_considered:
   - >-
     Hold the first half back while the forecast does not fit, for Jaskaran's word (option (b) of the round 14 record's
@@ -10845,14 +10847,21 @@ decisions:
     label of its own, from a new run tree, of _check_c and _check_d in full, their features and segmentation read back
     from the assets their batch cached and their elbows made again from them (no elbow was cached), so that the k elbow
     pass, with the fix, exports its table and the clustering and export passes run on Earth Engine for the first time
-    with the round's code. It passes when the batch completes, no task of it fails, the copy tool copies every file,
-    each elbow table reads back from its asset as computed, and the live check's script passes criteria 1 to 6 on its
-    records (criterion 0, both runs from scratch, fails as it must, and is set aside). If it passes, the live check runs
+    with the round's code. It passes when the batch completes; every task of it ends well (a cache export that fails
+    in one pass completes in a later one; no Drive export fails or is cancelled, the Drive states read once, before the
+    third live check, and one still running then cancelled and recorded); the copy tool copies every file; each elbow
+    table reads back from its asset as its pass computed it; the live check's script passes criteria 1 to 6 on its
+    records and fails criterion 0 only as it must (the features and segmentation read from the cache); and within each
+    run the elbow at the config's k is the fit, and each polygon's type its stand's row's (amended before it runs,
+    after the gate's review, part 9). A failure that is not the code's is resumed once, then asked about; a rule that
+    fails correct runs stops the round to ask. If it passes, the live check runs
     again in full, both from scratch, in one wrapper batch from a new run tree, as two new copies of the check config,
     odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_e and _check_f, judged by the same declared rules; if that
     passes, R3's first half (Task 5) and the elbow report (Task 6) follow, and the round stops for Jaskaran's k. If the
-    smoke test fails, the bug is fixed test first and the smoke test repeated before any run from scratch. The second
-    check's records are kept (docs/reproducibility/r14_runs/live_check_2/).
+    smoke test fails on a bug, the bug is fixed test first and the smoke test repeated before any run from scratch,
+    with no Drive file sent twice: a config none of whose Drive files was submitted runs again under a new label, and
+    one whose export stage sent some has its layers made again read-only (odisha_script/odisha_read_back_export.py),
+    or the round asks. The second check's records are kept (docs/reproducibility/r14_runs/live_check_2/).
   alternatives_considered:
   - >-
     Fix it and run the live check again from scratch at once, with no smoke test (option (a) of the round 14 record's
