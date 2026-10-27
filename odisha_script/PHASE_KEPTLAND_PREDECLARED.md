@@ -275,7 +275,13 @@ R3 result exists. Nothing above is changed except where this section says so.
 - **The code R3 runs** also carries the fixes of round 13 (review A1, A4, A5, A6, B13, B14, B16,
   B17, B18) and the code changes of round 14's Task 1 (round 13's questions 21, 24, 30, 33, 35, 37,
   40, 41 and 42; register entries named in the round 14 record). They are fixes to how the stands and
-  features are made and recorded, not changes to the declared analysis.
+  features are made and recorded, not changes to the declared analysis. Added 27 Oct 2026, before
+  any R3 result exists: it also carries the merge's two changes of round 14 (merge revision 4): every
+  count the merge takes on Earth Engine on the SNIC label image's own projection, with a label image
+  more than 1% from the analysis scale refused (Jaskaran's answer to the round 14 record's question
+  11; `spec-merge-pixel-counts-on-one-inclusion-rule`), and every tie of the merge broken by
+  centroid, pass 1's partner tie too (his answer to question 2; `spec-merge-every-tie-by-centroid`).
+  These too are fixes, not changes to the declared analysis.
 - **Nothing else in the declared analysis changes**: the plots, the field types (the Phase 3
   primary typology, not refitted), the five scores, the join with the 30 m rule, the checks S1 and
   S2, how the plots join, the 13 Oct box runs beside, the chance test as declared (1,999
