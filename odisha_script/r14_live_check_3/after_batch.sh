@@ -21,9 +21,9 @@
 #      the step before Task 5 says); if it failed, nothing is cancelled (all Earth Engine work
 #      stops; the record names them); if it was not decided, nothing is done until step 5 is;
 #   7. the cost files (scripts/eecu_by_stage.py; from scratch, every task of each config is the
-#      batch's; read after the cancels, so that they are charged), r (the two runs' charged cost
-#      over the estimate, 7.94) and the first half's stop (200 - 1.2 x max(1, r) x 12.51: the round's
-#      budget 200 by Jaskaran's answer to question 14 (b), the stop moved by as much);
+#      batch's; read after the cancels, so that they are charged) and r (the two runs' charged cost
+#      over the estimate, 7.94), for the record: by Jaskaran's order of 28 Oct 2026 the first half
+#      ran before this check, its stop set from the second check's r;
 #   8. every task of a check copy (_r14_check_a to _f) still queued or running, for the step before
 #      Task 5.
 # Read-only on Earth Engine but for step 6. Only the copy failing (step 3), the one reading not
@@ -160,7 +160,7 @@ print('$r', 'not ended at the reading:', [(k, v.get('task_id'), v.get('state')) 
   fi
 fi
 if [ "$step" = all ] || [ "$step" = 7 ]; then
-  echo "== 7. the cost files, r and the first half's stop"
+  echo "== 7. the cost files and r"
   mkdir -p $DEST
   for r in $RUNS; do
     if [ -e $DEST/cost_$r.json ]; then echo "the cost of $r was read already: not read again"; continue; fi
@@ -172,8 +172,8 @@ if [ "$step" = all ] || [ "$step" = 7 ]; then
 import json
 t = [json.load(open('$DEST/cost_' + r + '.json'))['total'] for r in '$RUNS'.split()]
 r = sum(t) / 7.94
-print(f'the third check charged {sum(t):.4f} EECU-hours ({t[0]:.4f} + {t[1]:.4f}); r = {r:.4f}; '
-      f'the first half\'s stop: 200 - 1.2 x {max(1.0, r):.4f} x 12.51 = {200 - 1.2 * max(1.0, r) * 12.51:.4f}')
+print(f'the third check charged {sum(t):.4f} EECU-hours ({t[0]:.4f} + {t[1]:.4f}); r = {r:.4f} '
+      '(the first half ran before it, with the second check\'s r)')
 " || echo "r not worked: a cost file is missing"
 fi
 if [ "$step" = all ] || [ "$step" = 8 ]; then

@@ -12,19 +12,20 @@
 # has no run folder at all (nothing in it is deleted). Then, from the run tree: the order
 # (odisha_script/r14_first_half/order.py) gives the nineteen; the run tree is at <commit>, clean,
 # with no untracked code by its own rule; its tests/test_r14_configs.py passes (the keys are the
-# pinned ones); the third live check passed (live_check_3/r14_live_check.json); its two cost files
-# are there; the quota (round_use.py) and the brief's rule for the batch's estimate, 79.80, with the
-# round's budget 200 (Jaskaran's answer to question 14 (b), 28 Oct 2026; October's floor of 100
-# kept); no task of the nineteen or of any check copy (_check_a to _check_f) queued or running; no
-# asset folder of the nineteen (from scratch). It prints r (the third check's charged cost over
-# 7.94), the stop, 200 - 1.2 x max(1, r) x 12.51, and the forecast, the estimate times the larger
-# of 1.5 and 1.2 r. Exit 1 if a check fails.
+# pinned ones); the second live check's two cost files are there (live_check_2: by Jaskaran's order
+# of 28 Oct 2026 the first half runs before the third live check, so r is the second check's); the
+# quota (round_use.py) and the brief's rule for the batch's estimate, 79.80, with the round's budget
+# 200 (Jaskaran's answer to question 14 (b), 28 Oct 2026; October's floor of 100 kept); no task of
+# the nineteen or of any check copy (_check_a to _check_f) queued or running; no asset folder of the
+# nineteen (from scratch). It prints r (the second check's charged cost over 7.94), the stop,
+# 200 - 1.2 x max(1, r) x 12.51, and the forecast, the estimate times the larger of 1.5 and 1.2 r.
+# Exit 1 if a check fails.
 set -u
 C=$1
 REPO=/Users/karan/Desktop/phd-code
 RT=${2:-$REPO/outputs/round14/run_tree_5}
 PY=$REPO/.venv/bin/python
-L3=$REPO/docs/reproducibility/r14_runs/live_check_3
+L2=$REPO/docs/reproducibility/r14_runs/live_check_2
 LOGS=$REPO/outputs/round14/logs
 full=$(git -C $REPO rev-parse "$C") || exit 1
 echo "commit $full"
@@ -71,11 +72,8 @@ echo "untracked code by the run tree rule: $uc"
 [ "$uc" = 0 ] || { echo "REFUSED: the run tree holds untracked code"; exit 1; }
 ( cd $RT && PYTHONPATH=$RT/src $PY -m pytest -q -p no:cacheprovider tests/test_r14_configs.py 2>&1 | tail -2 )
 ( cd $RT && PYTHONPATH=$RT/src $PY -m pytest -q -p no:cacheprovider tests/test_r14_configs.py >/dev/null 2>&1 ) || { echo "REFUSED: tests/test_r14_configs.py fails in the run tree"; exit 1; }
-passed=$($PY -c "import json; print(json.load(open('$L3/r14_live_check.json'))['passes'])" 2>/dev/null)
-[ "$passed" = True ] || { echo "REFUSED: the third live check has not passed (live_check_3/r14_live_check.json: ${passed:-none})"; exit 1; }
-echo "the third live check passed"
-for s in e f; do
-  [ -e $L3/cost_odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_$s.json ] || { echo "REFUSED: the third check's cost file of _check_$s is missing"; exit 1; }
+for s in c d; do
+  [ -e $L2/cost_odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_$s.json ] || { echo "REFUSED: the second check's cost file of _check_$s is missing"; exit 1; }
 done
 q=$( cd $RT && PYTHONPATH=$RT/src $PY odisha_script/r14_smoke_test/round_use.py --folders ) || { echo "REFUSED: the quota could not be read"; exit 1; }
 echo "$q"
@@ -88,10 +86,10 @@ use, left = q['round_use_h'], q['october_left_h']
 fits = use + est <= 200 and left - est >= 100
 print(f'by the brief\'s rule: {use:.2f} + {est} = {use + est:.2f} within the round\'s 200: {use + est <= 200}; '
       f'October keeps {left - est:.2f}, at least 100: {left - est >= 100}')
-cost = [json.load(open('$L3/cost_odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_' + s + '.json'))['total'] for s in 'ef']
+cost = [json.load(open('$L2/cost_odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_' + s + '.json'))['total'] for s in 'cd']
 r = sum(cost) / 7.94
 stop = 200 - 1.2 * max(1.0, r) * 12.51
-print(f'the third check charged {sum(cost):.4f}; r = {r:.4f}; the stop: {stop:.4f}; '
+print(f'the second check charged {sum(cost):.4f}; r = {r:.4f}; the stop: {stop:.4f}; '
       f'the forecast: {est} x {max(1.5, 1.2 * r):.4f} = {est * max(1.5, 1.2 * r):.2f}, the round then at {use + est * max(1.5, 1.2 * r):.2f}')
 active = [str(t or '') for t in q['queued_or_running']]
 checks = [t for t in active if '_r14_check_' in t]

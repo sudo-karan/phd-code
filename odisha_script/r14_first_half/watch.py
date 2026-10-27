@@ -5,12 +5,15 @@ quota read "at most half an hour apart"), with the round's budget raised to 200 
 stop moved by as much, by Jaskaran's answer to question 14 (b), 28 Oct 2026: the stop is
 200 - 1.2 x max(1, r) x 12.51.
 
-    python odisha_script/r14_first_half/watch.py --label r14_first_half --costs <live_check_3 folder>
-        --batch-log <logs>/r14_first_half.log --quota-log <logs>/r14_first_half_quota.log
+    python odisha_script/r14_first_half/watch.py --label r14_first_half --costs <records folder>
+        --runs <run> <run> --batch-log <logs>/r14_first_half.log --quota-log <logs>/r14_first_half_quota.log
         [--interval 1200] [--from-byte N]    (from the batch's run tree, so that its code is the batch's)
 
-r is worked here from the third check's two cost files (cost_<run>.json, their totals), and the stop
-from r, so that neither is typed by hand. It waits up to ten minutes for the batch's wrapper: the
+r is worked here from the two cost files (cost_<run>.json, their totals) of a live check's two runs,
+over the check's estimate, 7.94, and the stop from r, so that neither is typed by hand. By
+Jaskaran's order of 28 Oct 2026 the first half runs before the third live check, so its r is the
+second live check's (live_check_2, _r14_check_c and _d, both from scratch through the k elbow:
+9.5361 over 7.94, 1.2010), the last check measured, and the higher of the two. It waits up to ten minutes for the batch's wrapper: the
 pid in ~/.fmu/run_passes_safely.lock, alive, whose command is run_passes_safely.py with --label
 <label>, and the wrapper's "batch <label> started" line in the batch log after --from-byte (the
 log's length before the batch was started, as launch.sh gives it; by default its length when the
@@ -23,12 +26,13 @@ log as well, so that a crossing is seen before the next stage submits its tasks.
 is tried again after 60 seconds, and logged with the end of its error. When the use reaches the
 stop it sends SIGTERM to the wrapper (checked again to be the wrapper), which passes it on to the
 pass in flight, records the pass and stops; the tasks already submitted run on. If no reading has
-succeeded for 1800 seconds, the rule cannot be kept, and it stops the batch the same way (fail-safe;
-the record's question 15 asks whether that is what Jaskaran wants). Each line goes to --quota-log.
+succeeded for 1800 seconds, the rule cannot be kept: it says so loudly, again every 30 minutes, and
+lets the batch run on (Jaskaran's answer to the record's question 15, (b), for this round). Each
+line goes to --quota-log.
 
 Exit 0: the batch ended (its "batch <label> ended:" line, written after the watch began); 3: stopped
-by the rule; 4: stopped because no reading succeeded for 30 minutes; 5: no wrapper of the label
-found within ten minutes; 6: the wrapper is gone without its ended line; 2: refused (the arguments).
+by the rule; 5: no wrapper of the label found within ten minutes; 6: the wrapper is gone without its
+ended line; 2: refused (the arguments).
 """
 import argparse
 import json
@@ -46,13 +50,12 @@ HERE = Path(__file__).resolve().parents[2]  # the checkout this script is in: th
 QUOTA = HERE / "odisha_script" / "r14_smoke_test" / "round_use.py"
 LOCK = Path.home() / ".fmu" / "run_passes_safely.lock"
 PY = "/Users/karan/Desktop/phd-code/.venv/bin/python"
-RUNS = ("odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_e",
-        "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_f")
 NO_READING_LIMIT, RETRY, NEAR_INTERVAL, TICK = 1800, 60, 300, 20
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--label", required=True)
-ap.add_argument("--costs", type=Path, required=True, help="the third live check's records folder")
+ap.add_argument("--costs", type=Path, required=True, help="a live check's records folder")
+ap.add_argument("--runs", nargs=2, required=True, help="the check's two runs, whose cost files give r")
 ap.add_argument("--batch-log", type=Path, required=True)
 ap.add_argument("--quota-log", type=Path, required=True)
 ap.add_argument("--interval", type=int, default=1200)
@@ -74,9 +77,9 @@ if not 0 < args.interval <= 1800:
     say("REFUSED: --interval must be more than 0 and at most half an hour (1800 s), as the stop rule says")
     sys.exit(2)
 try:
-    totals = [float(json.loads((args.costs / f"cost_{run}.json").read_text())["total"]) for run in RUNS]
+    totals = [float(json.loads((args.costs / f"cost_{run}.json").read_text())["total"]) for run in args.runs]
 except (OSError, ValueError, KeyError) as e:
-    say(f"REFUSED: the third check's cost files could not be read ({e!r})")
+    say(f"REFUSED: the check's cost files could not be read ({e!r})")
     sys.exit(2)
 r = sum(totals) / ESTIMATE
 if not (math.isfinite(r) and 0 < r < 10):
@@ -143,7 +146,7 @@ def stop(why: str, code: int) -> None:
     sys.exit(code)
 
 
-say(f"watch started: r = {r:.4f} ({totals[0]:.4f} + {totals[1]:.4f} over {ESTIMATE}); the stop at "
+say(f"watch started: r = {r:.4f} ({totals[0]:.4f} + {totals[1]:.4f} over {ESTIMATE}, from {args.costs.name}); the stop at "
     f"{STOP:.4f} EECU-hours ({BUDGET:.0f} - {MARGIN:.4f}); readings every {args.interval} s, every "
     f"{NEAR_INTERVAL} s and at each stage header from {NEAR:.4f}; the round's use read by {QUOTA}")
 for _ in range(30):  # up to ten minutes for the wrapper
@@ -158,9 +161,9 @@ say(f"the wrapper of {args.label} is pid {wrapper()}")
 
 # Wall-clock times: the rule's half hour is the clock's, and Earth Engine's tasks run on while
 # this Mac sleeps. The first reading is made at once; the 30 minutes without a reading count from
-# the last good one, or from here, and stop the batch only after three failed tries in a row.
+# the last good one, or from here, and are said loudly only after three failed tries in a row.
 last_good = last_try = time.time() - args.interval
-good_at, failures = time.time(), 0
+good_at, failures, warned_at = time.time(), 0, 0.0
 last_use, headers_seen = None, stage_headers()
 while True:
     try:
@@ -202,8 +205,12 @@ while True:
                     f"online {q.get('monitoring_online_h', 0):.4f}), October left {q.get('october_left_h', 0):.2f}, "
                     f"queued or running {len(q.get('queued_or_running', []))}; the stop {STOP:.4f}"
                     + ("; near it" if use >= NEAR else ""))
-        if time.time() - good_at >= NO_READING_LIMIT and failures >= 3:
-            stop("NO READING FOR 30 MINUTES: the stop rule cannot be kept (fail-safe)", 4)
+        if (time.time() - good_at >= NO_READING_LIMIT and failures >= 3
+                and time.time() - warned_at >= NO_READING_LIMIT):
+            warned_at = time.time()
+            say(f"WARNING: NO READING OF THE QUOTA FOR {(time.time() - good_at) / 60:.0f} MINUTES "
+                f"({failures} failures in a row): the stop rule is NOT being kept; the batch runs on "
+                "(question 15 (b)); look at the quota by hand")
     except subprocess.TimeoutExpired:
         failures += 1
         say("reading failed: round_use.py did not answer within 300 s")

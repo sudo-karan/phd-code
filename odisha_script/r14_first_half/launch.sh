@@ -8,7 +8,8 @@
 #    caffeinate -i, its log and state in outputs/round14/logs/.
 # 3. The watcher (odisha_script/r14_first_half/watch.py, from the run tree), given the batch log's
 #    length from before the batch started, so that it reads only this batch's lines; it waits up to
-#    ten minutes for this label's wrapper.
+#    ten minutes for this label's wrapper. Its r is the second live check's (live_check_2): by
+#    Jaskaran's order of 28 Oct 2026 the first half runs before the third check.
 # 4. Two minutes on: the wrapper's started line, the watcher alive, and its first reading.
 set -u
 REPO=/Users/karan/Desktop/phd-code
@@ -28,7 +29,9 @@ nohup caffeinate -i nice $PY odisha_script/run_passes_safely.py --label r14_firs
   --log-dir $LOGS --through k_elbow $CONFIGS > $LOGS/r14_first_half_console.log 2>&1 &
 echo "batch started: pid $! ($(TZ=Asia/Kolkata date '+%Y-%m-%d %H:%M:%S IST'))"
 nohup $PY odisha_script/r14_first_half/watch.py --label r14_first_half \
-  --costs $REPO/docs/reproducibility/r14_runs/live_check_3 --batch-log $LOG \
+  --costs $REPO/docs/reproducibility/r14_runs/live_check_2 \
+  --runs odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_c odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_d \
+  --batch-log $LOG \
   --quota-log $LOGS/r14_first_half_quota.log --from-byte $FROM > $LOGS/r14_first_half_watch_console.log 2>&1 &
 echo "watcher started: pid $!"
 sleep 120
