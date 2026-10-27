@@ -57,6 +57,14 @@ fmu.stages.k_elbow.fit_space_sweep(rows, every_row, k_min=2, k_max=12, seed=42, 
 knee by fmu.stages.k_elbow.knee. The pipeline never fits the pooled rows; the report gives their
 elbow because the declaration asks for it.
 
+THE SAME ROWS IN REVERSE ORDER. k-means++ depends on the order of the rows, so each pooled elbow is
+also made with the same rows in reverse order and given beside it, as round 13's A7 script gave its
+elbows (odisha_script/odisha_phase3_2_stand_k_elbow.py, elbow_of(x[::-1])): the pooled rows after
+the same preprocessing (made once), reversed, the rows in the fit and every row alike, then the same
+fit_space_sweep call and the same knee. Jaskaran's answer (b) to question 9 of the round 14 record,
+27 Oct 2026, before any R3 result existed (odisha_script/PHASE_KEPTLAND_PREDECLARED.md, the note of
+27 Oct 2026 in the change of 26 Oct 2026). Each run's own elbow has one order, the run's.
+
 WRITES, in --out-dir, and refuses to write over any of these unless --overwrite (a refusal writes
 nothing; so does a stop). They are written into a folder of their own beside them (.<stem>.*,
 removed after) and put in place once all are written: the figures, the csv and the report, then,
@@ -65,17 +73,22 @@ Ctrl-C) while they are made leaves none of them; one in the last second, while t
 place or the git state is read, can leave the results without their run record (beside an earlier
 run's, with --overwrite). A kill that no finally block sees (SIGKILL) leaves the folder of their
 own, which the next run refuses to write over, as it does the outputs, and --overwrite removes:
-  <stem>.csv          one row per area, arm and k: area, arm, stand_size, k, wcss, ari_median,
-                      ari_min, is_knee, n_rows_fitted (the pools as the areas pooled_3ha and
-                      pooled_10ha)
+  <stem>.csv          one row per area, arm, row order and k: area, arm, stand_size, row_order, k,
+                      wcss, ari_median, ari_min, is_knee, n_rows_fitted (the pools as the areas
+                      pooled_3ha and pooled_10ha); row_order is "stated" (a run's rows in its
+                      table's order, a pool's in the order above) or "reversed" (a pool's same
+                      rows in reverse order), as ROW_ORDERS says
   <stem>/<area>.png   one figure per area: each arm's within-cluster sum of squares divided by its
                       own value at k = 2 (the arms' sums are in different spaces) with its knee,
-                      and the starts' median and lowest pairwise adjusted Rand index
-  <stem>_report.md    the report
+                      and the starts' median and lowest pairwise adjusted Rand index; a pool's
+                      figure has two columns on the same axes, the rows in the stated order on
+                      the left and the same rows in reverse order on the right
+  <stem>_report.md    the report; for a pool, the knees and the table of k in both orders
   <stem>_run.json     the run's record: the command, when it ran, the git block of this checkout
                       (fmu.utils.provenance.git_state, read at the start of main(), and again once
-                      the csv, the report and the figures are in place), the environment, and
-                      every input read, with where it was, its size and its SHA-256
+                      the csv, the report and the figures are in place), the environment, the
+                      csv's row orders (ROW_ORDERS), and every input read, with where it was, its
+                      size and its SHA-256
 stem is r14_elbow by default. The csv, the figures and the report hold results only (no date,
 time or commit), so that `git diff` after a re-run shows whether it reproduced.
 """
@@ -125,8 +138,15 @@ K_MIN, K_MAX, SEED, N_STARTS = 2, 12, 42, st.KMEANS_STARTS
 N_PAIRS = N_STARTS * (N_STARTS - 1) // 2
 FILES = ("k_elbow.csv", "k_elbow_stand_table.csv", "k_elbow_preprocessing.json")
 ELBOW_COLUMNS = ["k", "wcss", "ari_median", "ari_min", "is_knee"]
-CSV_COLUMNS = ["area", "arm", "stand_size", "k", "wcss", "ari_median", "ari_min", "is_knee",
-               "n_rows_fitted"]
+CSV_COLUMNS = ["area", "arm", "stand_size", "row_order", "k", "wcss", "ari_median", "ari_min",
+               "is_knee", "n_rows_fitted"]
+# The csv's row orders, as the run record gives them: each run's elbow in one, a pool's in both
+# (Jaskaran's answer (b) to question 9 of the round 14 record, 27 Oct 2026).
+ROW_ORDERS = {
+    "stated": "a run's rows in its table's order (by stand label); a pool's, the districts in the "
+              "order angul, dhenkanal, kendujhar, koraput, each in its table's order",
+    "reversed": "a pool's same rows in reverse order, with the same preprocessing and the same sweep",
+}
 LABEL_COLUMNS = ("stand_lbl", "snic_label")
 RECORD_KEYS = ("log_rule", "skewness_threshold", "cyclic_decomposition_log", "candidate_bands",
                "n_table_rows", "n_rows_fitted")
@@ -380,19 +400,24 @@ def one_rule(runs: dict[str, RunRecords]) -> tuple[str, float]:
 
 
 # ---------------------------------------------------------------------- the sweeps
+def elbow_of(values: np.ndarray, in_fit: np.ndarray) -> Elbow:
+    """The elbow of preprocessed rows: the fit's starts on the rows in the fit, for k 2 to 12
+    (fmu.stages.k_elbow.fit_space_sweep, with every row), and the knee of the sums of squares
+    (fmu.stages.k_elbow.knee)."""
+    sweep = fit_space_sweep(values[in_fit], values, k_min=K_MIN, k_max=K_MAX, seed=SEED,
+                            n_starts=N_STARTS)
+    return Elbow(ks=list(sweep["ks"]), wcss=list(sweep["inertia"]), ari_median=list(sweep["ari_median"]),
+                 ari_min=list(sweep["ari_min"]), knee=knee(list(sweep["ks"]), list(sweep["inertia"])))
+
+
 def sweep_table(table: st.StandTable, record: dict[str, Any]) -> tuple[st.Preprocessed, Elbow]:
     """The elbow of a table of stands, made as the k elbow step makes a run's: the table
-    preprocessed over every row by the record's rule, threshold and angle pairs, then the fit's
-    starts on its rows in the fit, for k 2 to 12 (fmu.stages.k_elbow.fit_space_sweep), and the knee
-    of the sums of squares (fmu.stages.k_elbow.knee)."""
+    preprocessed over every row by the record's rule, threshold and angle pairs, then elbow_of its
+    rows."""
     pre = st.preprocess(table, rule=str(record["log_rule"]),
                         threshold=float(record["skewness_threshold"]),
                         decomposed=list(record["cyclic_decomposition_log"]))
-    sweep = fit_space_sweep(pre.values[table.in_fit], pre.values, k_min=K_MIN, k_max=K_MAX,
-                            seed=SEED, n_starts=N_STARTS)
-    elbow = Elbow(ks=list(sweep["ks"]), wcss=list(sweep["inertia"]), ari_median=list(sweep["ari_median"]),
-                  ari_min=list(sweep["ari_min"]), knee=knee(list(sweep["ks"]), list(sweep["inertia"])))
-    return pre, elbow
+    return pre, elbow_of(pre.values, table.in_fit)
 
 
 def check_run(run: RunRecords) -> None:
@@ -414,7 +439,8 @@ def check_run(run: RunRecords) -> None:
 
 @dataclass
 class Pool:
-    """The four districts of an arm and stand size pooled: their rows and their elbow."""
+    """The four districts of an arm and stand size pooled: their rows and their elbow, in the
+    stated order and with the same rows in reverse order."""
 
     size: str
     arm: str
@@ -423,6 +449,7 @@ class Pool:
     keys: list[tuple[str, int]]  # (district, stand label) of each pooled row
     pre: st.Preprocessed
     elbow: Elbow
+    elbow_reversed: Elbow
 
     @property
     def n_table_rows(self) -> int:
@@ -462,16 +489,20 @@ def pool_table(size: str, arm: str, runs: dict[str, RunRecords]) -> tuple[st.Sta
 
 
 def make_pool(size: str, arm: str, runs: dict[str, RunRecords]) -> Pool:
+    """The pool's elbow, then the same rows' in reverse order: the preprocessing made once, its rows
+    reversed, the same sweep (module docstring)."""
     table, keys = pool_table(size, arm, runs)
     pre, elbow = sweep_table(table, runs[DISTRICTS[0]].record)
+    elbow_reversed = elbow_of(pre.values[::-1], table.in_fit[::-1])
     return Pool(size=size, arm=arm, runs={d: runs[d] for d in DISTRICTS}, table=table, keys=keys,
-                pre=pre, elbow=elbow)
+                pre=pre, elbow=elbow, elbow_reversed=elbow_reversed)
 
 
 # ---------------------------------------------------------------------- the series of each area
 @dataclass
 class Series:
-    """One arm of one area: its elbow, where it came from and how many rows it fitted."""
+    """One arm of one area: its elbow, where it came from and how many rows it fitted; for a pool,
+    also its elbow with the same rows in reverse order."""
 
     area: Area
     arm: str
@@ -479,6 +510,12 @@ class Series:
     n_rows_fitted: int
     n_table_rows: int
     source: str  # the run's config name, or "pooled"
+    elbow_reversed: Elbow | None = None
+
+    def orders(self) -> list[tuple[str, Elbow]]:
+        """Its elbow in each row order it was made in (ROW_ORDERS): a pool's two, a run's one."""
+        both = [("reversed", self.elbow_reversed)] if self.elbow_reversed is not None else []
+        return [("stated", self.elbow), *both]
 
 
 def area_series(runs: dict[str, RunRecords], pools: dict[tuple[str, str], Pool | None]) -> dict[str, dict[str, Series]]:
@@ -491,7 +528,7 @@ def area_series(runs: dict[str, RunRecords], pools: dict[tuple[str, str], Pool |
                 pool = pools.get((area.stand_size, arm))
                 if pool is not None:
                     arms[arm] = Series(area, arm, pool.elbow, pool.n_rows_fitted, pool.n_table_rows,
-                                       "pooled")
+                                       "pooled", elbow_reversed=pool.elbow_reversed)
             elif arm in area.runs and area.runs[arm] in runs:
                 r = runs[area.runs[arm]]
                 arms[arm] = Series(area, arm, r.elbow, r.n_rows_fitted, r.n_table_rows, r.run)
@@ -500,16 +537,17 @@ def area_series(runs: dict[str, RunRecords], pools: dict[tuple[str, str], Pool |
 
 
 def csv_text(series: dict[str, dict[str, Series]]) -> str:
-    """<stem>.csv: one row per area, arm and k (results only)."""
+    """<stem>.csv: one row per area, arm, row order and k (results only)."""
     out = io.StringIO()
     w = csv.writer(out, lineterminator="\n")
     w.writerow(CSV_COLUMNS)
     for area in AREAS:
         for arm, s in series[area.key].items():
-            e = s.elbow
-            for i, k in enumerate(e.ks):
-                w.writerow([area.key, arm, area.stand_size, k, repr(e.wcss[i]), repr(e.ari_median[i]),
-                            repr(e.ari_min[i]), int(k == e.knee), s.n_rows_fitted])
+            for order, e in s.orders():
+                for i, k in enumerate(e.ks):
+                    w.writerow([area.key, arm, area.stand_size, order, k, repr(e.wcss[i]),
+                                repr(e.ari_median[i]), repr(e.ari_min[i]), int(k == e.knee),
+                                s.n_rows_fitted])
     return out.getvalue()
 
 
@@ -517,9 +555,12 @@ def csv_text(series: dict[str, dict[str, Series]]) -> str:
 # Two knees at one k whose heights (on the scale where k = 2 is 1) differ by less than this share
 # one label.
 SAME_HEIGHT = 0.05
-# The panels' place in the figure, fixed (a constrained layout takes twice as long to draw).
+# The panels' place in the figure, fixed (a constrained layout takes twice as long to draw). A
+# pool's figure has two columns, and room above them for the top row's heading.
 PANELS = {"height_ratios": [1.15, 1.0], "hspace": 0.3, "left": 0.085, "right": 0.985, "top": 0.885,
           "bottom": 0.085}
+PANELS_TWO = {**PANELS, "wspace": 0.08, "top": 0.835}
+COLUMN_TITLES = ("The rows in the stated order", "The same rows in reverse order")
 
 
 def knee_labels(points: dict[str, tuple[int, float]]) -> list[tuple[str, tuple[int, float], tuple[int, int], str, str]]:
@@ -553,71 +594,99 @@ def knee_labels(points: dict[str, tuple[int, float]]) -> list[tuple[str, tuple[i
 
 
 def draw_figure(area: Area, arms: dict[str, Series], path: Path) -> None:
-    """One area's figure (module docstring), with the Agg backend; no date, no software name."""
+    """One area's figure (module docstring), with the Agg backend; no date, no software name. A
+    pool's has two columns on the same axes: the rows in the stated order on the left, the same
+    rows in reverse order on the right."""
     import matplotlib as mpl
     from matplotlib.backends.backend_agg import FigureCanvasAgg
     from matplotlib.figure import Figure
     from matplotlib.lines import Line2D
 
+    two = any(s.elbow_reversed is not None for s in arms.values())
+    whose = "each arm relative to its own k = 2" if len(arms) > 1 else "relative to its k = 2"
+    sums_title = f"Within-cluster sum of squares of the best of {N_STARTS} starts, {whose}"
+    ari_title = f"How much the {N_STARTS} starts agree: adjusted Rand index of the {N_PAIRS} pairs of starts"
     with mpl.rc_context({"font.size": 11, "axes.titlesize": 11, "axes.labelsize": 11,
                          "xtick.labelsize": 10, "ytick.labelsize": 10, "legend.fontsize": 10,
                          "axes.edgecolor": AXIS, "axes.labelcolor": INK_2, "xtick.color": INK_2,
                          "ytick.color": INK_2, "text.color": INK, "axes.titlecolor": INK_2}):
         fig = Figure(figsize=FIG_SIZE_IN, dpi=FIG_DPI, facecolor="white")
         FigureCanvasAgg(fig)
-        top, bottom = fig.subplots(2, 1, sharex=True, gridspec_kw=PANELS)
         fig.text(0.015, 0.975, area.title, ha="left", va="top", fontsize=13.5, fontweight="bold", color=INK)
-        knees: dict[str, tuple[int, float]] = {}
-        high_rel = 1.0
-        for arm, s in arms.items():
-            e, colour = s.elbow, COLOUR[arm]
-            ks = np.array(e.ks, dtype=float)
-            wcss = np.array(e.wcss, dtype=float)
-            rel = wcss / wcss[0] if wcss[0] > 0 else wcss
-            name = f"{ARM_TEXT[arm]}: knee at k = {e.knee}" if e.knee is not None else f"{ARM_TEXT[arm]}: no knee"
-            top.plot(ks, rel, color=colour, lw=1.8, marker="o", ms=6, mfc=colour, mec="white",
-                     mew=1.0, zorder=3, label=name, solid_capstyle="round", solid_joinstyle="round")
-            if e.knee is not None:
-                y = float(rel[e.ks.index(e.knee)])
-                knees[arm] = (e.knee, y)
-                top.plot([e.knee], [y], ls="none", marker="o", ms=14, mfc="none", mec=colour, mew=1.8,
-                         zorder=4)
-            bottom.plot(ks, e.ari_median, color=colour, lw=1.8, marker="o", ms=6, mfc=colour,
-                        mec="white", mew=1.0, zorder=3, clip_on=False, solid_capstyle="round")
-            bottom.plot(ks, e.ari_min, color=colour, lw=1.1, ls=(0, (4, 2.5)), zorder=2, clip_on=False)
-            high_rel = max(high_rel, float(rel.max()))
-        for text, xy, offset, ha, va in knee_labels(knees):
-            top.annotate(text, xy=xy, xytext=offset, textcoords="offset points", ha=ha, va=va,
-                         fontsize=10, color=INK, zorder=5,
-                         bbox={"boxstyle": "round,pad=0.15", "fc": "white", "ec": "none", "alpha": 0.85})
-        whose = "each arm relative to its own k = 2" if len(arms) > 1 else "relative to its k = 2"
-        top.set_title(f"Within-cluster sum of squares of the best of {N_STARTS} starts, {whose}", loc="left")
+        if two:
+            (tl, tr), (bl, br) = fig.subplots(2, 2, sharex=True, sharey="row", gridspec_kw=PANELS_TWO)
+            columns = [(tl, bl, {a: s.elbow for a, s in arms.items()}),
+                       (tr, br, {a: s.elbow_reversed for a, s in arms.items() if s.elbow_reversed is not None})]
+            # The top row's heading above the columns' titles; the bottom row's, over both panels.
+            fig.text(PANELS_TWO["left"], 0.93, sums_title, ha="left", va="top", fontsize=11, color=INK_2)
+            for (top, _, _), title in zip(columns, COLUMN_TITLES, strict=True):
+                top.set_title(title, loc="left", fontweight="bold", color=INK)
+            bl.set_title(ari_title, loc="left")
+        else:
+            top, bottom = fig.subplots(2, 1, sharex=True, gridspec_kw=PANELS)
+            columns = [(top, bottom, {a: s.elbow for a, s in arms.items()})]
+            top.set_title(sums_title, loc="left")
+            bottom.set_title(ari_title, loc="left")
+        # A pool's panels are half as wide: its knees are named in each panel's legend only, as a
+        # label on the curve would run into the legend or out of the panel.
+        high_rel = max(_draw_column(top, bottom, elbows, label_knees=not two) for top, bottom, elbows in columns)
+        for top, bottom, _ in columns:
+            top.set_ylim(0.0, high_rel * 1.04)
+            bottom.set_ylim(ari_floor(arms), 1.0)
+            bottom.set_xlabel("k, the number of stand types")
+            for ax in (top, bottom):
+                ax.grid(True, color=GRID, lw=0.8)
+                ax.set_axisbelow(True)
+                for side in ("top", "right"):
+                    ax.spines[side].set_visible(False)
+                ax.tick_params(length=0)
+            bottom.set_xlim(K_MIN - 0.5, K_MAX + 0.5)
+            bottom.set_xticks(range(K_MIN, K_MAX + 1))
+        top, bottom, _ = columns[0]
         top.set_ylabel("Sum of squares (k = 2 is 1)")
-        top.set_ylim(0.0, high_rel * 1.04)
-        top.legend(loc="upper right", frameon=False)
-        bottom.set_title(f"How much the {N_STARTS} starts agree: adjusted Rand index of the {N_PAIRS} "
-                         "pairs of starts", loc="left")
         bottom.set_ylabel("Adjusted Rand index")
-        bottom.set_xlabel("k, the number of stand types")
-        bottom.set_ylim(ari_floor(arms), 1.0)
         bottom.legend(handles=[Line2D([], [], color=INK_2, lw=1.8, marker="o", ms=6, mec="white",
                                       label=f"median of the {N_PAIRS} pairs"),
                                Line2D([], [], color=INK_2, lw=1.1, ls=(0, (4, 2.5)), label="lowest pair")],
                       loc="best", frameon=False)
-        for ax in (top, bottom):
-            ax.grid(True, color=GRID, lw=0.8)
-            ax.set_axisbelow(True)
-            for side in ("top", "right"):
-                ax.spines[side].set_visible(False)
-            ax.tick_params(length=0)
-        bottom.set_xlim(K_MIN - 0.5, K_MAX + 0.5)
-        bottom.set_xticks(range(K_MIN, K_MAX + 1))
         fig.savefig(path, format="png", dpi=FIG_DPI, facecolor="white", metadata={"Software": None})
 
 
+def _draw_column(top: Any, bottom: Any, elbows: dict[str, Elbow], *, label_knees: bool) -> float:
+    """One column of a figure: in `top` each arm's sums of squares divided by its own value at
+    k = 2, its knee ringed (and labelled, with `label_knees`) and named in the legend, in `bottom`
+    the starts' median and lowest index; each arm in its own colour. Returns the highest relative
+    sum drawn."""
+    knees: dict[str, tuple[int, float]] = {}
+    high_rel = 1.0
+    for arm, e in elbows.items():
+        colour = COLOUR[arm]
+        ks = np.array(e.ks, dtype=float)
+        wcss = np.array(e.wcss, dtype=float)
+        rel = wcss / wcss[0] if wcss[0] > 0 else wcss
+        name = f"{ARM_TEXT[arm]}: knee at k = {e.knee}" if e.knee is not None else f"{ARM_TEXT[arm]}: no knee"
+        top.plot(ks, rel, color=colour, lw=1.8, marker="o", ms=6, mfc=colour, mec="white",
+                 mew=1.0, zorder=3, label=name, solid_capstyle="round", solid_joinstyle="round")
+        if e.knee is not None:
+            y = float(rel[e.ks.index(e.knee)])
+            knees[arm] = (e.knee, y)
+            top.plot([e.knee], [y], ls="none", marker="o", ms=14, mfc="none", mec=colour, mew=1.8,
+                     zorder=4)
+        bottom.plot(ks, e.ari_median, color=colour, lw=1.8, marker="o", ms=6, mfc=colour,
+                    mec="white", mew=1.0, zorder=3, clip_on=False, solid_capstyle="round")
+        bottom.plot(ks, e.ari_min, color=colour, lw=1.1, ls=(0, (4, 2.5)), zorder=2, clip_on=False)
+        high_rel = max(high_rel, float(rel.max()))
+    for text, xy, offset, ha, va in knee_labels(knees) if label_knees else []:
+        top.annotate(text, xy=xy, xytext=offset, textcoords="offset points", ha=ha, va=va,
+                     fontsize=10, color=INK, zorder=5,
+                     bbox={"boxstyle": "round,pad=0.15", "fc": "white", "ec": "none", "alpha": 0.85})
+    top.legend(loc="upper right", frameon=False)
+    return high_rel
+
+
 def lowest_ari(arms: dict[str, Series]) -> float:
-    """The lowest median or lowest pairwise index of an area's arms."""
-    return min(min(s.elbow.ari_min + s.elbow.ari_median) for s in arms.values())
+    """The lowest median or lowest pairwise index of an area's arms, in every row order drawn."""
+    return min(min(e.ari_min + e.ari_median) for s in arms.values() for _, e in s.orders())
 
 
 def ari_floor(arms: dict[str, Series]) -> float:
@@ -642,13 +711,28 @@ def _ari(v: float) -> str:
     return f"{v:.1e}" if abs(v) < 5e-5 else f"{v:.4f}"
 
 
-def _knee_cell(area: Area, arm: str, arms: dict[str, Series]) -> str:
+def reversed_title(area: Area) -> str:
+    """The title of a pool's knees with the same rows in reverse order, in the table of knees."""
+    return f"{area.title}, the same rows in reverse order"
+
+
+def _knee_text(e: Elbow) -> str:
+    return str(e.knee) if e.knee is not None else "none (the sums of squares do not change)"
+
+
+def _knee_cell(area: Area, arm: str, arms: dict[str, Series], reverse: bool = False) -> str:
     if arm in arms:
-        k = arms[arm].elbow.knee
-        return str(k) if k is not None else "none (the sums of squares do not change)"
+        e = arms[arm].elbow_reversed if reverse else arms[arm].elbow
+        return _knee_text(e) if e is not None else "not computed"
     if not area.pooled and arm not in area.runs:
         return "no run (one arm)"
     return "not computed" if area.pooled else "no record"
+
+
+def _knees_sentence(elbows: dict[str, Elbow]) -> str:
+    """Each arm's knee in one sentence: "Knees: hand-crafted k = 5, AlphaEarth k = 6."."""
+    return "Knees: " + ", ".join(f"{ARM_WORD[a]} k = {e.knee}" if e.knee is not None
+                                 else f"{ARM_WORD[a]} {_knee_text(e)}" for a, e in elbows.items()) + "."
 
 
 def _fitted_cell(arms: dict[str, Series]) -> str:
@@ -681,8 +765,8 @@ def report_text(*, stem: str, records: Path, series: dict[str, dict[str, Series]
         f"when it ran, the git commit, and every input with its SHA-256) is `{stem}_run.json`. The areas "
         "are each Odisha district at 3 ha and at 10 ha, Sanjay Van (10 ha stands) and the 10 km tile in "
         "Angul (3 ha stands), each with its two arms, hand-crafted and AlphaEarth, side by side, and the "
-        "four districts pooled, for each arm and stand size. The tile has one arm, hand-crafted: R3 has "
-        "no AlphaEarth run of the tile.",
+        "four districts pooled, for each arm and stand size, in the stated order and with the same rows "
+        "in reverse order. The tile has one arm, hand-crafted: R3 has no AlphaEarth run of the tile.",
         "",
     ]
     if run_check:
@@ -723,7 +807,10 @@ def report_text(*, stem: str, records: Path, series: dict[str, dict[str, Series]
         "the order Angul, Dhenkanal, Kendujhar, Koraput and within each by stand label, each row keeping "
         "whether it is in its run's fit. It preprocesses them together by the runs' own rule, threshold "
         "and angle pairs, and sweeps k on the rows in the fit with the same code and the same starts "
-        "(`fmu.stages.k_elbow.fit_space_sweep`). The two arms' sums of squares are in different spaces "
+        "(`fmu.stages.k_elbow.fit_space_sweep`). k-means++ depends on the order of the rows, so each "
+        "pooled elbow is also made with the same rows in reverse order, with the same preprocessing and "
+        "the same sweep, and given beside it (the declaration's note of 27 Oct 2026); each run's elbow "
+        "has one order, the run's. The two arms' sums of squares are in different spaces "
         "(different bands), so the figures show each relative to its own value at k = 2, and the tables "
         "give them as they are.",
         "",
@@ -736,6 +823,9 @@ def report_text(*, stem: str, records: Path, series: dict[str, dict[str, Series]
         arms = series[area.key]
         lines.append(f"| {area.title} | {_knee_cell(area, 'handcrafted', arms)} | "
                      f"{_knee_cell(area, 'alphaearth', arms)} | {_fitted_cell(arms)} |")
+        if area.pooled:
+            lines.append(f"| {reversed_title(area)} | {_knee_cell(area, 'handcrafted', arms, reverse=True)} | "
+                         f"{_knee_cell(area, 'alphaearth', arms, reverse=True)} | {_fitted_cell(arms)} |")
     lines.append("")
     for area in AREAS:
         lines += _area_section(area, series[area.key], pools, stem, missing)
@@ -762,16 +852,31 @@ def _area_section(area: Area, arms: dict[str, Series], pools: dict[tuple[str, st
     if not arms:
         return [*lines, "No figure and no table: no arm of this area has an elbow.", ""]
     shown_arms = " and ".join(ARM_WORD[a] for a in arms)
-    lines += [f"![{area.title}: the k elbow, {shown_arms}]({stem}/{area.key}.png)", "", _caption(arms), ""]
+    two = any(s.elbow_reversed is not None for s in arms.values())
+    orders = ", the rows in the stated order and in reverse order" if two else ""
+    lines += [f"![{area.title}: the k elbow, {shown_arms}{orders}]({stem}/{area.key}.png)", "",
+              _caption(arms), ""]
+    if not two:
+        return [*lines, *_k_table({a: s.elbow for a, s in arms.items()}), ""]
+    stated = {a: s.elbow for a, s in arms.items()}
+    backwards = {a: s.elbow_reversed for a, s in arms.items() if s.elbow_reversed is not None}
+    return [*lines,
+            "**The rows in the stated order** (Angul, Dhenkanal, Kendujhar, Koraput, each by stand "
+            f"label). {_knees_sentence(stated)}", "", *_k_table(stated), "",
+            "**The same rows in reverse order** (the same preprocessing and the same sweep). "
+            f"{_knees_sentence(backwards)}", "", *_k_table(backwards), ""]
+
+
+def _k_table(elbows: dict[str, Elbow]) -> list[str]:
+    """A table of k against each arm's sum of squares, its knee marked, and the starts' median and
+    lowest index."""
     head = ["k"]
-    for arm in arms:
+    for arm in elbows:
         head += [f"{ARM_TEXT[arm]}: sum of squares", "median ARI", "lowest ARI"]
-    lines += ["| " + " | ".join(head) + " |", "|" + "---:|" * len(head)]
-    ks = sorted({k for s in arms.values() for k in s.elbow.ks})
-    for k in ks:
+    lines = ["| " + " | ".join(head) + " |", "|" + "---:|" * len(head)]
+    for k in sorted({k for e in elbows.values() for k in e.ks}):
         cells = [str(k)]
-        for s in arms.values():
-            e = s.elbow
+        for e in elbows.values():
             if k in e.ks:
                 i = e.ks.index(k)
                 cells += [_num(e.wcss[i]) + (" (knee)" if k == e.knee else ""), _ari(e.ari_median[i]),
@@ -779,27 +884,32 @@ def _area_section(area: Area, arms: dict[str, Series], pools: dict[tuple[str, st
             else:
                 cells += ["", "", ""]
         lines.append("| " + " | ".join(cells) + " |")
-    return [*lines, ""]
+    return lines
 
 
 def _caption(arms: dict[str, Series]) -> str:
-    """A figure's caption: how its sums of squares are scaled, its index's scale as draw_figure
-    sets it (below 0 when an index is), and its colours."""
+    """A figure's caption: a pool's two columns, how its sums of squares are scaled, its index's
+    scale as draw_figure sets it (below 0 when an index is, in either order), and its colours."""
     low = lowest_ari(arms)
     scale = ("on a scale from 0 to 1." if low >= 0 else
              f"on a scale from 0 to 1 taken down to {_ari(ari_floor(arms))}, below the lowest, {_ari(low)}, "
              "where an index below 0 means two starts agree less than chance would.")
     bottom = (f"Bottom: the adjusted Rand index of the {N_PAIRS} pairs of the {N_STARTS} starts, the "
               f"median (solid, with points) and the lowest (dashed), {scale}")
+    two = any(s.elbow_reversed is not None for s in arms.values())
+    columns = ("Left: the rows in the stated order; right: the same rows in reverse order, on the same "
+               "axes. " if two else "")
+    in_order = " in that order" if two else ""
+    marked = "ringed and named in each panel's legend" if two else "ringed and labelled"
     if len(arms) > 1:
-        return ("*Top: each arm's within-cluster sum of squares (the best of the starts) divided by its "
-                "own value at k = 2, as the two arms' sums are in different spaces, on a scale from 0; "
-                f"each arm's knee is ringed and labelled. {bottom} Blue: hand-crafted; vermillion: "
+        return (f"*{columns}Top: each arm's within-cluster sum of squares (the best of the starts) divided "
+                f"by its own value at k = 2{in_order}, as the two arms' sums are in different spaces, on a "
+                f"scale from 0; each arm's knee is {marked}. {bottom} Blue: hand-crafted; vermillion: "
                 "AlphaEarth.*")
     (arm,) = arms
     colour = {"handcrafted": "blue", "alphaearth": "vermillion"}[arm]
-    return ("*Top: the within-cluster sum of squares (the best of the starts) divided by its value at "
-            f"k = 2, on a scale from 0; the knee is ringed and labelled. {bottom} One arm, "
+    return (f"*{columns}Top: the within-cluster sum of squares (the best of the starts) divided by its "
+            f"value at k = 2{in_order}, on a scale from 0; the knee is {marked}. {bottom} One arm, "
             f"{ARM_WORD[arm]} ({colour}).*")
 
 
@@ -888,6 +998,7 @@ def run_record(*, argv: list[str], started: dict[str, Any], result_files: list[s
         "packages": env["packages"],
         "run_check": run_check,
         "missing_runs": missing,
+        "row_orders": ROW_ORDERS,
         "inputs": [{"run": r.run, "file": r.file, "path": shown(r.path), "off_git": r.off_git,
                     "bytes": r.n_bytes, "sha256": r.sha256} for r in reads],
     }
@@ -1006,6 +1117,9 @@ def main(argv: list[str] | None = None) -> int:
         arms = series[area.key]
         print(f"  {area.title}: " + ", ".join(f"{ARM_WORD[a]} {_knee_cell(area, a, arms)}" for a in ARMS
                                               if a in arms or area.pooled or a in area.runs))
+        if area.pooled:
+            print(f"  {reversed_title(area)}: "
+                  + ", ".join(f"{ARM_WORD[a]} {_knee_cell(area, a, arms, reverse=True)}" for a in ARMS))
     return 0
 
 

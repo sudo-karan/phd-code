@@ -13,6 +13,10 @@ and returns a sweep made from the rows by a closed form. They check the script's
 rows, made here independently, every row, k 2 to 12, seed 42, 25 starts) and that the script writes
 what the sweep returns. The test marked slow runs a pool, and the check of a run, with the real
 sweep and the script's own settings. No Earth Engine, no network.
+
+Each pool is also swept with the same rows in reverse order (Jaskaran's answer (b) to question 9,
+27 Oct 2026). The stand-in's numbers depend on which row is first, as k-means++'s depend on the
+order of the rows, so in these tests the two orders' elbows differ and each can be told apart.
 """
 
 from __future__ import annotations
@@ -129,24 +133,29 @@ def records(tmp_path_factory) -> SimpleNamespace:
 # ---------------------------------------------------------------------- the stand-in sweep
 def stand_in_sweep(rows: np.ndarray, every_row: np.ndarray, *, k_min: int, k_max: int, seed: int,
                    n_starts: int) -> dict[str, Any]:
-    """A sweep shaped as fit_space_sweep's, made from the rows by a closed form, in no time."""
+    """A sweep shaped as fit_space_sweep's, made from the rows by a closed form, in no time. Its
+    numbers depend on the first row too, as k-means++'s depend on the order of the rows."""
     ks = [k for k in range(k_min, k_max + 1) if k < len(rows)]
     total = float(((rows - rows.mean(axis=0)) ** 2).sum())
-    inertia = [round(total / k**0.9 + 0.37 * (k % 3), 6) for k in ks]
-    med = [round(1.0 - 0.031 * (k - k_min) - 0.001 * (seed % 7), 6) for k in ks]
+    first = float(np.abs(rows[0]).sum())
+    inertia = [round(total / k**0.9 + 0.37 * (k % 3) + 0.05 * first * (k % 2), 6) for k in ks]
+    med = [round(1.0 - 0.031 * (k - k_min) - 0.001 * (seed % 7) - 0.001 * (round(first, 3) % 7), 6)
+           for k in ks]
     low = [round(m - 0.12 - 0.001 * n_starts, 6) for m in med]
     return {"n_rows": len(rows), "ks": ks, "inertia": inertia, "ari_median": med, "ari_min": low,
             "elbow_k": k_elbow.knee(ks, inertia), "types": [[0] * len(every_row) for _ in ks]}
 
 
 class Recorder:
-    """The stand-in sweep, each call recorded: (rows, every row, the settings)."""
+    """The stand-in sweep, each call recorded: (rows, every row, the settings). The sweep is made
+    from the copies recorded, so a test that sweeps a recorded call's rows gets the same numbers."""
 
     def __init__(self) -> None:
         self.calls: list[tuple[np.ndarray, np.ndarray, dict[str, Any]]] = []
 
     def __call__(self, rows: np.ndarray, every_row: np.ndarray, **kwargs: Any) -> dict[str, Any]:
-        self.calls.append((rows.copy(), every_row.copy(), dict(kwargs)))
+        rows, every_row = np.array(rows), np.array(every_row)
+        self.calls.append((rows, every_row, dict(kwargs)))
         return stand_in_sweep(rows, every_row, **kwargs)
 
 
@@ -176,10 +185,11 @@ def read_csv(path: Path) -> list[dict[str, str]]:
     return list(csv.DictReader(io.StringIO(path.read_text())))
 
 
-def by_series(rows: list[dict[str, str]]) -> dict[tuple[str, str], list[dict[str, str]]]:
-    out: dict[tuple[str, str], list[dict[str, str]]] = {}
+def by_series(rows: list[dict[str, str]]) -> dict[tuple[str, str, str], list[dict[str, str]]]:
+    """The csv's rows by area, arm and row order."""
+    out: dict[tuple[str, str, str], list[dict[str, str]]] = {}
     for r in rows:
-        out.setdefault((r["area"], r["arm"]), []).append(r)
+        out.setdefault((r["area"], r["arm"], r["row_order"]), []).append(r)
     return out
 
 
@@ -246,16 +256,20 @@ def test_the_areas_are_the_nineteen_r3_configs_with_the_sweep_the_script_makes(m
 
 
 # ---------------------------------------------------------------------- the csv
-def test_the_csv_has_one_row_per_area_arm_and_k_with_each_runs_own_numbers(records, written):
+def test_the_csv_has_one_row_per_area_arm_row_order_and_k_with_each_runs_own_numbers(records, written):
     path = written.out / "r14_elbow.csv"
+    assert R.CSV_COLUMNS == ["area", "arm", "stand_size", "row_order", "k", "wcss", "ari_median", "ari_min",
+                             "is_knee", "n_rows_fitted"]
     assert path.read_text().splitlines()[0] == ",".join(R.CSV_COLUMNS)
     rows = read_csv(path)
     series = by_series(rows)
-    assert list(series) == [(a.key, arm) for a in R.AREAS for arm in R.ARMS
-                            if arm in a.runs or a.pooled]
-    assert len(series) == 23  # 9 areas x 2 arms, the tile 1, the 4 pools
+    # Each run's elbow in its one order; each pool's in the stated order, then in reverse order.
+    assert list(series) == [(a.key, arm, order) for a in R.AREAS for arm in R.ARMS
+                            if arm in a.runs or a.pooled
+                            for order in (("stated", "reversed") if a.pooled else ("stated",))]
+    assert len(series) == 27  # 9 areas x 2 arms, the tile 1, the 4 pools twice
     for area, arm, run in RUNS:
-        mine, elbow = series[(area.key, arm)], records.elbows[run]
+        mine, elbow = series[(area.key, arm, "stated")], records.elbows[run]
         assert [int(r["k"]) for r in mine] == elbow["ks"] == list(range(2, 13))
         assert [float(r["wcss"]) for r in mine] == elbow["inertia"]
         assert [float(r["ari_median"]) for r in mine] == elbow["ari_median"]
@@ -264,20 +278,23 @@ def test_the_csv_has_one_row_per_area_arm_and_k_with_each_runs_own_numbers(recor
         assert {int(r["n_rows_fitted"]) for r in mine} == {int(records.tables[run].in_fit.sum())}
     for size in R.SIZES:
         for arm in R.ARMS:
-            mine = series[(f"pooled_{size}", arm)]
             fitted = sum(int(records.tables[R.district_run(d, size, arm)].in_fit.sum()) for d in R.DISTRICTS)
-            assert {r["stand_size"] for r in mine} == {size}
-            assert {int(r["n_rows_fitted"]) for r in mine} == {fitted}
+            for order in ("stated", "reversed"):
+                mine = series[(f"pooled_{size}", arm, order)]
+                assert [int(r["k"]) for r in mine] == list(range(2, 13))
+                assert {r["stand_size"] for r in mine} == {size}
+                assert {int(r["n_rows_fitted"]) for r in mine} == {fitted}
 
 
 def test_each_series_flags_one_knee_the_knee_of_its_sums_of_squares(records, written):
     series = by_series(read_csv(written.out / "r14_elbow.csv"))
-    for (area, arm), mine in series.items():
+    for (area, arm, order), mine in series.items():
         ks, wcss = [int(r["k"]) for r in mine], [float(r["wcss"]) for r in mine]
         assert {r["is_knee"] for r in mine} <= {"0", "1"}
-        assert [k for k, r in zip(ks, mine, strict=True) if r["is_knee"] == "1"] == [k_elbow.knee(ks, wcss)], (area, arm)
+        assert [k for k, r in zip(ks, mine, strict=True) if r["is_knee"] == "1"] == [k_elbow.knee(ks, wcss)], (
+            area, arm, order)
     for area, arm, run in RUNS:
-        flagged = [int(r["k"]) for r in series[(area.key, arm)] if r["is_knee"] == "1"]
+        flagged = [int(r["k"]) for r in series[(area.key, arm, "stated")] if r["is_knee"] == "1"]
         assert flagged == [records.elbows[run]["elbow_k"]]
 
 
@@ -318,24 +335,35 @@ def test_a_table_whose_bands_or_counts_are_not_its_records_stops(records, tmp_pa
 def test_the_pooled_sweep_is_fit_space_sweep_on_the_pooled_preprocessed_rows(records, written):
     """Each pool's call is the script's sweep (k 2 to 12, seed 42, 25 starts) on the four districts'
     rows pooled and preprocessed together, with every pooled row, and the csv holds what it
-    returned: with the first test, the pooled numbers are fit_space_sweep's on those rows."""
-    assert len(written.calls) == 4  # the four pools; --no-run-check
+    returned: with the first test, the pooled numbers are fit_space_sweep's on those rows. Its
+    second call is the same sweep on the same rows in reverse order, with every row reversed (the
+    same preprocessing, made once), and the csv's reversed rows hold what that returned (Jaskaran's
+    answer (b) to question 9, 27 Oct 2026)."""
+    assert len(written.calls) == 8  # the four pools, each in two orders; --no-run-check
     series = by_series(read_csv(written.out / "r14_elbow.csv"))
     for size in R.SIZES:
         for arm in R.ARMS:
             rows, every = pooled_rows(records, size, arm)
-            calls = [c for c in written.calls if c[0].shape == rows.shape and np.array_equal(c[0], rows)]
-            assert len(calls) == 1, (size, arm)
-            _, every_row, kwargs = calls[0]
-            assert np.array_equal(every_row, every)
-            assert kwargs == SCRIPTS_CALL
-            sweep = stand_in_sweep(rows, every, **SCRIPTS_CALL)
-            mine = series[(f"pooled_{size}", arm)]
-            assert [int(r["k"]) for r in mine] == sweep["ks"]
-            assert [float(r["wcss"]) for r in mine] == sweep["inertia"]
-            assert [float(r["ari_median"]) for r in mine] == sweep["ari_median"]
-            assert [float(r["ari_min"]) for r in mine] == sweep["ari_min"]
-            assert [int(r["k"]) for r in mine if r["is_knee"] == "1"] == [k_elbow.knee(sweep["ks"], sweep["inertia"])]
+            backwards = (np.ascontiguousarray(rows[::-1]), np.ascontiguousarray(every[::-1]))
+            for order, (want_rows, want_every) in (("stated", (rows, every)), ("reversed", backwards)):
+                calls = [c for c in written.calls if c[0].shape == want_rows.shape
+                         and np.array_equal(c[0], want_rows)]
+                assert len(calls) == 1, (size, arm, order)
+                _, every_row, kwargs = calls[0]
+                assert np.array_equal(every_row, want_every)
+                assert kwargs == SCRIPTS_CALL
+                sweep = stand_in_sweep(want_rows, want_every, **SCRIPTS_CALL)
+                mine = series[(f"pooled_{size}", arm, order)]
+                assert [int(r["k"]) for r in mine] == sweep["ks"]
+                assert [float(r["wcss"]) for r in mine] == sweep["inertia"]
+                assert [float(r["ari_median"]) for r in mine] == sweep["ari_median"]
+                assert [float(r["ari_min"]) for r in mine] == sweep["ari_min"]
+                assert [int(r["k"]) for r in mine if r["is_knee"] == "1"] == [
+                    k_elbow.knee(sweep["ks"], sweep["inertia"])]
+            # The two orders' elbows differ here (the stand-in depends on the first row), so the
+            # reversed rows are not the stated ones written twice.
+            assert ([r["wcss"] for r in series[(f"pooled_{size}", arm, "stated")]]
+                    != [r["wcss"] for r in series[(f"pooled_{size}", arm, "reversed")]])
 
 
 def test_the_pooled_rows_are_keyed_by_district_and_stand_label(records):
@@ -452,12 +480,13 @@ def test_by_default_every_runs_elbow_is_made_again(records, sweeps, tmp_path, mo
 @pytest.mark.slow
 def test_with_the_real_sweep_a_pool_and_a_runs_check_are_fit_space_sweeps(records, tmp_path):
     """The real sweep and the script's own settings, 25 starts at each k from 2 to 12 (a minute or
-    more)."""
+    more); the pool's elbow in both orders."""
     pool = R.make_pool("10ha", "alphaearth", loaded(records, "10ha", "alphaearth"))
     rows, every = pooled_rows(records, "10ha", "alphaearth")
-    sweep = k_elbow.fit_space_sweep(rows, every, **SCRIPTS_CALL)
-    assert pool.elbow.numbers() == (sweep["ks"], sweep["inertia"], sweep["ari_median"], sweep["ari_min"],
-                                    k_elbow.knee(sweep["ks"], sweep["inertia"]))
+    for elbow, (r, e) in ((pool.elbow, (rows, every)), (pool.elbow_reversed, (rows[::-1], every[::-1]))):
+        sweep = k_elbow.fit_space_sweep(np.ascontiguousarray(r), np.ascontiguousarray(e), **SCRIPTS_CALL)
+        assert elbow.numbers() == (sweep["ks"], sweep["inertia"], sweep["ari_median"], sweep["ari_min"],
+                                   k_elbow.knee(sweep["ks"], sweep["inertia"]))
     run = R.district_run("koraput", "3ha", "alphaearth")
     table = records.tables[run]
     pre = st.preprocess(table, rule="right_skew", threshold=1.0, decomposed=[])
@@ -558,20 +587,61 @@ def test_the_knee_labels_name_their_arm_and_two_knees_at_one_point_share_one():
 
 
 def test_the_report_gives_every_areas_knees_and_a_section_with_its_figure(written):
+    """One row of knees per area; for a pool, a second row, its knees with the same rows in reverse
+    order, right below it."""
     report = (written.out / "r14_elbow_report.md").read_text()
     knees = {key: next(int(r["k"]) for r in mine if r["is_knee"] == "1")
              for key, mine in by_series(read_csv(written.out / "r14_elbow.csv")).items()}
     summary = report.split("## The knees\n", 1)[1].split("\n## ", 1)[0].splitlines()
     for area in R.AREAS:
-        (row,) = [line for line in summary if line.startswith(f"| {area.title} |")]
-        cells = [c.strip() for c in row.strip().strip("|").split("|")]
-        assert cells[1] == str(knees[(area.key, "handcrafted")]), area.key
-        assert cells[2] == (str(knees[(area.key, "alphaearth")]) if (area.key, "alphaearth") in knees
-                            else "no run (one arm)"), area.key
+        titles = [(area.title, "stated")] + ([(R.reversed_title(area), "reversed")] if area.pooled else [])
+        for title, order in titles:
+            (row,) = [line for line in summary if line.startswith(f"| {title} |")]
+            cells = [c.strip() for c in row.strip().strip("|").split("|")]
+            assert cells[1] == str(knees[(area.key, "handcrafted", order)]), (area.key, order)
+            assert cells[2] == (str(knees[(area.key, "alphaearth", order)]) if (area.key, "alphaearth", order) in knees
+                                else "no run (one arm)"), (area.key, order)
+        if area.pooled:
+            rows = [line for line in summary if line.startswith("| ")]
+            i = rows.index(next(line for line in rows if line.startswith(f"| {area.title} |")))
+            assert rows[i + 1].startswith(f"| {area.title}, the same rows in reverse order |")
         assert f"\n## {area.title}\n" in report
         assert f"](r14_elbow/{area.key}.png)" in report
     assert "reads no plot and computes no field score, and it recommends no k" in report
     assert "It was not made again here (`--no-run-check`)" in report
+
+
+def test_each_pooled_section_gives_both_knees_and_both_tables(written):
+    """A pool's section gives its knees and its table of k in the stated order, then in reverse
+    order, each from the csv's rows of that order (Jaskaran's answer (b) to question 9)."""
+    report = (written.out / "r14_elbow_report.md").read_text()
+    series = by_series(read_csv(written.out / "r14_elbow.csv"))
+    for area in (a for a in R.AREAS if a.pooled):
+        section = report.split(f"\n## {area.title}\n", 1)[1].split("\n## ", 1)[0]
+        parts = {}
+        for order, head in (("stated", "**The rows in the stated order**"),
+                            ("reversed", "**The same rows in reverse order**")):
+            assert section.count(head) == 1, (area.key, order)
+            parts[order] = section.split(head, 1)[1]
+        parts["stated"] = parts["stated"].split("**The same rows in reverse order**", 1)[0]
+        for order, text in parts.items():
+            knees = {arm: next(int(r["k"]) for r in series[(area.key, arm, order)] if r["is_knee"] == "1")
+                     for arm in R.ARMS}
+            assert f"Knees: hand-crafted k = {knees['handcrafted']}, AlphaEarth k = {knees['alphaearth']}." in text
+            table = [line for line in text.splitlines() if line.startswith("| ") and line[2].isdigit()]
+            assert [int(line.split("|")[1]) for line in table] == list(range(2, 13)), (area.key, order)
+            for line in table:
+                cells = [c.strip() for c in line.strip().strip("|").split("|")]
+                k = int(cells[0])
+                for j, arm in enumerate(R.ARMS):
+                    (row,) = [r for r in series[(area.key, arm, order)] if int(r["k"]) == k]
+                    knee = " (knee)" if row["is_knee"] == "1" else ""
+                    assert cells[1 + 3 * j] == R._num(float(row["wcss"])) + knee, (area.key, order, k, arm)
+                    assert cells[2 + 3 * j] == R._ari(float(row["ari_median"]))
+                    assert cells[3 + 3 * j] == R._ari(float(row["ari_min"]))
+    # A run's section has one table, in its one order.
+    section = report.split(f"\n## {R.AREAS[0].title}\n", 1)[1].split("\n## ", 1)[0]
+    assert "reverse order" not in section and len([ln for ln in section.splitlines() if ln.startswith("| 2 |")]) == 1
 
 
 def test_the_report_gives_each_pools_row_counts(records, written):
@@ -616,6 +686,64 @@ def test_the_caption_gives_the_ari_scale_the_figure_has(tmp_path, monkeypatch):
         "-4.0e-05", "0.0000", "0.0000", "1", "0.1235")
 
 
+def _elbow(seed: int, low: float = 0.3) -> R.Elbow:
+    e = made_up_elbow(seed)
+    return R.Elbow(ks=e["ks"], wcss=e["inertia"], ari_median=e["ari_median"],
+                   ari_min=[low, *e["ari_min"][1:]], knee=e["elbow_k"])
+
+
+def test_a_pools_figure_has_the_same_rows_in_reverse_order_beside_the_stated_order(tmp_path, monkeypatch):
+    """A pool's figure has two columns on the same axes: the rows in the stated order, and the same
+    rows in reverse order, each arm in its own colour in both (Jaskaran's answer (b) to question 9);
+    a run's figure has one. The caption says so, and its index scale covers both orders."""
+    from matplotlib.colors import to_hex
+    from matplotlib.figure import Figure
+
+    figures: list[Any] = []
+    monkeypatch.setattr(Figure, "savefig", lambda fig, *a, **k: figures.append(fig))
+    pool = next(a for a in R.AREAS if a.key == "pooled_10ha")
+    stated = {arm: _elbow(300 + i) for i, arm in enumerate(R.ARMS)}
+    backwards = {arm: _elbow(310 + i, low=-0.12 if arm == "alphaearth" else 0.3) for i, arm in enumerate(R.ARMS)}
+    arms = {arm: R.Series(area=pool, arm=arm, elbow=stated[arm], n_rows_fitted=50, n_table_rows=60,
+                          source="pooled", elbow_reversed=backwards[arm]) for arm in R.ARMS}
+    R.draw_figure(pool, arms, tmp_path / "pooled.png")
+    (fig,) = figures
+    top_left, top_right, bottom_left, bottom_right = fig.axes
+    assert top_left.get_title(loc="left") == "The rows in the stated order"
+    assert top_right.get_title(loc="left") == "The same rows in reverse order"
+    for top, bottom, elbows in ((top_left, bottom_left, stated), (top_right, bottom_right, backwards)):
+        for arm, e in elbows.items():
+            colour = R.COLOUR[arm].lower()
+            curves = [ln for ln in top.get_lines() if to_hex(ln.get_color()) == colour and len(ln.get_xdata()) > 1]
+            assert len(curves) == 1, arm
+            assert np.allclose(curves[0].get_ydata(), np.array(e.wcss) / e.wcss[0])
+            lines = [list(ln.get_ydata()) for ln in bottom.get_lines() if to_hex(ln.get_color()) == colour]
+            assert e.ari_median in lines and e.ari_min in lines, arm
+            rings = [ln for ln in top.get_lines()
+                     if len(ln.get_xdata()) == 1 and to_hex(ln.get_markeredgecolor()) == colour]
+            assert [ln.get_xdata()[0] for ln in rings] == [e.knee], arm
+        # Each panel's legend names its knees; no label on the curves, in panels half as wide.
+        assert [t.get_text() for t in top.get_legend().get_texts()] == [
+            f"{R.ARM_TEXT[arm]}: knee at k = {e.knee}" for arm, e in elbows.items()]
+        assert list(top.texts) == []
+    # One axis per row: the reverse order's lowest index, -0.12, takes both index panels below 0.
+    assert bottom_left.get_ylim() == bottom_right.get_ylim() == (R.ari_floor(arms), 1.0)
+    assert R.ari_floor(arms) == pytest.approx(-0.17)
+    assert top_left.get_ylim() == top_right.get_ylim()
+    caption = " ".join(R._caption(arms).split())
+    assert caption.startswith("*Left: the rows in the stated order; right: the same rows in reverse order, on the "
+                              "same axes.")
+    assert "taken down to -0.1700, below the lowest, -0.1200," in caption
+    # A run's figure: one column, as before.
+    run_arms = {arm: dataclasses.replace(s, area=R.AREAS[0], source="x", elbow_reversed=None)
+                for arm, s in arms.items()}
+    R.draw_figure(R.AREAS[0], run_arms, tmp_path / "run.png")
+    assert len(figures[-1].axes) == 2
+    labels = [t.get_text() for t in figures[-1].axes[0].texts]  # its knees labelled on the curve, as before
+    assert labels and all("knee" in text for text in labels), labels
+    assert "reverse order" not in R._caption(run_arms)
+
+
 def test_the_paragraph_on_how_the_numbers_are_made_says_the_runs_rule(records, written, sweeps, tmp_path):
     """The rule and threshold are the records', one for every run, and the paragraph says how each
     band is scaled and how the numbers are rounded (the gate's review, part 3)."""
@@ -627,6 +755,10 @@ def test_the_paragraph_on_how_the_numbers_are_made_says_the_runs_rule(records, w
     assert "the sine and cosine of an angle by their medians and by their shared spread, the root mean square " \
            "of their two IQRs" in report
     assert "6 decimals in the csv" in report and "4 in the tables" in report
+    # Each pooled elbow in two orders (Jaskaran's answer (b) to question 9, 27 Oct 2026).
+    assert "k-means++ depends on the order of the rows, so each pooled elbow is also made with the same rows " \
+           "in reverse order, with the same preprocessing and the same sweep, and given beside it (the " \
+           "declaration's note of 27 Oct 2026); each run's elbow has one order, the run's." in report
     # Every run at another threshold: the paragraph gives it.
     folder = tmp_path / "records"
     shutil.copytree(records.folder, folder)
@@ -699,6 +831,8 @@ def test_the_results_hold_no_date_time_or_commit_and_the_record_does(written):
     assert record["result_files"][:2] == ["r14_elbow.csv", "r14_elbow_report.md"] and len(record["result_files"]) == 14
     assert record["run_check"] is False and record["missing_runs"] == []
     assert set(record["packages"]) == {"numpy", "scikit-learn", "matplotlib"}
+    # The csv's row orders, said in the record: a pool's two, a run's one (question 9).
+    assert record["row_orders"] == R.ROW_ORDERS and list(R.ROW_ORDERS) == ["stated", "reversed"]
 
 
 def test_the_git_state_at_the_end_is_read_once_the_results_are_in_place(records, sweeps, tmp_path, monkeypatch):
@@ -737,7 +871,7 @@ def test_a_run_with_no_record_stops_the_script_unless_it_is_allowed(records, swe
     monkeypatch.setattr(R, "draw_figure", draw)
     out = tmp_path / "b"
     assert R.main(["--records", str(folder), "--out-dir", str(out), "--no-run-check", "--allow-missing"]) == 0
-    series = by_series(read_csv(out / "r14_elbow.csv"))
+    series = {(area, arm) for area, arm, _ in by_series(read_csv(out / "r14_elbow.csv"))}
     assert ("koraput_10ha", "alphaearth") not in series and ("pooled_10ha", "alphaearth") not in series
     assert ("koraput_10ha", "handcrafted") in series and ("pooled_10ha", "handcrafted") in series
     assert ("koraput_10ha", ["handcrafted"]) in drawn and ("pooled_10ha", ["handcrafted"]) in drawn

@@ -499,12 +499,15 @@ For each run it reads `<run>_k_elbow.csv`, `<run>_k_elbow_stand_table.csv` and
 its SHA-256 matches) and checks them against each other. Beside each run's own elbow it makes the
 pooled elbow of the four districts for each arm and stand size: their tables of stands put together,
 preprocessed together by the runs' rule, and swept by `fmu.stages.k_elbow.fit_space_sweep` with the
-runs' settings. By default it also makes each run's elbow again from its table and stops if a number
-differs (`--no-run-check` skips this). It writes `r14_elbow.csv`, one figure per area in
-`r14_elbow/`, `r14_elbow_report.md` and the run record `r14_elbow_run.json`, and refuses to write
-over them without `--overwrite`. A run with no records stops it; `--allow-missing` writes the report
-without that run and says so. Each sweep takes 15 to 40 s on the Mac whatever the table's size (the
-300 adjusted Rand indices at each k), so a full run, 23 sweeps, takes ten minutes or more.
+runs' settings; and again with the same rows in reverse order, given beside it, as k-means++ depends
+on the order of the rows (Jaskaran's answer to the round 14 record's question 9, 27 Oct 2026). By
+default it also makes each run's elbow again from its table and stops if a number differs
+(`--no-run-check` skips this). It writes `r14_elbow.csv`, one figure per area in `r14_elbow/`,
+`r14_elbow_report.md` and the run record `r14_elbow_run.json`, and refuses to write over them
+without `--overwrite`. A run with no records stops it; `--allow-missing` writes the report without
+that run and says so. Each sweep takes 15 to 40 s on the Mac whatever the table's size (the 300
+adjusted Rand indices at each k), so a full run, 27 sweeps (each run's check, and each pool in two
+orders), takes ten minutes or more.
 
 Then compare. Two general tools, and an Odisha wrapper:
 

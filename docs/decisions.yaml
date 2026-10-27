@@ -10367,7 +10367,16 @@ decisions:
     says when a band is dropped (an IQR at most 1e-9, an angle's sine and cosine only together); the environment is
     read before any result is put in place and the git state at the end after the csv, the report and the figures
     are, the run record last; and a work folder an earlier run left when killed is refused, or removed with
-    --overwrite.
+    --overwrite. Round 14 (27 Oct 2026), Jaskaran's answer (b) to the round 14 record's question 9, before any R3
+    result exists (the kept-land declaration's note of that day): each pooled elbow is also made with the same rows
+    in reverse order and given beside it, as round 13's A7 script gave its elbows (elbow_of(x[::-1])): the pooled
+    rows after the same preprocessing, made once, reversed (the rows in the fit and every row alike), then the same
+    fit_space_sweep call and the same knee. r14_elbow.csv gains a column row_order, stated or reversed (each run's
+    elbow has one order, the run's: stated); each pooled area's figure has two columns on the same axes, the stated
+    order on the left and the reverse order on the right, each arm in its colour in both, the knees ringed and named
+    in each panel's legend; the report gives both knees in its table of knees (a row for the reverse order under each
+    pool's) and, in each pooled section, both orders' knees and tables of k; the run record says what the two orders
+    are (row_orders). A run's figure and caption are as before, byte for byte.
   alternatives_considered:
   - >-
     Pool the saved fit rows (<run>_k_elbow_fit_rows.csv): not chosen; those rows are each run's own preprocessing,
@@ -10403,19 +10412,23 @@ decisions:
     what: The script; its docstring gives the inputs, the checks, the pools and what it writes
   - path: tests/test_r14_elbow_report.py
     what: >-
-      Made-up records of the nineteen runs: the csv's rows and knee flags, the pools' call and rows, an off-git file
-      and its SHA-256, the bands and rules that stop a pool, the check of each run, the refusals, the figures, the
-      report
+      Made-up records of the nineteen runs: the csv's rows and knee flags, the pools' calls and rows in both orders,
+      an off-git file and its SHA-256, the bands and rules that stop a pool, the check of each run, the refusals, the
+      figures, the report
   - path: docs/running.md
     what: The elbow report of R3's first half
   - path: docs/handoff/2026-10-26-round14.md
-    what: Task 6
+    what: Task 6; Questions, item 9 (the pooled elbows in one row order only)
   - path: odisha_script/PHASE_KEPTLAND_PREDECLARED.md
-    what: The change of 26 Oct 2026 (round 14), k
+    what: >-
+      The change of 26 Oct 2026 (round 14), k, and its note of 27 Oct 2026 (the pooled elbows also in reverse
+      order)
   papers: []
   status: adopted
   design_notes_section: null
-  source: Jaskaran, 26 Oct 2026 (round 14 brief), Task 6
+  source: >-
+    Jaskaran, 26 Oct 2026 (round 14 brief), Task 6; Jaskaran, 27 Oct 2026, the round 14 record's question 9, answered
+    (b)
 - id: process-gate-item-1-accepted-from-a078f3e
   title: >-
     Round 14's gate, item 1 ("CI green on every commit"): Jaskaran accepts a078f3e, from which every commit is green,
