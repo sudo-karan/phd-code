@@ -13,7 +13,8 @@ as ended only when its operation is done and its state is SUCCEEDED, FAILED or C
 
 The record is written as each cancel is sent, so that a stop or crash after it loses nothing: a run
 over a record not marked complete finishes it without cancelling again (the cancels it shows were
-sent). <out.json> holds results only (each row: the export, file, folder, task id, description,
+sent). It is marked complete only when none of its tasks is left queued or running, so that a run
+after a slow cancel reads them again. <out.json> holds results only (each row: the export, file, folder, task id, description,
 state at the reading, state, progress and work units before, whether the cancel was sent, state
 after, ended); <out stem>_run.json the command, the git block of this script's checkout read before
 anything is written, the reading's SHA-256, when it started, when each cancel was sent and the
@@ -21,9 +22,10 @@ tasks' own times. It refuses a run that is not a check copy (`_r14_check_` in it
 folder that does not exist, before Earth Engine is reached.
 
 Exit 0: none of those tasks is left queued or running; 1: one is (still cancelling after five
-minutes, its state unknown, or not cancelled because its description differs); 2: refused, nothing
-done; 3: the record is there already, complete, nothing done; 4: Earth Engine not reached (run it
-again: a partial record is finished, and a cancel it shows sent is not sent again).
+minutes, its state unknown, or not cancelled because its description differs; the record is left
+incomplete, to be read again by a later run); 2: refused, nothing done; 3: the record is there
+already, complete, nothing done; 4: Earth Engine not reached (run it again: a partial record is
+finished, and a cancel it shows sent is not sent again).
 
     python cancel_drive_export.py <run>_drive_exports.json <out.json>   (from the repo root)
 """
@@ -64,7 +66,8 @@ if not out.parent.is_dir():
     sys.exit(2)
 earlier = json.loads(out.read_text()) if out.exists() else None
 if earlier is not None and earlier.get("complete"):
-    print(f"{out} is there already, complete: nothing done")
+    print(f"{out} is there already, complete: nothing done (none left queued or running: "
+          f"{earlier.get('none_left_queued_or_running')})")
     sys.exit(3)
 try:
     states = json.loads(reading.read_text())
@@ -187,7 +190,7 @@ except Exception as e:  # noqa: BLE001 (record what was done, then stop)
     sys.exit(4)
 
 run["ended"] = now()
-write(complete=True)
+write(complete=not [k for k, r in rows.items() if not r.get("ended")])
 for k, r in rows.items():
     print(f"{k} {r['export']}: at the reading {r.get('state_at_the_reading')}, before {r.get('state_before')} "
           f"(progress {r.get('progress_before')}), cancel sent {r.get('cancel_sent')}, after "

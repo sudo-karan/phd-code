@@ -34,7 +34,7 @@ echo "no batch process"
 echo "lock:"; ls -la ~/.fmu/ 2>/dev/null || echo "  no ~/.fmu yet"
 # A run tree that holds run folders or run records of the two configs would mix them into the
 # check's records (the copy tool takes every run folder of a config): refused.
-if ls -d $RT/runs/${E}_2* $RT/runs/${F}_2* >/dev/null 2>&1 || ls $RT/odisha_script/phase2_vectors/${E}_* $RT/odisha_script/phase2_vectors/${F}_* >/dev/null 2>&1; then
+if ls -d $RT/runs/${E}_2* $RT/runs/${F}_2* $RT/odisha_script/phase2_vectors/${E}_* $RT/odisha_script/phase2_vectors/${F}_* 2>/dev/null | grep -q .; then
   echo "REFUSED: the run tree holds run folders or run records of _check_e or _check_f"; exit 1
 fi
 if [ ! -d "$RT" ]; then
