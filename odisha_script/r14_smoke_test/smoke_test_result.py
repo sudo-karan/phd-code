@@ -27,7 +27,7 @@ spec.loader.exec_module(check)
 
 HERE = Path(__file__).resolve().parent
 SCRIPTS = ("smoke_assets.py", "list_k_elbow_assets.py", "elbow_read_back.py", "smoke_vs_second_check.py",
-           "smoke_test_result.py", "after_smoke.sh")
+           "smoke_test_result.py", "after_smoke.sh", "preflight_smoke.sh", "round_use.py")
 ANGLE_PAIRS = (("aspect_sin", "aspect_cos"), ("ndvi_phase_annual_sin", "ndvi_phase_annual_cos"))
 records, off_git, state_file = Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3])
 runs = sys.argv[4:]
@@ -117,6 +117,12 @@ def rule4():
     return {"passes": back.get("passes") is True and sorted(back.get("runs", {})) == sorted(runs)}
 
 
+def accepted(z: dict, kind: str) -> set:
+    """The outputs of a kind's first manifest that criterion 0 credits to a failed pass."""
+    name = z["first_manifests"][kind].get("manifest")
+    return {h["output"] for h in z.get("hits_made_by_a_failed_pass", []) if h.get("manifest") == name}
+
+
 def rule5():
     crit = json.loads(text_of("r14_smoke_test_live_check_rules.json"))["criteria"]
     others = {name: c["passes"] for name, c in crit.items() if name != "0_both_runs_from_scratch"}
@@ -129,11 +135,14 @@ def rule5():
             and {o["cache_status"] for o in f["features"]["not_computed_in_it"]} == {"hit"}
             and f["segmentation"]["passes"] is False and f["segmentation"]["computed_in_it"] == []
             and {o["cache_status"] for o in f["segmentation"]["not_computed_in_it"]} == {"hit"}
-            and f["k_elbow"]["passes"] is True and f["k_elbow"]["computed_in_it"] == ["k_elbow/k_elbow"]
-            and f["clustering"]["passes"] is True
-            and f["clustering"]["computed_in_it"] == ["clustering/cluster_labels", "clustering/feature_stack"]
-            and z["hits_made_by_a_failed_pass"] == [] and z["one_layout_and_one_key_per_stage"] is True
-            and z["stages_fmu_does_not_have"] == [])
+            # The k elbow and clustering parts pass as criterion 0 judges them: every output computed
+            # in the first manifest of its kind, or a hit on an asset a failed pass of the run made
+            # (criterion 0's own exception, listed in its results; the gate's review, part 11).
+            and f["k_elbow"]["passes"] is True and f["clustering"]["passes"] is True
+            and set(f["k_elbow"]["computed_in_it"]) | accepted(z, "k_elbow") == {"k_elbow/k_elbow"}
+            and set(f["clustering"]["computed_in_it"]) | accepted(z, "clustering")
+            == {"clustering/cluster_labels", "clustering/feature_stack"}
+            and z["one_layout_and_one_key_per_stage"] is True and z["stages_fmu_does_not_have"] == [])
     return {"criteria_1_to_6": others, "criterion_0_fails_only_as_it_must": zero_ok,
             "passes": set(others.values()) == {True} and all(zero_ok.values())
             and crit["0_both_runs_from_scratch"]["passes"] is False}

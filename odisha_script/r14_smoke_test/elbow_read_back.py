@@ -7,7 +7,9 @@ pass and was sent again in a later one), and the k_elbow of <run>_k_elbow_run.js
 k_elbow_computed_in_this_pass true. ks, n_rows, n_bands and elbow_k the same; inertia,
 ari_median and ari_min agreeing by the live check's rule (its own agree()); the key the one the
 run recorded. Writes <records>/r14_smoke_test_elbow_read_back.json (results only, no times); times
-go to the log (stdout). Exit 0 if every run passes, 1 if not.
+go to the log (stdout). Exit 0 if every run passes, 1 if not; 3, nothing written, if that file is
+there already (the first complete result counts); 4, nothing written, if Earth Engine could not be
+set up or read (run it again).
 
     python elbow_read_back.py <records folder> <config.yaml> [<config.yaml> ...]   (from the repo root)
 """
@@ -56,9 +58,17 @@ def compare(computed: dict, back: dict) -> dict:
 
 
 records, configs = Path(sys.argv[1]), sys.argv[2:]
+OUT = records / "r14_smoke_test_elbow_read_back.json"
+if OUT.exists():
+    print(f"REFUSED: {OUT} is there already; the first complete result counts")
+    sys.exit(3)
 print("started", now())
-init_gee()
-replaced = ee_read_only.forbid_writes()
+try:
+    init_gee()
+    replaced = ee_read_only.forbid_writes()
+except Exception as e:  # noqa: BLE001 - Earth Engine not reached: nothing written
+    print(f"Earth Engine could not be set up: {e!r}")
+    sys.exit(4)
 out = {"what": "The smoke test's pass rule 4: each run's k elbow table read back from its asset "
                "(read_k_elbow of load_cached_table) against the elbow its k elbow pass computed, "
                "as its manifest's stage metadata and as its run record",
@@ -77,7 +87,11 @@ for path in configs:
                 computing.append((m.name, stage))
     key = cache_key(cfg, "k_elbow", "per_step")
     asset = cached_asset_path(cfg.name, "k_elbow", "k_elbow", key)
-    back = read_k_elbow(load_cached_table(asset))
+    try:
+        back = read_k_elbow(load_cached_table(asset))
+    except Exception as e:  # noqa: BLE001 - Earth Engine not reached, or the asset not read: nothing written
+        print(f"{cfg.name}: the table could not be read back from {asset}: {e!r}")
+        sys.exit(4)
     res = {
         "asset": asset,
         "key_is_the_one_the_run_recorded": key == record["step_keys"]["k_elbow"],
@@ -98,7 +112,7 @@ for path in configs:
                      and res["against_the_run_record"]["passes"] and ok_manifest)
     out["runs"][run] = res
 out["passes"] = bool(out["runs"]) and all(r["passes"] for r in out["runs"].values())
-(records / "r14_smoke_test_elbow_read_back.json").write_text(json.dumps(out, indent=1, sort_keys=True) + "\n")
+OUT.write_text(json.dumps(out, indent=1, sort_keys=True) + "\n")
 print(json.dumps(out, indent=1, sort_keys=True))
 print("ended", now(), "calls replaced by forbid_writes:", len(replaced))
 sys.exit(0 if out["passes"] else 1)
