@@ -100,8 +100,9 @@ log = get_logger(__name__)
 # the pass-2 shared-edge fallback, which until then went to the lower root
 # index, SNIC label order (review C12; `order_key` in fmu.utils.region_merge),
 # and since 27 Oct 2026 (round 14's question 2) two partners of one region at
-# the same distance in pass 1, which until then went to the partner with the
-# lower dense index: every tie of the merge is broken by centroid.
+# the same distance in pass 1, which until then, when that region came first by
+# `order_key` in both pairs, went to the partner with the lower dense index:
+# every tie of the merge is broken by centroid.
 _LON_BAND = "longitude"
 _LAT_BAND = "latitude"
 
@@ -268,9 +269,13 @@ class MergeStage(Stage):
         #
         # Every count the merge takes on Earth Engine (this check, the graph's
         # histograms, the kept-land sums and the attribute reductions) is taken on
-        # the SNIC label image's own projection, transform included, with no scale,
-        # so all of them count the same pixels (round 14: given a CRS name and a
-        # scale, Earth Engine built another grid, and the live check stopped here).
+        # the SNIC label image's own projection, transform included, with no scale
+        # (round 14: given a CRS name and a scale, Earth Engine built another grid,
+        # and the live check stopped here). The graph's histograms and the
+        # attribute reductions are unweighted, so they count the same pixels, those
+        # whose centre is in the ROI; this check and the kept-land sums are
+        # weighted, an edge pixel counted by its share inside the ROI, so their
+        # totals can differ from the label histogram's at the edge.
         max_component_px = config.max_component_pixels()
         assert_components_fit(
             snic_clusters,

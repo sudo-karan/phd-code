@@ -15,7 +15,8 @@ Pass 1 -- merge homogeneous neighbours, iterating to convergence:
     region already merged this round; pairs at the same `d` in the order
     `order_key` gives their two regions, centroid first, so of two partners of
     one region at the same distance the one whose centroid comes first is taken
-    (round 14; until then the one with the lower dense index, SNIC label order).
+    (round 14; until then, when that region came first by `order_key` in both
+    pairs, the one with the lower dense index, SNIC label order).
 
 Pass 2 -- eliminate undersized regions, smallest first:
   - each sweep lists the undersized regions once and takes them in turn. A
@@ -360,8 +361,10 @@ def merge_superpixels(
         register entry spec-merge-every-tie-by-centroid): of two partners of one
         region at the same distance it takes the one this key puts first
         (tests/test_region_merge.py::test_a_pass_1_tie_goes_by_centroid_however_the_ground_is_labelled).
-        Until then the tie went by the two regions' dense indices, so to the
-        partner with the lower one, SNIC label order. Every tie of the merge is
+        Until then, when that region came first in both pairs, the tie went by
+        the two regions' dense indices, so to the partner with the lower one, SNIC
+        label order (when it came second in either pair, the centroids already
+        decided). Every tie of the merge is
         now broken by this key, centroid first: pass 1's partner and the root a
         pass-1 merge keeps, pass 2's order of the regions below the minimum, its
         closest relaxed match and its shared-edge fallback, and the numbering of

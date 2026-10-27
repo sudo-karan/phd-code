@@ -12,8 +12,10 @@ grid, its crs and transform, the two agree (read-only calls 9 and 10 of the roun
 So every reduction the merge asks Earth Engine for (the component-size check's histogram, the
 label histogram, the two boundary pair histograms, the kept-land sums and the grouped reduction
 of each criterion band) is given the label image's projection as `crs`, and no `scale` and no
-`crsTransform`: Earth Engine then counts on that projection exactly, transform included, and all
-of them count the same pixels. Jaskaran's answer to question 11 of round 14 (27 Oct 2026): "Fix
+`crsTransform`: Earth Engine then counts on that projection exactly, transform included. The
+unweighted ones (the label histogram, the pair histograms and the grouped criteria sums) then
+count the same pixels; the component check and the kept-land sums are weighted, an edge pixel
+counted by its share inside the ROI. Jaskaran's answer to question 11 of round 14 (27 Oct 2026): "Fix
 the merge's grid, test first".
 
 Earth Engine is the recorder of tests/_ee_recorder.py, in every module the stage calls on it, so

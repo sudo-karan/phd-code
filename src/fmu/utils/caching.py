@@ -658,7 +658,9 @@ def step_key(config: Any, step: str) -> str:
 
     A stage that is not one of the pipeline's (a test's, say) has no entry in
     `STEP_SETTINGS`; its key then covers every block the legacy fingerprint
-    covers, which can only over-invalidate.
+    covers, and follows no step's revision and no upstream key, so it is safe
+    only while the stage caches nothing (profiling and export cache nothing, and
+    tests/test_cache_layout.py fails if a cached stage has no entry).
     """
     dumped = config.model_dump(mode="json")
     return _step_key(config, dumped, step, {})

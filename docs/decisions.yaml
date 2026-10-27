@@ -2866,7 +2866,8 @@ decisions:
     as this entry decides, in both of the fallback's lists (spec-merge-fallback-tie-by-centroid); order_key
     still ends on the dense index, for two centroids equal to 7 decimals. Round 14 (27 Oct 2026): a second tie
     went by SNIC label order, which neither this entry nor review C12 had recorded: in pass 1, of two partners of
-    one region at the same distance, the one with the lower dense index. It is now broken by order_key too
+    one region at the same distance, when that region came first by order_key in both pairs, the one with the lower
+    dense index. It is now broken by order_key too
     (Jaskaran's answer to round 14's question 2; spec-merge-every-tie-by-centroid), so every tie of the merge is
     broken by centroid; the root a pass-2 merge keeps, the partner's of two regions of one size, is no tie decided
     by label order and is unchanged.
@@ -7315,7 +7316,11 @@ decisions:
     keys of every config with the merge on: all 74 under configs/. Round 14 (27 Oct 2026): the four reductions, and the
     histogram of the component-size check the merge stage runs first (fmu.utils.components, given crs since then), are
     each given the label image's projection as crs, its transform included, and no scale, as the kept-land sums of
-    fmu.utils.kept_land already were, so that they all count the same pixels; the boundary pairs are shifted on that
+    fmu.utils.kept_land already were, so that all of them count on one grid (the unweighted ones, the label and pair
+    histograms and the grouped reductions, count the same pixels, those whose centre is in the ROI; the component
+    check and the kept-land sums are weighted, an edge pixel counted by its share inside the ROI, so their totals can
+    differ from the label histogram's at the edge: in read-only call 11, 405.65 ha of kept land against 40,550
+    labelled pixels, corrected after the gate's review, part 8); the boundary pairs are shifted on that
     grid too. Until then the histograms were given a scale alone, and the grouped reductions the label image's CRS name
     ("EPSG:32645") with the scale, from which Earth Engine builds a grid of its own. On real data, the check's first run
     (round 14's live check, both runs, 27 Oct 2026), three superpixels of 1,202 at the boxes' edge took one or two
@@ -9755,8 +9760,10 @@ decisions:
     recorded line in the register and the brief saying the results already existed when you accepted. For: they are
     the village test's rules, and no re-run is needed. Against: the acceptance comes after the results, and the record
     has to say so plainly." This entry is that line, and the mark on question 19 in docs/handoff/2026-10-20-round13.md
-    says the same. The acceptance is the brief's rule for every question it does not answer by name, not an answer
-    given to this question alone. No paper was searched for this decision.
+    says the same. The acceptance was the brief's rule for every question it does not answer by name, not an answer
+    given to this question alone, until 27 Oct 2026: since then it is also Jaskaran's own answer, by name (the round
+    14 record's question 8): "I confirm Q19's rules as my own decision; record that they were settled after the first
+    declared results existed." No paper was searched for this decision.
   evidence:
   - path: odisha_script/odisha_keptland_chance.py
     what: The docstring's Q1 to Q8, the rules used where the declaration is silent
@@ -9775,7 +9782,9 @@ decisions:
   design_notes_section: null
   source: >-
     Jaskaran, 26 Oct 2026 (round 14 brief): round 13 question 19, Claude Code's recommendation (a), by the brief's
-    rule 'Every other question: your recommendation'; accepted after the results existed
+    rule 'Every other question: your recommendation'; accepted after the results existed. Jaskaran, 27 Oct 2026, in
+    the Claude Code session, the round 14 record's question 8: confirmed as his own decision, settled after the first
+    declared results existed
 - id: field-three-outlying-plots-kept-until-fes-replies
   title: >-
     The three outlying plot positions of Barakanti, Khasuguda and Bhanradi Sahi are kept, with the fact recorded,
@@ -10690,8 +10699,9 @@ decisions:
     Also break the equal-size choice of the root a pass-2 merge keeps by order_key: not chosen. It is decided by size and
     by role, not by label order, so it gives the same stands however the ground is labelled, and the root that survives
     decides whose turn in the sweep the merged region keeps, so changing it changes the order of pass 2's merges, not a
-    tie-break. Measured offline on 27 Oct 2026 and not done: with it, 12 golden graphs more would move (11 of them with
-    centroids) and 29 soft-ceiling graphs more with the setting off
+    tie-break. Measured offline on 27 Oct 2026 and not done: with it, 12 golden digests would change, seed 177 among
+    them, which this change moves too, so 11 golden graphs more would move (10 of them with centroids), and 29
+    soft-ceiling digests with the setting off, 28 graphs more (corrected after the gate's review, part 8)
   rationale: >-
     Jaskaran's answer to round 14's question 2 (27 Oct 2026): "fix it now, with the grid fix, since the merge's version
     is raised anyway: every merge tie is broken by centroid, with a failing test first". The register entry
@@ -10705,11 +10715,12 @@ decisions:
     ceiling off still change nothing else. A copy of the code before that works out, in each round of pass 1, the merges
     the new order would choose shows them differing from those chosen in at least one round on every graph that moved,
     and on 7 golden graphs (95, 103, 116, 119, 131, 162 and 181) and 11 soft-ceiling graphs more whose outputs came out
-    the same. Of the 200 golden graphs, 100 have in some round of pass 1 a region with two candidate pairs at one
-    distance, 41 of them with two distinct partners (in the others one pair is listed once for each superpixel edge
+    the same. Of the 200 golden graphs, 100 have in some round of pass 1 a region that comes first by order_key in two
+    candidate pairs at one distance, the only case the old sort left to the dense index (102, counting a region in
+    any position; corrected after the gate's review, part 8), 41 of them with two distinct partners (in the others one pair is listed once for each superpixel edge
     between the two regions), on 33 the partners' order by centroid differs from their order by index, and 22 move, 19
     of them graphs with one value per criterion band throughout, where the tied distances are 0 or within float rounding
-    of it; on the 516 soft-ceiling graphs 196, 77, 63 and 42. With the soft ceiling on, which every _r9 config and so
+    of it; on the 516 soft-ceiling graphs 196, 77, 63 and 42 (201, 86 and 72 counting a region in any position). With the soft ceiling on, which every _r9 config and so
     every R3 copy of one has, 41 of the 516 graphs move (32 random, 9 tight; measured, not pinned). The slow tier of
     tests/test_region_merge_soft_ceiling.py (9000 more graphs, all four rules) passes. How often such a tie decided a
     stand of record is not known: it needs each run's graph, on Earth Engine. No paper was searched for this decision.

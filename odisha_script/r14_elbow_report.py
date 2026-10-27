@@ -9,8 +9,8 @@ recommends no k: for R3, k for each area is Jaskaran's choice, from this report 
 R3 field score exists (odisha_script/PHASE_KEPTLAND_PREDECLARED.md, the change of 26 Oct 2026;
 register entry field-r3-k-chosen-by-jaskaran-from-the-elbow-report).
 
-THE AREAS AND ARMS, by config name (the nineteen R3 configs, configs/*_r14.yaml; not the two
-_check copies, which are not R3 results): each Odisha district (angul, dhenkanal, kendujhar,
+THE AREAS AND ARMS, by config name (the nineteen R3 configs, configs/*_r14.yaml; not the four
+_check copies, a to d, which are not R3 results): each Odisha district (angul, dhenkanal, kendujhar,
 koraput) at 3 ha and at 10 ha, hand-crafted odisha_v120_<size>_squares_<district>_keptland_s1desc_r14
 and AlphaEarth odisha_alphaearth_<size>_squares_<district>_keptland_r14; Sanjay Van (10 ha stands),
 sanjay_van_baseline_keptland_r14 (hand-crafted) and sanjay_van_alphaearth_keptland_r14; the 10 km
