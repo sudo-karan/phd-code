@@ -136,6 +136,38 @@ def test_non_adjacent_regions_never_merge():
     assert r.n_stands == 2
 
 
+def test_a_pass_1_tie_goes_by_centroid_however_the_ground_is_labelled():
+    """Round 14 (Jaskaran's answer to round 14's question 2, 27 Oct 2026: "every merge
+    tie is broken by centroid"; register entry spec-merge-every-tie-by-centroid). A
+    region with two neighbours at exactly the same distance, and room under
+    max_area_ha for one of them only: pass 1 takes the partner `order_key` puts first,
+    centroid longitude, then latitude, then the dense index, which is the southern one
+    here, however the ground is labelled. Before round 14 the candidates were sorted by
+    (d, order_key of the first region, its dense index, the partner's), so the tie went
+    to the partner with the lower dense index, the rank of its SNIC label: labelled the
+    other way round, the region joined the other side, and this test failed."""
+
+    def side_taken(middle: int, north: int, south: int) -> str:
+        # The middle region lies west of the other two, so its centroid comes first and
+        # it is the first region of both pairs.
+        lon = {middle: 77.000, north: 77.001, south: 77.001}
+        lat = {middle: 28.500, north: 28.501, south: 28.499}
+        ch = {middle: 10.0, north: 11.0, south: 9.0}  # 1 m from the middle either way
+        px = [200, 200, 200]  # any two fit under 4 ha, the three do not
+        means, counts = _attrs([{"ch": ch[i], "std": 0.5} for i in range(3)], px)
+        edges = {tuple(sorted((middle, north))): 5, tuple(sorted((middle, south))): 5}
+        r = _run(_graph(px, edges), means, counts, {"ch": 2.0, "std": 0.45},
+                 max_area_ha=4.0, centroids={i: (lon[i], lat[i]) for i in range(3)})
+        d = r.diagnostics
+        assert (d["pass1_merges"], d["pass2_merges"], r.n_stands) == (1, 0, 2)
+        return "north" if r.assignment[middle] == r.assignment[north] else "south"
+
+    assert side_taken(middle=0, north=1, south=2) == "south"
+    assert side_taken(middle=0, north=2, south=1) == "south"  # the other way round
+    labellings = list(itertools.permutations(range(3)))
+    assert [side_taken(*order) for order in labellings] == ["south"] * len(labellings)
+
+
 # ---------- min_defined_criteria ----------
 
 

@@ -690,7 +690,12 @@ a two-tier threshold scheme.
   (longitude, then latitude, to 7 decimals; where both agree, the one SNIC
   numbered lower), since round 14 (26 Oct 2026; round 13 question 24); until
   then it took the one SNIC had numbered lower (register entry
-  `spec-merge-fallback-tie-by-centroid`).
+  `spec-merge-fallback-tie-by-centroid`). Every other tie of the merge goes by
+  centroid too: in pass 1, of two partners of one region at the same distance,
+  the merge takes the one whose centroid comes first, since 27 Oct 2026 (round
+  14's question 2; until then the one SNIC had numbered lower); pass 2 takes
+  regions below the minimum of the same size, and relaxed matches at the same
+  distance, in centroid order (register entry `spec-merge-every-tie-by-centroid`).
 - `max_pass2_iterations`: cap so a pathological AOI logs its stragglers instead
   of looping (default 60).
 - `pass2_skip_at_min_area`: what pass 2 does with a region that was undersized

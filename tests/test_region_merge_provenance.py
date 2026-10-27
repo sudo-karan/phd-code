@@ -16,16 +16,22 @@ Three things are pinned here:
     holds digests of what the merge produced for 200 seeded random graphs
     *before* provenance was added, made by the committed version of the code
     (the file says which commit, and how). Today's code has to reproduce every
-    one of them but 22. Review B18 (round 13) changed the merge on three, by
+    one of them but 42. Review B18 (round 13) changed the merge on three, by
     comparing its area bounds in whole pixels, and they are pinned to the
     digests it gave (`DIGESTS_SINCE_B18`). When B18 was made, today's merge gave
     on all 200 graphs what the fixture's commit gives with B18's comparison put
     in it, so provenance still moved no stand. Round 14 changed it on 20 (seed
     98 among them again), by breaking a tie in the shared-edge fallback by
     centroid, not by SNIC label order (round 13 question 24), and they are pinned
-    to the digests it gives since (`DIGESTS_SINCE_Q24`). When that was made,
-    today's merge gave on all 200 graphs what the fixture's commit gives with
-    B18's comparison and that tie rule put in it.
+    to the digests it gave (`DIGESTS_SINCE_Q24`). When that was made, today's
+    merge gave on all 200 graphs what the fixture's commit gives with B18's
+    comparison and that tie rule put in it. Round 14 changed it again on 22
+    (seeds 53 and 177 among them again), by breaking pass 1's tie between two
+    partners of one region at the same distance by centroid too (round 14's
+    question 2), and they are pinned to the digests it gives since
+    (`DIGESTS_SINCE_PASS1_TIE`). When that was made, today's merge gave on all
+    200 graphs what the fixture's commit gives with B18's comparison and both
+    tie rules put in it.
 
 The random graphs are built the way a run builds them: a pixel grid with
 non-habitat masked out is partitioned into superpixels, and adjacency, shared
@@ -791,7 +797,8 @@ GOLDEN_SEEDS = range(200)
 # in whole pixels, not on a float sum of two areas) changed what the merge does, and
 # the digest each gave. On no other graph did it change anything: when B18 was made,
 # today's merge gave on all 200 graphs what the fixture's commit gives with only that
-# comparison changed. Seed 98 has moved again since (DIGESTS_SINCE_Q24).
+# comparison changed. Seed 98 has moved again since (DIGESTS_SINCE_Q24), and seed 53
+# (DIGESTS_SINCE_PASS1_TIE).
 DIGESTS_SINCE_B18: dict[str, str] = {
     "3": "8039de8a6342d5add12d063968ae3e0bb928d0b62cacc995f51a4922bbfb8540",
     "53": "d1f57e24d7bcad2757bed21ca11d9daded76fdbea182d7ba7c7527fff6ebe73c",
@@ -801,12 +808,13 @@ DIGESTS_SINCE_B18: dict[str, str] = {
 # The golden graphs on which round 14 (round 13 question 24, answer (a): two
 # neighbours sharing boundaries of the same length in pass 2's shared-edge fallback
 # are taken by order_key, centroid first, not by the lower root index, which is SNIC
-# label order) changed what the merge does, and the digest each gives since. On no
-# other graph did it change anything: when it was made, today's merge gave on all 200
-# graphs what the merge before it gives with only that tie rule changed, and what the
-# fixture's commit gives with B18's comparison and that tie rule put in it. On each of
-# these 20 a tie there was decided the other way; on 6 more (11, 65, 99, 106, 159 and
-# 179) one was, and every output of the merge came out the same.
+# label order) changed what the merge does, and the digest each gave. On no other graph
+# did it change anything: when it was made, today's merge gave on all 200 graphs what
+# the merge before it gives with only that tie rule changed, and what the fixture's
+# commit gives with B18's comparison and that tie rule put in it. On each of these 20 a
+# tie there was decided the other way; on 6 more (11, 65, 99, 106, 159 and 179) one was,
+# and every output of the merge came out the same. Seed 177 has moved again since
+# (DIGESTS_SINCE_PASS1_TIE).
 DIGESTS_SINCE_Q24: dict[str, str] = {
     "6": "3d3f1c0a2d5a3fa43165c7b1370f1f761739c64efec80eb2ad226a5251f1a040",
     "19": "9e66c044717aad012f59a453e37ee9919045ac0afd09d87719ea8b6d499f5ba2",
@@ -828,6 +836,40 @@ DIGESTS_SINCE_Q24: dict[str, str] = {
     "177": "4fdd0454505cd2403bd6b483f2a1488db2277a473b93a26180ebbfbd15be780b",
     "183": "34069301bafd815f2e5abb5cd0e0daed474e08fb55ecc97e3e78473aebc494d6",
     "194": "664b6ec0c6e1fffe2f8ed6d80836f472ac400f5163e91cc68debf09abe2b7a4a",
+}
+
+# The golden graphs on which round 14 (Jaskaran's answer to round 14's question 2, 27 Oct
+# 2026: in pass 1, of two partners of one region at the same distance, the one order_key
+# puts first, centroid first, not the one with the lower dense index, which is SNIC label
+# order) changed what the merge does, and the digest each gives since. On no other graph
+# did it change anything: when it was made, today's merge gave on all 200 graphs what the
+# merge before it gives with only that tie rule changed, and what the fixture's commit
+# gives with B18's comparison and both tie rules put in it. On each of these 22 a round of
+# pass 1 chose other merges under the new order than under the old; on 7 more (95, 103,
+# 116, 119, 131, 162 and 181) one did, and every output of the merge came out the same.
+DIGESTS_SINCE_PASS1_TIE: dict[str, str] = {
+    "0": "689da5b5e8eeab4724fc73df0ee17224b9a31cab29ec7207ab22e3209b30f4cb",
+    "17": "d33bbf0f7d7095970706d4b951bdb7025d45e7665577e3edf4c13c27f322e02e",
+    "23": "8111271bbe002e241716f92bd7ea70f1f3c86540bbbad0aeb5624a6be2a90ebe",
+    "28": "9bc7419d7441df4eb91fd8fd941c6ec682874a1fd24e542f6e54ba32b7902c31",
+    "48": "1359a161a1f1dc0236eb644942bbbbe24f26968fc301f95e6bcbe37f53cfb3ad",
+    "53": "af7ddc91926ce21856418a881978a69a713fcaddca7bdab5ee67804e60559e90",
+    "64": "5c6c13653dcdd5c082e05d3106004ce96df0837bf520bd465723c2cf58465cd6",
+    "73": "969119b860366ee28e9731d3f334e08755cf0ff06b58db36c36e46ab1f34c0f1",
+    "79": "095022d35b080ba959784f9a86eb42f70065fe48bbc6932c9062238fcc39ea1f",
+    "81": "db59d0bb8c96784a5b8a50b85dec191a1e2e6a1916b38f88c079d038f554911e",
+    "84": "43a1ba06d40a5e8bcf4a058bd830174c25e453dff7025bf24c0c45bcc961f895",
+    "86": "aef1998a955dcffec232fba9e337573b6f8850e47e7e9b07e98d61c7324ce9b9",
+    "100": "483320f1f7a4e2650e0b4510b80f6863a215da88b8e71aaafdbb2f8e04922500",
+    "110": "f80229bcafe7fc9ba426710ca79b3f136696165573e6f178945605fd92b2c6e4",
+    "122": "fa97989059945c7a52e2481d90e58142da67f92a2bc328dbc7f7ac6036428521",
+    "128": "677e8c2f7b4fae57b2bbbeb91144c7925aad283a0e201710d1a0b4c3d3c9235f",
+    "130": "325e01e5118ecafa679b888f03f39d15189b9dc99c97250bfed8b999caa1d63a",
+    "133": "7de2da5248e5a795bf941f6f86728f03f8aa7c4085b1519c9aa9dab4ae874ed6",
+    "151": "8769e98710b3dcdc8c387e1d88198d5c42cbfe8215bbc9cb1c51a84993c8dfb1",
+    "155": "1e5cfe4d7d4b526cff915c976abb81aa4bd7309643fb4a6d8e5223f2a2d8b199",
+    "177": "e86b6a10d263dc980d7634516ba4228cebe0f6d7fd337ff351d04ce9356d7a85",
+    "186": "ea832e7cf737d6bad5750120833e43e607992df74772cdd43f60ba46230fc392",
 }
 
 # The diagnostics the merge reported when the digests were made. Named here, not
@@ -923,12 +965,15 @@ def test_the_generator_still_builds_the_graphs_the_digests_were_made_from(
 def test_todays_merge_reproduces_every_committed_digest(golden, golden_runs):
     """The merge must produce the assignment, stand count, totals and stand
     attributes it produced at the commit named in the fixture, on every graph but
-    the 22 of `DIGESTS_SINCE_B18` and `DIGESTS_SINCE_Q24`, where it must produce
-    what is pinned there (the later where both pin a seed)."""
+    the 42 of `DIGESTS_SINCE_B18`, `DIGESTS_SINCE_Q24` and
+    `DIGESTS_SINCE_PASS1_TIE`, where it must produce what is pinned there (the
+    latest where two pin a seed)."""
     assert all(golden["digests"][seed] != d for seed, d in DIGESTS_SINCE_B18.items())
     since_b18 = {**golden["digests"], **DIGESTS_SINCE_B18}
     assert all(since_b18[seed] != d for seed, d in DIGESTS_SINCE_Q24.items())
-    expected = {**since_b18, **DIGESTS_SINCE_Q24}
+    since_q24 = {**since_b18, **DIGESTS_SINCE_Q24}
+    assert all(since_q24[seed] != d for seed, d in DIGESTS_SINCE_PASS1_TIE.items())
+    expected = {**since_q24, **DIGESTS_SINCE_PASS1_TIE}
     changed = [
         seed
         for seed, case, result in golden_runs
@@ -937,10 +982,10 @@ def test_todays_merge_reproduces_every_committed_digest(golden, golden_runs):
     assert not changed, (
         f"merge_superpixels no longer produces what it produced at "
         f"{golden['made_from']['commit'][:7]} (or since review B18 or round 14's "
-        f"fallback tie, where pinned) on {len(changed)} of {len(golden_runs)} seeded "
+        f"two ties, where pinned) on {len(changed)} of {len(golden_runs)} seeded "
         f"graphs (seeds {changed}). If moving stands was the point of the change, say "
-        f"so in the commit and pin the new digests, as DIGESTS_SINCE_Q24 does; if it "
-        f"was not, this is the bug."
+        f"so in the commit and pin the new digests, as DIGESTS_SINCE_PASS1_TIE does; if "
+        f"it was not, this is the bug."
     )
 
 

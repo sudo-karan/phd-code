@@ -98,7 +98,10 @@ log = get_logger(__name__)
 # thing to sort by, but a centroid is. Since round 14 (26 Oct 2026; round 13
 # question 24) that includes two neighbours sharing equally long boundaries in
 # the pass-2 shared-edge fallback, which until then went to the lower root
-# index, SNIC label order (review C12; `order_key` in fmu.utils.region_merge).
+# index, SNIC label order (review C12; `order_key` in fmu.utils.region_merge),
+# and since 27 Oct 2026 (round 14's question 2) two partners of one region at
+# the same distance in pass 1, which until then went to the partner with the
+# lower dense index: every tie of the merge is broken by centroid.
 _LON_BAND = "longitude"
 _LAT_BAND = "latitude"
 

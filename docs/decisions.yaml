@@ -2864,7 +2864,12 @@ decisions:
     for Jaskaran (round 13); until it is answered, the code is as it was. Round 14 (26 Oct 2026): the code
     changed (round 13 question 24, answer (a)). The fallback's tie is now broken by order_key, centroid first,
     as this entry decides, in both of the fallback's lists (spec-merge-fallback-tie-by-centroid); order_key
-    still ends on the dense index, for two centroids equal to 7 decimals.
+    still ends on the dense index, for two centroids equal to 7 decimals. Round 14 (27 Oct 2026): a second tie
+    went by SNIC label order, which neither this entry nor review C12 had recorded: in pass 1, of two partners of
+    one region at the same distance, the one with the lower dense index. It is now broken by order_key too
+    (Jaskaran's answer to round 14's question 2; spec-merge-every-tie-by-centroid), so every tie of the merge is
+    broken by centroid; the root a pass-2 merge keeps, the partner's of two regions of one size, is no tie decided
+    by label order and is unchanged.
   alternatives_considered:
   - 'Caching stand_clusters like other stage outputs: named and rejected'
   - 'Ordering by SNIC label: named and rejected'
@@ -2884,7 +2889,8 @@ decisions:
     what: >-
       order_key(): centroid rounded to 7 decimals, then the dense index; pass2_partner(): the fallback's ties to
       the lower root index (both docstrings say so since round 13). Round 14 (26 Oct 2026): pass2_partner() breaks
-      the fallback's ties by order_key, and both docstrings say so
+      the fallback's ties by order_key, and both docstrings say so. Round 14 (27 Oct 2026): pass 1 sorts its
+      candidates by d, then order_key of both regions; order_key's docstring lists every tie and what breaks it
   - path: src/fmu/utils/adjacency.py
     what: docstring lines 1-8; note on run-to-run differences at line 454
   - path: src/fmu/config.py
@@ -2897,7 +2903,8 @@ decisions:
       label order (review C12); test_a_fallback_tie_goes_to_the_lower_root_index_the_snic_label_order (round 13),
       which pins the fallback's tie by label order and fails on a version that breaks it by centroid. Round 14
       (26 Oct 2026): that test is replaced by test_a_fallback_tie_goes_by_centroid_however_the_ground_is_labelled,
-      which labels the same ground every way round and fails on the code before the change
+      which labels the same ground every way round and fails on the code before the change. Round 14 (27 Oct
+      2026): test_a_pass_1_tie_goes_by_centroid_however_the_ground_is_labelled, the same for pass 1's tie
   - path: README.md
     what: 'line 209: why merge is not cached'
   - path: docs/reviews/2026-10-19-review.md
@@ -2908,7 +2915,8 @@ decisions:
   source: >-
     src/fmu/stages/merge.py docstring ('How it runs') and comments at lines 94-97 and 160-166; the sentence of 20 Oct
     2026 from review C12 (round 13 brief, Task 6); the sentence of 26 Oct 2026 from round 13 question 24, Claude
-    Code's recommendation (a), by the round 14 brief's rule 'Every other question: your recommendation'
+    Code's recommendation (a), by the round 14 brief's rule 'Every other question: your recommendation'; the
+    sentence of 27 Oct 2026 from Jaskaran's answer to round 14's question 2
 - id: spec-analysis-grid-utm-from-roi
   title: 'All raster measurements use one grid: the UTM zone of the region of interest'
   decision: >-
@@ -8556,7 +8564,11 @@ decisions:
     and does not move. 20 of the 200 golden graphs of tests/test_region_merge_provenance.py (seeds 6, 19, 25, 26, 54,
     76, 77, 95, 98, 109, 124, 126, 157, 158, 168, 171, 173, 177, 183 and 194) and 67 of the 516 graphs of
     tests/test_region_merge_soft_ceiling.py (32 random, 10 tight and 25 crowded) give new digests, pinned in those tests
-    (DIGESTS_SINCE_Q24, OFF_DIGESTS_SINCE_Q24); the two fixture files keep what the merge gave at their commits.
+    (DIGESTS_SINCE_Q24, OFF_DIGESTS_SINCE_Q24); the two fixture files keep what the merge gave at their commits. Round
+    14 (27 Oct 2026): pass 1's tie changed too, two partners of one region at the same distance now taken by order_key
+    where they went by dense index, SNIC label order (Jaskaran's answer to round 14's question 2;
+    spec-merge-every-tie-by-centroid); golden seed 177 and soft-ceiling graphs "random 177" and "tight 81" have moved
+    again since.
   alternatives_considered:
   - >-
     Change the register to say what the code did, the tie to the lower root index (round 13 question 24, option (b)):
@@ -10587,3 +10599,81 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 27 Oct 2026, in the Claude Code session, the round 14 record's question 11
+- id: spec-merge-every-tie-by-centroid
+  title: >-
+    Every tie of the merge is broken by centroid: in the first pass, of two partners of one region at the same
+    distance, the one whose centroid comes first, not the one SNIC numbered lower
+  decision: >-
+    fmu.utils.region_merge (Locked, part of the merge stage): pass 1 sorts its candidate pairs by the distance d, then
+    by order_key of the pair's first region, then by order_key of its second (order_key: the centroid's longitude, then
+    its latitude, each rounded to 7 decimals, then the dense index; a pair's first region is the one order_key puts
+    first). So of two partners of one region at exactly the same distance, pass 1 takes the one order_key puts first.
+    Until 27 Oct 2026 the sort was by d, order_key of the first region, then the two regions' dense indices, so when the
+    region came first in both pairs the tie went to the partner with the lower dense index, the rank of its SNIC label,
+    and the same ground labelled the other way round could give other stands. The ties of the merge, all read on 27 Oct
+    2026, and what breaks each now: pass 1's partner, d then order_key of both regions (this change); the root a pass-1
+    merge keeps, order_key; pass 2's order of the regions below the minimum, area then order_key; its closest relaxed
+    match, d under the relaxed tolerances then order_key; its shared-edge fallback, the longest boundary then order_key
+    (spec-merge-fallback-tie-by-centroid); the numbering of the stands, order_key. order_key still ends on the dense
+    index, for two centroids equal to 7 decimals. The root a pass-2 merge keeps is unchanged and is no tie decided by
+    label order: the larger region's, and of two of the same size the partner's, whatever the labels; it decides whose
+    turn in the sweep the merged region keeps, as a region whose root is gone is skipped when its turn comes. 22 of the
+    200 golden graphs of tests/test_region_merge_provenance.py (seeds 0, 17, 23, 28, 48, 53, 64, 73, 79, 81, 84, 86, 100,
+    110, 122, 128, 130, 133, 151, 155, 177 and 186) and 42 of the 516 graphs of tests/test_region_merge_soft_ceiling.py
+    with the setting off (33 random and 9 tight) give new digests, pinned in those tests (DIGESTS_SINCE_PASS1_TIE,
+    OFF_DIGESTS_SINCE_PASS1_TIE); the two fixture files keep what the merge gave at their commits.
+  alternatives_considered:
+  - >-
+    Record the tie in the register and leave the code (round 14 question 2, option (b), Claude Code's recommendation
+    for R3, with (a) in a later round): not chosen. Jaskaran chose to fix it now, with the merge's grid, since the
+    merge's revision is raised anyway
+  - >-
+    Also break the equal-size choice of the root a pass-2 merge keeps by order_key: not chosen. It is decided by size and
+    by role, not by label order, so it gives the same stands however the ground is labelled, and the root that survives
+    decides whose turn in the sweep the merged region keeps, so changing it changes the order of pass 2's merges, not a
+    tie-break. Measured offline on 27 Oct 2026 and not done: with it, 12 golden graphs more would move (11 of them with
+    centroids) and 29 soft-ceiling graphs more with the setting off
+  rationale: >-
+    Jaskaran's answer to round 14's question 2 (27 Oct 2026): "fix it now, with the grid fix, since the merge's version
+    is raised anyway: every merge tie is broken by centroid, with a failing test first". The register entry
+    spec-merge-runs-client-side-uncached decides ties by centroid and rejects SNIC label order, which differs from run
+    to run. The new test of tests/test_region_merge.py labels the same ground every way round and fails on the code
+    before with "assert 'north' == 'south'": labelled the other way round, the region joined the other side. Measured
+    offline when the change was made, on copies of the code outside the repo: on all 200 golden graphs and all 516
+    soft-ceiling graphs (the setting off) the merge gives what the code before it (1611d45) gives with only this tie rule
+    changed, and what the fixtures' commits (1da0614, 363ea6d) give with B18's comparison, round 13 question 24's tie
+    rule and this one put in them (those copies without this rule give the code before), so the provenance and the soft
+    ceiling off still change nothing else. A copy of the code before that works out, in each round of pass 1, the merges
+    the new order would choose shows them differing from those chosen in at least one round on every graph that moved,
+    and on 7 golden graphs (95, 103, 116, 119, 131, 162 and 181) and 11 soft-ceiling graphs more whose outputs came out
+    the same. Of the 200 golden graphs, 100 have in some round of pass 1 a region with two candidate pairs at one
+    distance, 41 of them with two distinct partners (in the others one pair is listed once for each superpixel edge
+    between the two regions), on 33 the partners' order by centroid differs from their order by index, and 22 move, 19
+    of them graphs with one value per criterion band throughout, where the tied distances are 0 or within float rounding
+    of it; on the 516 soft-ceiling graphs 196, 77, 63 and 42. With the soft ceiling on, which every _r9 config and so
+    every R3 copy of one has, 41 of the 516 graphs move (32 random, 9 tight; measured, not pinned). The slow tier of
+    tests/test_region_merge_soft_ceiling.py (9000 more graphs, all four rules) passes. How often such a tie decided a
+    stand of record is not known: it needs each run's graph, on Earth Engine. No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/utils/region_merge.py
+    what: >-
+      Pass 1's candidates, sorted by (d, order_key of both regions); the module docstring; order_key's docstring, which
+      lists every tie and what breaks it; the comment on the root a pass-2 merge keeps
+  - path: src/fmu/stages/merge.py
+    what: The comment on pixelLonLat's band names, the merge's tie-break
+  - path: tests/test_region_merge.py
+    what: test_a_pass_1_tie_goes_by_centroid_however_the_ground_is_labelled; fails on the code before
+  - path: tests/test_region_merge_provenance.py
+    what: DIGESTS_SINCE_PASS1_TIE
+  - path: tests/test_region_merge_soft_ceiling.py
+    what: OFF_DIGESTS_SINCE_PASS1_TIE
+  - path: docs/configs.md
+    what: merge.tie_break, the sentence on every other tie
+  - path: docs/handoff/2026-10-26-round14.md
+    what: Questions for Jaskaran, item 2; Done, Task 1, Q24 (pass 1's tie found and not changed then)
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: >-
+    Jaskaran, 27 Oct 2026: round 14's question 2, "fix it now, with the grid fix, since the merge's version is raised
+    anyway: every merge tie is broken by centroid, with a failing test first"

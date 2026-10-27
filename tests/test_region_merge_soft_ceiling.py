@@ -29,7 +29,7 @@ Four things are pinned here:
     before the setting existed (the file says how it was written, as
     tests/test_segmentation_off_golden.py does for segmentation). With the
     setting off, today's merge has to reproduce each one: the stands, their
-    attributes and provenance, and the diagnostics key for key. 70 graphs are
+    attributes and provenance, and the diagnostics key for key. 108 graphs are
     the exception. Review B18 (round 13) changed the merge on five, by
     comparing its area bounds in whole pixels, and they are pinned to the
     digests it gave (`OFF_DIGESTS_SINCE_B18`). When B18 was made, today's merge
@@ -37,9 +37,16 @@ Four things are pinned here:
     with B18's comparison put in it. Round 14 changed it on 67 (two of B18's
     five among them), by breaking a tie in the shared-edge fallback by
     centroid, not by SNIC label order (round 13 question 24), and they are
-    pinned to the digests it gives since (`OFF_DIGESTS_SINCE_Q24`). When that
-    was made, today's merge with the setting off gave on every graph what the
+    pinned to the digests it gave (`OFF_DIGESTS_SINCE_Q24`). When that was
+    made, today's merge with the setting off gave on every graph what the
     merge at 363ea6d gives with B18's comparison and that tie rule put in it.
+    Round 14 changed it again on 42 (two more of B18's five and two of those
+    67 among them), by breaking pass 1's tie between two partners of one
+    region at the same distance by centroid too (round 14's question 2), and
+    they are pinned to the digests it gives since
+    (`OFF_DIGESTS_SINCE_PASS1_TIE`). When that was made, today's merge with
+    the setting off gave on every graph what the merge at 363ea6d gives with
+    B18's comparison and both tie rules put in it.
 """
 
 from __future__ import annotations
@@ -840,7 +847,8 @@ def off_digest(results: list[Any]) -> str:
 # setting off, and the digest each gave. On no other graph did it change anything:
 # when B18 was made, today's merge with the setting off gave on every graph what the
 # merge at 363ea6d gives with only that comparison changed. "random 98" and "tight 98"
-# have moved again since (OFF_DIGESTS_SINCE_Q24).
+# have moved again since (OFF_DIGESTS_SINCE_Q24), and "random 53" and "tight 53"
+# (OFF_DIGESTS_SINCE_PASS1_TIE).
 OFF_DIGESTS_SINCE_B18: dict[str, str] = {
     "random 3": "496dfacd5dd6a773",
     "random 53": "5b1179874670fff3",
@@ -852,12 +860,13 @@ OFF_DIGESTS_SINCE_B18: dict[str, str] = {
 # The graphs on which round 14 (round 13 question 24, answer (a): two neighbours
 # sharing boundaries of the same length in pass 2's shared-edge fallback are taken by
 # order_key, centroid first, not by the lower root index, which is SNIC label order)
-# changed what the merge does with the setting off, and the digest each gives since:
-# 32 random, 10 tight and 25 crowded graphs. On no other graph did it change anything:
+# changed what the merge does with the setting off, and the digest each gave: 32
+# random, 10 tight and 25 crowded graphs. On no other graph did it change anything:
 # when it was made, today's merge with the setting off gave on every graph what the
 # merge before it gives with only that tie rule changed, and what the merge at 363ea6d
 # gives with B18's comparison and that tie rule put in it. On each of these a tie there
 # was decided the other way; on 12 more one was, and every output came out the same.
+# "random 177" and "tight 81" have moved again since (OFF_DIGESTS_SINCE_PASS1_TIE).
 OFF_DIGESTS_SINCE_Q24: dict[str, str] = {
     "random 6": "2e884bf72af47d97",
     "random 19": "7c62ebd0661592dc",
@@ -928,6 +937,61 @@ OFF_DIGESTS_SINCE_Q24: dict[str, str] = {
     "crowded 93": "c3d0f448c1ab9ad8",
 }
 
+# The graphs on which round 14 (Jaskaran's answer to round 14's question 2, 27 Oct 2026:
+# in pass 1, of two partners of one region at the same distance, the one order_key puts
+# first, centroid first, not the one with the lower dense index, which is SNIC label
+# order) changed what the merge does with the setting off, and the digest each gives
+# since: 33 random and 9 tight graphs. On no other graph did it change anything: when it
+# was made, today's merge with the setting off gave on every graph what the merge before
+# it gives with only that tie rule changed, and what the merge at 363ea6d gives with
+# B18's comparison and both tie rules put in it. On each of these a round of pass 1 chose
+# other merges under the new order than under the old; on 11 more one did, and every
+# output came out the same.
+OFF_DIGESTS_SINCE_PASS1_TIE: dict[str, str] = {
+    "random 0": "c9b6efa64243210b",
+    "random 17": "22389027fff198e4",
+    "random 23": "3629f8aa3af39568",
+    "random 28": "037d81b58f9fc35b",
+    "random 48": "d42f445cf416a263",
+    "random 53": "31023a3254712133",
+    "random 64": "1a185a5698ebb019",
+    "random 73": "db251e2504fc6921",
+    "random 79": "4d2d0f7010c31631",
+    "random 81": "6d980ea183f5a739",
+    "random 84": "b513739fd3489315",
+    "random 86": "1e6af07d2f038a03",
+    "random 100": "06f03f1038f261ec",
+    "random 110": "05e36ef1076b7eaf",
+    "random 122": "2573a258168067a9",
+    "random 128": "90e26d3eed65c9ae",
+    "random 130": "6f736fb20d835187",
+    "random 133": "03f4eb9500bc9a48",
+    "random 151": "95cbc82535f7065e",
+    "random 155": "50f5796dbe1e11ca",
+    "random 177": "6a9e7693ab2dac03",
+    "random 186": "8df6e00aa467ee56",
+    "random 203": "308cfd589adb3134",
+    "random 207": "1c4642dcbc8adfe8",
+    "random 225": "12c75ecba2c05a70",
+    "random 230": "f287879c36f9465b",
+    "random 233": "ccd2c1201936b386",
+    "random 238": "709cd59e870b86f8",
+    "random 239": "76712c60008aca0d",
+    "random 244": "fbe1617d98363025",
+    "random 259": "221a8921968964ad",
+    "random 288": "d924683a60bf2dc0",
+    "random 297": "6918649e7e279101",
+    "tight 0": "4c130ecfca4c2600",
+    "tight 28": "037d81b58f9fc35b",
+    "tight 48": "f5b8369bd1aa461b",
+    "tight 53": "64823f837205843b",
+    "tight 64": "1a185a5698ebb019",
+    "tight 79": "4d2d0f7010c31631",
+    "tight 81": "f040b543ce86dfb8",
+    "tight 84": "b8ad304a88eeb9f7",
+    "tight 86": "464fcfd3d3faae7c",
+}
+
 
 @pytest.fixture(scope="module")
 def off_golden() -> dict[str, Any]:
@@ -951,20 +1015,22 @@ def test_with_the_setting_off_the_merge_is_the_one_before_the_setting(off_golden
     """Off, the merge must give on every graph, under both values of
     pass2_skip_at_min_area, exactly what it gave at the commit named in the
     fixture: the stands, their attributes and provenance, and the diagnostics,
-    key for key and in order. On the 70 graphs of `OFF_DIGESTS_SINCE_B18` and
-    `OFF_DIGESTS_SINCE_Q24` it must give what is pinned there (the later where
-    both pin a graph)."""
+    key for key and in order. On the 108 graphs of `OFF_DIGESTS_SINCE_B18`,
+    `OFF_DIGESTS_SINCE_Q24` and `OFF_DIGESTS_SINCE_PASS1_TIE` it must give what
+    is pinned there (the latest where two pin a graph)."""
     assert all(off_golden["digests"][n] != d for n, d in OFF_DIGESTS_SINCE_B18.items())
     since_b18 = {**off_golden["digests"], **OFF_DIGESTS_SINCE_B18}
     assert all(since_b18[n] != d for n, d in OFF_DIGESTS_SINCE_Q24.items())
-    expected = {**since_b18, **OFF_DIGESTS_SINCE_Q24}
+    since_q24 = {**since_b18, **OFF_DIGESTS_SINCE_Q24}
+    assert all(since_q24[n] != d for n, d in OFF_DIGESTS_SINCE_PASS1_TIE.items())
+    expected = {**since_q24, **OFF_DIGESTS_SINCE_PASS1_TIE}
     changed = [run.name for run in runs if off_digest(run.off) != expected[run.name]]
     assert not changed, (
         f"with merge.pass2_soft_ceiling off, merge_superpixels no longer gives what it gave "
         f"at {off_golden['made_from']['commit'][:7]} (or since review B18 or round 14's "
-        f"fallback tie, where pinned) on {len(changed)} of {len(runs)} graphs "
+        f"two ties, where pinned) on {len(changed)} of {len(runs)} graphs "
         f"({changed[:10]}). Off has to change nothing; if this was meant, say so in the "
-        f"commit and pin the new digests, as OFF_DIGESTS_SINCE_Q24 does."
+        f"commit and pin the new digests, as OFF_DIGESTS_SINCE_PASS1_TIE does."
     )
 
 
