@@ -10850,7 +10850,7 @@ decisions:
     pass, with the fix, exports its table and the clustering and export passes run on Earth Engine for the first time
     with the round's code. It passes when the batch completes; every task of it ends well (a cache export that fails
     in one pass completes in a later one; no Drive export fails or is cancelled, the Drive states read once, before the
-    third live check, and one still running then cancelled and recorded); the copy tool copies every file; each elbow
+    third live check, and one not ended at the reading cancelled then and recorded; any other state fails); the copy tool copies every file; each elbow
     table reads back from its asset as each pass that computed it computed it; the live check's script passes criteria
     1 to 6 on its records and fails criterion 0 only as it must (the features and segmentation read from the cache);
     and within each run the elbow at the config's k is the fit, each polygon's type is its stand's row's, the stand
