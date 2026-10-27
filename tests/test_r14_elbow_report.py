@@ -928,6 +928,21 @@ def test_the_report_reads_what_the_copy_tool_copies(records, tmp_path):
         assert any(r.off_git for r in reads) is (limit == 300)
 
 
+def test_the_reports_check_for_a_date_and_time_is_the_copy_tools():
+    """The report refuses to write results holding a date and time by the copy tool's own pattern,
+    which takes the date and the time joined by a space (as str() writes a datetime) as well as by
+    a "T" (the gate's review, part 7)."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("copy_run_results", REPO / "scripts" / "copy_run_results.py")
+    assert spec is not None and spec.loader is not None
+    copy_tool = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(copy_tool)
+    assert R.STAMP.pattern == copy_tool.STAMP.pattern
+    for text in ("2026-10-27 03:06:25", "2026-10-27T03:06:25", "20261027_030625"):
+        assert R.STAMP.search(text), text
+
+
 def test_the_results_hold_no_date_time_or_commit_and_the_record_does(written):
     record = json.loads((written.out / "r14_elbow_run.json").read_text())
     commit = record["git"]["commit"]

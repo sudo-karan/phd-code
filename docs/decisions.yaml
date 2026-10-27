@@ -8866,7 +8866,13 @@ decisions:
     letters "date" in candidate_bands made it refuse the preprocessing record of every R3 elbow; every file is checked
     before any is written, so a refusal leaves nothing copied, where it had written the files before the refused one
     (and none of the off-git record); and the export mode also copies <run>_k_elbow_run.json, which a full batch with
-    the elbow pass writes (tests/test_copy_run_results.py, four tests that fail on the code before).
+    the elbow pass writes (tests/test_copy_run_results.py, four tests that fail on the code before). After the gate's
+    review, part 7 (27 Oct 2026, low): a value holding a date and time is one whose date and time are joined by "T"
+    or by a space, as str() writes a datetime (json.dumps(..., default=str) in the pipeline's manifest, which passed
+    the check), or a run folder's <date>_<time>. odisha_script/r14_elbow_report.py's copy of the pattern changes with
+    it, and odisha_script/r14_live_check.py, which imports it, takes the space too. Before the change, none of the 231
+    results files the tool had written under docs/reproducibility/ held a date and time by either form, so none
+    would now be refused.
   alternatives_considered:
   - >-
     Leave the logs and image lists in the run trees: not chosen; the brief asks for every pass's fmu.log and
@@ -8883,7 +8889,9 @@ decisions:
   - path: scripts/copy_run_results.py
     what: run_folders, passes, numbered, copy, --through
   - path: tests/test_copy_run_results.py
-    what: The round 14 files kept; a batch through the k elbow; one with no elbow pass refused
+    what: >-
+      The round 14 files kept; a batch through the k elbow; one with no elbow pass refused; a date and time with a
+      space between them refused, as with a "T"
   - path: docs/running.md
     what: Keeping every file a run writes
   papers: []

@@ -315,6 +315,31 @@ def test_a_file_refused_leaves_nothing_written(mod, tmp_path):
     assert not (off.exists() and any(off.iterdir()))
 
 
+def test_a_date_and_time_with_a_space_between_them_is_refused_as_with_a_t(mod, tmp_path):
+    """The pipeline writes a datetime into a manifest as str() writes it, with a space between the
+    date and the time (json.dumps(..., default=str) in Pipeline._write_manifest): the check takes
+    it, as it takes one with a "T", and nothing is copied (the gate's review, part 7)."""
+    import datetime as dt
+
+    when = dt.datetime(2026, 10, 27, 3, 6, 25, 123456)
+    assert json.dumps({"computed": when}, default=str) == '{"computed": "2026-10-27 03:06:25.123456"}'
+    for i, value in enumerate((when, when.isoformat(), when.isoformat(sep=" ", timespec="minutes"))):
+        tree = _tree(tmp_path / str(i), 10)
+        last = sorted((tree / "runs").glob(f"{RUN}_2*"))[-2]  # the export pass
+        manifest = json.loads((last / "manifest.json").read_text())
+        manifest["stages"][0]["metadata"]["computed"] = value
+        (last / "manifest.json").write_text(json.dumps(manifest, default=str))
+        dest = tmp_path / str(i) / "dest"
+        with pytest.raises(SystemExit, match="date and time"):
+            mod.copy(tree, RUN, dest, tmp_path / str(i) / "off")
+        assert not dest.exists()
+    # A date alone, a setting's two dates and a time alone are not a date and time.
+    for text in ('"2017-01-01"', '"2017-01-01 to 2022-12-31"', '"03:06:25"', '"T44QPF"'):
+        assert not mod.STAMP.search(text), text
+    for text in ("2026-10-27 03:06", "2026-10-27T03:06", "runs/x_20261027_030625"):
+        assert mod.STAMP.search(text), text
+
+
 def test_a_full_batch_keeps_the_elbows_run_record_too(mod, tmp_path):
     """The live check and R3's second half are full batches with the elbow pass: the runner writes
     <run>_k_elbow_run.json beside <run>_run.json, and the export mode keeps it (the gate's review)."""

@@ -481,9 +481,10 @@ elbow, it needs the features, segmentation and k_elbow passes and copies `<run>_
 and the elbow's files in place of the layers and the run record; a full batch with the elbow pass
 (the live check, R3's second half) has `<run>_k_elbow_run.json` too, and the export mode copies it.
 Every file is checked for times (a key one of whose words is a time word, or whose last word is
-"at"; a value holding a date and time) before any is written, so a refusal leaves nothing copied
-(round 14, the gate's review). Copy a batch's runs before its run tree could be deleted, each batch
-into a folder of its own (the first and second halves of a run have passes of the same kinds).
+"at"; a value holding a date and time, with a "T" or a space between them) before any is written,
+so a refusal leaves nothing copied (round 14, the gate's review). Copy a batch's runs before its
+run tree could be deleted, each batch into a folder of its own (the first and second halves of a
+run have passes of the same kinds).
 
 **The elbow report of R3's first half** (round 14, Task 6). Once the nineteen `_r14` runs of the
 first half are copied (`--through k_elbow`, `--dest docs/reproducibility/r14_runs/first_half`), run

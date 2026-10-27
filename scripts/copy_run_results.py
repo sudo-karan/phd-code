@@ -41,9 +41,10 @@ into --dest; --dest gets <run>_files_off_git.json instead: for each such file it
 bytes, SHA-256 and where it is, and its Drive copy ("drive"), once one is checked and recorded, which
 a later copy of the same file keeps. Results only: before it writes anything, it refuses a key naming
 a time (one of whose words, split at "_" and at a capital, is a time word, or whose last word is "at")
-or a value holding a date and time in any file it would write, logs and image lists aside, so that a
-refusal leaves nothing copied. A full batch with the k elbow pass also has <run>_k_elbow_run.json,
-copied in either mode (round 14, the gate's review).
+or a value holding a date and time (the two joined by "T" or by a space, or a run folder's
+<date>_<time>) in any file it would write, logs and image lists aside, so that a refusal leaves
+nothing copied. A full batch with the k elbow pass also has <run>_k_elbow_run.json, copied in
+either mode (round 14, the gate's review).
 """
 
 from __future__ import annotations
@@ -68,7 +69,10 @@ DROP = {"run_dir", "total_elapsed_sec", "elapsed_sec", "run_timestamp", "submitt
 TIME_WORDS = ("time", "timestamp", "datetime", "date", "elapsed", "duration", "started", "finished",
               "sec", "secs", "seconds", "runtime")
 SETTINGS = ("dates", "time_reference")  # config keys that are settings, not timings
-STAMP = re.compile(r"20\d\d-\d\d-\d\dT\d\d:|20\d{6}_\d{6}")
+# A value holding a date and time: the date and the time joined by "T" (isoformat) or by a space (a
+# datetime as str() writes it, which json.dumps(..., default=str) does in the pipeline's manifest;
+# until round 14's gate review, part 7, only a "T" was taken), or a run folder's <date>_<time>.
+STAMP = re.compile(r"20\d\d-\d\d-\d\d[T ]\d\d:|20\d{6}_\d{6}")
 LAYERS = ("stands_merged", "stands_snic", "stands_dissolved")
 PASSES = ("segmentation", "clustering", "export")
 # The passes a run needs, by how far its batch went (round 14): a full batch, or one that stopped

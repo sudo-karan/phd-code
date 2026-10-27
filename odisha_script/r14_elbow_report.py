@@ -159,8 +159,9 @@ RECORD_KEYS = ("log_rule", "skewness_threshold", "cyclic_decomposition_log", "ca
 POOL_KEYS = ("log_rule", "skewness_threshold", "cyclic_decomposition_log")
 # The rule the report's paragraph on how the numbers are made describes (one_rule).
 RULE_DESCRIBED = "right_skew"
-# A value holding a date and time, as scripts/copy_run_results.py looks for one.
-STAMP = re.compile(r"20\d\d-\d\d-\d\dT\d\d:|20\d{6}_\d{6}")
+# A value holding a date and time, as scripts/copy_run_results.py looks for one: the date and the
+# time joined by "T" or by a space, or a run folder's <date>_<time>.
+STAMP = re.compile(r"20\d\d-\d\d-\d\d[T ]\d\d:|20\d{6}_\d{6}")
 
 # The figures. One colour per arm, the same in every figure: Okabe-Ito blue and vermillion, apart
 # for colour-blind readers and each at least 3:1 against the white figure (Okabe-Ito's orange,
