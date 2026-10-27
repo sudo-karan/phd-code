@@ -10625,7 +10625,8 @@ decisions:
     and the third live check (7.94), with the 15.72 EECU-hours the two failed live checks used; the rule is unchanged,
     r being the third live check's charged cost over 7.94. The first half is then expected to end below the stop while
     it costs up to about 1.39 times its estimate (1.59 before the 15.72 were used), and the declared forecast, the
-    first half at 1.5 times its estimate, expects the stop, which would cut the last config or two of the brief's order;
+    first half at 1.5 times its estimate, expects the stop, which in the declared order would then cut one 10 ha box's
+    last two steps and the whole tile (3.29 at estimate), with R3 as a whole about 2.15 over 150;
     the round keeps 150 and the stop as declared, the brief's default for the record's question 14, which asks whether
     to raise it (figures corrected after the gate's review, part 9).
   alternatives_considered:
@@ -10850,18 +10851,21 @@ decisions:
     with the round's code. It passes when the batch completes; every task of it ends well (a cache export that fails
     in one pass completes in a later one; no Drive export fails or is cancelled, the Drive states read once, before the
     third live check, and one still running then cancelled and recorded); the copy tool copies every file; each elbow
-    table reads back from its asset as its pass computed it; the live check's script passes criteria 1 to 6 on its
-    records and fails criterion 0 only as it must (the features and segmentation read from the cache); and within each
-    run the elbow at the config's k is the fit, and each polygon's type its stand's row's (amended before it runs,
-    after the gate's review, part 9). A failure that is not the code's is resumed once, then asked about; a rule that
+    table reads back from its asset as each pass that computed it computed it; the live check's script passes criteria
+    1 to 6 on its records and fails criterion 0 only as it must (the features and segmentation read from the cache);
+    and within each run the elbow at the config's k is the fit, each polygon's type is its stand's row's, the stand
+    means of each angle's sine and cosine are unit-bounded and each centroid lies in its polygon's box (amended before
+    it runs, after the gate's review, parts 9 and 10; the scripts that judge it committed in
+    odisha_script/r14_smoke_test/). A failure that is not the code's is resumed once, then asked about; a rule that
     fails correct runs stops the round to ask. If it passes, the live check runs
     again in full, both from scratch, in one wrapper batch from a new run tree, as two new copies of the check config,
     odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_e and _check_f, judged by the same declared rules; if that
     passes, R3's first half (Task 5) and the elbow report (Task 6) follow, and the round stops for Jaskaran's k. If the
     smoke test fails on a bug, the bug is fixed test first and the smoke test repeated before any run from scratch,
-    with no Drive file sent twice: a config none of whose Drive files was submitted runs again under a new label, and
-    one whose export stage sent some has its layers made again read-only (odisha_script/odisha_read_back_export.py),
-    or the round asks. The second check's records are kept (docs/reproducibility/r14_runs/live_check_2/).
+    with no Drive file sent twice, as the record writes it before the repeat runs: a stage the first attempt cached
+    under a key the fix does not move is read back and judged on the first attempt's records, and an export stage
+    that sent Drive files is not run again (its layers made again read-only with
+    odisha_script/odisha_read_back_export.py if they must be); if no repeat so made can test the fix, the round asks. The second check's records are kept (docs/reproducibility/r14_runs/live_check_2/).
   alternatives_considered:
   - >-
     Fix it and run the live check again from scratch at once, with no smoke test (option (a) of the round 14 record's
