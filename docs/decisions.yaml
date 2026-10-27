@@ -10621,6 +10621,11 @@ decisions:
     max(1, r) x 12.51, 12.51 being the largest single pass of any first-half config at estimate (the hand-crafted
     Dhenkanal 10 ha features pass), so that the pass in flight at a stop still ends the round within 150; the configs
     left go under Blocked.
+    Round 14 (27 Oct 2026), after Jaskaran's answer to question 13: the estimate is amended for the smoke test (0.14)
+    and the third live check (7.94), with the 15.72 EECU-hours the two failed live checks used; the rule is unchanged,
+    r being the third live check's charged cost over 7.94. The first half is then expected to end below the stop while
+    it costs up to about 1.39 times its estimate (1.62 before the 15.72 were used); the round keeps 150 and the stop as
+    declared, the brief's default for the record's question 14, which asks whether to raise it.
   alternatives_considered:
   - >-
     Hold the first half back while the forecast does not fit, for Jaskaran's word (option (b) of the round 14 record's
@@ -10634,7 +10639,7 @@ decisions:
     paper was searched for this decision.
   evidence:
   - path: docs/handoff/2026-10-26-round14.md
-    what: Done, the cost estimate; Questions, item 10
+    what: Done, the cost estimate (amended a fourth time on 27 Oct 2026); Questions, items 10 and 14
   papers: []
   status: adopted
   design_notes_section: null
@@ -10691,7 +10696,8 @@ decisions:
     (spec-merge-fallback-tie-by-centroid); the numbering of the stands, order_key. order_key still ends on the dense
     index, for two centroids equal to 7 decimals. The root a pass-2 merge keeps is unchanged and is no tie decided by
     label order: the larger region's, and of two of the same size the partner's, whatever the labels; it decides whose
-    turn in the sweep the merged region keeps, as a region whose root is gone is skipped when its turn comes. 22 of the
+    turn in the sweep the merged region keeps, as a region whose root is gone is skipped when its turn comes (Jaskaran
+    agreed to keep it so, 27 Oct 2026: the round 14 record's question 12, "(a), agreed"). 22 of the
     200 golden graphs of tests/test_region_merge_provenance.py (seeds 0, 17, 23, 28, 48, 53, 64, 73, 79, 81, 84, 86, 100,
     110, 122, 128, 130, 133, 151, 155, 177 and 186) and 42 of the 516 graphs of tests/test_region_merge_soft_ceiling.py
     with the setting off (33 random and 9 tight) give new digests, pinned in those tests (DIGESTS_SINCE_PASS1_TIE,
@@ -10820,6 +10826,57 @@ decisions:
     what: The off path's calls, rewritten from the new code
   - path: docs/handoff/2026-10-26-round14.md
     what: Done, Task 4, the second batch; read-only Earth Engine call 12; Questions, item 13
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 27 Oct 2026, in the Claude Code session, the round 14 record's question 13
+- id: process-smoke-test-then-live-check-again-as-check-e-and-f
+  title: >-
+    After the k elbow's table is fixed, a smoke test finishes _r14_check_c and _r14_check_d through clustering and
+    export from what they cached; if it passes, the live check runs again from scratch as _r14_check_e and _r14_check_f,
+    then R3's first half and the elbow report as planned
+  decision: >-
+    The second live check of 27 Oct 2026 (_r14_check_c and _check_d) failed: both runs stopped in the k elbow pass,
+    when Earth Engine refused the elbow table's cache export, whose rows had no geometry (the round 14 record, Done,
+    Task 4). The table is fixed, test first (spec-k-elbow-table-rows-carry-a-fixed-point). Then a smoke test, declared
+    in the record before it runs and counted neither as the live check nor as an R3 result: one wrapper batch under a
+    label of its own, from a new run tree, of _check_c and _check_d in full, their features and segmentation read back
+    from the assets their batch cached and their elbows made again from them (no elbow was cached), so that the k elbow
+    pass, with the fix, exports its table and the clustering and export passes run on Earth Engine for the first time
+    with the round's code. It passes when the batch completes, no task of it fails, the copy tool copies every file,
+    each elbow table reads back from its asset as computed, and the live check's script passes criteria 1 to 6 on its
+    records (criterion 0, both runs from scratch, fails as it must, and is set aside). If it passes, the live check runs
+    again in full, both from scratch, in one wrapper batch from a new run tree, as two new copies of the check config,
+    odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_e and _check_f, judged by the same declared rules; if that
+    passes, R3's first half (Task 5) and the elbow report (Task 6) follow, and the round stops for Jaskaran's k. If the
+    smoke test fails, the bug is fixed test first and the smoke test repeated before any run from scratch. The second
+    check's records are kept (docs/reproducibility/r14_runs/live_check_2/).
+  alternatives_considered:
+  - >-
+    Fix it and run the live check again from scratch at once, with no smoke test (option (a) of the round 14 record's
+    question 13 as asked): not chosen as it stood; Jaskaran added the smoke test, so that a bug in the clustering or
+    export code, which neither check had reached, shows up without another run from scratch
+  - >-
+    Fix it and finish the two failed check runs as the live check itself (option (b)): not chosen; the check's rules
+    were declared for one batch from one run tree, and reading them over two would amend them after a result. The smoke
+    test finishes them all the same, as a test of the code, not as the check
+  - >-
+    No R3 this month (option (c)): not chosen; October's hours do not carry over
+  rationale: >-
+    Jaskaran, 27 Oct 2026, answering the round 14 record's question 13: "(a), with one addition. First, as a smoke test
+    that does not count as the live check, finish _r14_check_c and _r14_check_d with the fix, from their cached
+    features, segmentation and elbows, through clustering and export, so that any further bug in the new clustering and
+    export code shows up without another run from scratch. Record it as a smoke test. If it passes, run the declared
+    live check from scratch as _r14_check_e and _r14_check_f, then R3's first half and the elbow report as planned. If
+    the smoke test fails, fix the bug test-first and repeat the smoke test before any run from scratch." No paper was
+    searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-26-round14.md
+    what: Done, Task 4; Done, the round resumed again (the smoke test's declaration); Questions, item 13
+  - path: docs/reproducibility/r14_runs/README.md
+    what: The failed check runs' records
+  - path: tests/test_r14_live_check.py
+    what: test_the_smoke_tests_records_fail_criterion_0_and_only_it
   papers: []
   status: adopted
   design_notes_section: null

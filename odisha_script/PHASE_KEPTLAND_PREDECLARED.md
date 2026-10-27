@@ -286,7 +286,11 @@ R3 result exists. Nothing above is changed except where this section says so.
   more than 1% from the analysis scale refused (Jaskaran's answer to the round 14 record's question
   11; `spec-merge-pixel-counts-on-one-inclusion-rule`), and every tie of the merge broken by
   centroid, pass 1's partner tie too (his answer to question 2; `spec-merge-every-tie-by-centroid`).
-  These too are fixes, not changes to the declared analysis.
+  These too are fixes, not changes to the declared analysis. Added 27 Oct 2026, before any R3 result exists: it also
+  carries the k elbow's table fix, each row of the elbow's cached table with the same fixed point
+  as its geometry, so that Earth Engine exports it (his answer to question 13;
+  `spec-k-elbow-table-rows-carry-a-fixed-point`). It changes no number, no file and no key; it too
+  is a fix, not a change to the declared analysis.
 - **Nothing else in the declared analysis changes**: the plots, the field types (the Phase 3
   primary typology, not refitted), the five scores, the join with the 30 m rule, the checks S1 and
   S2, how the plots join, the 13 Oct box runs beside, the chance test as declared (1,999
