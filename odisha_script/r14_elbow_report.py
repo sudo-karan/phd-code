@@ -66,13 +66,19 @@ fit_space_sweep call and the same knee. Jaskaran's answer (b) to question 9 of t
 27 Oct 2026 in the change of 26 Oct 2026). Each run's own elbow has one order, the run's.
 
 WRITES, in --out-dir, and refuses to write over any of these unless --overwrite (a refusal writes
-nothing; so does a stop). They are written into a folder of their own beside them (.<stem>.*,
-removed after) and put in place once all are written: the figures, the csv and the report, then,
-once the git state is read again, the run record. So a failure that is not a stop (a full disk,
-Ctrl-C) while they are made leaves none of them; one in the last second, while they are put in
-place or the git state is read, can leave the results without their run record (beside an earlier
-run's, with --overwrite). A kill that no finally block sees (SIGKILL) leaves the folder of their
-own, which the next run refuses to write over, as it does the outputs, and --overwrite removes:
+nothing; so does a stop). They are written into a folder of their own beside them, the work folder
+(named by tempfile.mkdtemp: .<stem>. and 8 characters from a to z, 0 to 9 and "_"; removed after),
+and put in place once all are written, one file at a time: the figures, the csv and the report,
+then, once the git state is read again, the run record. So a failure that is not a stop (a full
+disk, Ctrl-C) while they are made leaves none of them. One in the last second, while they are put
+in place or the git state is read, can leave part of the results in place (some or all of the
+figures; the figures and the csv; or all the results without their run record) and, with
+--overwrite, the rest of an earlier run's outputs beside them, its run record among them. A kill
+that no finally block sees (SIGKILL) leaves the work folder, which the next run refuses to write
+over, as it does the outputs, and --overwrite removes. Only a work folder this script makes is
+taken for one (a folder, not a link, named as above, holding nothing but the names the script
+writes there); anything else of a like name in --out-dir is left alone, neither refused nor
+removed. The outputs:
   <stem>.csv          one row per area, arm, row order and k: area, arm, stand_size, row_order, k,
                       wcss, ari_median, ari_min, is_knee, n_rows_fitted (the pools as the areas
                       pooled_3ha and pooled_10ha); row_order is "stated" (a run's rows in its
@@ -789,9 +795,11 @@ def report_text(*, stem: str, records: Path, series: dict[str, dict[str, Series]
         f"preprocesses it over every stand by the runs' rule (`clustering.log_rule` {rule}: a band "
         "whose IQR is at most 1e-9 is dropped, and an angle's sine and cosine only together, when "
         f"their shared spread is; only a band skewed to the right, skew above {threshold!r}, is logged, "
-        "as log1p((x - min) / IQR); the sine and cosine of an angle are never logged; each other band "
-        "is centred by its median and divided by its IQR, and the sine and cosine of an angle by their "
-        "medians and by their shared spread, the root mean square of their two IQRs; exact quartiles). "
+        "as log1p((x - min) / IQR), and it is then dropped if its IQR after the log is at most 1e-9; "
+        "the sine and cosine of an angle are never logged; each other band is centred by its median "
+        "and divided by its IQR (a logged band's after the log), and the sine and cosine of an angle "
+        "by their medians and by their shared spread, the root mean square of their two IQRs; exact "
+        "quartiles). "
         "It then fits k-means on the fit's own rows in that space (the stands below the "
         "merge's minimum area, 1 ha in every R3 config, left out), for each k from "
         f"{K_MIN} to {K_MAX}: {N_STARTS} k-means++ starts from seed {SEED}, each refined by Lloyd's "
@@ -801,8 +809,9 @@ def report_text(*, stem: str, records: Path, series: dict[str, dict[str, Series]
         "(`fmu.stages.k_elbow.knee`). At each k the adjusted Rand index of every pair of the "
         f"{N_STARTS} starts ({N_PAIRS} pairs) says how much the starts agree with each other: a "
         "diagnostic of the clustering, not a field score. Its median and lowest are given, rounded to 6 "
-        "decimals in the csv and to 4 in the tables. The pooled elbow of an arm and stand size puts the "
-        "four districts' tables of stands "
+        "decimals in the csv and to 4 in the tables, where 1 is given as 1, and an index between "
+        "-0.00005 and 0.00005 other than 0 with two significant figures, so that its sign shows. "
+        "The pooled elbow of an arm and stand size puts the four districts' tables of stands "
         "together, each row keyed by its district and stand label (labels repeat across districts), in "
         "the order Angul, Dhenkanal, Kendujhar, Koraput and within each by stand label, each row keeping "
         "whether it is in its run's fit. It preprocesses them together by the runs' own rule, threshold "
@@ -1011,6 +1020,38 @@ def outputs(out_dir: Path, stem: str) -> tuple[Path, Path, Path, Path]:
             out_dir / stem)
 
 
+def work_folders(out_dir: Path, stem: str) -> list[Path]:
+    """The work folders earlier runs left in out_dir when killed while they wrote (SIGKILL, or a
+    signal no finally block sees). Only what main() makes is taken for one: a folder, not a link,
+    named as tempfile.mkdtemp names main()'s (.<stem>. and 8 characters from a to z, 0 to 9 and
+    "_", its alphabet), holding nothing but the names main() writes there: the figures' folder
+    <stem>/ with figures <area>.png in it, <stem>.csv, <stem>_report.md and <stem>_run.json, each
+    a plain file. Anything else is left alone (the gate's review, part 7)."""
+    if not out_dir.is_dir():
+        return []
+    named = re.compile(re.escape(f".{stem}.") + "[a-z0-9_]{8}")
+    files = {f"{stem}.csv", f"{stem}_report.md", f"{stem}_run.json"}
+    figures = {f"{a.key}.png" for a in AREAS}
+
+    def plain(p: Path, names: set[str]) -> bool:
+        return p.name in names and p.is_file() and not p.is_symlink()
+
+    def own(folder: Path) -> bool:
+        try:
+            for p in folder.iterdir():
+                if p.name == stem and p.is_dir() and not p.is_symlink():
+                    if not all(plain(f, figures) for f in p.iterdir()):
+                        return False
+                elif not plain(p, files):
+                    return False
+        except OSError:  # a folder that cannot be read is not one main() left
+            return False
+        return True
+
+    return [p for p in sorted(out_dir.iterdir())
+            if named.fullmatch(p.name) and p.is_dir() and not p.is_symlink() and own(p)]
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[0])
     ap.add_argument("--records", type=Path, default=RECORDS,
@@ -1031,8 +1072,9 @@ def main(argv: list[str] | None = None) -> int:
     if fig_dir.exists() and any(fig_dir.iterdir()):
         there.append(fig_dir)
     # The work folder of an earlier run that was killed while it wrote (SIGKILL, or a signal no
-    # finally block sees): part of that run's outputs (the gate's review, part 5).
-    leftover = sorted(args.out_dir.glob(f".{args.stem}.*")) if args.out_dir.is_dir() else []
+    # finally block sees): part of that run's outputs (the gate's review, part 5). Only a folder
+    # this script makes is taken for one; anything else is left alone (part 7).
+    leftover = work_folders(args.out_dir, args.stem)
     there += leftover
     if there and not args.overwrite:
         raise SystemExit("refusing to write over " + ", ".join(shown(p) for p in there)
@@ -1078,8 +1120,9 @@ def main(argv: list[str] | None = None) -> int:
     # Everything is written into a folder of its own beside the outputs, and put in place only once
     # it all is, so that a failure that is not a stop (a full disk, Ctrl-C) while the figures are
     # drawn or the environment read leaves no part of them (the gate's review, part 3). Then the
-    # figures, the csv and the report are put in place, the git state is read again, and the run
-    # record goes in last (part 5).
+    # figures, the csv and the report are put in place, one file at a time, the git state is read
+    # again, and the run record goes in last (part 5): a failure in that last second can leave part
+    # of them, beside the rest of an earlier run's (the module docstring; part 7).
     args.out_dir.mkdir(parents=True, exist_ok=True)
     for old in leftover:
         shutil.rmtree(old, ignore_errors=True)

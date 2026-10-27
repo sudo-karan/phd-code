@@ -10360,8 +10360,10 @@ decisions:
     for every run and the rule right_skew (else the script stops), and says how an angle's sine and cosine are
     scaled (their medians, and the root mean square of their two IQRs) and how the numbers are rounded (6 decimals in
     the csv, 2 and 4 in the tables); the outputs are written in a folder of their own beside them and put in place
-    once all are, the run record last, so a failure that is not a stop leaves none; tests of the pool's other three
-    refusals (threshold, angle pairs, label column) and of the report reading the copy tool's records. After its
+    once all are, the run record last, so a failure that is not a stop while they are made leaves none (corrected
+    after the gate's review, part 7: it said "leaves none", but a failure while they are put in place, one file at a
+    time, can leave part of them); tests of the pool's other three refusals (threshold, angle pairs, label column)
+    and of the report reading the copy tool's records. After its
     part 5 (all low): the figure and its caption take the index's axis from one function (ari_floor), and the caption
     gives the axis's bottom; an index that would print as -0.0000 prints with two significant figures; the paragraph
     says when a band is dropped (an IQR at most 1e-9, an angle's sine and cosine only together); the environment is
@@ -10376,7 +10378,15 @@ decisions:
     order on the left and the reverse order on the right, each arm in its colour in both, the knees ringed and named
     in each panel's legend; the report gives both knees in its table of knees (a row for the reverse order under each
     pool's) and, in each pooled section, both orders' knees and tables of k; the run record says what the two orders
-    are (row_orders). A run's figure and caption are as before, byte for byte.
+    are (row_orders). A run's figure and caption are as before, byte for byte. After the gate's review, part 7 (27
+    Oct 2026, all low): the check for a killed run's work folder takes only a folder the script makes (not a link,
+    named .<stem>. and 8 characters from a to z, 0 to 9 and "_", as tempfile.mkdtemp names it, holding nothing but
+    the script's own output names), so a file or folder of a like name in --out-dir is neither refused nor removed by
+    --overwrite, where any entry named .<stem>.* was; the docstring says that a failure while the outputs are put in
+    place, one file at a time, can leave part of the results and, with --overwrite, the rest of an earlier run's
+    outputs beside them, its run record among them; the paragraph on how the numbers are made says that a logged band
+    whose IQR after the log is at most 1e-9 is dropped too, and that an index between -0.00005 and 0.00005 other than
+    0 is given with two significant figures (1 as 1).
   alternatives_considered:
   - >-
     Pool the saved fit rows (<run>_k_elbow_fit_rows.csv): not chosen; those rows are each run's own preprocessing,

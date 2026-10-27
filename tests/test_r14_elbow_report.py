@@ -26,6 +26,7 @@ import dataclasses
 import hashlib
 import io
 import json
+import os
 import re
 import shutil
 import struct
@@ -522,7 +523,8 @@ def test_with_overwrite_a_second_run_writes_the_same_files_byte_for_byte(records
 def test_a_crash_while_writing_leaves_nothing_and_the_next_run_writes_everything(records, sweeps, tmp_path,
                                                                                    monkeypatch):
     """The files are written in a folder of their own and put in place at the end: a failure that
-    is not a stop (a full disk, Ctrl-C) leaves no part of the outputs (the gate's review, part 3)."""
+    is not a stop (a full disk, Ctrl-C) while they are made leaves no part of the outputs (the gate's
+    review, part 3). One while they are put in place can leave part of them (the next test; part 7)."""
     draw, calls = R.draw_figure, []
 
     def fails_on_the_fourth(area, arms, path):
@@ -558,6 +560,94 @@ def test_a_crash_while_writing_leaves_nothing_and_the_next_run_writes_everything
     assert sorted(p.name for p in tmp_path.iterdir()) == ["r14_elbow", "r14_elbow.csv", "r14_elbow_report.md",
                                                           "r14_elbow_run.json"]
     assert len(list((tmp_path / "r14_elbow").iterdir())) == 12
+
+
+def test_a_failure_while_the_outputs_are_put_in_place_can_leave_part_of_them(records, written, sweeps, tmp_path,
+                                                                             monkeypatch):
+    """The outputs are put in place one file at a time, the run record last: a failure between two
+    moves leaves part of the results in place and, with --overwrite, the rest of an earlier run's
+    outputs beside them, its run record among them, as the module docstring says (the gate's
+    review, part 7)."""
+    real = os.replace
+
+    def failing_at(n: int):
+        moves: list[str] = []
+
+        def replace(src: Any, dst: Any) -> None:
+            moves.append(Path(dst).name)
+            if len(moves) == n:
+                raise KeyboardInterrupt
+            real(src, dst)
+
+        return replace
+
+    # A first run stopped at its sixth move: five figures, and nothing else.
+    monkeypatch.setattr(R.os, "replace", failing_at(6))
+    first = tmp_path / "first"
+    with pytest.raises(KeyboardInterrupt):
+        R.main(args(records, first, "--no-run-check"))
+    assert sorted(p.name for p in first.iterdir()) == ["r14_elbow"]
+    assert len(list((first / "r14_elbow").iterdir())) == 5
+    # Over an earlier run, with --overwrite, stopped at its fourteenth move (the report, after the 12
+    # figures and the csv): the earlier run's report and run record stay, beside this run's figures
+    # and csv. The work folder goes either way.
+    again = tmp_path / "again"
+    shutil.copytree(written.out, again)
+    earlier = b"an earlier run's\n"
+    for p in [again / "r14_elbow.csv", again / "r14_elbow_report.md", again / "r14_elbow_run.json",
+              *(again / "r14_elbow").iterdir()]:
+        p.write_bytes(earlier)
+    monkeypatch.setattr(R.os, "replace", failing_at(14))
+    with pytest.raises(KeyboardInterrupt):
+        R.main(args(records, again, "--no-run-check", "--overwrite"))
+    left = sorted(p.relative_to(again).as_posix() for p in again.rglob("*")
+                  if p.is_file() and p.read_bytes() == earlier)
+    assert left == ["r14_elbow_report.md", "r14_elbow_run.json"]
+    assert not [p for p in [*first.iterdir(), *again.iterdir()] if p.name.startswith(".")]
+
+
+def test_only_a_work_folder_the_script_makes_is_refused_or_removed(records, sweeps, tmp_path):
+    """The check for a killed run's work folder takes only what main() makes there: a folder, not a
+    link, named as tempfile.mkdtemp names it (.r14_elbow. and 8 characters from a to z, 0 to 9 and
+    "_"), holding nothing but the script's own output names. Anything else of a like name is left
+    alone: not refused, and not removed by --overwrite (the gate's review, part 7)."""
+    import tempfile
+
+    out = tmp_path / "out"
+    out.mkdir()
+    elsewhere = tmp_path / "elsewhere"
+    (elsewhere / "r14_elbow").mkdir(parents=True)
+    (out / ".r14_elbow.backup").mkdir()  # a user's folder
+    (out / ".r14_elbow.backup" / "r14_elbow.csv").write_text("a user's copy\n")
+    (out / ".r14_elbow.csv.swp").write_bytes(b"an editor's file")
+    (out / ".r14_elbow.link0000").symlink_to(elsewhere, target_is_directory=True)
+    # Of the right name but holding another name; of a name with capitals, which tempfile never
+    # makes (another name than the first: a Mac's disk does not tell capitals apart); holding a
+    # figures' folder with another name in it.
+    for name, inside in ((".r14_elbow.abcd1234", "notes.txt"), (".r14_elbow.WXYZ9876", "r14_elbow.csv"),
+                         (".r14_elbow.efgh5678", "r14_elbow/notes.txt")):
+        (out / name / inside).parent.mkdir(parents=True, exist_ok=True)
+        (out / name / inside).write_text("kept by hand\n")
+    theirs = sorted(p.name for p in out.iterdir())
+    assert R.work_folders(out, "r14_elbow") == []
+    assert R.main(args(records, out, "--no-run-check")) == 0  # none of them refused
+    assert R.main(args(records, out, "--no-run-check", "--overwrite")) == 0  # nor removed
+    assert sorted(p.name for p in out.iterdir() if p.name.startswith(".")) == theirs
+    assert (out / ".r14_elbow.backup" / "r14_elbow.csv").read_text() == "a user's copy\n"
+    assert (elsewhere / "r14_elbow").is_dir() and (out / ".r14_elbow.efgh5678" / "r14_elbow" / "notes.txt").exists()
+    # What main() makes: tempfile.mkdtemp's folder, empty (killed at once) or holding part of a run.
+    killed = tmp_path / "killed"
+    killed.mkdir()
+    made = sorted(Path(tempfile.mkdtemp(prefix=".r14_elbow.", dir=killed)) for _ in range(2))
+    (made[0] / "r14_elbow").mkdir()
+    (made[0] / "r14_elbow" / "angul_3ha.png").write_bytes(b"part of a run")
+    (made[0] / "r14_elbow.csv").write_text("part of a run\n")
+    assert R.work_folders(killed, "r14_elbow") == made
+    with pytest.raises(SystemExit, match=r"refusing to write over .*\.r14_elbow\.[a-z0-9_]{8}"):
+        R.main(args(records, killed, "--no-run-check"))
+    assert R.main(args(records, killed, "--no-run-check", "--overwrite")) == 0
+    assert sorted(p.name for p in killed.iterdir()) == ["r14_elbow", "r14_elbow.csv", "r14_elbow_report.md",
+                                                       "r14_elbow_run.json"]
 
 
 def test_one_figure_per_area_1200_pixels_wide_with_no_date(written):
@@ -746,15 +836,19 @@ def test_a_pools_figure_has_the_same_rows_in_reverse_order_beside_the_stated_ord
 
 def test_the_paragraph_on_how_the_numbers_are_made_says_the_runs_rule(records, written, sweeps, tmp_path):
     """The rule and threshold are the records', one for every run, and the paragraph says how each
-    band is scaled and how the numbers are rounded (the gate's review, part 3)."""
+    band is scaled and how the numbers are rounded (the gate's review, part 3): a logged band
+    dropped when its IQR after the log is at most 1e-9, and the index's two significant figures
+    where it is near 0 (part 7)."""
     report = " ".join((written.out / "r14_elbow_report.md").read_text().split())
     assert "`clustering.log_rule` right_skew: a band whose IQR is at most 1e-9 is dropped, and an angle's " \
            "sine and cosine only together, when their shared spread is; only a band skewed to the right, " \
-           "skew above 1.0, is logged" in report
-    assert "each other band is centred by its median and divided by its IQR" in report
+           "skew above 1.0, is logged, as log1p((x - min) / IQR), and it is then dropped if its IQR after the " \
+           "log is at most 1e-9;" in report
+    assert "each other band is centred by its median and divided by its IQR (a logged band's after the log)" in report
     assert "the sine and cosine of an angle by their medians and by their shared spread, the root mean square " \
            "of their two IQRs" in report
-    assert "6 decimals in the csv" in report and "4 in the tables" in report
+    assert "rounded to 6 decimals in the csv and to 4 in the tables, where 1 is given as 1, and an index between " \
+           "-0.00005 and 0.00005 other than 0 with two significant figures, so that its sign shows." in report
     # Each pooled elbow in two orders (Jaskaran's answer (b) to question 9, 27 Oct 2026).
     assert "k-means++ depends on the order of the rows, so each pooled elbow is also made with the same rows " \
            "in reverse order, with the same preprocessing and the same sweep, and given beside it (the " \
@@ -782,6 +876,22 @@ def test_the_paragraph_on_how_the_numbers_are_made_says_the_runs_rule(records, w
         path.write_text(json.dumps({**json.loads(path.read_text()), "log_rule": "abs_skew"}))
     with pytest.raises(SystemExit, match="describes right_skew"):
         R.main(["--records", str(folder), "--out-dir", str(tmp_path / "out_abs"), "--no-run-check"])
+
+
+def test_a_band_logged_and_then_without_spread_is_dropped_as_the_paragraph_says():
+    """right_skew drops a logged band whose IQR after the log is at most 1e-9, though its IQR before
+    the log is above it (fmu.utils.stand_table._right_skew): the paragraph's second drop (the
+    gate's review, part 7). Its minimum is far below its quartiles, so the log squeezes them."""
+    rng = np.random.default_rng(0)
+    n = 200
+    b = np.concatenate([1e10 + rng.uniform(0.0, 1.0, n), [0.0, 1e14]])
+    table = st.StandTable(labels=np.arange(1, n + 3, dtype=np.int64), bands=["b", "c"],
+                          values=np.column_stack([b, rng.normal(10.0, 2.0, n + 2)]),
+                          in_fit=np.ones(n + 2, dtype=bool))
+    record = st.preprocess(table, rule="right_skew", threshold=1.0, decomposed=[]).record
+    p25, _, p75 = st.exact_quartiles(b)
+    assert p75 - p25 > 1e-9 and record["scaling"]["b"]["spread"] <= 1e-9
+    assert record["log_transformed_bands"] == ["b"] and record["dropped_constant_bands"] == ["b"]
 
 
 def test_the_report_reads_what_the_copy_tool_copies(records, tmp_path):
