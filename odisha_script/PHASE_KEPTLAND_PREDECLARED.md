@@ -312,3 +312,14 @@ R3 result exists. Nothing above is changed except where this section says so.
   not use the R3 code; Sanjay Van's kept-land stands. Which scores are the record once R3 exists
   (the note of 19 Oct above names the `_r9` ones) is not decided here: it is put to Jaskaran
   (round 14 brief, Questions).
+- **Note of 27 Oct 2026: the pooled elbows also with the rows in reverse order.** k-means++
+  depends on the order of the rows, and round 13 found that the order alone can move an elbow by 1
+  or 2 (`odisha_phase3_2_k_elbow_comparison.md`). So the elbow report also gives each pooled elbow
+  (the four districts of one arm and stand size, pooled in the stated order: Angul, Dhenkanal,
+  Kendujhar, Koraput, each by stand label) with the same rows in reverse order, the same
+  preprocessing and the same sweep, beside it: both knees and both tables. Each run's own elbow is
+  given as before, in one order, the run's. Decided by Jaskaran on 27 Oct 2026 (his answer (b) to
+  question 9 of the round 14 record, `docs/handoff/2026-10-26-round14.md`), before any R3 result
+  exists: no R3 config has been run, and no R3 elbow, stand or score exists (the live check's two
+  runs, which are not R3 results, stopped in the merge before their elbow). Nothing else in this
+  section is changed.
