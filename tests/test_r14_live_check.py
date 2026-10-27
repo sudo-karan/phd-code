@@ -36,10 +36,16 @@ RUN_B = "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b"
 # the first stopped in the merge, so the check runs again from scratch as two more copies.
 RUN_C = "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_c"
 RUN_D = "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_d"
+# The third (his answer to question 13, 27 Oct 2026): the second stopped in the k elbow's table
+# export, so the check runs again from scratch as two more copies.
+RUN_E = "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_e"
+RUN_F = "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_f"
 CONFIG_A = REPO / "configs" / f"{RUN_A}.yaml"
 CONFIG_B = REPO / "configs" / f"{RUN_B}.yaml"
 CONFIG_C = REPO / "configs" / f"{RUN_C}.yaml"
 CONFIG_D = REPO / "configs" / f"{RUN_D}.yaml"
+CONFIG_E = REPO / "configs" / f"{RUN_E}.yaml"
+CONFIG_F = REPO / "configs" / f"{RUN_F}.yaml"
 KINDS = ("features", "segmentation", "k_elbow", "clustering", "export")
 OFFLINE = ("0_both_runs_from_scratch", "1_same_stands_and_types", "3_distance_to_water",
            "4_sentinel1_scenes", "6_four_settings_on")
@@ -72,7 +78,7 @@ def configs() -> dict[str, Any]:
     from fmu.config import load_config
 
     return {run: load_config(REPO / "configs" / f"{run}.yaml")
-            for run in (RUN_A, RUN_B, RUN_C, RUN_D)}
+            for run in (RUN_A, RUN_B, RUN_C, RUN_D, RUN_E, RUN_F)}
 
 
 # ---------------------------------------------------------------------------
@@ -292,6 +298,48 @@ def test_the_second_live_check_judges_check_c_and_check_d_by_the_same_rules(mod,
     passes = _passes(result)
     assert {name: passes[name] for name in OFFLINE} == dict.fromkeys(OFFLINE, True)
     assert set(result["criteria"]["0_both_runs_from_scratch"]["runs"]) == {RUN_C, RUN_D}
+
+
+def test_the_third_live_check_judges_check_e_and_check_f_by_the_same_rules(mod, tmp_path, configs):
+    """The second live check stopped in the k elbow's table export, and by Jaskaran's answer to
+    question 13 of the round 14 record (27 Oct 2026) it runs again from scratch as _r14_check_e
+    and _r14_check_f, judged as the second was."""
+    records = _write(tmp_path / "live_check_ef", mod, configs, runs=(RUN_E, RUN_F))
+    argv = ["--records", str(records), "--config-a", str(CONFIG_E), "--config-b", str(CONFIG_F),
+            "--offline"]
+    assert mod.main(argv) == 2
+    result = json.loads((records / "r14_live_check.json").read_text())
+    assert result["runs"] == [RUN_E, RUN_F]
+    passes = _passes(result)
+    assert {name: passes[name] for name in OFFLINE} == dict.fromkeys(OFFLINE, True)
+    assert set(result["criteria"]["0_both_runs_from_scratch"]["runs"]) == {RUN_E, RUN_F}
+
+
+def test_the_smoke_tests_records_fail_criterion_0_and_only_it(mod, tmp_path, configs):
+    """The smoke test before the third live check (his answer to question 13) finishes _check_c and
+    _check_d from the features and segmentation the second batch cached: every output of their
+    passes is a hit, so criterion 0 (both runs from scratch) fails, as the smoke test's declaration
+    says it must, and the check with it. Identical records still pass every other offline
+    criterion, which is what the smoke test reads of them."""
+    records = _write(tmp_path / "smoke_test", mod, configs, runs=(RUN_C, RUN_D))
+    for run in (RUN_C, RUN_D):
+        for kind in ("features", "segmentation"):
+            def read_back(manifest: dict[str, Any]) -> None:
+                for stage in manifest["stages"]:
+                    stage["cache_status"] = dict.fromkeys(stage["cache_status"], "hit")
+                    for record in stage["input_images"].values():
+                        record["source"] = "the cached asset"
+            _edit_json(records / f"{run}_manifest_{kind}.json", read_back)
+    argv = ["--records", str(records), "--config-a", str(CONFIG_C), "--config-b", str(CONFIG_D),
+            "--offline"]
+    assert mod.main(argv) == 1
+    result = json.loads((records / "r14_live_check.json").read_text())
+    assert result["passes"] is False
+    passes = _passes(result)
+    assert passes["0_both_runs_from_scratch"] is False
+    assert {name: passes[name] for name in OFFLINE[1:]} == dict.fromkeys(OFFLINE[1:], True)
+    first = result["criteria"]["0_both_runs_from_scratch"]["runs"][RUN_C]["first_manifests"]
+    assert "masking/habitat_mask" not in first["features"]["computed_in_it"]
 
 
 def test_the_results_hold_no_times_and_the_run_record_says_how_it_was_made(mod, records):

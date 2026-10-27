@@ -583,6 +583,19 @@ python odisha_script/r14_live_check.py --records <their records folder> \
 
 The pass rules are the same; criterion 5 samples check_c's slope and aspect.
 
+**The third live check** (round 14, 27 Oct 2026). The second, of `_check_c` and `_check_d`, stopped
+in both runs in the k elbow pass, when Earth Engine refused the elbow table's cache export (its
+rows had no geometry; the round 14 record, Task 4). After the fix, by Jaskaran's answer to the
+record's question 13, the check runs again from scratch as
+`odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_e` and `_check_f`, copies of `_check_c` and
+`_check_d` with only their names changed, in the same way: one wrapper batch from a new run tree,
+records in a folder of their own, the two configs given with `--config-a` and `--config-b`. Before
+it, as a smoke test that does not count as the live check, `_check_c` and `_check_d` are finished
+through clustering and export from what their batch cached, under a label of its own; their
+records go in a folder of their own too, and the script run on them fails criterion 0 (their
+features and segmentation are read from the cache), which the smoke test sets aside (the record,
+Done, the smoke test).
+
 ### Superpixels depend on whether the features were cached
 
 In the legacy cache layout a cached feature asset sits on a geographic grid,

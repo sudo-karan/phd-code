@@ -247,7 +247,12 @@ R3 result exists. Nothing above is changed except where this section says so.
   Oct 2026, before it runs: the live check stopped in the merge, so after the merge's fix it runs
   again from scratch as `..._r14_check_c` and `..._r14_check_d`, copies of those two with only
   their names changed, by the same pass rules: Jaskaran's answer to question 11 of the round 14
-  record. They are not R3 results either, and are not scored.) Both arms are
+  record. They are not R3 results either, and are not scored. Added 27 Oct 2026, before it runs:
+  that one stopped in the k elbow's table export, so after the fix it runs again from scratch as
+  `..._r14_check_e` and `..._r14_check_f`, copies of `..._r14_check_c` and `..._r14_check_d` with
+  only their names changed, by the same pass rules, after a smoke test that finishes
+  `..._r14_check_c` and `..._r14_check_d` from what they cached and does not count as the live
+  check: Jaskaran's answer to question 13. None of these is an R3 result or is scored.) Both arms are
   re-run, Koraput's AlphaEarth runs included (Jaskaran's answers (a) to questions 22 and 1 of the
   round 13 brief).
 - **The four method changes**, the same in both arms (each off by default, so no earlier run

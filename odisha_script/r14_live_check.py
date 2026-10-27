@@ -21,6 +21,11 @@ scratch as _r14_check_c and _r14_check_d, copies of the first two with only thei
 Give them with --config-a and --config-b, and their records with --records, a folder of their
 own. The pass rules below are the same.
 
+The third live check (27 Oct 2026): the second, of _r14_check_c and _r14_check_d, stopped in the k
+elbow's table export, so by Jaskaran's answer to question 13 of the round 14 record the check runs
+again from scratch as _r14_check_e and _r14_check_f, copies of _r14_check_c and _r14_check_d with
+only their names changed, given in the same way. The pass rules below are the same.
+
 Run it after the batch, once scripts/copy_run_results.py (export mode) has copied each run's files
 into the records folder: per run, <run>_stands_merged.geojson, _stands_snic.geojson and
 _stands_dissolved.geojson (a file over 5 MB is read from the "where" of its entry in

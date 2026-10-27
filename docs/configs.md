@@ -188,8 +188,10 @@ config with `name` changed and the four method settings of round 14 switched on
 the Angul hand-crafted 3 ha copy with only `name` changed, a throwaway pair for the round's live
 check, not scored. `_check_c` and `_check_d` (27 Oct 2026) are copies of those two with only
 `name` changed, for the second live check, from scratch: the first stopped in the merge (round
-14, question 11). `tests/test_r14_configs.py` checks what differs and pins their fingerprints
-and step keys.
+14, question 11). `_check_e` and `_check_f` (27 Oct 2026) are copies of `_check_c` and `_check_d`
+with only `name` changed, for the third, from scratch: the second stopped in the k elbow's table
+export (round 14, question 13). `tests/test_r14_configs.py` checks what differs and pins their
+fingerprints and step keys.
 
 ## Adding a new experiment
 

@@ -10244,6 +10244,15 @@ decisions:
     their names changed, given to the script with --config-a and --config-b and their records in a folder of their
     own; the pass rules are the same, and criterion 5 samples check_c's static_features. The first check's records
     and result stay as they are.
+    Round 14 (27 Oct 2026), after the second batch: both runs stopped in the k elbow pass, when Earth Engine refused
+    the elbow table's cache export (its rows had no geometry; spec-k-elbow-table-rows-carry-a-fixed-point), so the
+    check failed again. By Jaskaran's answer to the record's question 13 it runs again from scratch after the fix, as
+    odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_e and _check_f, copies of _check_c and _check_d with only
+    their names changed, given in the same way; the pass rules are the same, and criterion 5 samples check_e's
+    static_features. Before it, a smoke test that does not count as the live check finishes _check_c and _check_d
+    through clustering and export from what their batch cached; the script run on its records fails criterion 0,
+    which the smoke test sets aside (the round 14 record, Done, the smoke test). The second check's records and
+    result stay as they are.
   alternatives_considered:
   - >-
     The stand layers by the SHA-256 of their files alone (the brief: "by SHA-256 or polygon by polygon"): not
@@ -10311,13 +10320,14 @@ decisions:
     what: >-
       Identical records pass; each criterion fails alone on its perturbed input; the agreement rule at its edges;
       the Earth Engine parts with a stand-in reader; the reader forbids writes before it reads. Round 14 (27 Oct
-      2026): the same check on made-up records of _check_c and _check_d, given with --config-a and --config-b
+      2026): the same check on made-up records of _check_c and _check_d, given with --config-a and --config-b, and of
+      _check_e and _check_f; the smoke test's records, read from the cache, fail criterion 0 and only it
   - path: tests/test_r14_configs.py
     what: >-
-      The check copies, _check_a and _check_b, and since 27 Oct 2026 _check_c and _check_d: the Angul copy but their
-      names, their fingerprints and step keys pinned
+      The check copies, _check_a and _check_b, and since 27 Oct 2026 _check_c and _check_d, and _check_e and
+      _check_f: the Angul copy but their names, their fingerprints and step keys pinned
   - path: docs/running.md
-    what: The live check; since 27 Oct 2026, the second live check
+    what: The live check; since 27 Oct 2026, the second and the third live check
   - path: scripts/copy_run_results.py
     what: The records the check reads, and the results-only check it reuses
   - path: scripts/compare_cached_assets.py
@@ -10337,7 +10347,9 @@ decisions:
   design_notes_section: null
   source: >-
     Jaskaran, 26 Oct 2026 (round 14 brief), Task 4; the sentence of 27 Oct 2026 from his answer to question 11 of the
-    round 14 record, "run the live check again from scratch as _r14_check_c and _r14_check_d"
+    round 14 record, "run the live check again from scratch as _r14_check_c and _r14_check_d"; the second sentence of
+    27 Oct 2026 from his answer to question 13, "If it passes, run the declared live check from scratch as
+    _r14_check_e and _r14_check_f"
 - id: spec-elbow-report-of-the-r3-first-half
   title: >-
     The elbow report of R3's first half is written offline from the runs' k elbow records, with the pooled elbow of

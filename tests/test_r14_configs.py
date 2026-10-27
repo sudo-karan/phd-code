@@ -1,4 +1,4 @@
-"""The R3 configs of round 14 (Task 3): the nineteen _r9 configs copied under _r14, and four
+"""The R3 configs of round 14 (Task 3): the nineteen _r9 configs copied under _r14, and six
 copies of the Angul hand-crafted 3 ha one for the live check.
 
 Round 14 brief, Task 3: "Copy each of the 19 _r9 configs under the suffix _r14, changing only the
@@ -8,7 +8,9 @@ config, ..._r14_check_a and ..._r14_check_b, identical except for their names."
 odisha_script/PHASE_KEPTLAND_PREDECLARED.md, the change of 26 Oct 2026, declares the runs. The
 live check stopped in the merge, and by Jaskaran's answer to question 11 of the round 14 record
 (27 Oct 2026) it runs again from scratch as ..._r14_check_c and ..._r14_check_d, copies of the
-first two with only their names changed.
+first two with only their names changed. That one stopped in the k elbow's table export, and by
+his answer to question 13 (27 Oct 2026) it runs again from scratch as ..._r14_check_e and
+..._r14_check_f, copies of _check_c and _check_d with only their names changed.
 
 The legacy fingerprints are pinned here and every step key in tests/data/r14_config_keys.json,
 both as computed when the configs were written, but the merge, clustering and k_elbow keys,
@@ -33,10 +35,10 @@ REPO = Path(__file__).resolve().parent.parent
 CONFIGS = REPO / "configs"
 SOURCES = sorted(CONFIGS.glob("*_r9.yaml"))
 R3 = sorted(CONFIGS.glob("*_r14.yaml"))
-# The first live check's two copies, and the second's (27 Oct 2026).
+# The first live check's two copies, the second's and the third's (27 Oct 2026).
 CHECKS = [
     CONFIGS / f"odisha_v120_3ha_squares_angul_keptland_s1desc_r14_{s}.yaml"
-    for s in ("check_a", "check_b", "check_c", "check_d")
+    for s in ("check_a", "check_b", "check_c", "check_d", "check_e", "check_f")
 ]
 # Pinned again on 27 Oct 2026 (round 14): the merge's revision 4 moved the merge, clustering and
 # k_elbow keys of every config here (every count of the merge on the label image's own
@@ -69,6 +71,9 @@ FINGERPRINTS = {
     # The second live check's copies (27 Oct 2026), as the first two: the name is not hashed.
     "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_c": "25ecc2af59",
     "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_d": "25ecc2af59",
+    # The third live check's copies (27 Oct 2026), as the others.
+    "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_e": "25ecc2af59",
+    "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_f": "25ecc2af59",
     "odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r14": "9d0f42152a",
     "odisha_v120_3ha_squares_kendujhar_keptland_s1desc_r14": "5e5d8f17ab",
     "odisha_v120_3ha_squares_koraput_keptland_s1desc_r14": "71e14a573f",
