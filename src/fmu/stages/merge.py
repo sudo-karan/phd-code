@@ -262,9 +262,20 @@ class MergeStage(Stage):
         # they are reduced over with the cap, by metrics, which is where a
         # violation would actually bite. (clustering did too until round 13,
         # when its unit means stopped calling reduceConnectedComponents.)
+        #
+        # Every count the merge takes on Earth Engine (this check, the graph's
+        # histograms, the kept-land sums and the attribute reductions) is taken on
+        # the SNIC label image's own projection, transform included, with no scale,
+        # so all of them count the same pixels (round 14: given a CRS name and a
+        # scale, Earth Engine built another grid, and the live check stopped here).
         max_component_px = config.max_component_pixels()
         assert_components_fit(
-            snic_clusters, roi, scale, max_component_px, context="merge input"
+            snic_clusters,
+            roi,
+            scale,
+            max_component_px,
+            context="merge input",
+            crs=snic_clusters.projection(),
         )
 
         graph = extract_superpixel_graph(

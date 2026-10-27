@@ -16,16 +16,26 @@ Server round-trips, all small:
   3. one grouped `reduceRegion` per criterion band -> per-superpixel means and
      valid-pixel counts.
 
-**Every one of these reductions is unweighted, so they all count the same
-pixels.** Earth Engine takes a pixel into an unweighted reduction over the ROI
-when its centre is in the ROI, with weight 1, and into a weighted one (a reducer
-as it comes) when about 1/256 of it is, weighted by the fraction inside. The
-histograms used to be weighted and the valid counts were not, so at the ROI edge
-a superpixel's pixel count was a sum of fractions, truncated, while its valid
-counts were whole pixels: some superpixels got 0 pixels, and `frac_valid` came
-out above 1 (review B17, round 13). Each count is now of whole pixels whose
-centre is in the ROI, and a valid count above its superpixel's pixel count stops
-the merge (`extract_superpixel_attributes`).
+**Every one of these reductions is unweighted and runs on the label image's own
+projection, so they all count the same pixels.** Earth Engine takes a pixel into
+an unweighted reduction over the ROI when its centre is in the ROI, with weight 1,
+and into a weighted one (a reducer as it comes) when about 1/256 of it is,
+weighted by the fraction inside. The histograms used to be weighted and the valid
+counts were not, so at the ROI edge a superpixel's pixel count was a sum of
+fractions, truncated, while its valid counts were whole pixels: some superpixels
+got 0 pixels, and `frac_valid` came out above 1 (review B17, round 13). Each count
+is now of whole pixels whose centre is in the ROI, and a valid count above its
+superpixel's pixel count stops the merge (`extract_superpixel_attributes`).
+
+Each reduction is given the label image's projection as `crs`, and no `scale`:
+Earth Engine then counts on that projection exactly, its transform included.
+Until round 14 the label histogram and the pair histograms were given a scale
+alone, and the grouped reductions the label image's CRS name with a scale, from
+which Earth Engine builds a grid of its own. On real data, in round 14's live
+check (27 Oct 2026), three superpixels of 1,202 at the ROI's edge took one or two
+pixels more on that grid than in the label histogram, and the check above stopped
+the merge in both runs. So the label image must be on a grid at the analysis
+scale (segmentation puts it on one): a pixel counts as `scale` x `scale` m.
 
 Two things Earth Engine's unweighted reducers do that its guide does not say,
 read on Earth Engine in round 13 on synthetic images: a frequencyHistogram counts
@@ -137,14 +147,54 @@ def extract_superpixel_graph(
 ) -> SuperpixelGraph:
     """Build the 4-connected region-adjacency graph for a label image.
 
+    Every count is taken on the label image's own projection (`crs` that
+    projection, no `scale`), as `extract_superpixel_attributes` takes its valid
+    counts, so the label image must be on a grid at `scale`.
+
     Raises:
         TooManySuperpixelsError: more labels than `max_superpixels`. Past that
             the `remap` argument lists the merge produces stop being reasonable,
             and the failure should be loud rather than a silently enormous
             request.
+        ValueError: the label image is not on a grid at `scale`: it carries Earth
+            Engine's default projection, or its pixels are another size.
     """
     band = safe_get_info(labels.bandNames(), context=f"{context} band name")[0]
     label_image = labels.select([band])
+
+    # The label image's own grid, on which every count of the merge is taken
+    # (round 14): checked first, as nothing counted on another grid is of use.
+    grid = label_image.projection()
+    base_scale = safe_get_info(
+        grid.nominalScale(), context=f"{context} label projection scale"
+    )
+    if base_scale > 10 * scale:
+        # EE hands an unbaked computed image a default WGS84 1-degree
+        # projection. Reprojecting *that* to `scale` yields a valid grid in the
+        # wrong CRS, so adjacency would be measured on a resampled raster and
+        # silently return the wrong neighbours. Fail instead.
+        raise ValueError(
+            f"{context}: label image reports a nominal scale of "
+            f"{base_scale:.0f} m against an analysis scale of {scale} m. That "
+            f"is EE's default projection for an unbaked computed image, not a "
+            f"real pixel grid -- shifting by 'pixels' in it would measure "
+            f"adjacency on a resampled raster. Pass a label image with a real "
+            f"projection (a cached asset, or one reprojected by its producer)."
+        )
+    if not math.isclose(base_scale, scale, rel_tol=0.01):
+        # The counts are of the label image's own pixels, and an area is pixels x
+        # scale^2. Until round 14 a coarser label image (30 m at 10 m, say) was
+        # counted at `scale`; on its own grid each superpixel would get a ninth of
+        # its area. 1% leaves room for float rounding and for a projection's own
+        # scale factor (UTM's is 0.9996 on its central meridian); a label image on
+        # another grid is two or three times coarser or finer.
+        raise ValueError(
+            f"{context}: label image reports a nominal scale of {base_scale:g} m "
+            f"against an analysis scale of {scale} m. The merge counts pixels on the "
+            f"label image's own grid and takes each as {scale} x {scale} m, so the "
+            f"label image must be on a grid at the analysis scale, as segmentation "
+            f"makes it: reproject it to the analysis grid (export.analysis_scale_m)."
+        )
 
     hist = (
         safe_get_info(
@@ -153,7 +203,9 @@ def extract_superpixel_graph(
                 # valid counts of extract_superpixel_attributes count (review B17).
                 reducer=ee.Reducer.frequencyHistogram().unweighted(),
                 geometry=roi,
-                scale=scale,
+                # On the label image's own projection, transform included, and no
+                # scale, as every reduction here (round 14).
+                crs=grid,
                 # No bestEffort: a downsampled histogram would invent and drop
                 # adjacencies rather than merely blurring a statistic.
                 maxPixels=1e9,
@@ -190,33 +242,18 @@ def extract_superpixel_graph(
     dense_index = list(range(n))
     dense = label_image.remap(raw_labels, dense_index).rename("dense")
 
-    # translate(units="pixels") needs a definite pixel grid, so pin the
-    # projection to the analysis scale. Both arms must use the same scale here
-    # or "adjacent" means different things in each.
-    base_proj = label_image.projection()
-    base_scale = safe_get_info(
-        base_proj.nominalScale(), context=f"{context} label projection scale"
-    )
-    if base_scale > 10 * scale:
-        # EE hands an unbaked computed image a default WGS84 1-degree
-        # projection. Reprojecting *that* to `scale` yields a valid grid in the
-        # wrong CRS, so adjacency would be measured on a resampled raster and
-        # silently return the wrong neighbours. Fail instead.
-        raise ValueError(
-            f"{context}: label image reports a nominal scale of "
-            f"{base_scale:.0f} m against an analysis scale of {scale} m. That "
-            f"is EE's default projection for an unbaked computed image, not a "
-            f"real pixel grid -- shifting by 'pixels' in it would measure "
-            f"adjacency on a resampled raster. Pass a label image with a real "
-            f"projection (a cached asset, or one reprojected by its producer)."
-        )
-    proj = base_proj.atScale(scale)
-    dense = dense.reproject(proj)
+    # translate(units="pixels") needs a definite pixel grid: the label image's
+    # own, at the analysis scale (checked above), on which the pairs are then
+    # counted, so a pair is shifted and counted on one grid. Both arms must use
+    # the same scale here or "adjacent" means different things in each. (Until
+    # round 14 the grid was the label image's projection at `scale`, the same
+    # grid for a label image at the analysis scale.)
+    dense = dense.reproject(grid)
 
     edges: dict[tuple[int, int], int] = {}
     # Right and down only: 4-connectivity, each boundary pixel-pair counted once.
     for dx, dy, direction in ((-1, 0, "right"), (0, -1, "down")):
-        neighbour = dense.translate(x=dx, y=dy, units="pixels", proj=proj)
+        neighbour = dense.translate(x=dx, y=dy, units="pixels", proj=grid)
         # The code reaches n^2 - 1, past 2^31 once n is over 46,340, and Earth
         # Engine gives multiply and add "the union of the input types": both
         # indices are cast to int64 before it is computed (review B34).
@@ -231,10 +268,11 @@ def extract_superpixel_graph(
             safe_get_info(
                 pair.reduceRegion(
                     # Unweighted, as the label histogram: each boundary pixel pair
-                    # whose first pixel's centre is in the ROI, counted once.
+                    # whose first pixel's centre is in the ROI, counted once, on
+                    # the label image's own projection.
                     reducer=ee.Reducer.frequencyHistogram().unweighted(),
                     geometry=roi,
-                    scale=scale,
+                    crs=grid,
                     maxPixels=1e9,
                 ),
                 context=f"{context} {direction}-neighbour pairs",
@@ -295,14 +333,26 @@ def extract_superpixel_attributes(
     a defined-canopy one inherit a canopy height for territory that never
     measured one.
 
+    `scale` is the analysis scale `graph` was counted at. The counts here are
+    taken on the label image's own grid, which `extract_superpixel_graph` checks
+    is at that scale.
+
     The reduction is unweighted, as the histograms of `extract_superpixel_graph`
-    are, so a valid count and `graph.n_pixels` count the same pixels and their
-    ratio, `frac_valid`, is at most 1 (review B17). It sums, per region, the band
-    unmasked (0 where it has no data) and a band of 1 where it has data, and a
-    mean is the one sum over the other: Earth Engine's grouped unweighted
-    reducers add a band's masked pixels into the sum (and so the mean) they give
-    a group, though their count leaves them out (read on Earth Engine in round
-    13, on synthetic images), so a masked band does not go in.
+    are, and runs on the label image's own projection, as they do (`crs` that
+    projection, no `scale`), so a valid count and `graph.n_pixels` count the same
+    pixels and their ratio, `frac_valid`, is at most 1 (review B17). It sums, per
+    region, the band unmasked (0 where it has no data) and a band of 1 where it
+    has data, and a mean is the one sum over the other: Earth Engine's grouped
+    unweighted reducers add a band's masked pixels into the sum (and so the mean)
+    they give a group, though their count leaves them out (read on Earth Engine in
+    round 13, on synthetic images), so a masked band does not go in.
+
+    Until round 14 the reduction was given the label image's CRS name and
+    `scale`, a grid Earth Engine builds of its own, while the histograms counted
+    on the label image's grid. On real data (round 14's live check, 27 Oct 2026)
+    three superpixels of 1,202 at the ROI's edge took one or two pixels more on
+    it, and the check below stopped the merge: "superpixel -1586256414 has 29
+    valid canopy_height pixels but 28 pixels in the label histogram".
 
     Raises:
         ValueError: a band's valid count is above its superpixel's pixel count.
@@ -319,13 +369,17 @@ def extract_superpixel_attributes(
     label_image = labels.select([label_band]).rename(_GROUP_BAND)
     label_to_dense = {raw: i for i, raw in enumerate(graph.raw_labels)}
 
-    # Pin the reduction to the *label* image's grid. `reduceRegion` defaults its
-    # CRS to the first band's projection, which here is a feature band -- often
-    # an uncached computed image carrying EE's WGS84 default, whose pixels are
-    # not square. The counts below would then be geographic pixels while
-    # `graph.n_pixels` holds the label grid's pixels, and `min_frac_valid`
-    # divides one by the other.
-    crs = labels.projection().crs()
+    # Pin the reduction to the *label* image's grid: its projection itself,
+    # transform included, with no scale, as the histograms of
+    # extract_superpixel_graph are pinned. `reduceRegion` defaults its CRS to the
+    # first band's projection, which here is a feature band -- often an uncached
+    # computed image carrying EE's WGS84 default, whose pixels are not square. The
+    # counts below would then be geographic pixels while `graph.n_pixels` holds the
+    # label grid's pixels, and `min_frac_valid` divides one by the other. The CRS
+    # name and a scale, which this passed until round 14, are not enough: Earth
+    # Engine builds a grid of its own from them, and at the ROI's edge it counted
+    # other pixels than the label histogram (round 14's live check).
+    grid = labels.projection()
 
     means: dict[int, dict[str, float | None]] = {}
     counts: dict[int, dict[str, int]] = {}
@@ -356,8 +410,7 @@ def extract_superpixel_attributes(
                 .group(groupField=2, groupName="label")
                 .unweighted(),
                 geometry=roi,
-                scale=scale,
-                crs=crs,
+                crs=grid,
                 maxPixels=1e9,
             ),
             context=f"{context}: {band}",
@@ -379,8 +432,8 @@ def extract_superpixel_attributes(
                     f"{band} pixels but {graph.n_pixels[dense]} pixels in the label "
                     f"histogram, so its frac_valid would be above 1. The two "
                     f"reductions must count the same pixels: both unweighted, on the "
-                    f"label image's grid. One of them is weighted, or they ran on "
-                    f"different grids."
+                    f"label image's own projection. One of them is weighted, or they "
+                    f"ran on different grids."
                 )
             # count == 0 means the region has no valid pixel for this band. That
             # is a real state, not a zero -- leave the band out of `means`

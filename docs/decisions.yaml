@@ -7304,7 +7304,17 @@ decisions:
     inside, the means are over the pixels counted, and a superpixel with no pixel whose centre is inside is no longer
     in the graph, so its pixels, all outside the ROI by that rule, get no stand (remap masks a label it is not given).
     The merge's revision (fmu.utils.caching.STEP_REVISION) is raised to 1, which moves the merge, clustering and k_elbow
-    keys of every config with the merge on: all 74 under configs/.
+    keys of every config with the merge on: all 74 under configs/. Round 14 (27 Oct 2026): the four reductions, and the
+    histogram of the component-size check the merge stage runs first (fmu.utils.components, given crs since then), are
+    each given the label image's projection as crs, its transform included, and no scale, as the kept-land sums of
+    fmu.utils.kept_land already were, so that they all count the same pixels; the boundary pairs are shifted on that
+    grid too. Until then the histograms were given a scale alone, and the grouped reductions the label image's CRS name
+    ("EPSG:32645") with the scale, from which Earth Engine builds a grid of its own. On real data, the check's first run
+    (round 14's live check, both runs, 27 Oct 2026), three superpixels of 1,202 at the boxes' edge took one or two
+    pixels more on that grid than in the label histogram (valid counts 29 against 28, 97 against 96 and 3 against 1),
+    and the check stopped the merge: "superpixel -1586256414 has 29 valid canopy_height pixels but 28 pixels in the
+    label histogram". As each pixel counts as the analysis scale squared, a label image whose nominal scale is more than
+    1% from the analysis scale is refused; until then one was counted at the analysis scale.
   alternatives_considered:
   - >-
     Make the valid counts weighted instead, sums of weights like the histogram: not chosen. The counts would be
@@ -7322,6 +7332,10 @@ decisions:
     Check frac_valid <= 1 in merge_superpixels instead: not chosen. The merge is a pure function that its tests feed
     valid counts above the pixel count on purpose (98 of the 200 golden graphs of tests/test_region_merge_provenance.py
     do), and the check belongs where the two Earth Engine counts meet
+  - >-
+    Round 14: give each reduction the label image's crs and crsTransform, read from its projection with one more
+    request, as read-only call 10 of the round 14 record did: not chosen. The projection itself carries both, needs no
+    request, and is the same thing for a label image computed in the run as for a cached one
   rationale: >-
     The round 13 brief (Jaskaran, 19 Oct 2026), Task 4: "B17 (one inclusion rule for pixel counts)". The review
     (docs/reviews/2026-10-19-review.md, B17) found the label histogram coverage-weighted and truncated with int(), while
@@ -7346,10 +7360,29 @@ decisions:
     written both fail. tests/test_adjacency_attributes_live.py runs extract_superpixel_graph and
     extract_superpixel_attributes on Earth Engine on synthetic images (read-only): on the change as first written it
     stopped on the "null" key; on this one the pixel counts, the valid counts and the means over the pixels with data
-    are as worked out by hand, a band with no data read as None. No paper was searched for this decision.
+    are as worked out by hand, a band with no data read as None. No paper was searched for this decision. Round 14 (27
+    Oct 2026): Jaskaran's answer to question 11 of the round 14 record: "Fix the merge's grid, test first". Read-only on
+    Earth Engine on the live check's own assets (calls 9 and 10 of the round 14 record): the label histogram at the scale
+    alone and on the label asset's crs and crsTransform gave the same counts for all 1,202 labels (40,550 pixels), and on
+    crs "EPSG:32645" with scale 10 40,554, three labels gaining 1, 1 and 2 pixels at the ROI's edge; the canopy height's
+    valid counts on the label asset's crs and crsTransform were above the pixel count for no superpixel.
+    tests/test_merge_reductions_on_the_label_grid.py runs the merge stage on the live check's config with every module
+    it calls on Earth Engine recording, and builds the same reductions with the real client offline: each is given the
+    label image's projection as crs and no scale. On the code before, nine of the stage's ten reductions fail it (the
+    kept-land sums already passed).
   evidence:
   - path: src/fmu/utils/adjacency.py
-    what: extract_superpixel_graph and extract_superpixel_attributes, the four unweighted reductions and the check
+    what: >-
+      extract_superpixel_graph and extract_superpixel_attributes, the four unweighted reductions and the check. Round 14
+      (27 Oct 2026): each on the label image's own projection (crs, no scale), the pairs shifted on it, and the label
+      image's nominal scale checked against the analysis scale first
+  - path: src/fmu/utils/components.py
+    what: >-
+      Round 14 (27 Oct 2026): largest_component_pixels and assert_components_fit take crs; given, the histogram is
+      counted on that projection with no scale
+  - path: src/fmu/stages/merge.py
+    what: >-
+      Round 14 (27 Oct 2026), run(): the component-size check given the label image's projection
   - path: src/fmu/utils/caching.py
     what: STEP_REVISION, the merge at revision 1
   - path: tests/test_adjacency_edge_pixels.py
@@ -7358,16 +7391,29 @@ decisions:
       band into the grouped reduction; fails on the code before and on the change as first written
   - path: tests/test_adjacency_attributes_live.py
     what: The counts and means on Earth Engine, on synthetic images, read-only (live tier)
+  - path: tests/test_merge_reductions_on_the_label_grid.py
+    what: >-
+      Round 14 (27 Oct 2026): every reduction of the merge stage on the label image's own projection, recorded and built
+      with the real client offline; fails on the code before
+  - path: tests/test_adjacency.py
+    what: >-
+      Round 14 (27 Oct 2026): test_the_reduction_is_pinned_to_the_label_grid (the projection itself, no scale) and
+      test_refuses_a_label_image_not_at_the_analysis_scale, which replaces test_tolerates_modest_scale_mismatch; both fail
+      on the code before
   - path: tests/test_step_keys_of_record.py
     what: The recorded keys downstream of the merge move, and no other
   - path: docs/reviews/2026-10-19-review.md
     what: B17
   - path: docs/handoff/2026-10-20-round13.md
     what: Task 4, B17
+  - path: docs/handoff/2026-10-26-round14.md
+    what: Done, read-only calls 9 and 10 and Task 4 (the live check stopped in the merge); Questions for Jaskaran, item 11
   papers: []
   status: adopted
   design_notes_section: null
-  source: Jaskaran, 19 Oct 2026 (round 13 brief)
+  source: >-
+    Jaskaran, 19 Oct 2026 (round 13 brief); the sentences of 27 Oct 2026 from Jaskaran's answer to question 11 of round
+    14, "Fix the merge's grid, test first"
 - id: spec-merge-area-bounds-in-whole-pixels
   title: >-
     The merge holds each merge to its ceilings in whole pixels: the two regions' pixels added, against the ceiling in
