@@ -8793,7 +8793,8 @@ decisions:
     uses (the k-means fit off Earth Engine, the log rule, ndvi_mean as the window mean, the elbow in the fit's space) were
     each decided, built and declared before any R3 result existed (odisha_script/PHASE_KEPTLAND_PREDECLARED.md, the
     change of 26 Oct 2026). The round runs unattended up to the elbow report and stops there for Jaskaran to choose k;
-    its budget is 150 EECU-hours, and no batch is submitted that would take October's remaining hours below 100.
+    its budget is 150 EECU-hours (raised to 200 on 28 Oct 2026, by Jaskaran's answer to the round 14 record's question
+    14, (b)), and no batch is submitted that would take October's remaining hours below 100.
   alternatives_considered:
   - >-
     Wait for the meeting, and settle the method decisions there before R3 (round 13 question 22 noted that running R3
@@ -10610,7 +10611,8 @@ decisions:
 - id: process-r14-batches-by-the-briefs-rule-with-a-forecast
   title: >-
     Round 14's batches are submitted by the brief's rule, with a forecast written beside it, and R3's first half is
-    stopped so that the largest pass in flight still ends the round within 150 EECU-hours
+    stopped so that the largest pass in flight still ends the round within its budget (150 EECU-hours, raised to 200
+    on 28 Oct 2026)
   decision: >-
     Before each batch the quota is read and the batch is submitted if the round's use plus the batch's estimate (from
     the cost files of the _r9 and 10 ha runs) stays within 150 EECU-hours and October's remaining hours less the
@@ -10629,6 +10631,13 @@ decisions:
     last two steps and the whole tile (3.29 at estimate), with R3 as a whole about 2.15 over 150;
     the round keeps 150 and the stop as declared, the brief's default for the record's question 14, which asks whether
     to raise it (figures corrected after the gate's review, part 9).
+    Round 14 (28 Oct 2026), Jaskaran's answer to question 14, (b): the round's budget is 200 EECU-hours, and the stop
+    is moved by as much, to 200 - 1.2 x max(1, r) x 12.51 (184.99 at r = 1); each batch is submitted while the round's
+    use plus its estimate stays within 200, and October's floor of 100 is kept. With the 15.82 used, the round comes
+    to 109.33 at estimate and 156.09 at +50%; the first half ends below the stop while it costs up to 2.02 times its
+    estimate (at r = 1), and its forecast reaches the stop only if r is above 1.55. Near the stop the quota is read
+    every 5 minutes and at each new stage; if no reading succeeds for 30 minutes the batch is stopped as at the stop
+    (the record's question 15, the round's default).
   alternatives_considered:
   - >-
     Hold the first half back while the forecast does not fit, for Jaskaran's word (option (b) of the round 14 record's
@@ -10636,17 +10645,26 @@ decisions:
   - >-
     Stop the first half at 140, as first written (option (c)): not chosen; the pass in flight at the stop could take
     the round to about 155 to 165
+  - >-
+    Keep the round's 150 EECU-hours and the stop as declared (option (a) of the round 14 record's question 14, the
+    round's default until Jaskaran answered): not chosen by Jaskaran on 28 Oct 2026; at 1.5 times its estimate the
+    first half would have stopped short and R3's second half could not have finished within 150
   rationale: >-
     Jaskaran, 27 Oct 2026, answering the round 14 record's question 10: "(a)". The rule was amended three times on 27
-    Oct 2026, before any batch, after the gate's review (parts 3, 4 and 6), as the record's cost estimate says. No
-    paper was searched for this decision.
+    Oct 2026, before any batch, after the gate's review (parts 3, 4 and 6), as the record's cost estimate says.
+    Jaskaran, 28 Oct 2026, answering question 14: "(b). Raise the round's budget to 200 EECU-hours and move the stop by
+    the same amount; keep October's floor of 100." No paper was searched for this decision.
   evidence:
   - path: docs/handoff/2026-10-26-round14.md
-    what: Done, the cost estimate (amended a fourth time on 27 Oct 2026); Questions, items 10 and 14
+    what: Done, the cost estimate (amended a fourth time on 27 Oct 2026, a fifth on 28 Oct); Questions, items 10, 14
+      and 15
+  - path: odisha_script/r14_first_half/watch.py
+    what: The stop rule as the first half's watcher keeps it
   papers: []
   status: adopted
   design_notes_section: null
-  source: Jaskaran, 27 Oct 2026, in the Claude Code session, the round 14 record's question 10
+  source: Jaskaran, 27 Oct 2026, in the Claude Code session, the round 14 record's question 10; 28 Oct 2026, its
+    question 14
 - id: process-live-check-again-as-check-c-and-d-after-the-merge-fix
   title: >-
     After the merge's grid is fixed, the live check runs again from scratch as _r14_check_c and _r14_check_d, then R3's
@@ -10896,3 +10914,32 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 27 Oct 2026, in the Claude Code session, the round 14 record's question 13
+- id: process-r14-review-one-reader-except-pipeline-code
+  title: >-
+    From 28 Oct 2026 the gate's review keeps a second reader only for changes to pipeline code (src/fmu/); fixes to
+    the check scripts, the declarations and the record get one independent reader; low findings do not stop the round
+  decision: >-
+    Until 28 Oct 2026 every finding of the gate's review (round 14, parts 1 to 12) was checked by a second reader, and
+    the fixes were read again in the next part. From Jaskaran's answer of 28 Oct 2026 on, a change to pipeline code
+    (src/fmu/) keeps the full review, each finding checked by a second reader; a fix to the check scripts (the
+    odisha_script/ scripts that judge or drive a run), to a declaration or to the record is read by one independent
+    reader, whose high and medium findings are fixed before the change is used; low findings are fixed or said, and do
+    not stop the round. The gate's other items are unchanged (CI green on every commit, the declarations committed,
+    the cost estimate fitting). The second readers of part 12, then running on the check scripts' findings, were
+    stopped, and each finding stands as its reader filed it.
+  alternatives_considered:
+  - >-
+    A second reader for every finding of every change, as in parts 1 to 12: not chosen by Jaskaran; the check scripts'
+    reviews had grown to several readers a round
+  rationale: >-
+    Jaskaran, 28 Oct 2026, with his answer to the round 14 record's question 14: "From here on, keep the full review with
+    a second reader only for changes to pipeline code (src/fmu/). For fixes to the check scripts, the declarations and
+    the record, one independent reader is enough. Do not stop for low findings." No paper was searched for this
+    decision.
+  evidence:
+  - path: docs/handoff/2026-10-26-round14.md
+    what: Done, the gate, item 2, part 12; Questions, item 14
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 28 Oct 2026, in the Claude Code session, with the round 14 record's question 14
