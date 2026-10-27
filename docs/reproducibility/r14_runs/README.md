@@ -96,8 +96,10 @@ reading, `r14_smoke_test_cancelled_exports.json` and `_run.json`.
 **On Drive**, folder `fmu_exports_kept_land_s1desc`, per run nine files: `<run>_cluster_labels.tif`,
 `_features_raw.tif`, `_features_scaled.tif`, and each of the three stand layers as `.geojson` and
 as a zipped shapefile (`.zip`); their task ids in `<run>_drive_exports.json`. All completed but
-`_check_d`'s `features_raw.tif`, still running at the one reading and cancelled by the round, not
-sent again (`_check_c`'s is there, and `_check_d`'s features are cached on Earth Engine).
+`_check_d`'s `features_raw.tif`, still running at the one reading (2 of the 6 work units of "Create
+Local Files" from 15:29 UTC on 27 Oct) and cancelled by the round on 28 Oct at 00:35 IST (task
+`PJQU2YNYL6ZAYGAMZ3PHAXDX`, CANCELLED at 00:40; `r14_smoke_test_cancelled_exports.json`), not sent
+again (`_check_c`'s is there, and `_check_d`'s features are cached on Earth Engine).
 
 **On Earth Engine** (kept), under `projects/replicating-paper/assets/fmu/<run>/`: the second
 check's features and segmentation assets, read back (the keys above), and, made by the smoke test,

@@ -1,0 +1,34 @@
+{
+ "what": "The Drive exports of a check copy not ended at the one reading of its Drive states, cancelled by the round by their task ids (cancel_drive_export.py). Results only.",
+ "config": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_d",
+ "reading": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_d_drive_exports.json",
+ "not_ended_at_the_reading": [
+  {
+   "export": "raster_features_raw",
+   "file": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_d_features_raw.tif",
+   "folder": "fmu_exports_kept_land_s1desc",
+   "task_id": "PJQU2YNYL6ZAYGAMZ3PHAXDX",
+   "state_at_the_reading": "RUNNING",
+   "description": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_d_features_raw",
+   "state_before": "RUNNING",
+   "progress_before": 0.2857142857142857,
+   "work_units_before": [
+    {
+     "stage": "Create Local Files",
+     "complete": 2,
+     "total": 6
+    },
+    {
+     "stage": "Write Files to Destination",
+     "complete": 0,
+     "total": 1
+    }
+   ],
+   "cancel_sent": true,
+   "state_after": "CANCELLED",
+   "ended": true
+  }
+ ],
+ "none_left_queued_or_running": true,
+ "complete": true
+}

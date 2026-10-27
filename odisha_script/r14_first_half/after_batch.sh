@@ -9,7 +9,10 @@
 #      into outputs/round14/results/first_half/): the configs the batch finished with
 #      scripts/copy_run_results.py --through k_elbow; the others (cut by the stop, not finished
 #      after the wrapper's passes, or not reached) with copy_unfinished.py, every pass's manifest
-#      and log that exists; each of those named with the state file's reason, for Blocked;
+#      and log that exists, into first_half/unfinished/ (and results/first_half/unfinished/), which
+#      the elbow report does not read: an elbow of a config the batch did not finish (its files
+#      written, its table's export failed) is not taken into the report; each of those named with
+#      the state file's reason, for Blocked;
 #   3. each finished config's k elbow files and run record are there;
 #   4. the cost files (scripts/eecu_by_stage.py, each config's area as rounds 10 and 12 took it;
 #      Sanjay Van's, 1,301.6942 ha, its outline's geodesic area), each read only when no task of the
@@ -132,7 +135,7 @@ if [ "$step" = all ] || [ "$step" = 2 ]; then
     ( cd $RT && PYTHONPATH=$RT/src $PY scripts/copy_run_results.py $RT $r --through k_elbow --dest $DEST --off-git $OFF ) || { echo "STOP: the copy of $r failed"; exit 3; }
   done
   for r in $(echo "$states" | awk '$1 == "NOT" {print $2}'); do
-    ( cd $RT && PYTHONPATH=$RT/src $PY odisha_script/r14_first_half/copy_unfinished.py $RT $r --dest $DEST --off-git $OFF ) || { echo "STOP: the copy of the unfinished $r failed"; exit 3; }
+    ( cd $RT && PYTHONPATH=$RT/src $PY odisha_script/r14_first_half/copy_unfinished.py $RT $r --dest $DEST/unfinished --off-git $OFF/unfinished ) || { echo "STOP: the copy of the unfinished $r failed"; exit 3; }
   done
   echo "finished: $(echo "$states" | grep -c '^DONE') of 19"
   echo "$states" | grep '^NOT' | sed 's/^NOT /  NOT FINISHED (Blocked): /' || true
@@ -173,6 +176,9 @@ if [ "$step" = all ] || [ "$step" = 5 ]; then
     done
   done
   NOT_DONE=$(done_and_not | awk '$1 == "NOT" {print $2}')
+  for r in $NOT_DONE; do  # the report reads $DEST: no file of an unfinished config may be there
+    ls $DEST/${r}_k_elbow* $DEST/${r}_files_off_git.json 2>/dev/null | grep -q . && { echo "STOP: $r was not finished, but its files are in $DEST"; exit 4; }
+  done
   allow=""; [ -n "$NOT_DONE" ] && allow="--allow-missing"
   ( cd $RT && PYTHONPATH=$RT/src $PY odisha_script/r14_elbow_report.py --records $DEST \
       --out-dir $REPO/odisha_script/keptland_scores $allow ); rc=$?

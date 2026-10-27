@@ -132,6 +132,9 @@ def wrapper() -> int | None:
 def stop(why: str, code: int) -> None:
     pid = wrapper()
     if pid is None:
+        if ended():
+            say(f"{why}; but the batch has ended already; the watch ends")
+            sys.exit(0)
         say(f"{why}; but no wrapper of {args.label} is alive to stop")
         sys.exit(6)
     say(f"{why}; SIGTERM to the wrapper (pid {pid})")
@@ -175,8 +178,9 @@ while True:
             if ended():
                 say("the batch ended; the watch ends")
                 sys.exit(0)
-            say(f"THE WRAPPER OF {args.label} IS GONE without its ended line; the watch ends (look at the batch)")
-            sys.exit(6)
+            if wrapper() is None:
+                say(f"THE WRAPPER OF {args.label} IS GONE without its ended line; the watch ends (look at the batch)")
+                sys.exit(6)
         now = time.time()
         near = last_use is not None and last_use >= NEAR
         headers = stage_headers()
@@ -205,17 +209,20 @@ while True:
                     f"online {q.get('monitoring_online_h', 0):.4f}), October left {q.get('october_left_h', 0):.2f}, "
                     f"queued or running {len(q.get('queued_or_running', []))}; the stop {STOP:.4f}"
                     + ("; near it" if use >= NEAR else ""))
-        if (time.time() - good_at >= NO_READING_LIMIT and failures >= 3
-                and time.time() - warned_at >= NO_READING_LIMIT):
-            warned_at = time.time()
-            say(f"WARNING: NO READING OF THE QUOTA FOR {(time.time() - good_at) / 60:.0f} MINUTES "
-                f"({failures} failures in a row): the stop rule is NOT being kept; the batch runs on "
-                "(question 15 (b)); look at the quota by hand")
     except subprocess.TimeoutExpired:
         failures += 1
         say("reading failed: round_use.py did not answer within 300 s")
     except SystemExit:
         raise
     except Exception as e:  # noqa: BLE001 (said, and the watch goes on; the 30 minutes still count)
+        if last_try > last_good:  # a reading was tried and did not run (fork, file handles, ...)
+            failures += 1
         say(f"error in the watch, going on: {e!r}")
+    # Outside the try, so that a reading that hangs or cannot start still counts towards it.
+    if (time.time() - good_at >= NO_READING_LIMIT and failures >= 3
+            and time.time() - warned_at >= NO_READING_LIMIT):
+        warned_at = time.time()
+        say(f"WARNING: NO READING OF THE QUOTA FOR {(time.time() - good_at) / 60:.0f} MINUTES "
+            f"({failures} failures in a row): the stop rule is NOT being kept; the batch runs on "
+            "(question 15 (b)); look at the quota by hand")
     time.sleep(TICK)
