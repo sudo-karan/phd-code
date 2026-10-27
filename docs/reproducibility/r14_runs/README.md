@@ -4,12 +4,13 @@ The index the round 14 brief asks for ("Keep every run's data"): for each run of
 records in the repo, its files off git (with SHA-256), its Drive files and its Earth Engine assets.
 The round's record: `docs/handoff/2026-10-26-round14.md`.
 
-Round 14 ran one batch, the live check (Task 4: `r14_live_check`, 27 Oct 2026, from the run tree
-`outputs/round14/run_tree` at `2335d17`). Both of its runs computed their features and
-segmentation from scratch and then stopped in their k_elbow pass, in the merge (the record: Done,
-Task 4; Blocked). So they have no k_elbow, clustering or export pass: no stand layers, no stage
-files, no run record of the export pass and no Drive export. The nineteen `_r14` configs of R3 have
-not run.
+Round 14 has run two batches, both live checks (Task 4); the nineteen `_r14` configs of R3 have not
+run. The first (`r14_live_check`, 27 Oct 2026, from the run tree `outputs/round14/run_tree` at
+`2335d17`): both runs computed their features and segmentation from scratch and then stopped in
+their k_elbow pass, in the merge. The second, after the merge's fix (`r14_live_check_2`, 27 Oct 2026,
+from `outputs/round14/run_tree_2` at `2248184`): both runs computed their features, segmentation and
+k elbow from scratch, and then the k elbow's cache table export failed on Earth Engine. Neither has a
+clustering or export pass: no stand layers, no Drive export (the record: Done, Task 4; Blocked).
 
 ## The live check: `odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a` and `_check_b`
 
@@ -44,3 +45,26 @@ each exported by the run's first pass of its kind:
 
 **In the run tree only** (`outputs/round14/run_tree`, git-ignored, with its own `.env`; not to be
 copied anywhere): the same files in `runs/<run>_<time>/`; nothing else of these runs.
+
+## The second live check: `odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_c` and `_check_d`
+
+**In the repo**, `docs/reproducibility/r14_runs/live_check_2/`, per run (13 files), copied with
+`scripts/copy_run_results.py --through k_elbow`: the manifests of the features, segmentation and
+k elbow passes (`<run>_manifest_<kind>.json`), each pass's `fmu.log` (`<run>_log_<kind>.txt`), the
+features pass's `input_images`, the k elbow's five files (`<run>_k_elbow.csv`, `_k_elbow_stand_table.csv`,
+`_k_elbow_fit_rows.csv`, `_k_elbow_types.csv`, `_k_elbow_preprocessing.json`) and its run record
+(`<run>_k_elbow_run.json`). Beside them: `cost_<run>.json` and `cost_<run>_run.json`, and the check's
+`r14_live_check.json` and `r14_live_check_run.json`, made offline.
+
+**Off git:** none (no file over 5 MB). **On Drive:** none (no export pass).
+
+**On Earth Engine** (kept), under `projects/replicating-paper/assets/fmu/<run>/`, the same keys in
+both runs, each exported by the run's first pass of its kind: the features and segmentation assets
+of the table above, with the same keys (`masking/<output>__s073c13df8c`,
+`data_load/s2_composite__s9249226467`, `features_optical/optical_features__s4ef0426c2c`,
+`features_radar/radar_features__s7bb26d198c`, `features_structure/structure_features__sc823e0cc39`,
+`features_static/static_features__s7483f4391a`, `segmentation/<output>__s8d87a8f213`). The k elbow's
+table (`k_elbow/k_elbow__s91032dcd75`) does not exist: its export failed.
+
+**In the run tree only** (`outputs/round14/run_tree_2`, git-ignored, with its own `.env`; not to be
+copied anywhere): the same files in `runs/<run>_<time>/`.
