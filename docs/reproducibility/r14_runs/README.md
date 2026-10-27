@@ -4,13 +4,17 @@ The index the round 14 brief asks for ("Keep every run's data"): for each run of
 records in the repo, its files off git (with SHA-256), its Drive files and its Earth Engine assets.
 The round's record: `docs/handoff/2026-10-26-round14.md`.
 
-Round 14 has run two batches, both live checks (Task 4); the nineteen `_r14` configs of R3 have not
-run. The first (`r14_live_check`, 27 Oct 2026, from the run tree `outputs/round14/run_tree` at
+Round 14 has run three batches: two live checks (Task 4) and a smoke test; the nineteen `_r14`
+configs of R3 have not run. The first (`r14_live_check`, 27 Oct 2026, from the run tree `outputs/round14/run_tree` at
 `2335d17`): both runs computed their features and segmentation from scratch and then stopped in
 their k_elbow pass, in the merge. The second, after the merge's fix (`r14_live_check_2`, 27 Oct 2026,
 from `outputs/round14/run_tree_2` at `2248184`): both runs computed their features, segmentation and
 k elbow from scratch, and then the k elbow's cache table export failed on Earth Engine. Neither has a
 clustering or export pass: no stand layers, no Drive export (the record: Done, Task 4; Blocked).
+The smoke test (`r14_smoke_test`, 27 Oct 2026, from `outputs/round14/run_tree_3` at `d2fe144`), after
+the table's fix, finished `_check_c` and `_check_d` from what the second check cached: their
+features and segmentation read back, the k elbow made again, then clustering and export; it passed
+(the record: Done, the round resumed again). It is not the live check.
 
 ## The live check: `odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a` and `_check_b`
 
@@ -68,3 +72,38 @@ table (`k_elbow/k_elbow__s91032dcd75`) does not exist: its export failed.
 
 **In the run tree only** (`outputs/round14/run_tree_2`, git-ignored, with its own `.env`; not to be
 copied anywhere): the same files in `runs/<run>_<time>/`.
+
+## The smoke test: `_check_c` and `_check_d` finished through clustering and export
+
+**In the repo**, `docs/reproducibility/r14_runs/smoke_test/`, per run (26 files), copied with
+`scripts/copy_run_results.py` (export mode): the manifests of the five passes
+(`<run>_manifest_<kind>.json`: features and segmentation, which read the second check's assets
+back; k_elbow, clustering and export, which made theirs), each pass's `fmu.log`
+(`<run>_log_<kind>.txt`), the k elbow's five files and run record, the clustering stage's three
+(`<run>_clustering_stand_table.csv`, `_clustering_fit_rows.csv`, `_clustering_kmeans.json`), the
+export pass's run record (`<run>_run.json`), its three stand layers (`<run>_stands_merged.geojson`,
+`_stands_snic.geojson`, `_stands_dissolved.geojson`), `<run>_raster_at_plots.csv`, and the one
+reading of its Drive states (`<run>_drive_exports.json`, read-only, and `_drive_exports_run.json`).
+Beside them: `cost_<run>.json` and `cost_<run>_run.json`; the verdict, `r14_smoke_test.json`
+(results only) and `r14_smoke_test_run.json`; rule 4's `r14_smoke_test_elbow_read_back.json`;
+rule 5's `r14_smoke_test_live_check_rules.json` and `_run.json`; the elbows beside the second
+check's, `r14_smoke_test_elbows_beside_the_second_check.json`; read-only call 13's
+`r14_k_elbow_assets_before.json`; and, once the round has cancelled the export not ended at the
+reading, `r14_smoke_test_cancelled_exports.json` and `_run.json`.
+
+**Off git:** none (no file over 5 MB; the largest, `<run>_stands_snic.geojson`, 2.6 MB).
+
+**On Drive**, folder `fmu_exports_kept_land_s1desc`, per run nine files: `<run>_cluster_labels.tif`,
+`_features_raw.tif`, `_features_scaled.tif`, and each of the three stand layers as `.geojson` and
+as a zipped shapefile (`.zip`); their task ids in `<run>_drive_exports.json`. All completed but
+`_check_d`'s `features_raw.tif`, still running at the one reading and cancelled by the round, not
+sent again (`_check_c`'s is there, and `_check_d`'s features are cached on Earth Engine).
+
+**On Earth Engine** (kept), under `projects/replicating-paper/assets/fmu/<run>/`: the second
+check's features and segmentation assets, read back (the keys above), and, made by the smoke test,
+the same keys in both runs: `k_elbow/k_elbow__s91032dcd75` (the elbow table; read back by rule 4),
+`clustering/cluster_labels__s36138a6cce` and `clustering/feature_stack__s36138a6cce`.
+
+**In the run tree only** (`outputs/round14/run_tree_3`, git-ignored, with its own `.env`; not to
+be copied anywhere): the same files in `runs/<run>_<time>/`, and the two Drive readings, made
+read-only.
