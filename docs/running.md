@@ -563,6 +563,22 @@ run, 3 when it refused (nothing written), 4 when Earth Engine could not be read 
 `pytest -m live_gee tests/test_r14_live_check.py` tries its Earth Engine reader on the Angul `_r9`
 run's own assets (read-only, a few small requests; no task).
 
+**The second live check** (round 14, 27 Oct 2026). The first, of `_check_a` and `_check_b`,
+stopped in the merge in both runs (the round 14 record, Task 4). After the merge's fix, by
+Jaskaran's answer to the record's question 11, the check runs again from scratch as
+`odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_c` and `_check_d`, copies of the first two
+with only their names changed: one wrapper batch, from a new run tree, the k_elbow pass included,
+as above. Copy each run into a records folder of their own (not `live_check/`, which holds the
+first check's records and result), and give the script that folder and the two configs:
+
+```bash
+python odisha_script/r14_live_check.py --records <their records folder> \
+    --config-a configs/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_c.yaml \
+    --config-b configs/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_d.yaml
+```
+
+The pass rules are the same; criterion 5 samples check_c's slope and aspect.
+
 ### Superpixels depend on whether the features were cached
 
 In the legacy cache layout a cached feature asset sits on a geographic grid,

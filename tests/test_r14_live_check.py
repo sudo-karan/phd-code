@@ -32,8 +32,14 @@ REPO = Path(__file__).resolve().parent.parent
 SCRIPT = REPO / "odisha_script" / "r14_live_check.py"
 RUN_A = "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a"
 RUN_B = "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b"
+# The second live check (Jaskaran's answer to question 11 of the round 14 record, 27 Oct 2026):
+# the first stopped in the merge, so the check runs again from scratch as two more copies.
+RUN_C = "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_c"
+RUN_D = "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_d"
 CONFIG_A = REPO / "configs" / f"{RUN_A}.yaml"
 CONFIG_B = REPO / "configs" / f"{RUN_B}.yaml"
+CONFIG_C = REPO / "configs" / f"{RUN_C}.yaml"
+CONFIG_D = REPO / "configs" / f"{RUN_D}.yaml"
 KINDS = ("features", "segmentation", "k_elbow", "clustering", "export")
 OFFLINE = ("0_both_runs_from_scratch", "1_same_stands_and_types", "3_distance_to_water",
            "4_sentinel1_scenes", "6_four_settings_on")
@@ -65,7 +71,8 @@ def mod() -> types.ModuleType:
 def configs() -> dict[str, Any]:
     from fmu.config import load_config
 
-    return {RUN_A: load_config(CONFIG_A), RUN_B: load_config(CONFIG_B)}
+    return {run: load_config(REPO / "configs" / f"{run}.yaml")
+            for run in (RUN_A, RUN_B, RUN_C, RUN_D)}
 
 
 # ---------------------------------------------------------------------------
@@ -186,10 +193,11 @@ def _manifests(mod: types.ModuleType, cfg: Any) -> dict[str, dict[str, Any]]:
     return out
 
 
-def _write(folder: Path, mod: types.ModuleType, configs: dict[str, Any]) -> Path:
+def _write(folder: Path, mod: types.ModuleType, configs: dict[str, Any],
+           runs: tuple[str, str] = (RUN_A, RUN_B)) -> Path:
     folder.mkdir(parents=True, exist_ok=True)
     files = _stage_files()
-    for run in (RUN_A, RUN_B):
+    for run in runs:
         for layer, build in (("stands_merged", _merged), ("stands_snic", _snic),
                              ("stands_dissolved", _dissolved)):
             (folder / f"{run}_{layer}.geojson").write_text(json.dumps(build()))
@@ -267,6 +275,23 @@ def test_identical_records_pass_every_offline_criterion(mod, records):
                                                        "clustering/feature_stack"]
     assert "masking/habitat_mask" in scratch["features"]["computed_in_it"]
     assert result["criteria"]["2_feature_values_and_elbows"]["elbows"]["k_elbow.csv"]["knee"] == [3, 3]
+
+
+def test_the_second_live_check_judges_check_c_and_check_d_by_the_same_rules(mod, tmp_path, configs):
+    """The first live check stopped in the merge, and by Jaskaran's answer to question 11 of the
+    round 14 record (27 Oct 2026) it runs again from scratch as _r14_check_c and _r14_check_d.
+    The script judges them by the same rules, given with --config-a and --config-b and a records
+    folder of their own: identical records under their names pass every offline criterion, and
+    the results name the two runs."""
+    records = _write(tmp_path / "live_check_cd", mod, configs, runs=(RUN_C, RUN_D))
+    argv = ["--records", str(records), "--config-a", str(CONFIG_C), "--config-b", str(CONFIG_D),
+            "--offline"]
+    assert mod.main(argv) == 2
+    result = json.loads((records / "r14_live_check.json").read_text())
+    assert result["runs"] == [RUN_C, RUN_D]
+    passes = _passes(result)
+    assert {name: passes[name] for name in OFFLINE} == dict.fromkeys(OFFLINE, True)
+    assert set(result["criteria"]["0_both_runs_from_scratch"]["runs"]) == {RUN_C, RUN_D}
 
 
 def test_the_results_hold_no_times_and_the_run_record_says_how_it_was_made(mod, records):

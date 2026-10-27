@@ -243,7 +243,11 @@ R3 result exists. Nothing above is changed except where this section says so.
   10 km tile in Angul (`configs/<the _r9 name with _r14 in place of _r9>.yaml`), each changing only
   the name and the four settings below, and k as set below. Two more copies of the Angul
   hand-crafted 3 ha config, `..._r14_check_a` and `..._r14_check_b`, identical but for their names,
-  are the live check of the round's code (Task 4), not R3 results, and are not scored. Both arms are
+  are the live check of the round's code (Task 4), not R3 results, and are not scored. (Added 27
+  Oct 2026, before it runs: the live check stopped in the merge, so after the merge's fix it runs
+  again from scratch as `..._r14_check_c` and `..._r14_check_d`, copies of those two with only
+  their names changed, by the same pass rules: Jaskaran's answer to question 11 of the round 14
+  record. They are not R3 results either, and are not scored.) Both arms are
   re-run, Koraput's AlphaEarth runs included (Jaskaran's answers (a) to questions 22 and 1 of the
   round 13 brief).
 - **The four method changes**, the same in both arms (each off by default, so no earlier run

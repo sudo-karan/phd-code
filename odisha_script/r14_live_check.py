@@ -15,6 +15,12 @@ identical. 3. distance_to_water is no longer exactly 10,000 m in every Angul sta
 decimals. 6. The manifests record the four new settings on. Write the results to a results file
 (no times; times go to the logs)."
 
+The second live check (27 Oct 2026): the first, of _r14_check_a and _r14_check_b, stopped in the
+merge, so by Jaskaran's answer to question 11 of the round 14 record the check runs again from
+scratch as _r14_check_c and _r14_check_d, copies of the first two with only their names changed.
+Give them with --config-a and --config-b, and their records with --records, a folder of their
+own. The pass rules below are the same.
+
 Run it after the batch, once scripts/copy_run_results.py (export mode) has copied each run's files
 into the records folder: per run, <run>_stands_merged.geojson, _stands_snic.geojson and
 _stands_dissolved.geojson (a file over 5 MB is read from the "where" of its entry in

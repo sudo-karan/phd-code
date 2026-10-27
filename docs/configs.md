@@ -186,7 +186,9 @@ config with `name` changed and the four method settings of round 14 switched on
 `odisha_script/PHASE_KEPTLAND_PREDECLARED.md` (the change of 26 Oct 2026).
 `configs/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a.yaml` and `_check_b` are
 the Angul hand-crafted 3 ha copy with only `name` changed, a throwaway pair for the round's live
-check, not scored. `tests/test_r14_configs.py` checks what differs and pins their fingerprints
+check, not scored. `_check_c` and `_check_d` (27 Oct 2026) are copies of those two with only
+`name` changed, for the second live check, from scratch: the first stopped in the merge (round
+14, question 11). `tests/test_r14_configs.py` checks what differs and pins their fingerprints
 and step keys.
 
 ## Adding a new experiment
