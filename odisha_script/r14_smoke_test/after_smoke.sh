@@ -2,8 +2,9 @@
 # After the smoke test's batch has ended (the round 14 record, Done, the round resumed again; run
 # from anywhere, the steps cd to the repo or the run tree):
 #   1. tasks of the two configs queued or running (their Drive exports);
-#   w. wait until none is, or until two hours after the batch ended (BATCH_END_EPOCH), whichever
-#      is first (in a run of all the steps too);
+#   w. wait until none is, or until two hours after the batch ended (its end read from the wrapper:
+#      its "batch r14_smoke_test ended" line, and its state file's time), whichever is first; it runs
+#      before step 2 whenever step 2 runs;
 #   2. the one reading of the Drive states (scripts/drive_export_states.py, from the run tree): it
 #      decides rule 2, and the steps after it run whatever it finds;
 #   3. each run copied into the records (scripts/copy_run_results.py, export mode);
@@ -46,10 +47,20 @@ print(len(act), act[:10])
 if [ "$step" = all ] || [ "$step" = 1 ]; then
   echo "== 1. tasks of the two configs queued or running"; active
 fi
-# The wait comes before the one reading, in a run of all the steps too (the gate's review, part 11).
-if [ "$step" = all ] || [ "$step" = w ]; then
+# The wait comes before the one reading whenever the reading is made (the gate's review, part 11).
+# The batch's end is the wrapper's own: its log's last line says the batch ended, and its state file
+# was last written then; no time is given by hand.
+STATE=$REPO/outputs/round14/logs/r14_smoke_test.state.json
+if [ "$step" = all ] || [ "$step" = w ] || [ "$step" = 2 ]; then
   echo "== w. wait: until no task of the two configs is queued or running, or two hours after the batch"
-  : "${BATCH_END_EPOCH:?set BATCH_END_EPOCH to the end of the batch, in seconds since the epoch}"
+  last=$(grep '^\[run_passes_safely' $LOG 2>/dev/null | tail -1)
+  case "$last" in
+    *"batch r14_smoke_test ended"*) ;;
+    *) echo "STOP: the batch has not ended (its log's last wrapper line: ${last:-none})"; exit 2 ;;
+  esac
+  [ -e $STATE ] || { echo "STOP: no state file $STATE"; exit 2; }
+  BATCH_END_EPOCH=$(stat -f %m $STATE)
+  echo "the batch ended at $(date -r $BATCH_END_EPOCH '+%Y-%m-%d %H:%M:%S %Z') (its state file); the line: $last"
   while :; do
     n=$(active 2>/dev/null | awk '{print $1}')
     now=$(date +%s)
@@ -66,14 +77,20 @@ if [ "$step" = all ] || [ "$step" = 2 ]; then
   echo "== 2. the one reading of the Drive states"
   made=0
   for r in $RUNS; do [ -e $RT/odisha_script/phase2_vectors/${r}_drive_exports.json ] && made=$((made + 1)); done
-  if [ $made -gt 0 ]; then
-    echo "the reading was made already ($made of 2 files there): not made again"
+  if [ $made = 2 ]; then
+    echo "the reading was made already (both files there): not made again"
+  elif [ $made = 1 ]; then
+    echo "STOP: one of the reading's two files is there and the other not; nothing is read again until the record says how"; exit 2
   else
     ( cd $RT && PYTHONPATH=$RT/src $PY scripts/drive_export_states.py \
         $(for r in $RUNS; do echo odisha_script/phase2_vectors/${r}_run.json; done) )
     rc=$?
     echo "drive_export_states exit $rc (0 every task completed; 2 one not ended at the reading; 1 one failed, cancelled, unknown or without a task id; 3 or 4 nothing written)"
-    if [ $rc -ge 3 ]; then echo "STOP: the reading wrote nothing; make it again"; exit 2; fi
+    made=0
+    for r in $RUNS; do [ -e $RT/odisha_script/phase2_vectors/${r}_drive_exports.json ] && made=$((made + 1)); done
+    if [ $made != 2 ]; then echo "STOP: the reading did not write both files ($made of 2); make it again"; exit 2; fi
+    # Made once: the two files made read-only, so that no later run, by hand or not, replaces them.
+    for r in $RUNS; do chmod a-w $RT/odisha_script/phase2_vectors/${r}_drive_exports.json; done
   fi
   for r in $RUNS; do $PY -c "import json; d=json.load(open('$RT/odisha_script/phase2_vectors/${r}_drive_exports.json')); print('$r', d.get('states'))"; done
 fi
@@ -99,16 +116,19 @@ fi
 if [ "$step" = all ] || [ "$step" = 5 ]; then
   echo "== 5. the cost files (reported only)"
   for r in $RUNS; do
+    if [ -e $DEST/cost_$r.json ]; then echo "the cost of $r was read already: not read again"; continue; fi
     ( cd $REPO && $PY scripts/eecu_by_stage.py $r $LOG 602.5526 $DEST/cost_$r.json ) && \
       $PY -c "import json; d=json.load(open('$DEST/cost_$r.json')); print('$r', 'batch', d['batch_total'], 'online', d['online_total'], 'total', d['total'])" || \
       echo "the cost of $r could not be read (reported only; read it again later)"
   done
 fi
-# A read-only step that did not reach Earth Engine (exit 4) is run again, unchanged, up to twice;
+# A read-only step that did not reach Earth Engine (exit 4) is run again, unchanged, up to twice, five
+# minutes apart;
 # its first complete result counts (each refuses to write over its results, exit 3).
 if [ "$step" = all ] || [ "$step" = 6 ]; then
   echo "== 6. the elbow tables read back (pass rule 4)"
   for attempt in 1 2 3; do
+    [ $attempt -gt 1 ] && { echo "Earth Engine not reached: again in five minutes"; sleep 300; }
     ( cd $REPO && $PY $HERE/elbow_read_back.py $DEST configs/$C.yaml configs/$D.yaml ); rc=$?
     echo "elbow_read_back exit $rc (0 passes; 1 fails; 3 its result there already; 4 Earth Engine not reached)"
     [ $rc -ne 4 ] && break
@@ -117,6 +137,7 @@ fi
 if [ "$step" = all ] || [ "$step" = 7 ]; then
   echo "== 7. the live check's script on the records, Earth Engine parts run (pass rule 5)"
   for attempt in 1 2 3; do
+    [ $attempt -gt 1 ] && { echo "Earth Engine not reached: again in five minutes"; sleep 300; }
     ( cd $REPO && $PY odisha_script/r14_live_check.py --records $DEST \
         --config-a configs/$C.yaml --config-b configs/$D.yaml --out $DEST/r14_smoke_test_live_check_rules.json ); rc=$?
     echo "r14_live_check exit $rc (1 expected: criterion 0 fails; 3 its result there already; 4 Earth Engine not reached)"

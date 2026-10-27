@@ -24,12 +24,20 @@ if [ ! -d "$RT" ]; then
   git clone -q $REPO "$RT" && git -C "$RT" checkout -q --detach "$full" && cp $REPO/.env "$RT/.env"
   echo "run tree made"
 elif [ "$(git -C $RT rev-parse HEAD)" != "$full" ]; then
-  echo "run tree at $(git -C $RT rev-parse --short HEAD): moved to $full"
-  git -C "$RT" fetch -q origin && git -C "$RT" checkout -q --detach "$full" || { echo "COULD NOT MOVE THE RUN TREE"; exit 1; }
+  echo "run tree at $(git -C $RT rev-parse --short HEAD): moving it to $full"
+  [ -z "$(git -C $RT status --porcelain --untracked-files=no)" ] || { echo "REFUSED: the run tree has modified tracked files"; exit 1; }
+  git -C "$RT" fetch -q "$REPO" && git -C "$RT" checkout -q --detach "$full" || { echo "COULD NOT MOVE THE RUN TREE"; exit 1; }
+  echo "moved"
+fi
+# A run tree that holds an earlier batch's run folders or run records would mix them into the
+# smoke test's records (the copy tool takes every run folder of a config): refused.
+if [ -n "$(ls -A $RT/runs 2>/dev/null)" ] || ls $RT/odisha_script/phase2_vectors/*_check_[cd]_* >/dev/null 2>&1; then
+  echo "REFUSED: the run tree holds run folders or run records of an earlier batch"; exit 1
 fi
 echo "run tree HEAD $(git -C $RT rev-parse HEAD)"
 [ "$(git -C $RT rev-parse HEAD)" = "$full" ] || { echo "RUN TREE NOT AT COMMIT"; exit 1; }
 echo "run tree porcelain (tracked):"; git -C $RT status --porcelain --untracked-files=no
+[ -z "$(git -C $RT status --porcelain --untracked-files=no)" ] || { echo "REFUSED: the run tree has modified tracked files"; exit 1; }
 echo "run tree untracked (all):"; git -C $RT status --porcelain --untracked-files=all | grep '^??' | head
 echo "run tree .env ignored: $(git -C $RT check-ignore .env)"
 ( cd $RT && PYTHONPATH=$RT/src $PY -c "

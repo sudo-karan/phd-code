@@ -35,7 +35,9 @@ K = 5
 STAGE_FILES = ("k_elbow.csv", "k_elbow_stand_table.csv", "k_elbow_fit_rows.csv", "k_elbow_types.csv",
                "k_elbow_preprocessing.json", "clustering_stand_table.csv", "clustering_fit_rows.csv",
                "clustering_kmeans.json", "k_elbow_run.json")
-NOT_ENDED = ("READY", "RUNNING", "CANCEL_REQUESTED")
+# Not ended at the one reading: READY or RUNNING. CANCEL_REQUESTED fails: the round cancels only
+# after the reading, so at it a cancellation can only be someone else's (the gate's review, part 11).
+NOT_ENDED = ("READY", "RUNNING")
 read: dict[str, str] = {}
 
 

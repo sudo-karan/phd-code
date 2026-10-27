@@ -66,6 +66,9 @@ print("started", now())
 try:
     init_gee()
     replaced = ee_read_only.forbid_writes()
+    import ee
+
+    ee.data.setDeadline(7 * 60 * 1000)  # a request in a network drop ends, as the live check's do
 except Exception as e:  # noqa: BLE001 - Earth Engine not reached: nothing written
     print(f"Earth Engine could not be set up: {e!r}")
     sys.exit(4)
