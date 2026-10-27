@@ -8018,6 +8018,9 @@ decisions:
     and the shared spread (angle_pairs). feature_stack applies the same transform server-side. The default is left out
     of the cache fingerprint and the per-step keys, so no config that keeps it moves; right_skew moves the clustering
     and k_elbow keys and the fingerprint.
+    Jaskaran, 27 Oct 2026 (the round 14 record's questions 1 and 5): the shared spread of an angle pair stays the root
+    mean square of its two IQRs ("keep the root mean square of the two IQRs"), and "a band whose IQR is 0" stays read
+    as an IQR of at most 1e-9 ("keep").
   alternatives_considered:
   - >-
     Implement the rule on Earth Engine too: not chosen; every round 14 config that uses it fits off Earth Engine, and
@@ -9663,7 +9666,10 @@ decisions:
     runs (a333dfa, 19 Oct). In every declared run all 15 tests had 1,999 usable realisations, so rule 4 changed
     nothing; every Holm p is 1.000 but two, at 0.695 (AlphaEarth 10 ha). No result changes and nothing is re-run. R3's
     declared chance tests (the round 14 brief, Task 8) are to apply the same rules, which for R3 are accepted before
-    any R3 result exists.
+    any R3 result exists. Jaskaran, 27 Oct 2026 (the round 14 record's question 8): "I confirm Q19's rules as my own
+    decision; record that they were settled after the first declared results existed." So the six rules are his
+    decision, made after the first declared results (17 to 19 Oct 2026) existed, and accepted for R3 before any R3
+    result exists.
   alternatives_considered:
   - >-
     Reject one or more and declare a change, then re-run the offline chance test, about 20 minutes per run, with no
@@ -10372,3 +10378,166 @@ decisions:
   design_notes_section: null
   source: >-
     Jaskaran, 26 Oct 2026, in the Claude Code session: the round 14 record's question 0, answered (a)
+- id: field-r3-scores-the-record-once-they-exist
+  title: >-
+    Once R3's scores exist they are the record; the _r9 scores stay as the record from before the fixes
+  decision: >-
+    When R3 has run (the round 14 brief, Tasks 5 to 8), its scores, made by the code after rounds 13 and 14's fixes,
+    are the record of the kept-land analysis. The _r9 scores (odisha_script/keptland_scores/, the runs of 17 to 19 Oct
+    2026) are kept, unchanged, as the record from before the fixes, and say so. Until R3's scores exist the _r9 scores
+    remain the record.
+  alternatives_considered:
+  - >-
+    The _r9 scores stay the record and R3's are shown beside them, descriptive only (option (b) of the round 14
+    record's question 3): not chosen
+  rationale: >-
+    Jaskaran, 27 Oct 2026, answering the round 14 record's question 3 ("Which scores are the record once R3 exists?"):
+    "R3 is the record once it exists; _r9 stays as the record from before the fixes", option (a), Claude Code's
+    recommendation. The note of 19 Oct named the _r9 scores; the round 14 declaration showed R3 beside them,
+    descriptive only. No paper was searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-26-round14.md
+    what: Questions, item 3
+  - path: odisha_script/PHASE_KEPTLAND_PREDECLARED.md
+    what: The change of 26 Oct 2026, R3
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 27 Oct 2026, in the Claude Code session, the round 14 record's question 3
+- id: process-q18-q37-q40-kept-in-round-14
+  title: >-
+    Round 13's Q18, Q37 and Q40, done in round 14 under "every other question: your recommendation", are kept
+  decision: >-
+    The commits of Q18 (2bd3bda, 9b76bdb, 713feb7), Q37 (8a54b65) and Q40 (30ac9e6), made in round 14 under the brief's
+    rule "Every other question: your recommendation", though the brief's list of changes before R3 did not name them,
+    stay in the round. None changes anything R3 computes or any key.
+  alternatives_considered:
+  - >-
+    Drop them for a later round (option (b) of the round 14 record's question 4): not chosen
+  rationale: >-
+    Jaskaran, 27 Oct 2026, answering the round 14 record's question 4: "keep". No paper was searched for this
+    decision.
+  evidence:
+  - path: docs/handoff/2026-10-26-round14.md
+    what: Questions, item 4; Done, Task 1
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 27 Oct 2026, in the Claude Code session, the round 14 record's question 4
+- id: field-phase1-steps-2-and-6-write-r14-files-in-a-later-round
+  title: >-
+    Phase 1 steps 2 and 6 are to write their _r14 files themselves, in a later round
+  decision: >-
+    odisha_script's Phase 1 steps 2 and 6 still write odisha_phase1_results.txt and odisha_phase1_closeout.txt, as
+    round 13's Q18 asked ("nothing else changing"), so their documented command run in place writes over the two old
+    files kept as the record. In a later round each is to write its own _r14 name (one line each, and the file name in
+    round 13's C22 test), so that the command reproduces the _r14 files in place. Until then PHASE1_STATUS.md says to
+    run them in a copy of the folder. The close-out's heading ("Pearson, Spearman, slope, bias", where two rows print
+    no bias) is left as it is.
+  alternatives_considered:
+  - >-
+    Leave the scripts as they are for good (option (a) of the round 14 record's question 6): not chosen
+  rationale: >-
+    Jaskaran, 27 Oct 2026, answering the round 14 record's question 6 ("Should Phase 1 steps 2 and 6 write their _r14
+    files themselves?"): "yes, in a later round". The heading's own choice was not answered, so its default, (a)
+    leave it, stands. No paper was searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-26-round14.md
+    what: Questions, item 6
+  - path: odisha_script/PHASE1_STATUS.md
+    what: Run steps 2 and 6 in a copy of the folder
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 27 Oct 2026, in the Claude Code session, the round 14 record's question 6
+- id: field-a7-elbow-script-reads-q33-columns-in-a-later-round
+  title: >-
+    Before it is run on stands exported after Q33, the A7 elbow script is to read the new sin and cos columns, in a
+    later round
+  decision: >-
+    odisha_script/odisha_phase3_2_stand_k_elbow.py (round 13's A7) is to read the stand layers' <band>_sin and _cos
+    columns, which Q33 added (stand means of each angle's per-pixel sine and cosine), directly, and keep them out of
+    its angle test, before it is run on stands exported after Q33; on such layers it would otherwise take the phase
+    columns' sine and cosine as angles again and write over its aspect pair without a word. In a later round. R3's
+    elbow is the pipeline's k_elbow step, which neither change touches.
+  alternatives_considered:
+  - >-
+    Leave it, documented (option (b) of the round 14 record's question 7): not chosen
+  rationale: >-
+    Jaskaran, 27 Oct 2026, answering the round 14 record's question 7: "yes, in a later round", option (a), Claude
+    Code's recommendation. Found by the gate review's second part. No paper was searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-26-round14.md
+    what: Questions, item 7
+  - path: odisha_script/odisha_phase3_2_stand_k_elbow.py
+    what: The A7 script
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 27 Oct 2026, in the Claude Code session, the round 14 record's question 7
+- id: process-r14-batches-by-the-briefs-rule-with-a-forecast
+  title: >-
+    Round 14's batches are submitted by the brief's rule, with a forecast written beside it, and R3's first half is
+    stopped so that the largest pass in flight still ends the round within 150 EECU-hours
+  decision: >-
+    Before each batch the quota is read and the batch is submitted if the round's use plus the batch's estimate (from
+    the cost files of the _r9 and 10 ha runs) stays within 150 EECU-hours and October's remaining hours less the
+    estimate at 100 or more (the brief's rule). Beside it a forecast with one margin is written down: +50% for a live
+    check; for the first half the estimate times the larger of 1.5 and 1.2 r, r being the live check's charged cost
+    over its estimate; for the second half likewise with the first half's ratio. The forecast holds no batch back.
+    During the first half the batch is stopped (SIGTERM to the wrapper) when the round's use reaches 150 - 1.2 x
+    max(1, r) x 12.51, 12.51 being the largest single pass of any first-half config at estimate (the hand-crafted
+    Dhenkanal 10 ha features pass), so that the pass in flight at a stop still ends the round within 150; the configs
+    left go under Blocked.
+  alternatives_considered:
+  - >-
+    Hold the first half back while the forecast does not fit, for Jaskaran's word (option (b) of the round 14 record's
+    question 10): not chosen; R3 would wait, which the brief rules out ("Do not stop for a question")
+  - >-
+    Stop the first half at 140, as first written (option (c)): not chosen; the pass in flight at the stop could take
+    the round to about 155 to 165
+  rationale: >-
+    Jaskaran, 27 Oct 2026, answering the round 14 record's question 10: "(a)". The rule was amended three times on 27
+    Oct 2026, before any batch, after the gate's review (parts 3, 4 and 6), as the record's cost estimate says. No
+    paper was searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-26-round14.md
+    what: Done, the cost estimate; Questions, item 10
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 27 Oct 2026, in the Claude Code session, the round 14 record's question 10
+- id: process-live-check-again-as-check-c-and-d-after-the-merge-fix
+  title: >-
+    After the merge's grid is fixed, the live check runs again from scratch as _r14_check_c and _r14_check_d, then R3's
+    first half and the elbow report as planned
+  decision: >-
+    The live check of 27 Oct 2026 (_r14_check_a and _check_b) failed: both runs stopped in the merge, whose criteria
+    were reduced on a grid built from a CRS string and a scale while its pixel counts were on the label image's own
+    grid (the round 14 record, Done, Task 4). The merge's grid is fixed, test first (with every merge tie broken by
+    centroid, Jaskaran's answer to question 2, under one merge revision), the gate's review is made of those changes,
+    and then the live check runs again in full, both from scratch, in one wrapper batch from a new run tree, as two new
+    copies of the check config, odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_c and _check_d, judged by the
+    same declared rules (odisha_script/r14_live_check.py); if it passes, R3's first half (Task 5) and the elbow report
+    (Task 6) follow as the brief planned, and the round stops for Jaskaran's k. The two failed runs' records are kept
+    (docs/reproducibility/r14_runs/live_check/).
+  alternatives_considered:
+  - >-
+    Fix it and finish the two failed check runs from the features and segmentation their batch made from scratch
+    (option (b) of the round 14 record's question 11): not chosen; criterion 0 was declared for one batch from one run
+    tree, and reading it over two batches would amend it after a result
+  - >-
+    No R3 this month (option (c)): not chosen; October's hours do not carry over
+  rationale: >-
+    Jaskaran, 27 Oct 2026, answering the round 14 record's question 11: "(a). Fix the merge's grid, test first, then
+    run the live check again from scratch as _r14_check_c and _r14_check_d, then R3's first half and the elbow report
+    as planned." No paper was searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-26-round14.md
+    what: Done, Task 4; Blocked; Questions, item 11
+  - path: docs/reproducibility/r14_runs/README.md
+    what: The failed check runs' records
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 27 Oct 2026, in the Claude Code session, the round 14 record's question 11
