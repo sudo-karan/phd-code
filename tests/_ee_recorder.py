@@ -83,3 +83,19 @@ def _plain(value: Any) -> Any:
 def call_log(log: list) -> list[list[Any]]:
     """[name, args, kwargs] per call, as plain JSON-able data."""
     return [[c.name, _plain(list(c.args)), _plain(c.kwargs)] for c in log]
+
+
+def table_export_to_asset(log: list, table: Rec) -> None:
+    """A stand-in for Export.table.toAsset that refuses what Earth Engine refuses: a table with a
+    feature that has no geometry. The client sends such a table and the task is started; Earth
+    Engine then fails it, "Unable to export features with null geometry." (round 14's second live
+    check, 27 Oct 2026). `table` is a recorded ee.FeatureCollection of recorded ee.Feature calls,
+    each feature's geometry its call's first argument."""
+    collection = made_by(log, table)
+    assert collection.name == "ee.FeatureCollection", collection.name
+    (features,) = collection.args
+    for feature in features:
+        call = made_by(log, feature)
+        assert call.name == "ee.Feature", call.name
+        if call.args[0] is None:
+            raise RuntimeError("Unable to export features with null geometry.")

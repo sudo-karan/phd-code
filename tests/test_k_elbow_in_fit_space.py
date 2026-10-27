@@ -32,7 +32,7 @@ from _clustering_stand_ins import (
     run_stage,
     table_rows,
 )
-from _ee_recorder import Rec, calls
+from _ee_recorder import Rec, calls, made_by, table_export_to_asset
 from fmu.config import Config
 from fmu.pipeline import default_stage_names
 from fmu.stages import k_elbow
@@ -222,6 +222,23 @@ def test_every_file_the_step_writes_passes_the_copy_tools_results_only_check(fit
     metadata = copy_tool.strip(json.loads(json.dumps(result.metadata, default=str)))
     assert copy_tool.time_keys(metadata) == []
     assert not copy_tool.STAMP.search(json.dumps(metadata, default=str))
+
+
+@pytest.mark.parametrize("fit_excludes", [False, True], ids=["every stand fitted", "stands below the minimum left out"])
+def test_the_table_is_one_an_export_to_an_asset_takes(fit_excludes):
+    """Earth Engine refused the elbow's cache export in both runs of round 14's second live check,
+    "Unable to export features with null geometry." (27 Oct 2026): the step built each row with no
+    geometry. Every row now has the same fixed point, [0, 0], as its geometry, and the properties it
+    had; the stand-in export refuses a row with none, as Earth Engine does."""
+    result, log = _run(_config(fit_excludes_stands_below_min_area=fit_excludes))
+    table = result.outputs["k_elbow"]
+    table_export_to_asset(log, table)
+    (point,) = calls(log, "ee.Geometry.Point")
+    assert point.args == ([0, 0],) and point.kwargs == {}
+    rows = [made_by(log, f) for f in made_by(log, table).args[0]]
+    assert [r.args[0] for r in rows] == [point.out] * len(rows)
+    assert [r.args[1]["k"] for r in rows] == result.metadata["ks"]
+    assert {"ari_median", "ari_min", "in_fit_space"} <= set(rows[0].args[1])
 
 
 def test_on_only_the_k_elbow_key_moves_and_off_none(monkeypatch):

@@ -14,6 +14,13 @@ first commit), before the setting existed:
 
 and the step of today must reproduce it exactly. A deliberate change to the default path
 rewrites the file the same way, from the new code, in the commit that makes it.
+
+Rewritten so on 27 Oct 2026 (round 14), when the table's features got a geometry, the same
+fixed point for every one (`k_elbow.elbow_collection`), as Earth Engine refused to export a
+table whose features had none (round 14's second live check). That is the only change: for
+each config one ee.Geometry.Point([0, 0]) call before the first feature, and each ee.Feature
+call given it in place of None; the table's properties, the metadata and every other call are
+as recorded at 284b73d.
 """
 
 from __future__ import annotations

@@ -15,6 +15,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
+from _ee_recorder import Rec, calls, made_by, table_export_to_asset
 from fmu.config import Config, load_config
 from fmu.pipeline import default_stage_names
 from fmu.stages import k_elbow
@@ -89,19 +90,42 @@ def test_the_stage_refuses_the_legacy_layout():
 def test_the_stage_sweeps_the_rows_it_reads_and_returns_a_table():
     cfg = load_config(KENDUJHAR)
     rows = _blobs(3, n=30)
-    made: list[dict] = []
+    made: list[tuple] = []
 
     class FakeFeature:
         def __init__(self, geom, props):
-            made.append(props)
+            made.append((geom, props))
 
     with patch("fmu.stages.k_elbow.training_rows", return_value=(rows, ["a", "b", "c", "d"])), \
+         patch("fmu.stages.k_elbow.ee.Geometry.Point", side_effect=lambda coords: ("Point", coords)), \
          patch("fmu.stages.k_elbow.ee.Feature", side_effect=FakeFeature), \
          patch("fmu.stages.k_elbow.ee.FeatureCollection", side_effect=lambda feats: ("FC", feats)):
         result = k_elbow.KElbowStage().run(PipelineContext(), cfg)
     assert result.outputs["k_elbow"][0] == "FC"
-    assert [p["k"] for p in made] == list(range(cfg.k_elbow.k_min, cfg.k_elbow.k_max + 1))
+    assert [p["k"] for _, p in made] == list(range(cfg.k_elbow.k_min, cfg.k_elbow.k_max + 1))
+    # Each row has the same fixed point as its geometry, which an export to an asset needs (round
+    # 14's second live check: test_the_table_is_one_an_export_to_an_asset_takes).
+    assert all(geom == ("Point", [0, 0]) for geom, _ in made)
     assert result.metadata["elbow_k"] == 3 and result.metadata["n_rows"] == 90
+
+
+def test_the_table_is_one_an_export_to_an_asset_takes():
+    """Earth Engine refused the elbow's cache export in round 14's second live check, "Unable to
+    export features with null geometry." (27 Oct 2026): the step built each row with no geometry,
+    on this path (k_elbow.in_fit_space off) as on the other. The stand-in export refuses such a
+    table as Earth Engine does."""
+    cfg = load_config(KENDUJHAR)
+    log: list = []
+    with patch("fmu.stages.k_elbow.training_rows", return_value=(_blobs(3, n=30), ["a", "b", "c", "d"])), \
+         patch.object(k_elbow, "ee", Rec("ee", log)):
+        result = k_elbow.KElbowStage().run(PipelineContext(), cfg)
+    table = result.outputs["k_elbow"]
+    table_export_to_asset(log, table)
+    (point,) = calls(log, "ee.Geometry.Point")
+    assert point.args == ([0, 0],) and point.kwargs == {}
+    rows = [made_by(log, f) for f in made_by(log, table).args[0]]
+    assert [r.args[0] for r in rows] == [point.out] * len(rows)
+    assert [r.args[1]["k"] for r in rows] == result.metadata["ks"]
 
 
 def test_the_validate_asks_for_the_merge_records_when_the_fit_leaves_stands_out():

@@ -28,10 +28,12 @@ on, without the stands the merge left below merge.min_area_ha
 (`_leave_out_of_fit`): the rows k-means is trained on. They are read back (a few
 hundred to a few thousand rows, a page at a time) and the sweep runs here.
 
-Output. `k_elbow`: a FeatureCollection with one feature per k and no geometry,
-with properties k, inertia, n_rows, n_bands, elbow_k (the same on every feature;
-null if there are too few rows for three values of k) and is_elbow. Read it with
-`read_k_elbow`.
+Output. `k_elbow`: a FeatureCollection with one feature per k, with properties k,
+inertia, n_rows, n_bands, elbow_k (the same on every feature; null if there are too
+few rows for three values of k) and is_elbow. Every feature has the same fixed point,
+[0, 0], as its geometry, which an export to an asset needs (`elbow_collection`;
+until round 14 the features had none, and Earth Engine refused the export). Read it
+with `read_k_elbow`.
 
 With `k_elbow.in_fit_space` on (round 14, Task 2.4; review A7) the step does not read the
 clustering stage's outputs at all. It reads the table of units as the clustering stage does with
@@ -142,9 +144,7 @@ class KElbowStage(Stage):
             "  k elbow: %d row(s) x %d band(s), k %d to %d: elbow at k = %s",
             sweep["n_rows"], len(bands), params.k_min, params.k_max, sweep["elbow_k"],
         )
-        table = ee.FeatureCollection(
-            [ee.Feature(None, props) for props in elbow_table(sweep, n_bands=len(bands))]
-        )
+        table = elbow_collection(elbow_table(sweep, n_bands=len(bands)))
         return StageResult(
             outputs={"k_elbow": table},
             metadata={
@@ -207,8 +207,8 @@ def _in_fit_space(
     features = elbow_table(sweep, n_bands=len(pre.bands))
     for props, med, low in zip(features, sweep["ari_median"], sweep["ari_min"], strict=True):
         props.update({"ari_median": med, "ari_min": low, "in_fit_space": 1})
-    table_fc = ee.FeatureCollection([ee.Feature(None, props) for props in features])
-    label_name = "stand_lbl" if unit_key == "stand_clusters" else "snic_label"
+    table_fc = elbow_collection(features)
+    label_name ="stand_lbl" if unit_key == "stand_clusters" else "snic_label"
     return StageResult(
         outputs={"k_elbow": table_fc},
         metadata={
@@ -282,6 +282,16 @@ def training_rows(ctx: PipelineContext, config: Config) -> tuple[np.ndarray, lis
         )
     features = _read_rows(sample, context="k elbow rows")
     return rows_matrix(features, bands), bands
+
+
+def elbow_collection(features: list[dict[str, Any]]) -> ee.FeatureCollection:
+    """The output table: one feature per k with its properties, and the same fixed point,
+    [0, 0], as every feature's geometry. An export to an asset refuses a feature with no
+    geometry: in round 14's second live check (27 Oct 2026) Earth Engine failed the table's
+    cache export, "Unable to export features with null geometry.", when each feature had
+    none. The point carries nothing; read_k_elbow reads the properties only."""
+    point = ee.Geometry.Point([0, 0])
+    return ee.FeatureCollection([ee.Feature(point, props) for props in features])
 
 
 def _read_rows(fc: ee.FeatureCollection, *, context: str) -> list[dict[str, Any]]:

@@ -10755,3 +10755,60 @@ decisions:
   source: >-
     Jaskaran, 27 Oct 2026: round 14's question 2, "fix it now, with the grid fix, since the merge's version is raised
     anyway: every merge tie is broken by centroid, with a failing test first"
+- id: spec-k-elbow-table-rows-carry-a-fixed-point
+  title: >-
+    Every feature of the k elbow's table has the same fixed point, [0, 0], as its geometry, so that the table can be
+    exported to an asset
+  decision: >-
+    src/fmu/stages/k_elbow.py builds its output table in one place, elbow_collection: one feature per k with the
+    properties it had, each with ee.Geometry.Point([0, 0]) as its geometry, on both of the step's paths
+    (k_elbow.in_fit_space on and off). Until then each feature had no geometry (ee.Feature(None, props)), and Earth
+    Engine does not export such a table to an asset: in both runs of round 14's second live check (27 Oct 2026), the
+    step's first run on Earth Engine, the step computed its elbow and wrote its files, and the cache export of its
+    table (fmu.utils.caching.start_table_export, Export.table.toAsset) failed on the server, "Unable to export features
+    with null geometry." The client starts such a task without a word, and the tests' stand-ins took any table. The
+    point carries nothing: read_k_elbow reads the properties only, and no number, file or metadata the step writes
+    changes. No step key moves and no revision is raised: the fix changes no value the step computes, only what the
+    export needs, and no k_elbow asset exists under any key, as every export of the table failed until the fix, so
+    no asset made before it can be read back as if made after it (the round 14 record, read-only Earth Engine call
+    12). With the setting off, the step's recorded calls (tests/data/k_elbow_off_calls.json, recorded at 284b73d) are
+    rewritten from the new code: for each of the three configs one ee.Geometry.Point([0, 0]) call before the first
+    feature, and each ee.Feature call given it in place of None; the table's properties, the metadata and every
+    other call are as recorded.
+  alternatives_considered:
+  - >-
+    The ROI, or its centroid, as each feature's geometry: not chosen; the table would carry a geometry that changes
+    with the config and means nothing for the elbow, the ROI's vertices once per k
+  - >-
+    Raise the k_elbow step's revision, moving its key: not chosen; nothing the step computes changes, and no asset
+    exists under the old key to be taken for a new one
+  - >-
+    Keep the elbow out of the cache, or export it to Drive as a file: not chosen; Task 7 of the round 14 brief reads
+    the elbow back from the cache, and the step's key leaves k out so that choosing k computes no elbow again
+  rationale: >-
+    Jaskaran's answer to the round 14 record's question 13 (27 Oct 2026): "(a), with one addition", the question's
+    option (a) being to fix it, with a test that fails first, and then run the live check again from scratch as
+    _r14_check_e and _r14_check_f; the addition, a smoke test before that, needs the fix too. The new tests fail on the
+    code before the fix: a stand-in export that refuses, as Earth Engine does, a table with a feature with no geometry
+    (tests/_ee_recorder.py, table_export_to_asset) raises "Unable to export features with null geometry." on both
+    paths, and the table as the client encodes it (offline, ee.apitestcase) has no geometry argument in any Feature.
+    No paper was searched for this decision.
+  evidence:
+  - path: src/fmu/stages/k_elbow.py
+    what: elbow_collection; the module docstring's Output
+  - path: tests/test_k_elbow.py
+    what: >-
+      test_the_table_is_one_an_export_to_an_asset_takes (the off path) and
+      test_the_stage_sweeps_the_rows_it_reads_and_returns_a_table, which checks each feature's geometry
+  - path: tests/test_k_elbow_in_fit_space.py
+    what: test_the_table_is_one_an_export_to_an_asset_takes, on the path every R3 config takes
+  - path: tests/test_k_elbow_table_ee_graph.py
+    what: The table and the export's expression as the client encodes them, offline
+  - path: tests/data/k_elbow_off_calls.json
+    what: The off path's calls, rewritten from the new code
+  - path: docs/handoff/2026-10-26-round14.md
+    what: Done, Task 4, the second batch; read-only Earth Engine call 12; Questions, item 13
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 27 Oct 2026, in the Claude Code session, the round 14 record's question 13
