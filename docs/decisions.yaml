@@ -10638,6 +10638,11 @@ decisions:
     estimate (at r = 1), and its forecast reaches the stop only if r is above 1.55. Near the stop the quota is read
     every 5 minutes and at each new stage; if no reading succeeds for 30 minutes the batch is stopped as at the stop
     (the record's question 15, the round's default).
+    Round 14 (28 Oct 2026), after Jaskaran changed the order (process-r14-first-half-before-the-third-live-check): the
+    first half runs before the third live check, so its stop takes r from the second live check, the last check
+    measured, from scratch through the k elbow: 9.5361 over 7.94, r = 1.2010, the stop 181.97. And by his answer to
+    question 15, (b) for this round: when no reading succeeds for 30 minutes the watcher warns loudly and the batch
+    runs on.
   alternatives_considered:
   - >-
     Hold the first half back while the forecast does not fit, for Jaskaran's word (option (b) of the round 14 record's
@@ -10943,3 +10948,51 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 28 Oct 2026, in the Claude Code session, with the round 14 record's question 14
+- id: process-r14-first-half-before-the-third-live-check
+  title: >-
+    R3's first half runs before the third live check, which runs right after it while Jaskaran chooses k; the second
+    half waits for the check's pass and every k; the elbow report is written in parts
+  decision: >-
+    Round 14's brief ran the live check (Task 4) before R3's first half (Task 5). After the smoke test passed (27 Oct
+    2026), Jaskaran changed the order to save time: the first half (the 19 _r14 configs through k_elbow) starts at
+    once; the third live check (_r14_check_e and _check_f, two runs from scratch, judged by the declared rules) runs
+    right after it, from its own run tree, while he chooses k from the elbow report; the second half (Task 7) starts
+    only after the check passes and he has given every k. The elbow report (Task 6) is written in parts: Sanjay Van
+    and the 3 ha boxes of both arms as soon as they are done, then the 10 ha boxes, then the tile, each pushed and
+    noted in the PR. The first half's stop takes r from the second live check, as the third has not run
+    (process-r14-batches-by-the-briefs-rule-with-a-forecast). Had the third check already started, it would have
+    finished first. A fix outside src/fmu/ from here on is read by one independent reader, and the check scripts get
+    no review cycles beyond that (process-r14-review-one-reader-except-pipeline-code).
+  alternatives_considered:
+  - >-
+    The brief's order, the third live check first and the first half only after it passes: not chosen by Jaskaran; R3
+    would wait about two hours more, for a check whose steps up to the elbow the second check had already shown
+    identical from scratch
+  rationale: >-
+    Jaskaran, 28 Oct 2026, in the session: "To save time, change the order (record the reason in the register): 1.
+    Start R3's first half now, before the third live check. The second live check already showed, from scratch,
+    identical features, superpixels and merge, and byte-identical elbows, and nothing in those steps has changed
+    since. If the third live check has already started, let it finish and skip this step. 2. Run the third live check
+    (_r14_check_e and _f) right after the first half, while I choose k. The second half starts only after the check
+    passes and I have given every k. 3. Write the elbow report in parts: first Sanjay Van and the 3 ha boxes (both
+    arms) as soon as they are done, then the 10 ha boxes, then the tile. Push each part and note it in the PR." The
+    second check's records (docs/reproducibility/r14_runs/live_check_2/) show the k elbow's table of stands, each
+    stand's features, agreeing within the declared rule (criterion 2 i on that table; the clustering table, never
+    made, failed it) and the elbows and their types byte-identical
+    (2 iv), the two runs having computed their features, superpixels and merge from scratch; the smoke test found the
+    same elbows again from
+    the cached assets, byte for byte; the code those steps run has not changed since (the k elbow's table fix,
+    spec-k-elbow-table-rows-carry-a-fixed-point, moved no key and no number). The clustering and export steps,
+    which only the smoke test has run on Earth Engine, belong to the second half, which still waits for the check.
+    No paper was searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-26-round14.md
+    what: Done, the order changed; Done, the cost estimate (amended a sixth time); Questions, item 15
+  - path: docs/reproducibility/r14_runs/live_check_2/r14_live_check.json
+    what: The second check's criteria, 2 i and 2 iv passing on what it reached
+  - path: docs/reproducibility/r14_runs/smoke_test/r14_smoke_test_elbows_beside_the_second_check.json
+    what: The elbows of the smoke test, byte for byte the second check's
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 28 Oct 2026, in the Claude Code session
