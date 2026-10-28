@@ -465,7 +465,19 @@ def test_the_site_holds_r3s_eighteen_runs_as_current_and_the_earlier_28_as_histo
     assert len(set(keys)) == 18
     assert {r["area"] for r in current} == {"Sanjay Van", "Angul", "Dhenkanal", "Kendujhar",
                                             "Koraput"}
-    assert all("history" not in r for r in earlier)
+    for r in earlier:
+        # One line: what the run is, and that it is from before the corrections (question 23).
+        assert r["history"].endswith(" Its results are from before the corrections of 19 to 28 "
+                                     "Oct 2026.")
+        assert r["history"].count(".") == 2 or "round 7's" in r["history"]
+    assert [x["path"] for x in index["history_links"]] == [
+        "docs/handoff/2026-10-20-round13.md", "docs/handoff/2026-10-26-round14.md"]
+    for path in [x["path"] for x in index["history_links"]] + [index["what_changed"]["review"]]:
+        assert (SCRIPTS.parent / path).is_file(), path
+    for group in index["what_changed"]["groups"]:
+        assert (SCRIPTS.parent / group["record"]).is_file()
+        # One plain sentence each, naming the finding or the live check it comes from.
+        assert all(item["ref"] and item["text"].count(". ") == 0 for item in group["items"])
 
 
 def test_each_r3_run_gives_k_with_jaskarans_reason_from_the_register():
@@ -561,9 +573,12 @@ def test_r3_stands_give_angles_by_sine_and_cosine_and_earlier_runs_by_plain_mean
                     "ndvi_phase_annual_cos"} <= props.keys()
             # The four are not measurements of their own: 22, as the earlier runs count.
             assert r["facts"]["n_feature_bands"] == 22
+            assert r["ndvi_mean"] == {"what": "window_mean", "from": "2017-01-01",
+                                      "to": "2022-12-31"}
         elif r["group"] == "earlier":
             assert r.get("angles") in (None, "plain")
             assert not any(k.endswith(("_sin", "_cos")) for k in props)
+            assert r["ndvi_mean"] == {"what": "trend_value", "on": "2017-01-01"}
 
 
 def test_r3_stands_without_a_type_are_the_ones_its_clustering_had_no_row_for():
