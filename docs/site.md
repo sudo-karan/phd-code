@@ -11,7 +11,7 @@ The address holds the whole view, so a copied link opens exactly what was on scr
 
 | Part | Meaning |
 |---|---|
-| `<run>` | the run id from `ui_data/index.json` (place, features, stand size, area and land choice) |
+| `<run>` | the run id from `ui_data/index.json` (place, features, stand size, area and land choice); R3's end in `_r14`, and a link to an earlier version opens it with its line in the banner |
 | `<step>` | `area`, `land`, `measure`, `superpixels`, `stands`, `types`, `profiles`, `field` |
 | `at` | the map's centre and zoom |
 | `on`, `off` | layer ids switched on or off against the step's own set |
@@ -20,7 +20,8 @@ The address holds the whole view, so a copied link opens exactly what was on scr
 | `compare` | the one or two stand ids compared |
 
 Only what differs from the step's defaults is written. "Copy link to this view" (next to "How this
-step works") copies the address.
+step works") copies the address. With no run named, the site opens on the current results (R3), on
+Sanjay Van with our features.
 
 ## Frozen copies for citing
 
@@ -46,4 +47,5 @@ For a write-up, cite a frozen copy instead:
    live site.
 
 Never move or delete a `paper-*` tag once cited: the copy is rebuilt from it on every deploy.
-Each copy adds about 35 MB to the site (GitHub Pages allows 1 GB in all).
+Each copy adds about 58 MB to the site since round 15 added R3 (35 MB before; GitHub Pages allows
+1 GB in all).
