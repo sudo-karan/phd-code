@@ -183,6 +183,12 @@ SHORT_LABEL_WITH_S1DESC = ("Test runs from 13 to 15 October 2026: the village ou
                            "the boxes, there on both radar orbits. The final runs will replace "
                            "them.")
 NUMBER_WORDS = {1: "One", 2: "Two", 3: "Three", 4: "Four"}
+# The end of the line of round 7's four runs (`s1desc_note`).
+S1DESC_NOTE = (" Its radar comes from the descending Sentinel-1 orbit. Its field-check scores here are "
+               "round 7's, kept as history. The record is R3's scores, on R3's run of the same "
+               "boxes, features and stand size, {r3}. The _r9 scores, the record from before the "
+               "corrections, are not on this site. The chance test was not run on these stands, so "
+               "their scores are numbers only.")
 MEANS_NOTE = (" Its stands' named measurements come from one read-only reduction "
               "(docs/reproducibility/keptland_runs/{run}_stand_means.json): the optical and "
               "structure ones from this run's own images, the radar and static ones from the "
@@ -1219,6 +1225,17 @@ def history_line(run_id: str, area: str) -> str:
     return line + HISTORY_BEFORE
 
 
+def s1desc_note(run_id: str) -> str:
+    """The end of the line of one of round 7's four runs (round 15's question 1,
+    site-round-7-runs-point-to-r3s-scores): its scores are history, and the record is R3's, on R3's
+    run of the same boxes, features and stand size (the same run id ending _r14), which the build
+    stops without."""
+    r3 = f"{run_id}_r14"
+    if r3 not in {s["run_id"] for s in RUNS if s.get("r3")}:
+        raise SystemExit(f"{run_id}: its line names R3's run {r3}, which is not among R3's runs")
+    return S1DESC_NOTE.format(r3=r3)
+
+
 def versions(run_id: str, area: str, r3: bool, cfg, stands_fc: dict) -> dict:
     """Where a run stands among the site's versions, and how its angles and ndvi_mean are to be
     read: an R3 run is a current result; any other an earlier version, with its line
@@ -1513,10 +1530,7 @@ def main() -> None:
                 "note": (SANJAY_NOTE + " " if sanjay else "") + "SNIC and the merge saw kept "
                         "land only (trees or scrub): the rest of the "
                         + ("rectangle" if sanjay else "boxes") + " is in no stand."
-                        + (" Its radar comes from the descending Sentinel-1 orbit. Its field-check "
-                           "scores here are round 7's, kept as history: the record is the scores on "
-                           "its _r9 re-run, which this site does not show."
-                           if run_id.endswith("_s1desc") else "")
+                        + (s1desc_note(run_id) if run_id.endswith("_s1desc") else "")
                         + (MEANS_NOTE.format(run=run_id) if stand_means(run_id, vec) else ""),
                 "files": files})
         if r3:

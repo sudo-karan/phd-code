@@ -715,3 +715,39 @@ def test_what_changed_says_k_was_chosen_before_r3s_field_scores():
     assert not any("before any field score" in t for t in texts)
     page = (SCRIPTS.parent / "ui" / "explorer.html").read_text()
     assert "before any field score" not in page
+
+
+# ---------------------------------------------------------------- round 16
+
+
+def test_round_7s_line_points_to_r3s_run_of_the_same_boxes(builder, monkeypatch):
+    """Round 15's question 1 (b), site-round-7-runs-point-to-r3s-scores: a round-7 run's line says
+    its scores are round 7's, kept as history; that the record is R3's scores, on R3's run of the
+    same boxes, features and stand size, by name; that the _r9 scores are not on the site; and that
+    the chance test was not run on these stands. The build stops if that R3 run is not R3's."""
+    run = "odisha_v120_3ha_squares_angul_keptland_s1desc"
+    monkeypatch.setattr(builder, "RUNS", [{"run_id": f"{run}_r14", "r3": True}])
+    note = builder.s1desc_note(run)
+    assert "Its field-check scores here are round 7's, kept as history." in note
+    assert (f"The record is R3's scores, on R3's run of the same boxes, features and stand size, "
+            f"{run}_r14.") in note
+    assert "The _r9 scores, the record from before the corrections, are not on this site." in note
+    assert "The chance test was not run on these stands, so their scores are numbers only." in note
+    assert "does not show" not in note
+    monkeypatch.setattr(builder, "RUNS", [{"run_id": f"{run}_r14"}])
+    with pytest.raises(SystemExit, match="not among R3's runs"):
+        builder.s1desc_note(run)
+
+
+def test_round_7s_field_check_points_to_r3s_run_and_says_the_r9_scores_are_not_on_the_site():
+    """Round 15's question 1 (b): the score card of round 7's four runs."""
+    page = (SCRIPTS.parent / "ui" / "explorer.html").read_text()
+    assert "which this site does not show" not in page
+    assert "the record is the scores on their re-runs" not in page
+    card = page[page.index("These are round 7's scores"):]
+    card = card[:card.index("</p>")]
+    assert "kept as history" in card
+    assert ('The record is R3\'s scores, on R3\'s run of the same boxes, features and stand size, '
+            '${runLink(run().run_id + "_r14")}.') in card
+    assert "The _r9 scores, the record from before the corrections, are not on this site." in card
+    assert "The chance test was not run on these stands, so these scores are numbers only" in card

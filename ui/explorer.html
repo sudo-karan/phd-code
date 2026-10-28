@@ -1489,14 +1489,22 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     const head = `<tr><th></th>${tests.map(t => `<th title="${esc(TEST_SHORT[t] || t)}">${esc(TEST_COL[t] || t)}</th>`).join("")}</tr>`;
     const body = analyses.map(a => `<tr><th class="row">${esc(ANALYSIS_WORDS[a] || a)}</th>${tests.map(t => `<td>${cell(a, t)}</td>`).join("")}</tr>`).join("");
     return `<div class="card"><h3>How well the stands match the plots${esc(n)}</h3>` +
-      // Round 7's runs (15 Oct): their scores are kept as history; the record is the scores on their
-      // re-runs, which ui_data does not hold (Jaskaran, 18 Oct 2026).
+      // Round 7's runs (15 Oct): their scores are kept as history. The record is R3's scores, on R3's
+      // run of the same boxes, features and stand size, the same run id ending _r14; the _r9 scores,
+      // the record from before the corrections, are not on the site (round 15's question 1,
+      // site-round-7-runs-point-to-r3s-scores).
       (/_keptland_s1desc$/.test(run().run_id || "")
-        ? `<p class="small">These are the scores of the 15 Oct runs, kept as history: the record is the scores on their re-runs, which this site does not show, and the declared chance test was run on those, not on these stands. So these are numbers only: they can't be called better or worse than chance.${decl}</p>`
+        ? `<p class="small">These are round 7's scores, of the 15 Oct runs, kept as history. The record is R3's scores, on R3's run of the same boxes, features and stand size, ${runLink(run().run_id + "_r14")}. The _r9 scores, the record from before the corrections, are not on this site. The chance test was not run on these stands, so these scores are numbers only: they can't be called better or worse than chance.${decl}</p>`
         : `<p class="small">The chance test hasn't been run on these stands yet, so these are numbers only: they can't be called better or worse than chance.${decl}</p>`) +
       `<ul class="tests">${items}</ul>` +
       `<details><summary>The checks, side by side</summary><div class="scroll"><table class="xtab scores">${head}${body}</table></div></details>` +
       `<details><summary>About the scores</summary><p class="small">Four of the five scores are the adjusted Rand index: 0 means no better than grouping the plots at random, 1 means perfect agreement. The third is the share of same-stand pairs that are the same field type; the fifth is how much more often far-apart plots that are alike share a stand type than far-apart plots that differ.</p></details></div>`;
+  }
+
+  // A run named by its id, with a button that opens it where the index holds it.
+  function runLink(id) {
+    const known = ((state.index || {}).runs || []).some(x => x.run_id === id);
+    return `<code>${esc(id)}</code>` + (known ? ` (<button type="button" class="linkish" data-open-run="${esc(id)}">open it</button>)` : "");
   }
 
   function chanceCard(rows) {
