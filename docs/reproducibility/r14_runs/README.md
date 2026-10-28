@@ -120,13 +120,19 @@ of its three passes (`<run>_manifest_<kind>.json`: features, segmentation, k_elb
 (`<run>_input_images_features.json`), and the k elbow's five files and run record
 (`<run>_k_elbow.csv`, `_k_elbow_stand_table.csv`, `_k_elbow_fit_rows.csv`, `_k_elbow_types.csv`,
 `_k_elbow_preprocessing.json`, `_k_elbow_run.json`). Beside them: `cost_<run>.json` and
-`cost_<run>_run.json`. So far (28 Oct) the ten of part 1: Sanjay Van and the 3 ha boxes, both
-arms. A config the batch does not finish is copied into `first_half/unfinished/` instead, which the
-elbow report does not read.
+`cost_<run>_run.json`. The eighteen (28 Oct): the ten of part 1 (Sanjay Van and the 3 ha boxes,
+both arms) and the eight of part 2 (the 10 ha boxes, both arms). The hand-crafted Koraput 10 ha
+box needed the wrapper's second pass (its first segmentation pass hung and was stopped by hand; the
+round 14 record, Done, the elbow report, part 2): 15 files, its first features pass's manifest, log
+and image list as `_manifest_features_1.json`, `_log_features_1.txt` and
+`_input_images_features_1.json`. A config the batch does not finish is copied into
+`first_half/unfinished/` instead, which the elbow report does not read; the tile, dropped from R3,
+was stopped before its run folder, so it has no record.
 
 **The elbow report** (Task 6), in `odisha_script/keptland_scores/`: part 1,
 `r14_elbow_part1_report.md`, `r14_elbow_part1.csv`, six figures in `r14_elbow_part1/`, and
-`r14_elbow_part1_run.json`.
+`r14_elbow_part1_run.json`; part 2, over the eighteen, `r14_elbow_part2_report.md`,
+`r14_elbow_part2.csv`, eleven figures in `r14_elbow_part2/`, and `r14_elbow_part2_run.json`.
 
 **Off git:** none so far (no file over 5 MB; the largest, AlphaEarth Koraput's
 `_k_elbow_stand_table.csv`, 2.2 MB). A file over 5 MB goes to `outputs/round14/results/first_half/`,
