@@ -1,0 +1,563 @@
+{
+ "what": "The last build of ui_data/ by scripts/build_ui_early_data.py: which code built it, from which inputs (round 13's question 28; register spec-ui-data-build-record-in-docs-in-a-later-round).",
+ "command": "python scripts/build_ui_early_data.py",
+ "date": "2026-10-28T22:21:34+05:30",
+ "git": {
+  "commit": "406e2e67e663441bacd057d19c935f61f61507ae",
+  "dirty": false,
+  "modified": [],
+  "modified_truncated": false,
+  "untracked_code": [],
+  "untracked_code_truncated": false,
+  "untracked": [
+   ".claude/"
+  ],
+  "untracked_truncated": false,
+  "error": null
+ },
+ "environment": {
+  "python": "3.13.14",
+  "earthengine_api": "1.7.35",
+  "pip_freeze_sha256": "31aca07855862d34db7bcb31a6b60769d1785e80606cdaa23093cdf2a60bcc21",
+  "pip_freeze_packages": 232,
+  "pip_freeze_left_out": [
+   "-e git+https://github.com/sudo-karan/phd-code.git@406e2e67e663441bacd057d19c935f61f61507ae#egg=fmu"
+  ],
+  "error": null
+ },
+ "runs": {
+  "current": [
+   "odisha_alphaearth_10ha_squares_angul_keptland_r14",
+   "odisha_alphaearth_10ha_squares_dhenkanal_keptland_r14",
+   "odisha_alphaearth_10ha_squares_kendujhar_keptland_r14",
+   "odisha_alphaearth_10ha_squares_koraput_keptland_r14",
+   "odisha_alphaearth_3ha_squares_angul_keptland_r14",
+   "odisha_alphaearth_3ha_squares_dhenkanal_keptland_r14",
+   "odisha_alphaearth_3ha_squares_kendujhar_keptland_r14",
+   "odisha_alphaearth_3ha_squares_koraput_keptland_r14",
+   "odisha_v120_10ha_squares_angul_keptland_s1desc_r14",
+   "odisha_v120_10ha_squares_dhenkanal_keptland_s1desc_r14",
+   "odisha_v120_10ha_squares_kendujhar_keptland_s1desc_r14",
+   "odisha_v120_10ha_squares_koraput_keptland_s1desc_r14",
+   "odisha_v120_3ha_squares_angul_keptland_s1desc_r14",
+   "odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r14",
+   "odisha_v120_3ha_squares_kendujhar_keptland_s1desc_r14",
+   "odisha_v120_3ha_squares_koraput_keptland_s1desc_r14",
+   "sanjay_van_alphaearth_keptland_r14",
+   "sanjay_van_baseline_keptland_r14"
+  ],
+  "earlier": [
+   "odisha_alphaearth_angul_repro",
+   "odisha_alphaearth_dhenkanal_repro",
+   "odisha_alphaearth_kendujhar_repro",
+   "odisha_alphaearth_koraput_repro",
+   "odisha_v120_3ha_angul_repro",
+   "odisha_v120_3ha_dhenkanal_repro",
+   "odisha_v120_3ha_kendujhar_repro",
+   "odisha_v120_3ha_koraput_repro",
+   "odisha_v120_3ha_squares_angul",
+   "odisha_v120_3ha_squares_angul_keptland",
+   "odisha_v120_3ha_squares_angul_keptland_s1desc",
+   "odisha_v120_3ha_squares_dhenkanal",
+   "odisha_v120_3ha_squares_dhenkanal_keptland",
+   "odisha_v120_3ha_squares_dhenkanal_keptland_s1desc",
+   "odisha_v120_3ha_squares_kendujhar",
+   "odisha_v120_3ha_squares_kendujhar_keptland",
+   "odisha_v120_3ha_squares_kendujhar_keptland_s1desc",
+   "odisha_v120_3ha_squares_koraput",
+   "odisha_v120_3ha_squares_koraput_keptland",
+   "odisha_v120_3ha_squares_koraput_keptland_s1desc",
+   "odisha_v120_handcrafted_angul_repro",
+   "odisha_v120_handcrafted_dhenkanal_repro",
+   "odisha_v120_handcrafted_kendujhar_repro",
+   "odisha_v120_handcrafted_koraput_repro",
+   "sanjay_van_alphaearth_keptland",
+   "sanjay_van_alphaearth_repro",
+   "sanjay_van_baseline_keptland",
+   "sanjay_van_baseline_repro"
+  ]
+ },
+ "r3_display_rasters": {
+  "fetched_by": "scripts/fetch_ui_r3_layers.py",
+  "areas": {
+   "angul": {
+    "runs_served": [
+     "odisha_alphaearth_10ha_squares_angul_keptland_r14",
+     "odisha_alphaearth_3ha_squares_angul_keptland_r14",
+     "odisha_v120_10ha_squares_angul_keptland_s1desc_r14",
+     "odisha_v120_3ha_squares_angul_keptland_s1desc_r14"
+    ],
+    "keys": {
+     "masking": "s073c13df8c",
+     "data_load": "s9249226467"
+    },
+    "assets_opened": [
+     "projects/replicating-paper/assets/fmu/odisha_alphaearth_10ha_squares_angul_keptland_r14/data_load/s2_composite__s9249226467",
+     "projects/replicating-paper/assets/fmu/odisha_alphaearth_10ha_squares_angul_keptland_r14/masking/mask_provenance__s073c13df8c"
+    ],
+    "git": {
+     "commit": "09e355583f9f76410bc308ed03fffd0fc25c787a",
+     "dirty": true,
+     "modified": [],
+     "modified_truncated": false,
+     "untracked_code": [
+      "scripts/fetch_ui_r3_layers.py"
+     ],
+     "untracked_code_truncated": false,
+     "untracked": [
+      ".claude/",
+      "scripts/fetch_ui_r3_layers.py",
+      "tests/test_fetch_ui_r3_layers.py"
+     ],
+     "untracked_truncated": false,
+     "error": null
+    }
+   },
+   "dhenkanal": {
+    "runs_served": [
+     "odisha_alphaearth_10ha_squares_dhenkanal_keptland_r14",
+     "odisha_alphaearth_3ha_squares_dhenkanal_keptland_r14",
+     "odisha_v120_10ha_squares_dhenkanal_keptland_s1desc_r14",
+     "odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r14"
+    ],
+    "keys": {
+     "masking": "sdf896b0967",
+     "data_load": "s2884930563"
+    },
+    "assets_opened": [
+     "projects/replicating-paper/assets/fmu/odisha_alphaearth_10ha_squares_dhenkanal_keptland_r14/data_load/s2_composite__s2884930563",
+     "projects/replicating-paper/assets/fmu/odisha_alphaearth_10ha_squares_dhenkanal_keptland_r14/masking/mask_provenance__sdf896b0967"
+    ],
+    "git": {
+     "commit": "09e355583f9f76410bc308ed03fffd0fc25c787a",
+     "dirty": true,
+     "modified": [],
+     "modified_truncated": false,
+     "untracked_code": [
+      "scripts/fetch_ui_r3_layers.py"
+     ],
+     "untracked_code_truncated": false,
+     "untracked": [
+      ".claude/",
+      "scripts/fetch_ui_r3_layers.py",
+      "tests/test_fetch_ui_r3_layers.py"
+     ],
+     "untracked_truncated": false,
+     "error": null
+    }
+   },
+   "kendujhar": {
+    "runs_served": [
+     "odisha_alphaearth_10ha_squares_kendujhar_keptland_r14",
+     "odisha_alphaearth_3ha_squares_kendujhar_keptland_r14",
+     "odisha_v120_10ha_squares_kendujhar_keptland_s1desc_r14",
+     "odisha_v120_3ha_squares_kendujhar_keptland_s1desc_r14"
+    ],
+    "keys": {
+     "masking": "s93740fdfe0",
+     "data_load": "s6d9440ff80"
+    },
+    "assets_opened": [
+     "projects/replicating-paper/assets/fmu/odisha_alphaearth_10ha_squares_kendujhar_keptland_r14/data_load/s2_composite__s6d9440ff80",
+     "projects/replicating-paper/assets/fmu/odisha_alphaearth_10ha_squares_kendujhar_keptland_r14/masking/mask_provenance__s93740fdfe0"
+    ],
+    "git": {
+     "commit": "09e355583f9f76410bc308ed03fffd0fc25c787a",
+     "dirty": true,
+     "modified": [],
+     "modified_truncated": false,
+     "untracked_code": [
+      "scripts/fetch_ui_r3_layers.py"
+     ],
+     "untracked_code_truncated": false,
+     "untracked": [
+      ".claude/",
+      "scripts/fetch_ui_r3_layers.py",
+      "tests/test_fetch_ui_r3_layers.py"
+     ],
+     "untracked_truncated": false,
+     "error": null
+    }
+   },
+   "koraput": {
+    "runs_served": [
+     "odisha_alphaearth_10ha_squares_koraput_keptland_r14",
+     "odisha_alphaearth_3ha_squares_koraput_keptland_r14",
+     "odisha_v120_10ha_squares_koraput_keptland_s1desc_r14",
+     "odisha_v120_3ha_squares_koraput_keptland_s1desc_r14"
+    ],
+    "keys": {
+     "masking": "scd1114f154",
+     "data_load": "sf699e6edf9"
+    },
+    "assets_opened": [
+     "projects/replicating-paper/assets/fmu/odisha_alphaearth_10ha_squares_koraput_keptland_r14/data_load/s2_composite__sf699e6edf9",
+     "projects/replicating-paper/assets/fmu/odisha_alphaearth_10ha_squares_koraput_keptland_r14/masking/mask_provenance__scd1114f154"
+    ],
+    "git": {
+     "commit": "09e355583f9f76410bc308ed03fffd0fc25c787a",
+     "dirty": true,
+     "modified": [],
+     "modified_truncated": false,
+     "untracked_code": [
+      "scripts/fetch_ui_r3_layers.py"
+     ],
+     "untracked_code_truncated": false,
+     "untracked": [
+      ".claude/",
+      "scripts/fetch_ui_r3_layers.py",
+      "tests/test_fetch_ui_r3_layers.py"
+     ],
+     "untracked_truncated": false,
+     "error": null
+    }
+   },
+   "sanjay_van": {
+    "runs_served": [
+     "sanjay_van_alphaearth_keptland_r14",
+     "sanjay_van_baseline_keptland_r14"
+    ],
+    "keys": {
+     "masking": "s88c273ce5a",
+     "data_load": "s8074a1b895"
+    },
+    "assets_opened": [
+     "projects/replicating-paper/assets/fmu/sanjay_van_alphaearth_keptland_r14/data_load/s2_composite__s8074a1b895",
+     "projects/replicating-paper/assets/fmu/sanjay_van_alphaearth_keptland_r14/masking/mask_provenance__s88c273ce5a"
+    ],
+    "pixel_layers": [
+     {
+      "run_id": "sanjay_van_alphaearth_keptland_r14",
+      "bands": [
+       "A00",
+       "A01",
+       "A02",
+       "A03",
+       "A04",
+       "A05",
+       "A06",
+       "A07",
+       "A08",
+       "A09",
+       "A10",
+       "A11",
+       "A12",
+       "A13",
+       "A14",
+       "A15",
+       "A16",
+       "A17",
+       "A18",
+       "A19",
+       "A20",
+       "A21",
+       "A22",
+       "A23",
+       "A24",
+       "A25",
+       "A26",
+       "A27",
+       "A28",
+       "A29",
+       "A30",
+       "A31",
+       "A32",
+       "A33",
+       "A34",
+       "A35",
+       "A36",
+       "A37",
+       "A38",
+       "A39",
+       "A40",
+       "A41",
+       "A42",
+       "A43",
+       "A44",
+       "A45",
+       "A46",
+       "A47",
+       "A48",
+       "A49",
+       "A50",
+       "A51",
+       "A52",
+       "A53",
+       "A54",
+       "A55",
+       "A56",
+       "A57",
+       "A58",
+       "A59",
+       "A60",
+       "A61",
+       "A62",
+       "A63"
+      ],
+      "files": [
+       "embedding_part01.tif"
+      ],
+      "assets_opened": [
+       "projects/replicating-paper/assets/fmu/sanjay_van_alphaearth_keptland_r14/features_embedding/embedding_features__s46fb06805b"
+      ]
+     },
+     {
+      "run_id": "sanjay_van_baseline_keptland_r14",
+      "bands": [
+       "canopy_height",
+       "ndvi_amplitude_annual",
+       "vv_minus_vh_median"
+      ],
+      "files": [
+       "features_part01.tif"
+      ],
+      "assets_opened": [
+       "projects/replicating-paper/assets/fmu/sanjay_van_baseline_keptland_r14/features_optical/optical_features__sc0fdaaeaaa",
+       "projects/replicating-paper/assets/fmu/sanjay_van_baseline_keptland_r14/features_radar/radar_features__s324f28bb94",
+       "projects/replicating-paper/assets/fmu/sanjay_van_baseline_keptland_r14/features_structure/structure_features__sd1ac1f52b0"
+      ]
+     }
+    ],
+    "git": {
+     "commit": "09e355583f9f76410bc308ed03fffd0fc25c787a",
+     "dirty": true,
+     "modified": [],
+     "modified_truncated": false,
+     "untracked_code": [
+      "scripts/fetch_ui_r3_layers.py"
+     ],
+     "untracked_code_truncated": false,
+     "untracked": [
+      ".claude/",
+      "scripts/fetch_ui_r3_layers.py",
+      "tests/test_fetch_ui_r3_layers.py"
+     ],
+     "untracked_truncated": false,
+     "error": null
+    }
+   }
+  },
+  "files_off_git": [
+   {
+    "file": "r14_areas/angul/part01_part_1_mask_provenance.tif",
+    "bytes": 1678,
+    "sha256": "725d5bde18ef751254d3b0ec5fe0708dd41be24c6068bff45d997d04cb824d2c"
+   },
+   {
+    "file": "r14_areas/angul/part01_part_1_true_colour.tif",
+    "bytes": 67582,
+    "sha256": "5d6e1630cfe8afb2896c56d01a5e4b466fd7f614973a0566ebc1c4fb4eb6466f"
+   },
+   {
+    "file": "r14_areas/angul/part02_part_2_mask_provenance.tif",
+    "bytes": 2786,
+    "sha256": "2a51aecf2ebe743665cf5c92ca4c801ec158f79435e43a4a159371346d32e957"
+   },
+   {
+    "file": "r14_areas/angul/part02_part_2_true_colour.tif",
+    "bytes": 118880,
+    "sha256": "9a37b4b4c581a621f0304e9d61e10444d11661178ef3291ac42db1c86b5bbf6c"
+   },
+   {
+    "file": "r14_areas/angul/part03_part_3_mask_provenance.tif",
+    "bytes": 1890,
+    "sha256": "7ca6a42fa1cde1a496f4e82053680f4996cbcd3c72ee2586af54d6169010300b"
+   },
+   {
+    "file": "r14_areas/angul/part03_part_3_true_colour.tif",
+    "bytes": 40352,
+    "sha256": "245c7d717ac5d431610333686a3242bbd5170d5cd33780161f14ee4e5a08e171"
+   },
+   {
+    "file": "r14_areas/angul/part04_part_4_mask_provenance.tif",
+    "bytes": 1838,
+    "sha256": "f5bca709a2dc4700067b646690195dddac5c22130a0c2c2dd5a2063f6b026180"
+   },
+   {
+    "file": "r14_areas/angul/part04_part_4_true_colour.tif",
+    "bytes": 44716,
+    "sha256": "f78b5397e115168698ee049b2c2665ef65ee166e3c59ad7a52dfc0c0c2c33285"
+   },
+   {
+    "file": "r14_areas/dhenkanal/part01_part_1_mask_provenance.tif",
+    "bytes": 3688,
+    "sha256": "60094b551a13a395da513516f0474fe63c3450f7f1b137ea0e7aa2c904c5cac9"
+   },
+   {
+    "file": "r14_areas/dhenkanal/part01_part_1_true_colour.tif",
+    "bytes": 159222,
+    "sha256": "03595f987f2a4e5b3c0a81faf0e97d24f286497a6d486ac91f328550c70ae29e"
+   },
+   {
+    "file": "r14_areas/dhenkanal/part02_part_2_mask_provenance.tif",
+    "bytes": 1834,
+    "sha256": "2ea33ce6c6daa84f15fb21b1cf791bd66581c30969ffc5784bdd41301d145669"
+   },
+   {
+    "file": "r14_areas/dhenkanal/part02_part_2_true_colour.tif",
+    "bytes": 44016,
+    "sha256": "2ef2f47595d8e3cfcef2a5ba29cfe963acb10bb1d5c991604dddacbf75ec833a"
+   },
+   {
+    "file": "r14_areas/dhenkanal/part03_part_3_mask_provenance.tif",
+    "bytes": 2162,
+    "sha256": "762136ffe326ee633322ac720614f329536b4b3fc6a0b025e16d3deb12e5084a"
+   },
+   {
+    "file": "r14_areas/dhenkanal/part03_part_3_true_colour.tif",
+    "bytes": 84664,
+    "sha256": "d7f9b961fe214fe7b1f1fd597e17820dc5371cef8970005755440e6bdc95a722"
+   },
+   {
+    "file": "r14_areas/dhenkanal/part04_part_4_mask_provenance.tif",
+    "bytes": 2300,
+    "sha256": "a6b44e810b3cfe80ba150822328cb31a0d4749de868b78e8c527562a317a7172"
+   },
+   {
+    "file": "r14_areas/dhenkanal/part04_part_4_true_colour.tif",
+    "bytes": 116740,
+    "sha256": "e080cab1f4ca131dff958fce8ffb93f12de3df69e8c6b0149cff906320e389a9"
+   },
+   {
+    "file": "r14_areas/dhenkanal/part05_part_5_mask_provenance.tif",
+    "bytes": 2250,
+    "sha256": "eee3c36d938529336de89579706f0e312384371d93605293b10d217c109ff80a"
+   },
+   {
+    "file": "r14_areas/dhenkanal/part05_part_5_true_colour.tif",
+    "bytes": 72904,
+    "sha256": "fbd2ca8874b914212d5d98caa5fda51f4fa832cc62f12361d7b3ff7dd89648a8"
+   },
+   {
+    "file": "r14_areas/dhenkanal/part06_part_6_mask_provenance.tif",
+    "bytes": 1572,
+    "sha256": "ccfd63a62f4fac9407da4dcd6f73c37e4cd0feb8f750b581926138a93ee9115e"
+   },
+   {
+    "file": "r14_areas/dhenkanal/part06_part_6_true_colour.tif",
+    "bytes": 46328,
+    "sha256": "9b819d0bba38e0305c63af289e94d5e728b32dc73aa72349bd1fda6d4b070481"
+   },
+   {
+    "file": "r14_areas/dhenkanal/part07_part_7_mask_provenance.tif",
+    "bytes": 1830,
+    "sha256": "8e18b9a7ee07f90b9315fcdb3610e94416c4cd33d4026afbe03a79248d78e978"
+   },
+   {
+    "file": "r14_areas/dhenkanal/part07_part_7_true_colour.tif",
+    "bytes": 41614,
+    "sha256": "502fd493e7a34198d19641dc0ea544eef1e2ad79c29678dad8c5a4010817c1d3"
+   },
+   {
+    "file": "r14_areas/dhenkanal/part08_part_8_mask_provenance.tif",
+    "bytes": 2322,
+    "sha256": "6953bdf126c2620cc9fe59c4dae423a140bedd4122bebd954ecfb03b37a70adf"
+   },
+   {
+    "file": "r14_areas/dhenkanal/part08_part_8_true_colour.tif",
+    "bytes": 66362,
+    "sha256": "ba9ad351f27a3f272f43f67cbfcea885d2cfff0857f6cda4dfef2a7d14d9b56c"
+   },
+   {
+    "file": "r14_areas/kendujhar/part01_part_1_mask_provenance.tif",
+    "bytes": 11036,
+    "sha256": "e4ec186ff58c9eafa08b5acd28a996d4a78f58a3a48e817a567c08228b9aacf7"
+   },
+   {
+    "file": "r14_areas/kendujhar/part01_part_1_true_colour.tif",
+    "bytes": 614020,
+    "sha256": "fe7bd223e8bfbdda67a006bd3b56443d698aaa3e7db3276f1d1d34da424d7259"
+   },
+   {
+    "file": "r14_areas/koraput/part01_part_1_mask_provenance.tif",
+    "bytes": 2196,
+    "sha256": "9dcd9f62b90327763b2ab3a1ad8282fd3921133bd68efa7541cf09627041ba49"
+   },
+   {
+    "file": "r14_areas/koraput/part01_part_1_true_colour.tif",
+    "bytes": 62038,
+    "sha256": "8c24fc95157b9c32c456f4ae09fdf5b1b63be7eae51d20fefb201f1bbcbd19f0"
+   },
+   {
+    "file": "r14_areas/koraput/part02_part_2_mask_provenance.tif",
+    "bytes": 4796,
+    "sha256": "3efff934863912345d980a5e183e4acd0819278bbf39afdf1af643b3179695f2"
+   },
+   {
+    "file": "r14_areas/koraput/part02_part_2_true_colour.tif",
+    "bytes": 306302,
+    "sha256": "b1ad9363b54a1d78dccf5a70c708cadb118bb08b7eea4e193e057f90d9b9aac9"
+   },
+   {
+    "file": "r14_areas/koraput/part03_part_3_mask_provenance.tif",
+    "bytes": 1656,
+    "sha256": "0b491878fea67edefee275f05dc4deae72d1ba8918d513947cd6ed724c22904e"
+   },
+   {
+    "file": "r14_areas/koraput/part03_part_3_true_colour.tif",
+    "bytes": 44600,
+    "sha256": "72c0178643ffe769057b0abc6434b94bd9304b8e4dc07f6610b749483a7a87f3"
+   },
+   {
+    "file": "r14_areas/koraput/part04_part_4_mask_provenance.tif",
+    "bytes": 1234,
+    "sha256": "675ac66dd125f79befa577dfe14cc704508b9ea7b64c6b8cb93775f84aff63fb"
+   },
+   {
+    "file": "r14_areas/koraput/part04_part_4_true_colour.tif",
+    "bytes": 23830,
+    "sha256": "93640f2f6ffa2755cc673932b0a31870d5043246cda6eecd007c1ad6e488a2ef"
+   },
+   {
+    "file": "r14_areas/koraput/part05_part_5_mask_provenance.tif",
+    "bytes": 8476,
+    "sha256": "c91ceef110f41fb2323c59769e1ecad83959ab9090d9071fc08819e7128d2f08"
+   },
+   {
+    "file": "r14_areas/koraput/part05_part_5_true_colour.tif",
+    "bytes": 630792,
+    "sha256": "081c33af9e447e349c8becfd55e2085b69b92d80852d189236b4bc8f40b8a58f"
+   },
+   {
+    "file": "r14_areas/koraput/part06_part_6_mask_provenance.tif",
+    "bytes": 1388,
+    "sha256": "82b576f4940d45ed351b5616fe6b67f159dd36f8826d7f745ac10d9f31c1d5cd"
+   },
+   {
+    "file": "r14_areas/koraput/part06_part_6_true_colour.tif",
+    "bytes": 27802,
+    "sha256": "7d8a5c35802747c0b812e1f4d2ca9840307208d215e4a9216f55df2f620aecb3"
+   },
+   {
+    "file": "r14_areas/koraput/part07_part_7_mask_provenance.tif",
+    "bytes": 18766,
+    "sha256": "1ec5b6431bddfdd8e3f5021eca8d4ef52b86b0538d8a2d7168aabb77398fa2f9"
+   },
+   {
+    "file": "r14_areas/koraput/part07_part_7_true_colour.tif",
+    "bytes": 1176478,
+    "sha256": "048eff4618780d2d7dadb2d75a7dafbba9031f42ac58c67a2ecea55cea100bab"
+   },
+   {
+    "file": "r14_areas/sanjay_van/part01_sanjay_van_mask_provenance.tif",
+    "bytes": 15080,
+    "sha256": "c6e3839e943e5d922709b7b44933103a9a7e83f5703e77d3d117dc5a46a827b4"
+   },
+   {
+    "file": "r14_areas/sanjay_van/part01_sanjay_van_true_colour.tif",
+    "bytes": 635894,
+    "sha256": "24d3f71fdc5b500af50ab7efa3f75c193fc6ebb89980109829323de70a6bb432"
+   },
+   {
+    "file": "sanjay_van_alphaearth_keptland_r14/embedding_part01.tif",
+    "bytes": 29009870,
+    "sha256": "89c927a6448ec4abfdf914e484436f0736aacabdd674c13134e8ba8f12c15fa4"
+   },
+   {
+    "file": "sanjay_van_baseline_keptland_r14/features_part01.tif",
+    "bytes": 803439,
+    "sha256": "2d56268f0f7d088daeb204c321d60d2b42de994ccd3d103ebcebdff7f7494c29"
+   }
+  ]
+ }
+}

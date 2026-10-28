@@ -304,8 +304,9 @@ def test_a_box_kept_land_run_is_added_on_its_box_runs_area(builder, tmp_path, mo
 def test_the_committed_ui_data_shows_the_box_kept_land_runs_plots_without_a_stand():
     data = SCRIPTS.parent / "ui_data"
     index = json.loads((data / "index.json").read_text())
-    runs = [r for r in index["runs"] if r.get("kept_land") and r["roi"] == "boxes"]
-    # Round 6's four, and round 7's four on the descending radar orbit.
+    runs = [r for r in index["runs"] if r.get("kept_land") and r["roi"] == "boxes"
+            and r["group"] == "earlier"]
+    # Round 6's four, and round 7's four on the descending radar orbit (R3's own are below).
     assert sorted(r["run_id"] for r in runs) == sorted(
         f"odisha_v120_3ha_squares_{d}_keptland{s}" for d in ("angul", "dhenkanal", "kendujhar", "koraput")
         for s in ("", "_s1desc"))
@@ -438,3 +439,279 @@ def test_every_score_row_names_runs_in_the_index_and_no_run_has_a_row_twice():
     for d in ("angul", "dhenkanal", "kendujhar", "koraput"):
         assert index[f"odisha_v120_3ha_squares_{d}_keptland_s1desc"]["fes_declared"] is True
         assert index[f"odisha_v120_3ha_squares_{d}_keptland"]["fes_declared"] is False
+
+
+# ---------------------------------------------------------------- R3 on the site (round 15)
+
+
+DATA = SCRIPTS.parent / "ui_data"
+R3_RECORDS = SCRIPTS.parent / "docs" / "reproducibility" / "r14_runs" / "second_half"
+
+
+def _index() -> dict:
+    return json.loads((DATA / "index.json").read_text())
+
+
+def test_the_site_holds_r3s_eighteen_runs_as_current_and_the_earlier_28_as_history():
+    index = _index()
+    current = [r for r in index["runs"] if r["group"] == "current"]
+    earlier = [r for r in index["runs"] if r["group"] == "earlier"]
+    assert sorted(r["run_id"] for r in current) == sorted(
+        p.name.removesuffix("_manifest_export.json")
+        for p in R3_RECORDS.glob("*_r14_manifest_export.json"))
+    assert len(current) == 18 and len(earlier) == 28
+    # By area, arm and stand size, each choice has one run.
+    keys = [(r["area"], r["arm"], r["stand_ceiling_ha"]) for r in current]
+    assert len(set(keys)) == 18
+    assert {r["area"] for r in current} == {"Sanjay Van", "Angul", "Dhenkanal", "Kendujhar",
+                                            "Koraput"}
+    for r in earlier:
+        # One line: what the run is, and that it is from before the corrections (question 23).
+        assert r["history"].endswith(" Its results are from before the corrections of 19 to 28 "
+                                     "Oct 2026.")
+        assert r["history"].count(".") == 2 or "round 7's" in r["history"]
+    assert [x["path"] for x in index["history_links"]] == [
+        "docs/handoff/2026-10-20-round13.md", "docs/handoff/2026-10-26-round14.md"]
+    for path in [x["path"] for x in index["history_links"]] + [index["what_changed"]["review"]]:
+        assert (SCRIPTS.parent / path).is_file(), path
+    for group in index["what_changed"]["groups"]:
+        assert (SCRIPTS.parent / group["record"]).is_file()
+        # One plain sentence each, naming the finding or the live check it comes from.
+        assert all(item["ref"] and item["text"].count(". ") == 0 for item in group["items"])
+
+
+def test_each_r3_run_gives_k_with_jaskarans_reason_from_the_register():
+    import yaml
+
+    register = {d["id"]: d for d in yaml.safe_load(
+        (SCRIPTS.parent / "docs" / "decisions.yaml").read_text())["decisions"]}
+    for r in [r for r in _index()["runs"] if r["group"] == "current"]:
+        kr = r["k_reason"]
+        assert kr["k"] == r["k"] == r["facts"]["k"] == 5
+        entry = register[kr["register"]]
+        assert kr["reason"] in " ".join(entry["rationale"].split())
+        assert (SCRIPTS.parent / kr["report"]).is_file()
+        if r["area"] == "Sanjay Van":
+            assert kr["reason"] == "the knee is 5 in both arms."
+        else:
+            size = "10 ha" if r["stand_ceiling_ha"] == 10.0 else "3 ha"
+            assert kr["register"].endswith("part-2-of-the-elbow-report" if size == "10 ha"
+                                           else "part-1-of-the-elbow-report")
+
+
+def test_r3_score_rows_are_their_sets_files_with_the_chance_test_and_c1():
+    rows = [r for r in json.loads((DATA / "fes_comparison.json").read_text())["rows"]
+            if r.get("set")]
+    ids = {r["run_id"]: r for r in _index()["runs"]}
+    stat = {"drawing_all_plots": "delin_all", "drawing_multi_plot": "delin_multi",
+            "pair_precision": "prec", "labelling_district": "lab_wmean", "far_apart": "far_gap"}
+    sets = sorted({r["set"] for r in rows})
+    assert sets == ["keptland_alphaearth_10ha_r14", "keptland_alphaearth_r14",
+                    "keptland_s1desc_10ha_r14", "keptland_s1desc_r14"]
+    scores_dir = SCRIPTS.parent / "odisha_script" / "keptland_scores"
+    for stem in sets:
+        scores = {a["analysis"]: a for a in json.loads(
+            (scores_dir / f"{stem}_scores.json").read_text())["analyses"]}
+        chance = json.loads((scores_dir / f"{stem}_chance.json").read_text())
+        mine = [r for r in rows if r["set"] == stem]
+        assert len(mine) == 5 * len(scores) + 1
+        for r in mine:
+            assert r["run_ids"] == sorted(chance["runs"])
+            assert all(ids[x]["group"] == "current" for x in r["run_ids"])
+            if r["analysis"] == "C1":
+                c1 = chance["checks"]["C1"]
+                assert (r["score"], r["chance_percentile"], r["p"], r["p_holm"]) == (
+                    c1["observed"], c1["pctile"], c1["p"], None)
+                continue
+            assert r["score"] == scores[r["analysis"]][stat[r["test"]]]
+            tested = chance["analyses"].get(r["analysis"])
+            if tested is None:
+                assert (r["chance_percentile"], r["p"], r["p_holm"]) == (None, None, None)
+            else:
+                c = tested["scores"][stat[r["test"]]]
+                assert (r["chance_percentile"], r["p"], r["p_holm"]) == (c["pctile"], c["p"],
+                                                                          c["holm_p"])
+
+
+def test_r3_plots_take_their_sets_declared_join():
+    for r in [r for r in _index()["runs"] if r["group"] == "current" and r["site"] == "Odisha"]:
+        stem = ("keptland_" + ("alphaearth" if r["arm"] == "alphaearth" else "s1desc")
+                + ("_10ha" if r["stand_ceiling_ha"] == 10.0 else "") + "_r14")
+        joined = {row["plot_key"]: row for row in builder_csv(
+            SCRIPTS.parent / "odisha_script" / "keptland_scores" / f"{stem}_joined.csv")}
+        plots = json.loads((DATA / "by_run" / r["run_id"] / "plots.geojson").read_text())
+        stands = {f["properties"]["stand_id"]: f["properties"]["stand_type"] for f in json.loads(
+            (DATA / "by_run" / r["run_id"] / "stands.json").read_text())["features"]}
+        on_stand = 0
+        for f in plots["features"]:
+            p = f["properties"]
+            row = joined.get(p["plot_key"])
+            if row is None or row["how"] == "none":
+                assert p["stand_id"] is None
+                continue
+            on_stand += 1
+            assert p["stand_id"] == int(float(row["sid"]))
+            assert p["stand_type"] == stands[p["stand_id"]]
+            assert p["join_m"] == (round(float(row["dist_m"]), 1) if row["how"] == "within" else 0.0)
+        assert on_stand == r["facts"]["plots_with_stand"]
+
+
+def builder_csv(path: Path) -> list[dict]:
+    import csv
+
+    with path.open(newline="") as fh:
+        return list(csv.DictReader(fh))
+
+
+def test_r3_stands_give_angles_by_sine_and_cosine_and_earlier_runs_by_plain_means():
+    for r in _index()["runs"]:
+        stands = json.loads((DATA / "by_run" / r["run_id"] / "stands.json").read_text())
+        props = stands["features"][0]["properties"]
+        if r["group"] == "current" and r["arm"] == "feature_vector":
+            assert r["angles"] == "sin_cos"
+            assert {"aspect_sin", "aspect_cos", "ndvi_phase_annual_sin",
+                    "ndvi_phase_annual_cos"} <= props.keys()
+            # The four are not measurements of their own: 22, as the earlier runs count.
+            assert r["facts"]["n_feature_bands"] == 22
+            assert r["ndvi_mean"] == {"what": "window_mean", "from": "2017-01-01",
+                                      "to": "2022-12-31"}
+        elif r["group"] == "earlier":
+            assert r.get("angles") in (None, "plain")
+            assert not any(k.endswith(("_sin", "_cos")) for k in props)
+            assert r["ndvi_mean"] == {"what": "trend_value", "on": "2017-01-01"}
+
+
+def test_r3_stands_without_a_type_are_the_ones_its_clustering_had_no_row_for():
+    for r in [r for r in _index()["runs"] if r["group"] == "current"]:
+        stands = json.loads((DATA / "by_run" / r["run_id"] / "stands.json").read_text())
+        untyped = [f["properties"] for f in stands["features"]
+                   if f["properties"]["stand_type"] is None]
+        assert len(untyped) == r["facts"]["n_untyped_stands"] == r["facts"]["untyped_no_data"]
+        assert all(p["below_min"] for p in untyped)
+        assert all(p.get("below_why") in ("isolated", "area_blocked") for p in untyped)
+    sv = next(r for r in _index()["runs"] if r["run_id"] == "sanjay_van_baseline_keptland_r14")
+    assert sv["facts"]["n_untyped_stands"] == 86
+
+
+def test_no_file_of_the_site_data_is_over_5_mb():
+    big = [p for p in DATA.rglob("*") if p.is_file() and p.stat().st_size > 5 * 1024 * 1024]
+    assert big == []
+
+
+def test_k_reason_takes_the_item_that_names_the_run_and_checks_its_k(builder):
+    got = builder.k_reason(3.0, 5)
+    assert got["reason"].startswith("the pooled knee is 5 in both arms")
+    assert "Sanjay Van" not in got["reason"] and not got["reason"].endswith('"')
+    assert builder.k_reason("sanjay_van", 5)["reason"] == "the knee is 5 in both arms."
+    with pytest.raises(SystemExit, match="does not give k = 6"):
+        builder.k_reason(10.0, 6)
+
+
+def test_a_mask_on_a_projected_grid_is_drawn_in_longitude_and_latitude(builder):
+    """An R3 area's mask is on its asset's UTM grid; its shapes come out in degrees, on that grid's
+    pixel edges."""
+    from rasterio.crs import CRS
+
+    band = np.array([[1, 1], [2, 1]], dtype="uint8")
+    utm = CRS.from_epsg(32645)
+    got = builder.class_shapes(band, band > 0, from_origin(300000, 2300000, 10, 10),
+                               {1: "a", 2: "b"}, utm)
+    ring = _decode(got["classes"][1]["polygons"][0][0])
+    from pyproj import Transformer
+
+    fwd = Transformer.from_crs("EPSG:4326", utm, always_xy=True).transform
+    # Class 2's one pixel, back on the grid to the metre (six decimals of a degree are ~0.1 m).
+    corners = {tuple(float(round(v)) for v in fwd(lon, lat)) for lat, lon in ring}
+    assert corners == {(300000.0, 2299990.0), (300010.0, 2299990.0), (300010.0, 2299980.0),
+                       (300000.0, 2299980.0)}
+    assert all(20 < lat < 21 and 85 < lon < 86 for lat, lon in ring)  # UTM 45N, 200 km west of 87 E
+
+
+def _decode(s: str) -> list[tuple[float, float]]:
+    out, i, lat, lng = [], 0, 0, 0
+    while i < len(s):
+        vals = []
+        for _ in range(2):
+            shift = result = 0
+            while True:
+                b = ord(s[i]) - 63
+                i += 1
+                result |= (b & 0x1F) << shift
+                shift += 5
+                if b < 0x20:
+                    break
+            vals.append(~(result >> 1) if result & 1 else result >> 1)
+        lat, lng = lat + vals[0], lng + vals[1]
+        out.append((lat / 1e6, lng / 1e6))
+    return out
+
+
+def test_an_earlier_runs_line_says_what_it_is(builder):
+    builder.AREAS.update({"sv": {"site": "Sanjay Van"}, "od": {"site": "Odisha"}})
+    assert "whole rectangle" in builder.history_line("sanjay_van_baseline_repro", "sv")
+    assert "village outlines" in builder.history_line("odisha_v120_3ha_angul_repro", "od")
+    assert "13 Oct 2026 on the boxes" in builder.history_line("odisha_v120_3ha_squares_angul", "od")
+    assert "ascending" in builder.history_line("odisha_v120_3ha_squares_angul_keptland", "od")
+    assert "descending" in builder.history_line("odisha_v120_3ha_squares_angul_keptland_s1desc",
+                                                "od")
+    assert "Sanjay Van's rectangle" in builder.history_line("sanjay_van_baseline_keptland", "sv")
+
+
+def test_the_build_record_names_the_code_and_the_r3_rasters_off_git(builder, tmp_path):
+    """Round 13's question 28 (spec-ui-data-build-record-in-docs-in-a-later-round): the record of a
+    build of ui_data/, written outside it, with the files off git that the build read for R3."""
+    import hashlib
+
+    area = tmp_path / "ui_data_full" / "r14_areas" / "angul"
+    area.mkdir(parents=True)
+    (area / "part01_x_true_colour.tif").write_bytes(b"tif")
+    (area / "fetch_record.json").write_text(json.dumps(
+        {"runs_served": ["a_r14"], "keys": {"masking": "s1"}, "assets_opened": ["x"], "git": {}}))
+    runs = [{"run_id": "a_r14", "group": "current"}, {"run_id": "b", "group": "earlier"}]
+    rec = builder.build_record({"commit": "c0ffee", "dirty": False}, runs)
+    assert rec["git"] == {"commit": "c0ffee", "dirty": False}
+    assert rec["runs"] == {"current": ["a_r14"], "earlier": ["b"]}
+    assert rec["r3_display_rasters"]["areas"]["angul"]["runs_served"] == ["a_r14"]
+    assert rec["r3_display_rasters"]["files_off_git"] == [
+        {"file": "r14_areas/angul/part01_x_true_colour.tif", "bytes": 3,
+         "sha256": hashlib.sha256(b"tif").hexdigest()}]
+    assert {"command", "date", "environment"} <= rec.keys()
+    assert builder.BUILD_RECORD.parent.name == "reproducibility"
+
+
+def test_r3_steps_name_the_register_entries_behind_what_r3_computes():
+    """Review of round 15, L3: every decision a step names is in the register; R3's clustering
+    step names the round 14 method changes and the run's own k entry."""
+    import yaml
+
+    register = {d["id"] for d in yaml.safe_load(
+        (SCRIPTS.parent / "docs" / "decisions.yaml").read_text())["decisions"]}
+    for r in _index()["runs"]:
+        for step in r["steps"]:
+            assert set(step["decisions"]) <= register, (r["run_id"], step["step"])
+        if r["group"] == "current":
+            (clustering,) = [s for s in r["steps"] if s["step"] == "clustering"]
+            assert {"spec-clustering-kmeans-outside-earth-engine",
+                    "spec-clustering-log-rule-right-skewed-bands", "spec-k-elbow-in-the-fits-space",
+                    r["k_reason"]["register"]} <= set(clustering["decisions"])
+
+
+def test_r3_superpixel_layers_lack_only_the_untyped_stands_superpixels():
+    """Review of round 15, L4: the map draws the superpixels of the run's layer; those it has no
+    polygon for are the superpixels of the stands with no type."""
+    for r in [r for r in _index()["runs"] if r["group"] == "current"]:
+        f = r["facts"]
+        missing = f["n_superpixels"] - f["superpixels_in_layer"]
+        assert missing == f["n_untyped_stands"]
+        assert f["superpixels_missing_are_untyped"] is (missing > 0)
+    sv = next(r for r in _index()["runs"] if r["run_id"] == "sanjay_van_baseline_keptland_r14")
+    assert (sv["facts"]["n_superpixels"], sv["facts"]["superpixels_in_layer"]) == (1200, 1114)
+
+
+def test_what_changed_says_k_was_chosen_before_r3s_field_scores():
+    """Review of round 15, H2: the _r9 scores existed when k was chosen; R3's did not."""
+    texts = [i["text"] for g in _index()["what_changed"]["groups"] for i in g["items"]]
+    assert any("before any of R3's field scores" in t for t in texts)
+    assert not any("before any field score" in t for t in texts)
+    page = (SCRIPTS.parent / "ui" / "explorer.html").read_text()
+    assert "before any field score" not in page

@@ -55,12 +55,27 @@ Two encoders here are meant for reuse by that export: `polyline6` (Google's enco
 format at 6 decimals, latitude first) and `superpixel_lines` (each edge between superpixels once,
 as encoded lines, so the outlines stay sharp at any zoom). The land-cover mask is written the same
 way, as encoded polygons per class (`class_shapes`).
+
+R3, round 15 (docs/handoff/2026-10-28-round15.md). The eighteen R3 runs (`add_r3_runs`: those with
+an export manifest in docs/reproducibility/r14_runs/second_half/) are the site's current results
+(`"group": "current"`); every run above is kept as an earlier version (`"group": "earlier"`, with
+a line saying what it is, `HISTORY`). Each R3 run is built from its own records: its stand layers
+there or off git by its `_files_off_git.json`, its run record and export manifest (the land-cover
+shares too, from the masking stage's numbers in it), its set's declared join, scores and chance
+test (odisha_script/keptland_scores/keptland_<set>_r14_*), and k with Jaskaran's reason from the
+register (`k_reason`). Its satellite image and land cover come from scripts/fetch_ui_r3_layers.py,
+read-only from R3's own cached assets (`R3_LAYERS`); no raster of an earlier run is reused, since
+none was made under a step key that could show the same computation. The kept land is the
+masking stage's kept class from the same files. At Sanjay Van the feature layers are drawn pixel
+by pixel, from the runs' own cached features, fetched by the same script; in Odisha they are
+stand means, as for the box runs.
 """
 from __future__ import annotations
 
 import csv
 import json
 import math
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -87,7 +102,26 @@ DISTRICTS = ("angul", "dhenkanal", "kendujhar", "koraput")
 # Per-pixel feature layers (scripts/fetch_ui_layers.py): Sanjay Van only, as the brief of round 3
 # (docs/handoff/2026-10-14-round3.md, step 3) asks; every other run draws the stand means.
 PIXELS = STAGED / "ui_data_full"
-PIXEL_LAYER_RUNS = ("sanjay_van_baseline_repro", "sanjay_van_alphaearth_repro")
+PIXEL_LAYER_RUNS = ("sanjay_van_baseline_repro", "sanjay_van_alphaearth_repro",
+                    "sanjay_van_baseline_keptland_r14", "sanjay_van_alphaearth_keptland_r14")
+# R3 (round 15): the runs' records, their sets' scores, and their areas' display rasters, which
+# scripts/fetch_ui_r3_layers.py writes under PIXELS / R3_LAYERS / <area>.
+R3 = REPO / "docs" / "reproducibility" / "r14_runs" / "second_half"
+R3_SCORES = REPO / "odisha_script" / "keptland_scores"
+R3_LAYERS = "r14_areas"
+REGISTER = REPO / "docs" / "decisions.yaml"
+# Jaskaran's k for R3 with his reason, in the register (round 14, Task 7): for each kind of R3
+# run, the entry and the lead of the item of its quoted rationale that names it.
+K_REASONS = {"sanjay_van": ("field-r3-k-from-part-1-of-the-elbow-report", "Sanjay Van, both arms"),
+             3.0: ("field-r3-k-from-part-1-of-the-elbow-report",
+                   "The four Odisha districts at 3 ha, both arms"),
+             10.0: ("field-r3-k-from-part-2-of-the-elbow-report", "10 ha k")}
+# The record of the build, outside ui_data/ so that the site does not change with it (round 13's
+# question 28, spec-ui-data-build-record-in-docs-in-a-later-round).
+BUILD_RECORD = REPO / "docs" / "reproducibility" / "ui_data_build_run.json"
+ROUND13 = "docs/handoff/2026-10-20-round13.md"
+ROUND14 = "docs/handoff/2026-10-26-round14.md"
+REVIEW = "docs/reviews/2026-10-19-review.md"
 # The kept-land runs of round 5: run id -> (arm, the _repro run whose assets it reuses).
 KEPTLAND = REPO / "docs" / "reproducibility" / "keptland_runs"
 KEPTLAND_RUNS = {"sanjay_van_baseline_keptland": ("feature_vector", "sanjay_van_baseline_repro"),
@@ -153,6 +187,84 @@ MEANS_NOTE = (" Its stands' named measurements come from one read-only reduction
               "(docs/reproducibility/keptland_runs/{run}_stand_means.json): the optical and "
               "structure ones from this run's own images, the radar and static ones from the "
               "baseline kept-land run's, since the AlphaEarth arm computes neither.")
+# Round 15: the build as a whole, and each earlier run's one line (round 13's question 23,
+# site-r3-notes-at-the-next-site-build).
+R3_SHORT_LABEL = ("Current results: R3, the {n_current} runs of 28 Oct 2026, made after the "
+                  "corrections of 19 to 28 Oct. The {n_earlier} runs of 13 to 15 Oct are kept as "
+                  "earlier versions.")
+R3_LABEL = ("R3 (round 14, docs/reproducibility/r14_runs/README.md): Sanjay Van and the Odisha "
+            "boxes at 3 ha and 10 ha, both arms, on kept land only (configs/*_r14.yaml, commit "
+            "{commit}), with the fixes of rounds 13 and 14 and round 14's four method changes "
+            "(odisha_script/PHASE_KEPTLAND_PREDECLARED.md, the change of 26 Oct 2026). Earlier "
+            "versions: ")
+HISTORY = {
+    "repro": "A test run of 13 Oct 2026 on {where}, before the merge fix.",
+    "box": "A test run of 13 Oct 2026 on the boxes, over all land, after the merge fix.",
+    "keptland": "A run of 15 Oct 2026 on kept land only (trees and scrub) in {where}.",
+    "keptland_ascending": ("A run of 15 Oct 2026 on kept land only in the boxes, its radar from the "
+                           "ascending Sentinel-1 orbit."),
+    "s1desc": ("A run of 15 Oct 2026 on kept land only in the boxes, its radar from the descending "
+               "Sentinel-1 orbit; its field-check scores are round 7's."),
+}
+HISTORY_BEFORE = " Its results are from before the corrections of 19 to 28 Oct 2026."
+# The "What changed" panel (round 15, Task 2): the corrections that change what the pipeline
+# computes, from the review of 19 Oct 2026 (fixed in round 13, or changed in the method before R3
+# in round 14) and from round 14's two live checks; one plain sentence each, from those files.
+WHAT_CHANGED = [
+    {"title": "Fixed after the review of 19 Oct 2026 (round 13)", "record": ROUND13, "items": [
+        ("A1", "Distance to water now sees water outside the mapped area too; before, it saw only "
+               "the water inside it."),
+        ("A4", "The Sentinel-1 and Sentinel-2 date windows now include their last day; before, "
+               "they stopped a day early, and the images of that day were left out."),
+        ("A5", "Slope and aspect now keep their decimals, and a flat cell has no direction; "
+               "before, they were whole degrees, and a flat cell counted as facing north."),
+        ("A6", "A stand's area is now its pixel count, and its position the mean of its pixel "
+               "centres (round 14); before, Earth Engine's outlines counted some holes as area, "
+               "which inflated those areas and moved those positions."),
+        ("B13", "The sine and cosine of the time of peak greenness are no longer log-transformed "
+                "before the stands are sorted into types."),
+        ("B14", "A stand in several pieces now gets one average over all its pixels, and a stand "
+                "with no data in a measurement is left out of the sorting, so it gets no type; "
+                "before, each piece had its own average, and a stand could be sorted on a 0 it "
+                "never measured."),
+        ("B16", "Whether a measurement varies at all, and how it is scaled, now rest on exact "
+                "quartiles; before, Earth Engine's approximate ones could drop a measurement that "
+                "does vary."),
+        ("B17", "The merge now counts a superpixel's pixels, and those with data, by one rule; "
+                "before, pixels at the edge of the mapped area were counted in part, and some "
+                "superpixels had more pixels with data than pixels."),
+        ("B18", "The merge's size limits are now compared in whole pixels; before, a sum of two "
+                "areas could be judged over a limit it exactly met."),
+    ]},
+    {"title": "Changed before R3, after the same review (round 14)", "record": ROUND14, "items": [
+        ("A2, B15", "The stand types are now fitted off Earth Engine on the declared scaling, "
+                    "with many starts, keeping the best; before, Earth Engine rescaled every "
+                    "measurement by its range, which undid the declared scaling, and the types "
+                    "rested on one start."),
+        ("A3, B12", "Only measurements skewed to the right are now log-transformed, by a rule "
+                    "that scales with each one's spread, and angles never; before, measurements "
+                    "skewed either way were logged, which made the left-skewed ones more skewed."),
+        ("C9", "Average greenness is now the fitted curve's mean over the whole window; before, it "
+               "was the trend line's value on the window's first day."),
+        ("A7", "The elbow behind the number of types is now drawn in the fit's own space, and "
+               "Jaskaran chose k from it before any of R3's field scores; before, it was drawn "
+               "outside that space."),
+        ("C10", "The stand layers now also give the averages of each angle's sine and cosine, "
+                "from which this site reads which way a stand faces and when it is greenest; "
+                "plain averages of angles mislead where they wrap round, at north or at the turn "
+                "of the year."),
+        ("C12", "Every tie in the merge is now broken by the regions' positions, not by the "
+                "superpixels' numbers, which change from run to run."),
+    ]},
+    {"title": "Fixed after the two live checks (round 14)", "record": ROUND14, "items": [
+        ("First live check", "The merge now takes every count on the superpixels' own grid; the "
+                             "check stopped in the merge, which measured on another grid than "
+                             "the one it counted pixels on."),
+        ("Second live check", "The check stopped when Earth Engine refused to export the elbow's "
+                              "saved table; each row of it now carries a fixed point, which "
+                              "changes no number."),
+    ]},
+]
 
 RUNS: list[dict] = []
 for _arm_id, _arm in (("sanjay_van_baseline_repro", "feature_vector"),
@@ -215,6 +327,85 @@ def add_box_runs() -> list[str]:
                      "box": True})
     return notes
 
+def add_r3_runs() -> list[str]:
+    """Add the eighteen R3 runs, each on its R3 area, once their areas' display rasters exist
+    (scripts/fetch_ui_r3_layers.py). An area without them stops the build: R3 is the site's
+    current results, so it is never left out without a word. Returns no notes."""
+    from fetch_ui_r3_layers import areas as r3_areas
+
+    found = r3_areas(R3)
+    n = sum(len(a["runs"]) for a in found.values())
+    if n != 18:
+        raise SystemExit(f"R3 is eighteen runs; {R3} holds the records of {n}")
+    for name, a in found.items():
+        mdir = PIXELS / R3_LAYERS / name
+        if not parts_of(mdir, "true_colour") or not parts_of(mdir, "mask_provenance"):
+            raise SystemExit(f"{mdir}: no display rasters for R3's {name} area; run "
+                             "scripts/fetch_ui_r3_layers.py first")
+        sanjay = name == "sanjay_van"
+        key = f"{name}_r14"
+        AREAS[key] = {"title": "Sanjay Van" if sanjay else name.title(),
+                      "site": "Sanjay Van" if sanjay else "Odisha",
+                      "roi": "rectangle" if sanjay else "boxes", "district": None if sanjay else name,
+                      "mask_dir": mdir, "r3": True, "roi_file": REPO / a["roi_file"],
+                      "numbers": r3_masking_numbers(a["runs"])}
+        for run_id in a["runs"]:
+            arm = ("alphaearth" if load_config(str(REPO / "configs" / f"{run_id}.yaml"))
+                   .clustering.feature_source == "embedding" else "feature_vector")
+            RUNS.append({"run_id": run_id, "area": key, "arm": arm, "vec": R3, "keptland": True,
+                         "r3": True})
+    return []
+
+
+def r3_manifest(run_id: str) -> dict:
+    return json.loads((R3 / f"{run_id}_manifest_export.json").read_text())
+
+
+def r3_masking_numbers(runs: list[str]) -> dict:
+    """The masking stage's summary numbers of an area's R3 runs, from their export manifests. The
+    runs share the step's key, so the numbers must agree; the build stops if they do not."""
+    seen = []
+    for run_id in runs:
+        masking = next(s for s in r3_manifest(run_id)["stages"] if s["name"] == "masking")
+        seen.append({s["name"]: s["value"] for s in masking["transparency"]["summary_numbers"]})
+    if any(s != seen[0] for s in seen):
+        raise SystemExit(f"{runs}: the masking numbers differ between runs of one key")
+    return seen[0]
+
+
+_REGISTER: dict = {}
+
+
+def register_entry(entry_id: str) -> dict:
+    if not _REGISTER:
+        import yaml
+
+        _REGISTER.update({d["id"]: d for d in yaml.safe_load(REGISTER.read_text())["decisions"]})
+    return _REGISTER[entry_id]
+
+
+def k_reason(kind, k: int) -> dict:
+    """k for an R3 run and Jaskaran's reason for it, from the register (`K_REASONS`): the
+    sentences after "Reason:" in the item of the entry's quoted rationale that names the run's
+    kind, up to the next item or the end of the quote. The item must give the run's k."""
+    entry_id, lead = K_REASONS[kind]
+    entry = register_entry(entry_id)
+    quote = " ".join(entry["rationale"].split()).split('"')[1]
+    item = quote[quote.index(lead):].split(" - ")[0]
+    said = re.search(r"\bk\s*[=:]\s*(\d+)", item)
+    if not said or int(said.group(1)) != k:
+        raise SystemExit(f"{entry_id}: its item for {lead!r} does not give k = {k}")
+    report = next(e["path"] for e in entry["evidence"] if e["path"].endswith("_report.md"))
+    return {"k": k, "reason": item.split("Reason: ", 1)[1].strip(), "register": entry_id,
+            "report": report}
+
+
+def r3_set(arm: str, ceiling: float) -> str:
+    """The stem of an R3 run's scored set in odisha_script/keptland_scores/."""
+    return (f"keptland_{'alphaearth' if arm == 'alphaearth' else 's1desc'}"
+            f"{'_10ha' if ceiling == 10.0 else ''}_r14")
+
+
 def add_keptland_runs() -> list[str]:
     """Add each kept-land run whose committed files exist; return notes on the rest. A box
     kept-land run goes on the area of its district's box run, so add_box_runs comes first."""
@@ -273,6 +464,24 @@ STEP_DECISIONS = {
                   "field-forest-types-from-structure", "field-truth-trees-only",
                   "field-rotation-null-only-null", "field-phase3-primary-analysis-and-checks",
                   "sup-established-methods-first", "sup-new-metrics-await-approval"],
+}
+
+# What R3's runs add to each step's decisions (the drawer "How this step works, and why"): the
+# register entries of rounds 13 and 14 behind what R3 computes. Hand-crafted runs only under
+# "features_fv"; the run's own k entry is added by the builder.
+R3_STEP_DECISIONS = {
+    "data_load": ["spec-data-load-windows-include-their-end-date"],
+    "features_fv": ["spec-optical-mean-over-the-window", "spec-static-terrain-on-a-float-dem",
+                    "spec-static-water-input-over-the-transforms-reach"],
+    "merge": ["spec-merge-pixel-counts-on-one-inclusion-rule", "spec-merge-every-tie-by-centroid",
+              "spec-merge-fallback-tie-by-centroid", "spec-export-area-and-pixels-from-the-pixel-count"],
+    "clustering": ["spec-clustering-kmeans-outside-earth-engine",
+                   "spec-clustering-log-rule-right-skewed-bands",
+                   "spec-clustering-phase-pair-not-logged", "spec-clustering-flat-cells-have-no-aspect",
+                   "spec-clustering-one-mean-per-unit-label",
+                   "spec-clustering-exact-quartiles-for-the-robust-scaling",
+                   "spec-k-elbow-in-the-fits-space", "spec-export-stand-means-of-angle-sin-and-cos"],
+    "fes_plots": ["field-r3-scores-the-record-once-they-exist"],
 }
 
 # Plain names for the land-cover classes of the mask's "reason" band (masking_transparency.json).
@@ -378,16 +587,26 @@ def superpixel_lines(polygons: list) -> dict:
     return {"encoding": "polyline6", "lines": [polyline6(line.coords) for line in lines]}
 
 
-def class_shapes(band: np.ndarray, valid: np.ndarray, transform, classes: dict) -> dict:
-    """A categorical raster as encoded polygons, grouped by class (rings: outer first)."""
+def class_shapes(band: np.ndarray, valid: np.ndarray, transform, classes: dict, crs=None) -> dict:
+    """A categorical raster as encoded polygons, grouped by class (rings: outer first). A raster
+    on a projected grid (`crs`, an R3 area's mask on its asset's UTM grid) has its rings turned to
+    longitude and latitude, vertex by vertex, so its pixel edges stay where the stands' are."""
     from rasterio import features as rfeatures
 
+    to_lonlat = None
+    if crs is not None and crs.to_epsg() != 4326:
+        from pyproj import Transformer
+
+        to_lonlat = Transformer.from_crs(crs, "EPSG:4326", always_xy=True).transform
     by_class: dict[int, list] = {}
     for geom, val in rfeatures.shapes(band, mask=valid, transform=transform, connectivity=4):
         v = int(val)
         if v not in classes:
             continue
-        by_class.setdefault(v, []).append([polyline6(ring) for ring in geom["coordinates"]])
+        rings = geom["coordinates"]
+        if to_lonlat is not None:
+            rings = [list(zip(*to_lonlat(*zip(*ring, strict=True)), strict=True)) for ring in rings]
+        by_class.setdefault(v, []).append([polyline6(ring) for ring in rings])
     return {"encoding": "polyline6",
             "classes": [{"value": v, "polygons": by_class[v]} for v in sorted(by_class)]}
 
@@ -402,11 +621,26 @@ def merge_class_shapes(items: list[dict]) -> dict:
 
 
 # ---------------------------------------------------------------- per area (shared by its runs)
+def r3_inside(info: dict, path: Path, transform, crs, shape_hw) -> np.ndarray:
+    """For a raster of an R3 area (`<part>_<kind>.tif`, on its asset's grid): True for the pixels
+    whose centre lies inside its part of the ROI, the pixels R3's merge counts. The download keeps
+    every pixel the part's outline touches, about 1% more at the edges."""
+    from pyproj import Transformer
+    from shapely.ops import transform as reproject
+    from transparency_masking import inside_mask, roi_parts
+
+    slug = path.name.rsplit("_", 2)[0]
+    part = next(p for p in roi_parts(json.loads(info["roi_file"].read_text())) if p.slug == slug)
+    to_grid = Transformer.from_crs("EPSG:4326", crs, always_xy=True).transform
+    return inside_mask(reproject(to_grid, part.geometry), transform, shape_hw)
+
+
 def area_layers(area: str) -> dict:
-    """Satellite image and land-cover layers for one area (shared by every run on it)."""
+    """Satellite image and land-cover layers for one area (shared by every run on it). For an R3
+    area the land-cover numbers are its runs' masking stage's (`r3_masking_numbers`), the outline
+    its ROI file's, and the land cover is drawn on the masks' own grid (`class_shapes`)."""
     info = AREAS[area]
     mdir = info["mask_dir"]
-    tj = json.loads((mdir / "masking_transparency.json").read_text())["transparency"]
     out_dir = OUT / "areas" / area
     # One linear stretch for all three bands, percentiles 1 and 99 of the valid pixels.
     tc = parts_of(mdir, "true_colour")
@@ -433,16 +667,25 @@ def area_layers(area: str) -> dict:
         with rasterio.open(f) as s:
             reason = s.read(1)
             valid = s.read_masks(1) > 0
-            shapes.append(class_shapes(reason, valid, s.transform, LAND_COVER))
+            if info.get("r3"):
+                valid &= r3_inside(info, f, s.transform, s.crs, reason.shape)
+            shapes.append(class_shapes(reason, valid, s.transform, LAND_COVER, s.crs))
     write_json(out_dir / "land_cover.json", merge_class_shapes(shapes))
-    roi = json.loads((mdir / "roi_outline.geojson").read_text())
+    if info.get("r3"):
+        from transparency_masking import roi_outline_geojson, roi_parts
+
+        roi = roi_outline_geojson(roi_parts(json.loads(info["roi_file"].read_text())))
+        sn = info["numbers"]
+    else:
+        roi = json.loads((mdir / "roi_outline.geojson").read_text())
+        tj = json.loads((mdir / "masking_transparency.json").read_text())["transparency"]
+        sn = {s["name"]: s["value"] for s in tj["summary_numbers"]}
     name_parts(roi, area)
     from shapely.geometry import shape
     from shapely.ops import unary_union
 
     area_geom = unary_union([shape(f["geometry"]) for f in roi["features"]])
     write_json(out_dir / "area_outline.geojson", roi)
-    sn = {s["name"]: s["value"] for s in tj["summary_numbers"]}
     by_reason = sn["share_by_reason"]
     allb = [p["bounds"] for p in tc_parts]
     bbox = [min(b[0] for b in allb), min(b[1] for b in allb), max(b[2] for b in allb),
@@ -576,11 +819,15 @@ def stand_means(run_id: str, vec: Path) -> dict:
     return {s["stand_id"]: {b: s.get(b) for b in data["bands"]} for s in data["stands"]}
 
 
-def run_stands(run_id: str, arm: str, vec: Path, *, keptland: bool = False) -> tuple[dict, dict]:
+def run_stands(run_id: str, arm: str, vec: Path, *, keptland: bool = False,
+               r3: bool = False) -> tuple[dict, dict]:
     """The stands of a run, for stands.json. Distance to water of 10 km or more is OVER_10_KM
     (feature_value). A kept-land run's stands also say whether the merge left them below the
-    minimum (`below_min`). Where the run has named means by reduction (`stand_means`), its
-    stands carry them beside their own means."""
+    minimum (`below_min`), and an R3 run's why (`below_why`: isolated, sharing no edge with
+    another stand, or area_blocked, every neighbour too big to take it). Where the run has named
+    means by reduction (`stand_means`), its stands carry them beside their own means. An R3 run's
+    stand means of each angle's sine and cosine (aspect_sin and the like) are kept, and not counted
+    as measurements of their own."""
     g = json.loads(vec_file(vec, f"{run_id}_stands_merged.geojson").read_text())
     feats = g["features"]
     extra = stand_means(run_id, vec)
@@ -588,7 +835,7 @@ def run_stands(run_id: str, arm: str, vec: Path, *, keptland: bool = False) -> t
         feats = [{**f, "properties": {**f["properties"], **extra[f["properties"]["stand_id"]]}}
                  for f in feats]
     names = feature_names(feats[0]["properties"])
-    n_bands = len(names)
+    n_bands = len([n for n in names if not (n.endswith(("_sin", "_cos")) and n[:-4] in names)])
     emb_cols = None
     if arm == "alphaearth":
         keys = [f"A{i:02d}" for i in range(64)]
@@ -609,6 +856,8 @@ def run_stands(run_id: str, arm: str, vec: Path, *, keptland: bool = False) -> t
             q[k] = feature_value(k, p.get(k), far_water=True)
         if keptland:
             q["below_min"] = bool(p.get("below_min"))
+        if r3 and q["below_min"]:
+            q["below_why"] = p.get("below_why") or None
         if emb_cols:
             q["emb_rgb"] = emb_cols[i]
         if q["area_ha"] is not None:
@@ -641,6 +890,23 @@ def superpixel_layer(run_id: str, vec: Path) -> tuple[str, float | None]:
     return name, round(float(np.median(areas)), 2) if areas else None
 
 
+def superpixels_in_layer(run_id: str, vec: Path, stands_fc: dict) -> dict:
+    """For an R3 run: how many superpixels its superpixel layer has a polygon for (by snic_label),
+    and whether those it has none for are the superpixels of its stands with no type: as many as
+    those stands, and no polygon of the layer under any of them."""
+    from shapely import STRtree
+    from shapely.geometry import shape
+
+    g = json.loads(vec_file(vec, f"{run_id}_stands_snic.geojson").read_text())
+    geoms = [shape(f["geometry"]) for f in g["features"]]
+    tree = STRtree(geoms)
+    untyped = [shape(f["geometry"]).representative_point() for f in stands_fc["features"]
+               if f["properties"]["stand_type"] is None]
+    uncovered = sum(1 for pt in untyped if not any(geoms[i].covers(pt) for i in tree.query(pt)))
+    drawn = len({f["properties"]["snic_label"] for f in g["features"]})
+    return {"superpixels_in_layer": drawn, "untyped_without_superpixel": uncovered}
+
+
 def join_plots_to_stands(stands_fc: dict, plot_keys: list[str]) -> dict:
     """plot_key -> {"<col>_merged_id", "<col>_merged_cluster"} by the Phase 2 join rule: the stand
     whose polygon covers the plot, the lowest stand id where several do."""
@@ -666,18 +932,26 @@ def join_plots_to_stands(stands_fc: dict, plot_keys: list[str]) -> dict:
 
 
 def plots_for(run_id: str, district: str, area_geom, stands_fc: dict | None = None, *,
-              with_stands: bool = True) -> tuple[dict, dict]:
+              with_stands: bool = True, declared: Path | None = None) -> tuple[dict, dict]:
     """A district's FES plots, each with its field type and mask, and the stand it is on: a box
-    run's by the Phase 2 join rule on `stands_fc`, any other run's from its committed join.
-    Without `with_stands` no plot is joined: the plots carry no stand_id or stand_type, and the
-    counts leave out the plots with a stand (for a kept-land run, whether or not its field check
-    has run: this script does not read that check's join; review C24)."""
+    run's by the Phase 2 join rule on `stands_fc`, an R3 run's from its set's declared join
+    (`declared`, keptland_<set>_r14_joined.csv: the stand that covers the plot, else the nearest
+    within 30 m, `join_m` metres off), any other run's from its committed join. Without
+    `with_stands` no plot is joined: the plots carry no stand_id or stand_type, and the counts
+    leave out the plots with a stand (for a kept-land run of rounds 5 to 7, whether or not its
+    field check has run: this script does not read that check's join; review C24)."""
     plots = read_csv(REPO / "odisha_script" / "odisha_plots_clean.csv")
     ftype = {r["plot_key"]: r["field_type"]
              for r in read_csv(REPO / "odisha_script" / "odisha_phase3_0_field_types.csv")}
     ret = {r["plot_key"]: r["habitat"]
            for r in read_csv(REPO / "odisha_script" / "odisha_phase2_1_mask_retention.csv")}
-    if not with_stands:
+    if declared is not None:
+        col = "r3"
+        join = {r["plot_key"]: {"r3_merged_id": r["sid"] if r["how"] != "none" else "",
+                                "r3_merged_cluster": r["cluster"] if r["how"] != "none" else "",
+                                "join_m": float(r["dist_m"]) if r["how"] == "within" else 0.0}
+                for r in read_csv(declared) if r["box_district"] == district}
+    elif not with_stands:
         col, join = "", {}
     elif stands_fc is not None:
         col = "box"
@@ -714,6 +988,8 @@ def plots_for(run_id: str, district: str, area_geom, stands_fc: dict | None = No
         if with_stands:
             props["stand_id"] = int(float(sid)) if sid else None
             props["stand_type"] = int(float(stype)) if stype else None
+        if declared is not None and sid:
+            props["join_m"] = round(j["join_m"], 1)
         feats.append({"type": "Feature", "properties": props,
                       "geometry": {"type": "Point", "coordinates": [r6(lon), r6(lat)]}})
     if not with_stands:
@@ -721,8 +997,9 @@ def plots_for(run_id: str, district: str, area_geom, stands_fc: dict | None = No
     return {"type": "FeatureCollection", "features": feats}, n
 
 
-def feature_layers(run_id: str, arm: str, stands_fc: dict) -> list[dict]:
-    """The feature layers as stand means, drawn on the stand polygons."""
+def feature_layers(run_id: str, arm: str, stands_fc: dict, *, early: bool = True) -> list[dict]:
+    """The feature layers as stand means, drawn on the stand polygons (`early`: an earlier run's,
+    whose layer says "in this early version")."""
     if arm == "alphaearth":
         return [{
             "layer_id": "embedding_rgb", "title": EMBEDDING_TITLE,
@@ -747,7 +1024,8 @@ def feature_layers(run_id: str, arm: str, stands_fc: dict) -> list[dict]:
             "colormap": {"min": round(vmin, 3), "max": round(vmax, 3), "palette": pal,
                          "units": units},
             "default_on": False,
-            "description": "Averaged over each stand in this early version."})
+            "description": ("Averaged over each stand in this early version." if early
+                            else "Averaged over each stand.")})
     return layers
 
 
@@ -838,13 +1116,27 @@ def embedding_pixel_layer(run_id: str, files: list[Path]) -> dict:
 def kept_land_layer(area: str) -> str:
     """The kept-land mask of an area (habitat_mask 1) as encoded polygons, written once."""
     name = f"areas/{area}/kept_land.json"
+    info = AREAS[area]
     if not (OUT / name).exists():
         shapes = []
-        for path in parts_of(AREAS[area]["mask_dir"], "habitat_mask"):
+        for path in parts_of(info["mask_dir"], "habitat_mask"):
             with rasterio.open(path) as src:
                 band = src.read(1)
                 valid = (src.read_masks(1) > 0) & (band == 1)
                 shapes.append(class_shapes(band, valid, src.transform, {1: KEPT_LAND}))
+        if info.get("r3"):
+            # R3: the masking stage's kept class (reason 1) in its mask provenance, which its
+            # summary finds on no pixel apart from the habitat mask
+            # (area_ha_reason_disagrees_with_habitat_mask), the pixels whose centre is inside.
+            if info["numbers"]["area_ha_reason_disagrees_with_habitat_mask"] != 0:
+                raise SystemExit(f"{area}: the mask's reasons and habitat mask disagree")
+            for path in parts_of(info["mask_dir"], "mask_provenance"):
+                with rasterio.open(path) as src:
+                    band = src.read(1)
+                    valid = ((src.read_masks(1) > 0) & (band == 1)
+                             & r3_inside(info, path, src.transform, src.crs, band.shape))
+                    shapes.append(class_shapes(band, valid, src.transform, {1: KEPT_LAND},
+                                               src.crs))
         write_json(OUT / name, merge_class_shapes(shapes))
     return name
 
@@ -910,11 +1202,147 @@ def keptland_files(run_id: str, vec: Path, run: dict, where: str, lat: float) ->
     return names, clustering
 
 
+def history_line(run_id: str, area: str) -> str:
+    """An earlier run's one line: what it is, and that its results are from before the
+    corrections of 19 to 28 Oct 2026 (round 13's question 23)."""
+    if run_id.endswith("_repro"):
+        where = ("the whole rectangle" if AREAS[area]["site"] == "Sanjay Van"
+                 else "the village outlines")
+        line = HISTORY["repro"].format(where=where)
+    elif run_id.endswith("_keptland_s1desc"):
+        line = HISTORY["s1desc"]
+    elif run_id.endswith("_keptland"):
+        line = (HISTORY["keptland"].format(where="Sanjay Van's rectangle")
+                if AREAS[area]["site"] == "Sanjay Van" else HISTORY["keptland_ascending"])
+    else:
+        line = HISTORY["box"]
+    return line + HISTORY_BEFORE
+
+
+def versions(run_id: str, area: str, r3: bool, cfg, stands_fc: dict) -> dict:
+    """Where a run stands among the site's versions, and how its angles and ndvi_mean are to be
+    read: an R3 run is a current result; any other an earlier version, with its line
+    (history_line). `angles` says how a stand's "faces" and "peak month" are given: from the
+    stand means of each angle's sine and cosine (sin_cos), or as plain means of the angles
+    (plain). `ndvi_mean` says what the band is, from the run's config: the fitted curve's mean
+    over the dates window (features_optical.mean_over_window), or the trend line's value on the
+    harmonic's reference date."""
+    names = set(stands_fc["features"][0]["properties"]) if stands_fc["features"] else set()
+    fo = cfg.features_optical
+    out: dict = {"group": "current" if r3 else "earlier",
+                 "ndvi_mean": ({"what": "window_mean", "from": str(cfg.dates.phenology.start),
+                                "to": str(cfg.dates.phenology.end)} if fo.mean_over_window
+                               else {"what": "trend_value", "on": str(fo.time_reference)})}
+    if {"aspect_sin", "aspect_cos", "ndvi_phase_annual_sin", "ndvi_phase_annual_cos"} <= names:
+        out["angles"] = "sin_cos"
+    elif names & {"aspect", "ndvi_phase_annual"}:
+        out["angles"] = "plain"
+    if not r3:
+        out["history"] = history_line(run_id, area)
+    return out
+
+
+def check_declared_join(run_id: str, plots: dict, stands_fc: dict) -> None:
+    """Every plot an R3 set's declared join puts on a stand is on a stand of this run, of the type
+    the join read; the build stops otherwise."""
+    types = {f["properties"]["stand_id"]: f["properties"]["stand_type"]
+             for f in stands_fc["features"]}
+    for f in plots["features"]:
+        p = f["properties"]
+        if p.get("stand_id") is not None and types.get(p["stand_id"], "none") != p["stand_type"]:
+            raise SystemExit(f"{run_id}: plot {p['plot_key']} joins stand {p['stand_id']}, whose "
+                             f"type here is {types.get(p['stand_id'], 'no stand')}, not "
+                             f"{p['stand_type']}")
+
+
+def r3_entry(entry: dict, facts: dict, run: dict, clustering: dict, st: dict, cfg, arm: str,
+             ceiling: float, sanjay: bool) -> None:
+    """What an R3 run's index entry adds to a kept-land run's: its own source, rules and note,
+    k with Jaskaran's reason (`k_reason`), and the counts behind its stands without a type."""
+    if clustering["k"] != cfg.clustering.k:
+        raise SystemExit(f"{entry['run_id']}: k {clustering['k']} in its export, "
+                         f"{cfg.clustering.k} in its config")
+    if st["n_untyped"] != clustering["n_units_dropped_null_band"] + clustering[
+            "n_units_no_pixel_centre_in_roi"]:
+        raise SystemExit(f"{entry['run_id']}: {st['n_untyped']} stands without a type, which its "
+                         "clustering's counts do not account for")
+    uncovered = facts.pop("untyped_without_superpixel")
+    missing = facts["n_superpixels"] - facts["superpixels_in_layer"]
+    facts["superpixels_missing_are_untyped"] = bool(missing) and missing == st["n_untyped"] == uncovered
+    facts.update({"area_ha_below_min": run["merge_diagnostics"]["area_in_undersized_stands_ha"],
+                  "stands_in_fit": clustering["n_training_units"],
+                  "untyped_no_data": clustering["n_units_dropped_null_band"],
+                  "untyped_no_pixel_centre": clustering["n_units_no_pixel_centre_in_roi"]})
+    hand = arm == "feature_vector"
+    entry.update({
+        "fes_declared": not sanjay,
+        "merge_rule": ("spec-merge-pass2-skip-at-minimum, spec-merge-pass2-soft-ceiling, "
+                       "spec-merge-pixel-counts-on-one-inclusion-rule, "
+                       "spec-merge-every-tie-by-centroid"),
+        "note": (SANJAY_NOTE + " " if sanjay else "") + "SNIC and the merge saw kept land only "
+                "(trees or scrub): the rest of the " + ("rectangle" if sanjay else "boxes")
+                + " is in no stand."
+                + (" Its radar comes from the descending Sentinel-1 orbit." if hand and not sanjay
+                   else ""),
+        "k_reason": k_reason("sanjay_van" if sanjay else ceiling, cfg.clustering.k),
+    })
+    # The register entries behind what R3 computes, in each step's drawer, with the run's k.
+    for step in entry["steps"]:
+        name = step["step"]
+        if name == "features":
+            name = "features_fv" if hand else "features_ae"
+        extra = R3_STEP_DECISIONS.get(name, []) + (
+            [entry["k_reason"]["register"]] if step["step"] == "clustering" else [])
+        step["decisions"] = step["decisions"] + [d for d in extra if d not in step["decisions"]]
+    if not sanjay:
+        entry["scores"] = {"set": r3_set(arm, ceiling),
+                           "files": [f"odisha_script/keptland_scores/{r3_set(arm, ceiling)}_{s}"
+                                     for s in ("scores.txt", "chance.txt")]}
+
+
+def build_record(git: dict, runs_out: list[dict]) -> dict:
+    """What built ui_data/ and from what: the command, the date, the git state read before the
+    build began, the environment, the runs by group, and the files off git it read for R3 (the
+    display rasters scripts/fetch_ui_r3_layers.py saved: each one's size and SHA-256, and the
+    assets each area's were downloaded from)."""
+    import datetime as dt
+    import hashlib
+
+    from fmu.utils.provenance import environment_state
+
+    off_git = sorted(p for p in (PIXELS / R3_LAYERS).rglob("*.tif")) + sorted(
+        p for r in runs_out if r["group"] == "current" and r["run_id"] in PIXEL_LAYER_RUNS
+        for p in (PIXELS / r["run_id"]).glob("*_part[0-9][0-9].tif"))
+    fetched = {d.name: json.loads((d / "fetch_record.json").read_text())
+               for d in sorted((PIXELS / R3_LAYERS).iterdir()) if (d / "fetch_record.json").is_file()}
+    return {
+        "what": "The last build of ui_data/ by scripts/build_ui_early_data.py: which code built it, "
+                "from which inputs (round 13's question 28; register "
+                "spec-ui-data-build-record-in-docs-in-a-later-round).",
+        "command": " ".join(["python", *sys.argv]),
+        "date": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
+        "git": git, "environment": environment_state(),
+        "runs": {g: sorted(r["run_id"] for r in runs_out if r["group"] == g)
+                 for g in ("current", "earlier")},
+        "r3_display_rasters": {
+            "fetched_by": "scripts/fetch_ui_r3_layers.py",
+            "areas": {a: {k: f[k] for k in ("runs_served", "keys", "assets_opened", "pixel_layers",
+                                            "git") if k in f}
+                      for a, f in fetched.items()},
+            "files_off_git": [{"file": str(p.relative_to(PIXELS)), "bytes": p.stat().st_size,
+                               "sha256": hashlib.sha256(p.read_bytes()).hexdigest()}
+                              for p in off_git]},
+    }
+
+
 def main() -> None:
+    from fmu.utils.provenance import git_state
+
+    git = {k: v for k, v in git_state().items() if k != "root"}
     if OUT.exists():
         shutil.rmtree(OUT)
     OUT.mkdir(parents=True)
-    notes = add_box_runs() + add_keptland_runs()
+    notes = add_box_runs() + add_keptland_runs() + add_r3_runs()
     pixel_layers: dict[str, list[dict]] = {}
     area_cache = {a: area_layers(a) for a in AREAS}
     runs_out = []
@@ -922,6 +1350,7 @@ def main() -> None:
         run_id, area, arm, vec = spec["run_id"], spec["area"], spec["arm"], spec["vec"]
         box = spec.get("box", False)
         keptland = spec.get("keptland", False)
+        r3 = spec.get("r3", False)
         cfg = load_config(str(REPO / "configs" / f"{run_id}.yaml"))
         k = cfg.clustering.k
         ceiling = float(cfg.merge.max_area_ha)
@@ -929,20 +1358,21 @@ def main() -> None:
         md = run["merge_diagnostics"]
         ai = area_cache[area]
         odisha = AREAS[area]["site"] == "Odisha"
-        stands_fc, st = run_stands(run_id, arm, vec, keptland=keptland)
+        sanjay = AREAS[area]["site"] == "Sanjay Van"
+        stands_fc, st = run_stands(run_id, arm, vec, keptland=keptland, r3=r3)
         write_json(OUT / "by_run" / run_id / "stands.json", encode_stands(stands_fc))
         sp_file, median_sp = superpixel_layer(run_id, vec)
         layers = pixel_feature_layers(run_id, arm) if run_id in PIXEL_LAYER_RUNS else None
         if layers is not None:
             pixel_layers[run_id] = layers
-        if keptland:
+        if keptland and not r3:
             # The same features as its source run (copied assets): the same pixel layers.
             layers = pixel_layers.get(spec["pixels_from"])
         if run_id in PIXEL_LAYER_RUNS and layers is None:
             notes.append(f"{run_id}: no GeoTIFFs under {PIXELS / run_id}, so its feature layers "
                          "are stand means")
         if layers is None:
-            layers = feature_layers(run_id, arm, stands_fc)
+            layers = feature_layers(run_id, arm, stands_fc, early=not r3)
         seg_bands = [b.band for b in cfg.segmentation.input_bands]
         facts = dict(ai["facts"])
         facts.update({
@@ -1023,16 +1453,21 @@ def main() -> None:
         if odisha:
             # A kept-land run's plots are not joined to its stands here. The round-6 runs' field
             # check is not run; the _s1desc runs' is (round 7), but its join is not read here
-            # (review C24).
+            # (review C24). An R3 run's plots take its set's declared join.
+            declared = R3_SCORES / f"{r3_set(arm, ceiling)}_joined.csv" if r3 else None
             pfc, pn = plots_for(run_id, AREAS[area]["district"], ai["geom"],
-                                stands_fc if box else None, with_stands=not keptland)
+                                stands_fc if box else None, with_stands=not keptland or r3,
+                                declared=declared)
+            if r3:
+                check_declared_join(run_id, pfc, stands_fc)
             write_json(OUT / "by_run" / run_id / "plots.geojson", pfc)
             facts.update({"plots_in_district": pn["in_district"], "plots_inside": pn["inside"],
                           "plots_on_kept_pixels": pn["kept"]})
             if "with_stand" in pn:
                 facts["plots_with_stand"] = pn["with_stand"]
             plot_fields = ["plot_key", "habitation", "field_type", "mask", "in_mapped_area",
-                           "outside_reason"] + ([] if keptland else ["stand_id", "stand_type"])
+                           "outside_reason"] + ([] if keptland and not r3
+                                                else ["stand_id", "stand_type"])
             steps.append({
                 "step": "fes_plots", "title": "Field check",
                 "decisions": STEP_DECISIONS["fes_plots"],
@@ -1051,10 +1486,10 @@ def main() -> None:
             "fes_declared": box,
             "bounds": ai["bbox"],
             "start_bounds": ai["start_bounds"] if odisha else ai["bbox"],
-            "note": SANJAY_NOTE if area == "sanjay_van" else "", "facts": facts,
+            "note": SANJAY_NOTE if sanjay else "", "facts": facts,
             "steps": steps}
+        entry.update(versions(run_id, area, r3, cfg, stands_fc))
         if keptland:
-            sanjay = area == "sanjay_van"
             where = "at Sanjay Van" if sanjay else f"in the {AREAS[area]['title']} boxes"
             files, clustering = keptland_files(run_id, vec, run, where,
                                                (ai["bbox"][1] + ai["bbox"][3]) / 2)
@@ -1084,15 +1519,20 @@ def main() -> None:
                            if run_id.endswith("_s1desc") else "")
                         + (MEANS_NOTE.format(run=run_id) if stand_means(run_id, vec) else ""),
                 "files": files})
+        if r3:
+            facts.update(superpixels_in_layer(run_id, vec, stands_fc))
+            r3_entry(entry, facts, run, clustering, st, cfg, arm, ceiling, sanjay)
         runs_out.append(entry)
         print("built", run_id, st["n_stands"], "stands")
     for note in notes:
         print("note:", note)
     has_boxes = any(spec.get("box") for spec in RUNS)
-    kept = [r for r in runs_out if r.get("kept_land") and r["roi"] != "boxes"]
-    kept_boxes = [r for r in runs_out if r.get("kept_land") and r["roi"] == "boxes"
+    earlier = [r for r in runs_out if r["group"] == "earlier"]
+    current = [r for r in runs_out if r["group"] == "current"]
+    kept = [r for r in earlier if r.get("kept_land") and r["roi"] != "boxes"]
+    kept_boxes = [r for r in earlier if r.get("kept_land") and r["roi"] == "boxes"
                   and not r["run_id"].endswith("_s1desc")]
-    kept_s1desc = [r for r in runs_out if r.get("kept_land") and r["run_id"].endswith("_s1desc")]
+    kept_s1desc = [r for r in earlier if r.get("kept_land") and r["run_id"].endswith("_s1desc")]
     short = SHORT_LABEL_WITH_BOXES if has_boxes else SHORT_LABEL
     label = LABEL
     if kept:
@@ -1108,10 +1548,23 @@ def main() -> None:
         label += KEPTLAND_S1DESC_LABEL.format(
             n=NUMBER_WORDS.get(len(kept_s1desc), str(len(kept_s1desc))),
             commit=", ".join(sorted({r["source_commit"] for r in kept_s1desc})))
-    index = {"label": label, "short_label": short,
-             "commit": "early build", "fes_comparison": "fes_comparison.json", "runs": runs_out}
+    index = {"label": R3_LABEL.format(commit=", ".join(sorted({r["source_commit"] for r in current})))
+                      + label,
+             "short_label": R3_SHORT_LABEL.format(n_current=len(current), n_earlier=len(earlier)),
+             "earlier_short_label": short,
+             "commit": "early build", "fes_comparison": "fes_comparison.json",
+             "history_links": [{"label": "the round 13 record", "path": ROUND13},
+                               {"label": "the round 14 record", "path": ROUND14}],
+             "what_changed": {"review": REVIEW,
+                              "groups": [{"title": g["title"], "record": g["record"],
+                                          "items": [{"ref": ref, "text": text}
+                                                    for ref, text in g["items"]]}
+                                         for g in WHAT_CHANGED]},
+             "runs": runs_out}
     write_json(OUT / "index.json", index)
     write_json(OUT / "fes_comparison.json", fes_rows())
+    if OUT.resolve() == (REPO / "ui_data").resolve():
+        BUILD_RECORD.write_text(json.dumps(build_record(git, runs_out), indent=1) + "\n")
 
 
 def fes_rows() -> dict:
@@ -1156,17 +1609,16 @@ def fes_rows() -> dict:
         "corrected for running ten. That does not make the stands wrong: with 267 plots in 20 "
         "villages, a real but modest agreement could go undetected.")
     rows += keptland_rows(tests)
+    rows += r3_rows(tests)
     return {"label": "Phase 3 numbers (September 2026 runs), the 13 October re-runs' scores, and the "
                      "15 October kept-land runs' scores, numbers only (the declared chance test was not "
                      "run on these stands), with, beside them on the same plots, the 13 Oct box runs' "
-                     "stands (the box_runs rows: a descriptive comparison, not a declared score). The "
-                     "kept-land record is the scores on those runs' _r9 "
-                     "re-runs (odisha_script/keptland_scores/keptland_s1desc_r9_scores.json, their "
-                     "declared chance test in keptland_s1desc_r9_chance.txt; register entry "
-                     "field-keptland-scores-of-record-are-the-r9-re-runs), which are not in ui_data; "
-                     "the 15 October scores here stay as history. "
-                     "Claude Code re-scores the demo set, both arms (brief A4).",
-            "reading": reading, "rows": rows}
+                     "stands (the box_runs rows: a descriptive comparison, not a declared score); and "
+                     "R3's four sets, each with its declared chance test (register entry "
+                     "field-r3-scores-the-record-once-they-exist: R3's scores are the record, the _r9 "
+                     "scores the record from before the fixes, which are not in ui_data). The 15 "
+                     "October scores here stay as history.",
+            "reading": reading, "reading_for": "September 2026 runs (Phase 3)", "rows": rows}
 
 
 def keptland_rows(tests: list[tuple[str, str]]) -> list[dict]:
@@ -1193,6 +1645,51 @@ def keptland_rows(tests: list[tuple[str, str]]) -> list[dict]:
                          "n_plots": a["counts"]["plots"],
                          "declaration": "odisha_script/PHASE_KEPTLAND_PREDECLARED.md",
                          "run_ids": run_ids})
+    return rows
+
+
+R3_STANDS = "R3 runs of 28 Oct 2026"
+R3_SETS = (("feature_vector", 3.0), ("alphaearth", 3.0), ("feature_vector", 10.0),
+           ("alphaearth", 10.0))
+
+
+def r3_rows(tests: list[tuple[str, str]]) -> list[dict]:
+    """The declared field check and chance test of R3's four sets (round 14, Task 8;
+    odisha_script/keptland_scores/keptland_<set>_r14_scores.json and _chance.json). Every analysis
+    of the scores file, five rows each, with the chance test's percentile, p and Holm p where the
+    chance file has that analysis (the primary, S1 and S2); and C1, score 4 without Kendujhar,
+    beside the primary, outside Holm and with no pass or fail
+    (PHASE_KEPTLAND_AMENDMENT_chance_checks.md). Each row names the set's four runs, as its chance
+    file does. The build stops if a chance file's observed score is not its scores file's."""
+    stat = {"drawing_all_plots": "delin_all", "drawing_multi_plot": "delin_multi",
+            "pair_precision": "prec", "labelling_district": "lab_wmean", "far_apart": "far_gap"}
+    rows = []
+    for arm, ceil in R3_SETS:
+        stem = r3_set(arm, ceil)
+        scores = json.loads((R3_SCORES / f"{stem}_scores.json").read_text())
+        chance = json.loads((R3_SCORES / f"{stem}_chance.json").read_text())
+        common = {"arm": arm, "stand_ceiling_ha": ceil, "roi": "boxes",
+                  "declaration": "odisha_script/PHASE_KEPTLAND_PREDECLARED.md",
+                  "run_ids": sorted(chance["runs"]), "set": stem}
+        for a in scores["analyses"]:
+            tested = chance["analyses"].get(a["analysis"], {}).get("scores", {})
+            for tid, title in tests:
+                c = tested.get(stat[tid])
+                if c is not None and abs(c["observed"] - a[stat[tid]]) > 1e-12:
+                    raise SystemExit(f"{stem}: {a['analysis']} {tid}: the chance test's observed "
+                                     "score is not the field check's")
+                rows.append({**common, "analysis": a["analysis"],
+                             "stands": BOX_RUNS_STANDS if a["analysis"] == "box_runs" else R3_STANDS,
+                             "test": tid, "title": title, "score": a[stat[tid]],
+                             "chance_percentile": c["pctile"] if c else None,
+                             "p": c["p"] if c else None, "p_holm": c["holm_p"] if c else None,
+                             "n_plots": a["counts"]["plots"]})
+        c1 = chance["checks"]["C1"]
+        rows.append({**common, "analysis": "C1", "stands": R3_STANDS,
+                     "test": "labelling_district", "title": "Labelling, without Kendujhar",
+                     "score": c1["observed"], "chance_percentile": c1["pctile"], "p": c1["p"],
+                     "p_holm": None, "outside_holm": True,
+                     "n_plots": c1["plots_scored_observed"]})
     return rows
 
 
