@@ -655,6 +655,11 @@ class _FakeImage:
     def addBands(self, other):  # noqa: N802 - mirrors the ee API
         return self
 
+    def projection(self):
+        # The grid the stage hands its component-size check (round 14), which these
+        # tests stub out.
+        return "<the label image's projection>"
+
 
 def test_the_stage_passes_the_provenance_through_and_builds_the_layer(monkeypatch):
     """run() with Earth Engine stubbed out, on the seven-superpixel graph of

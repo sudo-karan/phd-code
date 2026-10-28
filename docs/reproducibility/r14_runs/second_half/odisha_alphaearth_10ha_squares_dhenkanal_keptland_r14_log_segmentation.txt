@@ -1,0 +1,26 @@
+2026-10-28 15:17:39 [INFO] fmu.utils.logging: Logging initialized; run dir: runs/odisha_alphaearth_10ha_squares_dhenkanal_keptland_r14_20261028_151739
+2026-10-28 15:17:39 [INFO] fmu.utils.logging: Log level: INFO
+2026-10-28 15:17:39 [INFO] fmu.pipeline: ============================================================
+2026-10-28 15:17:39 [INFO] fmu.pipeline: Pipeline run: odisha_alphaearth_10ha_squares_dhenkanal_keptland_r14
+2026-10-28 15:17:39 [INFO] fmu.pipeline: Stages: masking -> data_load -> features_embedding -> segmentation
+2026-10-28 15:17:39 [INFO] fmu.pipeline: Run directory: runs/odisha_alphaearth_10ha_squares_dhenkanal_keptland_r14_20261028_151739
+2026-10-28 15:17:39 [INFO] fmu.pipeline: Cache layout: per_step (given to Pipeline())
+2026-10-28 15:17:39 [INFO] fmu.pipeline: ============================================================
+2026-10-28 15:17:39 [INFO] fmu.pipeline: stage: masking
+2026-10-28 15:17:43 [INFO] fmu.pipeline:   [cache] all 4 outputs hit; skipping stage run
+2026-10-28 15:17:45 [INFO] fmu.pipeline: stage masking done in 6.19 sec (from cache)
+2026-10-28 15:17:45 [INFO] fmu.pipeline: stage: data_load
+2026-10-28 15:17:47 [INFO] fmu.stages.data_load:   S2 phenology window: 174 images after cloud filter
+2026-10-28 15:17:48 [INFO] fmu.stages.data_load:   S1 radar window: 189 images after orbit/pol filter
+2026-10-28 15:17:49 [INFO] fmu.stages.data_load:   S2 composite window: 174 images after cloud filter
+2026-10-28 15:17:51 [INFO] fmu.pipeline: stage data_load done in 5.32 sec
+2026-10-28 15:17:51 [INFO] fmu.pipeline: stage: features_embedding
+2026-10-28 15:17:51 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-28 15:17:52 [INFO] fmu.pipeline: stage features_embedding done in 0.79 sec (from cache)
+2026-10-28 15:17:52 [INFO] fmu.pipeline: stage: segmentation
+2026-10-28 15:17:53 [INFO] fmu.pipeline:   [cache] all 2 outputs hit; skipping stage run
+2026-10-28 15:17:53 [INFO] fmu.pipeline: stage segmentation done in 1.91 sec (from cache)
+2026-10-28 15:17:53 [INFO] fmu.pipeline: ============================================================
+2026-10-28 15:17:53 [INFO] fmu.pipeline: Pipeline complete in 14.22 sec
+2026-10-28 15:17:53 [INFO] fmu.pipeline: ============================================================
+2026-10-28 15:17:54 [INFO] fmu.pipeline: Manifest written: runs/odisha_alphaearth_10ha_squares_dhenkanal_keptland_r14_20261028_151739/manifest.json

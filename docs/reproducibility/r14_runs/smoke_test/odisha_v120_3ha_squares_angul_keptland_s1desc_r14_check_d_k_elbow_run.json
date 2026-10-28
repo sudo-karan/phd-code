@@ -1,0 +1,165 @@
+{
+ "config": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_d",
+ "fingerprint": "25ecc2af59",
+ "cache_layout": "per_step",
+ "step_keys": {
+  "masking": "s073c13df8c",
+  "data_load": "s9249226467",
+  "features_optical": "s4ef0426c2c",
+  "features_radar": "s7bb26d198c",
+  "features_structure": "sc823e0cc39",
+  "features_static": "s7483f4391a",
+  "features_embedding": "s21b47a530b",
+  "segmentation": "s8d87a8f213",
+  "merge": "sd05ce9ea44",
+  "clustering": "s36138a6cce",
+  "k_elbow": "s91032dcd75"
+ },
+ "git": {
+  "commit": "d2fe14406d92bdcfa3f6fb33e3d716036b7591c9",
+  "dirty": false,
+  "modified": [],
+  "modified_truncated": false,
+  "untracked_code": [],
+  "untracked_code_truncated": false,
+  "untracked": [
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_c_clustering_fit_rows.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_c_clustering_kmeans.json",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_c_clustering_stand_table.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_c_k_elbow.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_c_k_elbow_fit_rows.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_c_k_elbow_preprocessing.json",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_c_k_elbow_run.json",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_c_k_elbow_stand_table.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_c_k_elbow_types.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_c_raster_at_plots.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_c_run.json",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_c_stands_dissolved.geojson",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_c_stands_merged.geojson",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_c_stands_snic.geojson"
+  ],
+  "untracked_truncated": false,
+  "root": "/Users/karan/Desktop/phd-code/outputs/round14/run_tree_3",
+  "error": null
+ },
+ "environment": {
+  "python": "3.13.14",
+  "earthengine_api": "1.7.35",
+  "pip_freeze_sha256": "31aca07855862d34db7bcb31a6b60769d1785e80606cdaa23093cdf2a60bcc21",
+  "pip_freeze_packages": 232,
+  "pip_freeze_left_out": [
+   "-e git+https://github.com/sudo-karan/phd-code.git@3c431437163f93f4d339f2e23f0ba11a751050c4#egg=fmu"
+  ],
+  "error": null
+ },
+ "cache_status": {
+  "masking": {
+   "habitat_mask": "hit",
+   "landcover_summary": "hit",
+   "mask_provenance": "hit",
+   "water_mask": "hit"
+  },
+  "data_load": {
+   "s2_composite": "hit"
+  },
+  "features_optical": {
+   "optical_features": "hit"
+  },
+  "features_radar": {
+   "radar_features": "hit"
+  },
+  "features_structure": {
+   "structure_features": "hit"
+  },
+  "features_static": {
+   "static_features": "hit"
+  },
+  "segmentation": {
+   "snic_clusters": "hit",
+   "snic_means": "hit"
+  },
+  "k_elbow": {
+   "k_elbow": "miss-exported"
+  }
+ },
+ "k_elbow": {
+  "n_rows": 166,
+  "n_bands": 22,
+  "ks": [
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12
+  ],
+  "inertia": [
+   1496.229131,
+   1109.469976,
+   929.144443,
+   838.515185,
+   778.208562,
+   728.900904,
+   682.842452,
+   655.024457,
+   620.93506,
+   595.282648,
+   573.408499
+  ],
+  "elbow_k": 4,
+  "ari_median": [
+   0.770045,
+   0.846167,
+   0.883048,
+   0.533699,
+   0.495509,
+   0.473625,
+   0.436797,
+   0.435054,
+   0.437002,
+   0.435798,
+   0.445732
+  ],
+  "ari_min": [
+   -0.108025,
+   0.67295,
+   0.270028,
+   0.378638,
+   0.269431,
+   0.281365,
+   0.299548,
+   0.260527,
+   0.2705,
+   0.291211,
+   0.27159
+  ]
+ },
+ "k_elbow_computed_in_this_pass": true,
+ "files": {
+  "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_d_k_elbow.csv": {
+   "bytes": 398,
+   "sha256": "d36eca5761ac650a0c25348b42803ba68c0a00a4995dde33f911b9e21d96045c"
+  },
+  "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_d_k_elbow_fit_rows.csv": {
+   "bytes": 99993,
+   "sha256": "dbb18b0d16ed8e849a1e5078b711a32cdeef6f91d6c756803ae5e76c0e3bdac0"
+  },
+  "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_d_k_elbow_preprocessing.json": {
+   "bytes": 5651,
+   "sha256": "7a8f60081e1a1f4af07b44cf852a97703e595764f351ebb5310dd1eef2fd3361"
+  },
+  "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_d_k_elbow_stand_table.csv": {
+   "bytes": 95256,
+   "sha256": "a0b652dd902f7fa9d66df228fc6573750d8349a931259b34e331beceb6905944"
+  },
+  "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_d_k_elbow_types.csv": {
+   "bytes": 6235,
+   "sha256": "7df119271662816bb3111b351477db487f4da975bcb9cbce42f0770c6ffcb57d"
+  }
+ }
+}

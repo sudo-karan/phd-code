@@ -229,3 +229,127 @@ as first written, the record from before the fixes, each with a dated note
 (`keptland_scores/README.md`). The hand-crafted arm's runs are to be re-run (roadmap R3). A1 and A5
 do not reach the AlphaEarth arm, and A4 reaches it in Koraput only (question 1 of the round 13
 brief); whether R3 re-runs that arm is put to Jaskaran there. Nothing declared above is changed.
+
+## Change of 26 Oct 2026 (round 14): R3, the four method changes, and k chosen from the elbow report
+
+Made by Claude Code on Jaskaran's instruction (the round 14 brief, Task 2, "the declarations,
+committed before any R3 run"; `docs/handoff/2026-10-26-round14.md`), before any R3 config, run,
+stand or score exists. Jaskaran decided to run R3 before his meeting with Prof. Seth, so that
+October's unused Earth Engine hours are not lost; every method choice below was made before any
+R3 result exists. Nothing above is changed except where this section says so.
+
+- **The runs (roadmap R3).** Nineteen copies of the `_r9` configs under the suffix `_r14`: Sanjay
+  Van both arms, the eight 3 ha box configs and the eight 10 ha box configs of both arms, and the
+  10 km tile in Angul (`configs/<the _r9 name with _r14 in place of _r9>.yaml`), each changing only
+  the name and the four settings below, and k as set below. Two more copies of the Angul
+  hand-crafted 3 ha config, `..._r14_check_a` and `..._r14_check_b`, identical but for their names,
+  are the live check of the round's code (Task 4), not R3 results, and are not scored. (Added 27
+  Oct 2026, before it runs: the live check stopped in the merge, so after the merge's fix it runs
+  again from scratch as `..._r14_check_c` and `..._r14_check_d`, copies of those two with only
+  their names changed, by the same pass rules: Jaskaran's answer to question 11 of the round 14
+  record. They are not R3 results either, and are not scored. Added 27 Oct 2026, before it runs:
+  that one stopped in the k elbow's table export, so after the fix it runs again from scratch as
+  `..._r14_check_e` and `..._r14_check_f`, copies of `..._r14_check_c` and `..._r14_check_d` with
+  only their names changed, by the same pass rules, after a smoke test that finishes
+  `..._r14_check_c` and `..._r14_check_d` from what they cached and does not count as the live
+  check: Jaskaran's answer to question 13. None of these is an R3 result or is scored.) Both arms are
+  re-run, Koraput's AlphaEarth runs included (Jaskaran's answers (a) to questions 22 and 1 of the
+  round 13 brief).
+- **The four method changes**, the same in both arms (each off by default, so no earlier run
+  changes; each a register entry in `docs/decisions.yaml`):
+  1. `clustering.fit_outside_earth_engine: true`: k-means fitted off Earth Engine with
+     scikit-learn on the table of stands, one row per stand, the stands under 1 ha left out of the
+     fit and given the nearest centre (as D3 above); median/IQR scaling with exact quartiles;
+     k-means++ with 25 starts from seed 42, the start with the lowest within-cluster sum of squares
+     kept; each stand's type written back by its label; the best start's sum of squares and the
+     starts' median and lowest pairwise adjusted Rand index recorded, a diagnostic of the
+     clustering, not a field score (`spec-clustering-kmeans-outside-earth-engine`).
+  2. `clustering.log_rule: right_skew`: only right-skewed bands (skew above 1.0, the moment
+     coefficient that Earth Engine's skew computes) logged, as log1p((x - min) / IQR), with min over
+     every stand, fitted or not; a band whose IQR is 0 dropped first; left-skewed bands not
+     transformed; the sine and cosine of an angle (the NDVI phase, aspect) never skew-tested or
+     logged, and each such pair scaled with one shared spread, the root mean square of its two IQRs;
+     each band's skew recorded before and after (`spec-clustering-log-rule-right-skewed-bands`).
+  3. `features_optical.mean_over_window: true`: `ndvi_mean` the fitted curve's mean over the dates
+     window (2017-01-01 to 2022-12-31), computed analytically, whatever `time_reference` is (Jaskaran's
+     answer (c) to question 31 of the round 13 brief; `spec-optical-mean-over-the-window`). The
+     AlphaEarth arm computes it but does not cluster on it.
+  4. `k_elbow.in_fit_space: true`: the k elbow on the fit's own rows, in its own space, with its own
+     starts, k 2 to 12, and the starts' agreement at each k; no plot read
+     (`spec-k-elbow-in-the-fits-space`).
+- **The code R3 runs** also carries the fixes of round 13 (review A1, A4, A5, A6, B13, B14, B16,
+  B17, B18) and the code changes of round 14's Task 1 (round 13's questions 21, 24, 30, 33, 35, 37,
+  40, 41 and 42; register entries named in the round 14 record). They are fixes to how the stands and
+  features are made and recorded, not changes to the declared analysis. Added 27 Oct 2026, before
+  any R3 result exists: it also carries the merge's two changes of round 14 (merge revision 4): every
+  count the merge takes on Earth Engine on the SNIC label image's own projection, with a label image
+  more than 1% from the analysis scale refused (Jaskaran's answer to the round 14 record's question
+  11; `spec-merge-pixel-counts-on-one-inclusion-rule`), and every tie of the merge broken by
+  centroid, pass 1's partner tie too (his answer to question 2; `spec-merge-every-tie-by-centroid`).
+  These too are fixes, not changes to the declared analysis. Added 27 Oct 2026, before any R3 result exists: it also
+  carries the k elbow's table fix, each row of the elbow's cached table with the same fixed point
+  as its geometry, so that Earth Engine exports it (his answer to question 13;
+  `spec-k-elbow-table-rows-carry-a-fixed-point`). It changes no number, no file and no key; it too
+  is a fix, not a change to the declared analysis.
+- **Nothing else in the declared analysis changes**: the plots, the field types (the Phase 3
+  primary typology, not refitted), the five scores, the join with the 30 m rule, the checks S1 and
+  S2, how the plots join, the 13 Oct box runs beside, the chance test as declared (1,999
+  realisations per null, Holm), C1 (`PHASE_KEPTLAND_AMENDMENT_chance_checks.md`), and the 10 ha change
+  of 19 Oct 2026 above, each applied arm by arm and size by size as declared.
+- **k.** Declared above as 5 for the boxes (6 at Sanjay Van, in its configs). For R3, k for each
+  area is chosen by Jaskaran from the elbow report alone (round 14, Task 6:
+  `odisha_script/keptland_scores/r14_elbow_report.md`), before any R3 field score exists, and
+  committed with his reason before the clustering pass (Task 7). Unless he says otherwise, both
+  arms of an area take the same k. The areas are each district at 3 ha and at 10 ha, Sanjay Van and
+  the tile. The report reads no plot and computes no field score. For each area and arm it gives the
+  within-cluster sum of squares for k 2 to 12 with the knee (the k farthest from the chord between
+  the first and last points, the rule of every elbow so far, `fmu.stages.k_elbow.knee`), and the
+  starts' median and lowest pairwise adjusted Rand index at each k; and the pooled elbow of the four
+  districts for each arm and size (their tables of stands pooled, then preprocessed together by the
+  same rule). Until then the `_r14` configs carry the `_r9` k.
+- **The chance test's placements.** Each R3 set draws the same placements as its `_r9` set: the seed
+  takes no run suffix (review B22; `odisha_keptland_chance.py` strips `_r14` as it strips `_r9`), so
+  the four sets keep the names, and the seeds, `v120_3ha_squares_keptland_s1desc`,
+  `alphaearth_3ha_squares_keptland`, `v120_10ha_squares_keptland_s1desc` and
+  `alphaearth_10ha_squares_keptland`.
+- **Side by side**, descriptive only, with no test of any difference: R3 beside `_r9`, arm by arm and
+  size by size; 3 ha beside 10 ha for each arm (as the 10 ha change declares); and the two arms
+  beside each other at each size. The last was not declared at 10 ha (the 10 ha change above
+  dropped it before any run); it is declared here, before any R3 score. Sanjay Van, which has no
+  plots: stand counts, sizes, k and the types' shares only.
+- **Files.** New files only, beside the old ones (`odisha_script/keptland_scores/`, names with
+  `_r14`); nothing older is written over.
+- **What existed when this was written.** No `_r14` config, run, stand or score (no config name
+  holds `_r14` at the commit of this section). The `_r9` record of both arms at 3 ha and 10 ha, with
+  their declared chance tests and comparisons, from before the round 13 fixes (the note of 20 Oct
+  above); round 13's elbows in the clustering stage's space, rebuilt from the stand files of
+  record and the stage's rows of the demo set (`odisha_phase3_2_k_elbow_comparison.md`), which do
+  not use the R3 code; Sanjay Van's kept-land stands. Which scores are the record once R3 exists
+  (the note of 19 Oct above names the `_r9` ones) is not decided here: it is put to Jaskaran
+  (round 14 brief, Questions).
+- **Note of 27 Oct 2026: the pooled elbows also with the rows in reverse order.** k-means++
+  depends on the order of the rows, and round 13 found that the order alone can move an elbow by 1
+  or 2 (`odisha_phase3_2_k_elbow_comparison.md`). So the elbow report also gives each pooled elbow
+  (the four districts of one arm and stand size, pooled in the stated order: Angul, Dhenkanal,
+  Kendujhar, Koraput, each by stand label) with the same rows in reverse order, the same
+  preprocessing and the same sweep, beside it: both knees and both tables. Each run's own elbow is
+  given as before, in one order, the run's. Decided by Jaskaran on 27 Oct 2026 (his answer (b) to
+  question 9 of the round 14 record, `docs/handoff/2026-10-26-round14.md`), before any R3 result
+  exists: no R3 config has been run, and no R3 elbow, stand or score exists (the live check's two
+  runs, which are not R3 results, stopped in the merge before their elbow). Nothing else in this
+  section is changed.
+- **Note of 28 Oct 2026: the 10 km tile dropped from R3, to run later.** Jaskaran dropped the tile
+  from R3 on 28 Oct 2026, to finish the round that day (the round 14 record,
+  `docs/handoff/2026-10-26-round14.md`, Done, the plan changed): R3's first half is to stop before
+  the tile, and R3 is to be the eighteen other runs. This changes three things above: the runs
+  (eighteen, not nineteen: the tile is not run in R3); the areas of the elbow report (the tile's is
+  to be reported as having no record); and the areas for which Jaskaran chooses k (not the tile).
+  The tile is in no scored set (the field check and the chance test are those of the Odisha boxes,
+  each arm at 3 ha and at 10 ha), so no declared score or chance test changes. When this was
+  written, R3's first half had made the elbows of Sanjay Van and of the 3 ha boxes, both arms, and
+  was making the 10 ha boxes'; Jaskaran had chosen k for the 3 ha boxes and Sanjay Van (register
+  `field-r3-k-from-part-1-of-the-elbow-report`); no R3 clustering, stand type or field score
+  existed. Nothing else in this section is changed. (Corrected the same day, after one independent
+  reader: the note first said that the first half "stops" before the tile and that the report
+  "names" it, both still to happen then, and that nothing else changed, though it changes the
+  three things above.)

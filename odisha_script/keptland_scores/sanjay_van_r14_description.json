@@ -1,0 +1,346 @@
+{
+ "runs": {
+  "sanjay_van_baseline_keptland_r14": {
+   "arm": "hand-crafted",
+   "k": 5,
+   "counts": {
+    "stands": 576,
+    "stands_with_no_pixel": 0,
+    "min_area_ha": 1.0,
+    "stands_below_min_area": 387,
+    "below_min_isolated": 387,
+    "below_min_area_blocked": 0,
+    "stands_left_out_of_fit": 301,
+    "area_ha_left_out_of_fit": 31.2,
+    "max_area_ha": 10.0,
+    "stands_over_max_area": 7,
+    "stands_in_merged_layer": 576,
+    "stand_polygons_in_merged_layer": 576,
+    "stands_split_into_pieces": 0,
+    "stands_of_the_merge_with_no_polygon": 0,
+    "stands_in_merged_layer_without_a_type": 86
+   },
+   "sizes_all_stands": {
+    "stands": 576,
+    "smallest_ha": 0.01,
+    "p10_ha": 0.01,
+    "p25_ha": 0.02,
+    "p50_ha": 0.08,
+    "p75_ha": 1.7325,
+    "p90_ha": 5.58,
+    "largest_ha": 10.95,
+    "mean_ha": 1.4721,
+    "total_ha": 847.92
+   },
+   "sizes_at_or_above_min_area": {
+    "stands": 189,
+    "smallest_ha": 1.04,
+    "p10_ha": 1.218,
+    "p25_ha": 1.82,
+    "p50_ha": 3.3,
+    "p75_ha": 6.59,
+    "p90_ha": 8.882,
+    "largest_ha": 10.95,
+    "mean_ha": 4.3137,
+    "total_ha": 815.28
+   },
+   "types": [
+    {
+     "type": 0,
+     "stands": 211,
+     "share_of_stands_percent": 36.63,
+     "area_ha": 249.81,
+     "share_of_habitat_percent": 29.52
+    },
+    {
+     "type": 1,
+     "stands": 45,
+     "share_of_stands_percent": 7.81,
+     "area_ha": 70.32,
+     "share_of_habitat_percent": 8.31
+    },
+    {
+     "type": 2,
+     "stands": 22,
+     "share_of_stands_percent": 3.82,
+     "area_ha": 4.97,
+     "share_of_habitat_percent": 0.59
+    },
+    {
+     "type": 3,
+     "stands": 95,
+     "share_of_stands_percent": 16.49,
+     "area_ha": 219.07,
+     "share_of_habitat_percent": 25.89
+    },
+    {
+     "type": 4,
+     "stands": 117,
+     "share_of_stands_percent": 20.31,
+     "area_ha": 302.0,
+     "share_of_habitat_percent": 35.69
+    }
+   ]
+  },
+  "sanjay_van_alphaearth_keptland_r14": {
+   "arm": "AlphaEarth",
+   "k": 5,
+   "counts": {
+    "stands": 560,
+    "stands_with_no_pixel": 0,
+    "min_area_ha": 1.0,
+    "stands_below_min_area": 386,
+    "below_min_isolated": 386,
+    "below_min_area_blocked": 0,
+    "stands_left_out_of_fit": 386,
+    "area_ha_left_out_of_fit": 31.98,
+    "max_area_ha": 10.0,
+    "stands_over_max_area": 7,
+    "stands_in_merged_layer": 560,
+    "stand_polygons_in_merged_layer": 560,
+    "stands_split_into_pieces": 0,
+    "stands_of_the_merge_with_no_polygon": 0,
+    "stands_in_merged_layer_without_a_type": 0
+   },
+   "sizes_all_stands": {
+    "stands": 560,
+    "smallest_ha": 0.01,
+    "p10_ha": 0.01,
+    "p25_ha": 0.02,
+    "p50_ha": 0.08,
+    "p75_ha": 1.7825,
+    "p90_ha": 6.17,
+    "largest_ha": 10.76,
+    "mean_ha": 1.5141,
+    "total_ha": 847.92
+   },
+   "sizes_at_or_above_min_area": {
+    "stands": 174,
+    "smallest_ha": 1.0,
+    "p10_ha": 1.305,
+    "p25_ha": 2.13,
+    "p50_ha": 4.175,
+    "p75_ha": 6.775,
+    "p90_ha": 9.372,
+    "largest_ha": 10.76,
+    "mean_ha": 4.6893,
+    "total_ha": 815.94
+   },
+   "types": [
+    {
+     "type": 0,
+     "stands": 376,
+     "share_of_stands_percent": 67.14,
+     "area_ha": 135.86,
+     "share_of_habitat_percent": 16.03
+    },
+    {
+     "type": 1,
+     "stands": 40,
+     "share_of_stands_percent": 7.14,
+     "area_ha": 197.24,
+     "share_of_habitat_percent": 23.27
+    },
+    {
+     "type": 2,
+     "stands": 32,
+     "share_of_stands_percent": 5.71,
+     "area_ha": 149.97,
+     "share_of_habitat_percent": 17.69
+    },
+    {
+     "type": 3,
+     "stands": 38,
+     "share_of_stands_percent": 6.79,
+     "area_ha": 27.62,
+     "share_of_habitat_percent": 3.26
+    },
+    {
+     "type": 4,
+     "stands": 74,
+     "share_of_stands_percent": 13.21,
+     "area_ha": 336.89,
+     "share_of_habitat_percent": 39.75
+    }
+   ]
+  },
+  "sanjay_van_baseline_keptland_r9": {
+   "arm": "hand-crafted",
+   "k": 6,
+   "counts": {
+    "stands": 583,
+    "stands_with_no_pixel": 8,
+    "min_area_ha": 1.0,
+    "stands_below_min_area": 394,
+    "below_min_isolated": 392,
+    "below_min_area_blocked": 2,
+    "stands_left_out_of_fit": 389,
+    "area_ha_left_out_of_fit": 34.11,
+    "max_area_ha": 10.0,
+    "stands_over_max_area": 6,
+    "stands_in_merged_layer": 578,
+    "stand_polygons_in_merged_layer": 578,
+    "stands_split_into_pieces": 0,
+    "stands_of_the_merge_with_no_polygon": 5,
+    "stands_in_merged_layer_without_a_type": 0
+   },
+   "sizes_all_stands": {
+    "stands": 583,
+    "smallest_ha": 0.0,
+    "p10_ha": 0.01,
+    "p25_ha": 0.02,
+    "p50_ha": 0.08,
+    "p75_ha": 1.71,
+    "p90_ha": 5.604,
+    "largest_ha": 10.97,
+    "mean_ha": 1.4529,
+    "total_ha": 847.05
+   },
+   "sizes_at_or_above_min_area": {
+    "stands": 189,
+    "smallest_ha": 1.04,
+    "p10_ha": 1.19,
+    "p25_ha": 1.82,
+    "p50_ha": 3.3,
+    "p75_ha": 6.59,
+    "p90_ha": 8.842,
+    "largest_ha": 10.97,
+    "mean_ha": 4.3013,
+    "total_ha": 812.94
+   },
+   "types": [
+    {
+     "type": 0,
+     "stands": 43,
+     "share_of_stands_percent": 7.44,
+     "area_ha": 75.97,
+     "share_of_habitat_percent": 8.96
+    },
+    {
+     "type": 1,
+     "stands": 40,
+     "share_of_stands_percent": 6.92,
+     "area_ha": 72.56,
+     "share_of_habitat_percent": 8.56
+    },
+    {
+     "type": 2,
+     "stands": 18,
+     "share_of_stands_percent": 3.11,
+     "area_ha": 32.54,
+     "share_of_habitat_percent": 3.84
+    },
+    {
+     "type": 3,
+     "stands": 34,
+     "share_of_stands_percent": 5.88,
+     "area_ha": 12.4,
+     "share_of_habitat_percent": 1.46
+    },
+    {
+     "type": 4,
+     "stands": 93,
+     "share_of_stands_percent": 16.09,
+     "area_ha": 193.85,
+     "share_of_habitat_percent": 22.87
+    },
+    {
+     "type": 5,
+     "stands": 350,
+     "share_of_stands_percent": 60.55,
+     "area_ha": 460.27,
+     "share_of_habitat_percent": 54.3
+    }
+   ]
+  },
+  "sanjay_van_alphaearth_keptland_r9": {
+   "arm": "AlphaEarth",
+   "k": 6,
+   "counts": {
+    "stands": 565,
+    "stands_with_no_pixel": 8,
+    "min_area_ha": 1.0,
+    "stands_below_min_area": 391,
+    "below_min_isolated": 391,
+    "below_min_area_blocked": 0,
+    "stands_left_out_of_fit": 386,
+    "area_ha_left_out_of_fit": 31.74,
+    "max_area_ha": 10.0,
+    "stands_over_max_area": 7,
+    "stands_in_merged_layer": 560,
+    "stand_polygons_in_merged_layer": 560,
+    "stands_split_into_pieces": 0,
+    "stands_of_the_merge_with_no_polygon": 5,
+    "stands_in_merged_layer_without_a_type": 0
+   },
+   "sizes_all_stands": {
+    "stands": 565,
+    "smallest_ha": 0.0,
+    "p10_ha": 0.01,
+    "p25_ha": 0.02,
+    "p50_ha": 0.08,
+    "p75_ha": 1.7,
+    "p90_ha": 6.158,
+    "largest_ha": 10.76,
+    "mean_ha": 1.4992,
+    "total_ha": 847.03
+   },
+   "sizes_at_or_above_min_area": {
+    "stands": 174,
+    "smallest_ha": 1.0,
+    "p10_ha": 1.305,
+    "p25_ha": 2.1325,
+    "p50_ha": 4.175,
+    "p75_ha": 6.775,
+    "p90_ha": 9.384,
+    "largest_ha": 10.76,
+    "mean_ha": 4.6856,
+    "total_ha": 815.29
+   },
+   "types": [
+    {
+     "type": 0,
+     "stands": 34,
+     "share_of_stands_percent": 6.07,
+     "area_ha": 27.52,
+     "share_of_habitat_percent": 3.25
+    },
+    {
+     "type": 1,
+     "stands": 25,
+     "share_of_stands_percent": 4.46,
+     "area_ha": 128.99,
+     "share_of_habitat_percent": 15.22
+    },
+    {
+     "type": 2,
+     "stands": 31,
+     "share_of_stands_percent": 5.54,
+     "area_ha": 144.63,
+     "share_of_habitat_percent": 17.06
+    },
+    {
+     "type": 3,
+     "stands": 23,
+     "share_of_stands_percent": 4.11,
+     "area_ha": 114.07,
+     "share_of_habitat_percent": 13.46
+    },
+    {
+     "type": 4,
+     "stands": 61,
+     "share_of_stands_percent": 10.89,
+     "area_ha": 296.87,
+     "share_of_habitat_percent": 35.02
+    },
+    {
+     "type": 5,
+     "stands": 386,
+     "share_of_stands_percent": 68.93,
+     "area_ha": 135.52,
+     "share_of_habitat_percent": 15.99
+    }
+   ]
+  }
+ }
+}

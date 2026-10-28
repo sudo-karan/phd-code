@@ -198,7 +198,10 @@ def local_record(run_id: str, runs: Path = RUNS, mask_data: Path = MASKS / "_mas
         out["run_record_fingerprint"] = record["fingerprint"]
     for state_path in sorted((runs / "logs").glob("*.state.json")):
         state = json.loads(state_path.read_text())
-        # Two shapes of state file: the batch script of 13 Oct, and run_passes_safely.py.
+        # Two shapes of state file: the batch script of 13 Oct, and run_passes_safely.py. Its dirty
+        # flag counts modified tracked files, and since round 14 untracked code under src/,
+        # scripts/, odisha_script/ and configs/ too (round 13 question 30 (c)); before, tracked
+        # files only.
         git = state.get("git") or {"commit": state.get("commit"), "dirty": state.get("tree_dirty")}
         if run_id in state.get("done", []) or run_id in state.get("needs_attention", {}):
             out["source_commit"] = git["commit"]

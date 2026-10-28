@@ -29,7 +29,8 @@ was trained on, and the types the run gave the stands left out. Then:
   4. left_out_typed: every stand left out has a type, and one type: the trained clusterer,
      applied to every unit, types them too.
   5. summary_numbers_add_up: units_in_habitat = units_fitted + units_dropped_missing_band +
-     units_left_out_of_fit, from the stage's own counts.
+     units_left_out_of_fit (+ units_with_no_pixel_centre_in_roi, since round 14), from the
+     stage's own counts.
   6. stage_warnings: what the stage logged as a warning. Expected: none of the three warnings of
      the path with the setting on, which begin "k-means fit:" (no stand below the minimum had a
      row; the sample of them holds other units; the two samples do not add up). Others, such as
@@ -141,12 +142,19 @@ def verdicts(result: dict[str, Any]) -> list[str]:
                           f"of the {t['left_out']} stands left out, {t['n_untyped']} have no type "
                           f"and {t['n_with_more_than_one_type']} more than one"))
     n = result["summary_numbers"]
-    total = n["units_fitted"] + n["units_dropped_missing_band"] + n["units_left_out_of_fit"]
+    # Since round 14 (round 13's question 35) the units with no habitat pixel centre in the ROI
+    # are a number of their own; it is None on a cluster_labels asset made before, whose
+    # units_dropped_missing_band counted them.
+    no_centre = n.get("units_with_no_pixel_centre_in_roi")
+    total = (n["units_fitted"] + n["units_dropped_missing_band"] + n["units_left_out_of_fit"]
+             + (no_centre or 0))
+    no_centre_text = (f" + units_with_no_pixel_centre_in_roi {no_centre}"
+                      if no_centre is not None else "")
     lines.append(says(total == n["units_in_habitat"],
                       f"units_in_habitat {n['units_in_habitat']} = units_fitted "
                       f"{n['units_fitted']} + units_dropped_missing_band "
                       f"{n['units_dropped_missing_band']} + units_left_out_of_fit "
-                      f"{n['units_left_out_of_fit']}",
+                      f"{n['units_left_out_of_fit']}{no_centre_text}",
                       f"units_in_habitat {n['units_in_habitat']} against {total} fitted, dropped "
                       f"and left out"))
     w = [m for m in result.get("stage_warnings", []) if m.startswith(D3_WARNING)]

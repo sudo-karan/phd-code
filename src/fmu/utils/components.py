@@ -30,7 +30,12 @@ class ComponentSizeError(RuntimeError):
 
 
 def largest_component_pixels(
-    labels: ee.Image, roi: ee.Geometry, scale: int, *, context: str = ""
+    labels: ee.Image,
+    roi: ee.Geometry,
+    scale: int,
+    *,
+    context: str = "",
+    crs: ee.Projection | None = None,
 ) -> tuple[int, int]:
     """Return (largest label's pixel count, number of distinct labels).
 
@@ -44,13 +49,19 @@ def largest_component_pixels(
     bound on any single component, which is the conservative direction for a
     safety check. (SNIC assigns a unique id per superpixel and the merge only
     joins adjacent regions, so in practice the two coincide.)
+
+    `crs` given, the histogram is counted on that projection exactly, with no
+    scale: the merge gives the label image's own projection, on which every
+    count of the merge is taken since round 14 (fmu.utils.adjacency). Not given,
+    it is counted at `scale` in the label image's projection, as before.
     """
     band = safe_get_info(labels.bandNames(), context=f"{context} band names")[0]
+    grid: dict[str, object] = {"scale": scale} if crs is None else {"crs": crs}
     hist = safe_get_info(
         labels.select([band]).reduceRegion(
             reducer=ee.Reducer.frequencyHistogram(),
             geometry=roi,
-            scale=scale,
+            **grid,
             # No bestEffort: a silently downsampled histogram would under-report
             # component sizes, which is the one direction this check must not
             # fail in.
@@ -72,17 +83,21 @@ def assert_components_fit(
     max_size: int,
     *,
     context: str,
+    crs: ee.Projection | None = None,
 ) -> dict[str, int]:
     """Fail loudly if any component would be masked by `maxSize`.
 
     Returns the measured stats so callers can put them in the manifest -- the
     headroom is worth recording even when the check passes, since it is the
     early warning that a threshold change is about to start deleting stands.
+    `crs` is passed to `largest_component_pixels`.
 
     Raises:
         ComponentSizeError: some component exceeds `max_size`.
     """
-    largest, n_labels = largest_component_pixels(labels, roi, scale, context=context)
+    largest, n_labels = largest_component_pixels(
+        labels, roi, scale, context=context, crs=crs
+    )
     if largest > max_size:
         raise ComponentSizeError(
             f"{context}: largest component is {largest} px but maxSize is "

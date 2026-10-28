@@ -53,3 +53,11 @@ TEST 3 — ETH 3x3 roughness vs field crown cover  (does canopy_height_std track
     KORAPUT                              n=146  r=-0.058  R2=0.003  slope=-0.00  RMSE=39.62  bias(pred-field)=-34.37
 Read: expect NEGATIVE correlation — closed canopy is smoother. If flat, the
       roughness proxy isn't measuring closure at this resolution.
+
+  NOTE ADDED 26 Oct 2026 (round 14: round 13 question 18 (a), review C21; the numbers above are
+  as first written): the RMSE and bias(pred-field) of Test 2 (lines 36, 38 and 39) subtract the
+  Sal dominance fraction from NDVI amplitude, and those of Test 3 (lines 49 to 53) crown cover in
+  per cent from ETH roughness in metres; they mean nothing. The script now prints RMSE and bias
+  only where both sides are heights in metres (Test 1), the rule round 10 applied to step 12. Its
+  output is odisha_phase1_results_r14.txt: it differs from the 55 lines above only in those eight
+  lines, each without its RMSE and bias. See odisha_phase1_results_r14_vs_before.md.

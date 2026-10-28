@@ -5,6 +5,10 @@ decomposition turned that into (0, 1), the pair of a slope facing due north. The
 stage each decompose aspect per pixel, before the unit means; both now give a cell whose slope
 is 0 the pair (0, 0), so that a stand's mean aspect vector holds only the directions of its
 sloping cells. Computed here on numpy stand-ins for the images (tests/_ee_arrays.py).
+
+Since round 14 the export stage's stand layers also average each angle's sine and cosine
+(register entry spec-export-stand-means-of-angle-sin-and-cos). It holds no copy of the rule: it
+takes the clustering stage's pairs and keeps the angles beside them, as the last tests here check.
 """
 
 from __future__ import annotations
@@ -12,9 +16,11 @@ from __future__ import annotations
 import math
 from types import ModuleType
 
+import numpy as np
 import pytest
 
 import fmu.stages.clustering as clustering
+import fmu.stages.export as export
 import fmu.stages.profiling as profiling
 from _ee_arrays import Image, install
 
@@ -86,3 +92,37 @@ def test_aspect_without_slope_is_refused(module, monkeypatch):
     aspect; a stack with aspect alone cannot say, so it is not decomposed as if none were."""
     with pytest.raises(ValueError, match="slope"):
         _decomposed(module, monkeypatch, STACK.select(["elevation", "aspect", "ndvi_phase_annual"]))
+
+
+# ---------------------------------------------------------------------------
+# The export's stand layers: the clustering stage's pairs, beside the angles (round 14)
+# ---------------------------------------------------------------------------
+
+PAIRS = ["aspect_sin", "aspect_cos", "ndvi_phase_annual_sin", "ndvi_phase_annual_cos"]
+
+
+def test_the_export_takes_the_clustering_stages_pairs_beside_the_angles(monkeypatch):
+    """No third copy of the rule: the export's sine and cosine of each angle band are the
+    clustering stage's, a flat cell's (0, 0) among them, and the angles themselves stay."""
+    install(monkeypatch, clustering)
+    image = export._with_angle_sin_cos(STACK)
+    assert list(image.bands) == [*STACK.bands, *PAIRS]
+    reference, _ = clustering._decompose_cyclic_bands(STACK)
+    for band in PAIRS:
+        assert np.array_equal(image.bands[band], reference.bands[band]), band
+    assert image.pair("aspect", FLAT) == (0.0, 0.0)
+    assert image.pair("aspect", NORTH) == (0.0, 1.0)
+    assert [image.value("aspect", at) for at in (FLAT, NORTH, EAST)] == [0.0, 0.0, 90.0]
+
+
+def test_the_export_refuses_aspect_without_slope(monkeypatch):
+    install(monkeypatch, clustering)
+    with pytest.raises(ValueError, match="slope"):
+        export._with_angle_sin_cos(STACK.select(["elevation", "aspect", "ndvi_phase_annual"]))
+
+
+def test_the_export_leaves_a_stack_with_no_angle_band_as_it_is(monkeypatch):
+    """The embedding arm's stack: no band is an angle, so nothing is added."""
+    install(monkeypatch, clustering)
+    stack = Image({"A00": [[0.1, 0.2, 0.3, 0.4]], "A01": [[0.5, 0.6, 0.7, 0.8]]})
+    assert export._with_angle_sin_cos(stack) is stack

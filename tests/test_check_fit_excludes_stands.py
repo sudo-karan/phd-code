@@ -148,3 +148,14 @@ def test_its_requests_are_valid_earth_engine_requests():
         assert len(sent) == 2
     finally:
         case.tearDown()
+
+
+def test_the_units_with_no_pixel_centre_in_the_roi_are_added_since_round_14():
+    """Round 13's question 35: a run since round 14 counts them apart from the band gaps."""
+    result = _result()
+    result["summary_numbers"] = {"units_in_habitat": 13, "units_fitted": 8,
+                                 "units_dropped_missing_band": 2, "units_left_out_of_fit": 2,
+                                 "units_with_no_pixel_centre_in_roi": 1}
+    text = "\n".join(_load().verdicts(result))
+    assert "NOT" not in text
+    assert "units_left_out_of_fit 2 + units_with_no_pixel_centre_in_roi 1" in text

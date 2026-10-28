@@ -1,0 +1,70 @@
+2026-10-28 09:00:35 [INFO] fmu.utils.logging: Logging initialized; run dir: runs/odisha_v120_10ha_squares_kendujhar_keptland_s1desc_r14_20261028_090035
+2026-10-28 09:00:35 [INFO] fmu.utils.logging: Log level: INFO
+2026-10-28 09:00:35 [INFO] fmu.pipeline: ============================================================
+2026-10-28 09:00:35 [INFO] fmu.pipeline: Pipeline run: odisha_v120_10ha_squares_kendujhar_keptland_s1desc_r14
+2026-10-28 09:00:35 [INFO] fmu.pipeline: Stages: masking -> data_load -> features_optical -> features_radar -> features_structure -> features_static -> segmentation -> merge -> k_elbow
+2026-10-28 09:00:35 [INFO] fmu.pipeline: Run directory: runs/odisha_v120_10ha_squares_kendujhar_keptland_s1desc_r14_20261028_090035
+2026-10-28 09:00:35 [INFO] fmu.pipeline: Cache layout: per_step (given to Pipeline())
+2026-10-28 09:00:35 [INFO] fmu.pipeline: ============================================================
+2026-10-28 09:00:35 [INFO] fmu.pipeline: stage: masking
+2026-10-28 09:00:38 [INFO] fmu.pipeline:   [cache] all 4 outputs hit; skipping stage run
+2026-10-28 09:00:41 [INFO] fmu.pipeline: stage masking done in 6.05 sec (from cache)
+2026-10-28 09:00:41 [INFO] fmu.pipeline: stage: data_load
+2026-10-28 09:00:43 [INFO] fmu.stages.data_load:   S2 phenology window: 356 images after cloud filter
+2026-10-28 09:00:45 [INFO] fmu.stages.data_load:   S1 radar window: 189 images after orbit/pol filter
+2026-10-28 09:00:47 [INFO] fmu.stages.data_load:   S2 composite window: 356 images after cloud filter
+2026-10-28 09:00:48 [INFO] fmu.pipeline: stage data_load done in 7.12 sec
+2026-10-28 09:00:48 [INFO] fmu.pipeline: stage: features_optical
+2026-10-28 09:00:50 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-28 09:00:50 [INFO] fmu.pipeline: stage features_optical done in 2.07 sec (from cache)
+2026-10-28 09:00:50 [INFO] fmu.pipeline: stage: features_radar
+2026-10-28 09:00:52 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-28 09:00:52 [INFO] fmu.pipeline: stage features_radar done in 1.98 sec (from cache)
+2026-10-28 09:00:52 [INFO] fmu.pipeline: stage: features_structure
+2026-10-28 09:00:54 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-28 09:00:54 [INFO] fmu.pipeline: stage features_structure done in 1.76 sec (from cache)
+2026-10-28 09:00:54 [INFO] fmu.pipeline: stage: features_static
+2026-10-28 09:00:55 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-28 09:00:56 [INFO] fmu.pipeline: stage features_static done in 1.92 sec (from cache)
+2026-10-28 09:00:56 [INFO] fmu.pipeline: stage: segmentation
+2026-10-28 09:00:59 [INFO] fmu.pipeline:   [cache] all 2 outputs hit; skipping stage run
+2026-10-28 09:00:59 [INFO] fmu.pipeline: stage segmentation done in 3.11 sec (from cache)
+2026-10-28 09:00:59 [INFO] fmu.pipeline: stage: merge
+2026-10-28 09:01:01 [INFO] fmu.utils.components:   merge input: 1088 components, largest 360 px, maxSize 1320 px (73% headroom)
+2026-10-28 09:01:08 [INFO] fmu.utils.adjacency:   merge adjacency: 1086 regions, 2347 adjacent pairs, mean degree 4.32, 145 isolated
+2026-10-28 09:01:08 [WARNING] fmu.utils.adjacency:   merge adjacency: 145 region(s) have no 4-connected neighbour. They cannot be merged and will be reported as orphans.
+2026-10-28 09:01:10 [INFO] fmu.stages.merge:   kept land 935.24 ha (0.00 ha more in patches too small to be a stand, left out), of it without a superpixel 0.0000 ha; superpixel area off kept land 0.0000 ha
+2026-10-28 09:01:15 [INFO] fmu.stages.merge:   threshold calibration over 2347 adjacent pairs:
+2026-10-28 09:01:15 [INFO] fmu.stages.merge:     canopy_height            tol 2.0      = p69.4  of pair differences (p50 1.22439, p75 2.291373, defined on 2347 pairs)
+2026-10-28 09:01:15 [INFO] fmu.stages.merge:     canopy_height_std        tol 0.45     = p88.3  of pair differences (p50 0.135251, p75 0.251006, defined on 2347 pairs)
+2026-10-28 09:01:15 [INFO] fmu.stages.merge:     ndvi_amplitude_annual    tol 0.03     = p61.5  of pair differences (p50 0.022676, p75 0.043142, defined on 2347 pairs)
+2026-10-28 09:01:15 [INFO] fmu.stages.merge:     joint admit rate (all criteria at once): 44.3% of 2347 pairs. The gate is conjunctive, so this is NOT any of the marginals above.
+2026-10-28 09:01:16 [INFO] fmu.utils.region_merge:   merge pass 1: 586 merges over 6 rounds -> 500 regions
+2026-10-28 09:01:16 [INFO] fmu.utils.region_merge:   merge pass 2: 149 merges (57 via the shared-edge fallback) over 2 sweeps -> 351 stands
+2026-10-28 09:01:16 [INFO] fmu.utils.region_merge:   merge pass 2 soft ceiling: 4 merges went over max_area_ha (3 relaxed, 1 via the shared-edge fallback), none past 11.0000 ha
+2026-10-28 09:01:16 [INFO] fmu.stages.merge:   merged 1086 superpixels -> 351 stands (3.09x reduction)
+2026-10-28 09:01:16 [WARNING] fmu.stages.merge:   3 stand(s) are over max_area_ha (10.0 ha), by up to 0.67 ha. merge.pass2_soft_ceiling allows it: in the second pass a stand below min_area_ha may join a neighbour up to max_area_ha + min_area_ha (11.0 ha).
+2026-10-28 09:01:16 [WARNING] fmu.stages.merge:   145 stand(s) have no 4-connected neighbour at all and cannot be merged with anything.
+2026-10-28 09:01:16 [WARNING] fmu.stages.merge:   1 stand(s) have at least one criterion valid on under 50% of their pixels; those bands are reported as null rather than as a mean over territory that has no data.
+2026-10-28 09:01:16 [WARNING] fmu.stages.merge:   57 of 149 pass-2 merges used the shared-edge fallback, i.e. no relaxed criterion could justify them. These are the merges to look at first if stand geometry looks wrong.
+2026-10-28 09:01:16 [WARNING] fmu.pipeline:   [merge] 3 stand(s) are over max_area_ha (10.0 ha), by up to 0.67 ha. merge.pass2_soft_ceiling allows it: in the second pass a stand below min_area_ha may join a neighbour up to max_area_ha + min_area_ha (11.0 ha).
+2026-10-28 09:01:16 [WARNING] fmu.pipeline:   [merge] 145 stand(s) have no 4-connected neighbour at all and cannot be merged with anything.
+2026-10-28 09:01:16 [WARNING] fmu.pipeline:   [merge] 1 stand(s) have at least one criterion valid on under 50% of their pixels; those bands are reported as null rather than as a mean over territory that has no data.
+2026-10-28 09:01:16 [WARNING] fmu.pipeline:   [merge] 57 of 149 pass-2 merges used the shared-edge fallback, i.e. no relaxed criterion could justify them. These are the merges to look at first if stand geometry looks wrong.
+2026-10-28 09:01:16 [INFO] fmu.pipeline: stage merge done in 16.42 sec
+2026-10-28 09:01:16 [INFO] fmu.pipeline: stage: k_elbow
+2026-10-28 09:01:19 [INFO] fmu.stages.clustering:   raw feature stack: 20 bands
+2026-10-28 09:01:19 [INFO] fmu.stages.clustering:   cyclic decomposition: 2 band(s) replaced with sin/cos pairs (ndvi_phase_annual, aspect)
+2026-10-28 09:01:32 [INFO] fmu.stages.k_elbow:   k elbow in the fit's space: 206 row(s) of 350 x 22 band(s), k 2 to 12: elbow at k = 6
+2026-10-28 09:01:32 [INFO] fmu.pipeline:   wrote k_elbow.csv (403 bytes)
+2026-10-28 09:01:32 [INFO] fmu.pipeline:   wrote k_elbow_fit_rows.csv (159251 bytes)
+2026-10-28 09:01:32 [INFO] fmu.pipeline:   wrote k_elbow_preprocessing.json (5560 bytes)
+2026-10-28 09:01:32 [INFO] fmu.pipeline:   wrote k_elbow_stand_table.csv (148178 bytes)
+2026-10-28 09:01:32 [INFO] fmu.pipeline:   wrote k_elbow_types.csv (9867 bytes)
+2026-10-28 09:01:34 [INFO] fmu.utils.caching: Created cache folder projects/replicating-paper/assets/fmu/odisha_v120_10ha_squares_kendujhar_keptland_s1desc_r14/k_elbow
+2026-10-28 09:01:35 [INFO] fmu.utils.caching: Started cache table export to projects/replicating-paper/assets/fmu/odisha_v120_10ha_squares_kendujhar_keptland_s1desc_r14/k_elbow/k_elbow__s7fa07e455b (task UW3JDEQSIFLPOYTJ4BU4JNMK)
+2026-10-28 09:01:35 [INFO] fmu.pipeline: stage k_elbow done in 19.77 sec
+2026-10-28 09:01:35 [INFO] fmu.pipeline: ============================================================
+2026-10-28 09:01:35 [INFO] fmu.pipeline: Pipeline complete in 60.27 sec
+2026-10-28 09:01:35 [INFO] fmu.pipeline: ============================================================
+2026-10-28 09:01:36 [INFO] fmu.pipeline: Manifest written: runs/odisha_v120_10ha_squares_kendujhar_keptland_s1desc_r14_20261028_090035/manifest.json

@@ -130,7 +130,7 @@ Prefix is `ndvi` (baseline) or `nirv` (variant).
 
 | Band | In k-means? | Note |
 |---|---|---|
-| `<idx>_mean` | ✅ | the intercept `a`: with the trend term, the trend line's value on `time_reference` (2017-01-01), not the window's mean greenness (review C9) |
+| `<idx>_mean` | ✅ | the intercept `a`: with the trend term, the trend line's value on `time_reference` (2017-01-01), not the window's mean greenness (review C9); with `features_optical.mean_over_window` on (round 14), the fitted curve's mean over the window |
 | `<idx>_amplitude_annual` | ✅ | yearly swing, √(b²+c²) |
 | `<idx>_phase_annual` | ✅ *(as sin/cos)* | cyclic → replaced by `_sin` + `_cos` |
 | `<idx>_trend` | ✅ | inter-annual greening/browning (`f`) |

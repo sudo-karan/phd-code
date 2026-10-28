@@ -1,0 +1,57 @@
+2026-10-28 02:16:19 [INFO] fmu.utils.logging: Logging initialized; run dir: runs/odisha_v120_3ha_squares_koraput_keptland_s1desc_r14_20261028_021619
+2026-10-28 02:16:19 [INFO] fmu.utils.logging: Log level: INFO
+2026-10-28 02:16:19 [INFO] fmu.pipeline: ============================================================
+2026-10-28 02:16:19 [INFO] fmu.pipeline: Pipeline run: odisha_v120_3ha_squares_koraput_keptland_s1desc_r14
+2026-10-28 02:16:19 [INFO] fmu.pipeline: Stages: masking -> data_load -> features_optical -> features_radar -> features_structure -> features_static
+2026-10-28 02:16:19 [INFO] fmu.pipeline: Run directory: runs/odisha_v120_3ha_squares_koraput_keptland_s1desc_r14_20261028_021619
+2026-10-28 02:16:19 [INFO] fmu.pipeline: Cache layout: per_step (given to Pipeline())
+2026-10-28 02:16:19 [INFO] fmu.pipeline: ============================================================
+2026-10-28 02:16:19 [INFO] fmu.pipeline: stage: masking
+2026-10-28 02:16:27 [INFO] fmu.stages.masking: Built IndiaSAT collection from 5 year-images (2017, 2018, 2019, 2020, 2021) under projects/corestack-trees/assets/LULC_v4
+2026-10-28 02:16:30 [INFO] fmu.stages.masking: Built IndiaSAT collection from 5 year-images (2017, 2018, 2019, 2020, 2021) under projects/corestack-trees/assets/LULC_v4
+2026-10-28 02:16:31 [INFO] fmu.pipeline:   input images, indiasat_lulc: 5 (sha256 c831b93509e8)
+2026-10-28 02:16:31 [INFO] fmu.pipeline:   input images, worldcover: 1 (sha256 bf43ff10c8c0)
+2026-10-28 02:16:33 [INFO] fmu.pipeline:   [cache] exports on the analysis grid: {'crs': 'EPSG:32644', 'crs_transform': [10.0, 0.0, 0.0, 0.0, 10.0, 0.0]}
+2026-10-28 02:16:36 [INFO] fmu.utils.caching: Created cache folder projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_koraput_keptland_s1desc_r14
+2026-10-28 02:16:40 [INFO] fmu.utils.caching: Created cache folder projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_koraput_keptland_s1desc_r14/masking
+2026-10-28 02:16:41 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_koraput_keptland_s1desc_r14/masking/habitat_mask__scd1114f154 (task SVL63P2U2ADKHGSASFKZXKBV). Check progress at https://code.earthengine.google.com/tasks
+2026-10-28 02:16:46 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_koraput_keptland_s1desc_r14/masking/water_mask__scd1114f154 (task LC3KJL7W4NUYPA4JBBV3UJJY). Check progress at https://code.earthengine.google.com/tasks
+2026-10-28 02:16:52 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_koraput_keptland_s1desc_r14/masking/landcover_summary__scd1114f154 (task OK6UX5J76SP4IWSY6PF3B3SZ). Check progress at https://code.earthengine.google.com/tasks
+2026-10-28 02:16:58 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_koraput_keptland_s1desc_r14/masking/mask_provenance__scd1114f154 (task R3TUTJTWAGMMLVTPDOQFNYKO). Check progress at https://code.earthengine.google.com/tasks
+2026-10-28 02:16:59 [INFO] fmu.pipeline: stage masking done in 39.79 sec
+2026-10-28 02:16:59 [INFO] fmu.pipeline: stage: data_load
+2026-10-28 02:17:02 [INFO] fmu.stages.data_load:   S2 phenology window: 337 images after cloud filter
+2026-10-28 02:17:02 [INFO] fmu.stages.data_load:   S1 radar window: 204 images after orbit/pol filter
+2026-10-28 02:17:03 [INFO] fmu.stages.data_load:   S2 composite window: 337 images after cloud filter
+2026-10-28 02:17:06 [INFO] fmu.pipeline:   input images, s2_composite: 337 (sha256 5d71744029c4)
+2026-10-28 02:17:10 [INFO] fmu.utils.caching: Created cache folder projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_koraput_keptland_s1desc_r14/data_load
+2026-10-28 02:17:10 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_koraput_keptland_s1desc_r14/data_load/s2_composite__sf699e6edf9 (task AB3VVNBP6LC53KLHAIWBZ3NK). Check progress at https://code.earthengine.google.com/tasks
+2026-10-28 02:17:10 [INFO] fmu.pipeline: stage data_load done in 10.96 sec
+2026-10-28 02:17:10 [INFO] fmu.pipeline: stage: features_optical
+2026-10-28 02:17:14 [INFO] fmu.stages.features_optical:   optical_features bands (6): ['ndvi_mean', 'ndvi_amplitude_annual', 'ndvi_phase_annual', 'ndvi_trend', 'ndvi_residual_variance', 'ndvi_obs_count']
+2026-10-28 02:17:14 [INFO] fmu.stages.features_optical:   time_reference: 2017-01-01
+2026-10-28 02:17:16 [INFO] fmu.pipeline:   input images, s2_phenology: 337 (sha256 5d71744029c4)
+2026-10-28 02:17:21 [INFO] fmu.utils.caching: Created cache folder projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_koraput_keptland_s1desc_r14/features_optical
+2026-10-28 02:17:23 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_koraput_keptland_s1desc_r14/features_optical/optical_features__sf69379ec5b (task QNFW533AXHYKWPEB4ZKB2LBE). Check progress at https://code.earthengine.google.com/tasks
+2026-10-28 02:17:23 [INFO] fmu.pipeline: stage features_optical done in 12.47 sec
+2026-10-28 02:17:23 [INFO] fmu.pipeline: stage: features_radar
+2026-10-28 02:17:26 [INFO] fmu.stages.features_radar:   radar_features bands (9): ['vv_p10', 'vh_p10', 'vv_p50', 'vh_p50', 'vv_p90', 'vh_p90', 'vv_iqr', 'vh_iqr', 'vv_minus_vh_median']
+2026-10-28 02:17:28 [INFO] fmu.pipeline:   input images, s1: 204 (sha256 317e15f41513)
+2026-10-28 02:17:30 [INFO] fmu.utils.caching: Created cache folder projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_koraput_keptland_s1desc_r14/features_radar
+2026-10-28 02:17:30 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_koraput_keptland_s1desc_r14/features_radar/radar_features__s70aa80a4ff (task XRYNOT366K3AL35H6RRXSYTG). Check progress at https://code.earthengine.google.com/tasks
+2026-10-28 02:17:30 [INFO] fmu.pipeline: stage features_radar done in 7.60 sec
+2026-10-28 02:17:30 [INFO] fmu.pipeline: stage: features_structure
+2026-10-28 02:17:32 [INFO] fmu.stages.features_structure:   structure_features bands (3): ['canopy_height', 'canopy_height_std', 'canopy_height_max']
+2026-10-28 02:17:35 [INFO] fmu.utils.caching: Created cache folder projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_koraput_keptland_s1desc_r14/features_structure
+2026-10-28 02:17:36 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_koraput_keptland_s1desc_r14/features_structure/structure_features__s7e924e80a3 (task YIQLP66EIEGDSQ2KUB22XJBO). Check progress at https://code.earthengine.google.com/tasks
+2026-10-28 02:17:36 [INFO] fmu.pipeline: stage features_structure done in 5.63 sec
+2026-10-28 02:17:36 [INFO] fmu.pipeline: stage: features_static
+2026-10-28 02:17:39 [INFO] fmu.stages.features_static:   static_features bands (5): ['elevation', 'slope', 'aspect', 'distance_to_water', 'annual_rainfall']
+2026-10-28 02:17:40 [INFO] fmu.pipeline:   input images, chirps: 2160 (sha256 3a2d483b73e7)
+2026-10-28 02:17:44 [INFO] fmu.utils.caching: Created cache folder projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_koraput_keptland_s1desc_r14/features_static
+2026-10-28 02:17:46 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_koraput_keptland_s1desc_r14/features_static/static_features__sdc31da8f8a (task NH2TCI2CBK433DZA7W7HELUO). Check progress at https://code.earthengine.google.com/tasks
+2026-10-28 02:17:46 [INFO] fmu.pipeline: stage features_static done in 10.14 sec
+2026-10-28 02:17:46 [INFO] fmu.pipeline: ============================================================
+2026-10-28 02:17:46 [INFO] fmu.pipeline: Pipeline complete in 86.59 sec
+2026-10-28 02:17:46 [INFO] fmu.pipeline: ============================================================
+2026-10-28 02:17:47 [INFO] fmu.pipeline: Manifest written: runs/odisha_v120_3ha_squares_koraput_keptland_s1desc_r14_20261028_021619/manifest.json

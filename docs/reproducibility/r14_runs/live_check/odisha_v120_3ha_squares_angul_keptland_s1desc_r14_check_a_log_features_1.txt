@@ -1,0 +1,57 @@
+2026-10-27 03:02:52 [INFO] fmu.utils.logging: Logging initialized; run dir: runs/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a_20261027_030252
+2026-10-27 03:02:52 [INFO] fmu.utils.logging: Log level: INFO
+2026-10-27 03:02:53 [INFO] fmu.pipeline: ============================================================
+2026-10-27 03:02:53 [INFO] fmu.pipeline: Pipeline run: odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a
+2026-10-27 03:02:53 [INFO] fmu.pipeline: Stages: masking -> data_load -> features_optical -> features_radar -> features_structure -> features_static
+2026-10-27 03:02:53 [INFO] fmu.pipeline: Run directory: runs/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a_20261027_030252
+2026-10-27 03:02:53 [INFO] fmu.pipeline: Cache layout: per_step (given to Pipeline())
+2026-10-27 03:02:53 [INFO] fmu.pipeline: ============================================================
+2026-10-27 03:02:53 [INFO] fmu.pipeline: stage: masking
+2026-10-27 03:03:00 [INFO] fmu.stages.masking: Built IndiaSAT collection from 5 year-images (2017, 2018, 2019, 2020, 2021) under projects/corestack-trees/assets/LULC_v4
+2026-10-27 03:03:03 [INFO] fmu.stages.masking: Built IndiaSAT collection from 5 year-images (2017, 2018, 2019, 2020, 2021) under projects/corestack-trees/assets/LULC_v4
+2026-10-27 03:03:04 [INFO] fmu.pipeline:   input images, indiasat_lulc: 5 (sha256 c831b93509e8)
+2026-10-27 03:03:04 [INFO] fmu.pipeline:   input images, worldcover: 1 (sha256 bf43ff10c8c0)
+2026-10-27 03:03:07 [INFO] fmu.pipeline:   [cache] exports on the analysis grid: {'crs': 'EPSG:32645', 'crs_transform': [10.0, 0.0, 0.0, 0.0, 10.0, 0.0]}
+2026-10-27 03:03:10 [INFO] fmu.utils.caching: Created cache folder projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a
+2026-10-27 03:03:12 [INFO] fmu.utils.caching: Created cache folder projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a/masking
+2026-10-27 03:03:13 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a/masking/habitat_mask__s073c13df8c (task USE2S47LD6I5D2MXX2S3X763). Check progress at https://code.earthengine.google.com/tasks
+2026-10-27 03:03:19 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a/masking/water_mask__s073c13df8c (task EYSE6WSSNBXZGJIYMXW3KPT4). Check progress at https://code.earthengine.google.com/tasks
+2026-10-27 03:03:23 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a/masking/landcover_summary__s073c13df8c (task X37AIMMEWWU5X3POVLKVNL7D). Check progress at https://code.earthengine.google.com/tasks
+2026-10-27 03:03:26 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a/masking/mask_provenance__s073c13df8c (task NUYML2SXBZS4W47NKV6NDBSJ). Check progress at https://code.earthengine.google.com/tasks
+2026-10-27 03:03:27 [INFO] fmu.pipeline: stage masking done in 34.23 sec
+2026-10-27 03:03:27 [INFO] fmu.pipeline: stage: data_load
+2026-10-27 03:03:30 [INFO] fmu.stages.data_load:   S2 phenology window: 713 images after cloud filter
+2026-10-27 03:03:31 [INFO] fmu.stages.data_load:   S1 radar window: 189 images after orbit/pol filter
+2026-10-27 03:03:32 [INFO] fmu.stages.data_load:   S2 composite window: 713 images after cloud filter
+2026-10-27 03:03:34 [INFO] fmu.pipeline:   input images, s2_composite: 713 (sha256 2abd57bf40f3)
+2026-10-27 03:03:37 [INFO] fmu.utils.caching: Created cache folder projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a/data_load
+2026-10-27 03:03:39 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a/data_load/s2_composite__s9249226467 (task LTJ6IE5BU6K2KMYKLJVEJLY2). Check progress at https://code.earthengine.google.com/tasks
+2026-10-27 03:03:39 [INFO] fmu.pipeline: stage data_load done in 11.73 sec
+2026-10-27 03:03:39 [INFO] fmu.pipeline: stage: features_optical
+2026-10-27 03:03:44 [INFO] fmu.stages.features_optical:   optical_features bands (6): ['ndvi_mean', 'ndvi_amplitude_annual', 'ndvi_phase_annual', 'ndvi_trend', 'ndvi_residual_variance', 'ndvi_obs_count']
+2026-10-27 03:03:44 [INFO] fmu.stages.features_optical:   time_reference: 2017-01-01
+2026-10-27 03:03:46 [INFO] fmu.pipeline:   input images, s2_phenology: 713 (sha256 2abd57bf40f3)
+2026-10-27 03:03:51 [INFO] fmu.utils.caching: Created cache folder projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a/features_optical
+2026-10-27 03:03:53 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a/features_optical/optical_features__s4ef0426c2c (task CAERPD5DDIISHDVJ3QODMNQS). Check progress at https://code.earthengine.google.com/tasks
+2026-10-27 03:03:53 [INFO] fmu.pipeline: stage features_optical done in 14.26 sec
+2026-10-27 03:03:53 [INFO] fmu.pipeline: stage: features_radar
+2026-10-27 03:03:55 [INFO] fmu.stages.features_radar:   radar_features bands (9): ['vv_p10', 'vh_p10', 'vv_p50', 'vh_p50', 'vv_p90', 'vh_p90', 'vv_iqr', 'vh_iqr', 'vv_minus_vh_median']
+2026-10-27 03:03:57 [INFO] fmu.pipeline:   input images, s1: 189 (sha256 9ba8e9bf9dc7)
+2026-10-27 03:04:01 [INFO] fmu.utils.caching: Created cache folder projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a/features_radar
+2026-10-27 03:04:02 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a/features_radar/radar_features__s7bb26d198c (task WL7YT7JX2YZD3EFXJBH2M5CE). Check progress at https://code.earthengine.google.com/tasks
+2026-10-27 03:04:02 [INFO] fmu.pipeline: stage features_radar done in 9.28 sec
+2026-10-27 03:04:02 [INFO] fmu.pipeline: stage: features_structure
+2026-10-27 03:04:04 [INFO] fmu.stages.features_structure:   structure_features bands (3): ['canopy_height', 'canopy_height_std', 'canopy_height_max']
+2026-10-27 03:04:08 [INFO] fmu.utils.caching: Created cache folder projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a/features_structure
+2026-10-27 03:04:09 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a/features_structure/structure_features__sc823e0cc39 (task 7KLQRMPSMVX4OBM3IAMK4CSS). Check progress at https://code.earthengine.google.com/tasks
+2026-10-27 03:04:09 [INFO] fmu.pipeline: stage features_structure done in 7.09 sec
+2026-10-27 03:04:09 [INFO] fmu.pipeline: stage: features_static
+2026-10-27 03:04:12 [INFO] fmu.stages.features_static:   static_features bands (5): ['elevation', 'slope', 'aspect', 'distance_to_water', 'annual_rainfall']
+2026-10-27 03:04:13 [INFO] fmu.pipeline:   input images, chirps: 2160 (sha256 3a2d483b73e7)
+2026-10-27 03:04:16 [INFO] fmu.utils.caching: Created cache folder projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a/features_static
+2026-10-27 03:04:17 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a/features_static/static_features__s7483f4391a (task FW7CBZBCQI3ARWNXYLHIEP2N). Check progress at https://code.earthengine.google.com/tasks
+2026-10-27 03:04:17 [INFO] fmu.pipeline: stage features_static done in 7.73 sec
+2026-10-27 03:04:17 [INFO] fmu.pipeline: ============================================================
+2026-10-27 03:04:17 [INFO] fmu.pipeline: Pipeline complete in 84.35 sec
+2026-10-27 03:04:17 [INFO] fmu.pipeline: ============================================================
+2026-10-27 03:04:18 [INFO] fmu.pipeline: Manifest written: runs/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a_20261027_030252/manifest.json

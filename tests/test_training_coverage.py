@@ -143,6 +143,8 @@ def test_coverage_keys_are_recorded_for_the_manifest():
         "n_units_in_habitat",
         "n_units_outside_habitat",
         "n_units_dropped_null_band",
+        # Round 14 (round 13's question 35): the units without a row, by cause.
+        "_NO_CENTRE_KEY",
     ):
         assert key in src, key
 

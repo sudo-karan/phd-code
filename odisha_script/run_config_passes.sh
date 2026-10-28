@@ -1,6 +1,9 @@
 #!/bin/bash
 # Run one or more pipeline configs through features -> segmentation -> clustering -> export
-# on Earth Engine, in repeated cache passes, until every config has completed.
+# on Earth Engine, in repeated cache passes, until every config has completed. Since round 14
+# the wrapper may give another list of stages (STAGES): with the k elbow in the fit's space,
+# features -> segmentation -> k_elbow -> clustering -> export, or features -> segmentation ->
+# k_elbow alone for a batch that stops after the elbow.
 #
 #   odisha_script/run_config_passes.sh <logfile> <config.yaml> [<config.yaml> ...]
 #
@@ -38,6 +41,17 @@ if [ "${RUN_PASSES_SAFELY:-}" != "1" ]; then
   exit 96
 fi
 MAX_PASSES=${MAX_PASSES:-3}
+# The stages of each config, in order (round 14): given by the wrapper, which reads them from the
+# configs and from its --through; the four of every batch before round 14 when it gives none. A
+# k_elbow stage runs the elbow of k_elbow.in_fit_space before clustering, or alone at the end of a
+# batch that stops after it.
+STAGES=${STAGES:-features segmentation clustering export}
+for stage in $STAGES; do
+  case "$stage" in
+    features|segmentation|k_elbow|clustering|export) ;;
+    *) echo "REFUSING: unknown stage '$stage' in STAGES" >&2; exit 97 ;;
+  esac
+done
 LOG=$1; shift
 PY=${PYTHON:-.venv/bin/python}
 RUNNER=odisha_script/odisha_phase2_2_run_pipeline.py
@@ -48,7 +62,7 @@ for pass in $(seq 1 "$MAX_PASSES"); do
   allok=1
   for cfg in "$@"; do
     name=$(basename "$cfg" .yaml)
-    for stage in features segmentation clustering export; do
+    for stage in $STAGES; do
       # The date as well as the time (round 13): scripts/eecu_by_stage.py reads each stage's span
       # from these lines, and a batch can run past midnight.
       echo "" >> "$LOG"; echo "##### PASS$pass $name :: $stage :: $(date '+%Y-%m-%d %H:%M:%S') #####" >> "$LOG"

@@ -251,7 +251,9 @@ def test_shared_edge_length_is_pixel_pairs_times_scale(server):
     labels = server(GRID)
     g = extract_superpixel_graph(labels, None, 10)
     assert g.shared_edge_m(0, 1) == 20.0  # 2 pairs x 10 m
-    g30 = extract_superpixel_graph(server(GRID), None, 30)
+    # A label image at 30 m (since round 14 the label image must be at the analysis
+    # scale; until then this one reported 10 m).
+    g30 = extract_superpixel_graph(server(GRID, nominal_scale=30.0), None, 30)
     assert g30.shared_edge_m(0, 1) == 60.0
 
 
@@ -350,10 +352,23 @@ def test_accepts_a_real_pixel_grid(server):
     assert extract_superpixel_graph(labels, None, 10).n_regions == 4
 
 
-def test_tolerates_modest_scale_mismatch(server):
-    """A 30 m label image analysed at 10 m is a real grid, just a coarse one --
-    the caller's problem to reconcile, not a silent-corruption case."""
-    labels = server(GRID, nominal_scale=30.0)
+@pytest.mark.parametrize("nominal_scale", [30.0, 20.0, 5.0])
+def test_refuses_a_label_image_not_at_the_analysis_scale(server, nominal_scale):
+    """Since round 14 the merge counts every pixel on the label image's own grid
+    (crs its projection, no scale), and an area is pixels x scale^2: a 30 m label
+    image analysed at 10 m would give each superpixel a ninth of its area, so it is
+    refused rather than counted. Until then it was counted at 10 m, and this test
+    said a 30 m label image was tolerated (the caller's problem to reconcile)."""
+    labels = server(GRID, nominal_scale=nominal_scale)
+    with pytest.raises(ValueError, match="analysis scale"):
+        extract_superpixel_graph(labels, None, 10)
+
+
+@pytest.mark.parametrize("nominal_scale", [10.000000000001, 9.996])
+def test_accepts_a_label_image_within_1_percent_of_the_analysis_scale(server, nominal_scale):
+    """Float rounding, or a projection's own scale factor (UTM's is 0.9996 on its
+    central meridian), is not another grid."""
+    labels = server(GRID, nominal_scale=nominal_scale)
     assert extract_superpixel_graph(labels, None, 10).n_regions == 4
 
 
@@ -561,7 +576,7 @@ def attribute_server(monkeypatch):
     monkeypatch.setattr(adj, "safe_get_info", fake_get_info)
 
 
-def _attributes(groups, record, bands=("canopy_height",)):
+def _attributes(groups, record, bands=("canopy_height",), labels=None):
     from fmu.utils.adjacency import extract_superpixel_attributes
 
     graph = SuperpixelGraph(
@@ -569,7 +584,7 @@ def _attributes(groups, record, bands=("canopy_height",)):
     )
     features = _FakeFeatures(list(bands), groups, record)
     return extract_superpixel_attributes(
-        features, _FakeLabels(record), graph, None, 10, context="merge criteria"
+        features, labels or _FakeLabels(record), graph, None, 10, context="merge criteria"
     )
 
 
@@ -594,15 +609,23 @@ def test_the_reduction_is_pinned_to_the_label_grid(attribute_server):
     """`reduceRegion` defaults its CRS to the *first band's* projection, which
     here is a feature band off an uncached computed image. Inheriting it would
     count valid pixels on a geographic grid while `graph.n_pixels` holds label
-    grid pixels -- and `min_frac_valid` divides one by the other."""
+    grid pixels -- and `min_frac_valid` divides one by the other.
+
+    Since round 14 the reduction is given the label image's projection itself,
+    its transform included, and no scale. Until then it was given the label
+    image's CRS name ("EPSG:32643" here) and the scale, from which Earth Engine
+    builds a grid of its own: on it, three superpixels at the ROI's edge in
+    round 14's live check took a pixel or two more than the label histogram
+    counts, and the merge stopped (27 Oct 2026)."""
     record = []
-    _attributes([{"label": 11, "value": 500.0, "has_data": 100.0}], record)
+    labels = _FakeLabels(record)
+    _attributes([{"label": 11, "value": 500.0, "has_data": 100.0}], record, labels=labels)
 
     kwargs = [k for k in record if isinstance(k, dict)]
     assert kwargs, "no reduction ran"
     for k in kwargs:
-        assert k["crs"] == "EPSG:32643"
-        assert k["scale"] == 10
+        assert k["crs"] is labels  # the fake's projection() is the fake itself
+        assert "scale" not in k and "crsTransform" not in k
 
 
 def test_a_feature_band_colliding_with_the_group_band_is_refused(attribute_server):

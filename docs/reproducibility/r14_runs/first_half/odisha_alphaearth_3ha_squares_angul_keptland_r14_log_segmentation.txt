@@ -1,0 +1,34 @@
+2026-10-28 03:33:33 [INFO] fmu.utils.logging: Logging initialized; run dir: runs/odisha_alphaearth_3ha_squares_angul_keptland_r14_20261028_033333
+2026-10-28 03:33:33 [INFO] fmu.utils.logging: Log level: INFO
+2026-10-28 03:33:33 [INFO] fmu.pipeline: ============================================================
+2026-10-28 03:33:33 [INFO] fmu.pipeline: Pipeline run: odisha_alphaearth_3ha_squares_angul_keptland_r14
+2026-10-28 03:33:33 [INFO] fmu.pipeline: Stages: masking -> data_load -> features_embedding -> segmentation
+2026-10-28 03:33:33 [INFO] fmu.pipeline: Run directory: runs/odisha_alphaearth_3ha_squares_angul_keptland_r14_20261028_033333
+2026-10-28 03:33:33 [INFO] fmu.pipeline: Cache layout: per_step (given to Pipeline())
+2026-10-28 03:33:33 [INFO] fmu.pipeline: ============================================================
+2026-10-28 03:33:33 [INFO] fmu.pipeline: stage: masking
+2026-10-28 03:33:38 [INFO] fmu.pipeline:   [cache] all 4 outputs hit; skipping stage run
+2026-10-28 03:33:41 [INFO] fmu.pipeline: stage masking done in 8.34 sec (from cache)
+2026-10-28 03:33:41 [INFO] fmu.pipeline: stage: data_load
+2026-10-28 03:33:44 [INFO] fmu.stages.data_load:   S2 phenology window: 713 images after cloud filter
+2026-10-28 03:33:44 [INFO] fmu.stages.data_load:   S1 radar window: 189 images after orbit/pol filter
+2026-10-28 03:33:47 [INFO] fmu.stages.data_load:   S2 composite window: 713 images after cloud filter
+2026-10-28 03:33:48 [INFO] fmu.pipeline: stage data_load done in 7.37 sec
+2026-10-28 03:33:48 [INFO] fmu.pipeline: stage: features_embedding
+2026-10-28 03:33:50 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-28 03:33:51 [INFO] fmu.pipeline: stage features_embedding done in 2.97 sec (from cache)
+2026-10-28 03:33:51 [INFO] fmu.pipeline: stage: segmentation
+2026-10-28 03:34:06 [INFO] fmu.stages.segmentation:   distance normaliser (RMS 4-neighbour feature distance): 2.375654
+2026-10-28 03:34:06 [INFO] fmu.stages.segmentation:   kept land only: SNIC sees the pixels habitat_mask keeps, seeded on the grid plus each kept patch the grid misses
+2026-10-28 03:34:08 [INFO] fmu.stages.segmentation:   output grid: EPSG:32645 at 10.0 m (analysis scale 10 m)
+2026-10-28 03:34:10 [INFO] fmu.stages.segmentation:   snic_means bands (64): ['A00', 'A01', 'A02', 'A03', 'A04', 'A05', 'A06', 'A07', 'A08', 'A09', 'A10', 'A11', 'A12', 'A13', 'A14', 'A15', 'A16', 'A17', 'A18', 'A19', 'A20', 'A21', 'A22', 'A23', 'A24', 'A25', 'A26', 'A27', 'A28', 'A29', 'A30', 'A31', 'A32', 'A33', 'A34', 'A35', 'A36', 'A37', 'A38', 'A39', 'A40', 'A41', 'A42', 'A43', 'A44', 'A45', 'A46', 'A47', 'A48', 'A49', 'A50', 'A51', 'A52', 'A53', 'A54', 'A55', 'A56', 'A57', 'A58', 'A59', 'A60', 'A61', 'A62', 'A63']
+2026-10-28 03:34:10 [INFO] fmu.stages.segmentation:   SNIC params: size=6 compactness=0.5 connectivity=8 neighborhood=128 normalize=True
+2026-10-28 03:34:13 [INFO] fmu.pipeline:   [cache] exports on the analysis grid: {'crs': 'EPSG:32645', 'crs_transform': [10.0, 0.0, 0.0, 0.0, 10.0, 0.0]}
+2026-10-28 03:34:17 [INFO] fmu.utils.caching: Created cache folder projects/replicating-paper/assets/fmu/odisha_alphaearth_3ha_squares_angul_keptland_r14/segmentation
+2026-10-28 03:34:18 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/odisha_alphaearth_3ha_squares_angul_keptland_r14/segmentation/snic_clusters__s6123730adb (task VBBQP5RDMBZAHT4UYFFQFRDF). Check progress at https://code.earthengine.google.com/tasks
+2026-10-28 03:34:21 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/odisha_alphaearth_3ha_squares_angul_keptland_r14/segmentation/snic_means__s6123730adb (task 7E7TNPDX2U3DPC2Y3OSRMUUO). Check progress at https://code.earthengine.google.com/tasks
+2026-10-28 03:34:21 [INFO] fmu.pipeline: stage segmentation done in 29.70 sec
+2026-10-28 03:34:21 [INFO] fmu.pipeline: ============================================================
+2026-10-28 03:34:21 [INFO] fmu.pipeline: Pipeline complete in 48.39 sec
+2026-10-28 03:34:21 [INFO] fmu.pipeline: ============================================================
+2026-10-28 03:34:22 [INFO] fmu.pipeline: Manifest written: runs/odisha_alphaearth_3ha_squares_angul_keptland_r14_20261028_033333/manifest.json

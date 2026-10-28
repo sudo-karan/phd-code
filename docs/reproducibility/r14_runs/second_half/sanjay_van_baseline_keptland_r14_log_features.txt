@@ -1,0 +1,32 @@
+2026-10-28 14:02:52 [INFO] fmu.utils.logging: Logging initialized; run dir: runs/sanjay_van_baseline_keptland_r14_20261028_140252
+2026-10-28 14:02:52 [INFO] fmu.utils.logging: Log level: INFO
+2026-10-28 14:02:53 [INFO] fmu.pipeline: ============================================================
+2026-10-28 14:02:53 [INFO] fmu.pipeline: Pipeline run: sanjay_van_baseline_keptland_r14
+2026-10-28 14:02:53 [INFO] fmu.pipeline: Stages: masking -> data_load -> features_optical -> features_radar -> features_structure -> features_static
+2026-10-28 14:02:53 [INFO] fmu.pipeline: Run directory: runs/sanjay_van_baseline_keptland_r14_20261028_140252
+2026-10-28 14:02:53 [INFO] fmu.pipeline: Cache layout: per_step (given to Pipeline())
+2026-10-28 14:02:53 [INFO] fmu.pipeline: ============================================================
+2026-10-28 14:02:53 [INFO] fmu.pipeline: stage: masking
+2026-10-28 14:02:56 [INFO] fmu.pipeline:   [cache] all 4 outputs hit; skipping stage run
+2026-10-28 14:02:59 [INFO] fmu.pipeline: stage masking done in 5.92 sec (from cache)
+2026-10-28 14:02:59 [INFO] fmu.pipeline: stage: data_load
+2026-10-28 14:03:01 [INFO] fmu.stages.data_load:   S2 phenology window: 195 images after cloud filter
+2026-10-28 14:03:01 [INFO] fmu.stages.data_load:   S1 radar window: 178 images after orbit/pol filter
+2026-10-28 14:03:03 [INFO] fmu.stages.data_load:   S2 composite window: 195 images after cloud filter
+2026-10-28 14:03:04 [INFO] fmu.pipeline: stage data_load done in 4.93 sec
+2026-10-28 14:03:04 [INFO] fmu.pipeline: stage: features_optical
+2026-10-28 14:03:05 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-28 14:03:07 [INFO] fmu.pipeline: stage features_optical done in 3.34 sec (from cache)
+2026-10-28 14:03:07 [INFO] fmu.pipeline: stage: features_radar
+2026-10-28 14:03:08 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-28 14:03:08 [INFO] fmu.pipeline: stage features_radar done in 0.96 sec (from cache)
+2026-10-28 14:03:08 [INFO] fmu.pipeline: stage: features_structure
+2026-10-28 14:03:09 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-28 14:03:09 [INFO] fmu.pipeline: stage features_structure done in 0.50 sec (from cache)
+2026-10-28 14:03:09 [INFO] fmu.pipeline: stage: features_static
+2026-10-28 14:03:10 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-28 14:03:12 [INFO] fmu.pipeline: stage features_static done in 3.16 sec (from cache)
+2026-10-28 14:03:12 [INFO] fmu.pipeline: ============================================================
+2026-10-28 14:03:12 [INFO] fmu.pipeline: Pipeline complete in 18.88 sec
+2026-10-28 14:03:12 [INFO] fmu.pipeline: ============================================================
+2026-10-28 14:03:21 [INFO] fmu.pipeline: Manifest written: runs/sanjay_van_baseline_keptland_r14_20261028_140252/manifest.json

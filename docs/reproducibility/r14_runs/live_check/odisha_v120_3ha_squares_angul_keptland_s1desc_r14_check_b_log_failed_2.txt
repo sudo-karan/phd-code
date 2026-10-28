@@ -1,0 +1,37 @@
+2026-10-27 03:44:37 [INFO] fmu.utils.logging: Logging initialized; run dir: runs/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b_20261027_034437
+2026-10-27 03:44:37 [INFO] fmu.utils.logging: Log level: INFO
+2026-10-27 03:44:37 [INFO] fmu.pipeline: ============================================================
+2026-10-27 03:44:37 [INFO] fmu.pipeline: Pipeline run: odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b
+2026-10-27 03:44:37 [INFO] fmu.pipeline: Stages: masking -> data_load -> features_optical -> features_radar -> features_structure -> features_static -> segmentation -> merge -> k_elbow
+2026-10-27 03:44:37 [INFO] fmu.pipeline: Run directory: runs/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b_20261027_034437
+2026-10-27 03:44:37 [INFO] fmu.pipeline: Cache layout: per_step (given to Pipeline())
+2026-10-27 03:44:37 [INFO] fmu.pipeline: ============================================================
+2026-10-27 03:44:37 [INFO] fmu.pipeline: stage: masking
+2026-10-27 03:44:42 [INFO] fmu.pipeline:   [cache] all 4 outputs hit; skipping stage run
+2026-10-27 03:44:44 [INFO] fmu.pipeline: stage masking done in 6.43 sec (from cache)
+2026-10-27 03:44:44 [INFO] fmu.pipeline: stage: data_load
+2026-10-27 03:44:45 [INFO] fmu.stages.data_load:   S2 phenology window: 713 images after cloud filter
+2026-10-27 03:44:47 [INFO] fmu.stages.data_load:   S1 radar window: 189 images after orbit/pol filter
+2026-10-27 03:44:49 [INFO] fmu.stages.data_load:   S2 composite window: 713 images after cloud filter
+2026-10-27 03:44:50 [INFO] fmu.pipeline: stage data_load done in 6.77 sec
+2026-10-27 03:44:50 [INFO] fmu.pipeline: stage: features_optical
+2026-10-27 03:44:52 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-27 03:44:52 [INFO] fmu.pipeline: stage features_optical done in 1.84 sec (from cache)
+2026-10-27 03:44:52 [INFO] fmu.pipeline: stage: features_radar
+2026-10-27 03:44:53 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-27 03:44:53 [INFO] fmu.pipeline: stage features_radar done in 0.79 sec (from cache)
+2026-10-27 03:44:53 [INFO] fmu.pipeline: stage: features_structure
+2026-10-27 03:44:53 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-27 03:44:53 [INFO] fmu.pipeline: stage features_structure done in 0.41 sec (from cache)
+2026-10-27 03:44:53 [INFO] fmu.pipeline: stage: features_static
+2026-10-27 03:44:54 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-27 03:44:55 [INFO] fmu.pipeline: stage features_static done in 1.90 sec (from cache)
+2026-10-27 03:44:55 [INFO] fmu.pipeline: stage: segmentation
+2026-10-27 03:44:57 [INFO] fmu.pipeline:   [cache] all 2 outputs hit; skipping stage run
+2026-10-27 03:44:57 [INFO] fmu.pipeline: stage segmentation done in 1.78 sec (from cache)
+2026-10-27 03:44:57 [INFO] fmu.pipeline: stage: merge
+2026-10-27 03:45:00 [INFO] fmu.utils.components:   merge input: 1205 components, largest 257 px, maxSize 480 px (46% headroom)
+2026-10-27 03:45:05 [INFO] fmu.utils.adjacency:   merge adjacency: 1202 regions, 2788 adjacent pairs, mean degree 4.64, 50 isolated
+2026-10-27 03:45:05 [WARNING] fmu.utils.adjacency:   merge adjacency: 50 region(s) have no 4-connected neighbour. They cannot be merged and will be reported as orphans.
+2026-10-27 03:45:05 [INFO] fmu.stages.merge:   kept land 405.65 ha (0.00 ha more in patches too small to be a stand, left out), of it without a superpixel 0.0000 ha; superpixel area off kept land 0.0000 ha
+2026-10-27 03:45:06 [ERROR] fmu.pipeline: stage merge FAILED after 9.36 sec: merge criteria: superpixel -1586256414 has 29 valid canopy_height pixels but 28 pixels in the label histogram, so its frac_valid would be above 1. The two reductions must count the same pixels: both unweighted, on the label image's grid. One of them is weighted, or they ran on different grids.

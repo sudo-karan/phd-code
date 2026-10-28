@@ -1,0 +1,32 @@
+2026-10-27 03:49:28 [INFO] fmu.utils.logging: Logging initialized; run dir: runs/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b_20261027_034928
+2026-10-27 03:49:28 [INFO] fmu.utils.logging: Log level: INFO
+2026-10-27 03:49:28 [INFO] fmu.pipeline: ============================================================
+2026-10-27 03:49:28 [INFO] fmu.pipeline: Pipeline run: odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b
+2026-10-27 03:49:28 [INFO] fmu.pipeline: Stages: masking -> data_load -> features_optical -> features_radar -> features_structure -> features_static
+2026-10-27 03:49:28 [INFO] fmu.pipeline: Run directory: runs/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b_20261027_034928
+2026-10-27 03:49:28 [INFO] fmu.pipeline: Cache layout: per_step (given to Pipeline())
+2026-10-27 03:49:28 [INFO] fmu.pipeline: ============================================================
+2026-10-27 03:49:28 [INFO] fmu.pipeline: stage: masking
+2026-10-27 03:49:34 [INFO] fmu.pipeline:   [cache] all 4 outputs hit; skipping stage run
+2026-10-27 03:49:36 [INFO] fmu.pipeline: stage masking done in 7.73 sec (from cache)
+2026-10-27 03:49:36 [INFO] fmu.pipeline: stage: data_load
+2026-10-27 03:49:40 [INFO] fmu.stages.data_load:   S2 phenology window: 713 images after cloud filter
+2026-10-27 03:49:41 [INFO] fmu.stages.data_load:   S1 radar window: 189 images after orbit/pol filter
+2026-10-27 03:49:43 [INFO] fmu.stages.data_load:   S2 composite window: 713 images after cloud filter
+2026-10-27 03:49:44 [INFO] fmu.pipeline: stage data_load done in 7.63 sec
+2026-10-27 03:49:44 [INFO] fmu.pipeline: stage: features_optical
+2026-10-27 03:49:45 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-27 03:49:47 [INFO] fmu.pipeline: stage features_optical done in 3.01 sec (from cache)
+2026-10-27 03:49:47 [INFO] fmu.pipeline: stage: features_radar
+2026-10-27 03:49:48 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-27 03:49:50 [INFO] fmu.pipeline: stage features_radar done in 3.00 sec (from cache)
+2026-10-27 03:49:50 [INFO] fmu.pipeline: stage: features_structure
+2026-10-27 03:49:51 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-27 03:49:51 [INFO] fmu.pipeline: stage features_structure done in 1.59 sec (from cache)
+2026-10-27 03:49:51 [INFO] fmu.pipeline: stage: features_static
+2026-10-27 03:49:53 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-27 03:49:54 [INFO] fmu.pipeline: stage features_static done in 2.99 sec (from cache)
+2026-10-27 03:49:54 [INFO] fmu.pipeline: ============================================================
+2026-10-27 03:49:54 [INFO] fmu.pipeline: Pipeline complete in 25.96 sec
+2026-10-27 03:49:54 [INFO] fmu.pipeline: ============================================================
+2026-10-27 03:49:55 [INFO] fmu.pipeline: Manifest written: runs/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b_20261027_034928/manifest.json

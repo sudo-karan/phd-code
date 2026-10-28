@@ -22,8 +22,18 @@ and each sin and cos of a phase is scaled by its own spread (review A2,
 B13), so the reference date can change the clustering. Corrected in round
 13 (review C9), in this text only; what the stage computes is unchanged.
 
+With `features_optical.mean_over_window` on (round 14; review C9, round 13's
+question 31, answered (c)), `mean` is instead the fitted curve's mean over the
+dates window [dates.phenology.start, dates.phenology.end + 1 day), computed
+analytically (`window_mean_weights`): a weighted sum of the coefficients, the
+same whatever `time_reference` is. For a window of a whole number of years it is
+a + f x the window's middle; the 2017-2022 window is 5.9988 of Earth Engine's
+years (of 365.2425 days), so its harmonic terms are not quite zero, at most
+about 2e-4 times the amplitude. Off, nothing changes.
+
 Derived metrics (per DEC-002; derived metrics, not raw coefficients):
 - mean = a                           # the trend line's value on time_reference
+                                     # (the window mean with mean_over_window on)
 - amplitude_annual = sqrt(b² + c²)
 - phase_annual = atan2(c, b)        # radians, measured from time_reference
 - amplitude_semi = sqrt(d² + e²)    # dual only
@@ -39,7 +49,7 @@ clustering (DEC-014). Output cacheable as a single multi-band asset.
 from __future__ import annotations
 
 import math
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 import ee
@@ -143,6 +153,17 @@ class FeaturesOpticalStage(Stage):
             .arrayFlatten([regression_band_names])
         )
 
+        # With features_optical.mean_over_window on (round 14): the weights that make the
+        # mean band the fitted curve's mean over the dates window, the window data_load
+        # filtered the collection by (its key covers dates.phenology, upstream of this one).
+        mean_weights: dict[str, float] | None = None
+        if params.mean_over_window:
+            window = config.dates.phenology
+            t0, t1 = window_years(window.start, window.end, time_reference)
+            mean_weights = window_mean_weights(
+                t0, t1, harmonic_mode=params.harmonic_mode, include_trend=params.include_trend
+            )
+
         # 5. Build the derived-metrics multi-band image
         output_bands = _derive_metrics(
             coefficients=coefficients,
@@ -151,6 +172,7 @@ class FeaturesOpticalStage(Stage):
             prefix=prefix,
             harmonic_mode=params.harmonic_mode,
             include_trend=params.include_trend,
+            mean_weights=mean_weights,
         )
 
         # 6. Concatenate, clip to ROI for cleanliness
@@ -172,6 +194,19 @@ class FeaturesOpticalStage(Stage):
                 "time_reference": time_reference.isoformat(),
                 "num_regression_terms": num_x,
                 "output_bands": band_names,
+                # On every run, on or off; the window and the weights only when on.
+                "mean_over_window": params.mean_over_window,
+                **(
+                    {
+                        "mean_window": (
+                            f"{config.dates.phenology.start.isoformat()} to "
+                            f"{config.dates.phenology.end.isoformat()}"
+                        ),
+                        "mean_weights": mean_weights,
+                    }
+                    if mean_weights is not None
+                    else {}
+                ),
             },
         )
 
@@ -235,6 +270,56 @@ def _add_regression_bands(
 
 
 # ---------------------------------------------------------------------
+# The window mean (round 14): pure Python
+# ---------------------------------------------------------------------
+
+# Earth Engine's "year" in ee.Date.difference, the unit of the regression's t: the average
+# Gregorian year, 365.2425 days. Read on Earth Engine on 26 Oct 2026 (read-only): from
+# 2017-01-01 to 2023-01-01 is 5.99875425231182 years, 2017 to 2018 is 0.9993360575508052,
+# 2020 to 2021 is 1.0020739645577939.
+DAYS_PER_YEAR = 365.2425
+
+
+def years_since(day: date, reference: date) -> float:
+    """t of a date's start (UTC midnight): years since `reference`, as ee.Date.difference gives them."""
+    return (day - reference).days / DAYS_PER_YEAR
+
+
+def window_years(start: date, end: date, reference: date) -> tuple[float, float]:
+    """The dates window [start, end + 1 day) in t: data_load includes the end date (review A4)."""
+    return years_since(start, reference), years_since(end + timedelta(days=1), reference)
+
+
+def window_mean_weights(
+    t0: float, t1: float, *, harmonic_mode: str, include_trend: bool
+) -> dict[str, float]:
+    """The fitted curve's mean over [t0, t1], as weights on the regression's coefficients.
+
+    The mean of a + b cos(wt) + c sin(wt) [+ d cos(2wt) + e sin(2wt)] [+ f t] over the window,
+    w = 2 pi, T = t1 - t0, is a + b (sin w t1 - sin w t0) / (wT) + c (cos w t0 - cos w t1) / (wT)
+    [+ d (sin 2w t1 - sin 2w t0) / (2wT) + e (cos 2w t0 - cos 2w t1) / (2wT)] [+ f (t0 + t1) / 2]:
+    the integral over the window divided by its length. Keyed by the regression bands
+    (_build_regression_band_names), the constant first, with weight 1. For a whole number of
+    years the harmonic weights are 0 and the mean is a + f x the window's middle.
+    """
+    span = t1 - t0
+    if span <= 0:
+        raise ValueError(f"window mean: the window [{t0}, {t1}] is empty")
+    w = 2 * math.pi
+    weights = {
+        "constant": 1.0,
+        "cos_annual": (math.sin(w * t1) - math.sin(w * t0)) / (w * span),
+        "sin_annual": (math.cos(w * t0) - math.cos(w * t1)) / (w * span),
+    }
+    if harmonic_mode == "dual":
+        weights["cos_semi"] = (math.sin(2 * w * t1) - math.sin(2 * w * t0)) / (2 * w * span)
+        weights["sin_semi"] = (math.cos(2 * w * t0) - math.cos(2 * w * t1)) / (2 * w * span)
+    if include_trend:
+        weights["t"] = (t0 + t1) / 2
+    return weights
+
+
+# ---------------------------------------------------------------------
 # Server-side helpers (operate on the regression result)
 # ---------------------------------------------------------------------
 
@@ -257,14 +342,23 @@ def _derive_metrics(
     prefix: str,
     harmonic_mode: str,
     include_trend: bool,
+    mean_weights: dict[str, float] | None = None,
 ) -> list[ee.Image]:
     """Convert raw coefficients into the named per-pixel feature bands."""
     bands: list[ee.Image] = []
 
     # Mean = intercept (constant term). With the trend term in the fit this is
     # the trend line's value on time_reference (t = 0), not the window's
-    # average (review C9; the name is kept).
-    mean = coefficients.select("constant").rename(f"{prefix}_mean")
+    # average (review C9; the name is kept). With mean_over_window on (round 14),
+    # the window's average: the coefficients weighted by window_mean_weights.
+    if mean_weights is None:
+        mean = coefficients.select("constant").rename(f"{prefix}_mean")
+    else:
+        total = coefficients.select("constant")
+        for name, weight in mean_weights.items():
+            if name != "constant":
+                total = total.add(coefficients.select(name).multiply(weight))
+        mean = total.rename(f"{prefix}_mean")
     bands.append(mean)
 
     # Annual harmonic to amplitude + phase

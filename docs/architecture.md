@@ -82,7 +82,9 @@ class ClusteringStage(Stage):
   mixed-output stages.
 - **`run(ctx, config) -> StageResult`**: the actual logic. Reads from `ctx`,
   reads from `config`, returns `StageResult(outputs={...}, metadata={...},
-  warnings=[...])`.
+  warnings=[...])`, and, since round 14, optionally `files={name: text}`:
+  result files the orchestrator writes into the run folder and names in the
+  manifest (`docs/outputs.md`).
 
 The optional `validate(ctx, config)` method runs before `run()`. The
 default checks that every `required_inputs` key is present in the
@@ -242,7 +244,7 @@ Regression test: `tests/test_pipeline.py::test_subclass_inherits_cacheable_outpu
 |---|---|
 | `cached_asset_path(config_name, stage_name, key, fingerprint)` | Build a deterministic GEE asset path: `{asset_root}/{config_name}/{stage_name}/{key}__{fingerprint}` |
 | `config_fingerprint(config)` | Short hash of the config content that can change a cached raster, so editing a threshold does not silently reuse the old asset |
-| `asset_exists(path) -> bool` | True if the asset exists. Meant to read the underlying HttpError's status (401/403 raise, 404 is False), with message-text matching as a fallback. With earthengine-api 1.7.35, the version every manifest records, the EEException is raised without `from`, so the status is never read and every answer comes from the text: an error whose message contains "not found", "does not exist" or "404" is False (a 403 "does not exist or doesn't allow this operation" among them), and any other error is raised (review C41). A wrong False leads to a recompute whose export fails, or to the pass runner's exit 3; it cannot make a stale asset be read |
+| `asset_exists(path) -> bool` | True if the asset exists. When `getAsset` fails, the HTTP status of the HttpError behind the EEException decides, found on `__cause__` or `__context__` (earthengine-api 1.7.35, the version every manifest records, raises without `from`, so it is on `__context__`): 404 is False, and any other status (401, 403, 429, 5xx) is raised, so a refused or failed request is not read as a missing asset. Only an error with no HttpError behind it is judged by its text, as before: "not found", "does not exist" or "404" in the message is False, anything else is raised (round 14; round 13 question 42). Until round 14 the status was never read and every answer came from the text, so a 403 "does not exist or doesn't allow this operation" and a 500 whose request id holds "404" read as missing (review C41); a wrong False led to a recompute whose export failed, or to the pass runner's exit 3, and could not make a stale asset be read |
 | `start_export(image, asset_path, roi, scale)` | Submit an async export-to-asset task; return `ExportTaskInfo(task_id, asset_path, description)` |
 | `load_cached_image(path) -> ee.Image` | Trivial wrapper for `ee.Image(path)` |
 

@@ -1,0 +1,226 @@
+# Round 14, Task 3 (26 Oct 2026): a copy of configs/odisha_alphaearth_10ha_squares_angul_keptland_r9.yaml for R3 (roadmap R3), changing
+# only `name` and the four method settings of round 14's Task 2, each switched on:
+# clustering.fit_outside_earth_engine, clustering.log_rule (right_skew),
+# features_optical.mean_over_window and k_elbow.in_fit_space (tests/test_r14_configs.py;
+# odisha_script/PHASE_KEPTLAND_PREDECLARED.md, the change of 26 Oct 2026). k was the _r9 k until
+# Jaskaran chose it from the elbow report (round 14, Task 7; below). The notes below are those of the
+# config it copies, and speak of it.
+#
+# Round 14, Task 7 (28 Oct 2026): k = 5, chosen by Jaskaran from the elbow report (register
+# field-r3-k-from-part-2-of-the-elbow-report). His reason: "the pooled 10 ha knee is 5 in both arms
+# and in both row orders; one k for every district and both arms keeps the arms comparable, as at 3
+# ha; it equals the declared k, so R3 beside _r9 shows the fixes alone; and the same k at 3 ha and
+# 10 ha keeps the size comparison to stand size alone. The district knees (5 to 6) differ between
+# the arms in two of four districts, and the starts’ agreement does not favour 5 or 6."
+#
+# Round 12, Task 4 (roadmap 3.3, 19 Oct 2026): the 10 ha size check on the boxes. A copy of
+# configs/odisha_alphaearth_3ha_squares_angul_keptland_r9.yaml
+# changing only:
+#
+# 1. name and description;
+# 2. segmentation.size: 10, not 6 (SNIC's seed spacing);
+# 3. merge.max_area_ha: 10.0, not 3.0 (the stand ceiling; with the soft ceiling a piece still under
+#    1 ha may join a neighbour up to 11 ha),
+#
+# the values of the Sanjay Van 10 ha configs (tests/test_r9_configs.py checks which keys differ).
+# k stays 5. The field check that scores it is the change of 19 Oct 2026 to
+# odisha_script/PHASE_KEPTLAND_PREDECLARED.md. The notes below are those of the config it copies,
+# written for 3 ha.
+#
+# Round 9 task H (run in round 10, 18 Oct 2026): the AlphaEarth arm on the boxes. A copy of
+# configs/odisha_v120_3ha_squares_angul_keptland_s1desc_r9.yaml
+# changing only the feature description to AlphaEarth, as configs/sanjay_van_alphaearth_keptland.yaml
+# does against configs/sanjay_van_baseline_keptland.yaml (tests/test_r9_configs.py checks which
+# keys differ):
+#
+# 1. name and description.
+# 2. segmentation.input_bands: SNIC draws the superpixels on the 64 AlphaEarth dimensions, in place
+#    of the six hand-crafted bands.
+# 3. clustering.feature_source: embedding. k-means types the stands on the embedding too, with the
+#    copied settings: k = 5 per district, seed 42, the stands under 1 ha left out of the fit.
+# 4. datasets.embedding and features_embedding written out: the annual AlphaEarth images
+#    (GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL) averaged over dates.phenology, 2017 to 2022, all 64
+#    bands. Both are the code's defaults, so the loaded config differs from the copied one in 1 to
+#    3 only.
+#
+# Everything else is the copied config: the boxes, the kept-land mask before SNIC, SNIC's spacing
+# 6 and compactness 0.5, the merge and its three criteria (canopy height, its spread, NDVI
+# amplitude), which still come from the hand-crafted features so that what makes two pieces one
+# stand is the same rule in both arms, as in Sanjay Van, stands of 1 to 3 ha with the soft
+# ceiling, and metrics.reference_config_name left null (the batch passes do not run the metrics
+# stage). The field check that scores this arm is the change of 18 Oct 2026 to
+# odisha_script/PHASE_KEPTLAND_PREDECLARED.md. The notes below are those of the config it copies.
+#
+# Round 9 task G (run in round 10, 18 Oct 2026): a copy of configs/odisha_v120_3ha_squares_angul_keptland_s1desc.yaml with only `name` changed
+# (tests/test_r9_configs.py). The notes below are those of the config it copies.
+#
+# KEPT LAND ONLY, DESCENDING RADAR ORBIT. ODISHA ON BOXES, ANGUL district, 3 ha stand ceiling,
+# feature vector (v120).
+#
+# Copy of configs/odisha_v120_3ha_squares_angul_keptland.yaml (round 6). THREE things differ
+# (tests/test_s1desc_configs.py); everything else is identical, kept land only, the soft ceiling,
+# the fit without the small stands and the distance cap included:
+#
+# 1. name and description.
+# 2. data_load.s1_orbit: DESCENDING, not ASCENDING. Over the boxes of Koraput, Kendujhar and Angul
+#    the ascending Sentinel-1 orbit has 1 to 3 IW VV+VH images in the radar window, 2017 to 2022,
+#    against 188 to 204 descending (Dhenkanal 174 against 188), so the ascending radar statistics
+#    rest on one to three dates (docs/handoff/2026-10-15-round6.md, step 5 b). Chosen by image
+#    count, not by any score: no kept-land score existed (spec-odisha-keptland-s1-orbit-descending;
+#    Jaskaran, 15 Oct 2026, round 7, his answer (b) to round 6's question 4).
+# 3. export.drive_folder: fmu_exports_kept_land_s1desc, so these files do not mix with the
+#    round-6 runs' exports.
+#
+# The orbit gives this config its own cache fingerprint. Its masking, data-load (the S2 composite),
+# optical, structure and static assets can be copied from the round-6 run of the config it copies
+# (scripts/reuse_upstream_assets.py): data_load reads the orbit only to load the radar collection,
+# which it does not cache and only features_radar reads. The radar features are computed afresh,
+# as are segmentation and everything after it.
+#
+# These are the runs the field check of odisha_script/PHASE_KEPTLAND_PREDECLARED.md scores.
+
+name: odisha_alphaearth_10ha_squares_angul_keptland_r14
+description: Odisha ANGUL, AlphaEarth embedding arm, stands capped at 10 ha, run on boxes around the villages' plots, on kept land only (mask before SNIC); otherwise as the hand-crafted run, odisha_v120_10ha_squares_angul_keptland_s1desc_r9.
+
+roi:
+  name: odisha_squares_angul
+  roi_file: aois/odisha_squares_angul.geojson
+
+dates:
+  phenology:
+    start: 2017-01-01
+    end: 2022-12-31
+  radar:
+    start: 2017-01-01
+    end: 2022-12-31
+  optical_composite:
+    start: 2017-01-01
+    end: 2022-12-31
+  climate:
+    start: 1991-01-01
+    end: 2020-12-31
+
+datasets:
+  phenology_collection: COPERNICUS/S2_SR_HARMONIZED
+  optical_composite_collection: COPERNICUS/S2_SR_HARMONIZED
+  radar_collection: COPERNICUS/S1_GRD
+  canopy_height: users/nlang/ETH_GlobalCanopyHeight_2020_10m_v1
+  dem: NASA/NASADEM_HGT/001
+  indiasat: "projects/corestack-trees/assets/LULC_v4"
+  worldcover: ESA/WorldCover/v200
+  water: JRC/GSW1_4/GlobalSurfaceWater
+  climate: UCSB-CHG/CHIRPS/PENTAD
+  # Task H: the AlphaEarth Satellite Embedding, 64 bands a year (the default, written out).
+  embedding: GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL
+
+cloud_mask:
+  max_cloud_pct: 20.0
+  drop_scl_classes: [3, 8, 9, 10]
+
+data_load:
+  s1_orbit: DESCENDING
+  s1_polarizations: [VV, VH]
+  s1_instrument_mode: IW
+  s2_composite_reducer: median
+
+masking:
+  indiasat_habitat_classes: [6, 12]
+  indiasat_class_band: predicted_label
+  indiasat_year_min: 2017
+  indiasat_year_max: 2021
+  keep_worldcover_classes: [10, 20, 30]
+  jrc_water_occurrence_threshold: 50.0
+
+features_optical:
+  index: ndvi
+  harmonic_mode: single
+  include_trend: true
+  time_reference: 2017-01-01
+  # Round 14 (Task 2, item 3): ndvi_mean as the fitted curve's mean over the window.
+  mean_over_window: true
+
+features_radar:
+  percentiles: [10, 50, 90]
+  include_iqr: true
+  include_cross_pol_contrast: true
+
+features_structure:
+  include_neighborhood_stats: true
+  neighborhood_kernel_size: 3
+
+features_static:
+  include_climate: true
+  max_water_distance_pixels: 1000
+  cap_distance_to_water: true
+
+# Task H: the annual embeddings averaged over dates.phenology, every band kept (the defaults,
+# written out).
+features_embedding:
+  collapse_reducer: mean
+  band_names: null
+
+# Task H: SNIC on the 64 AlphaEarth dimensions, in place of the pre-Odisha six-band stack. Every
+# other segmentation setting is the copied config's.
+segmentation:
+  size: 10
+  compactness: 0.5
+  connectivity: 8
+  neighborhood_size: 128
+  normalize_inputs: true
+  normalize_distance_scale: true
+  mask_before_snic: true
+  input_bands:
+    - {source: embedding_features, band: "*"}   # all 64 dimensions
+
+# The pre-Odisha three-criterion merge. Tolerances are the Sanjay Van values.
+merge:
+  enabled: true
+  criteria:
+    - {source: structure_features, band: canopy_height,         tolerance: 2.00}
+    - {source: structure_features, band: canopy_height_std,     tolerance: 0.45}
+    - {source: optical_features,   band: ndvi_amplitude_annual, tolerance: 0.030}
+  min_defined_criteria: 2
+  min_area_ha: 1.0
+  max_area_ha: 10.0
+  relax_factor: 1.75
+  pass2_skip_at_min_area: true
+  pass2_soft_ceiling: true
+
+clustering:
+  feature_source: embedding   # Task H: types on the embedding
+  k: 5
+  seed: 42
+  skewness_threshold: 1.0
+  fit_excludes_stands_below_min_area: true
+  # Round 14 (Task 2, items 1 and 2): k-means off Earth Engine, and the round 14 log rule.
+  fit_outside_earth_engine: true
+  log_rule: right_skew
+
+normalization:
+  method: robust
+
+features:
+  optical_harmonic: true
+  radar: true
+  canopy_height: true
+  terrain: true
+
+export:
+  export_geotiff: true
+  export_gee_asset: false
+  analysis_scale_m: 10
+  drive_folder: fmu_exports_kept_land_s1desc
+  export_vector_merged: true
+  export_vector_snic: true
+  export_vector_dissolved: true
+  vector_formats: [shp, geojson]
+  vector_min_stand_pixels: 4
+
+metrics:
+  reference_config_name: null
+  n_comparison_samples: 10000
+  n_silhouette_samples_per_cluster: 833
+
+# Round 14 (Task 2, item 4): the k elbow in the fit's own space.
+k_elbow:
+  in_fit_space: true

@@ -1,0 +1,320 @@
+{
+ "what": "Round 14's live check (Task 4): two runs of one config, each from scratch, compared by the rules declared in odisha_script/r14_live_check.py. Results only.",
+ "runs": [
+  "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a",
+  "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b"
+ ],
+ "agreement_rule": {
+  "relative": 1e-09,
+  "absolute_floor": 1e-12
+ },
+ "criteria": {
+  "0_both_runs_from_scratch": {
+   "runs": {
+    "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a": {
+     "first_manifests": {
+      "features": {
+       "manifest": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a_manifest_features_1.json",
+       "stages_it_adds": [
+        "masking",
+        "data_load",
+        "features_optical",
+        "features_radar",
+        "features_structure",
+        "features_static"
+       ],
+       "computed_in_it": [
+        "masking/habitat_mask",
+        "masking/landcover_summary",
+        "masking/mask_provenance",
+        "masking/water_mask",
+        "data_load/s2_composite",
+        "features_optical/optical_features",
+        "features_radar/radar_features",
+        "features_structure/structure_features",
+        "features_static/static_features"
+       ],
+       "not_computed_in_it": [],
+       "passes": true
+      },
+      "segmentation": {
+       "manifest": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a_manifest_segmentation_1.json",
+       "stages_it_adds": [
+        "segmentation"
+       ],
+       "computed_in_it": [
+        "segmentation/snic_clusters",
+        "segmentation/snic_means"
+       ],
+       "not_computed_in_it": [],
+       "passes": true
+      },
+      "k_elbow": {
+       "manifest": null,
+       "passes": false
+      },
+      "clustering": {
+       "manifest": null,
+       "passes": false
+      }
+     },
+     "hits_made_by_a_failed_pass": [],
+     "cache_layouts": [
+      "per_step"
+     ],
+     "stages_with_more_than_one_cache_key": [],
+     "one_layout_and_one_key_per_stage": true,
+     "stages_fmu_does_not_have": [],
+     "passes": false
+    },
+    "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b": {
+     "first_manifests": {
+      "features": {
+       "manifest": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b_manifest_features_1.json",
+       "stages_it_adds": [
+        "masking",
+        "data_load",
+        "features_optical",
+        "features_radar",
+        "features_structure",
+        "features_static"
+       ],
+       "computed_in_it": [
+        "masking/habitat_mask",
+        "masking/landcover_summary",
+        "masking/mask_provenance",
+        "masking/water_mask",
+        "data_load/s2_composite",
+        "features_optical/optical_features",
+        "features_radar/radar_features",
+        "features_structure/structure_features",
+        "features_static/static_features"
+       ],
+       "not_computed_in_it": [],
+       "passes": true
+      },
+      "segmentation": {
+       "manifest": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b_manifest_segmentation_1.json",
+       "stages_it_adds": [
+        "segmentation"
+       ],
+       "computed_in_it": [
+        "segmentation/snic_clusters",
+        "segmentation/snic_means"
+       ],
+       "not_computed_in_it": [],
+       "passes": true
+      },
+      "k_elbow": {
+       "manifest": null,
+       "passes": false
+      },
+      "clustering": {
+       "manifest": null,
+       "passes": false
+      }
+     },
+     "hits_made_by_a_failed_pass": [],
+     "cache_layouts": [
+      "per_step"
+     ],
+     "stages_with_more_than_one_cache_key": [],
+     "one_layout_and_one_key_per_stage": true,
+     "stages_fmu_does_not_have": [],
+     "passes": false
+    }
+   },
+   "passes": false
+  },
+  "1_same_stands_and_types": {
+   "stands_merged": {
+    "missing": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a_stands_merged.geojson: not in the records",
+    "passes": false,
+    "part_of_the_pass": true
+   },
+   "stands_snic": {
+    "missing": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a_stands_snic.geojson: not in the records",
+    "passes": false,
+    "part_of_the_pass": false
+   },
+   "stands_dissolved": {
+    "missing": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a_stands_dissolved.geojson: not in the records",
+    "passes": false,
+    "part_of_the_pass": false
+   },
+   "types_in_clustering_fit_rows": {
+    "missing": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a_clustering_fit_rows.csv: not in the records",
+    "passes": false
+   },
+   "passes": false
+  },
+  "2_feature_values_and_elbows": {
+   "i_tables_of_units": {
+    "k_elbow_stand_table.csv": {
+     "missing": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a_k_elbow_stand_table.csv: not in the records",
+     "passes": false
+    },
+    "clustering_stand_table.csv": {
+     "missing": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a_clustering_stand_table.csv: not in the records",
+     "passes": false
+    },
+    "passes": false
+   },
+   "ii_feature_means_of_stands_merged": {
+    "missing": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a_stands_merged.geojson: not in the records",
+    "passes": false
+   },
+   "elbows": {
+    "k_elbow.csv": {
+     "missing": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a_k_elbow.csv: not in the records",
+     "passes": false
+    },
+    "k_elbow_types.csv": {
+     "missing": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a_k_elbow_types.csv: not in the records",
+     "passes": false
+    },
+    "passes": false
+   },
+   "reported_fit_rows": {
+    "k_elbow_fit_rows.csv": {
+     "missing": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a_k_elbow_fit_rows.csv: not in the records"
+    },
+    "clustering_fit_rows.csv": {
+     "missing": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a_clustering_fit_rows.csv: not in the records"
+    }
+   },
+   "iii_cached_assets": {
+    "passes": "not run"
+   },
+   "passes": false
+  },
+  "3_distance_to_water": {
+   "runs": {
+    "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a": {
+     "missing": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a_stands_merged.geojson: not in the records",
+     "passes": false
+    },
+    "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b": {
+     "missing": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b_stands_merged.geojson: not in the records",
+     "passes": false
+    }
+   },
+   "passes": false
+  },
+  "4_sentinel1_scenes": {
+   "runs": {
+    "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a": {
+     "manifests": [
+      {
+       "manifest": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a_manifest_features_1.json",
+       "source": "computed in this run",
+       "count": 189,
+       "sha256": "9ba8e9bf9dc7700b6b101e06a7b2c0291076e9a5c81f80f90262b2c9e6b51476"
+      },
+      {
+       "manifest": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a_manifest_features_2.json",
+       "source": "the cached asset",
+       "count": 189,
+       "sha256": "9ba8e9bf9dc7700b6b101e06a7b2c0291076e9a5c81f80f90262b2c9e6b51476"
+      },
+      {
+       "manifest": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a_manifest_features.json",
+       "source": "the cached asset",
+       "count": 189,
+       "sha256": "9ba8e9bf9dc7700b6b101e06a7b2c0291076e9a5c81f80f90262b2c9e6b51476"
+      },
+      {
+       "manifest": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a_manifest_segmentation_1.json",
+       "source": "the cached asset",
+       "count": 189,
+       "sha256": "9ba8e9bf9dc7700b6b101e06a7b2c0291076e9a5c81f80f90262b2c9e6b51476"
+      },
+      {
+       "manifest": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a_manifest_segmentation_2.json",
+       "source": "the cached asset",
+       "count": 189,
+       "sha256": "9ba8e9bf9dc7700b6b101e06a7b2c0291076e9a5c81f80f90262b2c9e6b51476"
+      },
+      {
+       "manifest": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a_manifest_segmentation.json",
+       "source": "the cached asset",
+       "count": 189,
+       "sha256": "9ba8e9bf9dc7700b6b101e06a7b2c0291076e9a5c81f80f90262b2c9e6b51476"
+      }
+     ],
+     "first_features_manifest_records_a_count": true,
+     "counts": [
+      189
+     ],
+     "passes": true
+    },
+    "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b": {
+     "manifests": [
+      {
+       "manifest": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b_manifest_features_1.json",
+       "source": "computed in this run",
+       "count": 189,
+       "sha256": "9ba8e9bf9dc7700b6b101e06a7b2c0291076e9a5c81f80f90262b2c9e6b51476"
+      },
+      {
+       "manifest": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b_manifest_features_2.json",
+       "source": "the cached asset",
+       "count": 189,
+       "sha256": "9ba8e9bf9dc7700b6b101e06a7b2c0291076e9a5c81f80f90262b2c9e6b51476"
+      },
+      {
+       "manifest": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b_manifest_features.json",
+       "source": "the cached asset",
+       "count": 189,
+       "sha256": "9ba8e9bf9dc7700b6b101e06a7b2c0291076e9a5c81f80f90262b2c9e6b51476"
+      },
+      {
+       "manifest": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b_manifest_segmentation_1.json",
+       "source": "the cached asset",
+       "count": 189,
+       "sha256": "9ba8e9bf9dc7700b6b101e06a7b2c0291076e9a5c81f80f90262b2c9e6b51476"
+      },
+      {
+       "manifest": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b_manifest_segmentation_2.json",
+       "source": "the cached asset",
+       "count": 189,
+       "sha256": "9ba8e9bf9dc7700b6b101e06a7b2c0291076e9a5c81f80f90262b2c9e6b51476"
+      },
+      {
+       "manifest": "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b_manifest_segmentation.json",
+       "source": "the cached asset",
+       "count": 189,
+       "sha256": "9ba8e9bf9dc7700b6b101e06a7b2c0291076e9a5c81f80f90262b2c9e6b51476"
+      }
+     ],
+     "first_features_manifest_records_a_count": true,
+     "counts": [
+      189
+     ],
+     "passes": true
+    }
+   },
+   "passes": true,
+   "expected": 189
+  },
+  "5_slope_and_aspect_decimals": {
+   "passes": "not run"
+  },
+  "6_four_settings_on": {
+   "runs": {
+    "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a": {
+     "manifests": 6,
+     "settings_not_on": [],
+     "passes": true
+    },
+    "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_b": {
+     "manifests": 6,
+     "settings_not_on": [],
+     "passes": true
+    }
+   },
+   "passes": true
+  }
+ },
+ "passes": false
+}

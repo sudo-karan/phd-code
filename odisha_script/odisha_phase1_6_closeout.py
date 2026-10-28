@@ -11,6 +11,10 @@ C. Site-level aggregation: mean field height vs mean product across the ~10 plot
    the six Dhenkanal polygons. Six points is directional only — but it shows whether
    aggregation lifts the plot-level R2, which is the case for stand-scale use.
 
+A/B prints a bias (product minus field) only where both sides are heights in metres: not for
+vh_iqr and vv_iqr, radar spreads in dB (round 13 question 18 (a), 26 Oct 2026, the rule round
+10 applied to step 12).
+
 Run:  python odisha_phase1_6_closeout.py
 """
 import numpy as np
@@ -21,25 +25,34 @@ df = pd.read_csv("odisha_plots_sampled_v2.csv")
 out = []
 def say(s=""): out.append(s); print(s)
 
-def both(x, y, label):
+def both(x, y, label, *, heights_m=False):
+    """Pearson, Spearman and slope of y on x; the bias (y - x) too only with heights_m, that is
+    when x and y are both heights in metres."""
     m = x.notna() & y.notna()
     x, y = x[m].to_numpy(float), y[m].to_numpy(float)
     if len(x) < 5 or np.ptp(x) == 0 or np.ptp(y) == 0:
         say(f"  {label:26} n={len(x):>3}  (skipped)"); return
     pr = stats.pearsonr(x, y)[0]; sr = stats.spearmanr(x, y)[0]
     slope = stats.linregress(x, y).slope
-    say(f"  {label:26} n={len(x):>3}  pearson r={pr:+.3f} (R2={pr**2:.3f})   spearman={sr:+.3f}   slope={slope:+.2f}   bias={np.mean(y-x):+5.2f}")
+    line = f"  {label:26} n={len(x):>3}  pearson r={pr:+.3f} (R2={pr**2:.3f})   spearman={sr:+.3f}   slope={slope:+.2f}"
+    if heights_m:
+        line += f"   bias={np.mean(y-x):+5.2f}"
+    say(line)
 
 HEIGHT = [c for c in ["eth_chm_3x3", "meta_chm_3x3", "meta_mean_15m", "meta_p95_15m",
                       "meta_mean_30m", "meta_p95_30m", "glad_chm", "gedi_rh98_50m",
                       "vh_iqr", "vv_iqr"] if c in df]
+# The candidates that are heights in metres, as field Lorey's height is; vh_iqr and vv_iqr are
+# radar spreads in dB, so no bias is printed for them.
+IN_METRES = {"eth_chm_3x3", "meta_chm_3x3", "meta_mean_15m", "meta_p95_15m",
+             "meta_mean_30m", "meta_p95_30m", "glad_chm", "gedi_rh98_50m"}
 
 # ---------------------------------------------------------------- A + B
 say("=" * 96)
 say("A/B — every structural candidate vs field Lorey's height: Pearson, Spearman, slope, bias")
 say("=" * 96)
 say("(meta_chm_3x3 is the WRONGLY sampled version from step 3, kept for comparison)")
-for c in HEIGHT: both(df.loreys_h_m, df[c], c)
+for c in HEIGHT: both(df.loreys_h_m, df[c], c, heights_m=c in IN_METRES)
 say("\nRead: Spearman well above Pearson => the product ranks plots correctly but is badly calibrated.")
 say("      That is usable for delineation (which compares neighbours) even if useless as a height map.")
 say("      meta_p95 is the fair Meta number. If it is still < 0.5, Meta is out.")

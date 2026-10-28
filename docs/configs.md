@@ -34,18 +34,19 @@ datasets: { phenology_collection, radar_collection, ... }
 cloud_mask: { max_cloud_pct, drop_scl_classes }
 data_load: { s1_orbit, s1_polarizations, s1_instrument_mode, s2_composite_reducer }
 masking: { indiasat_habitat_classes, indiasat_class_band, keep_worldcover_classes, jrc_water_occurrence_threshold }
-features_optical: { index, harmonic_mode, include_trend, time_reference }
+features_optical: { index, harmonic_mode, include_trend, time_reference, mean_over_window }
 features_radar: { percentiles, include_iqr, include_cross_pol_contrast }
 features_structure: { include_neighborhood_stats, neighborhood_kernel_size }
 features_static: { include_climate, max_water_distance_pixels, cap_distance_to_water }
 features_embedding: { collapse_reducer, band_names }
 segmentation: { size, compactness, connectivity, neighborhood_size, normalize_inputs, normalize_distance_scale, input_bands, mask_before_snic, drop_kept_patches_below_min_area }
 merge: { enabled, criteria, relax_factor, min_area_ha, max_area_ha, min_defined_criteria, min_frac_valid, tie_break, max_pass2_iterations, max_superpixels, pass2_skip_at_min_area, pass2_soft_ceiling }
-clustering: { k, seed, feature_source, skewness_threshold, fit_excludes_stands_below_min_area }
+clustering: { k, seed, feature_source, skewness_threshold, fit_excludes_stands_below_min_area, fit_outside_earth_engine, log_rule }
 normalization: { method }
 features: { optical_harmonic, radar, canopy_height, terrain }
 export: { export_geotiff, export_gee_asset, analysis_scale_m, drive_folder, export_vector_merged, export_vector_snic, export_vector_dissolved, vector_formats, vector_min_stand_pixels }
 metrics: { reference_config_name, n_comparison_samples, n_silhouette_samples_per_cluster }
+k_elbow: { k_min, k_max, seed, n_init, in_fit_space }
 ```
 
 For the canonical field list and validators, read `src/fmu/config.py`
@@ -66,7 +67,7 @@ directly. It's around 300 lines and self-documenting.
 | `merge` | Stand-aggregation rules and area bounds | `merge`; also derives the `reduceConnectedComponents` cap used by `metrics` (and by `clustering` until round 13) |
 | `clustering` | k-means hyperparameters and preprocessing | `clustering` |
 | `normalization` | `robust` vs `zscore` scaling | `clustering` |
-| `features` | High-level on/off toggles per feature family | Read by nothing: a `false` changes no stage and no per-step key, only the legacy fingerprint (review C20) |
+| `features` | High-level on/off toggles per feature family | Read by nothing (review C20); since round 14 a `false` is refused when the config loads (round 13 question 37) |
 | `export` | Whether to export GeoTIFF, target scale | `export` |
 | `metrics` | Reference config to compare against, sampling sizes | `metrics` |
 
@@ -174,6 +175,24 @@ copy differs from its original in `name` only, has the same fingerprint, and
 resolves to a different asset path. How to run and compare them is in
 [running.md](running.md), "Re-running a config from scratch".
 
+## The R3 copies (`_r14`, round 14)
+
+`configs/<name>_r14.yaml` exists for each of the nineteen `_r9` configs (Sanjay Van both arms,
+the eight 3 ha and eight 10 ha box configs of both arms, the 10 km tile): each is its `_r9`
+config with `name` changed and the four method settings of round 14 switched on
+(`clustering.fit_outside_earth_engine`, `clustering.log_rule: right_skew`,
+`features_optical.mean_over_window`, `k_elbow.in_fit_space`), and a header note; k is the
+`_r9` k until Jaskaran chooses it from the elbow report. They are roadmap R3, declared in
+`odisha_script/PHASE_KEPTLAND_PREDECLARED.md` (the change of 26 Oct 2026).
+`configs/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a.yaml` and `_check_b` are
+the Angul hand-crafted 3 ha copy with only `name` changed, a throwaway pair for the round's live
+check, not scored. `_check_c` and `_check_d` (27 Oct 2026) are copies of those two with only
+`name` changed, for the second live check, from scratch: the first stopped in the merge (round
+14, question 11). `_check_e` and `_check_f` (27 Oct 2026) are copies of `_check_c` and `_check_d`
+with only `name` changed, for the third, from scratch: the second stopped in the k elbow's table
+export (round 14, question 13). `tests/test_r14_configs.py` checks what differs and pins their
+fingerprints and step keys.
+
 ## Adding a new experiment
 
 1. **Copy** `configs/sanjay_van_baseline.yaml` to `configs/<your_name>.yaml`.
@@ -247,16 +266,26 @@ it is, see [design_notes.md](design_notes.md).
 - `name`: short tag for the ROI (informational; appears in manifest).
 - `roi_file`: path to a GeoJSON polygon in EPSG:4326. Loaded via
   `fmu.utils.gee.load_roi_geometry`. Capped at GEE's inline-geometry
-  limit (~5 MB). The path is read relative to the working directory, so
-  run from the repo root (or the run tree's root). Nothing checks the file
-  when the config is loaded. The per-step cache keys hash its content, and a
-  file they cannot read hashes as nothing, with no warning: from another
-  folder every per-step key changes while the legacy fingerprint, which
-  hashes the path, does not (the 10 km tile config: masking `s354522a974`
-  from the repo root, `s4a47c8b2cc` from `docs/`, fingerprint `5772fb6133`
-  from both). A run then stops when it loads the ROI (`FileNotFoundError`),
-  or the pass runner reports every upstream asset as missing (exit 3), which
-  names the wrong cause (review C40).
+  limit (~5 MB). An absolute path is used as it is; a relative one is
+  resolved against the root of the checkout the `fmu` package is imported
+  from (the folder holding `src/`; in a batch, the run tree, whose `src/` is
+  on `PYTHONPATH`), not against the working directory
+  (`fmu.utils.gee.resolve_roi_file`). Nothing checks the file when the config
+  is loaded. The per-step cache keys hash its content, read by the same
+  function as the ROI loader (`read_roi_file`), so the keys and the geometry
+  are of one file, and the same, from any folder. A file that cannot be read
+  raises an `OSError` (`FileNotFoundError` for a missing one) naming the path
+  as given, the path it resolved to and the root, as soon as the keys are
+  computed or the ROI is loaded. The legacy fingerprint hashes the path as
+  written. Until round 14 the path was read relative to the working
+  directory, and a file the keys could not read hashed as nothing, with no
+  warning: from another folder every per-step key changed while the legacy
+  fingerprint did not (the 10 km tile config: masking `s354522a974` from the
+  repo root, `s4a47c8b2cc` from `docs/`, fingerprint `5772fb6133` from both),
+  and the pass runner reported every upstream asset as missing (exit 3),
+  which named the wrong cause (review C40; round 13 question 41). Run from
+  the repo root (or the run tree's root) all the same: the pipeline reads
+  `.env` from the working directory.
 
 ### `dates`
 
@@ -336,6 +365,22 @@ for the full inventory.
   date **can** change the stand types (review C9 and B13; until round 13
   this entry said it could not). Keep identical across configs you intend
   to compare — the metrics stage relies on this for phases.
+- `mean_over_window` (round 14, Task 2.3; review C9, round 13's question 31,
+  answered (c)): `false` (default, every run before round 14) leaves
+  `<index>_mean` the intercept, the trend line's value on `time_reference`.
+  `true` makes it the fitted curve's mean over the dates window
+  (`dates.phenology`, its start to the day after its end, as `data_load`
+  filters the collection), computed analytically as a weighted sum of the
+  regression's coefficients, the same whatever `time_reference` is: for a
+  window of a whole number of years it is a + trend × the window's middle. In
+  the regression's own unit of time, Earth Engine's average year of 365.2425
+  days, the 2017-2022 window is 5.9988 years, so its harmonic terms are not
+  quite zero (at most about 2e-4 × the amplitude). Only the mean band changes:
+  amplitude, phase, trend and the residual variance are the fit's as before.
+  The stage's metadata records the window and the weights. Register entry
+  `spec-optical-mean-over-the-window`. Left out of the fingerprint and the
+  per-step keys while `false`; `true` moves the features_optical key and those
+  after it.
 
 ### `features_radar`
 
@@ -460,7 +505,9 @@ not mistyped stands. The stage logs the split and the manifest records it as
 `training_unit_key`. In the runs of record `n_units_dropped_null_band` counted
 the stands at the ROI's edge with no pixel whose centre is inside the ROI,
 which have no row and no polygon, not units with a band gap (review C15;
-`docs/outputs.md`). Read the shortfall before reading a silhouette: a cluster
+`docs/outputs.md`). Since round 14 those stands are counted apart, as
+`n_units_no_pixel_centre_in_roi`, and `n_units_dropped_null_band` counts the
+band gaps only (round 13's question 35). Read the shortfall before reading a silhouette: a cluster
 definition rests only on the units that reached the fit. With
 `fit_excludes_stands_below_min_area` on (below) there is a third, made on
 purpose: the stands below `merge.min_area_ha` are left out of the fit, though
@@ -503,6 +550,53 @@ decks — that number was always 10,000 pixels.
   (`docs/reproducibility/fit_excludes_stands_kendujhar.json`, 15 Oct 2026). The default is left out of the cache fingerprint, so
   existing configs keep their cached assets; a config that sets it to `true`
   gets a new fingerprint.
+- `fit_outside_earth_engine` (round 14, Task 2.1; reviews A2 and B15): where
+  k-means is fitted. `false` (default, and every run before round 14):
+  `ee.Clusterer.wekaKMeans` in Earth Engine, one start, which min-max normalises
+  each band over its training rows. `true`: the stage reads its table of units
+  back from Earth Engine in one request (one row per unit with a habitat pixel
+  centre in the ROI and data in every candidate band, the rows its preprocessing
+  statistics take), does the declared preprocessing there (the log rule of the
+  stage, then median/IQR scaling with exact quartiles), and fits k-means with
+  scikit-learn on the rows of the fit: k-means++, 25 starts from `seed`, the start
+  with the lowest within-cluster sum of squares kept, on one thread. The stands
+  left out of the fit (`fit_excludes_stands_below_min_area`) get the nearest
+  centre. Each unit's type is written back to the image by its label (`remap`,
+  masked to the habitat mask). `clustering_metadata` then also holds the best
+  start's within-cluster sum of squares (`kmeans_wcss`) and how much the 25
+  starts agree with each other (`kmeans_starts_ari_median`, `kmeans_starts_ari_min`,
+  the adjusted Rand index of every pair of starts; a diagnostic of the
+  clustering, not a field score), and the stage writes the table, the rows after
+  the preprocessing with each unit's type, and the fit into its run folder
+  (`clustering_stand_table.csv`, `clustering_fit_rows.csv`,
+  `clustering_kmeans.json`). It needs `normalization.method: robust`. The code is
+  `fmu.utils.stand_table`; register entry
+  `spec-clustering-kmeans-outside-earth-engine`. While `false` it is left out of
+  the cache fingerprint and the per-step keys, so no existing config's assets
+  move; `true` moves the clustering and k_elbow keys.
+- `log_rule` (round 14, Task 2.2; reviews A3 and B12, round 13's question 8):
+  which bands are logged before the scaling, and how. `abs_skew` (default, the
+  rule of every run before round 14, DEC-004 as built since round 13): a band
+  whose |skew| is above `skewness_threshold` becomes log(x - min + 0.001), min
+  over every unit; the sin and cos of a harmonic phase are not skew-tested
+  (review B13), aspect's are; each band is then scaled by its own median and
+  IQR. `right_skew`: a band whose IQR is 0 (at most 1e-9) is dropped as constant
+  first; only a right-skewed band (skew above the threshold) is logged, as
+  log1p((x - min) / IQR), with min over every unit, the stands left out of the
+  fit included, and IQR the band's own before the log, so the log is defined for
+  every unit; a left-skewed band is not transformed; the sin and cos of an angle
+  (a harmonic phase, aspect) are never skew-tested or logged, and each such pair
+  is centred by its own medians and divided by one shared spread, the root mean
+  square of the two IQRs, so the circle is scaled alike along both axes and not
+  stretched (a pair is dropped only when that spread is 0); `clustering_metadata`
+  records each band's skew before and after the log (`skew_before`,
+  `skew_after`), the log's minimum and IQR per band (`log1p_params`) and the
+  pairs' shared spreads (`angle_pairs`). The skew is the moment coefficient g1,
+  as Earth Engine's `Reducer.skew` computes it. `right_skew` is applied off Earth
+  Engine, so it needs `fit_outside_earth_engine: true`. Register entry
+  `spec-clustering-log-rule-right-skewed-bands`. Left out of the fingerprint and
+  the per-step keys at its default; `right_skew` moves the clustering and k_elbow
+  keys.
 
 `superpixel_max_size` **no longer exists** and a config still carrying it will
 fail to load. It was the `maxSize` argument to `reduceConnectedComponents`,
@@ -595,7 +689,18 @@ a two-tier threshold scheme.
   `src/fmu/utils/region_merge.py`; corrected 20 Oct 2026, review C62, from
   "Xiong's eliminate-pass fallback"). Shared edge is counted with
   4-connectivity even though SNIC runs `connectivity: 8` — a diagonal contact
-  has zero shared boundary length.
+  has zero shared boundary length. Of two neighbours sharing boundaries of the
+  same length, the fallback takes the one whose centroid comes first
+  (longitude, then latitude, to 7 decimals; where both agree, the one SNIC
+  numbered lower), since round 14 (26 Oct 2026; round 13 question 24); until
+  then it took the one SNIC had numbered lower (register entry
+  `spec-merge-fallback-tie-by-centroid`). Every other tie of the merge goes by
+  centroid too: in pass 1, of two partners of one region at the same distance,
+  the merge takes the one whose centroid comes first, since 27 Oct 2026 (round
+  14's question 2; until then, when that region came first by centroid in both
+  pairs, the one SNIC had numbered lower); pass 2 takes
+  regions below the minimum of the same size, and relaxed matches at the same
+  distance, in centroid order (register entry `spec-merge-every-tie-by-centroid`).
 - `max_pass2_iterations`: cap so a pathological AOI logs its stragglers instead
   of looping (default 60).
 - `pass2_skip_at_min_area`: what pass 2 does with a region that was undersized
@@ -636,18 +741,26 @@ a two-tier threshold scheme.
 
 ### `features`
 
-High-level on/off toggles, read by nothing. No stage, script or test reads
-`Config.features` except the test of its defaults (`tests/test_config.py`).
+High-level on/off toggles, read by nothing. No stage or script reads
+`Config.features`; only its own validator does, and the tests of its defaults
+and of its refusal (`tests/test_config.py`, `tests/test_features_toggle_refused.py`).
 Which feature stages run is set by `clustering.feature_source`,
-`segmentation.input_bands` and `merge.criteria`. A `false` loads without a
-warning and changes no stage and no per-step cache key; it moves only the
-legacy fingerprint, which hashes the block (all four `false` on the 10 km tile
-config: `5772fb6133` becomes `7a438bf989`, every per-step key the same). Every
-config that sets them sets all four `true`. Until round 13 this section said
-all four are read by the stage code (review C20). Removing the block would move
-every legacy fingerprint, the 14 pinned `_repro` ones among them.
+`segmentation.input_bands` and `merge.criteria`, and the `features_*` blocks
+set what each of those stages computes. Since round 14 a config with any of the
+four `false` fails to load, with a message that names those settings (round 13
+question 37, answer (a); register entry
+`spec-config-refuses-a-false-features-toggle`). Leave them `true` or leave the
+block out. Until round 14 a `false` loaded without a warning and changed no
+stage and no per-step cache key; it moved only the legacy fingerprint, which
+hashes the block (all four `false` on the 10 km tile config: `5772fb6133`
+became `7a438bf989`, every per-step key the same). Every config that sets them
+sets all four `true`, so the refusal moves no fingerprint and no key. Until
+round 13 this section said all four are read by the stage code (review C20).
+The block stays because removing it would move every legacy fingerprint, the
+14 pinned `_repro` ones among them.
 
-- `optical_harmonic`, `radar`, `canopy_height`, `terrain`
+- `optical_harmonic`, `radar`, `canopy_height`, `terrain`: each `true` (the
+  default); a `false` is refused.
 
 ### `export`
 
@@ -680,6 +793,30 @@ every legacy fingerprint, the 14 pinned `_repro` ones among them.
   layer is unfiltered because SNIC enforces its own minimum via
   `segmentation.size`.
 
+### `k_elbow`
+
+The k elbow step (`src/fmu/stages/k_elbow.py`, round 9), in no default run: k-means on the
+stands for every k from `k_min` (2) to `k_max` (12), `seed` 42, `n_init` 25 starts, and the knee
+of the within-cluster sums of squares (the k farthest from the chord between the first and last
+point). Its key leaves out `clustering.k`, so it is computed once for a config whatever its k.
+The block is not in the legacy fingerprint.
+
+- `in_fit_space` (round 14, Task 2.4; review A7): `false` (default) runs the step of round 9 on
+  the clustering stage's cached scaled feature stack, re-sampled. `true` runs it on the fit's own
+  rows, in the fit's own space: it reads the table of units as the clustering stage does with
+  `clustering.fit_outside_earth_engine` on, preprocesses it by the same rule, and sweeps k on the
+  rows of the fit with the fit's own 25 starts, recording at each k how much the starts agree
+  (the median and lowest adjusted Rand index over every pair; a diagnostic of the clustering,
+  not a field score); so at the config's k its sum of squares is the fit's. It reads none of the
+  clustering stage's outputs, so a run that ends with it has no clustering stage, and a batch can
+  stop after it (`--through k_elbow`, `docs/running.md`). It writes five files into the run
+  folder: `k_elbow.csv` (k, sum of squares, the two agreements, the knee), the table of units,
+  the rows after the preprocessing keyed by unit label (`k_elbow_fit_rows.csv`), each unit's type
+  at every k, and the preprocessing; so a fit at another k can be scored offline with no Earth
+  Engine. It needs `clustering.fit_outside_earth_engine`, `seed` equal to `clustering.seed` and
+  `n_init` 25. Register entry `spec-k-elbow-in-the-fits-space`. Left out of the per-step key
+  while `false`; `true` moves the k_elbow key only.
+
 ### `metrics`
 
 - `reference_config_name`: another config's `name`, or `null` for
@@ -705,10 +842,18 @@ Invalid value. `k=1` is meaningless for clustering.
 A missing or unreadable `roi.roi_file` is **not** caught when the config is
 loaded: nothing checks it then (review C40; until round 13 this section showed
 a `ValidationError: roi.roi_file -> file does not exist` that no code raises).
-It shows up when a run loads the ROI (`FileNotFoundError: ROI file not found:
-...`), or, from the wrong working directory, as every upstream asset reported
-missing by the pass runner (exit 3), because the per-step keys then hash no
-ROI file (see `roi_file` above).
+Since round 14 it stops a run as soon as the per-step keys are computed or the
+ROI is loaded, whichever comes first (in the pass runner, before any task is
+submitted), with an error that names the file:
+
+```
+FileNotFoundError: [Errno 2] ROI file 'aois/x.geojson' cannot be read (No such file or directory): read at <root>/aois/x.geojson. A relative roi_file is resolved against <root>, the root of the checkout the fmu package was imported from, not against the working directory; an absolute one is used as it is.
+```
+
+The working directory plays no part (see `roi_file` above). Until round 14,
+from the wrong working directory, it showed up as every upstream asset
+reported missing by the pass runner (exit 3), because the per-step keys then
+hashed no ROI file.
 
 ```
 ValidationError: dates.phenology -> end must be after start

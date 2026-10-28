@@ -1,0 +1,85 @@
+2026-10-28 15:14:38 [INFO] fmu.utils.logging: Logging initialized; run dir: runs/odisha_alphaearth_10ha_squares_angul_keptland_r14_20261028_151438
+2026-10-28 15:14:38 [INFO] fmu.utils.logging: Log level: INFO
+2026-10-28 15:14:38 [INFO] fmu.pipeline: ============================================================
+2026-10-28 15:14:38 [INFO] fmu.pipeline: Pipeline run: odisha_alphaearth_10ha_squares_angul_keptland_r14
+2026-10-28 15:14:38 [INFO] fmu.pipeline: Stages: masking -> data_load -> features_optical -> features_structure -> features_embedding -> segmentation -> merge -> clustering -> profiling -> export
+2026-10-28 15:14:38 [INFO] fmu.pipeline: Run directory: runs/odisha_alphaearth_10ha_squares_angul_keptland_r14_20261028_151438
+2026-10-28 15:14:38 [INFO] fmu.pipeline: Cache layout: per_step (given to Pipeline())
+2026-10-28 15:14:38 [INFO] fmu.pipeline: ============================================================
+2026-10-28 15:14:38 [INFO] fmu.pipeline: stage: masking
+2026-10-28 15:14:41 [INFO] fmu.pipeline:   [cache] all 4 outputs hit; skipping stage run
+2026-10-28 15:14:43 [INFO] fmu.pipeline: stage masking done in 4.84 sec (from cache)
+2026-10-28 15:14:43 [INFO] fmu.pipeline: stage: data_load
+2026-10-28 15:14:45 [INFO] fmu.stages.data_load:   S2 phenology window: 713 images after cloud filter
+2026-10-28 15:14:46 [INFO] fmu.stages.data_load:   S1 radar window: 189 images after orbit/pol filter
+2026-10-28 15:14:48 [INFO] fmu.stages.data_load:   S2 composite window: 713 images after cloud filter
+2026-10-28 15:14:48 [INFO] fmu.pipeline: stage data_load done in 4.72 sec
+2026-10-28 15:14:48 [INFO] fmu.pipeline: stage: features_optical
+2026-10-28 15:14:48 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-28 15:14:49 [INFO] fmu.pipeline: stage features_optical done in 0.82 sec (from cache)
+2026-10-28 15:14:49 [INFO] fmu.pipeline: stage: features_structure
+2026-10-28 15:14:50 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-28 15:14:50 [INFO] fmu.pipeline: stage features_structure done in 1.55 sec (from cache)
+2026-10-28 15:14:50 [INFO] fmu.pipeline: stage: features_embedding
+2026-10-28 15:14:51 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-28 15:14:52 [INFO] fmu.pipeline: stage features_embedding done in 2.04 sec (from cache)
+2026-10-28 15:14:52 [INFO] fmu.pipeline: stage: segmentation
+2026-10-28 15:14:53 [INFO] fmu.pipeline:   [cache] all 2 outputs hit; skipping stage run
+2026-10-28 15:14:53 [INFO] fmu.pipeline: stage segmentation done in 0.87 sec (from cache)
+2026-10-28 15:14:53 [INFO] fmu.pipeline: stage: merge
+2026-10-28 15:14:55 [INFO] fmu.utils.components:   merge input: 466 components, largest 279 px, maxSize 1320 px (79% headroom)
+2026-10-28 15:14:59 [INFO] fmu.utils.adjacency:   merge adjacency: 464 regions, 962 adjacent pairs, mean degree 4.15, 52 isolated
+2026-10-28 15:14:59 [WARNING] fmu.utils.adjacency:   merge adjacency: 52 region(s) have no 4-connected neighbour. They cannot be merged and will be reported as orphans.
+2026-10-28 15:15:00 [INFO] fmu.stages.merge:   kept land 405.65 ha (0.00 ha more in patches too small to be a stand, left out), of it without a superpixel 0.0000 ha; superpixel area off kept land 0.0000 ha
+2026-10-28 15:15:07 [INFO] fmu.stages.merge:   threshold calibration over 962 adjacent pairs:
+2026-10-28 15:15:07 [INFO] fmu.stages.merge:     canopy_height            tol 2.0      = p82.1  of pair differences (p50 0.974218, p75 1.708741, defined on 962 pairs)
+2026-10-28 15:15:07 [INFO] fmu.stages.merge:     canopy_height_std        tol 0.45     = p97.0  of pair differences (p50 0.090034, p75 0.162997, defined on 962 pairs)
+2026-10-28 15:15:07 [INFO] fmu.stages.merge:     ndvi_amplitude_annual    tol 0.03     = p80.3  of pair differences (p50 0.01556, p75 0.025878, defined on 962 pairs)
+2026-10-28 15:15:07 [INFO] fmu.stages.merge:     joint admit rate (all criteria at once): 65.4% of 962 pairs. The gate is conjunctive, so this is NOT any of the marginals above.
+2026-10-28 15:15:07 [INFO] fmu.utils.region_merge:   merge pass 1: 319 merges over 5 rounds -> 145 regions
+2026-10-28 15:15:07 [INFO] fmu.utils.region_merge:   merge pass 2: 18 merges (5 via the shared-edge fallback) over 2 sweeps -> 127 stands
+2026-10-28 15:15:07 [INFO] fmu.utils.region_merge:   merge pass 2 soft ceiling: 0 merges went over max_area_ha (0 relaxed, 0 via the shared-edge fallback), none past 11.0000 ha
+2026-10-28 15:15:07 [INFO] fmu.stages.merge:   merged 464 superpixels -> 127 stands (3.65x reduction)
+2026-10-28 15:15:07 [WARNING] fmu.stages.merge:   53 stand(s) have no 4-connected neighbour at all and cannot be merged with anything.
+2026-10-28 15:15:07 [WARNING] fmu.stages.merge:   2 stand(s) have at least one criterion valid on under 50% of their pixels; those bands are reported as null rather than as a mean over territory that has no data.
+2026-10-28 15:15:07 [WARNING] fmu.stages.merge:   5 of 18 pass-2 merges used the shared-edge fallback, i.e. no relaxed criterion could justify them. These are the merges to look at first if stand geometry looks wrong.
+2026-10-28 15:15:07 [WARNING] fmu.pipeline:   [merge] 53 stand(s) have no 4-connected neighbour at all and cannot be merged with anything.
+2026-10-28 15:15:07 [WARNING] fmu.pipeline:   [merge] 2 stand(s) have at least one criterion valid on under 50% of their pixels; those bands are reported as null rather than as a mean over territory that has no data.
+2026-10-28 15:15:07 [WARNING] fmu.pipeline:   [merge] 5 of 18 pass-2 merges used the shared-edge fallback, i.e. no relaxed criterion could justify them. These are the merges to look at first if stand geometry looks wrong.
+2026-10-28 15:15:07 [INFO] fmu.pipeline: stage merge done in 13.95 sec
+2026-10-28 15:15:07 [INFO] fmu.pipeline: stage: clustering
+2026-10-28 15:15:10 [INFO] fmu.pipeline:   [cache] all 2 outputs hit; skipping stage run
+2026-10-28 15:15:10 [INFO] fmu.pipeline: stage clustering done in 2.60 sec (from cache)
+2026-10-28 15:15:10 [INFO] fmu.pipeline: stage: profiling
+2026-10-28 15:15:11 [INFO] fmu.stages.profiling:   profiling 64 feature bands across 5 clusters
+2026-10-28 15:15:15 [INFO] fmu.stages.profiling:     cluster 0: 5493 pixels (54.9 ha)
+2026-10-28 15:15:17 [INFO] fmu.stages.profiling:     cluster 1: 10203 pixels (102.0 ha)
+2026-10-28 15:15:21 [INFO] fmu.stages.profiling:     cluster 2: 13123 pixels (131.2 ha)
+2026-10-28 15:15:22 [INFO] fmu.stages.profiling:     cluster 3: 8672 pixels (86.7 ha)
+2026-10-28 15:15:24 [INFO] fmu.stages.profiling:     cluster 4: 3059 pixels (30.6 ha)
+2026-10-28 15:15:24 [INFO] fmu.pipeline: stage profiling done in 14.24 sec
+2026-10-28 15:15:24 [INFO] fmu.pipeline: stage: export
+2026-10-28 15:15:25 [INFO] fmu.stages.export:   clustering metadata: k=5, 64 active bands
+2026-10-28 15:15:26 [INFO] fmu.stages.export:   cluster distribution: 5 clusters totaling 40558 pixels
+2026-10-28 15:15:35 [INFO] fmu.stages.export:   cached assets for this config: 13
+2026-10-28 15:15:36 [INFO] fmu.stages.export:   submitted raster Drive export: task_id=I7CNJ4BOTE5AH7DTA2UXRJ4H, folder='fmu_exports_kept_land_s1desc', file='odisha_alphaearth_10ha_squares_angul_keptland_r14_cluster_labels.tif'
+2026-10-28 15:15:36 [INFO] fmu.stages.export:   submitted raster Drive export: task_id=WEW35B5N3B46L5RPQRVQ4BXO, folder='fmu_exports_kept_land_s1desc', file='odisha_alphaearth_10ha_squares_angul_keptland_r14_features_raw.tif'
+2026-10-28 15:15:37 [INFO] fmu.stages.export:   submitted raster Drive export: task_id=5V2WI2B47GPNBCY3YFZUNZBG, folder='fmu_exports_kept_land_s1desc', file='odisha_alphaearth_10ha_squares_angul_keptland_r14_features_scaled.tif'
+2026-10-28 15:15:38 [INFO] fmu.stages.export:   vector layers: built and counted one ROI part at a time (4 parts)
+2026-10-28 15:15:38 [INFO] fmu.stages.export:   building merged-stand vector layer...
+2026-10-28 15:15:45 [INFO] fmu.stages.export:   stands_merged: 127 features over 127 stands
+2026-10-28 15:15:46 [INFO] fmu.stages.export:   submitted vector Drive export: task_id=IBMFQGS3KCJ5S5S4UIZM2YGJ, folder='fmu_exports_kept_land_s1desc', file='odisha_alphaearth_10ha_squares_angul_keptland_r14_stands_merged.zip', format=SHP
+2026-10-28 15:15:47 [INFO] fmu.stages.export:   submitted vector Drive export: task_id=Y5WRCPYKGJQLHOSJ4LNZYGFV, folder='fmu_exports_kept_land_s1desc', file='odisha_alphaearth_10ha_squares_angul_keptland_r14_stands_merged.geojson', format=GeoJSON
+2026-10-28 15:15:47 [INFO] fmu.stages.export:   building SNIC superpixel vector layer...
+2026-10-28 15:15:54 [INFO] fmu.stages.export:   stands_snic: 464 features
+2026-10-28 15:15:54 [INFO] fmu.stages.export:   submitted vector Drive export: task_id=V6DR2MNBCWPTNI2AY5MWLQXW, folder='fmu_exports_kept_land_s1desc', file='odisha_alphaearth_10ha_squares_angul_keptland_r14_stands_snic.zip', format=SHP
+2026-10-28 15:15:56 [INFO] fmu.stages.export:   submitted vector Drive export: task_id=MVJQEIP3J4MM2DHBMOVUTI4V, folder='fmu_exports_kept_land_s1desc', file='odisha_alphaearth_10ha_squares_angul_keptland_r14_stands_snic.geojson', format=GeoJSON
+2026-10-28 15:15:56 [INFO] fmu.stages.export:   building dissolved cluster vector layer...
+2026-10-28 15:16:01 [INFO] fmu.stages.export:   stands_dissolved: 60 features (after min_stand_pixels filter)
+2026-10-28 15:16:02 [INFO] fmu.stages.export:   submitted vector Drive export: task_id=HMVELEASGPKGKMEPKDKKQK5O, folder='fmu_exports_kept_land_s1desc', file='odisha_alphaearth_10ha_squares_angul_keptland_r14_stands_dissolved.zip', format=SHP
+2026-10-28 15:16:03 [INFO] fmu.stages.export:   submitted vector Drive export: task_id=HFB56CC5GFLALLZ5TMMWPXKA, folder='fmu_exports_kept_land_s1desc', file='odisha_alphaearth_10ha_squares_angul_keptland_r14_stands_dissolved.geojson', format=GeoJSON
+2026-10-28 15:16:04 [INFO] fmu.pipeline: stage export done in 40.16 sec
+2026-10-28 15:16:04 [INFO] fmu.pipeline: ============================================================
+2026-10-28 15:16:04 [INFO] fmu.pipeline: Pipeline complete in 85.83 sec
+2026-10-28 15:16:04 [INFO] fmu.pipeline: ============================================================
+2026-10-28 15:16:04 [INFO] fmu.pipeline: Manifest written: runs/odisha_alphaearth_10ha_squares_angul_keptland_r14_20261028_151438/manifest.json

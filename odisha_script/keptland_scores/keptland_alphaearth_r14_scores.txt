@@ -1,0 +1,37 @@
+The field check of the Odisha kept-land runs (odisha_script/PHASE_KEPTLAND_PREDECLARED.md)
+Runs: configs/odisha_alphaearth_3ha_squares_<district>_keptland_r14.yaml. Numbers only: the
+chance test is not run, so no score here is said to be more, or less, than chance gives.
+
+How the plots join (per district)
+  district     inside  on a stand  by 30 m  left out
+  angul            39          37        2         0
+  dhenkanal        75          72        2         1
+  kendujhar         8           7        0         1
+  koraput         145         136        8         1
+  all             267         252       12         3
+
+The five scores
+  analysis          delin_all  delin_multi         prec    lab_wmean      far_gap   plots
+  primary             +0.0053      +0.0229      +0.5130      +0.0466      -0.0012     264
+  S1                  +0.0044      +0.0193      +0.5484      +0.0543      +0.0074     248
+  S2                  +0.0051      +0.0190      +0.6870      +0.0355      -0.0053     264
+  covered_only        +0.0056      +0.0241      +0.5189      +0.0447      -0.0003     252
+  box_runs            +0.0051      +0.0225      +0.5185      +0.0504      -0.0165     264
+
+  delin_all = drawing: ARI, all plots; delin_multi = drawing: ARI, stands holding two or more plots; prec = drawing: same-stand pair precision; lab_wmean = labelling: ARI, plot-weighted mean of the districts'; far_gap = labelling: far-apart same-label rate, alike minus differ
+
+  primary: the runs odisha_alphaearth_3ha_squares_<district>_keptland_r14; the primary field types; the 30 m rule.
+    264 plots in 189 stands; 49 stands hold two or more (124 plots); far-apart pairs alike 3646, differ 6787
+    labelling ARI by district: ANGUL +0.0978 (n=39), DHENKANAL +0.1433 (n=74), KENDUJHAR +0.0000 (n=7), KORAPUT -0.0148 (n=144)
+  S1: as the primary, field type 0 (no trees) left out.
+    248 plots in 183 stands; 44 stands hold two or more (109 plots); far-apart pairs alike 3604, differ 5543
+    labelling ARI by district: ANGUL +0.1171 (n=37), DHENKANAL +0.1433 (n=74), KENDUJHAR +0.0000 (n=5), KORAPUT -0.0111 (n=132)
+  S2: as the primary, four field types (odisha_phase3_0_field_types_k4.csv).
+    264 plots in 189 stands; 49 stands hold two or more (124 plots); far-apart pairs alike 5580, differ 4853
+    labelling ARI by district: ANGUL +0.0769 (n=39), DHENKANAL +0.1264 (n=74), KENDUJHAR +0.0000 (n=7), KORAPUT -0.0207 (n=144)
+  covered_only: as the primary, only the plots a stand covers (no 30 m rule).
+    252 plots in 183 stands; 45 stands hold two or more (114 plots); far-apart pairs alike 3331, differ 6163
+    labelling ARI by district: ANGUL +0.0571 (n=37), DHENKANAL +0.1476 (n=72), KENDUJHAR +0.0000 (n=7), KORAPUT -0.0109 (n=136)
+  box_runs: beside it, descriptive only: the 13 Oct box runs' merged stands (the Phase 2 rule) on the plots the primary scores.
+    264 plots in 196 stands; 44 stands hold two or more (112 plots); far-apart pairs alike 3590, differ 6727
+    labelling ARI by district: ANGUL +0.1254 (n=39), DHENKANAL +0.1362 (n=74), KENDUJHAR +0.2000 (n=7), KORAPUT -0.0219 (n=143)

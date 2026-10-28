@@ -28,6 +28,7 @@ from _clustering_stand_ins import (
     TRAINING_ROWS,
     UNITS_IN_HABITAT,
     UNITS_IN_ROI,
+    UNITS_WITH_A_CENTRE,
     inputs,
     run_stage,
 )
@@ -229,11 +230,17 @@ def test_the_metadata_says_how_many_were_left_out_and_their_area():
 
 
 def test_missing_band_data_is_counted_against_the_rows_before_the_stands_are_left_out():
+    """Since round 14 (round 13's question 35) the units without a row are counted by
+    cause: one with no habitat pixel centre in the ROI, one with a band gap."""
     _, log, _ = _run_on()
     meta = _clustering_metadata(log)
-    assert meta["n_units_dropped_null_band"] == UNITS_IN_HABITAT - TRAINING_ROWS == 2
+    assert meta["n_units_dropped_null_band"] == UNITS_WITH_A_CENTRE - TRAINING_ROWS == 1
+    assert meta["n_units_no_pixel_centre_in_roi"] == UNITS_IN_HABITAT - UNITS_WITH_A_CENTRE == 1
     assert meta["n_units_in_habitat"] == (
-        meta["n_training_units"] + meta["n_units_dropped_null_band"] + meta["n_stands_left_out_of_fit"]
+        meta["n_training_units"]
+        + meta["n_units_dropped_null_band"]
+        + meta["n_units_no_pixel_centre_in_roi"]
+        + meta["n_stands_left_out_of_fit"]
     )
 
 
@@ -254,11 +261,13 @@ def test_the_summary_numbers_read_the_metadata_with_the_setting_on():
     _, log, _ = _run_on()
     numbers = tabulate_clustering_metadata(_clustering_metadata(log))
     assert numbers["units_fitted"] == FIT_ROWS
-    assert numbers["units_dropped_missing_band"] == 2
+    assert numbers["units_dropped_missing_band"] == 1
+    assert numbers["units_with_no_pixel_centre_in_roi"] == 1
     assert numbers["units_left_out_of_fit"] == len(WITH_A_ROW)
     assert numbers["units_in_habitat"] == (
         numbers["units_fitted"]
         + numbers["units_dropped_missing_band"]
+        + numbers["units_with_no_pixel_centre_in_roi"]
         + numbers["units_left_out_of_fit"]
     )
 

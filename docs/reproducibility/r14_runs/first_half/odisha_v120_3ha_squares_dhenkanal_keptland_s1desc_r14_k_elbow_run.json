@@ -1,0 +1,157 @@
+{
+ "config": "odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r14",
+ "fingerprint": "9d0f42152a",
+ "cache_layout": "per_step",
+ "step_keys": {
+  "masking": "sdf896b0967",
+  "data_load": "s2884930563",
+  "features_optical": "sfdb39986b9",
+  "features_radar": "sdb92b8fa15",
+  "features_structure": "se22301e3be",
+  "features_static": "se9e135cf76",
+  "features_embedding": "s4a955ec4b1",
+  "segmentation": "sdc63fccbdc",
+  "merge": "s3ce5a0e0d2",
+  "clustering": "s90669c680d",
+  "k_elbow": "s9242dea9c7"
+ },
+ "git": {
+  "commit": "a099c5782e895b8bdc8fa22ac8f89b1606482309",
+  "dirty": false,
+  "modified": [],
+  "modified_truncated": false,
+  "untracked_code": [],
+  "untracked_code_truncated": false,
+  "untracked": [
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_k_elbow.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_k_elbow_fit_rows.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_k_elbow_preprocessing.json",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_k_elbow_run.json",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_k_elbow_stand_table.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_k_elbow_types.csv"
+  ],
+  "untracked_truncated": false,
+  "root": "/Users/karan/Desktop/phd-code/outputs/round14/run_tree_5",
+  "error": null
+ },
+ "environment": {
+  "python": "3.13.14",
+  "earthengine_api": "1.7.35",
+  "pip_freeze_sha256": "31aca07855862d34db7bcb31a6b60769d1785e80606cdaa23093cdf2a60bcc21",
+  "pip_freeze_packages": 232,
+  "pip_freeze_left_out": [
+   "-e git+https://github.com/sudo-karan/phd-code.git@2830f8cca627f97f58c088e341ca516354f1f2c4#egg=fmu"
+  ],
+  "error": null
+ },
+ "cache_status": {
+  "masking": {
+   "habitat_mask": "hit",
+   "landcover_summary": "hit",
+   "mask_provenance": "hit",
+   "water_mask": "hit"
+  },
+  "data_load": {
+   "s2_composite": "hit"
+  },
+  "features_optical": {
+   "optical_features": "hit"
+  },
+  "features_radar": {
+   "radar_features": "hit"
+  },
+  "features_structure": {
+   "structure_features": "hit"
+  },
+  "features_static": {
+   "static_features": "hit"
+  },
+  "segmentation": {
+   "snic_clusters": "hit",
+   "snic_means": "hit"
+  },
+  "k_elbow": {
+   "k_elbow": "miss-exported"
+  }
+ },
+ "k_elbow": {
+  "n_rows": 397,
+  "n_bands": 22,
+  "ks": [
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12
+  ],
+  "inertia": [
+   3105.932317,
+   2540.539817,
+   2289.991327,
+   2063.5865,
+   1883.184665,
+   1750.540487,
+   1642.675934,
+   1559.916294,
+   1487.358685,
+   1422.898668,
+   1352.964524
+  ],
+  "elbow_k": 6,
+  "ari_median": [
+   0.853907,
+   0.4907,
+   0.555232,
+   0.628926,
+   0.677951,
+   0.597034,
+   0.59682,
+   0.562933,
+   0.583146,
+   0.657839,
+   0.665691
+  ],
+  "ari_min": [
+   -0.015097,
+   0.000249,
+   0.307932,
+   0.333445,
+   0.276069,
+   0.312423,
+   0.386377,
+   0.317321,
+   0.406802,
+   0.429677,
+   0.387462
+  ]
+ },
+ "k_elbow_computed_in_this_pass": true,
+ "files": {
+  "odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r14_k_elbow.csv": {
+   "bytes": 407,
+   "sha256": "185b17df59b2cb462466451fd85b6a83df02119fae527a4cf4255fc7cf2b3e4b"
+  },
+  "odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r14_k_elbow_fit_rows.csv": {
+   "bytes": 246977,
+   "sha256": "042cb1d40dd43015e8abfcbbff6e0e23067815c4fdc972edbe991a6677d1fb98"
+  },
+  "odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r14_k_elbow_preprocessing.json": {
+   "bytes": 5613,
+   "sha256": "28e246efa1154e4bbf400f866011812c83452f8ec53b16f8c0be6e475d948edb"
+  },
+  "odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r14_k_elbow_stand_table.csv": {
+   "bytes": 233530,
+   "sha256": "87be30232ad8164e6f7706e887b3d25fd7104bd13b931e517ca61b1377b78180"
+  },
+  "odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r14_k_elbow_types.csv": {
+   "bytes": 15361,
+   "sha256": "ece21611d4d6869afb19985c8b007c4ff7f3cd772190e48a7317699c3f0b473f"
+  }
+ }
+}

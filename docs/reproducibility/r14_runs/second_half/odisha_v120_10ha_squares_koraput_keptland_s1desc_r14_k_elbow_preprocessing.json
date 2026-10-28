@@ -1,0 +1,265 @@
+{
+ "active_bands": [
+  "ndvi_mean",
+  "ndvi_amplitude_annual",
+  "ndvi_trend",
+  "vv_p10",
+  "vh_p10",
+  "vv_p50",
+  "vh_p50",
+  "vv_p90",
+  "vh_p90",
+  "vv_iqr",
+  "vh_iqr",
+  "vv_minus_vh_median",
+  "canopy_height",
+  "canopy_height_std",
+  "canopy_height_max",
+  "elevation",
+  "slope",
+  "distance_to_water",
+  "ndvi_phase_annual_sin",
+  "ndvi_phase_annual_cos",
+  "aspect_sin",
+  "aspect_cos"
+ ],
+ "angle_pairs": [
+  {
+   "bands": [
+    "ndvi_phase_annual_sin",
+    "ndvi_phase_annual_cos"
+   ],
+   "iqr": [
+    0.34065178489415077,
+    0.05123231475395229
+   ],
+   "shared_spread": 0.24358611272670985
+  },
+  {
+   "bands": [
+    "aspect_sin",
+    "aspect_cos"
+   ],
+   "iqr": [
+    1.1397431188401224,
+    1.1437731624197602
+   ],
+   "shared_spread": 1.1417599187252783
+  }
+ ],
+ "candidate_bands": [
+  "ndvi_mean",
+  "ndvi_amplitude_annual",
+  "ndvi_trend",
+  "vv_p10",
+  "vh_p10",
+  "vv_p50",
+  "vh_p50",
+  "vv_p90",
+  "vh_p90",
+  "vv_iqr",
+  "vh_iqr",
+  "vv_minus_vh_median",
+  "canopy_height",
+  "canopy_height_std",
+  "canopy_height_max",
+  "elevation",
+  "slope",
+  "distance_to_water",
+  "ndvi_phase_annual_sin",
+  "ndvi_phase_annual_cos",
+  "aspect_sin",
+  "aspect_cos"
+ ],
+ "cyclic_decomposition_log": [
+  "ndvi_phase_annual",
+  "aspect"
+ ],
+ "dropped_constant_bands": [],
+ "log1p_params": {
+  "canopy_height_std": {
+   "iqr": 0.29744088116121625,
+   "min": 0.0
+  },
+  "elevation": {
+   "iqr": 193.45282085878534,
+   "min": 854.3333333333334
+  },
+  "vh_iqr": {
+   "iqr": 0.6762482356569297,
+   "min": 4.754961307782955
+  },
+  "vv_iqr": {
+   "iqr": 0.4193382094910252,
+   "min": 3.8944135705347
+  },
+  "vv_minus_vh_median": {
+   "iqr": 0.6336873532006244,
+   "min": 4.776443585619712
+  }
+ },
+ "log_rule": "right_skew",
+ "log_transformed_bands": [
+  "vv_iqr",
+  "vh_iqr",
+  "vv_minus_vh_median",
+  "canopy_height_std",
+  "elevation"
+ ],
+ "n_rows_fitted": 666,
+ "n_table_rows": 968,
+ "raw_band_names": [
+  "ndvi_mean",
+  "ndvi_amplitude_annual",
+  "ndvi_phase_annual",
+  "ndvi_trend",
+  "vv_p10",
+  "vh_p10",
+  "vv_p50",
+  "vh_p50",
+  "vv_p90",
+  "vh_p90",
+  "vv_iqr",
+  "vh_iqr",
+  "vv_minus_vh_median",
+  "canopy_height",
+  "canopy_height_std",
+  "canopy_height_max",
+  "elevation",
+  "slope",
+  "aspect",
+  "distance_to_water"
+ ],
+ "scaling": {
+  "aspect_cos": {
+   "center": 0.1698020729633785,
+   "spread": 1.1417599187252783
+  },
+  "aspect_sin": {
+   "center": -0.15592156731042806,
+   "spread": 1.1417599187252783
+  },
+  "canopy_height": {
+   "center": 12.917885242755709,
+   "spread": 5.411080230752692
+  },
+  "canopy_height_max": {
+   "center": 13.414559433731998,
+   "spread": 5.428894634776988
+  },
+  "canopy_height_std": {
+   "center": 0.949428644682283,
+   "spread": 0.36891274030714494
+  },
+  "distance_to_water": {
+   "center": 9696.708960533017,
+   "spread": 4889.706403183968
+  },
+  "elevation": {
+   "center": 0.5455032069800997,
+   "spread": 0.5252251904740945
+  },
+  "ndvi_amplitude_annual": {
+   "center": 0.17114209004481346,
+   "spread": 0.06517534905563568
+  },
+  "ndvi_mean": {
+   "center": 0.6931322673042641,
+   "spread": 0.14903165407306807
+  },
+  "ndvi_phase_annual_cos": {
+   "center": -0.958466133034755,
+   "spread": 0.24358611272670985
+  },
+  "ndvi_phase_annual_sin": {
+   "center": -0.17893534325017593,
+   "spread": 0.24358611272670985
+  },
+  "ndvi_trend": {
+   "center": 0.0016943278183455491,
+   "spread": 0.008608147878669693
+  },
+  "slope": {
+   "center": 16.5907270720468,
+   "spread": 11.87730990030883
+  },
+  "vh_iqr": {
+   "center": 0.7394089426372863,
+   "spread": 0.45301894682773025
+  },
+  "vh_p10": {
+   "center": -18.039610034351256,
+   "spread": 2.9803122715408747
+  },
+  "vh_p50": {
+   "center": -15.0466224711809,
+   "spread": 2.7505193579019984
+  },
+  "vh_p90": {
+   "center": -12.421282061214121,
+   "spread": 2.761341516563414
+  },
+  "vv_iqr": {
+   "center": 1.3989396074876692,
+   "spread": 0.24574063553478998
+  },
+  "vv_minus_vh_median": {
+   "center": 1.1977572291205734,
+   "spread": 0.30054710894577874
+  },
+  "vv_p10": {
+   "center": -11.632874680804381,
+   "spread": 3.220712910961872
+  },
+  "vv_p50": {
+   "center": -8.842217119643735,
+   "spread": 3.1300019547285505
+  },
+  "vv_p90": {
+   "center": -6.282463504539274,
+   "spread": 3.2538693091250996
+  }
+ },
+ "skew_after": {
+  "canopy_height": -0.292036850791161,
+  "canopy_height_max": -0.19850233024767827,
+  "canopy_height_std": 0.6777796758133261,
+  "distance_to_water": -0.8404392775431277,
+  "elevation": 0.7083934319620597,
+  "ndvi_amplitude_annual": -0.24272805006003859,
+  "ndvi_mean": -1.0610407799999264,
+  "ndvi_trend": -1.7455892898046417,
+  "slope": 0.18113329385529342,
+  "vh_iqr": 0.7448048270610865,
+  "vh_p10": 0.1789204042780209,
+  "vh_p50": 0.34101619351748624,
+  "vh_p90": 0.4181914879440861,
+  "vv_iqr": 0.1099169651653219,
+  "vv_minus_vh_median": 0.8356674964848987,
+  "vv_p10": 0.8866881806307636,
+  "vv_p50": 0.8348805819812675,
+  "vv_p90": 0.7453299370783052
+ },
+ "skew_before": {
+  "canopy_height": -0.292036850791161,
+  "canopy_height_max": -0.19850233024767827,
+  "canopy_height_std": 2.8560852704276902,
+  "distance_to_water": -0.8404392775431277,
+  "elevation": 1.1694815276441812,
+  "ndvi_amplitude_annual": -0.24272805006003859,
+  "ndvi_mean": -1.0610407799999264,
+  "ndvi_trend": -1.7455892898046417,
+  "slope": 0.18113329385529342,
+  "vh_iqr": 2.1917546824746297,
+  "vh_p10": 0.1789204042780209,
+  "vh_p50": 0.34101619351748624,
+  "vh_p90": 0.4181914879440861,
+  "vv_iqr": 4.016325931595997,
+  "vv_minus_vh_median": 5.150232592842557,
+  "vv_p10": 0.8866881806307636,
+  "vv_p50": 0.8348805819812675,
+  "vv_p90": 0.7453299370783052
+ },
+ "skewness_threshold": 1.0,
+ "unit_key": "stand_clusters"
+}

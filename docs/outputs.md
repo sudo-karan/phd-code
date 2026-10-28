@@ -21,7 +21,19 @@ export_manifest_<config>.json           after export stage
 cluster_profiles.csv                    after profiling stage
 metrics_<config>.json                   after metrics stage (via inspect script)
 merge_provenance.csv, .json             after scripts/inspect_merge.py
+input_images.json                       when a stage computed an output live
+<stage>_*.csv, <stage>_*.json           a stage's result files (round 14), below
 ```
+
+A stage can hand the orchestrator result files (`StageResult.files`, round 14): tables too
+large for the manifest, such as the k-means rows of the clustering stage with
+`clustering.fit_outside_earth_engine` on (`clustering_stand_table.csv`,
+`clustering_fit_rows.csv`, `clustering_kmeans.json`) and of the k elbow step with
+`k_elbow.in_fit_space` on (`k_elbow.csv`, `k_elbow_stand_table.csv`, `k_elbow_fit_rows.csv`,
+`k_elbow_types.csv`, `k_elbow_preprocessing.json`; `docs/configs.md`, `k_elbow`). They are written into the run folder as the stage returns, and the stage's manifest entry
+names each under `files`, with its size and SHA-256; a stage that wrote none has no `files`
+key. They hold results only, no dates or times. A stage served from the cache does not run
+and writes none.
 
 The directory is gitignored; checking outputs into git is not the
 intended workflow. Reproducibility is via `manifest.json` (the inputs)
@@ -70,6 +82,8 @@ everything needed to know what happened:
     "dirty": false,
     "modified": [],
     "modified_truncated": false,
+    "untracked_code": [],
+    "untracked_code_truncated": false,
     "untracked": [],
     "untracked_truncated": false,
     "root": "/path/to/the/checkout",
@@ -193,10 +207,12 @@ tracked result recorded its own output as a dirty tree.
 | Key | Meaning |
 |---|---|
 | `commit` | Full hash of HEAD, or `null` |
-| `dirty` | `true` if any tracked file is modified, staged, deleted or renamed relative to HEAD; `false` if none; `null` if it could not be determined |
+| `dirty` | `true` if any tracked file is modified, staged, deleted or renamed relative to HEAD, or if there is untracked code under `src/`, `scripts/`, `odisha_script/` or `configs/` (`untracked_code`); `false` if neither; `null` if it could not be determined. Untracked code counts since round 14 (round 13 question 30 (c)); a record written before counts tracked files only |
 | `modified` | The tracked paths behind `dirty`, sorted, at most 50 |
 | `modified_truncated` | `true` if there were more than 50 |
-| `untracked` | Untracked, non-ignored paths, at most 50. They do not make the tree dirty, but an untracked source file can change what ran. Since round 13 (review C34) the code (source and config files, by suffix) and untracked folders come first, then the rest, each sorted, so that run outputs cannot push an untracked source file off the list; before, the list was sorted as a whole, and 50 untracked outputs in `odisha_script/phase2_vectors/` sorted before `scripts/` and `src/` |
+| `untracked_code` | Since round 14: the untracked code behind `dirty`, sorted, at most 50. That is every untracked, non-ignored file under `src/`, `scripts/`, `odisha_script/` or `configs/` with a source or config file's suffix (`.py`, `.sh`, `.yaml` and the like: `_CODE_SUFFIXES` in `src/fmu/utils/provenance.py`), in an untracked folder or not, and a repository inside one of those folders, by its folder (git does not list its files). A folder counts by what it holds, so a `__pycache__` folder or a folder of run outputs does not. Untracked code elsewhere (`tests/`, the top level) is in `untracked` only. The batch wrapper refuses a run tree by the same rule (`docs/running.md`) |
+| `untracked_code_truncated` | `true` if there were more than 50 |
+| `untracked` | Untracked, non-ignored paths, at most 50, whether they make the tree dirty or not: an untracked source file can change what ran. Until round 14 none of them made the tree dirty; since then the code among them under the four folders above does (`untracked_code`). Since round 13 (review C34) the code (source and config files, by suffix) and untracked folders come first, then the rest, each sorted, so that run outputs cannot push an untracked source file off the list; before, the list was sorted as a whole, and 50 untracked outputs in `odisha_script/phase2_vectors/` sorted before `scripts/` and `src/` |
 | `untracked_truncated` | `true` if there were more than 50 |
 | `root` | The checkout's root directory, or `null` |
 | `error` | `null`, or why the state could not be read (git not installed, the code is not in a git checkout, a git command failed) |
@@ -262,10 +278,11 @@ default" in a description means the default segmentation bands and merge
 criteria, which a config can replace. The stand-type legend names ten types
 and a run uses the first `clustering.k` of them.
 
-**Clustering** reports six counts, read from the `clustering_metadata`
+**Clustering** reports seven counts, read from the `clustering_metadata`
 property of `cluster_labels` (one small request, no reduction): `k`,
 `units_total`, `units_in_habitat`, `units_fitted`,
-`units_dropped_missing_band` and `units_left_out_of_fit`. A unit is a stand, or
+`units_dropped_missing_band`, `units_with_no_pixel_centre_in_roi` (since round
+14) and `units_left_out_of_fit`. A unit is a stand, or
 a superpixel in a run without merge. On a cached `cluster_labels` made before
 the fit recorded its coverage, the counts are absent and the record carries a
 `summary_error`. `units_left_out_of_fit` is the number of stands below
@@ -274,10 +291,13 @@ the fit recorded its coverage, the counts are absent and the record carries a
 in `clustering_metadata`), and 0 when `clustering_metadata` does not record the
 setting as on: the setting off, or an asset made before it existed. So
 `units_in_habitat` is `units_fitted` plus `units_dropped_missing_band` plus
-`units_left_out_of_fit`; with the setting on, the stage's log warns when its
-samples do not add up to that. The area of the stands left out, and how many
-stands the merge marked below the minimum, are in `clustering_metadata` (under
-`export_manifest_<config>.json` below), not among these six.
+`units_with_no_pixel_centre_in_roi` plus `units_left_out_of_fit`; with the
+setting on, the stage's log warns when its samples do not add up to that. On an
+asset made before round 14 `units_with_no_pixel_centre_in_roi` is null and
+`units_dropped_missing_band` holds both causes (below). The area of the stands
+left out, and how many stands the merge marked below the minimum, are in
+`clustering_metadata` (under `export_manifest_<config>.json` below), not among
+these seven.
 
 **What `units_dropped_missing_band` has counted** (review C15). Its name and its
 description say: units inside the habitat mask that the fit left out because a
@@ -295,9 +315,47 @@ means gave a unit with no data in a band 0 there, so it kept its row (round 13,
 review B14). Since round 13 such a unit is masked in that band, has no row and
 is counted here too, and the merge puts a superpixel with no pixel whose centre
 is inside the ROI in no stand (review B17); neither has run on Earth Engine yet.
-The legacy-layout runs (`docs/demo/remerge`) were not checked. The name, the
-description and the stage's log line are unchanged; renaming the count, or
-counting the two causes apart, is a question for Jaskaran (round 13).
+The legacy-layout runs (`docs/demo/remerge`) were not checked.
+
+**With `clustering.fit_outside_earth_engine` on** (round 14,
+`docs/configs.md`), `clustering_metadata` holds the same keys, computed off
+Earth Engine on the table of units, and also `fit_outside_earth_engine` (true),
+`log_rule`, `kmeans_wcss` (the best start's within-cluster sum of squares, in
+the scaled space the fit used), `kmeans_starts_ari_median` and
+`kmeans_starts_ari_min` (the median and lowest adjusted Rand index over the 300
+pairs of the 25 starts: how much the starts agree, a diagnostic of the
+clustering, not a field score) and `kmeans` (the library, the number of starts,
+the seed, which start was kept and each start's sum of squares). With
+`clustering.log_rule: right_skew` it holds `log1p_params` (the minimum and IQR
+of each logged band) in place of `log_offsets`, `skew_before` and `skew_after`
+(the skew, g1, of each band tested, before and after the log) and
+`angle_pairs` (each angle's sin and cos with their IQRs and the shared spread
+both are divided by). The units
+without a row are counted against the rows of the table, which have data in
+every candidate band; on Earth Engine they are counted against the training
+rows, which need data in the active bands only, so a unit with a gap only in a
+band the scaling drops as constant has a row there and none here. And a unit
+with no habitat pixel centre inside the ROI, at its edge, is typed pixel by
+pixel by `cluster()` on Earth Engine, though it has no row and no polygon; here
+it has no row, so its pixels have no type. The run
+folder holds the stage's three files (`clustering_stand_table.csv`: each unit's
+label, whether it is a row of the fit, and its mean in each candidate band;
+`clustering_fit_rows.csv`: the same rows after the preprocessing, with each
+unit's type; `clustering_kmeans.json`: the centres and the starts).
+
+**Since round 14 the two causes are counted apart** (round 13's question 35,
+answered (a) by the round 14 brief's rule; register entry
+`spec-clustering-units-dropped-counted-by-cause`). The stage counts, with an
+unweighted histogram of the habitat-masked unit labels, the units with a
+habitat pixel whose centre is inside the ROI. The units inside the habitat
+mask without one are `n_units_no_pixel_centre_in_roi` in `clustering_metadata`
+(the summary number `units_with_no_pixel_centre_in_roi`), and
+`n_units_dropped_null_band` (`units_dropped_missing_band`) counts only the
+units with such a pixel and no row: the band gaps. Each count is clamped at 0,
+as the counts come from different reductions. On an asset made before round 14
+the first is absent (the summary number is null) and the second is as recorded,
+both causes together. Clustering's step revision is 5, so the clustering and
+k_elbow keys of every config moved.
 
 These counts are distinct unit labels on the analysis grid, as the fit saw
 them. They are not counts of the polygons in the exported stand layer, and the
@@ -524,7 +582,7 @@ Structure:
       "unclustered_stands_retained": true,
       "shp_attributes": ["stand_id", "stand_lbl", "cluster_id", "area_ha", "perim_m", "n_pixels", "n_superpx", "n_pass1", "n_relaxed", "n_fallback", "below_min", "below_why"],
       "provenance_attributes": ["n_superpx", "n_pass1", "n_relaxed", "n_fallback", "below_min", "below_why"],
-      "geojson_attributes": "all SHP attributes plus per-stand means of every features_* band"
+      "geojson_attributes": "all SHP attributes plus per-stand means of every features_* band and of the sine and cosine of each angle band (<band>_sin, <band>_cos)"
     },
     "stands_snic": {
       "description": "One polygon per SNIC superpixel ...",
@@ -533,7 +591,7 @@ Structure:
       "id_field": "stand_id",
       "id_renumbering": "1..N, sorted by centroid lat desc then lon asc.",
       "shp_attributes": ["stand_id", "snic_label", "cluster_id", "area_ha", "perim_m", "n_pixels"],
-      "geojson_attributes": "all SHP attributes plus per-superpixel means of every features_* band"
+      "geojson_attributes": "all SHP attributes plus per-superpixel means of every features_* band and of the sine and cosine of each angle band (<band>_sin, <band>_cos)"
     },
     "stands_dissolved": {
       "description": "One polygon per connected same-cluster region ...",
@@ -580,7 +638,8 @@ With the setting on, `n_training_units` counts the rows the fit was trained on,
 the stands left out not among them, and `n_units_dropped_null_band` is still
 counted against every row, so the stands left out are not counted as missing
 band data. Normally `n_units_in_habitat` is then `n_training_units` +
-`n_units_dropped_null_band` + `n_stands_left_out_of_fit`; the stage logs a
+`n_units_dropped_null_band` + `n_units_no_pixel_centre_in_roi` (since round 14)
++ `n_stands_left_out_of_fit`; the stage logs a
 warning when the rows of the fit and the rows of the stands left out do not add
 up to the rows of every unit.
 
@@ -614,7 +673,9 @@ Where `<band>` is each input feature band: `ndvi_mean`, `ndvi_amplitude_annual`,
 went into k-means. So `ndvi_mean` for a cluster is in NDVI units (the
 band is the harmonic fit's intercept: with the trend term, the trend line's
 value on `features_optical.time_reference`, not the mean NDVI over the
-window; review C9); `elevation` is real meters; `canopy_height` is real meters.
+window; review C9; with `features_optical.mean_over_window` on, round 14, the
+fitted curve's mean over the window); `elevation` is real meters;
+`canopy_height` is real meters.
 This is what makes clusters interpretable: cluster 3 might be "dense
 canopy, low NDVI amplitude, high elevation". That's the ecological
 interpretation, and it comes from the original-unit profiles, not the
@@ -874,12 +935,21 @@ on the analysis grid. Until then both came from the geometry's area
 instead of subtracting the hole of some polygons whose hole touches the outer
 ring at a vertex (`sanjay_van_alphaearth_keptland_r9`, stand 83: 18.27 ha and
 1,827 pixels in its layer, 8.23 ha and 823 pixels on the grid); the layers
-exported before round 13 carry those values. `perim_m` and the centroid are the
-geometry's. `perim_m` is right on those polygons, but the centroid has the same
-hole error as the area: it is the centroid with the hole counted as area (up to
-35 m off on the committed merged layers of `_r9` and round 12, where 54 of 7,371
-centroids are more than 1 m off), and `stand_id` is numbered by the centroid, so
-a few stands' ids follow the error. Not changed in round 13. On the legacy cache layout `stands_dissolved` is vectorised from a
+exported before round 13 carry those values. `perim_m` is the geometry's, and
+right on those polygons. Since round 14 (round 13's question 21, answered (a))
+`centroid_lat` and `centroid_lon` are the mean position of the polygon's pixel
+centres: the same `reduceToVectors` call that counts the pixels averages
+`ee.Image.pixelLonLat()` over them. Until then the centroid was the geometry's,
+which has the same hole error as the area: it is the centroid with the hole
+counted as area (up to 35 m off on the committed merged layers of `_r9` and round
+12, where 54 of 7,371 centroids are more than 1 m off; stand 83 above, 35.1 m,
+whose 823 pixel centres average to within 1 cm of its centroid with the hole
+subtracted). `stand_id` and `unit_id` are numbered by the centroid, so in the
+layers exported before round 14 a few ids follow the error, and a layer exported
+since can number a few polygons differently from an earlier export of the same
+geometry (numbered by their pixel centres, 88 of the 14,371 polygons of the
+merged layers of `_r9` and round 12 would take another `stand_id`; register
+entry `spec-export-centroid-from-pixel-centres`). On the legacy cache layout `stands_dissolved` is vectorised from a
 type image on a geographic grid, whose pixels are smaller than
 `analysis_scale_m`² away from the equator (about 93 m² at 10 m and 21° N), so
 there its `area_ha` overstates the area (by about 7.5% at 21° N).
@@ -914,7 +984,7 @@ SHP attributes (capped at 10-char field-name limit):
 
 | Field | Type | Meaning |
 |---|---|---|
-| `stand_id` | int | Sequential 1..N. Sorted by centroid lat desc / lon asc. **Deterministic** — the same merged geometry always produces the same numbering. |
+| `stand_id` | int | Sequential 1..N. Sorted by centroid lat desc / lon asc, the centroid being the mean of the polygon's pixel centres since round 14 (see "Areas and pixel counts" above). **Deterministic** — the same merged geometry always produces the same numbering. |
 | `stand_lbl` | int | Raw merge label. Use to cross-reference with the `stand_clusters` raster. `stand_id` is a renumbering and cannot be joined back to the raster; this can. |
 | `cluster_id` | int | The k-means cluster (0 to k-1) assigned to this stand: the commonest type over the stand's own typed pixels, which on the analysis grid is the type the fitted clusters give its row (since round 12; for a stand whose pieces carry different types, see question 3 of `docs/handoff/2026-10-19-round12.md`). Since round 13 this holds for a stand left out of the fit too (`clustering.fit_excludes_stands_below_min_area`), and a stand with no typed pixel of its own has a null type; until then both took the commonest type among the typed pixels their polygon touches. **May be null** — see below. |
 | `area_ha` | float | Polygon area in hectares on the analysis grid: `n_pixels × (analysis_scale_m)² / 10,000` (since round 13; see "Areas and pixel counts" above). |
@@ -956,15 +1026,32 @@ carries the config name, the cache fingerprint, the merge summary numbers, the
 stand-size distribution and the stands and area under each `merge_kind`.
 
 GeoJSON attributes: every SHP attribute, **plus** per-stand means of every
-features_* band, plus centroid lat/lon. Each is the plain mean of the band's
+features_* band, plus `centroid_lat` and `centroid_lon` (the mean position of
+the polygon's pixel centres since round 14, the geometry's centroid before; see
+"Areas and pixel counts" above). Each feature mean is the plain mean of the band's
 pixel values over the polygon (`ee.Reducer.mean()` in `reduceRegions`), the
 angle bands too: `aspect` (degrees, 0 to 360) and `<index>_phase_annual`
 (radians, −π to π; `<index>_phase_semi` too in a dual-harmonic run) are
 arithmetic means of angles, not circular means. So a stand whose pixels face
 350° and 10° reads 180°, and one whose phases lie on both sides of ±π reads near
 0 (review C10). The clustering does not read these columns: it takes the sine
-and cosine of each angle per pixel. The export is unchanged; whether it should
-give circular means is a question for Jaskaran (round 13).
+and cosine of each angle per pixel. Since round 14 (round 13's question 33,
+answered (a)) the layer gives the means of those too, beside the angles, which
+keep their meaning: for each angle band `<band>_sin` and `<band>_cos`, the
+polygon's mean of its pixels' sine and cosine (`aspect_sin`, `aspect_cos`,
+`ndvi_phase_annual_sin` and `ndvi_phase_annual_cos` in a hand-crafted run;
+`<index>_phase_semi_sin` and `_cos` too in a dual-harmonic run), by the
+clustering stage's rule, which the export reuses: aspect made radians from
+degrees, and a flat cell (slope 0) given the aspect pair (0, 0), no direction.
+A stand's direction is atan2(`<band>_sin`, `<band>_cos`), and the length of the
+pair says how far its pixels agree (1 when they all point one way; for aspect it
+is shortened by the share of flat cells too): the stand facing 350° and 10° has
+`aspect_cos` 0.98, north. A stand whose cells are all flat has the aspect pair
+(0, 0) and no direction: atan2(0, 0) is 0, which would read as north, so read a
+direction only where the pair's length is above 0. The embedding arm has no angle band and no such
+column. GeoJSON only: the shapefile keeps its columns (`ndvi_phase_annual_sin`
+is longer than ten characters), and the layers exported before round 14 lack the
+new columns (register entry `spec-export-stand-means-of-angle-sin-and-cos`).
 
 **Null `cluster_id` is meaningful, not missing data.** Unlike `stands_snic`,
 this layer keeps stands that clustering could not type. Under the merge
@@ -977,7 +1064,8 @@ over it. The clustering stage logs the split, and the counts are in the run
 manifest as `n_units_outside_habitat` and `n_units_dropped_null_band`. In the
 runs of record the second counted stands at the ROI's edge with no polygon, not
 stands with a band gap ("What `units_dropped_missing_band` has counted", above;
-review C15). Note
+review C15); since round 14 those stands are `n_units_no_pixel_centre_in_roi`
+and the second counts the band gaps only. Note
 that SHP cannot represent a null integer — read the GeoJSON if you need to
 tell null from 0. Such a stand has no row in the k-means fit, and since round 13
 its type is null in every cache layout, whatever typed pixels its polygon
@@ -997,7 +1085,7 @@ SHP attributes (capped at 10-char field-name limit):
 
 | Field | Type | Meaning |
 |---|---|---|
-| `stand_id` | int | Sequential 1..N. Sorted by centroid lat desc / lon asc. **Deterministic** — same SNIC geometry always produces the same numbering. Use as a stable ID across runs of the same config. |
+| `stand_id` | int | Sequential 1..N. Sorted by centroid lat desc / lon asc, the centroid being the mean of the polygon's pixel centres since round 14. **Deterministic** — same SNIC geometry always produces the same numbering. Use as a stable ID across runs of the same config. |
 | `snic_label` | int | Raw SNIC superpixel hash. Use to cross-reference with the `snic_clusters` raster asset. |
 | `cluster_id` | int | The k-means cluster (0 to k-1) that this superpixel was assigned to. |
 | `area_ha` | float | As in `stands_merged`: `n_pixels × (analysis_scale_m)² / 10,000` (since round 13). |
@@ -1008,8 +1096,11 @@ GeoJSON attributes: every SHP attribute, **plus** per-superpixel means
 of every features_* band (ndvi_mean, ndvi_amplitude_annual, vv_p50,
 canopy_height, elevation, etc.) — typically 25-30 additional columns.
 The angle bands (`aspect`, `<index>_phase_*`) are arithmetic means of angles
-here too, as in `stands_merged` (review C10).
-Centroid lat/lon are also included for convenience.
+here too, as in `stands_merged` (review C10), and since round 14 the means of
+their sine and cosine are beside them, `<band>_sin` and `<band>_cos`, as in
+`stands_merged`.
+Centroid lat/lon are also included for convenience: the mean position of
+the polygon's pixel centres since round 14, as in `stands_merged`.
 
 #### `stands_dissolved`
 
@@ -1042,7 +1133,11 @@ unit, with cluster-level summary statistics attached for symbology.
 Both layers carry a sequential id (`stand_id`, `unit_id`) that is
 **deterministic but not stable across config changes**. If you change
 SNIC parameters, the superpixel boundaries shift, centroids shift, and
-the numbering changes. Use `snic_label` (raw SNIC hash) for stable
+the numbering changes. Nor across the round 14 change of centroid (the
+mean of the pixel centres in place of the geometry's): a layer exported
+since numbers a polygon whose old centroid was off, and those it passes
+in the order, differently from an earlier export of the same geometry.
+Use `snic_label` (raw SNIC hash) for stable
 cross-run reference within the same SNIC configuration, and the
 sequential IDs for display / printable maps where 1..N is more
 readable than the raw hash.
@@ -1278,6 +1373,17 @@ stand layers it pulls down. Keys: `config`, `fingerprint`, `git`, `run_dir`,
 
 The run records committed so far were written before these two keys existed and
 have neither. A record written from the current code has both.
+
+`drive_exports` holds the Drive tasks the export stage submitted, not how they
+ended: nothing in a batch waits on them (review C39). Since round 14,
+`scripts/drive_export_states.py`, run after the batch, reads each task's state
+(read-only) and writes it beside the record (`docs/running.md`):
+`<config>_drive_exports.json`, results only (`what`, `config`; `files`, for each
+file of `drive_exports` under the same key its `filename`, `folder`, `task_id`,
+`description`, `state` and `error_message`; `states`, the count of each state;
+`all_completed`; and `files_with_no_task_id`), and
+`<config>_drive_exports_run.json` (`result_file`, `run_record`, `command_line`,
+`read_at` and `git`).
 
 ## Evaluation outputs (`scripts/run_evaluation.py`)
 

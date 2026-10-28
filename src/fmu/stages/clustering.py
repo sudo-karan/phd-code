@@ -75,6 +75,7 @@ from __future__ import annotations
 
 import json
 import math
+from dataclasses import dataclass
 from typing import Any
 
 import ee
@@ -90,6 +91,7 @@ from fmu.stages.base import (
     SummaryNumber,
     register_stage,
 )
+from fmu.utils import stand_table as st
 from fmu.utils.gee import LABEL_BAND, safe_call, safe_get_info
 from fmu.utils.logging import get_logger
 
@@ -189,6 +191,13 @@ _SUMMARY_FROM_METADATA: dict[str, str] = {
 # zero, not a gap.
 _LEFT_OUT_OF_FIT_NUMBER = "units_left_out_of_fit"
 _LEFT_OUT_OF_FIT_KEY = "n_stands_left_out_of_fit"
+# The seventh (round 14, round 13's question 35): the units inside the habitat mask
+# with no habitat pixel whose centre is inside the ROI, which can have no row. Until
+# round 14 n_units_dropped_null_band counted them with the band gaps; an asset made
+# before has no such key, and its number is absent (None), not 0, since nothing splits
+# the old count afterwards.
+_NO_CENTRE_NUMBER = "units_with_no_pixel_centre_in_roi"
+_NO_CENTRE_KEY = "n_units_no_pixel_centre_in_roi"
 
 
 def read_clustering_metadata(cluster_labels: ee.Image) -> dict[str, Any]:
@@ -220,10 +229,13 @@ def tabulate_clustering_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
     """Clustering's summary numbers, picked out of `clustering_metadata`.
 
     Raises if a count is absent, which it is on an asset made before the fit
-    reported its coverage: a missing count must not be read as zero. The one
-    exception is the count of stands left out of the fit, which is zero when
+    reported its coverage: a missing count must not be read as zero. Two
+    exceptions: the count of stands left out of the fit, which is zero when
     the metadata does not record clustering.fit_excludes_stands_below_min_area
-    as on: the setting off, or an asset made before it existed.
+    as on (the setting off, or an asset made before it existed); and the count
+    of units with no habitat pixel centre inside the ROI, which is None on an
+    asset made before round 14, whose n_units_dropped_null_band holds those
+    units as well as the band gaps (round 13's question 35).
     """
     setting_on = bool(metadata.get("fit_excludes_stands_below_min_area"))
     missing = sorted(
@@ -240,11 +252,14 @@ def tabulate_clustering_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
             f"cannot be given. The cached asset was made by an older "
             f"clustering stage."
         )
-    numbers = {
+    numbers: dict[str, int | None] = {
         name: int(metadata[key]) for name, key in _SUMMARY_FROM_METADATA.items()
     }
     numbers[_LEFT_OUT_OF_FIT_NUMBER] = (
         int(metadata[_LEFT_OUT_OF_FIT_KEY]) if setting_on else 0
+    )
+    numbers[_NO_CENTRE_NUMBER] = (
+        int(metadata[_NO_CENTRE_KEY]) if metadata.get(_NO_CENTRE_KEY) is not None else None
     )
     return numbers
 
@@ -320,9 +335,21 @@ class ClusteringStage(Stage):
         ),
         SummaryNumber(
             "units_dropped_missing_band",
-            "Units inside the habitat mask that the fit left out because a "
-            "feature band has no data over them. They have no type on the "
-            "map: holes, not mistyped stands",
+            "Units inside the habitat mask, with a habitat pixel whose centre is "
+            "inside the ROI, that the fit left out because a feature band has no "
+            "data over them (a band gap). They have no type on the map: holes, "
+            "not mistyped stands. On an asset made before round 14 this count "
+            "also holds the units with no habitat pixel centre inside the ROI, "
+            "and units_with_no_pixel_centre_in_roi is null",
+            "count",
+        ),
+        SummaryNumber(
+            _NO_CENTRE_NUMBER,
+            "Units inside the habitat mask with no habitat pixel whose centre is "
+            "inside the ROI, at its edge: the one-pixel sample takes pixel "
+            "centres, so they have no row, and the export gives them no polygon. "
+            "Null on an asset made before round 14, which counted them in "
+            "units_dropped_missing_band",
             "count",
         ),
         SummaryNumber(
@@ -331,8 +358,9 @@ class ClusteringStage(Stage):
             "clustering.fit_excludes_stands_below_min_area on; 0 with it off. "
             "They are on the map, typed by the nearest fitted cluster. With "
             "the setting on, units_in_habitat is units_fitted plus "
-            "units_dropped_missing_band plus these, and the stage's log warns "
-            "when its samples do not add up to that",
+            "units_dropped_missing_band plus units_with_no_pixel_centre_in_roi "
+            "plus these, and the stage's log warns when its samples do not add "
+            "up to that",
             "count",
         ),
     )
@@ -384,45 +412,36 @@ class ClusteringStage(Stage):
             else None
         )
 
-        # 1. Build raw feature stack (hand-crafted multi-sensor stack, or a
-        #    single pretrained embedding image — the rest of the stage is
-        #    identical either way).
-        if params.feature_source == "embedding":
-            raw_stack = _build_embedding_feature_stack(
-                embedding=ctx.get("embedding_features")
+        # 1-4. The raw feature stack, its cyclic bands as sin/cos pairs, one mean
+        # per unit label, and the habitat mask (_units_in_habitat).
+        units = _units_in_habitat(
+            ctx,
+            feature_source=params.feature_source,
+            unit_labels=unit_labels,
+            habitat_mask=habitat_mask,
+            roi=roi,
+            scale=scale,
+        )
+        raw_band_names = units.raw_band_names
+        decomposition_log = units.decomposition_log
+        candidate_bands = units.candidate_bands
+        habitat_masked = units.habitat_masked
+
+        # With clustering.fit_outside_earth_engine on (round 14), the rest is done off
+        # Earth Engine, on the table of units read back (_result_outside_earth_engine).
+        if params.fit_outside_earth_engine:
+            return _result_outside_earth_engine(
+                units,
+                k=params.k,
+                seed=params.seed,
+                feature_source=params.feature_source,
+                skewness_threshold=params.skewness_threshold,
+                log_rule=params.log_rule,
+                method=config.normalization.method,
+                unit_key=unit_key,
+                below_min=below_min,
+                scale=scale,
             )
-        else:
-            raw_stack = _build_raw_feature_stack(
-                optical=ctx.get("optical_features"),
-                radar=ctx.get("radar_features"),
-                structure=ctx.get("structure_features"),
-                static=ctx.get("static_features"),
-            )
-        raw_band_names = safe_get_info(
-            raw_stack.bandNames(), context="raw clustering bands"
-        )
-        log.info("  raw feature stack: %d bands", len(raw_band_names))
-
-        # 2. Cyclic decomposition
-        decomposed_stack, decomposition_log = _decompose_cyclic_bands(raw_stack)
-        log.info(
-            "  cyclic decomposition: %d band(s) replaced with sin/cos pairs (%s)",
-            len(decomposition_log),
-            ", ".join(decomposition_log) if decomposition_log else "none",
-        )
-
-        # 3. Per-unit means (per stand, or per superpixel if merge is off): one
-        # mean per unit label over all of its pixels, whether the unit is in one
-        # piece or several (review B14); see _compute_superpixel_means.
-        candidate_bands = safe_get_info(
-            decomposed_stack.bandNames(), context="post-decomposition bands"
-        )
-        superpixel_stack = _compute_superpixel_means(
-            decomposed_stack, unit_labels, candidate_bands, roi, scale
-        )
-
-        # 4. Habitat filter
-        habitat_masked = superpixel_stack.updateMask(habitat_mask)
 
         # One row per unit, and every unit -- not a pixel sample.
         #
@@ -595,6 +614,300 @@ class ClusteringStage(Stage):
 # ---------------------------------------------------------------------
 # Step helpers. Each focused, each tested.
 # ---------------------------------------------------------------------
+
+
+@dataclass
+class UnitsInHabitat:
+    """Steps 1 to 4 of the stage: the per-unit means masked to the habitat mask, and what made them."""
+
+    raw_band_names: list[str]
+    decomposition_log: list[str]
+    candidate_bands: list[str]
+    habitat_masked: ee.Image
+    unit_labels: ee.Image
+    habitat_mask: ee.Image
+    roi: ee.Geometry
+
+
+def _units_in_habitat(
+    ctx: PipelineContext,
+    *,
+    feature_source: str,
+    unit_labels: ee.Image,
+    habitat_mask: ee.Image,
+    roi: ee.Geometry,
+    scale: int,
+) -> UnitsInHabitat:
+    """Steps 1 to 4: the raw stack, its cyclic bands decomposed, one mean per unit label, the
+    habitat mask. Shared with the k elbow step (fmu.stages.k_elbow), which is handed values,
+    not the config, so that each step's key covers what it reads."""
+    # 1. Build raw feature stack (hand-crafted multi-sensor stack, or a
+    #    single pretrained embedding image — the rest of the stage is
+    #    identical either way).
+    if feature_source == "embedding":
+        raw_stack = _build_embedding_feature_stack(
+            embedding=ctx.get("embedding_features")
+        )
+    else:
+        raw_stack = _build_raw_feature_stack(
+            optical=ctx.get("optical_features"),
+            radar=ctx.get("radar_features"),
+            structure=ctx.get("structure_features"),
+            static=ctx.get("static_features"),
+        )
+    raw_band_names = safe_get_info(
+        raw_stack.bandNames(), context="raw clustering bands"
+    )
+    log.info("  raw feature stack: %d bands", len(raw_band_names))
+
+    # 2. Cyclic decomposition
+    decomposed_stack, decomposition_log = _decompose_cyclic_bands(raw_stack)
+    log.info(
+        "  cyclic decomposition: %d band(s) replaced with sin/cos pairs (%s)",
+        len(decomposition_log),
+        ", ".join(decomposition_log) if decomposition_log else "none",
+    )
+
+    # 3. Per-unit means (per stand, or per superpixel if merge is off): one
+    # mean per unit label over all of its pixels, whether the unit is in one
+    # piece or several (review B14); see _compute_superpixel_means.
+    candidate_bands = safe_get_info(
+        decomposed_stack.bandNames(), context="post-decomposition bands"
+    )
+    superpixel_stack = _compute_superpixel_means(
+        decomposed_stack, unit_labels, candidate_bands, roi, scale
+    )
+
+    # 4. Habitat filter
+    habitat_masked = superpixel_stack.updateMask(habitat_mask)
+    return UnitsInHabitat(
+        raw_band_names=raw_band_names,
+        decomposition_log=decomposition_log,
+        candidate_bands=candidate_bands,
+        habitat_masked=habitat_masked,
+        unit_labels=unit_labels,
+        habitat_mask=habitat_mask,
+        roi=roi,
+    )
+
+
+# The k-means starts of the fit outside Earth Engine (round 14, Task 2.1): k-means++, this
+# many starts from clustering.seed, the start with the lowest within-cluster sum of squares
+# kept (fmu.utils.stand_table.kmeans_starts).
+KMEANS_STARTS = st.KMEANS_STARTS
+
+
+def read_stand_table(
+    units: UnitsInHabitat, *, scale: int, seed: int, left_out: set[int] | None
+) -> st.StandTable:
+    """The table of units, read back in one request: one row per unit (round 14).
+
+    The rows of the stage's preprocessing statistics: the one-point-per-unit sample of the
+    per-unit means masked to the habitat mask, with every candidate band (dropNulls), so a unit
+    with no habitat pixel whose centre is inside the ROI, or with a band gap, has no row. One
+    reduceColumns request with a list reducer gives every row's label and values together, so
+    the columns cannot come apart; the rows are sorted by label (fmu.utils.stand_table).
+    `left_out` are the units left out of the fit (the stands below the minimum).
+    """
+    bands = list(units.candidate_bands)
+    sample = _sample_one_point_per_unit(
+        units.habitat_masked, units.unit_labels, units.roi, scale,
+        seed=seed, context="the table of units",
+    )
+    read = safe_get_info(
+        sample.reduceColumns(
+            reducer=ee.Reducer.toList(1 + len(bands)),
+            selectors=[LABEL_BAND, *bands],
+        ),
+        context="the table of units",
+    )
+    rows = (read or {}).get("list") or []
+    return st.stand_table_from_columns(rows, bands=bands, left_out=left_out)
+
+
+def _scaled_stack_from(image: ee.Image, pre: st.Preprocessed) -> ee.Image:
+    """The preprocessing applied to the per-unit means image, band by band, server-side, with
+    the parameters taken off Earth Engine (round 14): the feature_stack output, which the
+    export writes as the scaled feature raster."""
+    record = pre.record
+    offsets = record.get("log_offsets") or {}
+    log1p = record.get("log1p_params") or {}
+    out: list[ee.Image] = []
+    for band in pre.bands:
+        x = image.select(band)
+        if band in offsets:
+            x = x.add(offsets[band]).log()
+        elif band in log1p:
+            x = x.subtract(log1p[band]["min"]).divide(log1p[band]["iqr"]).add(1).log()
+        scaling = record["scaling"][band]
+        out.append(x.subtract(scaling["center"]).divide(scaling["spread"]).rename(band))
+    return ee.Image.cat(out)
+
+
+def _result_outside_earth_engine(
+    units: UnitsInHabitat,
+    *,
+    k: int,
+    seed: int,
+    feature_source: str,
+    skewness_threshold: float,
+    log_rule: str,
+    method: str,
+    unit_key: str,
+    below_min: dict[int, float] | None,
+    scale: int,
+) -> StageResult:
+    """Steps 5 to 10 off Earth Engine, with clustering.fit_outside_earth_engine on (round 14).
+
+    The table of units is read back once (read_stand_table); the preprocessing of `log_rule`
+    is done on it (fmu.utils.stand_table.preprocess, over every row, the stands left out of
+    the fit included, as on Earth Engine); k-means is fitted with scikit-learn on the rows of
+    the fit (k-means++, KMEANS_STARTS starts from `seed`, the lowest within-cluster sum of
+    squares kept); every row is typed by the nearest centre, the stands left out of the fit
+    included; and each unit's type is written back to the image by its label (remap, masked to
+    the habitat mask: a unit with no row has no type, as on Earth Engine). The feature_stack
+    output is the preprocessing applied to the per-unit means server-side. The table, the
+    rows after the preprocessing (with each unit's type) and the fit are the stage's files.
+    """
+    import sklearn
+
+    if method != "robust":
+        raise ValueError("clustering.fit_outside_earth_engine needs normalization.method robust")
+    roi, unit_labels, habitat_mask = units.roi, units.unit_labels, units.habitat_mask
+    left_out = set(below_min) if below_min is not None else None
+    table = read_stand_table(units, scale=scale, seed=seed, left_out=left_out)
+    n_rows = len(table.labels)
+    n_fit = int(table.in_fit.sum())
+    log.info(
+        "  the table of units: %d row(s) x %d band(s), %d of them rows of the fit",
+        n_rows, len(table.bands), n_fit,
+    )
+
+    # The coverage, counted as on Earth Engine (_train_and_apply_kmeans), against every row.
+    n_total = _count_units(unit_labels, roi, scale, context=f"{unit_key} in ROI")
+    n_in_habitat = _count_units(
+        unit_labels.updateMask(habitat_mask), roi, scale, context=f"{unit_key} in habitat"
+    )
+    n_with_a_centre = _count_units(
+        unit_labels.updateMask(habitat_mask), roi, scale,
+        context=f"{unit_key} in habitat by pixel centre", unweighted=True,
+    )
+    n_no_centre, n_null_dropped = _split_by_cause(
+        n_in_habitat=n_in_habitat, n_with_a_centre=n_with_a_centre, n_rows=n_rows
+    )
+    report: dict[str, Any] = {}
+    if below_min is not None:
+        left = [int(lbl) for lbl in table.labels if int(lbl) in below_min]
+        report = {
+            "n_stands_below_min_area": len(below_min),
+            "area_ha_in_stands_below_min_area": round(float(sum(below_min.values())), 4),
+            "n_stands_left_out_of_fit": len(left),
+            "area_ha_in_stands_left_out_of_fit": round(float(sum(below_min[s] for s in left)), 4),
+        }
+    for n, without in ((n_rows, ""), (n_fit, " once the stands below merge.min_area_ha were left out")):
+        if n < k:
+            raise ValueError(
+                f"clustering: only {n} {unit_key} unit(s) available to fit k={k} clusters "
+                f"on{without}. Either the merge collapsed the ROI too far or the habitat mask "
+                f"leaves too little standing."
+            )
+
+    pre = st.preprocess(
+        table, rule=log_rule, threshold=skewness_threshold, decomposed=units.decomposition_log
+    )
+    fit = st.fit_types(pre, table.in_fit, k=k, n_starts=KMEANS_STARTS, seed=seed)
+    log.info(
+        "  k-means (scikit-learn, %d starts): within-cluster sum of squares %.6g; the starts "
+        "agree with each other by a median adjusted Rand index of %.4f (lowest %.4f)",
+        KMEANS_STARTS, fit.wcss, fit.agreement["ari_median"], fit.agreement["ari_min"],
+    )
+
+    cluster_labels = (
+        unit_labels.remap(table.labels.tolist(), fit.types.tolist())
+        .updateMask(habitat_mask)
+        .rename("cluster_id")
+    )
+    scaled_stack = _scaled_stack_from(units.habitat_masked, pre)
+
+    coverage = {
+        "n_training_units": n_fit,
+        "n_units_total": n_total,
+        "n_units_in_habitat": n_in_habitat,
+        "n_units_outside_habitat": max(n_total - n_in_habitat, 0),
+        "n_units_dropped_null_band": n_null_dropped,
+        _NO_CENTRE_KEY: n_no_centre,
+        **report,
+    }
+    clustering_metadata = {
+        "k": k,
+        "seed": seed,
+        "feature_source": feature_source,
+        **coverage,
+        **({"fit_excludes_stands_below_min_area": True} if below_min is not None else {}),
+        "training_unit_key": unit_key,
+        "normalization_method": method,
+        **pre.record,
+        "raw_band_names": units.raw_band_names,
+        "cyclic_decomposition_log": units.decomposition_log,
+        "fit_outside_earth_engine": True,
+        "kmeans_wcss": fit.wcss,
+        "kmeans_starts_ari_median": fit.agreement["ari_median"],
+        "kmeans_starts_ari_min": fit.agreement["ari_min"],
+        "kmeans": {
+            "library": f"scikit-learn {sklearn.__version__}",
+            "algorithm": "lloyd",
+            "init": "k-means++",
+            "n_starts": KMEANS_STARTS,
+            "seed": seed,
+            "best_start": fit.best,
+            "n_pairs_compared": fit.agreement["n_pairs"],
+            "wcss_of_each_start": fit.wcss_of_each_start,
+        },
+    }
+    labelled = ee.Image(
+        cluster_labels.set("clustering_metadata", json.dumps(clustering_metadata, sort_keys=True))
+    )
+    label_name = "stand_lbl" if unit_key == "stand_clusters" else "snic_label"
+    kmeans_file = {
+        "k": k,
+        "bands": pre.bands,
+        "centres": fit.centres.tolist(),
+        "best_start": fit.best,
+        "wcss": fit.wcss,
+        "wcss_of_each_start": fit.wcss_of_each_start,
+        "starts_agreement": fit.agreement,
+        "n_rows": n_rows,
+        "n_rows_fitted": n_fit,
+        "preprocessing": pre.record,
+    }
+    return StageResult(
+        outputs={
+            "cluster_labels": labelled.clip(roi),
+            "feature_stack": scaled_stack.clip(roi),
+        },
+        metadata={
+            "k": k,
+            "feature_source": feature_source,
+            "n_active_bands": len(pre.bands),
+            "n_log_transformed": len(pre.record["log_transformed_bands"]),
+            "n_dropped_constant": len(pre.record["dropped_constant_bands"]),
+            "normalization_method": method,
+            "unit_key": unit_key,
+            "fit_excludes_stands_below_min_area": below_min is not None,
+            "fit_outside_earth_engine": True,
+            "log_rule": pre.record["log_rule"],
+            "kmeans_wcss": fit.wcss,
+            "kmeans_starts_ari_median": fit.agreement["ari_median"],
+            "kmeans_starts_ari_min": fit.agreement["ari_min"],
+        },
+        files={
+            "clustering_stand_table.csv": st.table_csv(table, label_name=label_name),
+            "clustering_fit_rows.csv": st.rows_csv(
+                table, pre, types=fit.types, label_name=label_name
+            ),
+            "clustering_kmeans.json": st.json_text(kmeans_file),
+        },
+    )
 
 
 def _build_raw_feature_stack(
@@ -1070,15 +1383,19 @@ def _train_and_apply_kmeans(
     #     is masked, those units are missing from `cluster_labels` too. They
     #     become holes in the map, not mistyped stands.
     #
-    # What the second count held in the runs of record (review C15): the units at
-    # the ROI's edge with no pixel whose centre is inside the ROI. _count_units'
-    # frequency histogram counts a pixel by its share inside the ROI, so it lists
-    # them, and the one-pixel sample, which takes pixel centres, has no row for
-    # them (nor does the export give them a polygon). Until round 13 a unit with
-    # no data in a band got 0 there and kept its row, so no band gap was counted;
-    # since B14 such a unit is masked and is counted here too. The name is kept.
+    # A third cause, counted apart since round 14 (round 13's question 35, review
+    # C15): a unit inside the habitat mask with no habitat pixel whose centre is
+    # inside the ROI, at its edge. _count_units' frequency histogram counts a pixel
+    # by its share inside the ROI, so it lists such a unit, and the one-pixel
+    # sample, which takes pixel centres, has no row for it (nor does the export
+    # give it a polygon). In every per-step run of record the units without a row
+    # were all of this kind, and n_units_dropped_null_band counted them; it now
+    # counts the band gaps only (since B14 a unit with no data in a band is
+    # masked there, and has no row). The units with a habitat pixel centre inside
+    # the ROI are counted with an unweighted histogram, by pixel centre, as the
+    # sample takes them (_split_by_cause).
     #
-    # Both are counted against every row, before the stands below the minimum
+    # All are counted against every row, before the stands below the minimum
     # are left out (clustering.fit_excludes_stands_below_min_area), or those
     # stands would be counted as missing band data.
     n_total = _count_units(unit_labels, roi, scale, context=f"{unit_key} in ROI")
@@ -1088,18 +1405,36 @@ def _train_and_apply_kmeans(
         scale,
         context=f"{unit_key} in habitat",
     )
+    n_with_a_centre = _count_units(
+        unit_labels.updateMask(habitat_mask),
+        roi,
+        scale,
+        context=f"{unit_key} in habitat by pixel centre",
+        unweighted=True,
+    )
     n_non_habitat = max(n_total - n_in_habitat, 0)
-    n_null_dropped = max(n_in_habitat - n_units, 0)
+    n_no_centre, n_null_dropped = _split_by_cause(
+        n_in_habitat=n_in_habitat, n_with_a_centre=n_with_a_centre, n_rows=n_units
+    )
 
     log.info(
-        "  k-means training rows: %d of %d %s (%d outside habitat, %d dropped "
-        "for missing band data)",
+        "  k-means training rows: %d of %d %s (%d outside habitat, %d with no "
+        "habitat pixel centre in the ROI, %d dropped for missing band data)",
         n_units,
         n_total,
         unit_key,
         n_non_habitat,
+        n_no_centre,
         n_null_dropped,
     )
+    if n_no_centre:
+        log.info(
+            "  %d %s unit(s) inside the habitat mask have no habitat pixel whose "
+            "centre is inside the ROI (at its edge), so the one-pixel sample has "
+            "no row for them; they have no type and no polygon.",
+            n_no_centre,
+            unit_key,
+        )
     if n_null_dropped:
         log.warning(
             "  %d %s unit(s) sit inside the habitat mask but contributed no "
@@ -1161,6 +1496,7 @@ def _train_and_apply_kmeans(
         "n_units_in_habitat": n_in_habitat,
         "n_units_outside_habitat": n_non_habitat,
         "n_units_dropped_null_band": n_null_dropped,
+        _NO_CENTRE_KEY: n_no_centre,
         # Only with the setting on: what was left out of the fit.
         **(fit_report or {}),
     }
@@ -1329,18 +1665,34 @@ def _leave_out_of_fit(
 
 
 def _count_units(
-    labels: ee.Image, roi: ee.Geometry, scale: int, *, context: str
+    labels: ee.Image,
+    roi: ee.Geometry,
+    scale: int,
+    *,
+    context: str,
+    unweighted: bool = False,
 ) -> int:
     """How many distinct unit labels are present in `labels` over `roi`.
 
     A frequency histogram rather than a distinct-count reducer: EE has no
     `countDistinct` over an image, and the histogram's keys are the label set.
+    Weighted (the default), a pixel counts by its share inside the ROI, so a
+    unit with only an edge pixel whose centre is outside is listed. With
+    `unweighted`, a pixel counts whole if its centre is inside the ROI and not
+    at all otherwise, as the one-pixel sample takes pixels (round 14); an
+    unweighted histogram also counts the masked pixels, under the key "null"
+    (read on Earth Engine in round 13, fmu.utils.adjacency), which is no unit's
+    and is left out.
     """
     band = safe_get_info(labels.bandNames(), context=f"{context} band name")[0]
     hist = (
         safe_get_info(
             labels.select([band]).reduceRegion(
-                reducer=ee.Reducer.frequencyHistogram(),
+                reducer=(
+                    ee.Reducer.frequencyHistogram().unweighted()
+                    if unweighted
+                    else ee.Reducer.frequencyHistogram()
+                ),
                 geometry=roi,
                 scale=scale,
                 maxPixels=1e9,
@@ -1349,4 +1701,18 @@ def _count_units(
         ).get(band)
         or {}
     )
+    if unweighted:
+        return len([key for key in hist if key != "null"])
     return len(hist)
+
+
+def _split_by_cause(*, n_in_habitat: int, n_with_a_centre: int, n_rows: int) -> tuple[int, int]:
+    """(units with no habitat pixel centre in the ROI, units with a band gap).
+
+    `n_in_habitat` counts the unit labels inside the habitat mask by the share of
+    each pixel inside the ROI, `n_with_a_centre` those with a habitat pixel whose
+    centre is inside it, and `n_rows` the k-means rows. The counts come from
+    different reductions, so each difference is clamped at 0, as the split between
+    habitat and non-habitat units is. Pure Python.
+    """
+    return max(n_in_habitat - n_with_a_centre, 0), max(n_with_a_centre - n_rows, 0)

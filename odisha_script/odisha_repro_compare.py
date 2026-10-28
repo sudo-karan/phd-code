@@ -260,7 +260,8 @@ def report_run_records(res: dict[str, Any]) -> bool:
            "are not a like-for-like pair"))
     g = res["git_new"]
     say("    the re-run's record names git commit "
-        + (f"{g['commit']} (uncommitted changes to tracked files: {g['dirty']})" if g
+        + (f"{g['commit']} (uncommitted changes to tracked files, or since round 14 untracked code "
+           f"under src/, scripts/, odisha_script/ or configs/: {g['dirty']})" if g
            else "nothing (the record has no git entry)"))
     diffs = res["differences"]
     say(f"    {res['n_compared']} recorded values compared, {len(diffs)} differ"

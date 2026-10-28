@@ -1,0 +1,172 @@
+{
+ "config": "sanjay_van_alphaearth_keptland_r14",
+ "fingerprint": "4bc321f551",
+ "cache_layout": "per_step",
+ "step_keys": {
+  "masking": "s88c273ce5a",
+  "data_load": "s8074a1b895",
+  "features_optical": "sc0fdaaeaaa",
+  "features_radar": "s324f28bb94",
+  "features_structure": "sd1ac1f52b0",
+  "features_static": "sa112b42c71",
+  "features_embedding": "s46fb06805b",
+  "segmentation": "se22f88b431",
+  "merge": "s219ee51d0b",
+  "clustering": "sa60d4921af",
+  "k_elbow": "s66863feb8a"
+ },
+ "git": {
+  "commit": "a099c5782e895b8bdc8fa22ac8f89b1606482309",
+  "dirty": false,
+  "modified": [],
+  "modified_truncated": false,
+  "untracked_code": [],
+  "untracked_code_truncated": false,
+  "untracked": [
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_k_elbow.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_k_elbow_fit_rows.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_k_elbow_preprocessing.json",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_k_elbow_run.json",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_k_elbow_stand_table.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_k_elbow_types.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r14_k_elbow.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r14_k_elbow_fit_rows.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r14_k_elbow_preprocessing.json",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r14_k_elbow_run.json",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r14_k_elbow_stand_table.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r14_k_elbow_types.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_kendujhar_keptland_s1desc_r14_k_elbow.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_kendujhar_keptland_s1desc_r14_k_elbow_fit_rows.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_kendujhar_keptland_s1desc_r14_k_elbow_preprocessing.json",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_kendujhar_keptland_s1desc_r14_k_elbow_run.json",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_kendujhar_keptland_s1desc_r14_k_elbow_stand_table.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_kendujhar_keptland_s1desc_r14_k_elbow_types.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_koraput_keptland_s1desc_r14_k_elbow.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_koraput_keptland_s1desc_r14_k_elbow_fit_rows.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_koraput_keptland_s1desc_r14_k_elbow_preprocessing.json",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_koraput_keptland_s1desc_r14_k_elbow_run.json",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_koraput_keptland_s1desc_r14_k_elbow_stand_table.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_koraput_keptland_s1desc_r14_k_elbow_types.csv"
+  ],
+  "untracked_truncated": false,
+  "root": "/Users/karan/Desktop/phd-code/outputs/round14/run_tree_5",
+  "error": null
+ },
+ "environment": {
+  "python": "3.13.14",
+  "earthengine_api": "1.7.35",
+  "pip_freeze_sha256": "31aca07855862d34db7bcb31a6b60769d1785e80606cdaa23093cdf2a60bcc21",
+  "pip_freeze_packages": 232,
+  "pip_freeze_left_out": [
+   "-e git+https://github.com/sudo-karan/phd-code.git@2830f8cca627f97f58c088e341ca516354f1f2c4#egg=fmu"
+  ],
+  "error": null
+ },
+ "cache_status": {
+  "masking": {
+   "habitat_mask": "hit",
+   "landcover_summary": "hit",
+   "mask_provenance": "hit",
+   "water_mask": "hit"
+  },
+  "data_load": {
+   "s2_composite": "hit"
+  },
+  "features_optical": {
+   "optical_features": "hit"
+  },
+  "features_structure": {
+   "structure_features": "hit"
+  },
+  "features_embedding": {
+   "embedding_features": "hit"
+  },
+  "segmentation": {
+   "snic_clusters": "hit",
+   "snic_means": "hit"
+  },
+  "k_elbow": {
+   "k_elbow": "miss-exported"
+  }
+ },
+ "k_elbow": {
+  "n_rows": 174,
+  "n_bands": 64,
+  "ks": [
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12
+  ],
+  "inertia": [
+   2478.462684,
+   1989.135223,
+   1696.719731,
+   1519.063184,
+   1404.882391,
+   1322.191884,
+   1245.430626,
+   1187.171205,
+   1118.735563,
+   1071.919727,
+   1045.794163
+  ],
+  "elbow_k": 5,
+  "ari_median": [
+   0.909106,
+   0.845375,
+   0.801949,
+   0.522427,
+   0.57813,
+   0.529081,
+   0.548964,
+   0.529874,
+   0.501536,
+   0.501217,
+   0.483148
+  ],
+  "ari_min": [
+   -0.021597,
+   0.452214,
+   0.367418,
+   0.340111,
+   0.240125,
+   0.271293,
+   0.333367,
+   0.317335,
+   0.351195,
+   0.320734,
+   0.303733
+  ]
+ },
+ "k_elbow_computed_in_this_pass": true,
+ "files": {
+  "sanjay_van_alphaearth_keptland_r14_k_elbow.csv": {
+   "bytes": 411,
+   "sha256": "623b22c56dbe9e3a6795786805b3c0b7a7a577e3c290687b3ca9c416bc155d53"
+  },
+  "sanjay_van_alphaearth_keptland_r14_k_elbow_fit_rows.csv": {
+   "bytes": 732149,
+   "sha256": "5b4bad36d2ad1134b93db5427cd65941c1fc708c8d56cba80acfdb74ca991389"
+  },
+  "sanjay_van_alphaearth_keptland_r14_k_elbow_preprocessing.json": {
+   "bytes": 11649,
+   "sha256": "8a05de023b1b47fcd0a910fd076f7147e4ecd403b06aac1b6d737e7b6c4ca723"
+  },
+  "sanjay_van_alphaearth_keptland_r14_k_elbow_stand_table.csv": {
+   "bytes": 758923,
+   "sha256": "2ccdae4150f2c96d7fef554d879204e3c59088c1df0b69780e10c90f6f1266c0"
+  },
+  "sanjay_van_alphaearth_keptland_r14_k_elbow_types.csv": {
+   "bytes": 15949,
+   "sha256": "8dcf6b34a683b431680bc0eaaf7273c3af689d3f180ad35b49e70767de7e60f2"
+  }
+ }
+}

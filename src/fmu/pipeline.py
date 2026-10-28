@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import time
 from contextlib import nullcontext
@@ -144,13 +145,16 @@ def default_stage_names(config: Config, through: str = "metrics") -> list[str]:
     if config.merge.enabled:
         needed |= _feature_stages_for(config.merge.input_sources())
     feature_stages = [s for s in _FEATURE_STAGE_ORDER if s in needed]
+    # The elbow in the fit's own space (k_elbow.in_fit_space, round 14) reads what clustering
+    # reads, not what it writes, so a run that ends with it has no clustering stage.
+    elbow_alone = through == "k_elbow" and config.k_elbow.in_fit_space
     return [
         "masking",
         "data_load",
         *feature_stages,
         "segmentation",
         *(["merge"] if config.merge.enabled else []),
-        "clustering",
+        *([] if elbow_alone else ["clustering"]),
         *_STAGE_TAILS[through],
     ]
 
@@ -278,6 +282,9 @@ class StageRecord:
     # run, or read from the cached asset (Stage.input_collections). Empty for a
     # stage that names no input collection.
     input_images: dict[str, Any] = field(default_factory=dict)
+    # The files the stage handed over (StageResult.files, round 14), written into the
+    # run folder: file name -> {"bytes", "sha256"}. Empty for a stage that wrote none.
+    files: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 @dataclass
@@ -347,6 +354,8 @@ class Pipeline:
         self._layout_reason: str | None = None
         self._grid_args: dict[str, Any] | None = None
         self._input_image_lists: dict[str, dict[str, list[str]]] = {}
+        # The run folder of the run in progress, where stages' files go (round 14).
+        self._run_dir: Path | None = None
         if not submit_exports:
             own = sorted(set(self.stage_names) & _SUBMITS_OWN_TASKS)
             if own:
@@ -364,6 +373,7 @@ class Pipeline:
     ) -> PipelineResult:
         ctx = initial_context if initial_context is not None else PipelineContext()
         result = PipelineResult(config_name=config.name, run_dir=run_dir)
+        self._run_dir = run_dir
         # Which code ran: asked now, before any stage, so that the manifest's `git` (and the
         # export stage's) is the tree this run started from, not one changed while it ran
         # (fmu.utils.provenance remembers the first answer; review C32, round 13).
@@ -498,6 +508,10 @@ class Pipeline:
                     parts.append(f"Undeclared outputs: {sorted(extra)}.")
                 raise ValueError(" ".join(parts))
 
+            # The stage's result files, written now, so that a later stage that fails
+            # does not lose them (round 14).
+            files = self._write_stage_files(name, stage_result.files)
+
             # For cacheable outputs that hit cache, swap in the cached version
             # so downstream stages and exports use the persisted asset.
             final_outputs = dict(stage_result.outputs)
@@ -577,7 +591,38 @@ class Pipeline:
             # None for a stage that caches nothing: no asset carries its key.
             cache_key=self._cache_key(config, name) if self.use_cache and cacheable else None,
             input_images=input_images,
+            files=files,
         )
+
+    def _write_stage_files(self, stage_name: str, files: dict[str, str]) -> dict[str, dict[str, Any]]:
+        """Write a stage's result files into the run folder: {name: {"bytes", "sha256"}}.
+
+        A name must be a plain file name, new in the folder: not a path, not manifest.json or
+        input_images.json, and not one an earlier stage of the run wrote.
+        """
+        written: dict[str, dict[str, Any]] = {}
+        if not files:
+            return written
+        if self._run_dir is None:
+            raise RuntimeError("a stage's files can be written only during Pipeline.run")
+        for file_name in sorted(files):
+            if (
+                not file_name
+                or file_name in (".", "..", "manifest.json", "input_images.json")
+                or Path(file_name).name != file_name
+            ):
+                raise ValueError(
+                    f"Stage {stage_name!r}: file name {file_name!r} is not a plain file name "
+                    f"for the run folder"
+                )
+            path = self._run_dir / file_name
+            if path.exists():
+                raise ValueError(f"Stage {stage_name!r}: {file_name} is already in the run folder")
+            data = files[file_name].encode()
+            path.write_bytes(data)
+            written[file_name] = {"bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()}
+            log.info("  wrote %s (%d bytes)", file_name, len(data))
+        return written
 
     @staticmethod
     def _names_input_collections(stage: Stage) -> bool:
@@ -930,6 +975,9 @@ class Pipeline:
                     "export_tasks": s.export_tasks,
                     "transparency": _json_safe(s.transparency),
                     "input_images": _json_safe(s.input_images),
+                    # Only for a stage that wrote files (round 14), so that every other
+                    # stage's entry has the keys it always had.
+                    **({"files": s.files} if s.files else {}),
                 }
                 for s in result.stages
             ],

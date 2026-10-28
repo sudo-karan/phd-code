@@ -86,6 +86,7 @@ import ee
 from fmu import __version__
 from fmu.config import Config
 from fmu.stages.base import PipelineContext, Stage, StageResult, register_stage
+from fmu.stages.clustering import _decompose_cyclic_bands
 from fmu.utils.caching import asset_exists, cached_asset_path
 from fmu.utils.gee import safe_call, safe_get_info
 from fmu.utils.logging import get_logger
@@ -113,6 +114,14 @@ _DISSOLVED_LAYER_NAME = "stands_dissolved"
 # contribution so longitude only breaks ties. Works for any AOI within ~1-2
 # degrees of lat/lon extent (well beyond Sanjay Van's ~3 km extent).
 _SORT_LAT_MULT = 1_000_000
+
+# A polygon's centroid is the mean position of its pixel centres (round 14; round 13's
+# question 21, answered (a)): the vectorisation averages ee.Image.pixelLonLat's two bands over
+# each polygon's pixels, beside its pixel count, under these names
+# (_vectorise_with_pixel_centres). _add_geom_attrs copies them to centroid_lon and
+# centroid_lat, and _drop_internal_properties drops them, so no layer gains a property.
+_PIXEL_CENTRES_LON = "pixel_lon"
+_PIXEL_CENTRES_LAT = "pixel_lat"
 
 # SHP attribute selectors. SHP has a hard 10-char field-name limit; everything
 # in these lists is <= 10 chars. The GeoJSON exports omit the selectors arg
@@ -346,13 +355,16 @@ class ExportStage(Stage):
                 "id_field": "stand_id",
                 "id_renumbering": (
                     "1..N, sorted by centroid latitude descending then "
-                    "longitude ascending. Deterministic pure function of the "
-                    "merged geometry."
+                    "longitude ascending, the centroid being the mean "
+                    "position of the polygon's pixel centres. Deterministic "
+                    "pure function of the merged geometry."
                 ),
                 "unclustered_stands_retained": True,
                 "shp_attributes": [*_SHP_SELECTORS_MERGED, *provenance_fields],
                 "geojson_attributes": "all SHP attributes plus per-stand means "
-                                      "of every features_* band",
+                                      "of every features_* band and of the "
+                                      "sine and cosine of each angle band "
+                                      "(<band>_sin, <band>_cos)",
                 "provenance_attributes": list(provenance_fields),
             }
             for fmt in config.export.vector_formats:
@@ -408,13 +420,16 @@ class ExportStage(Stage):
                 "id_field": "stand_id",
                 "id_renumbering": (
                     "1..N, sorted by centroid latitude descending then "
-                    "longitude ascending. Deterministic pure function of "
-                    "the SNIC geometry; same inputs always produce the "
-                    "same numbering."
+                    "longitude ascending, the centroid being the mean "
+                    "position of the polygon's pixel centres. Deterministic "
+                    "pure function of the SNIC geometry; same inputs always "
+                    "produce the same numbering."
                 ),
                 "shp_attributes": list(_SHP_SELECTORS_SNIC),
                 "geojson_attributes": "all SHP attributes plus per-superpixel "
-                                      "means of every features_* band",
+                                      "means of every features_* band and of "
+                                      "the sine and cosine of each angle band "
+                                      "(<band>_sin, <band>_cos)",
             }
             for fmt in config.export.vector_formats:
                 filename = f"{config.name}_{_SNIC_LAYER_NAME}"
@@ -465,8 +480,10 @@ class ExportStage(Stage):
                 "id_field": "unit_id",
                 "id_renumbering": (
                     "1..M, sorted by centroid latitude descending then "
-                    "longitude ascending, AFTER min-pixel filtering. "
-                    "Deterministic pure function of the cluster geometry."
+                    "longitude ascending, the centroid being the mean "
+                    "position of the polygon's pixel centres, AFTER "
+                    "min-pixel filtering. Deterministic pure function of the "
+                    "cluster geometry."
                 ),
                 "min_stand_pixels": config.export.vector_min_stand_pixels,
                 "shp_attributes": list(_SHP_SELECTORS_DISSOLVED),
@@ -664,6 +681,27 @@ def _feature_source_image(ctx: PipelineContext) -> ee.Image:
         ctx.get("structure_features"),
         ctx.get("static_features"),
     ])
+
+
+def _with_angle_sin_cos(stack: ee.Image) -> ee.Image:
+    """`stack` with the sine and cosine of each of its angle bands added, by the clustering stage's rule.
+
+    The angle bands and their pairs are those of the clustering stage's
+    _decompose_cyclic_bands, reused so that the stand layers average the values the
+    clustering takes: aspect, made radians from degrees, and every band with "_phase_" in
+    its name, in radians, each as <band>_sin and <band>_cos per pixel; a cell whose slope
+    is 0 has the aspect pair (0, 0), no direction (review A5); a stack with aspect and no
+    slope is refused. The bands of `stack` stay as they are, so the layers' plain means of
+    the angles keep their columns (review C10), with the means of the pairs beside them
+    (round 14; round 13's question 33, answered (a)). A stack with no angle band, the
+    embedding arm's, is returned as it is. One request, for the stack's band names.
+    """
+    decomposed, angle_bands = _decompose_cyclic_bands(stack)
+    if not angle_bands:
+        return stack
+    return stack.addBands(
+        decomposed.select([f"{band}_{part}" for band in angle_bands for part in ("sin", "cos")])
+    )
 
 
 def _read_clustering_metadata(cluster_labels: ee.Image) -> dict[str, Any]:
@@ -962,6 +1000,34 @@ def _count_by_part(
     }
 
 
+def _vectorise_with_pixel_centres(
+    label_image: ee.Image, *, region: ee.Geometry, scale: int, label_property: str
+) -> ee.FeatureCollection:
+    """One polygon per connected piece of each label, with its pixel count and pixel centres' mean.
+
+    The one reduceToVectors call of each of the three layers. It groups by the first band, the
+    label, and hands the bands after it to the reducer: ee.Image.pixelLonLat()'s 'longitude' and
+    'latitude', the position of each pixel's centre in the grid the call works in (the label's
+    grid at `scale`). countEvery gives the polygon its pixel count as 'count', as the default
+    reducer did (review A6, round 13), and the mean of each band, by forEach in the order the
+    bands come, its pixel centres' mean longitude and latitude under _PIXEL_CENTRES_LON and
+    _PIXEL_CENTRES_LAT: the centroid of the pixels, with any hole left out (round 14; round 13's
+    question 21, answered (a)). The geometry's centroid() counted as area the hole of some
+    polygons whose hole touches the outer ring at a vertex, as area() did (review A6).
+    """
+    return label_image.addBands(ee.Image.pixelLonLat()).reduceToVectors(
+        reducer=ee.Reducer.countEvery().combine(
+            ee.Reducer.mean().forEach([_PIXEL_CENTRES_LON, _PIXEL_CENTRES_LAT])
+        ),
+        geometry=region,
+        scale=scale,
+        geometryType="polygon",
+        eightConnected=True,
+        labelProperty=label_property,
+        maxPixels=int(1e9),
+    )
+
+
 def _build_merged_feature_collection(
     *,
     ctx: PipelineContext,
@@ -1017,25 +1083,25 @@ def _build_merged_feature_collection(
     # pixels whose centre is inside `roi`, while SNIC labelled the edge pixels the
     # ROI clip keeps too, so a stand drawn through them can come out in more
     # than one polygon, and one with no pixel centre inside gets none (review C17).
+    # Each polygon gets its pixel count and its pixel centres' mean (round 14).
     stand_label_image = stand_clusters.toInt().rename("stand_lbl")
-    polygons = stand_label_image.reduceToVectors(
-        geometry=roi,
-        scale=scale,
-        geometryType="polygon",
-        eightConnected=True,
-        labelProperty="stand_lbl",
-        maxPixels=int(1e9),
+    polygons = _vectorise_with_pixel_centres(
+        stand_label_image, region=roi, scale=scale, label_property="stand_lbl"
     )
 
     # Step 2: per-stand feature means, same exclusions as the SNIC layer. Plain means
     # of the pixel values, the angle bands too: aspect (degrees) and *_phase_* (radians)
     # come out as arithmetic means of angles, not circular means (review C10). The
-    # clustering does not read them; it takes sine and cosine per pixel.
+    # clustering does not read them; it takes sine and cosine per pixel, and since
+    # round 14 the stack holds those too, beside the angles (_with_angle_sin_cos), so
+    # each stand also gets their means, as <band>_sin and <band>_cos.
     all_features = _feature_source_image(ctx)
     kept_feature_bands = all_features.bandNames().removeAll(
         ee.List(["ndvi_obs_count", "nirv_obs_count"])
     )
-    polygons_with_features = all_features.select(kept_feature_bands).reduceRegions(
+    polygons_with_features = _with_angle_sin_cos(
+        all_features.select(kept_feature_bands)
+    ).reduceRegions(
         collection=polygons,
         reducer=ee.Reducer.mean(),
         scale=scale,
@@ -1052,7 +1118,9 @@ def _build_merged_feature_collection(
         _stand_row_types(cluster_labels, stand_clusters, roi, scale),
     )
 
-    # Steps 4-5: geometry attributes, drop bookkeeping, renumber by centroid.
+    # Steps 4-5: size and geometry attributes (n_pixels and area_ha from the count,
+    # the centroid from the pixel centres' mean), drop bookkeeping, renumber by
+    # centroid.
     polygons_with_geom = polygons_typed.map(
         lambda f: _add_geom_attrs(f, scale)
     ).map(_drop_internal_properties)
@@ -1210,10 +1278,14 @@ def _build_snic_feature_collection(
 
     Steps (all server-side):
       1. Vectorize snic_clusters via reduceToVectors; each polygon
-         carries snic_label = raw SNIC hash.
+         carries snic_label = raw SNIC hash, its pixel count ('count')
+         and its pixel centres' mean longitude and latitude
+         (_vectorise_with_pixel_centres, round 14).
       2. Attach per-superpixel feature means via reduceRegions on the
          concatenated features_* image stack (minus metadata bands like
-         ndvi_obs_count, which match profiling's _EXCLUDE_BANDS).
+         ndvi_obs_count, which match profiling's _EXCLUDE_BANDS), and since
+         round 14 the means of the sine and cosine of each angle band
+         (_with_angle_sin_cos).
       3. Attach cluster_id via reduceRegions(mode) on cluster_labels.
       4. Drop superpixels that fall entirely outside the habitat mask
          (cluster_labels is null there → no cluster_id). These are
@@ -1221,10 +1293,11 @@ def _build_snic_feature_collection(
          clustered polygons back to SNIC, so unclustered SNIC has no
          place here. Typical drop rate: ~40-50% for an AOI with
          significant non-habitat (water, built).
-      5. Add n_pixels and area_ha from reduceToVectors' 'count', and
-         perim_m, centroid_lat and centroid_lon from the geometry. Then
-         drop 'count' and the reducer-leftover 'mode' via explicit
-         property selection.
+      5. Add n_pixels and area_ha from reduceToVectors' 'count',
+         centroid_lat and centroid_lon from its pixel centres' mean
+         (since round 14; the geometry's centroid until then), and perim_m
+         from the geometry. Then drop 'count', the two means and the
+         reducer-leftover 'mode' via explicit property selection.
       6. Sort by centroid (lat desc, lon asc) and renumber stand_id 1..N.
 
     Returns a FeatureCollection with all attributes attached. The caller
@@ -1241,17 +1314,14 @@ def _build_snic_feature_collection(
     # through the ROI's partly covered edge pixels can come out in more than one
     # polygon (review C17), as in the merged layer.
     snic_label_image = snic_clusters.toInt().rename("snic_label")
-    polygons = snic_label_image.reduceToVectors(
-        geometry=roi,
-        scale=scale,
-        geometryType="polygon",
-        eightConnected=True,
-        labelProperty="snic_label",
-        maxPixels=int(1e9),
+    polygons = _vectorise_with_pixel_centres(
+        snic_label_image, region=roi, scale=scale, label_property="snic_label"
     )
 
     # Step 2: attach per-superpixel feature means: plain means, so aspect and
-    # *_phase_* are arithmetic means of angles here too (review C10).
+    # *_phase_* are arithmetic means of angles here too (review C10), with the
+    # means of their sine and cosine beside them since round 14
+    # (_with_angle_sin_cos, as in the merged layer).
     # ee.Image.cat concatenates multi-band images; band names must be unique
     # across the inputs, which they are by construction (ndvi_*, vv_*, vh_*,
     # canopy_*, elevation/slope/aspect/...). We drop the obs_count metadata
@@ -1261,7 +1331,7 @@ def _build_snic_feature_collection(
     feature_band_names = all_features.bandNames()
     excluded_metadata_bands = ee.List(["ndvi_obs_count", "nirv_obs_count"])
     kept_feature_bands = feature_band_names.removeAll(excluded_metadata_bands)
-    feature_stack_for_attrs = all_features.select(kept_feature_bands)
+    feature_stack_for_attrs = _with_angle_sin_cos(all_features.select(kept_feature_bands))
 
     polygons_with_features = feature_stack_for_attrs.reduceRegions(
         collection=polygons,
@@ -1290,9 +1360,10 @@ def _build_snic_feature_collection(
     ).map(_rename_mode_to_cluster_id)
 
     # Step 5: size and geometry attributes (n_pixels and area_ha from the
-    # 'count' reduceToVectors added), then drop bookkeeping properties we
-    # don't want to ship ('count', now n_pixels, plus 'mode' which is now a
-    # duplicate of cluster_id).
+    # 'count' reduceToVectors added, the centroid from the pixel centres' mean
+    # it added beside it), then drop bookkeeping properties we don't want to
+    # ship ('count', now n_pixels, the two means, now the centroid, plus 'mode'
+    # which is now a duplicate of cluster_id).
     polygons_with_geom = polygons_clustered.map(
         lambda f: _add_geom_attrs(f, scale)
     ).map(_drop_internal_properties)
@@ -1312,9 +1383,11 @@ def _build_dissolved_feature_collection(
 
     Steps (all server-side except cluster_profiles lookup table construction):
       1. Vectorize cluster_labels via reduceToVectors with eightConnected=True;
-         each polygon = one connected same-cluster region.
-      2. Add n_pixels and area_ha from reduceToVectors' 'count', and perim_m
-         and the centroid from the geometry.
+         each polygon = one connected same-cluster region, with its pixel
+         count and its pixel centres' mean (_vectorise_with_pixel_centres).
+      2. Add n_pixels and area_ha from reduceToVectors' 'count', the
+         centroid from the pixel centres' mean (since round 14; the
+         geometry's until then), and perim_m from the geometry.
       3. Filter by vector_min_stand_pixels (drops speckle).
       4. Attach profile_<band>_p50 columns from the cluster_profiles list of
          dicts, joined by cluster_id.
@@ -1330,18 +1403,14 @@ def _build_dissolved_feature_collection(
     # Step 1: vectorize cluster_labels. Connected same-cluster pixels become
     # one polygon. eightConnected matches SNIC's connectivity by default.
     cluster_id_img = cluster_labels.toInt().rename("cluster_id")
-    polygons = cluster_id_img.reduceToVectors(
-        geometry=roi,
-        scale=scale,
-        geometryType="polygon",
-        eightConnected=True,
-        labelProperty="cluster_id",
-        maxPixels=int(1e9),
+    polygons = _vectorise_with_pixel_centres(
+        cluster_id_img, region=roi, scale=scale, label_property="cluster_id"
     )
 
     # Step 2: size and geometry attributes, then drop GEE's auto-added
     # 'count' bookkeeping property, which _add_geom_attrs has copied to
-    # 'n_pixels' (round 13, review A6).
+    # 'n_pixels' (round 13, review A6), and the pixel centres' mean, which it
+    # has copied to the centroid (round 14).
     polygons_with_geom = polygons.map(
         lambda f: _add_geom_attrs(f, scale)
     ).map(_drop_internal_properties)
@@ -1399,22 +1468,24 @@ def _add_geom_attrs(feature: ee.Feature, scale: int) -> ee.Feature:
     some polygons with a hole that touches the outer ring at a vertex adds the
     hole instead of subtracting it (review A6: stand 83 of
     sanjay_van_alphaearth_keptland_r9, 823 pixels, read 1,827 pixels and
-    18.27 ha). The perimeter and the centroid are still the geometry's. The
-    perimeter is right on those polygons (the rings' length, the hole's included),
-    but the centroid has the same hole error as area(): it is the centroid with the
-    hole counted as area (on the merged layers of r9 and round 12, 54 of 7,371
-    centroids are more than 1 m from the hole-subtracted one, 52 of them at the
-    holes-added one, up to 35 m), and `_renumber_by_centroid` numbers stand_id by
-    it. That is not changed in round 13 (its brief, question 21). So the
-    builders run this before `_drop_internal_properties` drops 'count', and no
-    reduction in between writes a property of that name. On the legacy cache
-    layout `stands_dissolved` vectorises a type image on a geographic grid, whose
-    pixels are not scale² in area, so there its area_ha is the pixel count at
-    the nominal scale.
+    18.27 ha). The perimeter is still the geometry's, and right on those polygons
+    (the rings' length, the hole's included). `centroid_lat` and `centroid_lon` are
+    the mean position of the polygon's pixel centres, which the same
+    reduceToVectors call gives it under _PIXEL_CENTRES_LAT and _PIXEL_CENTRES_LON
+    (_vectorise_with_pixel_centres), and `_renumber_by_centroid` numbers stand_id
+    and unit_id by them. Until round 14 the centroid was the geometry's, which had
+    the same hole error as area(): the centroid with the hole counted as area (on
+    the merged layers of r9 and round 12, 54 of 7,371 centroids more than 1 m from
+    the hole-subtracted one, 52 of them at the holes-added one, up to 35 m: stand
+    83's 35.1 m), so a few ids followed the error (round 13's question 21,
+    answered (a) for round 14). So the builders run this before
+    `_drop_internal_properties` drops 'count' and the two means, and no reduction
+    in between writes a property of those names. On the legacy cache layout
+    `stands_dissolved` vectorises a type image on a geographic grid, whose pixels
+    are not scale² in area, so there its area_ha is the pixel count at the
+    nominal scale.
     """
-    geom = feature.geometry()
-    perimeter_m = geom.perimeter(maxError=1)
-    centroid_coords = geom.centroid(maxError=1).coordinates()
+    perimeter_m = feature.geometry().perimeter(maxError=1)
     n_pixels = ee.Number(feature.get("count"))
     # ee.Feature(...) is a cast: Element.set() is typed as returning Element, and
     # every one of these helpers is annotated -> ee.Feature because it is handed to
@@ -1423,8 +1494,8 @@ def _add_geom_attrs(feature: ee.Feature, scale: int) -> ee.Feature:
         "area_ha": n_pixels.multiply(scale * scale).divide(10000),
         "perim_m": perimeter_m,
         "n_pixels": n_pixels,
-        "centroid_lat": centroid_coords.get(1),
-        "centroid_lon": centroid_coords.get(0),
+        "centroid_lat": feature.get(_PIXEL_CENTRES_LAT),
+        "centroid_lon": feature.get(_PIXEL_CENTRES_LON),
     }))
 
 
@@ -1446,10 +1517,15 @@ def _rename_mode_to_cluster_id(feature: ee.Feature) -> ee.Feature:
 #   per polygon, which _add_geom_attrs has already copied to 'n_pixels').
 # - 'mode' is the leftover from reduceRegions(mode); we already copied its
 #   value to 'cluster_id' via _rename_mode_to_cluster_id.
+# - the pixel centres' mean longitude and latitude, which reduceToVectors adds
+#   beside 'count' (_vectorise_with_pixel_centres, round 14) and
+#   _add_geom_attrs has copied to 'centroid_lon' and 'centroid_lat'.
 # Listing these explicitly is more robust than feature.set(k, None), which
 # pydantic-style "drop the key" doesn't actually work in GEE's
 # Feature.set() — None becomes a stored null, not a missing key.
-_SNIC_INTERNAL_PROPERTIES_TO_DROP: tuple[str, ...] = ("count", "mode")
+_SNIC_INTERNAL_PROPERTIES_TO_DROP: tuple[str, ...] = (
+    "count", "mode", _PIXEL_CENTRES_LON, _PIXEL_CENTRES_LAT,
+)
 
 
 def _drop_internal_properties(feature: ee.Feature) -> ee.Feature:
@@ -1481,7 +1557,9 @@ def _renumber_by_centroid(
     us treat the renumbering as reproducible (you don't need to memoize the
     output to reproduce it; just run the same code on the same input).
 
-    Assumes _add_geom_attrs has already populated centroid_lat / centroid_lon.
+    Assumes _add_geom_attrs has already populated centroid_lat / centroid_lon:
+    since round 14 the mean position of the polygon's pixel centres, until then
+    the geometry's centroid.
     """
     def add_sort_key(feature: ee.Feature) -> ee.Feature:
         lat = ee.Number(feature.get("centroid_lat"))

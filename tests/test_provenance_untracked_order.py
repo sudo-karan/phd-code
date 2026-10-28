@@ -1,9 +1,11 @@
 """fmu.utils.provenance.git_state lists untracked code before untracked outputs (review C34).
 
-The list of untracked paths is the record's safeguard for a source file that is not in git: it does
-not make the tree dirty, but it can change what ran. The list is cut at 50 paths, and run outputs
-(odisha_script/phase2_vectors/...) sort before scripts/, src/ and tests/, so 50 of them pushed an
-untracked module off it, with nothing else to flag it.
+The list of untracked paths is the record's safeguard for a source file that is not in git: until
+round 14 it did not make the tree dirty, but it can change what ran. The list is cut at 50 paths,
+and run outputs (odisha_script/phase2_vectors/...) sort before scripts/, src/ and tests/, so 50 of
+them pushed an untracked module off it, with nothing else to flag it. Since round 14 (round 13
+question 30 (c)) untracked code under src/, scripts/, odisha_script/ and configs/ makes the tree
+dirty too, and is listed apart under untracked_code (tests/test_dirty_counts_untracked_code.py).
 """
 
 from __future__ import annotations
@@ -53,7 +55,9 @@ def test_an_untracked_module_stays_on_the_list_past_fifty_untracked_outputs(repo
     s = git_state(repo, refresh=True)
     assert "src/fmu/new_stage.py" in s["untracked"]
     assert s["untracked"][0] == "src/fmu/new_stage.py" and len(s["untracked"]) == 50
-    assert s["untracked_truncated"] is True and s["dirty"] is False
+    # dirty was False until round 14, when untracked code under src/ began to count (question 30)
+    assert s["untracked_truncated"] is True and s["dirty"] is True
+    assert s["untracked_code"] == ["src/fmu/new_stage.py"]
 
 
 def test_code_and_untracked_folders_come_first_then_the_rest_each_sorted(repo: Path):

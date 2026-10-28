@@ -1,0 +1,124 @@
+{
+ "what": "One run's Earth Engine cost, EECU-hours (scripts/eecu_by_stage.py): batch by stage from the task list, online by pass from Cloud Monitoring, and each per 1,000 ha of the ROI.",
+ "config": "sanjay_van_baseline_keptland_r14",
+ "area_ha": 1301.6942,
+ "batch_eecu_h": {
+  "data_load": 0.1035,
+  "features_optical": 0.0297,
+  "features_radar": 0.0124,
+  "features_static": 0.0293,
+  "features_structure": 0.0002,
+  "k_elbow": 0.0,
+  "masking": 0.0015,
+  "segmentation": 0.0039
+ },
+ "batch_eecu_h_per_1000_ha": {
+  "data_load": 0.0795,
+  "features_optical": 0.0228,
+  "features_radar": 0.0096,
+  "features_static": 0.0225,
+  "features_structure": 0.0001,
+  "k_elbow": 0.0,
+  "masking": 0.0012,
+  "segmentation": 0.003
+ },
+ "online_eecu_h_by_pass": [
+  {
+   "pass": "features",
+   "eecu_h": 0.0004,
+   "per_1000_ha": 0.0003
+  },
+  {
+   "pass": "segmentation",
+   "eecu_h": 0.0007,
+   "per_1000_ha": 0.0005
+  },
+  {
+   "pass": "k_elbow",
+   "eecu_h": 0.0027,
+   "per_1000_ha": 0.002
+  }
+ ],
+ "batch_total": 0.1804,
+ "online_total": 0.0037,
+ "total": 0.1842,
+ "total_per_1000_ha": 0.1415,
+ "tasks": {
+  "data_load": [
+   {
+    "output": "data_load_s2_composite",
+    "state": "SUCCEEDED",
+    "eecu_h": 0.1035
+   }
+  ],
+  "features_optical": [
+   {
+    "output": "features_optical_optical_features",
+    "state": "SUCCEEDED",
+    "eecu_h": 0.0297
+   }
+  ],
+  "features_radar": [
+   {
+    "output": "features_radar_radar_features",
+    "state": "SUCCEEDED",
+    "eecu_h": 0.0124
+   }
+  ],
+  "features_static": [
+   {
+    "output": "features_static_static_features",
+    "state": "SUCCEEDED",
+    "eecu_h": 0.0293
+   }
+  ],
+  "features_structure": [
+   {
+    "output": "features_structure_structure_features",
+    "state": "SUCCEEDED",
+    "eecu_h": 0.0002
+   }
+  ],
+  "k_elbow": [
+   {
+    "output": "k_elbow_k_elbow",
+    "state": "SUCCEEDED",
+    "eecu_h": 0.0
+   }
+  ],
+  "masking": [
+   {
+    "output": "masking_habitat_mask",
+    "state": "SUCCEEDED",
+    "eecu_h": 0.0004
+   },
+   {
+    "output": "masking_landcover_summary",
+    "state": "SUCCEEDED",
+    "eecu_h": 0.0002
+   },
+   {
+    "output": "masking_mask_provenance",
+    "state": "SUCCEEDED",
+    "eecu_h": 0.0008
+   },
+   {
+    "output": "masking_water_mask",
+    "state": "SUCCEEDED",
+    "eecu_h": 0.0001
+   }
+  ],
+  "segmentation": [
+   {
+    "output": "segmentation_snic_clusters",
+    "state": "SUCCEEDED",
+    "eecu_h": 0.0022
+   },
+   {
+    "output": "segmentation_snic_means",
+    "state": "SUCCEEDED",
+    "eecu_h": 0.0017
+   }
+  ]
+ }
+}

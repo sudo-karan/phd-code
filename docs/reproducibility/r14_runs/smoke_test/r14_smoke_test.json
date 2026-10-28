@@ -1,0 +1,256 @@
+{
+ "passes": true,
+ "rules": {
+  "1_the_batch_completes": {
+   "batches_of_the_label": 1,
+   "configs_done": [
+    "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_c",
+    "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_d"
+   ],
+   "configs_left": [],
+   "configs_needing_attention": {},
+   "passes": true
+  },
+  "2_every_task_ends_well": {
+   "passes": true,
+   "runs": {
+    "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_c": {
+     "drive_files": 9,
+     "ended_badly": {},
+     "files_with_no_task_id": [],
+     "not_ended_at_the_reading": [],
+     "states_at_the_reading": {
+      "COMPLETED": 9
+     }
+    },
+    "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_d": {
+     "drive_files": 9,
+     "ended_badly": {},
+     "files_with_no_task_id": [],
+     "not_ended_at_the_reading": [
+      "raster_features_raw"
+     ],
+     "states_at_the_reading": {
+      "COMPLETED": 8,
+      "RUNNING": 1
+     }
+    }
+   }
+  },
+  "3_every_file_copied": {
+   "missing": {
+    "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_c": [],
+    "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_d": []
+   },
+   "passes": true
+  },
+  "4_the_elbow_tables_read_back": {
+   "passes": true
+  },
+  "5_the_live_checks_rules": {
+   "criteria_1_to_6": {
+    "1_same_stands_and_types": true,
+    "2_feature_values_and_elbows": true,
+    "3_distance_to_water": true,
+    "4_sentinel1_scenes": true,
+    "5_slope_and_aspect_decimals": true,
+    "6_four_settings_on": true
+   },
+   "criterion_0_fails_only_as_it_must": {
+    "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_c": true,
+    "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_d": true
+   },
+   "passes": true
+  },
+  "6_within_each_run": {
+   "passes": true,
+   "runs": {
+    "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_c": {
+     "a_the_elbow_at_k_is_the_fit": {
+      "ari_median": [
+       0.533699,
+       0.533699
+      ],
+      "ari_min": [
+       0.378638,
+       0.378638
+      ],
+      "k": 5,
+      "passes": true,
+      "wcss": [
+       838.515185,
+       838.515185
+      ]
+     },
+     "b_the_types_at_k_are_the_fits": {
+      "labels": 220,
+      "none_twice": true,
+      "passes": true,
+      "same_in_fit": true,
+      "same_labels_in_order": true,
+      "types_differing": 0
+     },
+     "c_the_two_tables_agree": {
+      "fit_rows": {
+       "bands": 22,
+       "identical_bytes": true,
+       "in_band": null,
+       "in_fit_differs": 0,
+       "largest_relative_difference": 0.0,
+       "passes": true,
+       "rows": [
+        220,
+        220
+       ],
+       "rows_of_another_length_than_the_header": 0,
+       "same_header": true,
+       "same_labels": true,
+       "values_compared": 4840,
+       "values_not_agreeing": 0
+      },
+      "passes": true,
+      "tables_of_units": {
+       "bands": 22,
+       "identical_bytes": true,
+       "in_band": null,
+       "in_fit_differs": 0,
+       "largest_relative_difference": 0.0,
+       "passes": true,
+       "rows": [
+        220,
+        220
+       ],
+       "rows_of_another_length_than_the_header": 0,
+       "same_header": true,
+       "same_labels": true,
+       "values_compared": 4840,
+       "values_not_agreeing": 0
+      }
+     },
+     "d_the_types_reach_the_layer": {
+      "fit_labels_without_a_polygon": [],
+      "n_polygons_with_a_wrong_cluster_id": 0,
+      "passes": true,
+      "polygons": 222,
+      "polygons_with_a_wrong_cluster_id": []
+     },
+     "e_the_angle_means_are_unit_bounded": {
+      "aspect": {
+       "n_over_1": 0,
+       "over_1": [],
+       "polygons_checked": 222
+      },
+      "ndvi_phase_annual": {
+       "n_over_1": 0,
+       "over_1": [],
+       "polygons_checked": 222
+      },
+      "passes": true
+     },
+     "f_each_centroid_lies_in_its_polygons_box": {
+      "n_outside": 0,
+      "outside": [],
+      "passes": true,
+      "polygons": 222
+     },
+     "passes": true
+    },
+    "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_d": {
+     "a_the_elbow_at_k_is_the_fit": {
+      "ari_median": [
+       0.533699,
+       0.533699
+      ],
+      "ari_min": [
+       0.378638,
+       0.378638
+      ],
+      "k": 5,
+      "passes": true,
+      "wcss": [
+       838.515185,
+       838.515185
+      ]
+     },
+     "b_the_types_at_k_are_the_fits": {
+      "labels": 220,
+      "none_twice": true,
+      "passes": true,
+      "same_in_fit": true,
+      "same_labels_in_order": true,
+      "types_differing": 0
+     },
+     "c_the_two_tables_agree": {
+      "fit_rows": {
+       "bands": 22,
+       "identical_bytes": true,
+       "in_band": null,
+       "in_fit_differs": 0,
+       "largest_relative_difference": 0.0,
+       "passes": true,
+       "rows": [
+        220,
+        220
+       ],
+       "rows_of_another_length_than_the_header": 0,
+       "same_header": true,
+       "same_labels": true,
+       "values_compared": 4840,
+       "values_not_agreeing": 0
+      },
+      "passes": true,
+      "tables_of_units": {
+       "bands": 22,
+       "identical_bytes": true,
+       "in_band": null,
+       "in_fit_differs": 0,
+       "largest_relative_difference": 0.0,
+       "passes": true,
+       "rows": [
+        220,
+        220
+       ],
+       "rows_of_another_length_than_the_header": 0,
+       "same_header": true,
+       "same_labels": true,
+       "values_compared": 4840,
+       "values_not_agreeing": 0
+      }
+     },
+     "d_the_types_reach_the_layer": {
+      "fit_labels_without_a_polygon": [],
+      "n_polygons_with_a_wrong_cluster_id": 0,
+      "passes": true,
+      "polygons": 222,
+      "polygons_with_a_wrong_cluster_id": []
+     },
+     "e_the_angle_means_are_unit_bounded": {
+      "aspect": {
+       "n_over_1": 0,
+       "over_1": [],
+       "polygons_checked": 222
+      },
+      "ndvi_phase_annual": {
+       "n_over_1": 0,
+       "over_1": [],
+       "polygons_checked": 222
+      },
+      "passes": true
+     },
+     "f_each_centroid_lies_in_its_polygons_box": {
+      "n_outside": 0,
+      "outside": [],
+      "passes": true,
+      "polygons": 222
+     },
+     "passes": true
+    }
+   }
+  }
+ },
+ "runs": [
+  "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_c",
+  "odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_d"
+ ],
+ "what": "The smoke test's verdict (the round 14 record, Done, the round resumed again): rules 1 to 6"
+}

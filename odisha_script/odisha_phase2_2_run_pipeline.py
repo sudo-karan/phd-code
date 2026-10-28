@@ -21,6 +21,15 @@ previous one cached, and refuses to start (exit 3) while any of them is missing:
                            pass computes a feature image live that another pass reads from the
                            cache, so SNIC, the merge and the fit all see the cached features
   --through segmentation   every feature asset is a HIT; caches snic_*
+  --through k_elbow        (round 14) only for a config with k_elbow.in_fit_space on, which the
+                           pass refuses otherwise (exit 4): the merge runs on the cached SNIC
+                           asset and the k elbow step on the merge's stands, reading the table of
+                           units as the clustering stage would; caches the elbow's table and
+                           submits no clustering, profiling or export task. The step's files (the
+                           elbow, the table of units, the scaled rows, the types at every k, the
+                           preprocessing) are copied from the run folder to
+                           phase2_vectors/<config>_k_elbow*.csv|json, beside a run record
+                           <config>_k_elbow_run.json
   --through clustering     SNIC is now a cache HIT, so the merge runs on the cached SNIC asset;
                            caches cluster_labels and feature_stack
   --through export         every cacheable output must be a HIT; runs profiling + export, then
@@ -82,6 +91,7 @@ import fmu.stages.features_optical  # noqa: F401
 import fmu.stages.features_radar  # noqa: F401
 import fmu.stages.features_static  # noqa: F401
 import fmu.stages.features_structure  # noqa: F401
+import fmu.stages.k_elbow  # noqa: F401
 import fmu.stages.masking  # noqa: F401
 import fmu.stages.merge  # noqa: F401
 import fmu.stages.profiling  # noqa: F401
@@ -96,6 +106,7 @@ from fmu.pipeline import (
     segmentation_stage_names,
 )
 from fmu.stages.base import PipelineContext, get_stage_class
+from fmu.stages.k_elbow import read_k_elbow
 from fmu.stages.export import (
     _SORT_LAT_MULT,
     _build_dissolved_feature_collection,
@@ -122,7 +133,10 @@ VECTOR_DIR = HERE / "phase2_vectors"
 POLL_S = 30
 
 
-PASSES = ("features", "segmentation", "clustering", "export")
+PASSES = ("features", "segmentation", "k_elbow", "clustering", "export")
+# The exit of a k_elbow pass refused for a config with k_elbow.in_fit_space off (round 14): that
+# step would read the clustering stage's outputs, so the pass would compute and export them.
+ELBOW_NEEDS_THE_SETTING = 4
 
 
 def stage_names(cfg: Config, through: str) -> list[str]:
@@ -144,7 +158,7 @@ def prerequisites(cfg: Config, through: str) -> list[str]:
         return []
     if through == "segmentation":
         return features
-    if through == "clustering":
+    if through in ("clustering", "k_elbow"):
         return [*features, "segmentation"]
     return [*features, *[n for n in default_stage_names(cfg, through="clustering")
                          if n not in features]]
@@ -163,6 +177,42 @@ def missing_cache(cfg: Config, names: list[str], layout: str | None = None) -> l
                 out.append(path)
     return out
 
+
+def copy_stage_files(config_name: str, run_dir: Path, stages: list) -> dict:
+    """Copy the result files of the stages that ran (StageResult.files, round 14) from the run
+    folder to VECTOR_DIR as <config>_<file>, beside the stand layers: {copied name: its record}.
+    A stage read from the cache ran nothing and wrote no file."""
+    copied = {}
+    for s in stages:
+        for name, record in (getattr(s, "files", None) or {}).items():
+            VECTOR_DIR.mkdir(exist_ok=True)
+            target = VECTOR_DIR / f"{config_name}_{name}"
+            target.write_bytes((Path(run_dir) / name).read_bytes())
+            copied[target.name] = record
+            print(f"  wrote {target.name}")
+    return copied
+
+
+
+def write_k_elbow_record(path: Path, record: dict) -> bool:
+    """Write the k elbow pass's run record; False if it keeps the one there.
+
+    A pass that read the elbow back from the cache (a later pass of a full batch, or a batch
+    resumed) does not replace the record of the pass that computed that elbow, which names the
+    elbow's files and its run folder (round 14, the gate's review): its own run folder and cache
+    status are in its manifest. A record of another elbow (its step key moved) is replaced.
+    """
+    if path.exists() and not record.get("k_elbow_computed_in_this_pass"):
+        try:
+            before = json.loads(path.read_text())
+        except (OSError, ValueError):
+            before = {}
+        same_elbow = ((before.get("step_keys") or {}).get("k_elbow")
+                      == (record.get("step_keys") or {}).get("k_elbow"))
+        if before.get("k_elbow_computed_in_this_pass") is True and same_elbow:
+            return False
+    path.write_text(json.dumps(record, indent=1, default=str))
+    return True
 
 def wait_for(task_ids: list[str]) -> bool:
     if not task_ids:
@@ -273,6 +323,11 @@ def main() -> int:
     args = ap.parse_args()
 
     cfg = load_config(args.config)
+    if args.through == "k_elbow" and not cfg.k_elbow.in_fit_space:
+        print(f"{cfg.name}: REFUSING the k_elbow pass: k_elbow.in_fit_space is off, so the k elbow "
+              f"step would read the clustering stage's outputs and the pass would compute and export "
+              f"them (round 14)")
+        return ELBOW_NEEDS_THE_SETTING
     init_gee()
     names = stage_names(cfg, args.through)
     layout, why = cache_layout_for(cfg)
@@ -301,6 +356,34 @@ def main() -> int:
     status = {s.name: s.cache_status for s in result.stages if s.cache_status}
     print(f"  run dir: {run_dir}")
     print(f"  cache status: {json.dumps(status)}")
+    # The stages' result files (round 14: the clustering stage off Earth Engine, the k elbow in
+    # the fit's space), beside the stand layers, from the run folder they were written into.
+    copied = copy_stage_files(cfg.name, run_dir, result.stages)
+
+    if args.through == "k_elbow":
+        by_name = {s.name: s for s in result.stages}
+        elbow = by_name["k_elbow"]
+        record = {
+            "config": cfg.name,
+            "fingerprint": config_fingerprint(cfg),
+            "cache_layout": layout,
+            "step_keys": step_keys(cfg) if layout == "per_step" else None,
+            "git": git_state(),
+            "environment": environment_state(),
+            "run_dir": str(run_dir),
+            "cache_status": status,
+            # The elbow as the step computed it in this pass, or read back from the cache.
+            "k_elbow": read_k_elbow(result.context.get("k_elbow")),
+            "k_elbow_computed_in_this_pass": bool(elbow.files),
+            "files": copied,
+        }
+        path = VECTOR_DIR / f"{cfg.name}_k_elbow_run.json"
+        VECTOR_DIR.mkdir(exist_ok=True)
+        if write_k_elbow_record(path, record):
+            print(f"  wrote {path.name}")
+        else:
+            print(f"  kept {path.name}: the record of the pass that computed this elbow (this pass "
+                  "read it back; its manifest records it)")
 
     if args.through == "export":
         ctx = result.context

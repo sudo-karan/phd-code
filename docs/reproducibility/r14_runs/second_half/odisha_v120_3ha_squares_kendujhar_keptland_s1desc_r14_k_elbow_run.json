@@ -1,0 +1,163 @@
+{
+ "config": "odisha_v120_3ha_squares_kendujhar_keptland_s1desc_r14",
+ "fingerprint": "5e5d8f17ab",
+ "cache_layout": "per_step",
+ "step_keys": {
+  "masking": "s93740fdfe0",
+  "data_load": "s6d9440ff80",
+  "features_optical": "sf2b02245dc",
+  "features_radar": "se97b762a6b",
+  "features_structure": "s2580fb2731",
+  "features_static": "sdc06413429",
+  "features_embedding": "sf0eab3fd56",
+  "segmentation": "s4c2ec6c578",
+  "merge": "sfd2e1382f3",
+  "clustering": "s9bd6aac69d",
+  "k_elbow": "sf4a9fc256b"
+ },
+ "git": {
+  "commit": "a099c5782e895b8bdc8fa22ac8f89b1606482309",
+  "dirty": false,
+  "modified": [],
+  "modified_truncated": false,
+  "untracked_code": [],
+  "untracked_code_truncated": false,
+  "untracked": [
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_k_elbow.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_k_elbow_fit_rows.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_k_elbow_preprocessing.json",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_k_elbow_run.json",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_k_elbow_stand_table.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_k_elbow_types.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r14_k_elbow.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r14_k_elbow_fit_rows.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r14_k_elbow_preprocessing.json",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r14_k_elbow_run.json",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r14_k_elbow_stand_table.csv",
+   "odisha_script/phase2_vectors/odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r14_k_elbow_types.csv"
+  ],
+  "untracked_truncated": false,
+  "root": "/Users/karan/Desktop/phd-code/outputs/round14/run_tree_5",
+  "error": null
+ },
+ "environment": {
+  "python": "3.13.14",
+  "earthengine_api": "1.7.35",
+  "pip_freeze_sha256": "31aca07855862d34db7bcb31a6b60769d1785e80606cdaa23093cdf2a60bcc21",
+  "pip_freeze_packages": 232,
+  "pip_freeze_left_out": [
+   "-e git+https://github.com/sudo-karan/phd-code.git@2830f8cca627f97f58c088e341ca516354f1f2c4#egg=fmu"
+  ],
+  "error": null
+ },
+ "cache_status": {
+  "masking": {
+   "habitat_mask": "hit",
+   "landcover_summary": "hit",
+   "mask_provenance": "hit",
+   "water_mask": "hit"
+  },
+  "data_load": {
+   "s2_composite": "hit"
+  },
+  "features_optical": {
+   "optical_features": "hit"
+  },
+  "features_radar": {
+   "radar_features": "hit"
+  },
+  "features_structure": {
+   "structure_features": "hit"
+  },
+  "features_static": {
+   "static_features": "hit"
+  },
+  "segmentation": {
+   "snic_clusters": "hit",
+   "snic_means": "hit"
+  },
+  "k_elbow": {
+   "k_elbow": "miss-exported"
+  }
+ },
+ "k_elbow": {
+  "n_rows": 396,
+  "n_bands": 22,
+  "ks": [
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12
+  ],
+  "inertia": [
+   2978.508296,
+   2477.35812,
+   2201.189062,
+   1985.19462,
+   1807.808558,
+   1693.949773,
+   1603.999702,
+   1531.636299,
+   1472.854402,
+   1420.56619,
+   1373.083486
+  ],
+  "elbow_k": 6,
+  "ari_median": [
+   0.940017,
+   0.811841,
+   0.556369,
+   0.588728,
+   0.769545,
+   0.633184,
+   0.613366,
+   0.637309,
+   0.591703,
+   0.591448,
+   0.543369
+  ],
+  "ari_min": [
+   -0.001751,
+   0.643809,
+   0.321705,
+   0.357168,
+   0.358687,
+   0.446597,
+   0.437553,
+   0.421102,
+   0.392657,
+   0.42431,
+   0.375107
+  ]
+ },
+ "k_elbow_computed_in_this_pass": true,
+ "files": {
+  "odisha_v120_3ha_squares_kendujhar_keptland_s1desc_r14_k_elbow.csv": {
+   "bytes": 408,
+   "sha256": "d98903fedacb9ac3d08b6fd1d6feb5fc52c7d4a94feef32fd4d91077de4b6e28"
+  },
+  "odisha_v120_3ha_squares_kendujhar_keptland_s1desc_r14_k_elbow_fit_rows.csv": {
+   "bytes": 244559,
+   "sha256": "444b085c3a940a3450b9ec1168e3d0c94afa68cfa8ad047e12a2de985656271d"
+  },
+  "odisha_v120_3ha_squares_kendujhar_keptland_s1desc_r14_k_elbow_preprocessing.json": {
+   "bytes": 5561,
+   "sha256": "9fa59c10ad04842b72d4ebf254ca9e68d51b6322d8ce79ff4748c46f08c53dcd"
+  },
+  "odisha_v120_3ha_squares_kendujhar_keptland_s1desc_r14_k_elbow_stand_table.csv": {
+   "bytes": 231449,
+   "sha256": "b88277355560d450a78bc244434e51d090d75549ae8451c3dcf3d1a8631647bd"
+  },
+  "odisha_v120_3ha_squares_kendujhar_keptland_s1desc_r14_k_elbow_types.csv": {
+   "bytes": 15203,
+   "sha256": "dc8b6ec57d75c1b4ee4dd04ff22da423a5d54010cfe68d887975b5848a9a9e0b"
+  }
+ }
+}

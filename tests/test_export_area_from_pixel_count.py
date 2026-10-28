@@ -8,8 +8,9 @@ at a vertex, Earth Engine's `area()` adds the hole instead of subtracting it: st
 its planar area with its 5.01 ha hole subtracted is 8.23 ha and the merge record
 (sanjay_van_alphaearth_keptland_r9_run.json, stand_attributes) gives 823 pixels. Now `n_pixels`
 is the `count` reduceToVectors puts on every polygon, and `area_ha` is that count at the
-analysis scale; the perimeter and the centroid are still the geometry's (the centroid with the
-same hole error, not changed in round 13).
+analysis scale; the perimeter is still the geometry's. The centroid, which had the same hole
+error, was the geometry's too until round 14; since then it is the mean of the polygon's pixel
+centres (tests/test_export_centroid_from_pixel_centres.py).
 
 The builders must leave `count` on each polygon until `_add_geom_attrs` has read it: the
 reductions between add their outputs beside it (a band's mean under the band's name, the vote
@@ -35,6 +36,9 @@ BASELINE_YAML = REPO_ROOT / "configs" / "sanjay_van_baseline.yaml"
 STAND_83_GEOMETRY_AREA_HA = 18.27041063087302
 STAND_83_PERIMETER_M = 3699.4437069764995
 STAND_83_COUNT = 823
+# The mean of its pixel centres, which reduceToVectors gives every polygon beside its count since
+# round 14 (tests/test_export_centroid_from_pixel_centres.py computes it from the committed polygon).
+STAND_83_PIXEL_CENTRES = {"pixel_lon": 77.16246828215793, "pixel_lat": 28.531650933324222}
 
 
 class _Number:
@@ -113,7 +117,7 @@ def number_ee(monkeypatch):
 def test_stand_83_takes_its_pixel_count_not_its_geometrys_area(number_ee):
     """The finding itself: before round 13, n_pixels 1827 and area_ha 18.27; now 823 and 8.23."""
     stand_83 = _Feature(
-        {"stand_lbl": 83, "count": STAND_83_COUNT},
+        {"stand_lbl": 83, "count": STAND_83_COUNT, **STAND_83_PIXEL_CENTRES},
         _Geometry(STAND_83_GEOMETRY_AREA_HA * 10_000, STAND_83_PERIMETER_M, 77.16255, 28.53196),
     )
     out = export_mod._add_geom_attrs(stand_83, 10)
@@ -121,18 +125,23 @@ def test_stand_83_takes_its_pixel_count_not_its_geometrys_area(number_ee):
     assert _value(out.props["area_ha"]) == pytest.approx(8.23, abs=1e-12)
 
 
-def test_the_perimeter_and_the_centroid_are_still_the_geometrys(number_ee):
+def test_the_perimeter_is_still_the_geometrys_and_the_centroid_the_pixel_centres_mean(number_ee):
+    """Until round 14 both were the geometry's. Since then (round 13's question 21, answered (a))
+    the centroid is the mean of the polygon's pixel centres, which reduceToVectors gives it beside
+    its count, under 'pixel_lon' and 'pixel_lat' (tests/test_export_centroid_from_pixel_centres.py)."""
     out = export_mod._add_geom_attrs(
-        _Feature({"count": 4}, _Geometry(400.0, 80.0, 77.1, 28.5)), 10
+        _Feature({"count": 4, "pixel_lon": 77.2, "pixel_lat": 28.4}, _Geometry(400.0, 80.0, 77.1, 28.5)), 10
     )
     assert _value(out.props["perim_m"]) == 80.0
-    assert (out.props["centroid_lon"], out.props["centroid_lat"]) == (77.1, 28.5)
+    assert (out.props["centroid_lon"], out.props["centroid_lat"]) == (77.2, 28.4)
 
 
 @pytest.mark.parametrize("scale, count, area_ha", [(10, 1, 0.01), (10, 1000, 10.0), (30, 3, 0.27)])
 def test_the_area_is_the_count_at_the_analysis_scale(number_ee, scale, count, area_ha):
     """The area on the analysis grid: count x scale^2 / 10,000, whatever the geometry's area()."""
-    out = export_mod._add_geom_attrs(_Feature({"count": count}, _Geometry(1e9, 1.0, 0.0, 0.0)), scale)
+    out = export_mod._add_geom_attrs(
+        _Feature({"count": count, "pixel_lon": 0.0, "pixel_lat": 0.0}, _Geometry(1e9, 1.0, 0.0, 0.0)), scale
+    )
     assert _value(out.props["n_pixels"]) == count
     assert _value(out.props["area_ha"]) == pytest.approx(area_ha, abs=1e-12)
 
@@ -157,6 +166,9 @@ class _List(list):
     def removeAll(self, other):  # noqa: N802 - mirrors the ee API
         return _List(x for x in self if x not in set(other))
 
+    def getInfo(self):  # noqa: N802 - the band names the angle pairs are read from (round 14)
+        return list(self)
+
 
 class _Reducer:
     def __init__(self, name: str):
@@ -169,6 +181,18 @@ class _Reducer:
     @staticmethod
     def mode():
         return _Reducer("mode")
+
+    @staticmethod
+    def countEvery():  # noqa: N802 - mirrors the ee API
+        return _Reducer("countEvery")
+
+    # The vectorisation's reducer since round 14 (countEvery combined with the mean of the pixel
+    # centres' coordinates); what it gives the polygons is tests/test_export_centroid_from_pixel_centres.py's.
+    def combine(self, reducer2, outputPrefix=None, sharedInputs=None):  # noqa: N803
+        return _Reducer(f"{self.name}+{reducer2.name}")
+
+    def forEach(self, outputNames):  # noqa: N802, N803 - mirrors the ee API
+        return _Reducer(f"{self.name}({','.join(outputNames)})")
 
 
 class _Filter:
@@ -192,6 +216,9 @@ class _Image:
         return self
 
     def rename(self, name):
+        return self
+
+    def addBands(self, other):  # noqa: N802 - mirrors the ee API
         return self
 
     def bandNames(self):  # noqa: N802 - mirrors the ee API
@@ -229,6 +256,9 @@ def test_every_builder_hands_add_geom_attrs_the_count_reducetovectors_gave(build
         Reducer = _Reducer
         Filter = _Filter
         Feature = staticmethod(lambda f: f)
+
+        class Image:  # noqa: N801 - stands in for ee.Image
+            pixelLonLat = staticmethod(_Image)  # noqa: N815 - mirrors the ee API
 
         @staticmethod
         def List(items):  # noqa: N802 - mirrors the ee API

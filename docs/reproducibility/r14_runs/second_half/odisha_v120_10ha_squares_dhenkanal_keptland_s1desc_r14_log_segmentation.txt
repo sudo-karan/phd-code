@@ -1,0 +1,32 @@
+2026-10-28 16:10:56 [INFO] fmu.utils.logging: Logging initialized; run dir: runs/odisha_v120_10ha_squares_dhenkanal_keptland_s1desc_r14_20261028_161056
+2026-10-28 16:10:56 [INFO] fmu.utils.logging: Log level: INFO
+2026-10-28 16:10:57 [INFO] fmu.pipeline: ============================================================
+2026-10-28 16:10:57 [INFO] fmu.pipeline: Pipeline run: odisha_v120_10ha_squares_dhenkanal_keptland_s1desc_r14
+2026-10-28 16:10:57 [INFO] fmu.pipeline: Stages: masking -> data_load -> features_optical -> features_radar -> features_structure -> segmentation
+2026-10-28 16:10:57 [INFO] fmu.pipeline: Run directory: runs/odisha_v120_10ha_squares_dhenkanal_keptland_s1desc_r14_20261028_161056
+2026-10-28 16:10:57 [INFO] fmu.pipeline: Cache layout: per_step (given to Pipeline())
+2026-10-28 16:10:57 [INFO] fmu.pipeline: ============================================================
+2026-10-28 16:10:57 [INFO] fmu.pipeline: stage: masking
+2026-10-28 16:11:03 [INFO] fmu.pipeline:   [cache] all 4 outputs hit; skipping stage run
+2026-10-28 16:11:06 [INFO] fmu.pipeline: stage masking done in 9.44 sec (from cache)
+2026-10-28 16:11:06 [INFO] fmu.pipeline: stage: data_load
+2026-10-28 16:11:11 [INFO] fmu.stages.data_load:   S2 phenology window: 174 images after cloud filter
+2026-10-28 16:11:11 [INFO] fmu.stages.data_load:   S1 radar window: 189 images after orbit/pol filter
+2026-10-28 16:11:13 [INFO] fmu.stages.data_load:   S2 composite window: 174 images after cloud filter
+2026-10-28 16:11:13 [INFO] fmu.pipeline: stage data_load done in 7.05 sec
+2026-10-28 16:11:13 [INFO] fmu.pipeline: stage: features_optical
+2026-10-28 16:11:15 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-28 16:11:16 [INFO] fmu.pipeline: stage features_optical done in 3.17 sec (from cache)
+2026-10-28 16:11:16 [INFO] fmu.pipeline: stage: features_radar
+2026-10-28 16:11:17 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-28 16:11:18 [INFO] fmu.pipeline: stage features_radar done in 2.06 sec (from cache)
+2026-10-28 16:11:18 [INFO] fmu.pipeline: stage: features_structure
+2026-10-28 16:11:20 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-28 16:11:20 [INFO] fmu.pipeline: stage features_structure done in 1.65 sec (from cache)
+2026-10-28 16:11:20 [INFO] fmu.pipeline: stage: segmentation
+2026-10-28 16:11:23 [INFO] fmu.pipeline:   [cache] all 2 outputs hit; skipping stage run
+2026-10-28 16:11:23 [INFO] fmu.pipeline: stage segmentation done in 3.07 sec (from cache)
+2026-10-28 16:11:23 [INFO] fmu.pipeline: ============================================================
+2026-10-28 16:11:23 [INFO] fmu.pipeline: Pipeline complete in 26.46 sec
+2026-10-28 16:11:23 [INFO] fmu.pipeline: ============================================================
+2026-10-28 16:11:25 [INFO] fmu.pipeline: Manifest written: runs/odisha_v120_10ha_squares_dhenkanal_keptland_s1desc_r14_20261028_161056/manifest.json

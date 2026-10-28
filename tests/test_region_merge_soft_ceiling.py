@@ -29,12 +29,24 @@ Four things are pinned here:
     before the setting existed (the file says how it was written, as
     tests/test_segmentation_off_golden.py does for segmentation). With the
     setting off, today's merge has to reproduce each one: the stands, their
-    attributes and provenance, and the diagnostics key for key. Five graphs
-    are the exception: review B18 (round 13) changed the merge on them, by
+    attributes and provenance, and the diagnostics key for key. 108 graphs are
+    the exception. Review B18 (round 13) changed the merge on five, by
     comparing its area bounds in whole pixels, and they are pinned to the
-    digests it gives since (`OFF_DIGESTS_SINCE_B18`). When B18 was made,
-    today's merge with the setting off gave on every graph what the merge at
-    363ea6d gives with B18's comparison put in it.
+    digests it gave (`OFF_DIGESTS_SINCE_B18`). When B18 was made, today's merge
+    with the setting off gave on every graph what the merge at 363ea6d gives
+    with B18's comparison put in it. Round 14 changed it on 67 (two of B18's
+    five among them), by breaking a tie in the shared-edge fallback by
+    centroid, not by SNIC label order (round 13 question 24), and they are
+    pinned to the digests it gave (`OFF_DIGESTS_SINCE_Q24`). When that was
+    made, today's merge with the setting off gave on every graph what the
+    merge at 363ea6d gives with B18's comparison and that tie rule put in it.
+    Round 14 changed it again on 42 (two more of B18's five and two of those
+    67 among them), by breaking pass 1's tie between two partners of one
+    region at the same distance by centroid too (round 14's question 2), and
+    they are pinned to the digests it gives since
+    (`OFF_DIGESTS_SINCE_PASS1_TIE`). When that was made, today's merge with
+    the setting off gave on every graph what the merge at 363ea6d gives with
+    B18's comparison and both tie rules put in it.
 """
 
 from __future__ import annotations
@@ -832,15 +844,152 @@ def off_digest(results: list[Any]) -> str:
 
 # The graphs on which review B18 (round 13: the merge's area bounds compared in whole
 # pixels, not on a float sum of two areas) changed what the merge does with the
-# setting off, and the digest each gives since. On no other graph did it change
-# anything: when B18 was made, today's merge with the setting off gave on every graph
-# what the merge at 363ea6d gives with only that comparison changed.
+# setting off, and the digest each gave. On no other graph did it change anything:
+# when B18 was made, today's merge with the setting off gave on every graph what the
+# merge at 363ea6d gives with only that comparison changed. "random 98" and "tight 98"
+# have moved again since (OFF_DIGESTS_SINCE_Q24), and "random 53" and "tight 53"
+# (OFF_DIGESTS_SINCE_PASS1_TIE).
 OFF_DIGESTS_SINCE_B18: dict[str, str] = {
     "random 3": "496dfacd5dd6a773",
     "random 53": "5b1179874670fff3",
     "random 98": "8c866d021b869719",
     "tight 53": "10ad930826bae6c7",
     "tight 98": "fb3e2f9386e8fc50",
+}
+
+# The graphs on which round 14 (round 13 question 24, answer (a): two neighbours
+# sharing boundaries of the same length in pass 2's shared-edge fallback are taken by
+# order_key, centroid first, not by the lower root index, which is SNIC label order)
+# changed what the merge does with the setting off, and the digest each gave: 32
+# random, 10 tight and 25 crowded graphs. On no other graph did it change anything:
+# when it was made, today's merge with the setting off gave on every graph what the
+# merge before it gives with only that tie rule changed, and what the merge at 363ea6d
+# gives with B18's comparison and that tie rule put in it. On each of these a tie there
+# was decided the other way; on 12 more one was, and every output came out the same.
+# "random 177" and "tight 81" have moved again since (OFF_DIGESTS_SINCE_PASS1_TIE).
+OFF_DIGESTS_SINCE_Q24: dict[str, str] = {
+    "random 6": "2e884bf72af47d97",
+    "random 19": "7c62ebd0661592dc",
+    "random 25": "61db597bf10f9626",
+    "random 26": "25f66abf38f3897e",
+    "random 54": "cfb5ee7e17deb856",
+    "random 76": "246d4599ce02cc0d",
+    "random 77": "d28c0dfe25386336",
+    "random 95": "911c54570acdebba",
+    "random 98": "f9a9317b66bef946",
+    "random 109": "f5c8be6dac8f183a",
+    "random 124": "4f05274b89249cb4",
+    "random 126": "ea62ffed82e4e0b8",
+    "random 157": "ae752d4cdec2310d",
+    "random 158": "78e1412cb314df91",
+    "random 168": "33c2c7c8b1504921",
+    "random 171": "db900b17bf7bd4e3",
+    "random 173": "872985812acdb0fc",
+    "random 177": "b00e48bfc2a4ae8d",
+    "random 183": "dc7bd4b641e0bdae",
+    "random 194": "50cd694e600e314b",
+    "random 211": "47f4043ac08565e1",
+    "random 214": "b0ebc08834197343",
+    "random 218": "c4c1f8de33fd39a8",
+    "random 226": "a06f9851af6d0524",
+    "random 228": "b1ef6cc8dbb72464",
+    "random 237": "63442cb4800429fa",
+    "random 241": "8e5ab33acf9a3354",
+    "random 251": "d74fef92b0184da4",
+    "random 253": "45ee3b4bdc75ffe1",
+    "random 264": "64d7f89bbee60515",
+    "random 270": "d1ff065c68721500",
+    "random 274": "258e5dd74393d821",
+    "tight 19": "57b1d4d8695fbfa0",
+    "tight 25": "de18fb1502e17521",
+    "tight 26": "25f66abf38f3897e",
+    "tight 54": "a0aca94aea7e5c2c",
+    "tight 59": "a4a3f0ed6e7b804d",
+    "tight 76": "246d4599ce02cc0d",
+    "tight 77": "239e9c15b1405f1f",
+    "tight 81": "f1da4a568878c9da",
+    "tight 95": "bd86c766a0a205e6",
+    "tight 98": "1674055238252ada",
+    "crowded 2": "49feb9d955845ea0",
+    "crowded 5": "9b6a743329e47c7d",
+    "crowded 8": "b3808f72684e0418",
+    "crowded 14": "11477f29e46e9d24",
+    "crowded 15": "466cd311e0d1c008",
+    "crowded 16": "2ac233a4cd952a2e",
+    "crowded 17": "499bc40f0d435ebe",
+    "crowded 19": "b075fce88389c774",
+    "crowded 23": "c9f4c6596a07d123",
+    "crowded 38": "2a94eca4f62ef3cc",
+    "crowded 54": "b819a7d76f461634",
+    "crowded 56": "d66a4830367e4c85",
+    "crowded 60": "5ae06ac6f153cfac",
+    "crowded 68": "f2fd39fa691a71b8",
+    "crowded 71": "b63e7a281eef2370",
+    "crowded 75": "969f671d0b07f807",
+    "crowded 76": "774c32915f40631c",
+    "crowded 78": "a577de1cd65cac04",
+    "crowded 79": "08bf8d5ddeccf883",
+    "crowded 81": "5af7e7934b371cc7",
+    "crowded 84": "2f708f22d47aa061",
+    "crowded 85": "5716b6effa00785f",
+    "crowded 91": "1e9fba9e16ef6315",
+    "crowded 92": "de5a0386ee0964ff",
+    "crowded 93": "c3d0f448c1ab9ad8",
+}
+
+# The graphs on which round 14 (Jaskaran's answer to round 14's question 2, 27 Oct 2026:
+# in pass 1, of two partners of one region at the same distance, the one order_key puts
+# first, centroid first, not the one with the lower dense index, which is SNIC label
+# order) changed what the merge does with the setting off, and the digest each gives
+# since: 33 random and 9 tight graphs. On no other graph did it change anything: when it
+# was made, today's merge with the setting off gave on every graph what the merge before
+# it gives with only that tie rule changed, and what the merge at 363ea6d gives with
+# B18's comparison and both tie rules put in it. On each of these a round of pass 1 chose
+# other merges under the new order than under the old; on 11 more one did, and every
+# output came out the same.
+OFF_DIGESTS_SINCE_PASS1_TIE: dict[str, str] = {
+    "random 0": "c9b6efa64243210b",
+    "random 17": "22389027fff198e4",
+    "random 23": "3629f8aa3af39568",
+    "random 28": "037d81b58f9fc35b",
+    "random 48": "d42f445cf416a263",
+    "random 53": "31023a3254712133",
+    "random 64": "1a185a5698ebb019",
+    "random 73": "db251e2504fc6921",
+    "random 79": "4d2d0f7010c31631",
+    "random 81": "6d980ea183f5a739",
+    "random 84": "b513739fd3489315",
+    "random 86": "1e6af07d2f038a03",
+    "random 100": "06f03f1038f261ec",
+    "random 110": "05e36ef1076b7eaf",
+    "random 122": "2573a258168067a9",
+    "random 128": "90e26d3eed65c9ae",
+    "random 130": "6f736fb20d835187",
+    "random 133": "03f4eb9500bc9a48",
+    "random 151": "95cbc82535f7065e",
+    "random 155": "50f5796dbe1e11ca",
+    "random 177": "6a9e7693ab2dac03",
+    "random 186": "8df6e00aa467ee56",
+    "random 203": "308cfd589adb3134",
+    "random 207": "1c4642dcbc8adfe8",
+    "random 225": "12c75ecba2c05a70",
+    "random 230": "f287879c36f9465b",
+    "random 233": "ccd2c1201936b386",
+    "random 238": "709cd59e870b86f8",
+    "random 239": "76712c60008aca0d",
+    "random 244": "fbe1617d98363025",
+    "random 259": "221a8921968964ad",
+    "random 288": "d924683a60bf2dc0",
+    "random 297": "6918649e7e279101",
+    "tight 0": "4c130ecfca4c2600",
+    "tight 28": "037d81b58f9fc35b",
+    "tight 48": "f5b8369bd1aa461b",
+    "tight 53": "64823f837205843b",
+    "tight 64": "1a185a5698ebb019",
+    "tight 79": "4d2d0f7010c31631",
+    "tight 81": "f040b543ce86dfb8",
+    "tight 84": "b8ad304a88eeb9f7",
+    "tight 86": "464fcfd3d3faae7c",
 }
 
 
@@ -866,17 +1015,22 @@ def test_with_the_setting_off_the_merge_is_the_one_before_the_setting(off_golden
     """Off, the merge must give on every graph, under both values of
     pass2_skip_at_min_area, exactly what it gave at the commit named in the
     fixture: the stands, their attributes and provenance, and the diagnostics,
-    key for key and in order. On the five graphs of `OFF_DIGESTS_SINCE_B18` it
-    must give what is pinned there."""
+    key for key and in order. On the 108 graphs of `OFF_DIGESTS_SINCE_B18`,
+    `OFF_DIGESTS_SINCE_Q24` and `OFF_DIGESTS_SINCE_PASS1_TIE` it must give what
+    is pinned there (the latest where two pin a graph)."""
     assert all(off_golden["digests"][n] != d for n, d in OFF_DIGESTS_SINCE_B18.items())
-    expected = {**off_golden["digests"], **OFF_DIGESTS_SINCE_B18}
+    since_b18 = {**off_golden["digests"], **OFF_DIGESTS_SINCE_B18}
+    assert all(since_b18[n] != d for n, d in OFF_DIGESTS_SINCE_Q24.items())
+    since_q24 = {**since_b18, **OFF_DIGESTS_SINCE_Q24}
+    assert all(since_q24[n] != d for n, d in OFF_DIGESTS_SINCE_PASS1_TIE.items())
+    expected = {**since_q24, **OFF_DIGESTS_SINCE_PASS1_TIE}
     changed = [run.name for run in runs if off_digest(run.off) != expected[run.name]]
     assert not changed, (
         f"with merge.pass2_soft_ceiling off, merge_superpixels no longer gives what it gave "
-        f"at {off_golden['made_from']['commit'][:7]} (or since review B18, where pinned) on "
-        f"{len(changed)} of {len(runs)} graphs ({changed[:10]}). Off has to change nothing; "
-        f"if this was meant, say so in the commit and pin the new digests, as "
-        f"OFF_DIGESTS_SINCE_B18 does."
+        f"at {off_golden['made_from']['commit'][:7]} (or since review B18 or round 14's "
+        f"two ties, where pinned) on {len(changed)} of {len(runs)} graphs "
+        f"({changed[:10]}). Off has to change nothing; if this was meant, say so in the "
+        f"commit and pin the new digests, as OFF_DIGESTS_SINCE_PASS1_TIE does."
     )
 
 

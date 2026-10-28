@@ -10,6 +10,8 @@ from typing import Any, Literal
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from fmu.utils.stand_table import KMEANS_STARTS
+
 
 class ROIConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -134,6 +136,13 @@ class FeaturesOpticalParams(BaseModel):
     # reason and accept that phase values become non-comparable to
     # configs using the default anchor.
     time_reference: date = Field(default_factory=lambda: date(2017, 1, 1))
+    # Round 14 (Task 2.3; review C9, round 13's question 31 (c)): `<index>_mean` as the fitted
+    # curve's mean over the dates window (dates.phenology, both days included), computed
+    # analytically, whatever time_reference is; for a whole number of years a + trend x the
+    # window's middle. False (the default, every run before round 14): the intercept, the
+    # trend line's value on time_reference. Left out of the fingerprint and the per-step keys
+    # while false (docs/decisions.yaml, spec-optical-mean-over-the-window).
+    mean_over_window: bool = False
 
 
 class FeaturesRadarParams(BaseModel):
@@ -466,6 +475,33 @@ class ClusteringParams(BaseModel):
     # existing config's cached assets; a config that sets it to true gets a new
     # fingerprint.
     fit_excludes_stands_below_min_area: bool = False
+    # Round 14 (Task 2.1; reviews A2 and B15): where k-means is fitted. False (the default,
+    # and every run before round 14): ee.Clusterer.wekaKMeans in Earth Engine, one start,
+    # which min-max normalises each band over its training rows. True: the stage reads its
+    # table of units back (one row per unit, as its preprocessing statistics take them), does
+    # the declared preprocessing there (median/IQR scaling with exact quartiles), and fits
+    # k-means with scikit-learn: k-means++, 25 starts from the seed, the start with the lowest
+    # within-cluster sum of squares kept; the stands left out of the fit get the nearest
+    # centre; each unit's type is written back to the image by its label. The best start's
+    # sum of squares and the starts' agreement (median and lowest pairwise adjusted Rand
+    # index) go into clustering_metadata (fmu.utils.stand_table). Needs normalization.method
+    # robust. Left out of the cache fingerprint and of the per-step keys while false, so no
+    # existing config's assets move; true moves the clustering and k_elbow keys
+    # (docs/decisions.yaml, spec-clustering-kmeans-outside-earth-engine).
+    fit_outside_earth_engine: bool = False
+    # Round 14 (Task 2.2; reviews A3, B12, round 13's question 8): which bands are logged, and
+    # how, before the scaling. "abs_skew" (the default, DEC-004 as built since round 13): a
+    # band whose |skew| is above skewness_threshold is logged as log(x - min + 0.001); the sin
+    # and cos of a harmonic phase are not skew-tested, aspect's are; each band is scaled by its
+    # own median and IQR. "right_skew": a band whose IQR is 0 is dropped as constant first;
+    # only a right-skewed band (skew above the threshold) is logged, as log1p((x - min) / IQR),
+    # min over every unit; a left-skewed band is not transformed; the sin and cos of an angle
+    # (a harmonic phase, aspect) are never skew-tested or logged, and each such pair is scaled
+    # with one shared spread (the root mean square of their IQRs), so the circle is not
+    # stretched; each band's skew is recorded before and after. "right_skew" is done off Earth
+    # Engine, so it needs fit_outside_earth_engine. Left out of the cache fingerprint and the
+    # per-step keys at its default (docs/decisions.yaml, spec-clustering-log-rule-right-skewed-bands).
+    log_rule: Literal["abs_skew", "right_skew"] = "abs_skew"
     # NOTE: `superpixel_max_size` used to live here as the `maxSize` argument to
     # reduceConnectedComponents. It is now DERIVED -- see
     # `Config.max_component_pixels()` -- because (a) the name stopped being true
@@ -777,6 +813,17 @@ class KElbowParams(BaseModel):
     k_max: int = Field(default=12, ge=3, le=50)
     seed: int = 42
     n_init: int = Field(default=25, ge=1)
+    # Round 14 (Task 2.4; review A7): the elbow in the fit's own space. False (the default):
+    # k-means on the clustering stage's cached scaled feature stack, re-sampled, with
+    # scikit-learn's KMeans (the step of round 9). True: the step reads the table of units as
+    # the clustering stage does with clustering.fit_outside_earth_engine on, preprocesses it by
+    # the same rule, and sweeps k on the rows of the fit with the fit's own starts (25 from the
+    # seed), recording the starts' agreement at each k; it needs neither the clustering stage nor
+    # its outputs. Needs clustering.fit_outside_earth_engine, seed equal to clustering.seed and
+    # n_init equal to the fit's 25 starts, so that at the config's k the elbow is the fit itself.
+    # Not in the legacy fingerprint (the block is not); left out of the per-step key while false
+    # (docs/decisions.yaml, spec-k-elbow-in-the-fits-space).
+    in_fit_space: bool = False
 
     @model_validator(mode="after")
     def _range_has_three_points(self) -> KElbowParams:
@@ -792,10 +839,12 @@ class KElbowParams(BaseModel):
 
 # Read by nothing (review C20): which feature stages run is set by
 # clustering.feature_source, segmentation.input_bands and merge.criteria, and a
-# toggle set to false changes no stage and no per-step key. The legacy
-# fingerprint hashes the block, so a false moves it, and removing the block, or
-# a toggle, would move every legacy fingerprint, the 14 pinned _repro ones among
-# them.
+# toggle set to false changed no stage and no per-step key, only the legacy
+# fingerprint. Since round 14 a false is refused when the config loads, with a
+# message naming those three settings (round 13 question 37 (a)), so no toggle
+# can seem to have switched a feature family off. The block stays, all true: the
+# legacy fingerprint hashes it, and removing the block, or a toggle, would move
+# every legacy fingerprint, the 14 pinned _repro ones among them.
 class FeatureToggles(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -803,6 +852,22 @@ class FeatureToggles(BaseModel):
     radar: bool = True
     canopy_height: bool = True
     terrain: bool = True
+
+    @model_validator(mode="after")
+    def _no_toggle_is_false(self) -> FeatureToggles:
+        off = [name for name in type(self).model_fields if getattr(self, name) is False]
+        if off:
+            raise ValueError(
+                f"{', '.join(f'features.{name}' for name in off)} "
+                f"{'is' if len(off) == 1 else 'are'} false, but nothing reads the features "
+                "toggles, so a false would switch nothing off. Which feature stages run is "
+                "chosen by clustering.feature_source (the hand-crafted features or the "
+                "embedding), segmentation.input_bands (the bands SNIC segments on) and "
+                "merge.criteria (the bands the merge compares), and the features_* blocks set "
+                "what each of those stages computes. Set those, and leave the toggles true or "
+                "out of the config (round 13 question 37)."
+            )
+        return self
 
 
 class ExportParams(BaseModel):
@@ -1102,6 +1167,43 @@ class Config(BaseModel):
                 "clustering.fit_excludes_stands_below_min_area needs merge.enabled: "
                 "without the merge there are no stands, and nothing marks a stand "
                 "as below merge.min_area_ha."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _elbow_in_the_fits_space_needs_that_fit(self) -> Config:
+        if not self.k_elbow.in_fit_space:
+            return self
+        if not self.clustering.fit_outside_earth_engine:
+            raise ValueError(
+                "k_elbow.in_fit_space needs clustering.fit_outside_earth_engine: the fit's own "
+                "space is that of the fit off Earth Engine (fmu.utils.stand_table)."
+            )
+        if self.k_elbow.seed != self.clustering.seed or self.k_elbow.n_init != KMEANS_STARTS:
+            raise ValueError(
+                f"k_elbow.in_fit_space needs k_elbow.seed equal to clustering.seed "
+                f"({self.clustering.seed}) and k_elbow.n_init equal to the fit's {KMEANS_STARTS} "
+                f"starts, so that at the config's k the elbow is the fit itself; it has seed "
+                f"{self.k_elbow.seed} and n_init {self.k_elbow.n_init}."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _right_skew_rule_needs_the_fit_outside_earth_engine(self) -> Config:
+        if self.clustering.log_rule == "right_skew" and not self.clustering.fit_outside_earth_engine:
+            raise ValueError(
+                "clustering.log_rule right_skew needs clustering.fit_outside_earth_engine: the "
+                "rule is applied to the table of units off Earth Engine (fmu.utils.stand_table)."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _fit_outside_earth_engine_needs_robust_scaling(self) -> Config:
+        if self.clustering.fit_outside_earth_engine and self.normalization.method != "robust":
+            raise ValueError(
+                "clustering.fit_outside_earth_engine needs normalization.method robust: the "
+                "preprocessing done off Earth Engine is the declared one, median/IQR scaling "
+                "with exact quartiles (fmu.utils.stand_table)."
             )
         return self
 

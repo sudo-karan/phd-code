@@ -95,10 +95,14 @@ log = get_logger(__name__)
 # pixelLonLat()'s band names. Carried through the attribute reduction so stand
 # centroids come free, and used as the merge's deterministic tie-break: the two
 # arms' tessellations diverge run to run, so SNIC label order is not a stable
-# thing to sort by, but a centroid is. One tie does not use them (review C12,
-# 20 Oct 2026): two neighbours sharing equally long boundaries in the pass-2
-# shared-edge fallback go to the lower root index, which is SNIC label order
-# (`order_key` in fmu.utils.region_merge).
+# thing to sort by, but a centroid is. Since round 14 (26 Oct 2026; round 13
+# question 24) that includes two neighbours sharing equally long boundaries in
+# the pass-2 shared-edge fallback, which until then went to the lower root
+# index, SNIC label order (review C12; `order_key` in fmu.utils.region_merge),
+# and since 27 Oct 2026 (round 14's question 2) two partners of one region at
+# the same distance in pass 1, which until then, when that region came first by
+# `order_key` in both pairs, went to the partner with the lower dense index:
+# every tie of the merge is broken by centroid.
 _LON_BAND = "longitude"
 _LAT_BAND = "latitude"
 
@@ -262,9 +266,24 @@ class MergeStage(Stage):
         # they are reduced over with the cap, by metrics, which is where a
         # violation would actually bite. (clustering did too until round 13,
         # when its unit means stopped calling reduceConnectedComponents.)
+        #
+        # Every count the merge takes on Earth Engine (this check, the graph's
+        # histograms, the kept-land sums and the attribute reductions) is taken on
+        # the SNIC label image's own projection, transform included, with no scale
+        # (round 14: given a CRS name and a scale, Earth Engine built another grid,
+        # and the live check stopped here). The graph's histograms and the
+        # attribute reductions are unweighted, so they count the same pixels, those
+        # whose centre is in the ROI; this check and the kept-land sums are
+        # weighted, an edge pixel counted by its share inside the ROI, so their
+        # totals can differ from the label histogram's at the edge.
         max_component_px = config.max_component_pixels()
         assert_components_fit(
-            snic_clusters, roi, scale, max_component_px, context="merge input"
+            snic_clusters,
+            roi,
+            scale,
+            max_component_px,
+            context="merge input",
+            crs=snic_clusters.projection(),
         )
 
         graph = extract_superpixel_graph(

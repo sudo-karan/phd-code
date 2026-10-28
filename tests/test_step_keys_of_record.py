@@ -131,7 +131,9 @@ def test_the_records_of_the_per_step_runs_are_all_found():
 
 @pytest.mark.parametrize("record", RUN_RECORDS, ids=lambda p: p.stem)
 def test_a_config_still_has_the_step_keys_its_run_recorded(record: Path, monkeypatch):
-    monkeypatch.chdir(REPO)  # the ROI file is read from the working directory (review C40)
+    # Not needed since round 14: the ROI file is read from the checkout root, whatever the
+    # working directory (round 13 question 41; until then it was read from it, review C40).
+    monkeypatch.chdir(REPO)
     rec = json.loads(record.read_text())
     assert rec["cache_layout"] == "per_step"
     cfg = load_config(CONFIGS / f"{rec['config']}.yaml")
@@ -190,12 +192,11 @@ HASHED_BLOCKS = _hashed_blocks()
 
 
 def _list(monkeypatch, block: str, field: str, default: Any) -> None:
-    """List a field the way a new setting is to be listed: in both tables."""
+    """List a field the way a new setting is to be listed: in both tables, beside the
+    fields listed there already (round 14 listed the first ones)."""
     if "." not in block:
         monkeypatch.setitem(caching._OMITTED_AT_DEFAULT, (block, field), default)
-    monkeypatch.setattr(
-        caching, "_STEP_OMITTED_AT_DEFAULT", {(block, field): default}, raising=False
-    )
+    monkeypatch.setitem(caching._STEP_OMITTED_AT_DEFAULT, (block, field), default)
 
 
 def test_the_blocks_tried_are_the_hashed_ones():
@@ -264,8 +265,22 @@ def test_an_unlisted_field_still_moves_the_keys(monkeypatch):
     assert {s for s in keys if keys[s] != added[s]} == {"merge", "clustering", "k_elbow"}
 
 
-def test_the_table_is_empty_so_no_key_has_moved():
-    assert caching._STEP_OMITTED_AT_DEFAULT == {}
+def test_the_table_lists_round_14s_settings_at_their_model_defaults():
+    """Empty until round 14 (review B11). Each field listed since is a setting added to a
+    hashed block, off by default; its default in the table is the model's own, so a config
+    that leaves it off hashes as before (the record tests above pin that the keys of
+    record do not move)."""
+    from fmu.config import Config
+
+    assert caching._STEP_OMITTED_AT_DEFAULT
+    fields = Config.model_fields
+    for (block, field), default in caching._STEP_OMITTED_AT_DEFAULT.items():
+        model: Any = Config
+        for part in block.split("."):
+            model = model.model_fields[part].annotation
+        assert field in model.model_fields, (block, field)
+        assert model.model_fields[field].default == default, (block, field)
+    assert fields  # the model is the one the configs load
 
 
 # ---------------------------------------------------------------------
@@ -316,6 +331,73 @@ def test_a_revision_of_clustering_moves_the_elbow_too(monkeypatch):
     other.clustering.k = 7
     b = step_keys(other)
     assert {s for s in a if a[s] != b[s]} == {"clustering"}
+
+
+def test_a_revision_of_the_merge_moves_clustering_and_the_elbow_too(monkeypatch):
+    """With the merge on, clustering and k_elbow read the merge's stands, so a change to
+    what the merge computes moves their keys with the merge's, and no other key."""
+    monkeypatch.chdir(REPO)
+    for path in (HANDCRAFTED, ALPHAEARTH):
+        cfg = load_config(path)
+        assert _moved_by(cfg, {"merge": 1}, monkeypatch) == {"merge", "clustering", "k_elbow"}
+
+
+ALL_CONFIGS = sorted([*CONFIGS.glob("*.yaml"), *(CONFIGS / "experiments").glob("*.yaml")])
+
+
+def test_the_merge_at_revision_3_moves_the_merge_clustering_and_elbow_keys_of_every_config(
+    monkeypatch,
+):
+    """Round 14 (round 13 question 24, answer (a); register entry
+    spec-merge-fallback-tie-by-centroid): the shared-edge fallback's tie broken by
+    centroid raised the merge from revision 2 to 3. Against the keys at revision 2 that
+    moves the merge, clustering and k_elbow keys of a config with the merge on, which
+    all 74 configs had when it was made, and no other key; the legacy fingerprint has
+    no revision. (With the merge off, clustering reads the superpixels, and only the
+    merge's own key, which no stage then reads, would move.)"""
+    monkeypatch.chdir(REPO)
+    revision = caching.STEP_REVISION["merge"]
+    assert revision >= 3
+    assert len(ALL_CONFIGS) >= 74
+    for path in ALL_CONFIGS:
+        cfg = load_config(path)
+        now, fingerprint = step_keys(cfg), config_fingerprint(cfg)
+        monkeypatch.setitem(caching.STEP_REVISION, "merge", 2)
+        at_2, fingerprint_at_2 = step_keys(cfg), config_fingerprint(cfg)
+        monkeypatch.setitem(caching.STEP_REVISION, "merge", revision)
+        moves = {"merge", "clustering", "k_elbow"} if cfg.merge.enabled else {"merge"}
+        assert {s for s in now if now[s] != at_2[s]} == moves, path
+        assert fingerprint == fingerprint_at_2, path
+
+
+def test_the_merge_at_revision_4_moves_the_merge_clustering_and_elbow_keys_of_every_config(
+    monkeypatch,
+):
+    """Round 14 (27 Oct 2026; Jaskaran's answers to round 14's questions 11 and 2; register
+    entries spec-merge-pixel-counts-on-one-inclusion-rule and spec-merge-every-tie-by-centroid):
+    every count of the merge taken on the label image's own projection, and pass 1's tie broken
+    by centroid, raised the merge from revision 3 to 4, once for both. Against the keys at
+    revision 3 that moves the merge, clustering and k_elbow keys of a config with the merge on,
+    which all 95 configs had when it was made, and no other key: not profiling's or export's,
+    which hash the legacy blocks and read no other step's key; the legacy fingerprint has no
+    revision."""
+    monkeypatch.chdir(REPO)
+    revision = caching.STEP_REVISION["merge"]
+    assert revision >= 4
+    assert len(ALL_CONFIGS) >= 95
+
+    def keys(cfg: Any) -> dict[str, str]:
+        return {**step_keys(cfg), **{s: step_key(cfg, s) for s in ("profiling", "export")}}
+
+    for path in ALL_CONFIGS:
+        cfg = load_config(path)
+        now, fingerprint = keys(cfg), config_fingerprint(cfg)
+        monkeypatch.setitem(caching.STEP_REVISION, "merge", 3)
+        at_3, fingerprint_at_3 = keys(cfg), config_fingerprint(cfg)
+        monkeypatch.setitem(caching.STEP_REVISION, "merge", revision)
+        moves = {"merge", "clustering", "k_elbow"} if cfg.merge.enabled else {"merge"}
+        assert {s for s in now if now[s] != at_3[s]} == moves, path
+        assert fingerprint == fingerprint_at_3, path
 
 
 def test_each_raise_gives_a_new_key_and_revision_zero_is_no_revision(monkeypatch):

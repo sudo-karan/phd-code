@@ -12,7 +12,11 @@ Pass 1 -- merge homogeneous neighbours, iterating to convergence:
     exceeds its tolerance. This is Xiong's design and it keeps thresholds
     interpretable in physical units;
   - eligible pairs merge in ascending `d = sum (|delta| / tol)^2`, skipping any
-    region already merged this round.
+    region already merged this round; pairs at the same `d` in the order
+    `order_key` gives their two regions, centroid first, so of two partners of
+    one region at the same distance the one whose centroid comes first is taken
+    (round 14; until then, when that region came first by `order_key` in both
+    pairs, the one with the lower dense index, SNIC label order).
 
 Pass 2 -- eliminate undersized regions, smallest first:
   - each sweep lists the undersized regions once and takes them in turn. A
@@ -340,14 +344,33 @@ def merge_superpixels(
         What the code does, recorded 20 Oct 2026 (review C12): the dense index
         is the rank of the root superpixel's SNIC label (`fmu.utils.adjacency`
         numbers the sorted labels 0 to n - 1), so where two centroids agree to
-        7 decimals this key falls back on SNIC label order. And the shared-edge
-        fallback of `pass2_partner` does not use this key: a tie there, two
-        neighbours sharing boundaries of the same length, goes to the lower
-        root index, which is SNIC label order
-        (tests/test_region_merge.py::test_a_fallback_tie_goes_to_the_lower_root_index_the_snic_label_order).
-        The register entry spec-merge-runs-client-side-uncached says ties are
-        broken by centroid; whether the code or the entry is to change is a
-        question for Jaskaran.
+        7 decimals this key falls back on SNIC label order.
+
+        The shared-edge fallback of `pass2_partner` breaks its ties by this key
+        since round 14 (26 Oct 2026; round 13 question 24, answer (a); register
+        entry spec-merge-fallback-tie-by-centroid): of two neighbours sharing
+        boundaries of the same length it takes the one this key puts first, so
+        that tie no longer depends on how SNIC numbered the superpixels
+        (tests/test_region_merge.py::test_a_fallback_tie_goes_by_centroid_however_the_ground_is_labelled).
+        Until then a tie there went to the lower root index, which is SNIC label
+        order, where the register entry spec-merge-runs-client-side-uncached
+        says ties are broken by centroid (review C12).
+
+        Pass 1 breaks a tie in `d` by this key of the pair's two regions since
+        round 14 (27 Oct 2026; Jaskaran's answer to round 14's question 2;
+        register entry spec-merge-every-tie-by-centroid): of two partners of one
+        region at the same distance it takes the one this key puts first
+        (tests/test_region_merge.py::test_a_pass_1_tie_goes_by_centroid_however_the_ground_is_labelled).
+        Until then, when that region came first in both pairs, the tie went by
+        the two regions' dense indices, so to the partner with the lower one, SNIC
+        label order (when it came second in either pair, the centroids already
+        decided). Every tie of the merge is
+        now broken by this key, centroid first: pass 1's partner and the root a
+        pass-1 merge keeps, pass 2's order of the regions below the minimum, its
+        closest relaxed match and its shared-edge fallback, and the numbering of
+        the stands. The root a pass-2 merge keeps is not such a tie: it is the
+        larger region's, and of two of the same size the partner's, whatever the
+        labels, and it decides whose turn in the sweep the merged region keeps.
         """
         lon, lat = regions[root].centroid()
         return (round(lon, 7), round(lat, 7), root)
@@ -401,7 +424,9 @@ def merge_superpixels(
     pass1_blocked_by_area = 0
     pass1_blocked_by_undefined = 0
     while True:
-        candidates: list[tuple[float, tuple[float, float, int], int, int]] = []
+        candidates: list[
+            tuple[float, tuple[float, float, int], tuple[float, float, int], int, int]
+        ] = []
         blocked_area = 0
         blocked_undefined = 0
         for i, j in graph.edges:
@@ -417,7 +442,11 @@ def merge_superpixels(
                     blocked_undefined += 1
                 continue
             lo, hi = (a, b) if order_key(a) <= order_key(b) else (b, a)
-            candidates.append((d, order_key(lo), lo, hi))
+            # Sorted by d, then by order_key of both regions: of two partners of one
+            # region at the same distance, the one whose centroid comes first (round
+            # 14). Until then the third element was lo and the fourth hi, so the tie
+            # went to the partner with the lower dense index, SNIC label order.
+            candidates.append((d, order_key(lo), order_key(hi), lo, hi))
         if pass1_rounds == 0:
             pass1_blocked_by_area = blocked_area
             pass1_blocked_by_undefined = blocked_undefined
@@ -427,7 +456,7 @@ def merge_superpixels(
         candidates.sort()
         touched: set[int] = set()
         merged_this_round = 0
-        for _d, _key, a, b in candidates:
+        for _d, _key_lo, _key_hi, a, b in candidates:
             if a in touched or b in touched:
                 continue
             ra, rb = uf.find(a), uf.find(b)
@@ -540,10 +569,13 @@ def merge_superpixels(
         Otherwise `over` is empty and this is the rule of every earlier run:
         steps 1 and 3 over the fitting neighbours. Closest is `d` under the
         relaxed tolerances, ties broken by order_key; the longest boundary is
-        the fallback, ties broken by the lower root index: SNIC label order,
-        not the centroid order_key gives (review C12; see order_key). This order
-        of choice is this pipeline's own, not Xiong's eliminating rule, which
-        takes its conditions one at a time (the module docstring; review C62).
+        the fallback, ties broken by order_key too, centroid first, in steps 3
+        and 4 alike. Before round 14 (26 Oct 2026; round 13 question 24,
+        register entry spec-merge-fallback-tie-by-centroid) a tie in the
+        fallback went to the lower root index, which is SNIC label order
+        (review C12; see order_key). This order of choice is this pipeline's
+        own, not Xiong's eliminating rule, which takes its conditions one at a
+        time (the module docstring; review C62).
         """
         soft = pass2_soft_ceiling and area(r) < min_area_ha
         fitting: list[int] = []
@@ -564,8 +596,8 @@ def merge_superpixels(
                 return scored[0][2], False, over_max
         for candidates, over_max in ((fitting, False), (over, True)):
             if candidates:
-                partner = max(
-                    candidates, key=lambda nb: (shared_edge(r, nb), -order_key(nb)[2])
+                partner = min(
+                    candidates, key=lambda nb: (-shared_edge(r, nb), order_key(nb))
                 )
                 return partner, True, over_max
         return None
@@ -589,7 +621,11 @@ def merge_superpixels(
                 continue  # area-blocked; reported below
             partner, used_fallback, over_max = chosen
             # Merge the smaller region into the larger, so the surviving root is
-            # the one with more evidence behind its attributes.
+            # the one with more evidence behind its attributes. Of two of the same
+            # size the partner's root survives, whatever the labels, so the merged
+            # region keeps the partner's turn in this sweep (a region whose root is
+            # gone is skipped when its turn comes); kept so in round 14, when every
+            # tie was put on order_key, as it is no tie decided by label order.
             keep, gone = (
                 (partner, r)
                 if regions[partner].n_pixels >= regions[r].n_pixels

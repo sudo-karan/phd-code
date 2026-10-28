@@ -39,12 +39,12 @@ import re
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Literal
 
 import ee
+from googleapiclient.errors import HttpError
 
-from fmu.utils.gee import asset_path
+from fmu.utils.gee import asset_path, read_roi_file
 from fmu.utils.logging import get_logger
 
 log = get_logger(__name__)
@@ -109,6 +109,12 @@ _OMITTED_AT_DEFAULT: dict[tuple[str, str], Any] = {
     ("segmentation", "drop_kept_patches_below_min_area"): False,
     ("clustering", "fit_excludes_stands_below_min_area"): False,
     ("features_static", "cap_distance_to_water"): False,
+    # Round 14, Task 2.1 (spec-clustering-kmeans-outside-earth-engine).
+    ("clustering", "fit_outside_earth_engine"): False,
+    # Round 14, Task 2.2 (spec-clustering-log-rule-right-skewed-bands).
+    ("clustering", "log_rule"): "abs_skew",
+    # Round 14, Task 2.3 (spec-optical-mean-over-the-window).
+    ("features_optical", "mean_over_window"): False,
 }
 
 
@@ -179,48 +185,67 @@ def cached_asset_path(
     return asset_path(key, subdir=f"{config_name}/{stage_name}")
 
 
+def _http_status(error: BaseException) -> int | None:
+    """The HTTP status of the googleapiclient HttpError behind `error`, or None if there is none.
+
+    Follows the error's chain to the nearest HttpError, taking at each link its
+    `__cause__` if set and its `__context__` otherwise, as a traceback does.
+    earthengine-api raises its EEException inside `except HttpError` without
+    `from` (1.7.35: `ee.data._execute_cloud_call`), so the HttpError is on
+    `__context__`; a client that raises `from` it puts it on `__cause__`, and an
+    EEException wrapped again (`fmu.utils.gee.safe_call`) has it a link further
+    down. An HttpError with no readable status gives None.
+    """
+    seen: set[int] = set()
+    link = error.__cause__ or error.__context__
+    while link is not None and id(link) not in seen:
+        seen.add(id(link))
+        if isinstance(link, HttpError):
+            status = getattr(getattr(link, "resp", None), "status", None)
+            try:
+                return int(status) if status is not None else None
+            except (TypeError, ValueError):
+                return None
+        link = link.__cause__ or link.__context__
+    return None
+
+
 def asset_exists(path: str) -> bool:
-    """True if the given GEE asset path exists and is readable.
+    """True if the given GEE asset path exists and is readable, False if it is not there.
 
-    Distinguishes "not found" (returns False) from permission errors and
-    other failures (re-raises). Tries the underlying HTTP status first
-    (most reliable across GEE client versions); falls back to string-
-    matching the EE error message for older versions where the wrapped
-    cause is unreachable.
+    When `ee.data.getAsset` fails, the HTTP status of the googleapiclient
+    HttpError behind its EEException decides (`_http_status`, which finds it on
+    `__cause__` or `__context__`): 404 is a missing asset, False; any other
+    status (401, 403, 429, 5xx, ...) is raised, so a refused or failed request
+    is not read as a cache miss. Only an error with no HttpError behind it is
+    judged by its message, as before: one whose text contains "not found",
+    "does not exist" or "404" is False, any other is raised.
 
-    What it does with earthengine-api 1.7.35, the version every manifest
-    records (review C41; this docstring corrected in round 13): `ee.data`
-    raises its EEException inside `except HttpError` without `from`, so
-    `__cause__` is None (the HttpError is on `__context__`) and the status
-    branch below never runs. Every answer comes from the message: an error
-    whose text contains "not found", "does not exist" or "404" returns False,
-    among them a 403 that says "does not exist or doesn't allow this
-    operation" and a 500 whose request id holds "404"; any other error, a
-    plain 403 "Permission denied" or a 401 for example, is raised. A wrong
-    False leads to a recompute whose export then fails, or to the pass
-    runner's exit 3; it cannot make a stale asset be read.
+    Round 14 (round 13 question 42, review C41). Until then only `__cause__` was
+    looked at, and earthengine-api 1.7.35, the version every manifest records,
+    raises its EEException without `from`, so the status was never read and
+    every answer came from the text: a 403 that says "does not exist or doesn't
+    allow this operation" and a 500 whose request id holds "404" read as missing.
+    A wrong False led to a recompute whose export failed, or to the pass runner's
+    exit 3; it could not make a stale asset be read.
     """
     try:
         ee.data.getAsset(path)
         return True
     except ee.EEException as e:
-        # Prefer the underlying HttpError status when available; GEE's
-        # Python client wraps googleapiclient HttpError into EEException,
-        # and the cause's response status is more reliable than message
-        # text. With earthengine-api 1.7.35 __cause__ is None, so this branch
-        # is not reached (review C41; see the docstring).
-        cause = getattr(e, "__cause__", None)
-        if cause is not None:
-            status = getattr(getattr(cause, "resp", None), "status", None)
-            if status == 404:
-                return False
-            if status in (401, 403):
-                # Permission issue; propagate so the user fixes it.
-                raise
+        # The status of the HttpError behind the error decides when there is one:
+        # earthengine-api leaves it on __context__ (it raises without `from`), a
+        # client that chains with `from` on __cause__ (review C41, round 14).
+        status = _http_status(e)
+        if status == 404:
+            return False
+        if status is not None:
+            # Refused (401, 403) or failed (429, 5xx, ...): not a missing asset.
+            raise
 
-        # Fallback: match the message text. GEE's "not found" / "does not
-        # exist" / "404" phrasing has been stable across the versions we
-        # support, but it's not formally guaranteed.
+        # No HttpError behind it: match the message text, as before round 14.
+        # GEE's "not found" / "does not exist" / "404" phrasing has been stable
+        # across the versions we support, but it's not formally guaranteed.
         msg = str(e).lower()
         if "not found" in msg or "does not exist" in msg or "404" in msg:
             return False
@@ -416,7 +441,10 @@ _EVERY_STEP: tuple[str, ...] = ("roi", "export.analysis_scale_m")
 # A setting missing here would leave a step's key unchanged when it changes:
 # the stale-cache bug the fingerprint was made to prevent, for one step.
 # tests/test_cache_layout.py reads each stage's module and fails on any config
-# setting it reads that is not listed for it (or for the steps upstream of it).
+# setting it reads that is not listed for it, or for a step upstream of it in every
+# config (since round 14: data_load for features_optical, whose window mean reads
+# dates.phenology, the window data_load filters by; until then the comment said so of
+# every upstream step, and the test credited none).
 # The k_elbow step reads the clustering settings but `k`: what the elbow is
 # computed for does not depend on the k a config fits, so a config's elbow is
 # computed once and found again whatever its k (a test checks this list holds
@@ -461,6 +489,8 @@ STEP_SETTINGS: dict[str, tuple[str, ...]] = {
         "clustering.seed", "clustering.feature_source", "clustering.skewness_threshold",
         "clustering.fit_excludes_stands_below_min_area", "normalization", "merge.enabled",
         "merge.max_area_ha", "merge.min_area_ha", "merge.pass2_soft_ceiling", "k_elbow",
+        # Round 14, each left out at its default (_STEP_OMITTED_AT_DEFAULT).
+        "clustering.fit_outside_earth_engine", "clustering.log_rule",
     ),
 }
 
@@ -473,9 +503,22 @@ STEP_SETTINGS: dict[str, tuple[str, ...]] = {
 # no longer be found by name. A field listed here is left out of the hash while it
 # holds its default, which must be the behaviour the saved assets were made with;
 # any other value is hashed. A field added to a block both layouts hash goes in
-# both tables. Empty: no field has been added since round 9, so no key moves;
-# tests/test_step_keys_of_record.py pins the keys the runs recorded.
-_STEP_OMITTED_AT_DEFAULT: dict[tuple[str, str], Any] = {}
+# both tables. Empty until round 14; its settings, each off by default, are listed
+# here, so no key of a config that leaves them off moves;
+# tests/test_step_keys_of_record.py pins the keys the runs recorded. The steps that
+# STEP_SETTINGS does not list (profiling, export) hash the legacy blocks
+# (_legacy_payload), which leave these fields out at their defaults too.
+_STEP_OMITTED_AT_DEFAULT: dict[tuple[str, str], Any] = {
+    # Round 14, Task 2.1 (spec-clustering-kmeans-outside-earth-engine).
+    ("clustering", "fit_outside_earth_engine"): False,
+    # Round 14, Task 2.2 (spec-clustering-log-rule-right-skewed-bands).
+    ("clustering", "log_rule"): "abs_skew",
+    # Round 14, Task 2.3 (spec-optical-mean-over-the-window).
+    ("features_optical", "mean_over_window"): False,
+    # Round 14, Task 2.4 (spec-k-elbow-in-the-fits-space); the k_elbow block is not in the
+    # legacy fingerprint, so this table only.
+    ("k_elbow", "in_fit_space"): False,
+}
 
 # A step's revision, raised when what the step computes changes for configs whose
 # settings do not (round 13): its key, and through `step_upstream` the key of every
@@ -494,10 +537,15 @@ STEP_REVISION: dict[str, int] = {
     # phase's sin and cos are kept out of the skew test and the log. 3, B14: one mean
     # per unit label, not per connected piece. 4, B16: the robust scaling's median and
     # IQR are exact quartiles, for the constant-band test as for the scaling.
-    "clustering": 4,
+    # Round 14. 5, round 13's question 35: the units without a row are counted by
+    # cause in clustering_metadata (no habitat pixel centre in the ROI, a band gap).
+    "clustering": 5,
     # Round 13: 1, B17, the superpixel pixel counts on one inclusion rule;
-    # 2, B18, the area bounds compared in whole pixels.
-    "merge": 2,
+    # 2, B18, the area bounds compared in whole pixels. Round 14: 3, round 13
+    # question 24, a tie in pass 2's shared-edge fallback broken by centroid;
+    # 4, round 14's questions 11 and 2 together, every count of the merge on the
+    # label image's own projection and pass 1's tie broken by centroid.
+    "merge": 4,
 }
 
 # Steps that read another step's output without having it upstream, and so take
@@ -576,25 +624,25 @@ def _setting(dumped: dict[str, Any], path: str) -> Any:
 def _roi_file_sha256(config: Any) -> str | None:
     """SHA-256 of the ROI file, so that a changed outline changes every key.
 
-    The legacy fingerprint hashes the ROI file's path only. None when the file
-    cannot be read (an ROI given as an asset, or a test config whose file does
-    not exist).
+    The legacy fingerprint hashes the ROI file's path only. None for a ROI given
+    as an asset (`roi.roi_asset`), which has no file.
 
-    The path is read as the config gives it, relative to the working directory,
-    and any error reading it gives None, with no warning (review C40; this
-    docstring corrected in round 13). So from a directory where a config's
-    relative path does not resolve, every per-step key changes while the legacy
-    fingerprint does not. Every entry point then fails safe, with a misleading
-    reason: the ROI loader raises, or the pass runner reports every upstream
-    asset as missing (exit 3). Run from the repo root or the run tree's root.
+    The file is read by `fmu.utils.gee.read_roi_file`, the reader the ROI loader
+    uses too, so the keys hash the file the run's geometry is made from: an
+    absolute path as it is, a relative one from the root of the checkout the fmu
+    package was imported from (in a batch, the run tree), never the working
+    directory. A file that cannot be read raises an OSError that names the path as
+    given, the path it resolved to and the root. It is read at every call, not
+    remembered. (Round 14, round 13 question 41. Until then the path was read
+    relative to the working directory, and a file that could not be read hashed
+    as None, with no warning: from a folder where the path did not resolve every
+    per-step key changed while the legacy fingerprint did not, and the pass
+    runner reported every upstream asset as missing, exit 3; review C40.)
     """
     roi_file = getattr(config.roi, "roi_file", None)
     if roi_file is None:
         return None
-    try:
-        return hashlib.sha256(Path(roi_file).read_bytes()).hexdigest()
-    except OSError:
-        return None
+    return hashlib.sha256(read_roi_file(roi_file)).hexdigest()
 
 
 def step_key(config: Any, step: str) -> str:
@@ -602,14 +650,17 @@ def step_key(config: Any, step: str) -> str:
 
     A hash of the settings `STEP_SETTINGS` lists for the step, the ones every
     step depends on (the ROI and the analysis scale), the ROI file's content (read
-    from the working directory, see `_roi_file_sha256`), and the keys of the steps
+    from the checkout root, whatever the working directory, and raising for a file
+    that cannot be read; see `_roi_file_sha256`), and the keys of the steps
     upstream of it. The config's name, description, export
     plumbing and metrics are in none of them, so two configs that differ only in
     name have the same keys.
 
     A stage that is not one of the pipeline's (a test's, say) has no entry in
     `STEP_SETTINGS`; its key then covers every block the legacy fingerprint
-    covers, which can only over-invalidate.
+    covers, and follows no step's revision and no upstream key, so it is safe
+    only while the stage caches nothing (profiling and export cache nothing, and
+    tests/test_cache_layout.py fails if a cached stage has no entry).
     """
     dumped = config.model_dump(mode="json")
     return _step_key(config, dumped, step, {})
@@ -663,8 +714,17 @@ def _step_key(config: Any, dumped: dict[str, Any], step: str, memo: dict[str, st
 
 
 def _legacy_payload(config: Any) -> dict[str, Any]:
+    """The blocks the legacy fingerprint hashes, as the key of a step STEP_SETTINGS does not
+    list (profiling, export). The fields added since round 14 (_STEP_OMITTED_AT_DEFAULT, top-level
+    blocks) are left out while they hold their defaults, so that those keys of the runs of record
+    do not move; the fields of _OMITTED_AT_DEFAULT before round 14 stay in, as those keys were
+    recorded with them."""
     dumped = config.model_dump(mode="json")
     payload: dict[str, Any] = {block: dumped.get(block) for block in sorted(_CACHE_RELEVANT_BLOCKS)}
+    for (block, field), default in _STEP_OMITTED_AT_DEFAULT.items():
+        values = payload.get(block)
+        if isinstance(values, dict) and field in values and values[field] == default:
+            payload[block] = {k: v for k, v in values.items() if k != field}
     payload["export"] = {f: getattr(config.export, f) for f in _CACHE_RELEVANT_EXPORT_FIELDS}
     return payload
 

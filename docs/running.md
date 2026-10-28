@@ -187,11 +187,16 @@ projects/<your-project>/assets/fmu/<config_name>/<stage_name>/<output_key>__<key
   digits, a hash over what that step reads (its settings in `STEP_SETTINGS`, the
   ROI file's content, and the keys of the steps whose outputs it reads), so a
   setting moves the key of the step that reads it and of the steps after it, and
-  no other. The ROI file is read from its path as the config gives it, relative
-  to the working directory, and a file that cannot be read hashes as nothing,
-  with no warning: from another folder every per-step key changes, and the pass
-  runner reports every upstream asset as missing (exit 3). Run from the repo root
-  or the run tree's root (review C40). Every asset is exported on the analysis grid segmentation works on
+  no other. The ROI file is read by the ROI loader's own reader
+  (`fmu.utils.gee.read_roi_file`): a relative path from the root of the checkout
+  the `fmu` package is imported from (the run tree, in a batch), not from the
+  working directory, so the keys are the same from any folder; a file that
+  cannot be read stops the run with an error naming the path as given, the path
+  it resolved to and the root (round 14; round 13 question 41). Until round 14
+  the path was read relative to the working directory, and a file that could not
+  be read hashed as nothing, with no warning: from another folder every per-step
+  key changed, and the pass runner reported every upstream asset as missing
+  (exit 3) (review C40). Every asset is exported on the analysis grid segmentation works on
   (the ROI's UTM zone at `export.analysis_scale_m`), so a stage reads cached
   features on the very pixels it would compute them on live. A per-step asset
   also carries the count and SHA-256 of the images each of its input
@@ -226,7 +231,10 @@ its fingerprint:
 ```
 
 The merge stage caches nothing. The k elbow step (`stages/k_elbow.py`, in no
-default run) caches a table, in the per-step layout only.
+default run) caches a table, in the per-step layout only. With `k_elbow.in_fit_space` on
+(round 14) it reads the clustering stage's inputs, not its outputs, so a run that ends with it
+has no clustering stage, and it writes its elbow, the table of units, the scaled rows and the
+types at every k into the run folder (`docs/configs.md`, `k_elbow`).
 
 Every manifest also records the Python environment (`environment`: Python,
 earthengine-api, a pip freeze hash) and, per stage, the images of each input
@@ -360,9 +368,23 @@ it. Start every batch with the wrapper:
 
 ```bash
 python odisha_script/run_passes_safely.py --label <name> \
-    [--run-tree <clean checkout>] [--log-dir <dir>] [--passes 3] \
+    [--run-tree <clean checkout>] [--log-dir <dir>] [--passes 3] [--through export|k_elbow] \
     configs/<config>_repro.yaml [configs/<another>_repro.yaml ...]
 ```
+
+**A batch that stops after the k elbow** (round 14). With `k_elbow.in_fit_space` on in every
+config, the k elbow step reads the clustering stage's inputs, not its outputs, so each config's
+stages are features, segmentation, k_elbow, clustering and export, and `--through k_elbow` stops
+after the elbow: features, segmentation and k_elbow, with the merge run inside the elbow's pass,
+and no clustering, profiling or export task (no Drive file). The runner's k_elbow pass copies the
+step's files (the elbow, the table of units, the scaled rows keyed by stand label, the types at
+every k, the preprocessing) from the run folder to `odisha_script/phase2_vectors/<config>_k_elbow*`,
+beside a run record `<config>_k_elbow_run.json`, and refuses (exit 4) a config whose setting is off.
+The wrapper refuses (exit 93) `--through k_elbow` with a config whose setting is off, and a batch
+whose configs differ in it. It counts a config as done when its last stage exits 0, records the
+batch's `--through` and stages in the state file, and skips an earlier batch's configs only when
+that batch went as far (the same `--through`), so a config done through the elbow is run by a later
+full batch of the same label.
 
 The wrapper runs one pass at a time and, before each, waits until Earth Engine
 has no queued or running task whose description starts with the name of a
@@ -384,16 +406,26 @@ it. A config counts as finished, in the state file and in the log's `ALL CONFIGS
 COMPLETE`, when its export stage exits 0: its Drive exports have then been
 submitted, not finished. Nothing in the batch waits on them or records how they
 ended (the runner's `--wait` covers the cache exports only, and the export call
-is not given it), so read their states on the Earth Engine task list; their ids
-are in the config's run record, `drive_exports` (review C39). It does not retry
+is not given it); their ids are in the config's run record, `drive_exports`
+(review C39). So after the batch, read how they ended with
+`scripts/drive_export_states.py` (the paragraph after this one). It does not retry
 a config whose export stage failed, allows one batch at a time on the machine
 (before anything else it takes a lock on `~/.fmu/run_passes_safely.lock`,
 whatever the run tree or the log folder, and refuses to start, exit 90, while
-another batch holds it), and refuses a run tree with modified tracked files. It
+another batch holds it), and refuses (exit 92) a run tree with modified tracked
+files or with untracked code: an untracked file with a code suffix (`.py`,
+`.sh`, `.yaml` and the like) under `src/`, `scripts/`, `odisha_script/` or
+`configs/`, in an untracked folder or not. It takes that rule from the run
+tree's own `fmu.utils.provenance.untracked_code`, the rule by which the records
+of its runs say dirty, and refuses a run tree whose `fmu` has none (one from
+before round 14). Run outputs and `__pycache__` folders hold no code, and
+untracked code elsewhere (`tests/`, the top level) does not count (round 14,
+round 13 question 30 (c); until then untracked files were left out). It
 reads the run tree again before and after each pass, and starts no pass on a
-tree that has changed since the batch started (its commit moved, or a tracked
-file is modified): the configs left are not finished, and it ends with exit 95;
-a change seen after the last pass ends it so too (round 13, review C32). Ctrl-C,
+tree that has changed since the batch started (its commit moved, a tracked
+file is modified, or untracked code has appeared): the configs left are not
+finished, and it ends with exit 95; a change seen after the last pass ends it
+so too (round 13, review C32). Ctrl-C,
 SIGTERM and SIGHUP reach the shell script and the runner too: the wrapper passes
 them on, waits for both to end, records the pass and stops (exit 128 plus the
 signal's number). The two run in a process group of their own and hold the lock
@@ -401,11 +433,82 @@ as well, so if the wrapper itself is killed (`kill -9`) they run on, and no new
 batch starts until they have ended. A signal ignored when the batch started
 (under `nohup`) stays ignored. Config paths are relative to the run tree, which
 needs its own `.env`. It writes `<log-dir>/<label>.log` and `<label>.state.json`
-(the run tree's commit and modified tracked files as the batch started, each
-pass's per-stage exit codes with the tree as it stood before and after the pass,
-and the change that stopped the batch, if one did); `--log-dir` defaults to
+(the run tree's commit, modified tracked files and untracked code as the batch
+started, each pass's per-stage exit codes with the tree as it stood before and
+after the pass, and the change that stopped the batch, if one did); `--log-dir`
+defaults to
 `<run-tree>/logs`, which is git-ignored. It needs live Earth Engine and submits
 tasks.
+
+After the batch, record how each finished config's Drive exports ended. Once the
+Earth Engine task list shows none of the batch's Drive tasks queued or running,
+run, from the run tree's root (the tool reads `.env` there, and reads the tasks
+in the project it names), on the run records of the configs the batch finished:
+
+```bash
+python scripts/drive_export_states.py odisha_script/phase2_vectors/<config>_run.json \
+    [odisha_script/phase2_vectors/<another>_run.json ...]
+```
+
+It is read-only on Earth Engine: after `ee_read_only.forbid_writes()` it asks
+`ee.data.getTaskStatus` for the task ids in each record's `drive_exports`. Beside
+each record it writes `<config>_drive_exports.json`, results only (no times or
+dates): for each Drive file, its name and folder, the task id, the task's
+description, its state (`COMPLETED`, `FAILED` or `CANCELLED`; `READY`, `RUNNING`
+or `CANCEL_REQUESTED` if it has not ended; `UNKNOWN` if Earth Engine has no task
+of that id) and its error message, and the count of each state; and
+`<config>_drive_exports_run.json`, with the command, when the states were read and
+the git block of the tool's checkout. It exits 0 when every task completed, 1 when
+one failed, was cancelled or is unknown, or a file has no task id, and 2 when none
+of those but a task has not ended yet (read again later); with 3 (a record it
+cannot read, or one with no `drive_exports`) or 4 (Earth Engine could not be set
+up or read) it writes nothing. Since round 14 `scripts/copy_run_results.py` copies
+the two files out of the run tree when they are there; the copies of the records it makes under
+`docs/reproducibility/` keep `drive_exports` too, so the tool can also be run from the
+repo root on those copies, to write the states beside them. Round 14 (round 13's
+question 40, answer (b); review C39). The batch itself is unchanged: it still
+does not wait on the Drive tasks.
+
+**Keeping every file a run writes** (round 14). `scripts/copy_run_results.py <run tree> <run>
+--dest <folder> --off-git <folder> [--through export|k_elbow]` copies a run's files out of its
+run tree into the repo, files over 5 MB to the off-git folder with their size and SHA-256: the
+three stand layers, `<run>_run.json` (without its run folder), `<run>_raster_at_plots.csv`, the
+stages' result files beside the layers (`<run>_clustering_*`, `<run>_k_elbow*`), the record of how
+the Drive exports ended, and, for every run folder of the run (a pass that failed included), its
+manifest (without timings), its `fmu.log` (as `<run>_log_<kind>.txt`, a log, which keeps its
+times) and its `input_images.json`. With `--through k_elbow`, for a batch that stopped after the
+elbow, it needs the features, segmentation and k_elbow passes and copies `<run>_k_elbow_run.json`
+and the elbow's files in place of the layers and the run record; a full batch with the elbow pass
+(the live check, R3's second half) has `<run>_k_elbow_run.json` too, and the export mode copies it.
+Every file is checked for times (a key one of whose words is a time word, or whose last word is
+"at"; a value holding a date and time, with a "T" or a space between them) before any is written,
+so a refusal leaves nothing copied (round 14, the gate's review). Copy a batch's runs before its
+run tree could be deleted, each batch into a folder of its own (the first and second halves of a
+run have passes of the same kinds).
+
+**The elbow report of R3's first half** (round 14, Task 6). Once the nineteen `_r14` runs of the
+first half are copied (`--through k_elbow`, `--dest docs/reproducibility/r14_runs/first_half`), run
+from the repo root, offline (no Earth Engine; it reads no plot and computes no field score):
+
+```bash
+python odisha_script/r14_elbow_report.py [--records docs/reproducibility/r14_runs/first_half] \
+    [--out-dir odisha_script/keptland_scores] [--stem r14_elbow] [--overwrite] [--no-run-check] [--allow-missing]
+```
+
+For each run it reads `<run>_k_elbow.csv`, `<run>_k_elbow_stand_table.csv` and
+`<run>_k_elbow_preprocessing.json` (a file over 5 MB from where `<run>_files_off_git.json` says, once
+its SHA-256 matches) and checks them against each other. Beside each run's own elbow it makes the
+pooled elbow of the four districts for each arm and stand size: their tables of stands put together,
+preprocessed together by the runs' rule, and swept by `fmu.stages.k_elbow.fit_space_sweep` with the
+runs' settings; and again with the same rows in reverse order, given beside it, as k-means++ depends
+on the order of the rows (Jaskaran's answer to the round 14 record's question 9, 27 Oct 2026). By
+default it also makes each run's elbow again from its table and stops if a number differs
+(`--no-run-check` skips this). It writes `r14_elbow.csv`, one figure per area in `r14_elbow/`,
+`r14_elbow_report.md` and the run record `r14_elbow_run.json`, and refuses to write over them
+without `--overwrite`. A run with no records stops it; `--allow-missing` writes the report without
+that run and says so. Each sweep takes 15 to 40 s on the Mac whatever the table's size (the 300
+adjusted Rand indices at each k), so a full run, 27 sweeps (each run's check, and each pool in two
+orders), takes ten minutes or more.
 
 Then compare. Two general tools, and an Odisha wrapper:
 
@@ -438,6 +541,60 @@ changes `_repro`.
 
 Results of the re-runs made so far are in
 [reproducibility.md](reproducibility.md) and `docs/reproducibility/`.
+
+**The live check** (round 14, Task 4). Once the batch of
+`odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_a` and `_check_b` has ended (one wrapper
+batch, from a new run tree, the k_elbow pass included) and each run has been copied with
+`scripts/copy_run_results.py <run tree> <run> --dest docs/reproducibility/r14_runs/live_check
+--off-git <folder>`, run from the repo root:
+
+```bash
+python odisha_script/r14_live_check.py [--records docs/reproducibility/r14_runs/live_check] \
+    [--config-a configs/<check_a>.yaml] [--config-b configs/<check_b>.yaml] [--offline] [--overwrite]
+```
+
+It applies the pass rules its docstring declares, criteria 0 to 6 (both runs from scratch; the same
+stands and the same type for every stand; feature values within 1e-9 relative, with an absolute
+floor of 1e-12, and identical elbows; `distance_to_water` no longer 10,000 m everywhere; 189
+Sentinel-1 scenes; slope and aspect with decimals; the four round 14 settings on), and writes into
+the records folder `r14_live_check.json`, results only, and `r14_live_check_run.json`, with the
+command, when it ran, the git block and the SHA-256 of every file it read. It refuses to write over
+either without `--overwrite`. Two parts read the cached assets on Earth Engine, read-only after
+`ee_read_only.forbid_writes()`: 2 iii compares the two configs' assets pixel by pixel on their own
+grid, and 5 samples check_a's slope and aspect; `--offline` runs the rest and marks those two
+"not run". Exit 0 when the check passes, 1 when it fails, 2 when nothing failed but a part was not
+run, 3 when it refused (nothing written), 4 when Earth Engine could not be read (nothing written).
+`pytest -m live_gee tests/test_r14_live_check.py` tries its Earth Engine reader on the Angul `_r9`
+run's own assets (read-only, a few small requests; no task).
+
+**The second live check** (round 14, 27 Oct 2026). The first, of `_check_a` and `_check_b`,
+stopped in the merge in both runs (the round 14 record, Task 4). After the merge's fix, by
+Jaskaran's answer to the record's question 11, the check runs again from scratch as
+`odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_c` and `_check_d`, copies of the first two
+with only their names changed: one wrapper batch, from a new run tree, the k_elbow pass included,
+as above. Copy each run into a records folder of their own (not `live_check/`, which holds the
+first check's records and result), and give the script that folder and the two configs:
+
+```bash
+python odisha_script/r14_live_check.py --records <their records folder> \
+    --config-a configs/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_c.yaml \
+    --config-b configs/odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_d.yaml
+```
+
+The pass rules are the same; criterion 5 samples check_c's slope and aspect.
+
+**The third live check** (round 14, 27 Oct 2026). The second, of `_check_c` and `_check_d`, stopped
+in both runs in the k elbow pass, when Earth Engine refused the elbow table's cache export (its
+rows had no geometry; the round 14 record, Task 4). After the fix, by Jaskaran's answer to the
+record's question 13, the check runs again from scratch as
+`odisha_v120_3ha_squares_angul_keptland_s1desc_r14_check_e` and `_check_f`, copies of `_check_c` and
+`_check_d` with only their names changed, in the same way: one wrapper batch from a new run tree,
+records in a folder of their own, the two configs given with `--config-a` and `--config-b`. Before
+it, as a smoke test that does not count as the live check, `_check_c` and `_check_d` are finished
+through clustering and export from what their batch cached, under a label of its own; their
+records go in a folder of their own too, and the script run on them fails criterion 0 (their
+features and segmentation are read from the cache), which the smoke test sets aside (the record,
+Done, the round resumed again).
 
 ### Superpixels depend on whether the features were cached
 
