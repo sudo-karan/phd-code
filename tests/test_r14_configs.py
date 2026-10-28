@@ -17,7 +17,10 @@ both as computed when the configs were written, but the merge, clustering and k_
 pinned again on 27 Oct 2026, when the merge's revision 4 moved them (round 14's questions 11 and
 2: every count of the merge on the label image's own projection, and every tie of the merge by
 centroid); no other key and no fingerprint moved. Task 7 sets k, which moves the fingerprint and
-the clustering key, and not the k elbow's: it updates the pins in the same commit.
+the clustering key, and not the k elbow's: it updates the pins in the same commit. Task 7 set k on 28
+Oct 2026, each config's as Jaskaran chose it from the elbow report, with his reason in the config's
+header (`K` below); the 10 km tile, dropped from R3 that day, keeps its _r9 k. Each R3 config's k
+elbow key is the one its first half recorded, so the second half reads the elbow back.
 """
 
 from __future__ import annotations
@@ -51,7 +54,35 @@ FOUR = {
     ("features_optical", "mean_over_window"): True,
     ("k_elbow", "in_fit_space"): True,
 }
-# The legacy fingerprints, as the configs were written (26 Oct 2026, round 14).
+# Each R3 config's k (Task 7, 28 Oct 2026): Jaskaran's, from the elbow report, his reason in the config's
+# header; the tile, dropped from R3 (register field-r3-tile-dropped-to-run-later), keeps its _r9 k. The
+# check copies take the Angul hand-crafted config's.
+K = {
+    "odisha_alphaearth_10ha_squares_angul_keptland_r14": 5,
+    "odisha_alphaearth_10ha_squares_dhenkanal_keptland_r14": 5,
+    "odisha_alphaearth_10ha_squares_kendujhar_keptland_r14": 5,
+    "odisha_alphaearth_10ha_squares_koraput_keptland_r14": 5,
+    "odisha_alphaearth_3ha_squares_angul_keptland_r14": 5,
+    "odisha_alphaearth_3ha_squares_dhenkanal_keptland_r14": 5,
+    "odisha_alphaearth_3ha_squares_kendujhar_keptland_r14": 5,
+    "odisha_alphaearth_3ha_squares_koraput_keptland_r14": 5,
+    "odisha_v120_10ha_squares_angul_keptland_s1desc_r14": 5,
+    "odisha_v120_10ha_squares_dhenkanal_keptland_s1desc_r14": 5,
+    "odisha_v120_10ha_squares_kendujhar_keptland_s1desc_r14": 5,
+    "odisha_v120_10ha_squares_koraput_keptland_s1desc_r14": 5,
+    "odisha_v120_3ha_squares_angul_keptland_s1desc_r14": 5,
+    "odisha_v120_3ha_squares_dhenkanal_keptland_s1desc_r14": 5,
+    "odisha_v120_3ha_squares_kendujhar_keptland_s1desc_r14": 5,
+    "odisha_v120_3ha_squares_koraput_keptland_s1desc_r14": 5,
+    "odisha_v120_3ha_tile10km_angul_keptland_s1desc_r14": 5,
+    "sanjay_van_alphaearth_keptland_r14": 5,
+    "sanjay_van_baseline_keptland_r14": 5,
+}
+FIRST_HALF = REPO / "docs" / "reproducibility" / "r14_runs" / "first_half"
+TILE = "odisha_v120_3ha_tile10km_angul_keptland_s1desc_r14"
+ANGUL = "odisha_v120_3ha_squares_angul_keptland_s1desc_r14"
+# The legacy fingerprints, as the configs were written (26 Oct 2026, round 14), but those Task 7's k
+# moved, pinned again with it.
 FINGERPRINTS = {
     "odisha_alphaearth_10ha_squares_angul_keptland_r14": "4e3761771e",
     "odisha_alphaearth_10ha_squares_dhenkanal_keptland_r14": "29478f80c0",
@@ -78,8 +109,8 @@ FINGERPRINTS = {
     "odisha_v120_3ha_squares_kendujhar_keptland_s1desc_r14": "5e5d8f17ab",
     "odisha_v120_3ha_squares_koraput_keptland_s1desc_r14": "71e14a573f",
     "odisha_v120_3ha_tile10km_angul_keptland_s1desc_r14": "17e7dc5128",
-    "sanjay_van_alphaearth_keptland_r14": "4bc321f551",
-    "sanjay_van_baseline_keptland_r14": "0c67ee1fbd",
+    "sanjay_van_alphaearth_keptland_r14": "64b66fc5ee",
+    "sanjay_van_baseline_keptland_r14": "2e51b0971d",
 }
 
 
@@ -88,10 +119,12 @@ def _source(path: Path) -> Path:
 
 
 def _without_the_four(dump: dict) -> dict:
+    """The dump without the name, the four settings and k (Task 7 sets k; test_each_k_is_jaskarans)."""
     out = {k: (dict(v) if isinstance(v, dict) else v) for k, v in dump.items()}
     out.pop("name")
     for block, field in FOUR:
         out[block].pop(field)
+    out["clustering"].pop("k")
     return out
 
 
@@ -110,7 +143,26 @@ def test_each_is_its_r9_config_but_the_name_and_the_four_settings(monkeypatch, p
     for (block, field), value in FOUR.items():
         assert dump[block][field] == value, (block, field)
     assert _without_the_four(dump) == _without_the_four(src.model_dump(mode="json"))
-    assert cfg.clustering.k == src.clustering.k  # Task 7 sets k
+
+
+@pytest.mark.parametrize("path", [*R3, *CHECKS], ids=lambda p: p.stem)
+def test_each_k_is_jaskarans(monkeypatch, path: Path):
+    """Task 7: each R3 config's k as Jaskaran chose it (the check copies, the Angul config's); the
+    tile's, its _r9 config's."""
+    monkeypatch.chdir(REPO)
+    name = ANGUL if path in CHECKS else path.stem
+    assert load_config(path).clustering.k == K[name]
+    if name == TILE:
+        assert K[name] == load_config(_source(path)).clustering.k
+
+
+@pytest.mark.parametrize("path", [p for p in R3 if p.stem != TILE], ids=lambda p: p.stem)
+def test_each_elbow_key_is_the_first_halfs(monkeypatch, path: Path):
+    """The second half reads each elbow back from the cache: each config's k elbow key, with its k, is
+    the one its first half recorded (the round 14 record, the step before Task 7, (i))."""
+    monkeypatch.chdir(REPO)
+    record = json.loads((FIRST_HALF / f"{path.stem}_k_elbow_run.json").read_text())
+    assert step_keys(load_config(path))["k_elbow"] == record["step_keys"]["k_elbow"]
 
 
 @pytest.mark.parametrize("path", [*R3, *CHECKS], ids=lambda p: p.stem)
@@ -142,8 +194,11 @@ def test_the_check_copies_are_the_angul_config_but_their_names(monkeypatch):
         assert cfg.name == path.stem
         a, b = cfg.model_dump(mode="json"), base.model_dump(mode="json")
         a.pop("name"), b.pop("name")
+        a["clustering"].pop("k"), b["clustering"].pop("k")  # k set aside (the record, (iv))
         assert a == b
-        assert step_keys(cfg) == step_keys(base)
+        keys, base_keys = step_keys(cfg), step_keys(base)
+        assert {s: v for s, v in keys.items() if s != "clustering"} == {
+            s: v for s, v in base_keys.items() if s != "clustering"}
 
 
 def test_choosing_k_moves_the_clustering_key_and_not_the_elbows(monkeypatch):

@@ -2,9 +2,12 @@
 # only `name` and the four method settings of round 14's Task 2, each switched on:
 # clustering.fit_outside_earth_engine, clustering.log_rule (right_skew),
 # features_optical.mean_over_window and k_elbow.in_fit_space (tests/test_r14_configs.py;
-# odisha_script/PHASE_KEPTLAND_PREDECLARED.md, the change of 26 Oct 2026). k is the _r9 k until
-# Jaskaran chooses it from the elbow report (round 14, Task 7). The notes below are those of the
+# odisha_script/PHASE_KEPTLAND_PREDECLARED.md, the change of 26 Oct 2026). k was the _r9 k until
+# Jaskaran chose it from the elbow report (round 14, Task 7; below). The notes below are those of the
 # config it copies, and speak of it.
+#
+# Round 14, Task 7 (28 Oct 2026): k = 5, chosen by Jaskaran from the elbow report (register
+# field-r3-k-from-part-1-of-the-elbow-report). His reason: "the knee is 5 in both arms."
 #
 # Round 9 task G (run in round 10, 18 Oct 2026): a copy of configs/sanjay_van_baseline_keptland.yaml with only `name` changed
 # (tests/test_r9_configs.py). The notes below are those of the config it copies.
@@ -172,7 +175,7 @@ merge:
   pass2_skip_at_min_area: true
 
 clustering:
-  k: 6
+  k: 5
   seed: 42
   skewness_threshold: 1.0   # log-transform features with |skew| > this (DEC-004)
   fit_excludes_stands_below_min_area: true
