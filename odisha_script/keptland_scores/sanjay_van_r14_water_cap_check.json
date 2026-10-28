@@ -1,0 +1,115 @@
+{
+ "run": "sanjay_van_baseline_keptland_r14",
+ "band": "distance_to_water",
+ "cap_m": 10000.0,
+ "k": 5,
+ "run_elbow_made_again": "the same in every number",
+ "types_as_recorded": 490,
+ "band_numbers": {
+  "stands": 490,
+  "smallest_m": 8990.0,
+  "p25_m": 10040.3,
+  "median_m": 10687.0,
+  "p75_m": 11296.5,
+  "largest_m": 12331.1,
+  "below_cap": 117,
+  "at_or_past_cap": 373,
+  "from_cap_to_cap_plus_100_m": 9,
+  "from_cap_to_cap_plus_200_m": 35,
+  "most_below_cap_with_lower_quartile_at_cap": 122
+ },
+ "not_capped": {
+  "dropped_constant_bands": [],
+  "n_active_bands": 22,
+  "ks": [
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12
+  ],
+  "wcss": [
+   1268.174081,
+   999.72327,
+   876.697239,
+   749.307148,
+   677.420116,
+   632.024722,
+   592.172022,
+   567.414402,
+   549.300158,
+   526.937595,
+   508.012642
+  ],
+  "ari_median": [
+   1.0,
+   0.838154,
+   0.621448,
+   0.550882,
+   0.625205,
+   0.56921,
+   0.535313,
+   0.550571,
+   0.542585,
+   0.496928,
+   0.493607
+  ],
+  "knee": 5
+ },
+ "capped": {
+  "dropped_constant_bands": [
+   "distance_to_water"
+  ],
+  "n_active_bands": 21,
+  "ks": [
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12
+  ],
+  "wcss": [
+   1195.669166,
+   931.099535,
+   796.69453,
+   679.270755,
+   611.561648,
+   569.805903,
+   531.075747,
+   508.591997,
+   486.225315,
+   469.684454,
+   450.941328
+  ],
+  "ari_median": [
+   0.634844,
+   0.86348,
+   0.577831,
+   0.646234,
+   0.642706,
+   0.589853,
+   0.574078,
+   0.557591,
+   0.513911,
+   0.490144,
+   0.499431
+  ],
+  "knee": 5
+ },
+ "ari_every_stand": 0.9738,
+ "ari_stands_in_fit": 0.9896,
+ "stands_in_fit": 189,
+ "stands_whose_type_differs": 5
+}
