@@ -196,3 +196,27 @@ manifests.
 
 **In the run tree only** (`outputs/round14/run_tree_5`, git-ignored, with its own `.env`; not to be
 copied anywhere): the same files in `runs/<run>_<time>/` and `odisha_script/phase2_vectors/`.
+
+## The third live check: `_check_e` and `_check_f`, from scratch, after R3's second half
+
+The batch `r14_live_check_3` (28 Oct 2026, from `outputs/round14/run_tree_4` at `da20741`): both runs
+computed every stage from scratch in pass 1, and the check passes every criterion (the round 14 record,
+Done, the third live check).
+
+**In the repo**, `docs/reproducibility/r14_runs/live_check_3/` (64 files), copied with
+`scripts/copy_run_results.py` (export mode) by `odisha_script/r14_live_check_3/after_batch.sh`: each
+run's three stand layers, run record, `raster_at_plots.csv`, every pass's manifest, `fmu.log` and image
+list, the clustering's and the k elbow's files, and its Drive states (`<run>_drive_exports.json` and
+its `_run.json`); the cost files (`cost_<run>.json`, `_run.json`); the check's verdict
+(`r14_live_check.json` and `_run.json`); and the record of the Drive exports not ended at the reading,
+none (`r14_live_check_3_cancelled_exports_<run>.json`).
+
+**Off git:** none (no file over 5 MB).
+
+**On Drive:** each run's nine exports, all COMPLETED (in each `<run>_drive_exports.json`).
+
+**On Earth Engine** (kept), under `projects/replicating-paper/assets/fmu/<run>/`: every stage's
+assets, computed from scratch.
+
+**In the run tree only** (`outputs/round14/run_tree_4`, git-ignored, with its own `.env`; not to be
+copied anywhere): the same files in `runs/<run>_<time>/` and `odisha_script/phase2_vectors/`.
