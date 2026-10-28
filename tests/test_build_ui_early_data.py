@@ -751,3 +751,55 @@ def test_round_7s_field_check_points_to_r3s_run_and_says_the_r9_scores_are_not_o
             '${runLink(run().run_id + "_r14")}.') in card
     assert "The _r9 scores, the record from before the corrections, are not on this site." in card
     assert "The chance test was not run on these stands, so these scores are numbers only" in card
+
+
+def _small_stands(tmp_path, run_id: str, whys: list[str]) -> Path:
+    """A stand layer as the merge writes it: one stand per entry of `whys`, below the minimum where
+    the entry says why ("isolated" or "area_blocked"), at or over it where it is ""."""
+    square = [[[77.0, 28.0], [77.001, 28.0], [77.001, 28.001], [77.0, 28.001], [77.0, 28.0]]]
+    feats = [{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": square},
+              "properties": {"stand_id": sid, "stand_lbl": sid, "area_ha": 0.5 if why else 2.0,
+                             "cluster_id": 0, "n_superpx": 1, "n_pass1": 0, "n_relaxed": 0,
+                             "n_fallback": 0, "below_min": int(bool(why)), "below_why": why,
+                             "canopy_height": 6.0}}
+             for sid, why in enumerate(whys)]
+    (tmp_path / f"{run_id}_stands_merged.geojson").write_text(
+        json.dumps({"type": "FeatureCollection", "features": feats}))
+    return tmp_path
+
+
+def test_an_earlier_kept_land_run_says_which_small_stands_were_too_big_to_take(builder, tmp_path):
+    """Round 15's question 5 (b), site-earlier-keptland-small-stands-counted-apart: an earlier
+    kept-land run whose merge left stands every neighbour was too big to take says of each small
+    stand why it stayed small, as R3's runs do; one whose merge left none keeps the flag alone, so
+    its popups keep their one sentence. The build stops if the layer and the merge disagree."""
+    vec = _small_stands(tmp_path, "k_run", ["", "isolated", "area_blocked"])
+    fc, _ = builder.run_stands("k_run", "feature_vector", vec, keptland=True, blocked=1)
+    assert [f["properties"].get("below_why") for f in fc["features"]] == [None, "isolated",
+                                                                          "area_blocked"]
+    assert "below_why" not in fc["features"][0]["properties"]
+    fc, _ = builder.run_stands("k_run", "feature_vector", vec, keptland=True)
+    assert all("below_why" not in f["properties"] for f in fc["features"])
+    assert [f["properties"]["below_min"] for f in fc["features"]] == [False, True, True]
+    with pytest.raises(SystemExit, match="its merge counted 2"):
+        builder.run_stands("k_run", "feature_vector", vec, keptland=True, blocked=2)
+    # R3's runs say why in every run, as before, and are checked the same way.
+    fc, _ = builder.run_stands("k_run", "feature_vector", vec, keptland=True, r3=True, blocked=1)
+    assert [f["properties"].get("below_why") for f in fc["features"]][1:] == ["isolated",
+                                                                              "area_blocked"]
+    with pytest.raises(SystemExit, match="its merge counted 0"):
+        builder.run_stands("k_run", "feature_vector", vec, keptland=True, r3=True)
+    # A run that is not kept-land carries no flag, whatever its merge counted.
+    fc, _ = builder.run_stands("k_run", "feature_vector", vec, blocked=1)
+    assert all("below_min" not in f["properties"] and "below_why" not in f["properties"]
+               for f in fc["features"])
+
+
+def test_the_page_counts_every_kept_land_runs_small_stands_in_two_kinds():
+    """Round 15's question 5 (b): the Stands step and the size chart count the two kinds apart on
+    the earlier kept-land runs too, not on R3's alone (as 406e2e6, the review's M1, had made it)."""
+    page = (SCRIPTS.parent / "ui" / "explorer.html").read_text()
+    assert "const blocked = has(f.below_min_blocked) ? f.below_min_blocked : 0;" in page
+    assert 'r.group === "current" && has(f.below_min_blocked)' not in page
+    assert 'which stayed small ${f.below_min_blocked ? `because they share no edge' in page
+    assert 'r.group === "current" && f.below_min_blocked' not in page

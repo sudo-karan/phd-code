@@ -826,14 +826,17 @@ def stand_means(run_id: str, vec: Path) -> dict:
 
 
 def run_stands(run_id: str, arm: str, vec: Path, *, keptland: bool = False,
-               r3: bool = False) -> tuple[dict, dict]:
+               r3: bool = False, blocked: int = 0) -> tuple[dict, dict]:
     """The stands of a run, for stands.json. Distance to water of 10 km or more is OVER_10_KM
     (feature_value). A kept-land run's stands also say whether the merge left them below the
     minimum (`below_min`), and an R3 run's why (`below_why`: isolated, sharing no edge with
-    another stand, or area_blocked, every neighbour too big to take it). Where the run has named
-    means by reduction (`stand_means`), its stands carry them beside their own means. An R3 run's
-    stand means of each angle's sine and cosine (aspect_sin and the like) are kept, and not counted
-    as measurements of their own."""
+    another stand, or area_blocked, every neighbour too big to take it); so do an earlier
+    kept-land run's whose merge left `blocked` stands of the second kind (its orphans_area_blocked;
+    round 15's question 5, site-earlier-keptland-small-stands-counted-apart). Where it says why,
+    the build stops if the stand layer names more or fewer stands area_blocked than `blocked`.
+    Where the run has named means by reduction (`stand_means`), its stands carry them beside their
+    own means. An R3 run's stand means of each angle's sine and cosine (aspect_sin and the like)
+    are kept, and not counted as measurements of their own."""
     g = json.loads(vec_file(vec, f"{run_id}_stands_merged.geojson").read_text())
     feats = g["features"]
     extra = stand_means(run_id, vec)
@@ -849,6 +852,7 @@ def run_stands(run_id: str, arm: str, vec: Path, *, keptland: bool = False,
         emb_cols = pca_rgb(rows)
     # The seven the first build kept first, in its order, then every other feature mean.
     keep = [*DECIMALS, *sorted(n for n in names if n not in DECIMALS)]
+    why = keptland and (r3 or blocked > 0)
     out = []
     area_by_stand: dict = {}
     for i, f in enumerate(feats):
@@ -862,7 +866,7 @@ def run_stands(run_id: str, arm: str, vec: Path, *, keptland: bool = False,
             q[k] = feature_value(k, p.get(k), far_water=True)
         if keptland:
             q["below_min"] = bool(p.get("below_min"))
-        if r3 and q["below_min"]:
+        if why and q["below_min"]:
             q["below_why"] = p.get("below_why") or None
         if emb_cols:
             q["emb_rgb"] = emb_cols[i]
@@ -871,6 +875,12 @@ def run_stands(run_id: str, arm: str, vec: Path, *, keptland: bool = False,
         out.append({"type": "Feature", "properties": q,
                     "geometry": {"type": f["geometry"]["type"],
                                  "coordinates": round_coords(f["geometry"]["coordinates"])}})
+    if why:
+        named = len({f["properties"]["stand_id"] for f in out
+                     if f["properties"].get("below_why") == "area_blocked"})
+        if named != blocked:
+            raise SystemExit(f"{run_id}: its stand layer names {named} stands that every neighbour "
+                             f"was too big to take, its merge counted {blocked}")
     fc = {"type": "FeatureCollection", "features": out}
     types = sorted({f["properties"]["stand_type"] for f in out
                     if f["properties"]["stand_type"] is not None})
@@ -1376,7 +1386,8 @@ def main() -> None:
         ai = area_cache[area]
         odisha = AREAS[area]["site"] == "Odisha"
         sanjay = AREAS[area]["site"] == "Sanjay Van"
-        stands_fc, st = run_stands(run_id, arm, vec, keptland=keptland, r3=r3)
+        stands_fc, st = run_stands(run_id, arm, vec, keptland=keptland, r3=r3,
+                                   blocked=md.get("orphans_area_blocked") or 0)
         write_json(OUT / "by_run" / run_id / "stands.json", encode_stands(stands_fc))
         sp_file, median_sp = superpixel_layer(run_id, vec)
         layers = pixel_feature_layers(run_id, arm) if run_id in PIXEL_LAYER_RUNS else None

@@ -1351,9 +1351,9 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       const keptSmall = isKept(r) && has(f.n_stands, f.stands_below_min) && f.stands_below_min > 0;
       // Why the small ones stayed small (round 13's question 25): "isolated" means a stand shares no
       // edge with another (it may meet one at a corner); "blocked", that every neighbour was too big.
-      // R3's runs say how many of each; an earlier run's text keeps its one reason (round 15 changed
-      // only its wording, question 25).
-      const blocked = r.group === "current" && has(f.below_min_blocked) ? f.below_min_blocked : 0;
+      // Every kept-land run says how many of each, from its merge's records: R3's, and the earlier
+      // ones too (round 15's question 5).
+      const blocked = has(f.below_min_blocked) ? f.below_min_blocked : 0;
       const isolated = has(f.below_min_isolated) ? f.below_min_isolated : f.stands_below_min - blocked;
       // Their area: the merge's (R3), or, in an earlier run, that of the stands left out of the fit,
       // which were all of them there.
@@ -1768,7 +1768,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       bars + (minHa ? line(minHa, "smallest allowed", false) : "") + line(ceil, "largest allowed", true) + `<g class="ticks">${ticks}</g></svg>` +
       `<p class="small">Each bar counts the stands of that size, in hectares. ${plural(areas.length, "stand")} in all; the middle one is ${ha(quantile(areas, 0.5))}.` +
       (below ? ` ${plural(below, "stand")} ${below === 1 ? "is" : "are"} still under ${ha(minHa)}.` : "") +
-      (small.length ? ` Not counted here: ${plural(Math.max(small.length, f.stands_below_min || 0), "small patch", "small patches")} of trees or scrub under ${ha(minHa)}, about ${ha(Math.round(small.reduce((s, p) => s + (p.area_ha || 0), 0)))} in all, which stayed small ${r.group === "current" && f.below_min_blocked ? `because they share no edge with another stand (${n0(f.below_min_isolated)}) or every neighbour was too big to take them (${n0(f.below_min_blocked)})` : "because they share no edge with another stand"}.` : "") +
+      (small.length ? ` Not counted here: ${plural(Math.max(small.length, f.stands_below_min || 0), "small patch", "small patches")} of trees or scrub under ${ha(minHa)}, about ${ha(Math.round(small.reduce((s, p) => s + (p.area_ha || 0), 0)))} in all, which stayed small ${f.below_min_blocked ? `because they share no edge with another stand (${n0(f.below_min_isolated)}) or every neighbour was too big to take them (${n0(f.below_min_blocked)})` : "because they share no edge with another stand"}.` : "") +
       (over ? ` ${plural(over, "stand")} ${over === 1 ? "goes" : "go"} past ${ha(ceil)}, the most is ${ha(areas[areas.length - 1])}.` : "") + `</p></div>`;
   }
   function areaByType(model) {
@@ -1957,7 +1957,9 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
         : `<p class="small">Averages over the stand. AlphaEarth's own 64 numbers have no names, so the stand is described with our measurements.</p>`)
       : `<p class="small">Averages over the stand's pixels.</p>`;
     const typed = !(p.stand_type === null || p.stand_type === undefined);
-    // Why a small stand stayed small, where the run says (R3's below_why: round 13's question 25).
+    // Why a small stand stayed small, where the run says (below_why: round 13's question 25), as
+    // R3's runs do and the earlier kept-land runs whose merge left a stand every neighbour was too
+    // big to take (round 15's question 5); elsewhere the one sentence it had.
     const small = p.below_why === "area_blocked" ? "A small patch of trees or scrub: every neighbour was already too big to take it, so it stays a stand of its own."
       : p.below_why === "isolated" ? "A small patch of trees or scrub that shares no edge with another stand, so it stays a stand of its own."
       : "A small patch of trees or scrub, cut off from the rest, so it stays a stand of its own.";
