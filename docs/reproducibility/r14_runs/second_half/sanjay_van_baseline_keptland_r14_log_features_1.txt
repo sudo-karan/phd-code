@@ -1,0 +1,57 @@
+2026-10-28 02:52:41 [INFO] fmu.utils.logging: Logging initialized; run dir: runs/sanjay_van_baseline_keptland_r14_20261028_025241
+2026-10-28 02:52:41 [INFO] fmu.utils.logging: Log level: INFO
+2026-10-28 02:52:41 [INFO] fmu.pipeline: ============================================================
+2026-10-28 02:52:41 [INFO] fmu.pipeline: Pipeline run: sanjay_van_baseline_keptland_r14
+2026-10-28 02:52:41 [INFO] fmu.pipeline: Stages: masking -> data_load -> features_optical -> features_radar -> features_structure -> features_static
+2026-10-28 02:52:41 [INFO] fmu.pipeline: Run directory: runs/sanjay_van_baseline_keptland_r14_20261028_025241
+2026-10-28 02:52:41 [INFO] fmu.pipeline: Cache layout: per_step (given to Pipeline())
+2026-10-28 02:52:41 [INFO] fmu.pipeline: ============================================================
+2026-10-28 02:52:41 [INFO] fmu.pipeline: stage: masking
+2026-10-28 02:52:49 [INFO] fmu.stages.masking: Built IndiaSAT collection from 5 year-images (2017, 2018, 2019, 2020, 2021) under projects/corestack-trees/assets/LULC_v4
+2026-10-28 02:52:51 [INFO] fmu.stages.masking: Built IndiaSAT collection from 5 year-images (2017, 2018, 2019, 2020, 2021) under projects/corestack-trees/assets/LULC_v4
+2026-10-28 02:52:53 [INFO] fmu.pipeline:   input images, indiasat_lulc: 5 (sha256 c831b93509e8)
+2026-10-28 02:52:53 [INFO] fmu.pipeline:   input images, worldcover: 1 (sha256 bf43ff10c8c0)
+2026-10-28 02:52:56 [INFO] fmu.pipeline:   [cache] exports on the analysis grid: {'crs': 'EPSG:32643', 'crs_transform': [10.0, 0.0, 0.0, 0.0, 10.0, 0.0]}
+2026-10-28 02:53:00 [INFO] fmu.utils.caching: Created cache folder projects/replicating-paper/assets/fmu/sanjay_van_baseline_keptland_r14
+2026-10-28 02:53:02 [INFO] fmu.utils.caching: Created cache folder projects/replicating-paper/assets/fmu/sanjay_van_baseline_keptland_r14/masking
+2026-10-28 02:53:03 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/sanjay_van_baseline_keptland_r14/masking/habitat_mask__s88c273ce5a (task TTM7AZY5MVEWPKMPN345H3AL). Check progress at https://code.earthengine.google.com/tasks
+2026-10-28 02:53:09 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/sanjay_van_baseline_keptland_r14/masking/water_mask__s88c273ce5a (task JVHGTZEKGKYNMPE7MKPI7KG6). Check progress at https://code.earthengine.google.com/tasks
+2026-10-28 02:53:14 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/sanjay_van_baseline_keptland_r14/masking/landcover_summary__s88c273ce5a (task ZDXAKGMNA4D2QX3WZ4WTSBZD). Check progress at https://code.earthengine.google.com/tasks
+2026-10-28 02:53:20 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/sanjay_van_baseline_keptland_r14/masking/mask_provenance__s88c273ce5a (task QYQBFWPMSEZT3IJ7SAQR4CAT). Check progress at https://code.earthengine.google.com/tasks
+2026-10-28 02:53:22 [INFO] fmu.pipeline: stage masking done in 41.20 sec
+2026-10-28 02:53:22 [INFO] fmu.pipeline: stage: data_load
+2026-10-28 02:53:25 [INFO] fmu.stages.data_load:   S2 phenology window: 195 images after cloud filter
+2026-10-28 02:53:25 [INFO] fmu.stages.data_load:   S1 radar window: 178 images after orbit/pol filter
+2026-10-28 02:53:26 [INFO] fmu.stages.data_load:   S2 composite window: 195 images after cloud filter
+2026-10-28 02:53:28 [INFO] fmu.pipeline:   input images, s2_composite: 195 (sha256 c2e4334b8935)
+2026-10-28 02:53:31 [INFO] fmu.utils.caching: Created cache folder projects/replicating-paper/assets/fmu/sanjay_van_baseline_keptland_r14/data_load
+2026-10-28 02:53:32 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/sanjay_van_baseline_keptland_r14/data_load/s2_composite__s8074a1b895 (task A2XY2B6QQLDVH2AX6NEF3AZH). Check progress at https://code.earthengine.google.com/tasks
+2026-10-28 02:53:32 [INFO] fmu.pipeline: stage data_load done in 10.14 sec
+2026-10-28 02:53:32 [INFO] fmu.pipeline: stage: features_optical
+2026-10-28 02:53:35 [INFO] fmu.stages.features_optical:   optical_features bands (6): ['ndvi_mean', 'ndvi_amplitude_annual', 'ndvi_phase_annual', 'ndvi_trend', 'ndvi_residual_variance', 'ndvi_obs_count']
+2026-10-28 02:53:35 [INFO] fmu.stages.features_optical:   time_reference: 2017-01-01
+2026-10-28 02:53:36 [INFO] fmu.pipeline:   input images, s2_phenology: 195 (sha256 c2e4334b8935)
+2026-10-28 02:53:41 [INFO] fmu.utils.caching: Created cache folder projects/replicating-paper/assets/fmu/sanjay_van_baseline_keptland_r14/features_optical
+2026-10-28 02:53:43 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/sanjay_van_baseline_keptland_r14/features_optical/optical_features__sc0fdaaeaaa (task CGRU52LQLNUFUNWQKSUGTZIW). Check progress at https://code.earthengine.google.com/tasks
+2026-10-28 02:53:43 [INFO] fmu.pipeline: stage features_optical done in 10.39 sec
+2026-10-28 02:53:43 [INFO] fmu.pipeline: stage: features_radar
+2026-10-28 02:53:45 [INFO] fmu.stages.features_radar:   radar_features bands (9): ['vv_p10', 'vh_p10', 'vv_p50', 'vh_p50', 'vv_p90', 'vh_p90', 'vv_iqr', 'vh_iqr', 'vv_minus_vh_median']
+2026-10-28 02:53:46 [INFO] fmu.pipeline:   input images, s1: 178 (sha256 b3c5fce3b7d3)
+2026-10-28 02:53:52 [INFO] fmu.utils.caching: Created cache folder projects/replicating-paper/assets/fmu/sanjay_van_baseline_keptland_r14/features_radar
+2026-10-28 02:53:54 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/sanjay_van_baseline_keptland_r14/features_radar/radar_features__s324f28bb94 (task 3TMXKZR7K2SUJQCE5RIFJUD2). Check progress at https://code.earthengine.google.com/tasks
+2026-10-28 02:53:54 [INFO] fmu.pipeline: stage features_radar done in 11.11 sec
+2026-10-28 02:53:54 [INFO] fmu.pipeline: stage: features_structure
+2026-10-28 02:53:56 [INFO] fmu.stages.features_structure:   structure_features bands (3): ['canopy_height', 'canopy_height_std', 'canopy_height_max']
+2026-10-28 02:54:01 [INFO] fmu.utils.caching: Created cache folder projects/replicating-paper/assets/fmu/sanjay_van_baseline_keptland_r14/features_structure
+2026-10-28 02:54:02 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/sanjay_van_baseline_keptland_r14/features_structure/structure_features__sd1ac1f52b0 (task FSCL4BK34TV2HDNR3BK7KUS3). Check progress at https://code.earthengine.google.com/tasks
+2026-10-28 02:54:02 [INFO] fmu.pipeline: stage features_structure done in 7.99 sec
+2026-10-28 02:54:02 [INFO] fmu.pipeline: stage: features_static
+2026-10-28 02:54:03 [INFO] fmu.stages.features_static:   static_features bands (5): ['elevation', 'slope', 'aspect', 'distance_to_water', 'annual_rainfall']
+2026-10-28 02:54:04 [INFO] fmu.pipeline:   input images, chirps: 2160 (sha256 3a2d483b73e7)
+2026-10-28 02:54:08 [INFO] fmu.utils.caching: Created cache folder projects/replicating-paper/assets/fmu/sanjay_van_baseline_keptland_r14/features_static
+2026-10-28 02:54:10 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/sanjay_van_baseline_keptland_r14/features_static/static_features__sa112b42c71 (task DKXFHYCXV2TCRMTGWKBURQMU). Check progress at https://code.earthengine.google.com/tasks
+2026-10-28 02:54:10 [INFO] fmu.pipeline: stage features_static done in 7.88 sec
+2026-10-28 02:54:10 [INFO] fmu.pipeline: ============================================================
+2026-10-28 02:54:10 [INFO] fmu.pipeline: Pipeline complete in 88.72 sec
+2026-10-28 02:54:10 [INFO] fmu.pipeline: ============================================================
+2026-10-28 02:54:11 [INFO] fmu.pipeline: Manifest written: runs/sanjay_van_baseline_keptland_r14_20261028_025241/manifest.json

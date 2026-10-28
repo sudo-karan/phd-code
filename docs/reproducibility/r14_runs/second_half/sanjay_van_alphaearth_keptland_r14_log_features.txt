@@ -1,0 +1,29 @@
+2026-10-28 13:51:17 [INFO] fmu.utils.logging: Logging initialized; run dir: runs/sanjay_van_alphaearth_keptland_r14_20261028_135117
+2026-10-28 13:51:17 [INFO] fmu.utils.logging: Log level: INFO
+2026-10-28 13:51:19 [INFO] fmu.pipeline: ============================================================
+2026-10-28 13:51:19 [INFO] fmu.pipeline: Pipeline run: sanjay_van_alphaearth_keptland_r14
+2026-10-28 13:51:19 [INFO] fmu.pipeline: Stages: masking -> data_load -> features_optical -> features_structure -> features_embedding
+2026-10-28 13:51:19 [INFO] fmu.pipeline: Run directory: runs/sanjay_van_alphaearth_keptland_r14_20261028_135117
+2026-10-28 13:51:19 [INFO] fmu.pipeline: Cache layout: per_step (given to Pipeline())
+2026-10-28 13:51:19 [INFO] fmu.pipeline: ============================================================
+2026-10-28 13:51:19 [INFO] fmu.pipeline: stage: masking
+2026-10-28 13:51:24 [INFO] fmu.pipeline:   [cache] all 4 outputs hit; skipping stage run
+2026-10-28 13:51:26 [INFO] fmu.pipeline: stage masking done in 7.66 sec (from cache)
+2026-10-28 13:51:26 [INFO] fmu.pipeline: stage: data_load
+2026-10-28 13:51:30 [INFO] fmu.stages.data_load:   S2 phenology window: 195 images after cloud filter
+2026-10-28 13:51:30 [INFO] fmu.stages.data_load:   S1 radar window: 178 images after orbit/pol filter
+2026-10-28 13:51:32 [INFO] fmu.stages.data_load:   S2 composite window: 195 images after cloud filter
+2026-10-28 13:51:34 [INFO] fmu.pipeline: stage data_load done in 7.22 sec
+2026-10-28 13:51:34 [INFO] fmu.pipeline: stage: features_optical
+2026-10-28 13:51:34 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-28 13:51:36 [INFO] fmu.pipeline: stage features_optical done in 2.02 sec (from cache)
+2026-10-28 13:51:36 [INFO] fmu.pipeline: stage: features_structure
+2026-10-28 13:51:36 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-28 13:51:36 [INFO] fmu.pipeline: stage features_structure done in 0.51 sec (from cache)
+2026-10-28 13:51:36 [INFO] fmu.pipeline: stage: features_embedding
+2026-10-28 13:51:37 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-28 13:51:38 [INFO] fmu.pipeline: stage features_embedding done in 2.06 sec (from cache)
+2026-10-28 13:51:38 [INFO] fmu.pipeline: ============================================================
+2026-10-28 13:51:38 [INFO] fmu.pipeline: Pipeline complete in 19.61 sec
+2026-10-28 13:51:38 [INFO] fmu.pipeline: ============================================================
+2026-10-28 13:51:45 [INFO] fmu.pipeline: Manifest written: runs/sanjay_van_alphaearth_keptland_r14_20261028_135117/manifest.json
