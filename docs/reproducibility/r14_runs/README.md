@@ -4,8 +4,12 @@ The index the round 14 brief asks for ("Keep every run's data"): for each run of
 records in the repo, its files off git (with SHA-256), its Drive files and its Earth Engine assets.
 The round's record: `docs/handoff/2026-10-26-round14.md`.
 
-Round 14 has run three batches: two live checks (Task 4) and a smoke test; the nineteen `_r14`
-configs of R3 have not run. The first (`r14_live_check`, 27 Oct 2026, from the run tree `outputs/round14/run_tree` at
+Round 14 has run six batches: two live checks (Task 4), a smoke test, R3's two halves, and the third
+live check (below). R3 is the eighteen `_r14` configs other than the 10 km tile, which Jaskaran dropped
+from R3 before it ran (to run later): its first half (`r14_first_half`, 28 Oct 2026, from
+`outputs/round14/run_tree_5` at `a099c57`) ran them through the k elbow, and its second half
+(`r14_second_half`, 28 Oct 2026, from the same run tree moved to `11c700b`, the commit with each
+config's k) through clustering, profiling and export. The first live check (`r14_live_check`, 27 Oct 2026, from the run tree `outputs/round14/run_tree` at
 `2335d17`): both runs computed their features and segmentation from scratch and then stopped in
 their k_elbow pass, in the merge. The second, after the merge's fix (`r14_live_check_2`, 27 Oct 2026,
 from `outputs/round14/run_tree_2` at `2248184`): both runs computed their features, segmentation and
@@ -149,3 +153,46 @@ segmentation and k elbow assets, each run's keys in its manifests.
 
 **In the run tree only** (`outputs/round14/run_tree_5`, git-ignored, with its own `.env`; not to
 be copied anywhere): the same files in `runs/<run>_<time>/`.
+
+## R3's second half: the eighteen through clustering, profiling and export
+
+**In the repo**, `docs/reproducibility/r14_runs/second_half/`, per run, copied with
+`scripts/copy_run_results.py` (export mode) by the scorer as each set was exported, and again after
+the batch with the Drive states (`odisha_script/r14_second_half/after_batch.sh`): the three stand
+layers (`<run>_stands_merged.geojson`, `_stands_snic.geojson`, `_stands_dissolved.geojson`, but those
+off git), the run record (`<run>_run.json`, without its run folder), `<run>_raster_at_plots.csv`, every
+pass's manifest, `fmu.log` and image list of both halves (`<run>_manifest_<kind>.json`,
+`_log_<kind>.txt`, `_input_images_<kind>.json`: the second half's passes under the plain names, the
+first half's, which computed the cache, as `_1`), the clustering's files (`_clustering_stand_table.csv`,
+`_clustering_fit_rows.csv`, `_clustering_kmeans.json`), the k elbow's files and run record, and how its
+Drive exports ended (`<run>_drive_exports.json` and its `_run.json`). Beside them: `cost_<run>.json` and
+`cost_<run>_run.json` (each config's batch tasks to date, both halves', and this batch's online use)
+and `second_half_cost_shares.json` (each config's second-half share: 1.7577 EECU-hours in all).
+
+**The scores** (Task 8), in `odisha_script/keptland_scores/`: for each set, the field check
+(`keptland_<set>_r14_scores.json`, `_scores.txt`, `_joined.csv`, `_scores_run.json`) and its chance
+test (`keptland_<set>_r14_chance.json`, `_chance.txt`, `_chance_run.json`; its `.log` beside them,
+ignored by git), the sets `s1desc` and `alphaearth` at 3 ha and `s1desc_10ha` and `alphaearth_10ha`;
+the sixteen side-by-side tables (`keptland_*_r14_beside_*.md` and `keptland_*_r14_chance_beside_*.md`);
+Sanjay Van's description (`sanjay_van_r14_description.md`, `.json`, `_run.json`); and the
+distance-to-water check (`sanjay_van_r14_water_cap_check.md`, `.json`, `_run.json`).
+
+**Off git** (over 5 MB), in `outputs/round14/results/second_half/`, each named with its size and
+SHA-256 in its run's `<run>_files_off_git.json`, and backed up to Drive (below): the superpixel layers
+(`_stands_snic.geojson`) of the Dhenkanal, Kendujhar and Koraput 3 ha boxes and of the Koraput 10 ha
+boxes, in both arms, and the merged layers (`_stands_merged.geojson`) of the Koraput 3 ha boxes in both
+arms: ten files, 107,323,793 bytes.
+
+**On Drive:** each run's export, nine files (the type raster, the raw and scaled feature rasters, and
+the three vector layers as GeoJSON and Shapefile), every one COMPLETED; their names, folders and task
+ids in each `<run>_drive_exports.json`. The ten files off git, copied to `fmu_results_backup/round14`,
+each copy's SHA-256 checked: `docs/reproducibility/r14_runs/off_git_backup_second_half.json` (with each
+copy's Drive file id; its `_run.json` beside it), and each entry of the off-git records holds its copy's
+Drive path (`"drive"`).
+
+**On Earth Engine** (kept), under `projects/replicating-paper/assets/fmu/<run>/`: the features,
+segmentation, k elbow and clustering assets (`cluster_labels`, `feature_stack`), each run's keys in its
+manifests.
+
+**In the run tree only** (`outputs/round14/run_tree_5`, git-ignored, with its own `.env`; not to be
+copied anywhere): the same files in `runs/<run>_<time>/` and `odisha_script/phase2_vectors/`.
