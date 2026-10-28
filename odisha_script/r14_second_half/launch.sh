@@ -1,7 +1,8 @@
 #!/bin/bash
 # Start R3's second half (Task 7) once preflight.sh <commit> has passed (the round 14 record, Done,
-# the plan changed to finish today): the batch, its stop-rule watcher and the scorer, each from the
-# run tree, so that the batch, the order, the watcher and the scoring code are the batch's commit:
+# the plan changed to finish today): the batch, its stop-rule watcher and the scorer, each started
+# from the run tree, so that the batch, the order and the watcher are the batch's commit (the scorer's
+# field checks and chance tests run from the main repo, as the _r9 sets' did; its docstring says why):
 #   launch.sh
 # 1. The eighteen configs from the run tree's order.py (refused unless it gives eighteen).
 # 2. The batch: run_passes_safely.py --label r14_second_half (every stage, through export: features,
@@ -49,10 +50,15 @@ detach nohup $PY odisha_script/r14_second_half/score_as_exported.py --batch-log 
 echo "scorer started"
 sleep 120
 pid=$(cat ~/.fmu/run_passes_safely.lock 2>/dev/null)
-echo "the wrapper (the lock's pid $pid):"; ps -o pid=,command= -p "$pid" 2>/dev/null | cut -c1-160 || echo "  NOT ALIVE"
+echo "the wrapper (the lock's pid $pid):"
+if ps -p "$pid" >/dev/null 2>&1; then ps -o pid=,command= -p "$pid" | cut -c1-160; else echo "  NOT ALIVE"; fi
 echo "the wrapper's lines so far:"; grep '^\[run_passes_safely' $LOG | tail -3
 echo "the console's last lines:"; tail -3 $LOGS/r14_second_half_console.log
-echo "the watcher:"; pgrep -fl "[r]14_first_half/watch.py" | cut -c1-160 || echo "  NOT RUNNING: start it again by hand (the record says how)"
+echo "the watcher:"
+if pgrep -f "[r]14_first_half/watch.py" >/dev/null; then pgrep -fl "[r]14_first_half/watch.py" | cut -c1-160
+else echo "  NOT RUNNING: start it again by hand (the record says how)"; fi
 tail -3 $LOGS/r14_second_half_quota.log
-echo "the scorer:"; pgrep -fl "[r]14_second_half/score_as_exported.py" | cut -c1-160 || echo "  NOT RUNNING: start it again by hand (the record says how)"
+echo "the scorer:"
+if pgrep -f "[r]14_second_half/score_as_exported.py" >/dev/null; then pgrep -fl "[r]14_second_half/score_as_exported.py" | cut -c1-160
+else echo "  NOT RUNNING: start it again by hand (the record says how)"; fi
 tail -3 $LOGS/r14_second_half_scorer.log
