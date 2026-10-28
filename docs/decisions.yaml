@@ -11221,3 +11221,168 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 28 Oct 2026, in the Claude Code session
+- id: site-round-7-runs-point-to-r3s-scores
+  title: >-
+    The round-7 runs' line and field-check card point to R3's scores as the record; the _r9 scores are not on the
+    site
+  decision: >-
+    Decided for round 16 (its Task 1). The four 3 ha descending-orbit kept-land runs of 15 Oct 2026
+    (odisha_v120_3ha_squares_<district>_keptland_s1desc) say, in their line (built by scripts/build_ui_early_data.py)
+    and in their field-check card (ui/explorer.html): that these scores are round 7's, kept as history; that the
+    record is R3's scores, on R3's run of the same box, arm and stand size (the same run id ending _r14), named, and
+    linked where the page can link it; that the _r9 scores, the record from before the fixes, are not on the site;
+    and that the chance test was not run on these stands, so their scores are numbers only. Any other place on the
+    site that says the _r9 scores are the record, or that the site does not show the record, is changed the same way.
+    Before, both places said the record was the scores on their re-runs, which the site does not show.
+  alternatives_considered:
+  - >-
+    Leave them as they are (option (a) of the round 15 record's question 1, the default taken in round 15, whose
+    brief allowed only its named changes to the earlier runs): not chosen; since 27 Oct 2026 R3's scores are the
+    record (field-r3-scores-the-record-once-they-exist) and the site shows them
+  rationale: >-
+    Jaskaran, 29 Oct 2026, in the round 16 brief, answering the round 15 record's question 1: "Round 7's runs still
+    say their record is the _r9 re-runs: (b), point them to R3 (Task 1)." No paper was searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-28-round15.md
+    what: Questions, item 1, marked answered
+  - path: docs/handoff/2026-10-29-round16.md
+    what: The brief, Jaskaran's answers and Task 1
+  - path: scripts/build_ui_early_data.py
+    what: The line of the four runs (their note)
+  - path: ui/explorer.html
+    what: The field-check card of the four runs
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 29 Oct 2026 (round 16 brief), the round 15 record's question 1, answered (b)
+- id: site-r3-alphaearth-stands-named-means-only-if-needed
+  title: >-
+    R3's AlphaEarth stands stay without named measurements; a read-only reduction for them only if the paper or a
+    reviewer needs it
+  decision: >-
+    R3's nine AlphaEarth runs keep their stands without our named measurements, as round 15 left them: their Profiles
+    step and stand popups say so. A read-only reduction of named means for those stands, as round 7 made for the
+    round-5 Sanjay Van AlphaEarth run (scripts/alphaearth_stand_means.py), is made only if the paper or a reviewer
+    needs it, and not in round 16.
+  alternatives_considered:
+  - >-
+    The same reduction for R3's nine AlphaEarth runs in a later round, a few read-only calls (option (b) of the
+    round 15 record's question 2): not chosen for now
+  rationale: >-
+    Jaskaran, 29 Oct 2026, in the round 16 brief, answering the round 15 record's question 2: "R3's AlphaEarth stands
+    carry no named measurements: (a), leave it. A read-only reduction for them only if the paper or a reviewer needs
+    it; not this round." No paper was searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-28-round15.md
+    what: Questions, item 2, marked answered
+  - path: docs/handoff/2026-10-29-round16.md
+    what: The brief, Jaskaran's answers and Out of scope
+  - path: scripts/alphaearth_stand_means.py
+    what: The read-only reduction round 7 made for the round-5 Sanjay Van AlphaEarth run
+  - path: ui/explorer.html
+    what: The Profiles step and the stand popup of an R3 AlphaEarth run, which say its stands carry none of our
+      measurements
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 29 Oct 2026 (round 16 brief), the round 15 record's question 2, answered (a)
+- id: site-what-changed-keeps-round-14s-method-changes
+  title: >-
+    The site's "What changed" panel keeps round 14's method changes, in their own group, beside round 13's fixes and
+    the live checks'
+  decision: >-
+    The "What changed" panel keeps, in a group of their own, the changes round 14 made before R3 after the review of
+    19 Oct 2026 (A2 and B15, A3 and B12, C9, A7, and the code for C10 and C12), beside the fixes of round 13 and those
+    after round 14's two live checks, as round 15 built it (WHAT_CHANGED in scripts/build_ui_early_data.py).
+  alternatives_considered:
+  - >-
+    List only round 13's fixes and the live checks' (option (b) of the round 15 record's question 3): not chosen
+  rationale: >-
+    Jaskaran, 29 Oct 2026, in the round 16 brief, answering the round 15 record's question 3: "'What changed' counts
+    round 14's method changes as corrections from the review: (a), keep it." Round 15 had kept them because they
+    change what R3 computes and come from the review's findings. No paper was searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-28-round15.md
+    what: Questions, item 3, marked answered; Done, Task 2
+  - path: docs/handoff/2026-10-29-round16.md
+    what: The brief, Jaskaran's answers
+  - path: scripts/build_ui_early_data.py
+    what: WHAT_CHANGED, the panel's three groups
+  - path: docs/reviews/2026-10-19-review.md
+    what: The review whose findings the panel names
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 29 Oct 2026 (round 16 brief), the round 15 record's question 3, answered (a)
+- id: site-september-and-13-oct-score-rows-read-from-their-files
+  title: >-
+    The site's September 2026 and 13 Oct 2026 score rows are read from their result files, not typed in the builder
+  decision: >-
+    Decided for round 16 (its Task 3). fes_rows() in scripts/build_ui_early_data.py, which has typed these numbers
+    since round 2, reads them from their files: the September runs' score, chance percentile and p for each arm and
+    test from the arm's "observed vs rotation null" table of odisha_script/odisha_phase3_3_results.txt and the Holm p
+    from its "MULTIPLE COMPARISONS -- Holm" table; the 13 Oct re-runs' ARI values from the two committed score files
+    under docs/reproducibility/odisha_repro/; and the plot count and the numbers of the reading sentence. Each value
+    is found exactly once; a line missing or found twice stops the build, naming the file and the line; there is no
+    typed fallback. The build also stops if the September file says that any of the ten tests passes after the Holm
+    correction, since the reading sentence says none does.
+  alternatives_considered:
+  - >-
+    Leave them typed in the builder (option (a) of the round 15 record's question 4, the default taken in round
+    15): not chosen
+  rationale: >-
+    Jaskaran, 29 Oct 2026, in the round 16 brief, answering the round 15 record's question 4: "The September and 13
+    Oct score rows are typed in the builder: (b), read them from their files, this round (Task 3)." Claude (chat) had
+    checked all 46 typed scores, percentiles and p values, and the plot count, against those files, and all matched
+    (the brief). No paper was searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-28-round15.md
+    what: Questions, item 4, marked answered
+  - path: docs/handoff/2026-10-29-round16.md
+    what: The brief, Jaskaran's answers and Task 3
+  - path: scripts/build_ui_early_data.py
+    what: fes_rows, which builds ui_data/fes_comparison.json
+  - path: odisha_script/odisha_phase3_3_results.txt
+    what: The September runs' scores, chance test and Holm table
+  - path: docs/reproducibility/odisha_repro/odisha_v120_handcrafted/odisha_phase3_1_score_v120_merged_districts.txt
+    what: The 13 Oct re-runs' scores, 10 ha
+  - path: docs/reproducibility/odisha_repro/odisha_v120_3ha/odisha_phase3_1_score_v120_3ha_merged_districts_3ha.txt
+    what: The 13 Oct re-runs' scores, 3 ha
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 29 Oct 2026 (round 16 brief), the round 15 record's question 4, answered (b)
+- id: site-earlier-keptland-small-stands-counted-apart
+  title: >-
+    On the earlier kept-land runs too, the site counts apart the small stands that share no edge with another stand
+    and those every neighbour was too big to take
+  decision: >-
+    Decided for round 16 (its Task 2). On the earlier kept-land runs the site counts the stands below the minimum in
+    two kinds, as R3's pages do, in the Stands step and in the size chart: those that share no edge with another
+    stand, and those every neighbour was already too big to take (by the merge's records, 2 in each of the round-6
+    Angul, Dhenkanal and Kendujhar box runs, 4 in Koraput's descending-orbit run and 1 in the round-5 Sanjay Van
+    AlphaEarth run). This restores for those runs the split that round 15's review fix (406e2e6, its finding M1) took
+    back. On those five runs a small stand's popup says which kind it is, where the run's records say so; on a run with
+    no stand of the second kind the popup is left as it was. The earlier runs that are not kept-land, and R3's pages,
+    do not change.
+  alternatives_considered:
+  - >-
+    Leave the earlier kept-land runs with round 13's question 25 wording alone, "they share no edge with another
+    stand" (option (a) of the round 15 record's question 5, the default taken in round 15): not chosen; it is not
+    true of the 11 stands every neighbour was too big to take
+  rationale: >-
+    Jaskaran, 29 Oct 2026, in the round 16 brief, answering the round 15 record's question 5: "The earlier kept-land
+    runs' small stands: (b), count the two kinds apart there too (Task 2)." No paper was searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-28-round15.md
+    what: Questions, item 5, marked answered; Done, the review, M1
+  - path: docs/handoff/2026-10-29-round16.md
+    what: The brief, Jaskaran's answers and Task 2
+  - path: ui/explorer.html
+    what: The Stands step, the size chart and a small stand's popup
+  - path: docs/reproducibility/keptland_runs
+    what: The earlier kept-land runs' run records (merge_diagnostics) and stand layers (below_why)
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 29 Oct 2026 (round 16 brief), the round 15 record's question 5, answered (b)
