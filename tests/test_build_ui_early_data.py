@@ -677,3 +677,41 @@ def test_the_build_record_names_the_code_and_the_r3_rasters_off_git(builder, tmp
          "sha256": hashlib.sha256(b"tif").hexdigest()}]
     assert {"command", "date", "environment"} <= rec.keys()
     assert builder.BUILD_RECORD.parent.name == "reproducibility"
+
+
+def test_r3_steps_name_the_register_entries_behind_what_r3_computes():
+    """Review of round 15, L3: every decision a step names is in the register; R3's clustering
+    step names the round 14 method changes and the run's own k entry."""
+    import yaml
+
+    register = {d["id"] for d in yaml.safe_load(
+        (SCRIPTS.parent / "docs" / "decisions.yaml").read_text())["decisions"]}
+    for r in _index()["runs"]:
+        for step in r["steps"]:
+            assert set(step["decisions"]) <= register, (r["run_id"], step["step"])
+        if r["group"] == "current":
+            (clustering,) = [s for s in r["steps"] if s["step"] == "clustering"]
+            assert {"spec-clustering-kmeans-outside-earth-engine",
+                    "spec-clustering-log-rule-right-skewed-bands", "spec-k-elbow-in-the-fits-space",
+                    r["k_reason"]["register"]} <= set(clustering["decisions"])
+
+
+def test_r3_superpixel_layers_lack_only_the_untyped_stands_superpixels():
+    """Review of round 15, L4: the map draws the superpixels of the run's layer; those it has no
+    polygon for are the superpixels of the stands with no type."""
+    for r in [r for r in _index()["runs"] if r["group"] == "current"]:
+        f = r["facts"]
+        missing = f["n_superpixels"] - f["superpixels_in_layer"]
+        assert missing == f["n_untyped_stands"]
+        assert f["superpixels_missing_are_untyped"] is (missing > 0)
+    sv = next(r for r in _index()["runs"] if r["run_id"] == "sanjay_van_baseline_keptland_r14")
+    assert (sv["facts"]["n_superpixels"], sv["facts"]["superpixels_in_layer"]) == (1200, 1114)
+
+
+def test_what_changed_says_k_was_chosen_before_r3s_field_scores():
+    """Review of round 15, H2: the _r9 scores existed when k was chosen; R3's did not."""
+    texts = [i["text"] for g in _index()["what_changed"]["groups"] for i in g["items"]]
+    assert any("before any of R3's field scores" in t for t in texts)
+    assert not any("before any field score" in t for t in texts)
+    page = (SCRIPTS.parent / "ui" / "explorer.html").read_text()
+    assert "before any field score" not in page
