@@ -7,7 +7,9 @@ It opens on the current results, R3: the eighteen runs of 28 Oct 2026 (Sanjay Va
 four districts' boxes at 3 ha and at 10 ha, both arms; all on kept land only), made after the
 corrections of 19 to 28 Oct. The pickers choose among them by place, features and stand size. The
 28 runs of 13 to 15 Oct stay as "Earlier versions" (the Results picker), each with one line saying
-what it is and that its results are from before those corrections. The banner opens two panels:
+what it is and that its results are from before those corrections; round 7's four descending-orbit
+runs name R3's run of the same boxes, features and stand size as the record of their scores, and
+link it from their field check. The banner opens two panels:
 "What changed" (the corrections that change what the pipeline computes, one sentence each, with
 links to the review of 19 Oct and the round records) and "Earlier versions" (the 28, by place).
 The steps:
@@ -58,7 +60,10 @@ sharp at any zoom; the satellite image is smoothed rather than shown as 10 m blo
   export writes it.
 - `scripts/build_ui_early_data.py`: builds `ui_data/`. R3's runs come from their records
   (`docs/reproducibility/r14_runs/second_half/`, the files off git by their records) and their
-  sets' scores; the earlier runs as before. It first built the `ui_data/` from files the 13
+  sets' scores; the earlier runs as before. The September 2026 and 13 Oct score rows of
+  `fes_comparison.json` are read from their result files (`odisha_script/odisha_phase3_3_results.txt`
+  and the two `odisha_phase3_1_score_*` files under `docs/reproducibility/odisha_repro/`), each value
+  from exactly one line: a line missing or found twice stops the build. It first built the `ui_data/` from files the 13
   October re-runs had already saved (stands before the merge fix; features as stand means; only the superpixels
   that hold some trees or scrub). It adds the box runs of brief A0 by itself once their stand
   files and the output of `scripts/transparency_masking.py` for each box config exist (the
