@@ -127,12 +127,16 @@ round 14 record, Done, the elbow report, part 2): 15 files, its first features p
 and image list as `_manifest_features_1.json`, `_log_features_1.txt` and
 `_input_images_features_1.json`. A config the batch does not finish is copied into
 `first_half/unfinished/` instead, which the elbow report does not read; the tile, dropped from R3,
-was stopped before its run folder, so it has no record.
+was stopped before its run folder, so it has no record: only `cost_<tile>.json` and its `_run.json`,
+whose 0.0132 EECU-hours are the project's online use over the tile's two stage spans, not the
+tile's (the round 14 record, Done, the full elbow report).
 
 **The elbow report** (Task 6), in `odisha_script/keptland_scores/`: part 1,
 `r14_elbow_part1_report.md`, `r14_elbow_part1.csv`, six figures in `r14_elbow_part1/`, and
 `r14_elbow_part1_run.json`; part 2, over the eighteen, `r14_elbow_part2_report.md`,
-`r14_elbow_part2.csv`, eleven figures in `r14_elbow_part2/`, and `r14_elbow_part2_run.json`.
+`r14_elbow_part2.csv`, eleven figures in `r14_elbow_part2/`, and `r14_elbow_part2_run.json`; the
+full report, after the batch, `r14_elbow_report.md`, `r14_elbow.csv`, eleven figures in
+`r14_elbow/`, and `r14_elbow_run.json` (part 2 under the brief's names, byte for byte but the stem).
 
 **Off git:** none so far (no file over 5 MB; the largest, AlphaEarth Koraput's
 `_k_elbow_stand_table.csv`, 2.2 MB). A file over 5 MB goes to `outputs/round14/results/first_half/`,

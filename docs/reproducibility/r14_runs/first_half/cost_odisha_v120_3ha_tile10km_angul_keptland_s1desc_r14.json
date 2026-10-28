@@ -1,0 +1,24 @@
+{
+ "what": "One run's Earth Engine cost, EECU-hours (scripts/eecu_by_stage.py): batch by stage from the task list, online by pass from Cloud Monitoring, and each per 1,000 ha of the ROI.",
+ "config": "odisha_v120_3ha_tile10km_angul_keptland_s1desc_r14",
+ "area_ha": 10000.0,
+ "batch_eecu_h": {},
+ "batch_eecu_h_per_1000_ha": {},
+ "online_eecu_h_by_pass": [
+  {
+   "pass": "features",
+   "eecu_h": 0.0,
+   "per_1000_ha": 0.0
+  },
+  {
+   "pass": "features",
+   "eecu_h": 0.0132,
+   "per_1000_ha": 0.0013
+  }
+ ],
+ "batch_total": 0,
+ "online_total": 0.0132,
+ "total": 0.0132,
+ "total_per_1000_ha": 0.0013,
+ "tasks": {}
+}
