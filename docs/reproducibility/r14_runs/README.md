@@ -109,3 +109,33 @@ the same keys in both runs: `k_elbow/k_elbow__s91032dcd75` (the elbow table; rea
 **In the run tree only** (`outputs/round14/run_tree_3`, git-ignored, with its own `.env`; not to
 be copied anywhere): the same files in `runs/<run>_<time>/`, and the two Drive readings, made
 read-only.
+
+## R3's first half: the nineteen `_r14` configs through the k elbow
+
+**In the repo**, `docs/reproducibility/r14_runs/first_half/`, per run (13 files), copied with
+`scripts/copy_run_results.py --through k_elbow` as each part of the elbow report is made
+(`odisha_script/r14_first_half/report_part.sh`; after the batch, `after_batch.sh`): the manifests
+of its three passes (`<run>_manifest_<kind>.json`: features, segmentation, k_elbow), each pass's
+`fmu.log` (`<run>_log_<kind>.txt`), the features pass's `input_images.json`
+(`<run>_input_images_features.json`), and the k elbow's five files and run record
+(`<run>_k_elbow.csv`, `_k_elbow_stand_table.csv`, `_k_elbow_fit_rows.csv`, `_k_elbow_types.csv`,
+`_k_elbow_preprocessing.json`, `_k_elbow_run.json`). Beside them: `cost_<run>.json` and
+`cost_<run>_run.json`. So far (28 Oct) the ten of part 1: Sanjay Van and the 3 ha boxes, both
+arms. A config the batch does not finish is copied into `first_half/unfinished/` instead, which the
+elbow report does not read.
+
+**The elbow report** (Task 6), in `odisha_script/keptland_scores/`: part 1,
+`r14_elbow_part1_report.md`, `r14_elbow_part1.csv`, six figures in `r14_elbow_part1/`, and
+`r14_elbow_part1_run.json`.
+
+**Off git:** none so far (no file over 5 MB; the largest, AlphaEarth Koraput's
+`_k_elbow_stand_table.csv`, 2.2 MB). A file over 5 MB goes to `outputs/round14/results/first_half/`,
+its size and SHA-256 in `<run>_files_off_git.json`.
+
+**On Drive:** nothing (the first half stops before the export pass).
+
+**On Earth Engine** (kept), under `projects/replicating-paper/assets/fmu/<run>/`: the features,
+segmentation and k elbow assets, each run's keys in its manifests.
+
+**In the run tree only** (`outputs/round14/run_tree_5`, git-ignored, with its own `.env`; not to
+be copied anywhere): the same files in `runs/<run>_<time>/`.
