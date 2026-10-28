@@ -13,16 +13,19 @@ declaration gives it "stand counts, sizes, k and the types' shares only"
 run, from <run>_run.json, <run>_manifest_export.json and <run>_stands_merged.geojson in its records
 folder (the layer from where <run>_files_off_git.json says, if it is off git, checked by its
 SHA-256, as odisha_script/odisha_keptland_score.py reads it):
-  - the counts: scripts/describe_keptland_runs.py's, unchanged (its describe()): the stands, the
-    superpixels, the smallest and the largest stand, those over merge.max_area_ha, those below
-    merge.min_area_ha by cause, those left out of the k-means fit; and the merged layer's polygons;
+  - the counts: the stand counts of scripts/describe_keptland_runs.py's describe(), unchanged (the
+    stands of the merge, those with no pixel, those over merge.max_area_ha, those below
+    merge.min_area_ha by cause, those left out of the k-means fit), and the merged layer's: its
+    stands (each stand by its stand_lbl, which a stand split into pieces carries on every piece),
+    its polygons, its stands split into pieces, and the merge's stands with no polygon in it;
   - the sizes: the stands' areas, ha, as describe() takes them (the merge's stand_attributes): the
-    10th, 25th, 50th, 75th and 90th percentiles (numpy's linear rule), the mean and the total, of all
-    the stands and of those at or above merge.min_area_ha;
+    smallest, the 10th, 25th, 50th, 75th and 90th percentiles (numpy's linear rule), the largest, the
+    mean and the total, of all the stands and of those at or above merge.min_area_ha;
   - k: the clustering's, as the export pass recorded it;
   - the types' shares: for each type (the clustering's cluster_id, 0 to k - 1), its stands in the
     merged layer and their share of the layer's stands, and its area and share of the habitat as the
-    export pass recorded them (cluster_distribution, from the type raster's pixels).
+    export pass recorded them (cluster_distribution, from the type raster's pixels; a type it does
+    not list has no pixel, 0 ha and 0 %). A stand whose pieces carry two types stops the script.
 The runs named by --beside-runs (the _r9 runs) are given beside, by the same rules. Numbers only:
 no difference is tested and none is read. Writes <stem>.md and <stem>.json (results only, no dates)
 and <stem>_run.json (the command, the date, the git state, the inputs' SHA-256), and refuses to
@@ -36,7 +39,6 @@ import hashlib
 import importlib.util
 import json
 import sys
-from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -50,6 +52,11 @@ RUNS = ("sanjay_van_baseline_keptland_r14", "sanjay_van_alphaearth_keptland_r14"
 BESIDE = ("sanjay_van_baseline_keptland_r9", "sanjay_van_alphaearth_keptland_r9")
 ARMS = {"handcrafted": "hand-crafted", "embedding": "AlphaEarth"}
 PERCENTILES = (10, 25, 50, 75, 90)
+# The stand counts of describe() that the declaration allows ("stand counts, sizes, k and the types'
+# shares only"); the rest of its output (superpixels, kept land, each stand's excess) is left out.
+DESCRIBE_COUNTS = ("stands", "stands_with_no_pixel", "min_area_ha", "stands_below_min_area",
+                   "below_min_isolated", "below_min_area_blocked", "stands_left_out_of_fit",
+                   "area_ha_left_out_of_fit", "max_area_ha", "stands_over_max_area")
 
 
 def _describe_module() -> Any:
@@ -77,7 +84,11 @@ def stand_layer(run: str, records: Path) -> Path:
     record = records / f"{run}_files_off_git.json"
     if not record.exists():
         raise SystemExit(f"{run}: no stand layer in {records} and no off-git record")
-    entry = {f["file"]: f for f in json.loads(record.read_text())["files"]}[path.name]
+    entries = {f["file"]: f for f in json.loads(record.read_text())["files"]}
+    if path.name not in entries:
+        raise SystemExit(f"{run}: no stand layer in {records}, and its off-git record {record.name} does "
+                         f"not name {path.name}")
+    entry = entries[path.name]
     where = Path(entry["where"])
     if not where.exists():
         raise SystemExit(f"{run}: {path.name} is off git at {where}, which is not here")
@@ -106,32 +117,54 @@ def describe_run(run_record: dict[str, Any], manifest: dict[str, Any], layer: di
     k = int(clustering["k"])
     minimum = float(manifest["config"]["merge"]["min_area_ha"])
     areas = [float(a["area_ha"]) for a in run_record["stand_attributes"].values()]
-    types = [f["properties"].get("cluster_id") for f in layer["features"]]
-    by_type = Counter(t for t in types if t is not None)
-    unknown = sorted(t for t in by_type if t not in range(k))
+    # Each stand by its label: the export writes one polygon per piece, each piece with its stand's
+    # stand_lbl and cluster_id.
+    type_of: dict[int, set[Any]] = {}
+    pieces: dict[int, int] = {}
+    for f in layer["features"]:
+        lbl = int(f["properties"]["stand_lbl"])
+        type_of.setdefault(lbl, set()).add(f["properties"].get("cluster_id"))
+        pieces[lbl] = pieces.get(lbl, 0) + 1
+    two = sorted(lbl for lbl, ts in type_of.items() if len(ts) > 1)
+    if two:
+        raise SystemExit(f"stands whose pieces carry two types in the merged layer: {two[:10]}")
+    types = {lbl: next(iter(ts)) for lbl, ts in type_of.items()}
+    unknown = sorted({t for t in types.values() if t is not None and t not in range(k)})
     if unknown:
         raise SystemExit(f"types outside 0 to k - 1 = {k - 1} in the merged layer: {unknown}")
+    by_type = {t: sum(1 for v in types.values() if v == t) for t in range(k)}
+    if not clustering.get("cluster_distribution"):
+        raise SystemExit("the export manifest records no cluster_distribution")
     distribution = {int(d["cluster_id"]): d for d in clustering["cluster_distribution"]}
+    n = len(types)
     shares = []
     for t in range(k):
-        d = distribution.get(t) or {}
-        shares.append({"type": t, "stands": by_type.get(t, 0),
-                       "share_of_stands": round(by_type.get(t, 0) / len(types), 4) if types else None,
+        d = distribution.get(t) or {"area_ha": 0.0, "percent_of_habitat": 0.0}  # not listed: no pixel
+        shares.append({"type": t, "stands": by_type[t],
+                       "share_of_stands_percent": round(100 * by_type[t] / n, 2) if n else None,
                        "area_ha": d.get("area_ha"), "share_of_habitat_percent": d.get("percent_of_habitat")})
+    counts = describe(run_record, manifest)
+    merge_labels = {int(lbl) for lbl in run_record["stand_attributes"]}
     return {"arm": ARMS.get(str(clustering.get("feature_source")), str(clustering.get("feature_source"))),
             "k": k,
-            "counts": {**describe(run_record, manifest), "stand_polygons_in_merged_layer": len(types),
-                       "stand_polygons_without_a_type": len(types) - sum(by_type.values())},
+            "counts": {**{key: counts.get(key) for key in DESCRIBE_COUNTS},
+                       "stands_in_merged_layer": n,
+                       "stand_polygons_in_merged_layer": len(layer["features"]),
+                       "stands_split_into_pieces": sum(1 for v in pieces.values() if v > 1),
+                       "stands_of_the_merge_with_no_polygon": len(merge_labels - set(types)),
+                       "stands_in_merged_layer_without_a_type": sum(1 for v in types.values() if v is None)},
             "sizes_all_stands": sizes(areas),
             "sizes_at_or_above_min_area": sizes([a for a in areas if a >= minimum]),
             "types": shares}
 
 
-COUNT_ROWS = (("superpixels", "superpixels"),
-              ("stands", "stands (the merge)"),
-              ("stand_polygons_in_merged_layer", "stand polygons in the merged layer"),
-              ("stand_polygons_without_a_type", "of them without a type"),
-              ("stands_with_no_pixel", "stands with no pixel (0 ha)"),
+COUNT_ROWS = (("stands", "stands (the merge)"),
+              ("stands_with_no_pixel", "of them with no pixel (0 ha)"),
+              ("stands_of_the_merge_with_no_polygon", "of them with no polygon in the merged layer"),
+              ("stands_in_merged_layer", "stands in the merged layer"),
+              ("stand_polygons_in_merged_layer", "their polygons"),
+              ("stands_split_into_pieces", "stands split into pieces"),
+              ("stands_in_merged_layer_without_a_type", "stands without a type"),
               ("min_area_ha", "the minimum size, ha (merge.min_area_ha)"),
               ("stands_below_min_area", "stands below the minimum size"),
               ("below_min_isolated", "of them isolated"),
@@ -163,7 +196,9 @@ def markdown(results: dict[str, Any], columns: list[tuple[str, str]]) -> str:
              "Written by `odisha_script/r14_sanjay_van_description.py` from the runs' committed files. Sanjay",
              "Van has no field plots: as declared, its runs get stand counts, sizes, k and the types' shares",
              "only (`odisha_script/PHASE_KEPTLAND_PREDECLARED.md`). Numbers only: no difference is tested.",
-             "", "## The runs, k and the stand counts", "", head, rule,
+             "", "## The runs, k and the stand counts", "",
+             "The stands of the merge are those of each run record's `stand_attributes`; the merged layer's",
+             "are counted by their `stand_lbl`, a stand split into pieces once.", "", head, rule,
              "| run | " + " | ".join(f"`{run}`" for _, run in columns) + " |",
              "| k | " + " | ".join(cell(r["k"]) for r in runs) + " |"]
     lines += [f"| {name} | " + " | ".join(cell(r["counts"].get(key)) for r in runs) + " |"
@@ -176,16 +211,17 @@ def markdown(results: dict[str, Any], columns: list[tuple[str, str]]) -> str:
         lines += [f"| {name} | " + " | ".join(cell(r[block].get(key)) for r in runs) + " |"
                   for key, name in SIZE_ROWS]
     lines += ["", "## The types' shares", "",
-              "Each type's stands in the merged layer, and its area and share of the habitat as the export",
-              "pass recorded them (`cluster_distribution`, from the type raster's pixels). The type numbers",
-              "are the clustering's labels; a type number in one run names no type in another."]
+              "Each type's stands in the merged layer and their share of its stands, and the type's area and",
+              "share of the habitat as the export pass recorded them (`cluster_distribution`, from the type",
+              "raster's pixels; a type it does not list has no pixel). The type numbers are the clustering's",
+              "labels; a type number in one run names no type in another."]
     for label, run in columns:
         r = results[run]
         lines += ["", f"### {label}: `{run}`, k = {r['k']}", "",
-                  "| type | stands | share of the stands | area, ha | share of the habitat, % |",
+                  "| type | stands | share of the stands, % | area, ha | share of the habitat, % |",
                   "|---:|---:|---:|---:|---:|"]
-        lines += [f"| {t['type']} | {cell(t['stands'])} | {cell(t['share_of_stands'])} | {cell(t['area_ha'])} | "
-                  f"{cell(t['share_of_habitat_percent'])} |" for t in r["types"]]
+        lines += [f"| {t['type']} | {cell(t['stands'])} | {cell(t['share_of_stands_percent'])} | "
+                  f"{cell(t['area_ha'])} | {cell(t['share_of_habitat_percent'])} |" for t in r["types"]]
     return "\n".join(lines) + "\n"
 
 
