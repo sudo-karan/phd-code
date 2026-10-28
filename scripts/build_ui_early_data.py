@@ -116,6 +116,9 @@ K_REASONS = {"sanjay_van": ("field-r3-k-from-part-1-of-the-elbow-report", "Sanja
              3.0: ("field-r3-k-from-part-1-of-the-elbow-report",
                    "The four Odisha districts at 3 ha, both arms"),
              10.0: ("field-r3-k-from-part-2-of-the-elbow-report", "10 ha k")}
+# The record of the build, outside ui_data/ so that the site does not change with it (round 13's
+# question 28, spec-ui-data-build-record-in-docs-in-a-later-round).
+BUILD_RECORD = REPO / "docs" / "reproducibility" / "ui_data_build_run.json"
 ROUND13 = "docs/handoff/2026-10-20-round13.md"
 ROUND14 = "docs/handoff/2026-10-26-round14.md"
 REVIEW = "docs/reviews/2026-10-19-review.md"
@@ -1251,7 +1254,45 @@ def r3_entry(entry: dict, facts: dict, run: dict, clustering: dict, st: dict, cf
                                      for s in ("scores.txt", "chance.txt")]}
 
 
+def build_record(git: dict, runs_out: list[dict]) -> dict:
+    """What built ui_data/ and from what: the command, the date, the git state read before the
+    build began, the environment, the runs by group, and the files off git it read for R3 (the
+    display rasters scripts/fetch_ui_r3_layers.py saved: each one's size and SHA-256, and the
+    assets each area's were downloaded from)."""
+    import datetime as dt
+    import hashlib
+
+    from fmu.utils.provenance import environment_state
+
+    off_git = sorted(p for p in (PIXELS / R3_LAYERS).rglob("*.tif")) + sorted(
+        p for r in runs_out if r["group"] == "current" and r["run_id"] in PIXEL_LAYER_RUNS
+        for p in (PIXELS / r["run_id"]).glob("*_part[0-9][0-9].tif"))
+    fetched = {d.name: json.loads((d / "fetch_record.json").read_text())
+               for d in sorted((PIXELS / R3_LAYERS).iterdir()) if (d / "fetch_record.json").is_file()}
+    return {
+        "what": "The last build of ui_data/ by scripts/build_ui_early_data.py: which code built it, "
+                "from which inputs (round 13's question 28; register "
+                "spec-ui-data-build-record-in-docs-in-a-later-round).",
+        "command": " ".join(["python", *sys.argv]),
+        "date": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
+        "git": git, "environment": environment_state(),
+        "runs": {g: sorted(r["run_id"] for r in runs_out if r["group"] == g)
+                 for g in ("current", "earlier")},
+        "r3_display_rasters": {
+            "fetched_by": "scripts/fetch_ui_r3_layers.py",
+            "areas": {a: {k: f[k] for k in ("runs_served", "keys", "assets_opened", "pixel_layers",
+                                            "git") if k in f}
+                      for a, f in fetched.items()},
+            "files_off_git": [{"file": str(p.relative_to(PIXELS)), "bytes": p.stat().st_size,
+                               "sha256": hashlib.sha256(p.read_bytes()).hexdigest()}
+                              for p in off_git]},
+    }
+
+
 def main() -> None:
+    from fmu.utils.provenance import git_state
+
+    git = {k: v for k, v in git_state().items() if k != "root"}
     if OUT.exists():
         shutil.rmtree(OUT)
     OUT.mkdir(parents=True)
@@ -1475,6 +1516,8 @@ def main() -> None:
              "runs": runs_out}
     write_json(OUT / "index.json", index)
     write_json(OUT / "fes_comparison.json", fes_rows())
+    if OUT.resolve() == (REPO / "ui_data").resolve():
+        BUILD_RECORD.write_text(json.dumps(build_record(git, runs_out), indent=1) + "\n")
 
 
 def fes_rows() -> dict:

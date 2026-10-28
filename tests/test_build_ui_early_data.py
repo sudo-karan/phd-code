@@ -655,3 +655,25 @@ def test_an_earlier_runs_line_says_what_it_is(builder):
     assert "descending" in builder.history_line("odisha_v120_3ha_squares_angul_keptland_s1desc",
                                                 "od")
     assert "Sanjay Van's rectangle" in builder.history_line("sanjay_van_baseline_keptland", "sv")
+
+
+def test_the_build_record_names_the_code_and_the_r3_rasters_off_git(builder, tmp_path):
+    """Round 13's question 28 (spec-ui-data-build-record-in-docs-in-a-later-round): the record of a
+    build of ui_data/, written outside it, with the files off git that the build read for R3."""
+    import hashlib
+
+    area = tmp_path / "ui_data_full" / "r14_areas" / "angul"
+    area.mkdir(parents=True)
+    (area / "part01_x_true_colour.tif").write_bytes(b"tif")
+    (area / "fetch_record.json").write_text(json.dumps(
+        {"runs_served": ["a_r14"], "keys": {"masking": "s1"}, "assets_opened": ["x"], "git": {}}))
+    runs = [{"run_id": "a_r14", "group": "current"}, {"run_id": "b", "group": "earlier"}]
+    rec = builder.build_record({"commit": "c0ffee", "dirty": False}, runs)
+    assert rec["git"] == {"commit": "c0ffee", "dirty": False}
+    assert rec["runs"] == {"current": ["a_r14"], "earlier": ["b"]}
+    assert rec["r3_display_rasters"]["areas"]["angul"]["runs_served"] == ["a_r14"]
+    assert rec["r3_display_rasters"]["files_off_git"] == [
+        {"file": "r14_areas/angul/part01_x_true_colour.tif", "bytes": 3,
+         "sha256": hashlib.sha256(b"tif").hexdigest()}]
+    assert {"command", "date", "environment"} <= rec.keys()
+    assert builder.BUILD_RECORD.parent.name == "reproducibility"
