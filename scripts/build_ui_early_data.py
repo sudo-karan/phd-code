@@ -199,7 +199,7 @@ R3_LABEL = ("R3 (round 14, docs/reproducibility/r14_runs/README.md): Sanjay Van 
             "versions: ")
 HISTORY = {
     "repro": "A test run of 13 Oct 2026 on {where}, before the merge fix.",
-    "box": "A test run of 14 Oct 2026 on the boxes, over all land, after the merge fix.",
+    "box": "A test run of 13 Oct 2026 on the boxes, over all land, after the merge fix.",
     "keptland": "A run of 15 Oct 2026 on kept land only (trees and scrub) in {where}.",
     "keptland_ascending": ("A run of 15 Oct 2026 on kept land only in the boxes, its radar from the "
                            "ascending Sentinel-1 orbit."),
@@ -247,8 +247,8 @@ WHAT_CHANGED = [
         ("C9", "Average greenness is now the fitted curve's mean over the whole window; before, it "
                "was the trend line's value on the window's first day."),
         ("A7", "The elbow behind the number of types is now drawn in the fit's own space, and "
-               "Jaskaran chose k from it before any field score; before, it was drawn outside "
-               "that space."),
+               "Jaskaran chose k from it before any of R3's field scores; before, it was drawn "
+               "outside that space."),
         ("C10", "The stand layers now also give the averages of each angle's sine and cosine, "
                 "from which this site reads which way a stand faces and when it is greenest; "
                 "plain averages of angles mislead where they wrap round, at north or at the turn "
@@ -464,6 +464,24 @@ STEP_DECISIONS = {
                   "field-forest-types-from-structure", "field-truth-trees-only",
                   "field-rotation-null-only-null", "field-phase3-primary-analysis-and-checks",
                   "sup-established-methods-first", "sup-new-metrics-await-approval"],
+}
+
+# What R3's runs add to each step's decisions (the drawer "How this step works, and why"): the
+# register entries of rounds 13 and 14 behind what R3 computes. Hand-crafted runs only under
+# "features_fv"; the run's own k entry is added by the builder.
+R3_STEP_DECISIONS = {
+    "data_load": ["spec-data-load-windows-include-their-end-date"],
+    "features_fv": ["spec-optical-mean-over-the-window", "spec-static-terrain-on-a-float-dem",
+                    "spec-static-water-input-over-the-transforms-reach"],
+    "merge": ["spec-merge-pixel-counts-on-one-inclusion-rule", "spec-merge-every-tie-by-centroid",
+              "spec-merge-fallback-tie-by-centroid", "spec-export-area-and-pixels-from-the-pixel-count"],
+    "clustering": ["spec-clustering-kmeans-outside-earth-engine",
+                   "spec-clustering-log-rule-right-skewed-bands",
+                   "spec-clustering-phase-pair-not-logged", "spec-clustering-flat-cells-have-no-aspect",
+                   "spec-clustering-one-mean-per-unit-label",
+                   "spec-clustering-exact-quartiles-for-the-robust-scaling",
+                   "spec-k-elbow-in-the-fits-space", "spec-export-stand-means-of-angle-sin-and-cos"],
+    "fes_plots": ["field-r3-scores-the-record-once-they-exist"],
 }
 
 # Plain names for the land-cover classes of the mask's "reason" band (masking_transparency.json).
@@ -872,6 +890,23 @@ def superpixel_layer(run_id: str, vec: Path) -> tuple[str, float | None]:
     return name, round(float(np.median(areas)), 2) if areas else None
 
 
+def superpixels_in_layer(run_id: str, vec: Path, stands_fc: dict) -> dict:
+    """For an R3 run: how many superpixels its superpixel layer has a polygon for (by snic_label),
+    and whether those it has none for are the superpixels of its stands with no type: as many as
+    those stands, and no polygon of the layer under any of them."""
+    from shapely import STRtree
+    from shapely.geometry import shape
+
+    g = json.loads(vec_file(vec, f"{run_id}_stands_snic.geojson").read_text())
+    geoms = [shape(f["geometry"]) for f in g["features"]]
+    tree = STRtree(geoms)
+    untyped = [shape(f["geometry"]).representative_point() for f in stands_fc["features"]
+               if f["properties"]["stand_type"] is None]
+    uncovered = sum(1 for pt in untyped if not any(geoms[i].covers(pt) for i in tree.query(pt)))
+    drawn = len({f["properties"]["snic_label"] for f in g["features"]})
+    return {"superpixels_in_layer": drawn, "untyped_without_superpixel": uncovered}
+
+
 def join_plots_to_stands(stands_fc: dict, plot_keys: list[str]) -> dict:
     """plot_key -> {"<col>_merged_id", "<col>_merged_cluster"} by the Phase 2 join rule: the stand
     whose polygon covers the plot, the lowest stand id where several do."""
@@ -1231,6 +1266,9 @@ def r3_entry(entry: dict, facts: dict, run: dict, clustering: dict, st: dict, cf
             "n_units_no_pixel_centre_in_roi"]:
         raise SystemExit(f"{entry['run_id']}: {st['n_untyped']} stands without a type, which its "
                          "clustering's counts do not account for")
+    uncovered = facts.pop("untyped_without_superpixel")
+    missing = facts["n_superpixels"] - facts["superpixels_in_layer"]
+    facts["superpixels_missing_are_untyped"] = bool(missing) and missing == st["n_untyped"] == uncovered
     facts.update({"area_ha_below_min": run["merge_diagnostics"]["area_in_undersized_stands_ha"],
                   "stands_in_fit": clustering["n_training_units"],
                   "untyped_no_data": clustering["n_units_dropped_null_band"],
@@ -1248,6 +1286,14 @@ def r3_entry(entry: dict, facts: dict, run: dict, clustering: dict, st: dict, cf
                    else ""),
         "k_reason": k_reason("sanjay_van" if sanjay else ceiling, cfg.clustering.k),
     })
+    # The register entries behind what R3 computes, in each step's drawer, with the run's k.
+    for step in entry["steps"]:
+        name = step["step"]
+        if name == "features":
+            name = "features_fv" if hand else "features_ae"
+        extra = R3_STEP_DECISIONS.get(name, []) + (
+            [entry["k_reason"]["register"]] if step["step"] == "clustering" else [])
+        step["decisions"] = step["decisions"] + [d for d in extra if d not in step["decisions"]]
     if not sanjay:
         entry["scores"] = {"set": r3_set(arm, ceiling),
                            "files": [f"odisha_script/keptland_scores/{r3_set(arm, ceiling)}_{s}"
@@ -1474,6 +1520,7 @@ def main() -> None:
                         + (MEANS_NOTE.format(run=run_id) if stand_means(run_id, vec) else ""),
                 "files": files})
         if r3:
+            facts.update(superpixels_in_layer(run_id, vec, stands_fc))
             r3_entry(entry, facts, run, clustering, st, cfg, arm, ceiling, sanjay)
         runs_out.append(entry)
         print("built", run_id, st["n_stands"], "stands")

@@ -41,13 +41,18 @@ def test_an_area_whose_runs_differ_in_a_shared_key_is_refused(tmp_path):
         fetch.areas(tmp_path)
 
 
-def test_an_asset_id_is_the_per_step_layouts_from_the_manifest():
+def test_an_asset_id_is_the_per_step_layouts_and_the_one_the_export_names():
     run = "odisha_v120_3ha_squares_angul_keptland_s1desc_r14"
     m = fetch.manifest(run)
-    assert fetch.asset_id("projects/p/assets/fmu", run, "masking", "mask_provenance", m) == (
-        f"projects/p/assets/fmu/{run}/masking/mask_provenance__s073c13df8c")
+    root = "projects/replicating-paper/assets/fmu"
+    for stage, output, key in (("masking", "mask_provenance", "s073c13df8c"),
+                               ("data_load", "s2_composite", "s9249226467")):
+        assert fetch.asset_id(root, run, stage, output, m) == f"{root}/{run}/{stage}/{output}__{key}"
     with pytest.raises(SystemExit, match="not a cached output"):
-        fetch.asset_id("projects/p/assets/fmu", run, "masking", "snic_clusters", m)
+        fetch.asset_id(root, run, "masking", "snic_clusters", m)
+    # Another asset root (a wrong .env) gives another id than the one the export pass names.
+    with pytest.raises(SystemExit, match="is not the asset its export pass names"):
+        fetch.asset_id("projects/p/assets/fmu", run, "masking", "mask_provenance", m)
 
 
 @pytest.mark.parametrize("grid", [

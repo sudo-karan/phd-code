@@ -650,7 +650,7 @@ def test_an_earlier_runs_line_says_what_it_is(builder):
     builder.AREAS.update({"sv": {"site": "Sanjay Van"}, "od": {"site": "Odisha"}})
     assert "whole rectangle" in builder.history_line("sanjay_van_baseline_repro", "sv")
     assert "village outlines" in builder.history_line("odisha_v120_3ha_angul_repro", "od")
-    assert "14 Oct 2026 on the boxes" in builder.history_line("odisha_v120_3ha_squares_angul", "od")
+    assert "13 Oct 2026 on the boxes" in builder.history_line("odisha_v120_3ha_squares_angul", "od")
     assert "ascending" in builder.history_line("odisha_v120_3ha_squares_angul_keptland", "od")
     assert "descending" in builder.history_line("odisha_v120_3ha_squares_angul_keptland_s1desc",
                                                 "od")

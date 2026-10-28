@@ -107,13 +107,20 @@ def areas(records: Path = R3_RECORDS) -> dict[str, dict[str, Any]]:
 
 
 def asset_id(root: str, run: str, stage: str, output: str, m: dict[str, Any]) -> str:
-    """A cached output's asset id under the per-step layout, from the run's manifest."""
+    """A cached output's asset id under the per-step layout, from the run's manifest. Where the
+    export pass names the asset (`asset_paths` of its manifest), the id must be that one: a
+    wrong asset root in .env stops the script before any call."""
     if m.get("cache_layout") != "per_step":
         raise SystemExit(f"{run}: not on the per-step cache layout")
     st = next(s for s in m["stages"] if s["name"] == stage)
     if output not in st["produced"] or st["cache_status"].get(output) != "hit":
         raise SystemExit(f"{run}: {stage}/{output} is not a cached output of its export pass")
-    return f"{root}/{run}/{stage}/{output}__{st['cache_key']}"
+    aid = f"{root}/{run}/{stage}/{output}__{st['cache_key']}"
+    export = next((s for s in m["stages"] if s["name"] == "export"), {})
+    named = ((export.get("metadata") or {}).get("manifest") or {}).get("asset_paths", {}).get(output)
+    if named is not None and named != aid:
+        raise SystemExit(f"{run}: {aid} is not the asset its export pass names, {named}")
+    return aid
 
 
 def native_window(bounds: tuple[float, float, float, float], transform: list[float],
