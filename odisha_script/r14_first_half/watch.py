@@ -7,7 +7,15 @@ stop moved by as much, by Jaskaran's answer to question 14 (b), 28 Oct 2026: the
 
     python odisha_script/r14_first_half/watch.py --label r14_first_half --costs <records folder>
         --runs <run> <run> --batch-log <logs>/r14_first_half.log --quota-log <logs>/r14_first_half_quota.log
-        [--interval 1200] [--from-byte N]    (from the batch's run tree, so that its code is the batch's)
+        [--interval 1200] [--from-byte N] [--estimate 7.94] [--largest-pass 12.51]
+        (from the batch's run tree, so that its code is the batch's)
+
+R3's second half (the record, Done, the cost estimate: "For the second half, likewise, with its own
+largest pass, written down before it"; Done, the plan changed to finish today) runs it with
+--label r14_second_half, --costs the first half's records, --runs its eighteen configs, --estimate
+76.58 (their first-half estimate) and --largest-pass 0.80 (AlphaEarth Dhenkanal 10 ha's clustering
+pass at estimate): r is then the first half's charged cost over its estimate, and the stop
+200 - 1.2 x max(1, r) x 0.80. The defaults are the first half's, 7.94 and 12.51.
 
 r is worked here from the two cost files (cost_<run>.json, their totals) of a live check's two runs,
 over the check's estimate, 7.94, and the stop from r, so that neither is typed by hand. By
@@ -55,11 +63,13 @@ NO_READING_LIMIT, RETRY, NEAR_INTERVAL, TICK = 1800, 60, 300, 20
 ap = argparse.ArgumentParser()
 ap.add_argument("--label", required=True)
 ap.add_argument("--costs", type=Path, required=True, help="a live check's records folder")
-ap.add_argument("--runs", nargs=2, required=True, help="the check's two runs, whose cost files give r")
+ap.add_argument("--runs", nargs="+", required=True, help="the runs whose cost files give r (a check's two)")
 ap.add_argument("--batch-log", type=Path, required=True)
 ap.add_argument("--quota-log", type=Path, required=True)
 ap.add_argument("--interval", type=int, default=1200)
 ap.add_argument("--from-byte", type=int, default=None, help="the batch log's length before the batch started")
+ap.add_argument("--estimate", type=float, default=ESTIMATE, help="the runs' estimate, over which their cost is r")
+ap.add_argument("--largest-pass", type=float, default=LARGEST_PASS, help="the batch's largest pass at estimate")
 args = ap.parse_args()
 
 
@@ -81,11 +91,11 @@ try:
 except (OSError, ValueError, KeyError) as e:
     say(f"REFUSED: the check's cost files could not be read ({e!r})")
     sys.exit(2)
-r = sum(totals) / ESTIMATE
+r = sum(totals) / args.estimate
 if not (math.isfinite(r) and 0 < r < 10):
     say(f"REFUSED: r = {r} is not a ratio the rule can use")
     sys.exit(2)
-MARGIN = 1.2 * max(1.0, r) * LARGEST_PASS
+MARGIN = 1.2 * max(1.0, r) * args.largest_pass
 STOP = BUDGET - MARGIN
 NEAR = STOP - MARGIN
 START_OFFSET = (args.from_byte if args.from_byte is not None
@@ -149,8 +159,11 @@ def stop(why: str, code: int) -> None:
     sys.exit(code)
 
 
-say(f"watch started: r = {r:.4f} ({totals[0]:.4f} + {totals[1]:.4f} over {ESTIMATE}, from {args.costs.name}); the stop at "
-    f"{STOP:.4f} EECU-hours ({BUDGET:.0f} - {MARGIN:.4f}); readings every {args.interval} s, every "
+shown = (" + ".join(f"{x:.4f}" for x in totals) if len(totals) <= 2
+         else f"{sum(totals):.4f}, {len(totals)} cost files,")
+say(f"watch started: r = {r:.4f} ({shown} over {args.estimate}, from {args.costs.name}); the stop at {STOP:.4f} "
+    f"EECU-hours ({BUDGET:.0f} - 1.2 x {max(1.0, r):.4f} x {args.largest_pass} = {MARGIN:.4f}); readings every "
+    f"{args.interval} s, every "
     f"{NEAR_INTERVAL} s and at each stage header from {NEAR:.4f}; the round's use read by {QUOTA}")
 for _ in range(30):  # up to ten minutes for the wrapper
     if wrapper() is not None and started():
