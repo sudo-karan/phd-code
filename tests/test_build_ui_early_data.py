@@ -304,8 +304,9 @@ def test_a_box_kept_land_run_is_added_on_its_box_runs_area(builder, tmp_path, mo
 def test_the_committed_ui_data_shows_the_box_kept_land_runs_plots_without_a_stand():
     data = SCRIPTS.parent / "ui_data"
     index = json.loads((data / "index.json").read_text())
-    runs = [r for r in index["runs"] if r.get("kept_land") and r["roi"] == "boxes"]
-    # Round 6's four, and round 7's four on the descending radar orbit.
+    runs = [r for r in index["runs"] if r.get("kept_land") and r["roi"] == "boxes"
+            and r["group"] == "earlier"]
+    # Round 6's four, and round 7's four on the descending radar orbit (R3's own are below).
     assert sorted(r["run_id"] for r in runs) == sorted(
         f"odisha_v120_3ha_squares_{d}_keptland{s}" for d in ("angul", "dhenkanal", "kendujhar", "koraput")
         for s in ("", "_s1desc"))
@@ -441,6 +442,145 @@ def test_every_score_row_names_runs_in_the_index_and_no_run_has_a_row_twice():
 
 
 # ---------------------------------------------------------------- R3 on the site (round 15)
+
+
+DATA = SCRIPTS.parent / "ui_data"
+R3_RECORDS = SCRIPTS.parent / "docs" / "reproducibility" / "r14_runs" / "second_half"
+
+
+def _index() -> dict:
+    return json.loads((DATA / "index.json").read_text())
+
+
+def test_the_site_holds_r3s_eighteen_runs_as_current_and_the_earlier_28_as_history():
+    index = _index()
+    current = [r for r in index["runs"] if r["group"] == "current"]
+    earlier = [r for r in index["runs"] if r["group"] == "earlier"]
+    assert sorted(r["run_id"] for r in current) == sorted(
+        p.name.removesuffix("_manifest_export.json")
+        for p in R3_RECORDS.glob("*_r14_manifest_export.json"))
+    assert len(current) == 18 and len(earlier) == 28
+    # By area, arm and stand size, each choice has one run.
+    keys = [(r["area"], r["arm"], r["stand_ceiling_ha"]) for r in current]
+    assert len(set(keys)) == 18
+    assert {r["area"] for r in current} == {"Sanjay Van", "Angul", "Dhenkanal", "Kendujhar",
+                                            "Koraput"}
+    assert all("history" not in r for r in earlier)
+
+
+def test_each_r3_run_gives_k_with_jaskarans_reason_from_the_register():
+    import yaml
+
+    register = {d["id"]: d for d in yaml.safe_load(
+        (SCRIPTS.parent / "docs" / "decisions.yaml").read_text())["decisions"]}
+    for r in [r for r in _index()["runs"] if r["group"] == "current"]:
+        kr = r["k_reason"]
+        assert kr["k"] == r["k"] == r["facts"]["k"] == 5
+        entry = register[kr["register"]]
+        assert kr["reason"] in " ".join(entry["rationale"].split())
+        assert (SCRIPTS.parent / kr["report"]).is_file()
+        if r["area"] == "Sanjay Van":
+            assert kr["reason"] == "the knee is 5 in both arms."
+        else:
+            size = "10 ha" if r["stand_ceiling_ha"] == 10.0 else "3 ha"
+            assert kr["register"].endswith("part-2-of-the-elbow-report" if size == "10 ha"
+                                           else "part-1-of-the-elbow-report")
+
+
+def test_r3_score_rows_are_their_sets_files_with_the_chance_test_and_c1():
+    rows = [r for r in json.loads((DATA / "fes_comparison.json").read_text())["rows"]
+            if r.get("set")]
+    ids = {r["run_id"]: r for r in _index()["runs"]}
+    stat = {"drawing_all_plots": "delin_all", "drawing_multi_plot": "delin_multi",
+            "pair_precision": "prec", "labelling_district": "lab_wmean", "far_apart": "far_gap"}
+    sets = sorted({r["set"] for r in rows})
+    assert sets == ["keptland_alphaearth_10ha_r14", "keptland_alphaearth_r14",
+                    "keptland_s1desc_10ha_r14", "keptland_s1desc_r14"]
+    scores_dir = SCRIPTS.parent / "odisha_script" / "keptland_scores"
+    for stem in sets:
+        scores = {a["analysis"]: a for a in json.loads(
+            (scores_dir / f"{stem}_scores.json").read_text())["analyses"]}
+        chance = json.loads((scores_dir / f"{stem}_chance.json").read_text())
+        mine = [r for r in rows if r["set"] == stem]
+        assert len(mine) == 5 * len(scores) + 1
+        for r in mine:
+            assert r["run_ids"] == sorted(chance["runs"])
+            assert all(ids[x]["group"] == "current" for x in r["run_ids"])
+            if r["analysis"] == "C1":
+                c1 = chance["checks"]["C1"]
+                assert (r["score"], r["chance_percentile"], r["p"], r["p_holm"]) == (
+                    c1["observed"], c1["pctile"], c1["p"], None)
+                continue
+            assert r["score"] == scores[r["analysis"]][stat[r["test"]]]
+            tested = chance["analyses"].get(r["analysis"])
+            if tested is None:
+                assert (r["chance_percentile"], r["p"], r["p_holm"]) == (None, None, None)
+            else:
+                c = tested["scores"][stat[r["test"]]]
+                assert (r["chance_percentile"], r["p"], r["p_holm"]) == (c["pctile"], c["p"],
+                                                                          c["holm_p"])
+
+
+def test_r3_plots_take_their_sets_declared_join():
+    for r in [r for r in _index()["runs"] if r["group"] == "current" and r["site"] == "Odisha"]:
+        stem = ("keptland_" + ("alphaearth" if r["arm"] == "alphaearth" else "s1desc")
+                + ("_10ha" if r["stand_ceiling_ha"] == 10.0 else "") + "_r14")
+        joined = {row["plot_key"]: row for row in builder_csv(
+            SCRIPTS.parent / "odisha_script" / "keptland_scores" / f"{stem}_joined.csv")}
+        plots = json.loads((DATA / "by_run" / r["run_id"] / "plots.geojson").read_text())
+        stands = {f["properties"]["stand_id"]: f["properties"]["stand_type"] for f in json.loads(
+            (DATA / "by_run" / r["run_id"] / "stands.json").read_text())["features"]}
+        on_stand = 0
+        for f in plots["features"]:
+            p = f["properties"]
+            row = joined.get(p["plot_key"])
+            if row is None or row["how"] == "none":
+                assert p["stand_id"] is None
+                continue
+            on_stand += 1
+            assert p["stand_id"] == int(float(row["sid"]))
+            assert p["stand_type"] == stands[p["stand_id"]]
+            assert p["join_m"] == (round(float(row["dist_m"]), 1) if row["how"] == "within" else 0.0)
+        assert on_stand == r["facts"]["plots_with_stand"]
+
+
+def builder_csv(path: Path) -> list[dict]:
+    import csv
+
+    with path.open(newline="") as fh:
+        return list(csv.DictReader(fh))
+
+
+def test_r3_stands_give_angles_by_sine_and_cosine_and_earlier_runs_by_plain_means():
+    for r in _index()["runs"]:
+        stands = json.loads((DATA / "by_run" / r["run_id"] / "stands.json").read_text())
+        props = stands["features"][0]["properties"]
+        if r["group"] == "current" and r["arm"] == "feature_vector":
+            assert r["angles"] == "sin_cos"
+            assert {"aspect_sin", "aspect_cos", "ndvi_phase_annual_sin",
+                    "ndvi_phase_annual_cos"} <= props.keys()
+            # The four are not measurements of their own: 22, as the earlier runs count.
+            assert r["facts"]["n_feature_bands"] == 22
+        elif r["group"] == "earlier":
+            assert r.get("angles") in (None, "plain")
+            assert not any(k.endswith(("_sin", "_cos")) for k in props)
+
+
+def test_r3_stands_without_a_type_are_the_ones_its_clustering_had_no_row_for():
+    for r in [r for r in _index()["runs"] if r["group"] == "current"]:
+        stands = json.loads((DATA / "by_run" / r["run_id"] / "stands.json").read_text())
+        untyped = [f["properties"] for f in stands["features"]
+                   if f["properties"]["stand_type"] is None]
+        assert len(untyped) == r["facts"]["n_untyped_stands"] == r["facts"]["untyped_no_data"]
+        assert all(p["below_min"] for p in untyped)
+        assert all(p.get("below_why") in ("isolated", "area_blocked") for p in untyped)
+    sv = next(r for r in _index()["runs"] if r["run_id"] == "sanjay_van_baseline_keptland_r14")
+    assert sv["facts"]["n_untyped_stands"] == 86
+
+
+def test_no_file_of_the_site_data_is_over_5_mb():
+    big = [p for p in DATA.rglob("*") if p.is_file() and p.stat().st_size > 5 * 1024 * 1024]
+    assert big == []
 
 
 def test_k_reason_takes_the_item_that_names_the_run_and_checks_its_k(builder):
