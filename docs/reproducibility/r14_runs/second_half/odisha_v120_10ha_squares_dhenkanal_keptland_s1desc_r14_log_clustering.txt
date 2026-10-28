@@ -1,0 +1,73 @@
+2026-10-28 16:13:10 [INFO] fmu.utils.logging: Logging initialized; run dir: runs/odisha_v120_10ha_squares_dhenkanal_keptland_s1desc_r14_20261028_161310
+2026-10-28 16:13:10 [INFO] fmu.utils.logging: Log level: INFO
+2026-10-28 16:13:11 [INFO] fmu.pipeline: ============================================================
+2026-10-28 16:13:11 [INFO] fmu.pipeline: Pipeline run: odisha_v120_10ha_squares_dhenkanal_keptland_s1desc_r14
+2026-10-28 16:13:11 [INFO] fmu.pipeline: Stages: masking -> data_load -> features_optical -> features_radar -> features_structure -> features_static -> segmentation -> merge -> clustering
+2026-10-28 16:13:11 [INFO] fmu.pipeline: Run directory: runs/odisha_v120_10ha_squares_dhenkanal_keptland_s1desc_r14_20261028_161310
+2026-10-28 16:13:11 [INFO] fmu.pipeline: Cache layout: per_step (given to Pipeline())
+2026-10-28 16:13:11 [INFO] fmu.pipeline: ============================================================
+2026-10-28 16:13:11 [INFO] fmu.pipeline: stage: masking
+2026-10-28 16:13:12 [INFO] fmu.pipeline:   [cache] all 4 outputs hit; skipping stage run
+2026-10-28 16:13:15 [INFO] fmu.pipeline: stage masking done in 3.87 sec (from cache)
+2026-10-28 16:13:15 [INFO] fmu.pipeline: stage: data_load
+2026-10-28 16:13:17 [INFO] fmu.stages.data_load:   S2 phenology window: 174 images after cloud filter
+2026-10-28 16:13:18 [INFO] fmu.stages.data_load:   S1 radar window: 189 images after orbit/pol filter
+2026-10-28 16:13:19 [INFO] fmu.stages.data_load:   S2 composite window: 174 images after cloud filter
+2026-10-28 16:13:20 [INFO] fmu.pipeline: stage data_load done in 5.82 sec
+2026-10-28 16:13:20 [INFO] fmu.pipeline: stage: features_optical
+2026-10-28 16:13:21 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-28 16:13:22 [INFO] fmu.pipeline: stage features_optical done in 1.93 sec (from cache)
+2026-10-28 16:13:22 [INFO] fmu.pipeline: stage: features_radar
+2026-10-28 16:13:23 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-28 16:13:24 [INFO] fmu.pipeline: stage features_radar done in 2.07 sec (from cache)
+2026-10-28 16:13:24 [INFO] fmu.pipeline: stage: features_structure
+2026-10-28 16:13:25 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-28 16:13:25 [INFO] fmu.pipeline: stage features_structure done in 0.55 sec (from cache)
+2026-10-28 16:13:25 [INFO] fmu.pipeline: stage: features_static
+2026-10-28 16:13:25 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-28 16:13:26 [INFO] fmu.pipeline: stage features_static done in 1.03 sec (from cache)
+2026-10-28 16:13:26 [INFO] fmu.pipeline: stage: segmentation
+2026-10-28 16:13:28 [INFO] fmu.pipeline:   [cache] all 2 outputs hit; skipping stage run
+2026-10-28 16:13:28 [INFO] fmu.pipeline: stage segmentation done in 2.18 sec (from cache)
+2026-10-28 16:13:28 [INFO] fmu.pipeline: stage: merge
+2026-10-28 16:13:29 [INFO] fmu.utils.components:   merge input: 1119 components, largest 613 px, maxSize 1320 px (54% headroom)
+2026-10-28 16:13:34 [INFO] fmu.utils.adjacency:   merge adjacency: 1114 regions, 2253 adjacent pairs, mean degree 4.04, 147 isolated
+2026-10-28 16:13:34 [WARNING] fmu.utils.adjacency:   merge adjacency: 147 region(s) have no 4-connected neighbour. They cannot be merged and will be reported as orphans.
+2026-10-28 16:13:35 [INFO] fmu.stages.merge:   kept land 979.52 ha (0.00 ha more in patches too small to be a stand, left out), of it without a superpixel 0.0000 ha; superpixel area off kept land 0.0000 ha
+2026-10-28 16:13:42 [INFO] fmu.stages.merge:   threshold calibration over 2253 adjacent pairs:
+2026-10-28 16:13:42 [INFO] fmu.stages.merge:     canopy_height            tol 2.0      = p79.0  of pair differences (p50 0.963644, p75 1.793522, defined on 2253 pairs)
+2026-10-28 16:13:42 [INFO] fmu.stages.merge:     canopy_height_std        tol 0.45     = p89.9  of pair differences (p50 0.165249, p75 0.324559, defined on 2253 pairs)
+2026-10-28 16:13:42 [INFO] fmu.stages.merge:     ndvi_amplitude_annual    tol 0.03     = p84.6  of pair differences (p50 0.012126, p75 0.022857, defined on 2253 pairs)
+2026-10-28 16:13:42 [INFO] fmu.stages.merge:     joint admit rate (all criteria at once): 64.6% of 2253 pairs. The gate is conjunctive, so this is NOT any of the marginals above.
+2026-10-28 16:13:42 [INFO] fmu.utils.region_merge:   merge pass 1: 701 merges over 8 rounds -> 413 regions
+2026-10-28 16:13:42 [INFO] fmu.utils.region_merge:   merge pass 2: 85 merges (19 via the shared-edge fallback) over 2 sweeps -> 328 stands
+2026-10-28 16:13:42 [INFO] fmu.utils.region_merge:   merge pass 2 soft ceiling: 8 merges went over max_area_ha (7 relaxed, 1 via the shared-edge fallback), none past 11.0000 ha
+2026-10-28 16:13:42 [INFO] fmu.stages.merge:   merged 1114 superpixels -> 328 stands (3.40x reduction)
+2026-10-28 16:13:42 [WARNING] fmu.stages.merge:   1 stand(s) stayed below min_area_ha (1.0 ha) because every neighbour is already too big to absorb them under max_area_ha + min_area_ha (11.0 ha), the ceiling merge.pass2_soft_ceiling sets for a stand below the minimum. That is a signal max_area_ha is too tight, not that the forest is heterogeneous.
+2026-10-28 16:13:42 [WARNING] fmu.stages.merge:   5 stand(s) are over max_area_ha (10.0 ha), by up to 0.81 ha. merge.pass2_soft_ceiling allows it: in the second pass a stand below min_area_ha may join a neighbour up to max_area_ha + min_area_ha (11.0 ha).
+2026-10-28 16:13:42 [WARNING] fmu.stages.merge:   147 stand(s) have no 4-connected neighbour at all and cannot be merged with anything.
+2026-10-28 16:13:42 [WARNING] fmu.stages.merge:   1 stand(s) have at least one criterion valid on under 50% of their pixels; those bands are reported as null rather than as a mean over territory that has no data.
+2026-10-28 16:13:42 [WARNING] fmu.stages.merge:   19 of 85 pass-2 merges used the shared-edge fallback, i.e. no relaxed criterion could justify them. These are the merges to look at first if stand geometry looks wrong.
+2026-10-28 16:13:42 [WARNING] fmu.pipeline:   [merge] 1 stand(s) stayed below min_area_ha (1.0 ha) because every neighbour is already too big to absorb them under max_area_ha + min_area_ha (11.0 ha), the ceiling merge.pass2_soft_ceiling sets for a stand below the minimum. That is a signal max_area_ha is too tight, not that the forest is heterogeneous.
+2026-10-28 16:13:42 [WARNING] fmu.pipeline:   [merge] 5 stand(s) are over max_area_ha (10.0 ha), by up to 0.81 ha. merge.pass2_soft_ceiling allows it: in the second pass a stand below min_area_ha may join a neighbour up to max_area_ha + min_area_ha (11.0 ha).
+2026-10-28 16:13:42 [WARNING] fmu.pipeline:   [merge] 147 stand(s) have no 4-connected neighbour at all and cannot be merged with anything.
+2026-10-28 16:13:42 [WARNING] fmu.pipeline:   [merge] 1 stand(s) have at least one criterion valid on under 50% of their pixels; those bands are reported as null rather than as a mean over territory that has no data.
+2026-10-28 16:13:42 [WARNING] fmu.pipeline:   [merge] 19 of 85 pass-2 merges used the shared-edge fallback, i.e. no relaxed criterion could justify them. These are the merges to look at first if stand geometry looks wrong.
+2026-10-28 16:13:42 [INFO] fmu.pipeline: stage merge done in 13.71 sec
+2026-10-28 16:13:42 [INFO] fmu.pipeline: stage: clustering
+2026-10-28 16:13:48 [INFO] fmu.stages.clustering:   raw feature stack: 20 bands
+2026-10-28 16:13:49 [INFO] fmu.stages.clustering:   cyclic decomposition: 2 band(s) replaced with sin/cos pairs (ndvi_phase_annual, aspect)
+2026-10-28 16:13:56 [INFO] fmu.stages.clustering:   the table of units: 327 row(s) x 22 band(s), 180 of them rows of the fit
+2026-10-28 16:14:03 [INFO] fmu.stages.clustering:   k-means (scikit-learn, 25 starts): within-cluster sum of squares 715.646; the starts agree with each other by a median adjusted Rand index of 0.4771 (lowest 0.1843)
+2026-10-28 16:14:03 [INFO] fmu.pipeline:   wrote clustering_fit_rows.csv (148605 bytes)
+2026-10-28 16:14:03 [INFO] fmu.pipeline:   wrote clustering_kmeans.json (8793 bytes)
+2026-10-28 16:14:03 [INFO] fmu.pipeline:   wrote clustering_stand_table.csv (138106 bytes)
+2026-10-28 16:14:04 [INFO] fmu.pipeline:   [cache] exports on the analysis grid: {'crs': 'EPSG:32645', 'crs_transform': [10.0, 0.0, 0.0, 0.0, 10.0, 0.0]}
+2026-10-28 16:14:07 [INFO] fmu.utils.caching: Created cache folder projects/replicating-paper/assets/fmu/odisha_v120_10ha_squares_dhenkanal_keptland_s1desc_r14/clustering
+2026-10-28 16:14:08 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/odisha_v120_10ha_squares_dhenkanal_keptland_s1desc_r14/clustering/cluster_labels__sa1762d63b0 (task J77FVGOHLGJ7C3CTJQLKT77W). Check progress at https://code.earthengine.google.com/tasks
+2026-10-28 16:14:12 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/odisha_v120_10ha_squares_dhenkanal_keptland_s1desc_r14/clustering/feature_stack__sa1762d63b0 (task TIJLA6MB3YDF7NIM4FSPTAUH). Check progress at https://code.earthengine.google.com/tasks
+2026-10-28 16:14:12 [INFO] fmu.pipeline: stage clustering done in 30.30 sec
+2026-10-28 16:14:12 [INFO] fmu.pipeline: ============================================================
+2026-10-28 16:14:12 [INFO] fmu.pipeline: Pipeline complete in 61.53 sec
+2026-10-28 16:14:12 [INFO] fmu.pipeline: ============================================================
+2026-10-28 16:14:14 [INFO] fmu.pipeline: Manifest written: runs/odisha_v120_10ha_squares_dhenkanal_keptland_s1desc_r14_20261028_161310/manifest.json
