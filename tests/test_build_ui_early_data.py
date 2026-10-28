@@ -941,3 +941,62 @@ def test_a_september_file_where_a_test_passes_after_correction_stops_the_build(
     monkeypatch.setattr(builder, "SEPTEMBER", copy, raising=False)
     with pytest.raises(SystemExit, match=said):
         builder.fes_rows()
+
+
+def test_the_committed_lines_of_round_7s_runs_name_r3s_run_and_none_says_r9_is_the_record():
+    """Round 15's question 1 (b), in the committed ui_data/: each of round 7's four runs names R3's
+    run of the same boxes, features and stand size, a current run; no line on the site says that
+    the _r9 scores are the record or that the site does not show the record."""
+    runs = {r["run_id"]: r for r in _index()["runs"]}
+    for d in ("angul", "dhenkanal", "kendujhar", "koraput"):
+        run = f"odisha_v120_3ha_squares_{d}_keptland_s1desc"
+        r3 = runs[f"{run}_r14"]
+        assert r3["group"] == "current" and r3["area"] == runs[run]["area"]
+        assert (r3["arm"], r3["stand_ceiling_ha"], r3["roi"]) == (
+            runs[run]["arm"], runs[run]["stand_ceiling_ha"], runs[run]["roi"])
+        assert (f"The record is R3's scores, on R3's run of the same boxes, features and stand size, "
+                f"{run}_r14.") in runs[run]["note"]
+        assert "The _r9 scores, the record from before the corrections, are not on this site." in (
+            runs[run]["note"])
+    for r in runs.values():
+        for text in (r.get("note") or "", r.get("history") or ""):
+            assert "does not show" not in text and "the record is the scores on" not in text
+
+
+BLOCKED_EARLIER = {"odisha_v120_3ha_squares_angul_keptland": 2,
+                   "odisha_v120_3ha_squares_dhenkanal_keptland": 2,
+                   "odisha_v120_3ha_squares_kendujhar_keptland": 2,
+                   "odisha_v120_3ha_squares_koraput_keptland_s1desc": 4,
+                   "sanjay_van_alphaearth_keptland": 1}
+
+
+def test_the_committed_earlier_kept_land_runs_say_which_small_stands_were_too_big_to_take():
+    """Round 15's question 5 (b), in the committed ui_data/: the five earlier kept-land runs whose
+    merge left stands every neighbour was too big to take (the brief's 11) say of each small stand
+    which kind it is, as R3's do; the other earlier kept-land runs say nothing of it, so their
+    popups keep their one sentence; the counts are the merge's."""
+    earlier_kept = [r for r in _index()["runs"] if r["group"] == "earlier" and r.get("kept_land")]
+    assert len(earlier_kept) == 10
+    for r in earlier_kept:
+        f = r["facts"]
+        md = json.loads((DATA / "by_run" / r["run_id"] / "merge_diagnostics.json").read_text())
+        assert (f["below_min_blocked"], f["below_min_isolated"]) == (
+            md["orphans_area_blocked"], md["orphans_isolated"])
+        assert f["below_min_blocked"] == BLOCKED_EARLIER.get(r["run_id"], 0)
+        small = [s["properties"] for s in json.loads(
+            (DATA / "by_run" / r["run_id"] / "stands.json").read_text())["features"]
+            if s["properties"]["below_min"]]
+        if r["run_id"] in BLOCKED_EARLIER:
+            assert {p["below_why"] for p in small} == {"isolated", "area_blocked"}
+            assert len({p["stand_id"] for p in small if p["below_why"] == "area_blocked"}) == (
+                f["below_min_blocked"])
+        else:
+            assert all("below_why" not in p for p in small)
+    assert sum(BLOCKED_EARLIER.values()) == 11
+
+
+def test_the_committed_score_rows_are_byte_for_byte_what_the_builder_writes(builder):
+    """Round 16, Task 3's check: rebuilt from the files, fes_comparison.json is byte for byte the
+    committed one (write_json's form)."""
+    assert json.dumps(builder.fes_rows(), separators=(",", ":"), ensure_ascii=False) == (
+        DATA / "fes_comparison.json").read_text()
