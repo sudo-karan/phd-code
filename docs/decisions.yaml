@@ -11036,3 +11036,106 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 28 Oct 2026, in the Claude Code session
+- id: field-r3-tile-dropped-to-run-later
+  title: >-
+    The 10 km tile in Angul is dropped from R3, to run later; R3's first half stops before it
+  decision: >-
+    R3 is the eighteen _r14 runs other than odisha_v120_3ha_tile10km_angul_keptland_s1desc_r14. The first half
+    (label r14_first_half) is stopped before the tile, the declared order's last config, once the last 10 ha box has
+    finished its k elbow pass: odisha_script/r14_first_half/stop_before_tile.py sends SIGTERM to the batch's wrapper
+    at the tile's first header, before the tile's runner reaches Earth Engine. No k is chosen for the tile; the
+    elbow report names it as having no record; the second half and the scores leave it out. The tile is in no scored
+    set, so no declared score changes. It is to run later.
+  alternatives_considered:
+  - >-
+    Run the tile as declared, last in the first half and in the second: not chosen by Jaskaran, to finish the round
+    the same day
+  rationale: >-
+    Jaskaran, 28 Oct 2026, in the session: "To finish today, change the plan (record each change and its reason): 1.
+    Drop the 10 km tile from R3: once the last 10 ha box has finished its elbow pass, stop the batch before the
+    tile. Record the tile as dropped from R3, to run later. 2. Run the third live check after R3's second half, not
+    before. Start the second half as soon as I give the 10 ha k values. 3. Score each set (each arm at each stand
+    size) as soon as its runs are exported, without waiting for the others, and run the chance tests of different
+    sets in parallel (offline)." No paper was searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-26-round14.md
+    what: >-
+      Done, the plan changed to finish today, item 1
+  - path: odisha_script/PHASE_KEPTLAND_PREDECLARED.md
+    what: >-
+      The change of 26 Oct 2026, the note of 28 Oct 2026
+  - path: odisha_script/r14_first_half/stop_before_tile.py
+    what: >-
+      The stop before the tile
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 28 Oct 2026, in the Claude Code session
+- id: process-r14-third-live-check-after-the-second-half
+  title: >-
+    The third live check runs after R3's second half, which starts as soon as Jaskaran gives the 10 ha k
+  decision: >-
+    R3's second half (Task 7: clustering, profiling and export of the eighteen R3 configs, the elbows read back from
+    the cache) starts as soon as Jaskaran has given the 10 ha k and the configs' k are committed with their pinned
+    fingerprints, without waiting for the third live check (_r14_check_e and _check_f from scratch, judged by the
+    declared rules), which runs after it, from its own run tree. So R3's clustering and export run on Earth Engine
+    before the round's code has passed a live check from scratch; the smoke test ran those steps on the second
+    check's two copies from their cached features, and every rule held. If the check fails, the brief's rule for it
+    holds (Task 4): under Blocked, all Earth Engine work stopped, the record finished. This replaces, for the second
+    half, process-r14-first-half-before-the-third-live-check's order, in which the second half waited for the
+    check's pass.
+  alternatives_considered:
+  - >-
+    The order of 28 Oct 2026 before this one: the third check right after the first half, and the second half only
+    after the check passes and every k is given; not kept by Jaskaran, to finish the round the same day
+  rationale: >-
+    Jaskaran, 28 Oct 2026, in the session: "To finish today, change the plan (record each change and its reason): 1.
+    Drop the 10 km tile from R3: once the last 10 ha box has finished its elbow pass, stop the batch before the
+    tile. Record the tile as dropped from R3, to run later. 2. Run the third live check after R3's second half, not
+    before. Start the second half as soon as I give the 10 ha k values. 3. Score each set (each arm at each stand
+    size) as soon as its runs are exported, without waiting for the others, and run the chance tests of different
+    sets in parallel (offline)." No paper was searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-26-round14.md
+    what: >-
+      Done, the plan changed to finish today, item 2
+  - path: docs/reproducibility/r14_runs/smoke_test/r14_smoke_test.json
+    what: >-
+      The smoke test's verdict, every rule held
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 28 Oct 2026, in the Claude Code session
+- id: process-r14-score-each-set-as-exported
+  title: >-
+    Each R3 set is scored as soon as its four runs are exported, and the sets' chance tests run in parallel, offline
+  decision: >-
+    Each R3 Odisha set (each arm at 3 ha and at 10 ha) is scored as soon as the export passes of its four runs have
+    ended with exit 0 in the second half, without waiting for the other sets: its records copied
+    (scripts/copy_run_results.py), the declared field check (odisha_script/odisha_keptland_score.py) and the
+    declared chance test (odisha_script/odisha_keptland_chance.py --declared), each command the _r9 set's with _r14
+    in place of _r9. Each set's chance test runs in a process of its own, beside the other sets' tests still
+    running; nothing in a test depends on another set's. The side-by-side tables follow as the sets they need are
+    scored.
+  alternatives_considered:
+  - >-
+    Score the four sets together once the second half has ended (Task 8 as the brief orders it): not chosen by
+    Jaskaran, to finish the round the same day
+  rationale: >-
+    Jaskaran, 28 Oct 2026, in the session: "To finish today, change the plan (record each change and its reason): 1.
+    Drop the 10 km tile from R3: once the last 10 ha box has finished its elbow pass, stop the batch before the
+    tile. Record the tile as dropped from R3, to run later. 2. Run the third live check after R3's second half, not
+    before. Start the second half as soon as I give the 10 ha k values. 3. Score each set (each arm at each stand
+    size) as soon as its runs are exported, without waiting for the others, and run the chance tests of different
+    sets in parallel (offline)." No paper was searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-26-round14.md
+    what: >-
+      Done, the plan changed to finish today, item 3
+  - path: odisha_script/keptland_scores/keptland_s1desc_r9_chance_run.json
+    what: >-
+      The command of an _r9 set's chance test
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 28 Oct 2026, in the Claude Code session

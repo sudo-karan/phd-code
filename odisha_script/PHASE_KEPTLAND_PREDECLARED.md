@@ -338,3 +338,13 @@ R3 result exists. Nothing above is changed except where this section says so.
   exists: no R3 config has been run, and no R3 elbow, stand or score exists (the live check's two
   runs, which are not R3 results, stopped in the merge before their elbow). Nothing else in this
   section is changed.
+- **Note of 28 Oct 2026: the 10 km tile dropped from R3, to run later.** Jaskaran dropped the tile
+  from R3 on 28 Oct 2026, to finish the round that day (the round 14 record,
+  `docs/handoff/2026-10-26-round14.md`, Done, the plan changed): R3's first half stops before the
+  tile, and R3 is the eighteen other runs. The tile is in no scored set (the field check and the
+  chance test are those of the Odisha boxes, each arm at 3 ha and at 10 ha), so no declared score
+  changes; the elbow report names the tile as having no record, and no k is chosen for it. When
+  this was written, R3's first half had made the elbows of Sanjay Van and of the 3 ha boxes, both
+  arms, and was making the 10 ha boxes'; Jaskaran had chosen k for the 3 ha boxes and Sanjay Van
+  (register `field-r3-k-from-part-1-of-the-elbow-report`); no R3 clustering, stand type or field
+  score existed. Nothing else in this section is changed.
