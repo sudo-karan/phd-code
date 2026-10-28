@@ -446,6 +446,12 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
 .drawer .info p { margin: 0; }
 .drawer .info ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
 .drawer .dechead { margin: 8px 14px 0; font-size: 13.5px; border-top: 1px solid var(--line); padding-top: 10px; }
+.vlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.vlist li { border-top: 1px solid var(--line); padding-top: 8px; display: grid; gap: 3px; }
+.vlist .ref { font-family: var(--font-data); font-size: 11px; color: var(--muted); }
+.vgroup { margin: 10px 0 2px; font-family: var(--font-label); font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.vrun { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.vrun b { font-weight: 600; font-size: 13px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
 </style>
 
@@ -491,6 +497,13 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
         <p class="key"><strong>How strong is each paper's support?</strong> <span class="chip accent">used</span> others use the method; <span class="chip accent">recommended</span> a review recommends it; <span class="chip good">shown better</span> a comparison shows it beats the alternatives.</p>
         <div class="list" id="drawer-list"></div>
         </div>
+      </aside>
+      <aside class="drawer" id="versions" hidden aria-label="Versions of the results">
+        <header>
+          <div><span class="eyebrow" id="versions-kicker">Versions of the results</span><h3 id="versions-title"></h3></div>
+          <button class="close" id="versions-close" type="button">Close</button>
+        </header>
+        <div class="dscroll"><div class="info" id="versions-body"></div></div>
       </aside>
     </section>
   </main>
@@ -1117,6 +1130,10 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     state.join = null;
     const prevStepId = state.run ? walkFor(state.run)[state.step]?.id : null;
     state.run = r;
+    // The run's own words: what its ndvi_mean is (round 13's question 32).
+    const nm = measureOf("ndvi_mean");
+    if (nm) nm.label = ndviMeanLabel(r);
+    FIELDS.ndvi_mean[0] = ndviMeanLabel(r);
     renderBanner();
     state.plots = await plotsOf(r).catch(() => null);
     // A compared run whose plot file names no stands: join each plot here, by the declared rule
@@ -1146,6 +1163,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     buildZoomTo(r);
     renderAll();
     closeDrawer();
+    closeVersions();
     await applyStep();
   }
   // The address holds the whole view, so a link opens exactly what is on screen: the run and step,
@@ -1327,8 +1345,8 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       const minHa = has(f.min_stand_ha) ? ha(f.min_stand_ha) : "the minimum size";
       out.body.push(`Pieces still under ${minHa} then join their most similar neighbour, with the limits loosened${loosen ? ` by ${loosen}%` : ""}${has(f.merges_relaxed) ? ` (${plural(f.merges_relaxed, "join")})` : ""}, or, when no neighbour is close enough, the neighbour they share the longest border with${has(f.merges_fallback) ? ` (${plural(f.merges_fallback, "join")})` : ""}.`);
       const keptSmall = isKept(r) && has(f.n_stands, f.stands_below_min) && f.stands_below_min > 0;
-      // Why the small ones stayed small: "isolated" (the merge's word), or "blocked", every
-      // neighbour too big to take them.
+      // Why the small ones stayed small (round 13's question 25): "isolated" means a stand shares no
+      // edge with another (it may meet one at a corner); "blocked", that every neighbour was too big.
       const blocked = has(f.below_min_blocked) ? f.below_min_blocked : 0;
       const isolated = has(f.below_min_isolated) ? f.below_min_isolated : f.stands_below_min - blocked;
       // Their area: the merge's (R3), or, in an earlier run, that of the stands left out of the fit,
@@ -1337,13 +1355,13 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       let tail = keptSmall
         ? `In the end ${has(f.n_superpixels) ? n0(f.n_superpixels) + " superpixels become " : "we have "}${plural(f.n_stands - f.stands_below_min, "stand")} of ${minHa} or more. Trees and scrub also come in ${plural(f.stands_below_min, "small patch", "small patches")} under ${minHa}${has(smallHa) ? `, about ${ha(Math.round(smallHa))} in all` : ""}. ` +
           (blocked
-            ? `${n0(isolated)} of them touch no other forest, and ${n0(blocked)} stay small because every neighbour was already too big to take ${blocked === 1 ? "it" : "them"}; each stays on the map as a stand of its own.`
-            : `They touch no other forest. There is nothing to join them to, so each stays on the map as a stand of its own.`)
+            ? `${n0(isolated)} of them stay small because they share no edge with another stand, and ${n0(blocked)} because every neighbour was already too big to take ${blocked === 1 ? "it" : "them"}; each stays on the map as a stand of its own.`
+            : `They share no edge with another stand, so there is nothing to join them to, and each stays on the map as a stand of its own.`)
         : has(f.n_superpixels, f.n_stands) ? `In the end ${n0(f.n_superpixels)} superpixels become ${n0(f.n_stands)} stands` + (has(f.median_stand_ha) ? `; a typical stand is ${ha(f.median_stand_ha)}.` : ".") : "";
       tail += `${tail ? " " : ""}` + (isKept(r) ? `The stands cover trees and scrub only.` : `The stands cover the whole area, fields and villages included, in this run.`);
       if (isKept(r) && has(f.min_stand_ha, f.max_stand_ha)) tail += ` In the second step a piece still under ${minHa} may join a neighbour even if the stand then goes past ${ha(f.max_stand_ha)}, up to ${ha(f.max_stand_ha + f.min_stand_ha)}, rather than be left on its own` + (has(f.stands_over_max_stand_ha) ? (f.stands_over_max_stand_ha ? `: ${plural(f.stands_over_max_stand_ha, "stand")} ended up over ${ha(f.max_stand_ha)}.` : `; none needed to.`) : ".");
       if (has(f.stands_below_min) && f.stands_below_min > 0 && !keptSmall) {
-        const why = f.below_min_blocked === f.stands_below_min ? "because every neighbour was already too big to take them" : f.below_min_isolated === f.stands_below_min ? "because they touch no other stand" : "because no neighbour could take them";
+        const why = f.below_min_blocked === f.stands_below_min ? "because every neighbour was already too big to take them" : f.below_min_isolated === f.stands_below_min ? "because they share no edge with another stand" : "because no neighbour could take them";
         tail += ` ${plural(f.stands_below_min, "stand")} stay under ${minHa}, ${why}.`;
       }
       out.body.push(tail);
@@ -1563,6 +1581,18 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     const a = Math.atan2(s, c);
     return key === "aspect" ? (((a * 180) / Math.PI) % 360 + 360) % 360 : a;
   }
+  // What ndvi_mean is (round 13's question 32): in R3 the fitted curve's mean over the dates window,
+  // in the earlier runs the trend line's value on the reference date. The run says which.
+  function ndviMeanLabel(r) {
+    const n = r && r.ndvi_mean, y = d => String(d).slice(0, 4);
+    if (n && n.what === "window_mean") return `Greenness (NDVI): the fitted curve's mean over ${y(n.from)} to ${y(n.to)}`;
+    if (n && n.what === "trend_value") return `Greenness (NDVI): the trend line's value on ${dayWords(n.on)}`;
+    return "Average greenness (NDVI)";
+  }
+  function dayWords(iso) {
+    const [yy, mm, dd] = String(iso).split("-").map(Number);
+    return `${dd} ${MONTHS[mm - 1].slice(0, 3)} ${yy}`;
+  }
   function waterWords(v) {
     // distance_to_water stops counting at 10 km and then holds a fill value (about 463 km), so
     // anything past 10 km is "over 10 km", never a number.
@@ -1719,7 +1749,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       bars + (minHa ? line(minHa, "smallest allowed", false) : "") + line(ceil, "largest allowed", true) + `<g class="ticks">${ticks}</g></svg>` +
       `<p class="small">Each bar counts the stands of that size, in hectares. ${plural(areas.length, "stand")} in all; the middle one is ${ha(quantile(areas, 0.5))}.` +
       (below ? ` ${plural(below, "stand")} ${below === 1 ? "is" : "are"} still under ${ha(minHa)}.` : "") +
-      (small.length ? ` Not counted here: ${plural(Math.max(small.length, f.stands_below_min || 0), "small patch", "small patches")} of trees or scrub under ${ha(minHa)}${f.below_min_blocked ? `, ${n0(f.below_min_isolated)} that touch no other forest and ${n0(f.below_min_blocked)} that every neighbour was too big to take` : " that touch no other forest"}, about ${ha(Math.round(small.reduce((s, p) => s + (p.area_ha || 0), 0)))} in all.` : "") +
+      (small.length ? ` Not counted here: ${plural(Math.max(small.length, f.stands_below_min || 0), "small patch", "small patches")} of trees or scrub under ${ha(minHa)}, about ${ha(Math.round(small.reduce((s, p) => s + (p.area_ha || 0), 0)))} in all, which stayed small ${f.below_min_blocked ? `because they share no edge with another stand (${n0(f.below_min_isolated)}) or every neighbour was too big to take them (${n0(f.below_min_blocked)})` : "because they share no edge with another stand"}.` : "") +
       (over ? ` ${plural(over, "stand")} ${over === 1 ? "goes" : "go"} past ${ha(ceil)}, the most is ${ha(areas[areas.length - 1])}.` : "") + `</p></div>`;
   }
   function areaByType(model) {
@@ -1904,8 +1934,9 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       : `<button type="button" class="popbtn" data-compare="${esc(p.stand_id)}">Compare with another stand</button>`;
     const avg = r.arm === "alphaearth" ? `<p class="small">Averages over the stand. AlphaEarth's own 64 numbers have no names, so the stand is described with our measurements.</p>` : `<p class="small">Averages over the stand's pixels.</p>`;
     const typed = !(p.stand_type === null || p.stand_type === undefined);
-    // Why a small stand stayed small, where the run says (R3's below_why).
+    // Why a small stand stayed small, where the run says (R3's below_why: round 13's question 25).
     const small = p.below_why === "area_blocked" ? "A small patch of trees or scrub: every neighbour was already too big to take it, so it stays a stand of its own."
+      : p.below_why === "isolated" ? "A small patch of trees or scrub that shares no edge with another stand, so it stays a stand of its own."
       : "A small patch of trees or scrub, cut off from the rest, so it stays a stand of its own.";
     const speck = p.below_min === true ? `<p class="small">${small} ${typed ? "It has the type it is closest to, but didn't help decide the types." : ""}</p>` : "";
     // A stand with no type (R3: a value missing in a measurement the types are sorted on).
@@ -2225,6 +2256,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     return `<span class="chip ${s === "shown_better" ? "good" : "accent"}">${esc(label)}</span>`;
   }
   function openDrawer() {
+    closeVersions();
     const r = run();
     const w = walkFor(r)[state.step];
     const ids = (stepOf(r, w.decisions) || {}).decisions || [];
@@ -2280,19 +2312,47 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     return when ? `${when.replace(/\.$/, "")}. The final runs will replace them.` : "Test runs. The final runs will replace them.";
   }
   // With the runs in groups (R3 and the earlier versions), the banner says which group the run on
-  // screen is in.
+  // screen is in: the current results, or an earlier version with its one line (round 13's
+  // question 23), and opens the two panels.
   function renderBanner() {
     const ix = state.index || {}, r = run();
     const frozen = state.frozen ? `<strong>Frozen copy (${esc(decodeURIComponent(state.frozen))}).</strong> The site as it was when cited; it does not change. <a href="${esc(state.latest)}" id="latest-link">Open the latest version</a>.<br>` : "";
     if (!r || !r.group) { $("#banner").innerHTML = frozen + `<strong>Early version.</strong> ${esc(bannerLead(ix.short_label || ix.label || ""))}`; return; }
+    const panels = (ix.what_changed ? ` <button type="button" data-versions="changed">What changed</button>` : "") + ` · <button type="button" data-versions="earlier">Earlier versions</button>`;
     if (r.group === "current") {
-      $("#banner").innerHTML = frozen + `<strong>Current results.</strong> ${esc((ix.short_label || "").replace(/^Current results:\s*/, ""))}`;
+      $("#banner").innerHTML = frozen + `<strong>Current results.</strong> ${esc((ix.short_label || "").replace(/^Current results:\s*/, ""))}` + panels;
     } else {
-      $("#banner").innerHTML = frozen + `<strong>Earlier version.</strong> <button type="button" data-group="current">Back to the current results</button>`;
+      const links = (ix.history_links || []).map(l => `<a href="${REPO}${esc(l.path)}" target="_blank" rel="noopener">${esc(l.label)}</a>`);
+      $("#banner").innerHTML = frozen + `<strong>Earlier version.</strong> ${esc(r.history || "")} See ${listWords(links)}.` + panels + ` · <button type="button" data-group="current">Back to the current results</button>`;
     }
     const ll = $("#latest-link");
     if (ll) ll.addEventListener("click", e => { e.preventDefault(); location.href = ll.getAttribute("href") + linkState(); });
   }
+  // The two panels: what changed between the earlier versions and R3, and the earlier versions, each
+  // with its line.
+  function runTitle(x) {
+    return `${x.area} · ${x.arm === "alphaearth" ? "AlphaEarth" : "our features"} · up to ${fmt(x.stand_ceiling_ha, 0)} ha · ${ROI_LABEL[x.roi || "hulls"] || x.roi}${isKept(x) ? " · trees and scrub only" : ""}`;
+  }
+  function openVersions(which) {
+    const ix = state.index || {};
+    const links = (ix.history_links || []).map(l => `<a href="${REPO}${esc(l.path)}" target="_blank" rel="noopener">${esc(l.label)}</a>`);
+    if (which === "changed" && ix.what_changed) {
+      const wc = ix.what_changed;
+      $("#versions-title").textContent = "What changed";
+      $("#versions-body").innerHTML = `<p>The corrections that change what the pipeline computes, between the earlier versions and R3, one sentence each: those made after the <a href="${REPO}${esc(wc.review)}" target="_blank" rel="noopener">review of 19 Oct 2026</a> (each finding's letter and number are its own), and those after round 14's two live checks.</p>` +
+        wc.groups.map(g => `<p class="vgroup">${esc(g.title)}</p><ul class="vlist">${g.items.map(it => `<li><span class="ref">${esc(it.ref)}</span><span>${esc(it.text)}</span></li>`).join("")}</ul><p class="small">The record: <a href="${REPO}${esc(g.record)}" target="_blank" rel="noopener">${esc(g.record.split("/").pop())}</a>.</p>`).join("");
+    } else {
+      const earlier = (ix.runs || []).filter(x => x.group === "earlier");
+      const byPlace = [...new Set(earlier.map(x => x.area))];
+      $("#versions-title").textContent = "Earlier versions";
+      $("#versions-body").innerHTML = `<p>The ${plural(earlier.length, "run")} this site showed before R3, kept as they were. Each line says what the run is. Their results are from before the corrections of 19 to 28 Oct 2026: see ${listWords(links)}, and “What changed”.</p>` +
+        byPlace.map(a => `<p class="vgroup">${esc(a)}</p><ul class="vlist">${earlier.filter(x => x.area === a).map(x => `<li><div class="vrun"><b>${esc(runTitle(x))}</b><button type="button" class="linkish" data-open-run="${esc(x.run_id)}">Open</button></div><span class="small">${esc(x.history || "")}</span></li>`).join("")}</ul>`).join("");
+    }
+    closeDrawer();
+    $("#versions").hidden = false;
+    $("#versions-close").focus();
+  }
+  function closeVersions() { $("#versions").hidden = true; }
   function aboutBuild() {
     const ix = state.index || {};
     const parts = [ix.short_label, ix.label].filter(Boolean);
@@ -2325,8 +2385,15 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     const toGroup = g => { const r = run(); if (g !== groupOf(r)) chooseRun({ area: r.area, arm: r.arm, ceiling: r.stand_ceiling_ha, roi: r.roi, group: g }); };
     $("#pick-group").addEventListener("click", e => { const b = e.target.closest("button[data-group]"); if (b) toGroup(b.dataset.group); });
     $("#banner").addEventListener("click", e => {
+      const v = e.target.closest("button[data-versions]");
+      if (v) { openVersions(v.dataset.versions); return; }
       const g = e.target.closest("button[data-group]");
       if (g) toGroup(g.dataset.group);
+    });
+    $("#versions-close").addEventListener("click", closeVersions);
+    $("#versions").addEventListener("click", e => {
+      const or = e.target.closest("[data-open-run]");
+      if (or) { const x = state.index.runs.find(y => y.run_id === or.dataset.openRun); if (x) { closeVersions(); selectRun(x, { keepStep: true }); } }
     });
     $("#pick-arm").addEventListener("click", e => { const b = e.target.closest("button[data-arm]"); if (b && !b.disabled) chooseRun({ area: run().area, arm: b.dataset.arm, ceiling: run().stand_ceiling_ha }); });
     $("#pick-ceiling").addEventListener("click", e => { const b = e.target.closest("button[data-ceiling]"); if (b && !b.disabled) chooseRun({ area: run().area, arm: run().arm, ceiling: Number(b.dataset.ceiling) }); });
@@ -2373,7 +2440,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     });
     document.addEventListener("keydown", e => {
       if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches("[data-focus-type]")) { e.preventDefault(); e.target.click(); return; }
-      if (e.key === "Escape") { closeDrawer(); return; }
+      if (e.key === "Escape") { closeDrawer(); closeVersions(); return; }
       if (e.target.closest("input, select, textarea, .leaflet-container") || e.altKey || e.ctrlKey || e.metaKey) return;
       if (e.key === "ArrowRight") go(state.step + 1);
       else if (e.key === "ArrowLeft") go(state.step - 1);

@@ -58,8 +58,8 @@ way, as encoded polygons per class (`class_shapes`).
 
 R3, round 15 (docs/handoff/2026-10-28-round15.md). The eighteen R3 runs (`add_r3_runs`: those with
 an export manifest in docs/reproducibility/r14_runs/second_half/) are the site's current results
-(`"group": "current"`); every run above is kept as an earlier version (`"group": "earlier"`).
-Each R3 run is built from its own records: its stand layers
+(`"group": "current"`); every run above is kept as an earlier version (`"group": "earlier"`, with
+a line saying what it is, `HISTORY`). Each R3 run is built from its own records: its stand layers
 there or off git by its `_files_off_git.json`, its run record and export manifest (the land-cover
 shares too, from the masking stage's numbers in it), its set's declared join, scores and chance
 test (odisha_script/keptland_scores/keptland_<set>_r14_*), and k with Jaskaran's reason from the
@@ -116,7 +116,9 @@ K_REASONS = {"sanjay_van": ("field-r3-k-from-part-1-of-the-elbow-report", "Sanja
              3.0: ("field-r3-k-from-part-1-of-the-elbow-report",
                    "The four Odisha districts at 3 ha, both arms"),
              10.0: ("field-r3-k-from-part-2-of-the-elbow-report", "10 ha k")}
-
+ROUND13 = "docs/handoff/2026-10-20-round13.md"
+ROUND14 = "docs/handoff/2026-10-26-round14.md"
+REVIEW = "docs/reviews/2026-10-19-review.md"
 # The kept-land runs of round 5: run id -> (arm, the _repro run whose assets it reuses).
 KEPTLAND = REPO / "docs" / "reproducibility" / "keptland_runs"
 KEPTLAND_RUNS = {"sanjay_van_baseline_keptland": ("feature_vector", "sanjay_van_baseline_repro"),
@@ -184,7 +186,6 @@ MEANS_NOTE = (" Its stands' named measurements come from one read-only reduction
               "baseline kept-land run's, since the AlphaEarth arm computes neither.")
 # Round 15: the build as a whole, and each earlier run's one line (round 13's question 23,
 # site-r3-notes-at-the-next-site-build).
-# Round 15: the build as a whole.
 R3_SHORT_LABEL = ("Current results: R3, the {n_current} runs of 28 Oct 2026, made after the "
                   "corrections of 19 to 28 Oct. The {n_earlier} runs of 13 to 15 Oct are kept as "
                   "earlier versions.")
@@ -193,6 +194,74 @@ R3_LABEL = ("R3 (round 14, docs/reproducibility/r14_runs/README.md): Sanjay Van 
             "{commit}), with the fixes of rounds 13 and 14 and round 14's four method changes "
             "(odisha_script/PHASE_KEPTLAND_PREDECLARED.md, the change of 26 Oct 2026). Earlier "
             "versions: ")
+HISTORY = {
+    "repro": "A test run of 13 Oct 2026 on {where}, before the merge fix.",
+    "box": "A test run of 14 Oct 2026 on the boxes, over all land, after the merge fix.",
+    "keptland": "A run of 15 Oct 2026 on kept land only (trees and scrub) in {where}.",
+    "keptland_ascending": ("A run of 15 Oct 2026 on kept land only in the boxes, its radar from the "
+                           "ascending Sentinel-1 orbit."),
+    "s1desc": ("A run of 15 Oct 2026 on kept land only in the boxes, its radar from the descending "
+               "Sentinel-1 orbit; its field-check scores are round 7's."),
+}
+HISTORY_BEFORE = " Its results are from before the corrections of 19 to 28 Oct 2026."
+# The "What changed" panel (round 15, Task 2): the corrections that change what the pipeline
+# computes, from the review of 19 Oct 2026 (fixed in round 13, or changed in the method before R3
+# in round 14) and from round 14's two live checks; one plain sentence each, from those files.
+WHAT_CHANGED = [
+    {"title": "Fixed after the review of 19 Oct 2026 (round 13)", "record": ROUND13, "items": [
+        ("A1", "Distance to water now sees water outside the mapped area too; before, it saw only "
+               "the water inside it."),
+        ("A4", "The Sentinel-1 and Sentinel-2 date windows now include their last day; before, "
+               "they stopped a day early, and the images of that day were left out."),
+        ("A5", "Slope and aspect now keep their decimals, and a flat cell has no direction; "
+               "before, they were whole degrees, and a flat cell counted as facing north."),
+        ("A6", "A stand's area is now its pixel count, and its position the mean of its pixel "
+               "centres (round 14); before, Earth Engine's outlines counted some holes as area, "
+               "which inflated those areas and moved those positions."),
+        ("B13", "The sine and cosine of the time of peak greenness are no longer log-transformed "
+                "before the stands are sorted into types."),
+        ("B14", "A stand in several pieces now gets one average over all its pixels, and a stand "
+                "with no data in a measurement is left out of the sorting, so it gets no type; "
+                "before, each piece had its own average, and a stand could be sorted on a 0 it "
+                "never measured."),
+        ("B16", "Whether a measurement varies at all, and how it is scaled, now rest on exact "
+                "quartiles; before, Earth Engine's approximate ones could drop a measurement that "
+                "does vary."),
+        ("B17", "The merge now counts a superpixel's pixels, and those with data, by one rule; "
+                "before, pixels at the edge of the mapped area were counted in part, and some "
+                "superpixels had more pixels with data than pixels."),
+        ("B18", "The merge's size limits are now compared in whole pixels; before, a sum of two "
+                "areas could be judged over a limit it exactly met."),
+    ]},
+    {"title": "Changed before R3, after the same review (round 14)", "record": ROUND14, "items": [
+        ("A2, B15", "The stand types are now fitted off Earth Engine on the declared scaling, "
+                    "with many starts, keeping the best; before, Earth Engine rescaled every "
+                    "measurement by its range, which undid the declared scaling, and the types "
+                    "rested on one start."),
+        ("A3, B12", "Only measurements skewed to the right are now log-transformed, by a rule "
+                    "that scales with each one's spread, and angles never; before, measurements "
+                    "skewed either way were logged, which made the left-skewed ones more skewed."),
+        ("C9", "Average greenness is now the fitted curve's mean over the whole window; before, it "
+               "was the trend line's value on the window's first day."),
+        ("A7", "The elbow behind the number of types is now drawn in the fit's own space, and "
+               "Jaskaran chose k from it before any field score; before, it was drawn outside "
+               "that space."),
+        ("C10", "The stand layers now also give the averages of each angle's sine and cosine, "
+                "from which this site reads which way a stand faces and when it is greenest; "
+                "plain averages of angles mislead where they wrap round, at north or at the turn "
+                "of the year."),
+        ("C12", "Every tie in the merge is now broken by the regions' positions, not by the "
+                "superpixels' numbers, which change from run to run."),
+    ]},
+    {"title": "Fixed after the two live checks (round 14)", "record": ROUND14, "items": [
+        ("First live check", "The merge now takes every count on the superpixels' own grid; the "
+                             "check stopped in the merge, which measured on another grid than "
+                             "the one it counted pixels on."),
+        ("Second live check", "The check stopped when Earth Engine refused to export the elbow's "
+                              "saved table; each row of it now carries a fixed point, which "
+                              "changes no number."),
+    ]},
+]
 
 RUNS: list[dict] = []
 for _arm_id, _arm in (("sanjay_van_baseline_repro", "feature_vector"),
@@ -1095,17 +1164,43 @@ def keptland_files(run_id: str, vec: Path, run: dict, where: str, lat: float) ->
     return names, clustering
 
 
+def history_line(run_id: str, area: str) -> str:
+    """An earlier run's one line: what it is, and that its results are from before the
+    corrections of 19 to 28 Oct 2026 (round 13's question 23)."""
+    if run_id.endswith("_repro"):
+        where = ("the whole rectangle" if AREAS[area]["site"] == "Sanjay Van"
+                 else "the village outlines")
+        line = HISTORY["repro"].format(where=where)
+    elif run_id.endswith("_keptland_s1desc"):
+        line = HISTORY["s1desc"]
+    elif run_id.endswith("_keptland"):
+        line = (HISTORY["keptland"].format(where="Sanjay Van's rectangle")
+                if AREAS[area]["site"] == "Sanjay Van" else HISTORY["keptland_ascending"])
+    else:
+        line = HISTORY["box"]
+    return line + HISTORY_BEFORE
+
+
 def versions(run_id: str, area: str, r3: bool, cfg, stands_fc: dict) -> dict:
-    """Where a run stands among the site's versions, and how its angles are to be read: an R3 run
-    is a current result; any other an earlier version. `angles` says how a stand's "faces" and
-    "peak month" are given: from the stand means of each angle's sine and cosine (sin_cos), or
-    as plain means of the angles (plain)."""
+    """Where a run stands among the site's versions, and how its angles and ndvi_mean are to be
+    read: an R3 run is a current result; any other an earlier version, with its line
+    (history_line). `angles` says how a stand's "faces" and "peak month" are given: from the
+    stand means of each angle's sine and cosine (sin_cos), or as plain means of the angles
+    (plain). `ndvi_mean` says what the band is, from the run's config: the fitted curve's mean
+    over the dates window (features_optical.mean_over_window), or the trend line's value on the
+    harmonic's reference date."""
     names = set(stands_fc["features"][0]["properties"]) if stands_fc["features"] else set()
-    out: dict = {"group": "current" if r3 else "earlier"}
+    fo = cfg.features_optical
+    out: dict = {"group": "current" if r3 else "earlier",
+                 "ndvi_mean": ({"what": "window_mean", "from": str(cfg.dates.phenology.start),
+                                "to": str(cfg.dates.phenology.end)} if fo.mean_over_window
+                               else {"what": "trend_value", "on": str(fo.time_reference)})}
     if {"aspect_sin", "aspect_cos", "ndvi_phase_annual_sin", "ndvi_phase_annual_cos"} <= names:
         out["angles"] = "sin_cos"
     elif names & {"aspect", "ndvi_phase_annual"}:
         out["angles"] = "plain"
+    if not r3:
+        out["history"] = history_line(run_id, area)
     return out
 
 
@@ -1370,6 +1465,13 @@ def main() -> None:
              "short_label": R3_SHORT_LABEL.format(n_current=len(current), n_earlier=len(earlier)),
              "earlier_short_label": short,
              "commit": "early build", "fes_comparison": "fes_comparison.json",
+             "history_links": [{"label": "the round 13 record", "path": ROUND13},
+                               {"label": "the round 14 record", "path": ROUND14}],
+             "what_changed": {"review": REVIEW,
+                              "groups": [{"title": g["title"], "record": g["record"],
+                                          "items": [{"ref": ref, "text": text}
+                                                    for ref, text in g["items"]]}
+                                         for g in WHAT_CHANGED]},
              "runs": runs_out}
     write_json(OUT / "index.json", index)
     write_json(OUT / "fes_comparison.json", fes_rows())
