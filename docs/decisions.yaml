@@ -8828,6 +8828,8 @@ decisions:
     for each arm and size (their tables of stands pooled, then preprocessed together by the same rule). Until he
     chooses, the R3 configs carry the _r9 k (5 on the boxes and the tile, 6 at Sanjay Van). This supersedes, for R3,
     the declared k = 5 of the kept-land runs and the rule of field-number-of-types-by-elbow.
+    28 Oct 2026: the report comes in parts (process-r14-first-half-before-the-third-live-check); from part 1 Jaskaran
+    chose 5 for the four districts at 3 ha and 5 at Sanjay Van, both arms (field-r3-k-from-part-1-of-the-elbow-report).
   alternatives_considered:
   - >-
     Keep 5 at 3 ha and 6 at 10 ha (round 13 question 15, option (a)): not chosen by Jaskaran
@@ -10992,6 +10994,44 @@ decisions:
     what: The second check's criteria, 2 i and 2 iv passing on what it reached
   - path: docs/reproducibility/r14_runs/smoke_test/r14_smoke_test_elbows_beside_the_second_check.json
     what: The elbows of the smoke test, byte for byte the second check's
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 28 Oct 2026, in the Claude Code session
+- id: field-r3-k-from-part-1-of-the-elbow-report
+  title: >-
+    R3's k from part 1 of the elbow report: 5 for the four Odisha districts at 3 ha and 5 at Sanjay Van, both arms
+    (Jaskaran, 28 Oct 2026); the 10 ha boxes and the tile to come with part 2
+  decision: >-
+    k = 5 for the 3 ha boxes of Angul, Dhenkanal, Kendujhar and Koraput, in both arms (hand-crafted and AlphaEarth), and
+    k = 5 at Sanjay Van, in both arms. Chosen by Jaskaran on 28 Oct 2026 from part 1 of the elbow report
+    (odisha_script/keptland_scores/r14_elbow_part1_report.md), before any R3 field score exists. The 10 ha boxes and the
+    10 km tile: k when part 2 is ready. Each config's k goes in with his reason, in one commit with the pinned
+    fingerprints, once he has given every k, before the clustering pass (field-r3-k-chosen-by-jaskaran-from-the-elbow-report;
+    the round 14 brief, Task 7, item 1): the eight 3 ha district configs keep their _r9 k, 5; Sanjay Van's two move from
+    6 to 5, which moves their fingerprints and clustering keys and not their elbows' keys (the k elbow's key leaves k
+    out, fmu.utils.caching.STEP_SETTINGS), so the second half reads their elbows back from the cache.
+  alternatives_considered:
+  - >-
+    Each district its own knee (hand-crafted 4, 6, 6 and 5; AlphaEarth 5, 5, 6 and 6, for Angul, Dhenkanal, Kendujhar
+    and Koraput): not chosen; the arms' knees differ in three of the four districts
+  - "Sanjay Van's _r9 k, 6: not chosen; its knee is 5 in both arms"
+  rationale: >-
+    Jaskaran, 28 Oct 2026, in the session: "k for R3, from part 1 of the elbow report (record each with its reason): -
+    The four Odisha districts at 3 ha, both arms: k = 5. Reason: the pooled knee is 5 in both arms and in both row
+    orders; one k for every district and both arms keeps the arms comparable, and it equals the declared k, so R3
+    beside _r9 shows the fixes alone. The district knees (4 to 6) disagree between the arms in three of four
+    districts. - Sanjay Van, both arms: k = 5. Reason: the knee is 5 in both arms. - The 10 ha boxes and the tile: I
+    will give k when part 2 is ready." Part 1 shows the pooled 3 ha knee at 5 in both arms and both row orders, the
+    districts' knees as above, and Sanjay Van's at 5 in both arms; the declaration (PHASE_KEPTLAND_PREDECLARED.md)
+    declared 5 for the boxes. No paper was searched for this decision.
+  evidence:
+  - path: odisha_script/keptland_scores/r14_elbow_part1_report.md
+    what: The knees, the curves and the starts' agreement of each area and arm in part 1
+  - path: docs/handoff/2026-10-26-round14.md
+    what: Done, k from part 1 of the elbow report
+  - path: odisha_script/PHASE_KEPTLAND_PREDECLARED.md
+    what: The change of 26 Oct 2026 (round 14), k
   papers: []
   status: adopted
   design_notes_section: null
