@@ -803,3 +803,141 @@ def test_the_page_counts_every_kept_land_runs_small_stands_in_two_kinds():
     assert 'r.group === "current" && has(f.below_min_blocked)' not in page
     assert 'which stayed small ${f.below_min_blocked ? `because they share no edge' in page
     assert 'r.group === "current" && f.below_min_blocked' not in page
+
+
+SEPTEMBER_FILE = SCRIPTS.parent / "odisha_script" / "odisha_phase3_3_results.txt"
+RERUN_FILES = {
+    10.0: (SCRIPTS.parent / "docs" / "reproducibility" / "odisha_repro" / "odisha_v120_handcrafted"
+           / "odisha_phase3_1_score_v120_merged_districts.txt"),
+    3.0: (SCRIPTS.parent / "docs" / "reproducibility" / "odisha_repro" / "odisha_v120_3ha"
+          / "odisha_phase3_1_score_v120_3ha_merged_districts_3ha.txt")}
+SEPTEMBER_LABELS = {"drawing_all_plots": "delineation ARI, all plots",
+                    "drawing_multi_plot": "delineation ARI, multi-plot stands",
+                    "pair_precision": "same-stand pair precision",
+                    "labelling_district": "labelling ARI, per-district wmean",
+                    "far_apart": "far-apart same-label rate, alike - differ"}
+RERUN_HEADINGS = {"drawing_all_plots": "  all pairs",
+                  "drawing_multi_plot": "  restricted to plots in multi-plot stands  (",
+                  "labelling_district": "  same-district pairs  ("}
+
+
+def _old_rows(rows: list[dict]) -> list[dict]:
+    return [r for r in rows if r["stands"] in ("September 2026 runs (Phase 3)",
+                                               "13 October 2026 re-runs")]
+
+
+def _copy(src: Path, out: Path, starts: str, how, nth: int = 0) -> Path:
+    """`src` written to `out` with the nth line that begins with `starts` edited: "drop" drops it,
+    "double" writes it twice, and (old, new) replaces old by new in it."""
+    lines = src.read_text().splitlines(keepends=True)
+    i = [k for k, line in enumerate(lines) if line.startswith(starts)][nth]
+    if how == "drop":
+        del lines[i]
+    elif how == "double":
+        lines.insert(i, lines[i])
+    else:
+        assert how[0] in lines[i]
+        lines[i] = lines[i].replace(*how, 1)
+    out.write_text("".join(lines))
+    return out
+
+
+def test_the_september_and_13_oct_rows_are_their_files_values(builder):
+    """Round 15's question 4 (b): every September and 13 Oct row's numbers, against their files
+    read here by another route (each table's columns by position), and the committed rows."""
+    rows = _old_rows(builder.fes_rows()["rows"])
+    sept = SEPTEMBER_FILE.read_text().splitlines()
+    for r in [r for r in rows if r["stands"].startswith("September")]:
+        arm = f"{r['stand_ceiling_ha']:g} ha"
+        start = next(i for i, line in enumerate(sept) if line.startswith(f"{arm.upper()} ARM ("))
+        row = next(line for line in sept[start:] if line.strip().startswith(
+            SEPTEMBER_LABELS[r["test"]] + "  "))
+        left, right = row.split("|")
+        assert r["score"] == float(left.split()[-1])
+        assert (r["chance_percentile"], r["p"]) == (float(right.split()[-3]), float(right.split()[-2]))
+        holm = next(line for line in sept if line.strip().startswith(
+            f"{arm}: {SEPTEMBER_LABELS[r['test']]}  "))
+        assert r["p_holm"] == float(holm.split()[-1]) and r["p"] == float(holm.split()[-2])
+        assert r["n_plots"] == 267 and "plots in the village AOIs: 267;" in SEPTEMBER_FILE.read_text()
+    for r in [r for r in rows if r["stands"].startswith("13 October")]:
+        lines = RERUN_FILES[r["stand_ceiling_ha"]].read_text().splitlines()
+        start = next(i for i, line in enumerate(lines)
+                     if line.startswith(RERUN_HEADINGS[r["test"]]) and (
+                         line.rstrip() == RERUN_HEADINGS[r["test"]].rstrip() or "(" in line))
+        ari = next(line for line in lines[start:] if ">>> ARI" in line)
+        assert r["score"] == float(ari.split()[2])
+        assert r["n_plots"] == 267
+    assert len(rows) == 16
+    committed = json.loads((DATA / "fes_comparison.json").read_text())
+    assert rows == _old_rows(committed["rows"])
+    assert builder.fes_rows()["reading"] == committed["reading"]
+
+
+def test_a_changed_value_in_a_copy_of_a_file_changes_its_row(builder, monkeypatch, tmp_path):
+    """Round 15's question 4 (b): the rows follow their files. Fails on the code before round 16,
+    which typed the numbers (raising=False lets it run there)."""
+    sept = tmp_path / SEPTEMBER_FILE.name
+    _copy(SEPTEMBER_FILE, sept, "    same-stand pair precision", ("+0.5385", "+0.5391"))
+    _copy(sept, sept, "    3 ha: labelling ARI, per-district wmean", ("1.000", "0.987"))
+    _copy(sept, sept, "  plots in the village AOIs", ("villages: 20;", "villages: 21;"))
+    rerun = _copy(RERUN_FILES[3.0], tmp_path / RERUN_FILES[3.0].name, "      >>> ARI +0.0233",
+                  ("+0.0233", "+0.0241"))
+    monkeypatch.setattr(builder, "SEPTEMBER", sept, raising=False)
+    monkeypatch.setattr(builder, "RERUN_SCORES", {10.0: RERUN_FILES[10.0], 3.0: rerun},
+                        raising=False)
+    out = builder.fes_rows()
+    rows = {(r["stands"][:4], r["stand_ceiling_ha"], r["test"]): r for r in _old_rows(out["rows"])}
+    assert rows[("Sept", 10.0, "pair_precision")]["score"] == 0.5391
+    assert rows[("Sept", 3.0, "pair_precision")]["score"] == 0.5575
+    assert rows[("Sept", 3.0, "labelling_district")]["p_holm"] == 0.987
+    assert rows[("13 O", 3.0, "drawing_multi_plot")]["score"] == 0.0241
+    assert rows[("13 O", 10.0, "drawing_multi_plot")]["score"] == 0.0364
+    assert "with 267 plots in 21 villages" in out["reading"]
+
+
+@pytest.mark.parametrize(("which", "starts", "how", "nth", "said"), [
+    ("sept", "    3 ha: far-apart same-label rate, alike - differ", "drop", 0,
+     'the row "3 ha: far-apart same-label rate, alike - differ" of the Holm table and found none'),
+    ("sept", "    same-stand pair precision", "double", 0,
+     'the row "same-stand pair precision" of the 10 ha arm\'s table and found 2'),
+    ("sept", "    delineation ARI, multi-plot stands", "drop", 1,
+     'the row "delineation ARI, multi-plot stands" of the 3 ha arm\'s table and found none'),
+    ("sept", "  * 0 of 10 headline tests", "drop", 0,
+     'the line "<n> of <m> headline tests beat chance after Holm correction at 0.05" and found none'),
+    ("sept", "  plots in the village AOIs", "double", 0,
+     'the line "plots in the village AOIs: <n>; villages: <n>; ..." and found 2'),
+    ("10", "      >>> ARI +0.0364", "drop", 0,
+     'the line ">>> ARI" under "restricted to plots in multi-plot stands" and found none'),
+    ("3", "  all pairs", "double", 0, 'the block headed "all pairs" and found 2'),
+    ("3", "  same-district pairs  (", "drop", 0, 'the block headed "same-district pairs" and found none'),
+    ("10", "  plots with a stand", "drop", 0, 'the line "plots with a stand: <n>" and found none'),
+])
+def test_a_missing_or_doubled_line_stops_the_build(builder, monkeypatch, tmp_path, which, starts,
+                                                   how, nth, said):
+    """Round 15's question 4 (b): a value is read from exactly one line; a line missing or found
+    twice stops the build, naming the file and the line it looked for. No typed fallback."""
+    src = SEPTEMBER_FILE if which == "sept" else RERUN_FILES[float(which)]
+    copy = _copy(src, tmp_path / src.name, starts, how, nth)
+    if which == "sept":
+        monkeypatch.setattr(builder, "SEPTEMBER", copy, raising=False)
+    else:
+        monkeypatch.setattr(builder, "RERUN_SCORES", {**RERUN_FILES, float(which): copy},
+                            raising=False)
+    with pytest.raises(SystemExit) as stop:
+        builder.fes_rows()
+    assert str(copy) in str(stop.value) and said in str(stop.value)
+
+
+@pytest.mark.parametrize(("starts", "how", "said"), [
+    ("  * 0 of 10 headline tests", ("* 0 of", "* 1 of"),
+     "1 of 10 headline tests beat chance after the Holm correction"),
+    ("    10 ha: delineation ARI, all plots", ("0.630", "0.050"), "Holm p 0.05 is 0.05 or under"),
+])
+def test_a_september_file_where_a_test_passes_after_correction_stops_the_build(
+        builder, monkeypatch, tmp_path, starts, how, said):
+    """Round 15's question 4 (b): the reading says none of the ten tests passes after the Holm
+    correction, so the build stops if the file says otherwise."""
+    copy = _copy(SEPTEMBER_FILE, tmp_path / SEPTEMBER_FILE.name, starts, how)
+    monkeypatch.setattr(builder, "SEPTEMBER", copy, raising=False)
+    with pytest.raises(SystemExit, match=said):
+        builder.fes_rows()

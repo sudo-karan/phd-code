@@ -69,6 +69,12 @@ none was made under a step key that could show the same computation. The kept la
 masking stage's kept class from the same files. At Sanjay Van the feature layers are drawn pixel
 by pixel, from the runs' own cached features, fetched by the same script; in Odisha they are
 stand means, as for the box runs.
+
+Round 16 (docs/handoff/2026-10-29-round16.md). The September 2026 runs' and the 13 Oct re-runs'
+score rows are read from their result files (`fes_rows`, from SEPTEMBER and RERUN_SCORES), each
+value from exactly one line, with no typed fallback. Round 7's four runs name R3's run of the same
+boxes as their record (`s1desc_note`). The earlier kept-land runs whose merge left stands every
+neighbour was too big to take say of each small stand which kind it is (`run_stands`).
 """
 from __future__ import annotations
 
@@ -140,6 +146,36 @@ KEPTLAND_S1DESC_RUNS = {f"odisha_v120_3ha_squares_{d}_keptland_s1desc": d for d 
 # check and not a declared score (Jaskaran, 18 Oct 2026; field-box-runs-a-descriptive-comparison-only).
 BOX_RUNS_STANDS = ("13 Oct 2026 box runs, on the kept-land check's plots: a descriptive comparison, "
                    "not a declared score")
+# The files fes_rows reads the September 2026 runs' rows (Phase 3's scores and chance test) and the
+# 13 Oct re-runs' rows from (round 15's question 4,
+# site-september-and-13-oct-score-rows-read-from-their-files). The 13 Oct files are those of
+# docs/reproducibility/odisha_repro/, not their namesakes in odisha_script/, which hold the
+# September values.
+SEPTEMBER = REPO / "odisha_script" / "odisha_phase3_3_results.txt"
+RERUN_SCORES = {
+    10.0: (REPO / "docs" / "reproducibility" / "odisha_repro" / "odisha_v120_handcrafted"
+           / "odisha_phase3_1_score_v120_merged_districts.txt"),
+    3.0: (REPO / "docs" / "reproducibility" / "odisha_repro" / "odisha_v120_3ha"
+          / "odisha_phase3_1_score_v120_3ha_merged_districts_3ha.txt")}
+# The five tests as the September file names them, and the blocks of a 13 Oct file whose ">>> ARI"
+# is the score of three of them: the same-district pairs' block is the plot-weighted mean, not the
+# block of those more than 2 km apart, whose ARI is n/a.
+SEPTEMBER_TESTS = {"drawing_all_plots": "delineation ARI, all plots",
+                   "drawing_multi_plot": "delineation ARI, multi-plot stands",
+                   "pair_precision": "same-stand pair precision",
+                   "labelling_district": "labelling ARI, per-district wmean",
+                   "far_apart": "far-apart same-label rate, alike - differ"}
+RERUN_BLOCKS = {"drawing_all_plots": "all pairs",
+                "drawing_multi_plot": "restricted to plots in multi-plot stands",
+                "labelling_district": "same-district pairs"}
+# The September runs' reading, with the numbers it gives from their file (`september_numbers`).
+SEPTEMBER_READING = (
+    "At neither stand size can the stands be told apart from a randomly placed copy of the same "
+    "stand map, on drawing or on labelling. None of the {tests} planned tests passes once corrected "
+    "for running {tests}. That does not make the stands wrong: with {plots} plots in {villages} "
+    "villages, a real but modest agreement could go undetected.")
+COUNT_WORDS = dict(enumerate(["zero", "one", "two", "three", "four", "five", "six", "seven", "eight",
+                              "nine", "ten", "eleven", "twelve"]))
 # Where fastDistanceTransform finds no water within features_static.max_water_distance_pixels
 # (1,000 px = 10 km) it gives its fill value, sqrt(2^31 - 1) x 10 m, not a distance, or with
 # features_static.cap_distance_to_water on the cap itself: 10 km or more is written as OVER_10_KM
@@ -1592,6 +1628,112 @@ def main() -> None:
         BUILD_RECORD.write_text(json.dumps(build_record(git, runs_out), indent=1) + "\n")
 
 
+def found_once(path: Path, lines: list[str], key: str, what: str) -> str:
+    """The one line of `lines`, from the file `path`, that the regular expression `key` matches
+    after the line's indent. The build stops, naming the file and the line it looked for (`what`),
+    if no line or more than one does: each value is read from exactly one line, with no fallback."""
+    hits = [line for line in lines if re.match(r"\s*(?:" + key + ")", line)]
+    if len(hits) != 1:
+        raise SystemExit(f"{path}: looked for {what} and found {len(hits) or 'none'}; the build "
+                         "reads each value from exactly one line")
+    return hits[0]
+
+
+def parsed(path: Path, line: str, pattern: str, what: str) -> tuple[str, ...]:
+    """The groups of `pattern` in `line`, or the build stops, naming the file and the line."""
+    m = re.search(pattern, line)
+    if m is None:
+        raise SystemExit(f"{path}: {what} is not in the form the build reads: {line.strip()!r}")
+    return m.groups()
+
+
+def result_sections(lines: list[str]) -> list[tuple[str, list[str]]]:
+    """The sections of a Phase 3 result file: (heading, its lines), a heading being the line
+    between two rules (lines of dashes or of equals signs), its section running to the next rule."""
+    rules = [i for i, line in enumerate(lines) if len(line) >= 20 and set(line) <= {"-", "="}]
+    return [(lines[a + 1].strip(), lines[b + 1:next((r for r in rules if r > b), len(lines))])
+            for a, b in zip(rules, rules[1:], strict=False) if b == a + 2]
+
+
+def section_of(path: Path, sections: list[tuple[str, list[str]]], key: str, what: str) -> list[str]:
+    """The lines of the one section whose heading `key` matches (found_once)."""
+    return dict(sections)[found_once(path, [h for h, _ in sections], key, what)]
+
+
+def september_numbers(path: Path) -> tuple[dict, dict]:
+    """The September 2026 runs' numbers, from their result file (odisha_phase3_3_results.txt):
+    {ceiling: {test: (score, chance percentile, p, Holm p)}}, the first three from the arm's
+    "observed vs rotation null" table and the Holm p from the "MULTIPLE COMPARISONS -- Holm" table
+    (whose p must be the arm table's); and the counts the reading gives (plots, villages, headline
+    tests). The reading says that no test passes after the Holm correction, so the build stops if
+    the file says otherwise: its line "<n> of <m> headline tests beat chance after Holm correction
+    at 0.05" with n above 0, or a Holm p of 0.05 or under."""
+    if not path.is_file():
+        raise SystemExit(f"{path}: not found; the September score rows are read from it")
+    lines = path.read_text().splitlines()
+    sections = result_sections(lines)
+    holm = section_of(path, sections, re.escape("MULTIPLE COMPARISONS -- Holm "),
+                      'the section headed "MULTIPLE COMPARISONS -- Holm ..."')
+    out: dict[float, dict] = {}
+    for ceil in (10.0, 3.0):
+        arm = f"{ceil:g} ha"
+        table = section_of(path, sections, re.escape(f"{arm.upper()} ARM (")
+                           + r".*\) -- observed vs rotation null$",
+                           f'the section headed "{arm.upper()} ARM (...) -- observed vs rotation null"')
+        out[ceil] = {}
+        for tid, label in SEPTEMBER_TESTS.items():
+            what = f'the row "{label}" of the {arm} arm\'s table'
+            line = found_once(path, table, re.escape(label) + r"\s{2}", what)
+            score, pct, p = (float(v) for v in parsed(
+                path, line, r"\s([+-]\d+\.\d+) \|.*\]\s+(\d+(?:\.\d+)?)\s+(\d\.\d+)\s+\d+\s*$", what))
+            what = f'the row "{arm}: {label}" of the Holm table'
+            line = found_once(path, holm, re.escape(f"{arm}: {label}") + r"\s{2}", what)
+            p_again, p_holm = (float(v) for v in parsed(path, line, r"\s(\d\.\d+)\s+(\d\.\d+)\s*$",
+                                                         what))
+            if p_again != p:
+                raise SystemExit(f"{path}: {what} gives p {p_again}, the arm's table {p}")
+            if p_holm <= 0.05:
+                raise SystemExit(f"{path}: {arm}, {label}: Holm p {p_holm} is 0.05 or under, and the "
+                                 "site's reading says no test passes after the correction")
+            out[ceil][tid] = (score, pct, p, p_holm)
+    what = 'the line "<n> of <m> headline tests beat chance after Holm correction at 0.05"'
+    passed, n_tests = (int(v) for v in parsed(path, found_once(
+        path, lines, r"\* \d+ of \d+ headline tests beat chance after Holm correction at 0\.05", what),
+        r"(\d+) of (\d+) headline tests", what))
+    if passed:
+        raise SystemExit(f"{path}: {passed} of {n_tests} headline tests beat chance after the Holm "
+                         "correction, and the site's reading says none does")
+    read = sum(len(v) for v in out.values())
+    if n_tests != read:
+        raise SystemExit(f"{path}: {n_tests} headline tests, where the build read {read}")
+    what = 'the line "plots in the village AOIs: <n>; villages: <n>; ..."'
+    n_plots, n_villages = (int(v) for v in parsed(path, found_once(
+        path, lines, re.escape("plots in the village AOIs: "), what),
+        r"plots in the village AOIs: (\d+); villages: (\d+);", what))
+    return out, {"plots": n_plots, "villages": n_villages, "tests": n_tests}
+
+
+def rerun_numbers(path: Path) -> tuple[dict, int]:
+    """A 13 Oct re-run's scores, from its score file (odisha_phase3_1_score_*_merged_districts*.txt):
+    {test: the ">>> ARI" of its block (RERUN_BLOCKS)}, a block running from its heading to the next
+    blank line; and the file's plots with a stand."""
+    if not path.is_file():
+        raise SystemExit(f"{path}: not found; the 13 Oct score rows are read from it")
+    lines = path.read_text().splitlines()
+    scores = {}
+    for tid, name in RERUN_BLOCKS.items():
+        head = found_once(path, lines, re.escape(name) + r"(?:  \(|$)", f'the block headed "{name}"')
+        rest = lines[lines.index(head) + 1:]
+        block = rest[:next((i for i, line in enumerate(rest) if not line.strip()), len(rest))]
+        what = f'the line ">>> ARI" under "{name}"'
+        scores[tid] = float(parsed(path, found_once(path, block, re.escape(">>> ARI"), what),
+                                   r">>> ARI ([+-]\d+\.\d+)\s", what)[0])
+    what = 'the line "plots with a stand: <n>"'
+    n_plots = int(parsed(path, found_once(path, lines, re.escape("plots with a stand: "), what),
+                         r"plots with a stand: (\d+)\s*$", what)[0])
+    return scores, n_plots
+
+
 def fes_rows() -> dict:
     tests = [
         ("drawing_all_plots", "Plots of the same field type share a stand"),
@@ -1600,39 +1742,28 @@ def fes_rows() -> dict:
         ("labelling_district", "Plots of the same field type get the same stand type"),
         ("far_apart", "Far-apart plots of the same field type get the same stand type"),
     ]
-    committed = {
-        10.0: [(0.0121, 93.7, 0.063, 0.630), (0.0257, 77.0, 0.230, 1.0),
-               (0.5385, 55.2, 0.451, 1.0), (0.0389, 66.8, 0.332, 1.0),
-               (-0.0118, 46.6, 0.534, 1.0)],
-        3.0: [(0.0060, 92.1, 0.080, 0.716), (0.0244, 65.7, 0.344, 1.0),
-              (0.5575, 71.7, 0.284, 1.0), (0.0793, 83.1, 0.169, 1.0),
-              (0.0143, 64.0, 0.360, 1.0)],
-    }
-    rerun = {10.0: {"drawing_all_plots": 0.0157, "drawing_multi_plot": 0.0364,
-                    "labelling_district": 0.0619},
-             3.0: {"drawing_all_plots": 0.0057, "drawing_multi_plot": 0.0233,
-                   "labelling_district": 0.0478}}
+    # Read from their files (round 15's question 4): the September runs' rows, the 13 Oct re-runs'.
+    september, counts = september_numbers(SEPTEMBER)
     rows = []
-    for ceil, vals in committed.items():
-        for (tid, title), (score, pct, p, ph) in zip(tests, vals, strict=True):
+    for ceil, vals in september.items():
+        for tid, title in tests:
+            score, pct, p, ph = vals[tid]
             rows.append({"arm": "feature_vector", "stand_ceiling_ha": ceil, "roi": "hulls",
                          "analysis": "primary", "stands": "September 2026 runs (Phase 3)",
                          "test": tid, "title": title, "score": score, "chance_percentile": pct,
-                         "p": p, "p_holm": ph, "n_plots": 267,
+                         "p": p, "p_holm": ph, "n_plots": counts["plots"],
                          # No run in ui_data holds the September stands.
                          "run_ids": []})
+        rerun, n_rerun = rerun_numbers(RERUN_SCORES[ceil])
         for tid, title in tests:
-            if tid in rerun[ceil]:
+            if tid in rerun:
                 rows.append({"arm": "feature_vector", "stand_ceiling_ha": ceil, "roi": "hulls",
                              "analysis": "primary", "stands": "13 October 2026 re-runs",
-                             "test": tid, "title": title, "score": rerun[ceil][tid],
+                             "test": tid, "title": title, "score": rerun[tid],
                              "chance_percentile": None, "p": None, "p_holm": None,
-                             "n_plots": 267, "run_ids": RERUN_IDS[ceil]})
-    reading = (
-        "At neither stand size can the stands be told apart from a randomly placed copy of the "
-        "same stand map, on drawing or on labelling. None of the ten planned tests passes once "
-        "corrected for running ten. That does not make the stands wrong: with 267 plots in 20 "
-        "villages, a real but modest agreement could go undetected.")
+                             "n_plots": n_rerun, "run_ids": RERUN_IDS[ceil]})
+    reading = SEPTEMBER_READING.format(tests=COUNT_WORDS[counts["tests"]],
+                                       plots=f"{counts['plots']:,}", villages=counts["villages"])
     rows += keptland_rows(tests)
     rows += r3_rows(tests)
     return {"label": "Phase 3 numbers (September 2026 runs), the 13 October re-runs' scores, and the "
