@@ -438,3 +438,54 @@ def test_every_score_row_names_runs_in_the_index_and_no_run_has_a_row_twice():
     for d in ("angul", "dhenkanal", "kendujhar", "koraput"):
         assert index[f"odisha_v120_3ha_squares_{d}_keptland_s1desc"]["fes_declared"] is True
         assert index[f"odisha_v120_3ha_squares_{d}_keptland"]["fes_declared"] is False
+
+
+# ---------------------------------------------------------------- R3 on the site (round 15)
+
+
+def test_k_reason_takes_the_item_that_names_the_run_and_checks_its_k(builder):
+    got = builder.k_reason(3.0, 5)
+    assert got["reason"].startswith("the pooled knee is 5 in both arms")
+    assert "Sanjay Van" not in got["reason"] and not got["reason"].endswith('"')
+    assert builder.k_reason("sanjay_van", 5)["reason"] == "the knee is 5 in both arms."
+    with pytest.raises(SystemExit, match="does not give k = 6"):
+        builder.k_reason(10.0, 6)
+
+
+def test_a_mask_on_a_projected_grid_is_drawn_in_longitude_and_latitude(builder):
+    """An R3 area's mask is on its asset's UTM grid; its shapes come out in degrees, on that grid's
+    pixel edges."""
+    from rasterio.crs import CRS
+
+    band = np.array([[1, 1], [2, 1]], dtype="uint8")
+    utm = CRS.from_epsg(32645)
+    got = builder.class_shapes(band, band > 0, from_origin(300000, 2300000, 10, 10),
+                               {1: "a", 2: "b"}, utm)
+    ring = _decode(got["classes"][1]["polygons"][0][0])
+    from pyproj import Transformer
+
+    fwd = Transformer.from_crs("EPSG:4326", utm, always_xy=True).transform
+    # Class 2's one pixel, back on the grid to the metre (six decimals of a degree are ~0.1 m).
+    corners = {tuple(float(round(v)) for v in fwd(lon, lat)) for lat, lon in ring}
+    assert corners == {(300000.0, 2299990.0), (300010.0, 2299990.0), (300010.0, 2299980.0),
+                       (300000.0, 2299980.0)}
+    assert all(20 < lat < 21 and 85 < lon < 86 for lat, lon in ring)  # UTM 45N, 200 km west of 87 E
+
+
+def _decode(s: str) -> list[tuple[float, float]]:
+    out, i, lat, lng = [], 0, 0, 0
+    while i < len(s):
+        vals = []
+        for _ in range(2):
+            shift = result = 0
+            while True:
+                b = ord(s[i]) - 63
+                i += 1
+                result |= (b & 0x1F) << shift
+                shift += 5
+                if b < 0x20:
+                    break
+            vals.append(~(result >> 1) if result & 1 else result >> 1)
+        lat, lng = lat + vals[0], lng + vals[1]
+        out.append((lat / 1e6, lng / 1e6))
+    return out
