@@ -1,0 +1,51 @@
+2026-10-28 05:48:53 [INFO] fmu.utils.logging: Logging initialized; run dir: runs/odisha_alphaearth_10ha_squares_dhenkanal_keptland_r14_20261028_054853
+2026-10-28 05:48:53 [INFO] fmu.utils.logging: Log level: INFO
+2026-10-28 05:48:54 [INFO] fmu.pipeline: ============================================================
+2026-10-28 05:48:54 [INFO] fmu.pipeline: Pipeline run: odisha_alphaearth_10ha_squares_dhenkanal_keptland_r14
+2026-10-28 05:48:54 [INFO] fmu.pipeline: Stages: masking -> data_load -> features_optical -> features_structure -> features_embedding
+2026-10-28 05:48:54 [INFO] fmu.pipeline: Run directory: runs/odisha_alphaearth_10ha_squares_dhenkanal_keptland_r14_20261028_054853
+2026-10-28 05:48:54 [INFO] fmu.pipeline: Cache layout: per_step (given to Pipeline())
+2026-10-28 05:48:54 [INFO] fmu.pipeline: ============================================================
+2026-10-28 05:48:54 [INFO] fmu.pipeline: stage: masking
+2026-10-28 05:49:01 [INFO] fmu.stages.masking: Built IndiaSAT collection from 5 year-images (2017, 2018, 2019, 2020, 2021) under projects/corestack-trees/assets/LULC_v4
+2026-10-28 05:49:03 [INFO] fmu.stages.masking: Built IndiaSAT collection from 5 year-images (2017, 2018, 2019, 2020, 2021) under projects/corestack-trees/assets/LULC_v4
+2026-10-28 05:49:03 [INFO] fmu.pipeline:   input images, indiasat_lulc: 5 (sha256 c831b93509e8)
+2026-10-28 05:49:03 [INFO] fmu.pipeline:   input images, worldcover: 1 (sha256 bf43ff10c8c0)
+2026-10-28 05:49:04 [INFO] fmu.pipeline:   [cache] exports on the analysis grid: {'crs': 'EPSG:32645', 'crs_transform': [10.0, 0.0, 0.0, 0.0, 10.0, 0.0]}
+2026-10-28 05:49:07 [INFO] fmu.utils.caching: Created cache folder projects/replicating-paper/assets/fmu/odisha_alphaearth_10ha_squares_dhenkanal_keptland_r14
+2026-10-28 05:49:08 [INFO] fmu.utils.caching: Created cache folder projects/replicating-paper/assets/fmu/odisha_alphaearth_10ha_squares_dhenkanal_keptland_r14/masking
+2026-10-28 05:49:09 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/odisha_alphaearth_10ha_squares_dhenkanal_keptland_r14/masking/habitat_mask__sdf896b0967 (task QFXDWHOEMCRFFNY54KNFLIA7). Check progress at https://code.earthengine.google.com/tasks
+2026-10-28 05:49:13 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/odisha_alphaearth_10ha_squares_dhenkanal_keptland_r14/masking/water_mask__sdf896b0967 (task WOHRWLB7ZINDBVZTGRWKDVGT). Check progress at https://code.earthengine.google.com/tasks
+2026-10-28 05:49:18 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/odisha_alphaearth_10ha_squares_dhenkanal_keptland_r14/masking/landcover_summary__sdf896b0967 (task PD3GRBIJAW76SZI3IWOB3E4A). Check progress at https://code.earthengine.google.com/tasks
+2026-10-28 05:49:23 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/odisha_alphaearth_10ha_squares_dhenkanal_keptland_r14/masking/mask_provenance__sdf896b0967 (task CXXS63VEGTFI4ZML3RYUYZWF). Check progress at https://code.earthengine.google.com/tasks
+2026-10-28 05:49:24 [INFO] fmu.pipeline: stage masking done in 30.19 sec
+2026-10-28 05:49:24 [INFO] fmu.pipeline: stage: data_load
+2026-10-28 05:49:25 [INFO] fmu.stages.data_load:   S2 phenology window: 174 images after cloud filter
+2026-10-28 05:49:26 [INFO] fmu.stages.data_load:   S1 radar window: 189 images after orbit/pol filter
+2026-10-28 05:49:27 [INFO] fmu.stages.data_load:   S2 composite window: 174 images after cloud filter
+2026-10-28 05:49:29 [INFO] fmu.pipeline:   input images, s2_composite: 174 (sha256 e0eb281d173d)
+2026-10-28 05:49:35 [INFO] fmu.utils.caching: Created cache folder projects/replicating-paper/assets/fmu/odisha_alphaearth_10ha_squares_dhenkanal_keptland_r14/data_load
+2026-10-28 05:49:37 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/odisha_alphaearth_10ha_squares_dhenkanal_keptland_r14/data_load/s2_composite__s2884930563 (task EM7DQQ5MAQ55HPB4IKBNBZOH). Check progress at https://code.earthengine.google.com/tasks
+2026-10-28 05:49:37 [INFO] fmu.pipeline: stage data_load done in 13.13 sec
+2026-10-28 05:49:37 [INFO] fmu.pipeline: stage: features_optical
+2026-10-28 05:49:39 [INFO] fmu.stages.features_optical:   optical_features bands (6): ['ndvi_mean', 'ndvi_amplitude_annual', 'ndvi_phase_annual', 'ndvi_trend', 'ndvi_residual_variance', 'ndvi_obs_count']
+2026-10-28 05:49:39 [INFO] fmu.stages.features_optical:   time_reference: 2017-01-01
+2026-10-28 05:49:40 [INFO] fmu.pipeline:   input images, s2_phenology: 174 (sha256 e0eb281d173d)
+2026-10-28 05:49:46 [INFO] fmu.utils.caching: Created cache folder projects/replicating-paper/assets/fmu/odisha_alphaearth_10ha_squares_dhenkanal_keptland_r14/features_optical
+2026-10-28 05:49:47 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/odisha_alphaearth_10ha_squares_dhenkanal_keptland_r14/features_optical/optical_features__sfdb39986b9 (task 2CZYWNPZ3M5X4SA2EGGL7HLH). Check progress at https://code.earthengine.google.com/tasks
+2026-10-28 05:49:47 [INFO] fmu.pipeline: stage features_optical done in 10.18 sec
+2026-10-28 05:49:47 [INFO] fmu.pipeline: stage: features_structure
+2026-10-28 05:49:48 [INFO] fmu.stages.features_structure:   structure_features bands (3): ['canopy_height', 'canopy_height_std', 'canopy_height_max']
+2026-10-28 05:49:50 [INFO] fmu.utils.caching: Created cache folder projects/replicating-paper/assets/fmu/odisha_alphaearth_10ha_squares_dhenkanal_keptland_r14/features_structure
+2026-10-28 05:49:51 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/odisha_alphaearth_10ha_squares_dhenkanal_keptland_r14/features_structure/structure_features__se22301e3be (task XPLZ2EWCYMNLRGKFPAVJ7M34). Check progress at https://code.earthengine.google.com/tasks
+2026-10-28 05:49:51 [INFO] fmu.pipeline: stage features_structure done in 4.28 sec
+2026-10-28 05:49:51 [INFO] fmu.pipeline: stage: features_embedding
+2026-10-28 05:49:55 [INFO] fmu.stages.features_embedding:   embedding_features: 64 bands from GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL (mean over 12 annual image(s))
+2026-10-28 05:49:57 [INFO] fmu.pipeline:   input images, embedding: 12 (sha256 531bc2cd8805)
+2026-10-28 05:50:01 [INFO] fmu.utils.caching: Created cache folder projects/replicating-paper/assets/fmu/odisha_alphaearth_10ha_squares_dhenkanal_keptland_r14/features_embedding
+2026-10-28 05:50:03 [INFO] fmu.utils.caching: Started cache export to projects/replicating-paper/assets/fmu/odisha_alphaearth_10ha_squares_dhenkanal_keptland_r14/features_embedding/embedding_features__s4a955ec4b1 (task MJLYGUSED4JRYVDSUZ3NHSD6). Check progress at https://code.earthengine.google.com/tasks
+2026-10-28 05:50:03 [INFO] fmu.pipeline: stage features_embedding done in 11.18 sec
+2026-10-28 05:50:03 [INFO] fmu.pipeline: ============================================================
+2026-10-28 05:50:03 [INFO] fmu.pipeline: Pipeline complete in 68.96 sec
+2026-10-28 05:50:03 [INFO] fmu.pipeline: ============================================================
+2026-10-28 05:50:04 [INFO] fmu.pipeline: Manifest written: runs/odisha_alphaearth_10ha_squares_dhenkanal_keptland_r14_20261028_054853/manifest.json

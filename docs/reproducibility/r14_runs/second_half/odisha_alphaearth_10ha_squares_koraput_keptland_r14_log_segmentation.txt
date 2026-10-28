@@ -1,0 +1,26 @@
+2026-10-28 15:45:07 [INFO] fmu.utils.logging: Logging initialized; run dir: runs/odisha_alphaearth_10ha_squares_koraput_keptland_r14_20261028_154507
+2026-10-28 15:45:07 [INFO] fmu.utils.logging: Log level: INFO
+2026-10-28 15:45:07 [INFO] fmu.pipeline: ============================================================
+2026-10-28 15:45:07 [INFO] fmu.pipeline: Pipeline run: odisha_alphaearth_10ha_squares_koraput_keptland_r14
+2026-10-28 15:45:07 [INFO] fmu.pipeline: Stages: masking -> data_load -> features_embedding -> segmentation
+2026-10-28 15:45:07 [INFO] fmu.pipeline: Run directory: runs/odisha_alphaearth_10ha_squares_koraput_keptland_r14_20261028_154507
+2026-10-28 15:45:07 [INFO] fmu.pipeline: Cache layout: per_step (given to Pipeline())
+2026-10-28 15:45:07 [INFO] fmu.pipeline: ============================================================
+2026-10-28 15:45:07 [INFO] fmu.pipeline: stage: masking
+2026-10-28 15:45:09 [INFO] fmu.pipeline:   [cache] all 4 outputs hit; skipping stage run
+2026-10-28 15:45:11 [INFO] fmu.pipeline: stage masking done in 4.30 sec (from cache)
+2026-10-28 15:45:11 [INFO] fmu.pipeline: stage: data_load
+2026-10-28 15:45:13 [INFO] fmu.stages.data_load:   S2 phenology window: 337 images after cloud filter
+2026-10-28 15:45:15 [INFO] fmu.stages.data_load:   S1 radar window: 204 images after orbit/pol filter
+2026-10-28 15:45:17 [INFO] fmu.stages.data_load:   S2 composite window: 337 images after cloud filter
+2026-10-28 15:45:18 [INFO] fmu.pipeline: stage data_load done in 6.86 sec
+2026-10-28 15:45:18 [INFO] fmu.pipeline: stage: features_embedding
+2026-10-28 15:45:19 [INFO] fmu.pipeline:   [cache] all 1 outputs hit; skipping stage run
+2026-10-28 15:45:19 [INFO] fmu.pipeline: stage features_embedding done in 0.94 sec (from cache)
+2026-10-28 15:45:19 [INFO] fmu.pipeline: stage: segmentation
+2026-10-28 15:45:22 [INFO] fmu.pipeline:   [cache] all 2 outputs hit; skipping stage run
+2026-10-28 15:45:22 [INFO] fmu.pipeline: stage segmentation done in 2.95 sec (from cache)
+2026-10-28 15:45:22 [INFO] fmu.pipeline: ============================================================
+2026-10-28 15:45:22 [INFO] fmu.pipeline: Pipeline complete in 15.06 sec
+2026-10-28 15:45:22 [INFO] fmu.pipeline: ============================================================
+2026-10-28 15:45:23 [INFO] fmu.pipeline: Manifest written: runs/odisha_alphaearth_10ha_squares_koraput_keptland_r14_20261028_154507/manifest.json
