@@ -715,3 +715,317 @@ def test_what_changed_says_k_was_chosen_before_r3s_field_scores():
     assert not any("before any field score" in t for t in texts)
     page = (SCRIPTS.parent / "ui" / "explorer.html").read_text()
     assert "before any field score" not in page
+
+
+# ---------------------------------------------------------------- round 16
+
+
+def test_round_7s_line_points_to_r3s_run_of_the_same_boxes(builder, monkeypatch):
+    """Round 15's question 1 (b), site-round-7-runs-point-to-r3s-scores: a round-7 run's line says
+    its scores are round 7's, kept as history; that the record is R3's scores, on R3's run of the
+    same boxes, features and stand size, by name; that the _r9 scores are not on the site; and that
+    the chance test was not run on these stands. The build stops if that R3 run is not R3's."""
+    run = "odisha_v120_3ha_squares_angul_keptland_s1desc"
+    monkeypatch.setattr(builder, "RUNS", [{"run_id": f"{run}_r14", "r3": True}])
+    note = builder.s1desc_note(run)
+    assert "Its field-check scores here are round 7's, kept as history." in note
+    assert (f"The record is R3's scores, on R3's run of the same boxes, features and stand size, "
+            f"{run}_r14.") in note
+    assert "The _r9 scores, the record from before the corrections, are not on this site." in note
+    assert "The chance test was not run on these stands, so their scores are numbers only." in note
+    assert "does not show" not in note
+    monkeypatch.setattr(builder, "RUNS", [{"run_id": f"{run}_r14"}])
+    with pytest.raises(SystemExit, match="not among R3's runs"):
+        builder.s1desc_note(run)
+
+
+def test_round_7s_field_check_points_to_r3s_run_and_says_the_r9_scores_are_not_on_the_site():
+    """Round 15's question 1 (b): the score card of round 7's four runs."""
+    page = (SCRIPTS.parent / "ui" / "explorer.html").read_text()
+    assert "which this site does not show" not in page
+    assert "the record is the scores on their re-runs" not in page
+    card = page[page.index("These are round 7's scores"):]
+    card = card[:card.index("</p>")]
+    assert "kept as history" in card
+    assert ('The record is R3\'s scores, on R3\'s run of the same boxes, features and stand size, '
+            '${runLink(run().run_id + "_r14")}.') in card
+    assert "The _r9 scores, the record from before the corrections, are not on this site." in card
+    assert "The chance test was not run on these stands, so these scores are numbers only" in card
+
+
+def _small_stands(tmp_path, run_id: str, whys: list[str]) -> Path:
+    """A stand layer as the merge writes it: one stand per entry of `whys`, below the minimum where
+    the entry says why ("isolated" or "area_blocked"), at or over it where it is ""."""
+    square = [[[77.0, 28.0], [77.001, 28.0], [77.001, 28.001], [77.0, 28.001], [77.0, 28.0]]]
+    feats = [{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": square},
+              "properties": {"stand_id": sid, "stand_lbl": sid, "area_ha": 0.5 if why else 2.0,
+                             "cluster_id": 0, "n_superpx": 1, "n_pass1": 0, "n_relaxed": 0,
+                             "n_fallback": 0, "below_min": int(bool(why)), "below_why": why,
+                             "canopy_height": 6.0}}
+             for sid, why in enumerate(whys)]
+    (tmp_path / f"{run_id}_stands_merged.geojson").write_text(
+        json.dumps({"type": "FeatureCollection", "features": feats}))
+    return tmp_path
+
+
+def test_an_earlier_kept_land_run_says_which_small_stands_were_too_big_to_take(builder, tmp_path):
+    """Round 15's question 5 (b), site-earlier-keptland-small-stands-counted-apart: an earlier
+    kept-land run whose merge left stands every neighbour was too big to take says of each small
+    stand why it stayed small, as R3's runs do; one whose merge left none keeps the flag alone, so
+    its popups keep their one sentence. The build stops if the layer and the merge disagree."""
+    vec = _small_stands(tmp_path, "k_run", ["", "isolated", "area_blocked"])
+    fc, _ = builder.run_stands("k_run", "feature_vector", vec, keptland=True, blocked=1)
+    assert [f["properties"].get("below_why") for f in fc["features"]] == [None, "isolated",
+                                                                          "area_blocked"]
+    assert "below_why" not in fc["features"][0]["properties"]
+    none = tmp_path / "none"
+    none.mkdir()
+    fc, _ = builder.run_stands("k_run", "feature_vector",
+                               _small_stands(none, "k_run", ["", "isolated"]), keptland=True)
+    assert all("below_why" not in f["properties"] for f in fc["features"])
+    assert [f["properties"]["below_min"] for f in fc["features"]] == [False, True]
+    with pytest.raises(SystemExit, match="its merge counted 2"):
+        builder.run_stands("k_run", "feature_vector", vec, keptland=True, blocked=2)
+    # Review of round 16, L5: checked on every kept-land run, those whose merge counted none too.
+    with pytest.raises(SystemExit, match="its merge counted 0"):
+        builder.run_stands("k_run", "feature_vector", vec, keptland=True)
+    # R3's runs say why in every run, as before, and are checked the same way.
+    fc, _ = builder.run_stands("k_run", "feature_vector", vec, keptland=True, r3=True, blocked=1)
+    assert [f["properties"].get("below_why") for f in fc["features"]][1:] == ["isolated",
+                                                                              "area_blocked"]
+    with pytest.raises(SystemExit, match="its merge counted 0"):
+        builder.run_stands("k_run", "feature_vector", vec, keptland=True, r3=True)
+    # A run that is not kept-land carries no flag, whatever its merge counted.
+    fc, _ = builder.run_stands("k_run", "feature_vector", vec, blocked=1)
+    assert all("below_min" not in f["properties"] and "below_why" not in f["properties"]
+               for f in fc["features"])
+
+
+def test_the_page_counts_every_kept_land_runs_small_stands_in_two_kinds():
+    """Round 15's question 5 (b): the Stands step and the size chart count the two kinds apart on
+    the earlier kept-land runs too, not on R3's alone (as 406e2e6, the review's M1, had made it)."""
+    page = (SCRIPTS.parent / "ui" / "explorer.html").read_text()
+    assert "const blocked = has(f.below_min_blocked) ? f.below_min_blocked : 0;" in page
+    assert 'r.group === "current" && has(f.below_min_blocked)' not in page
+    assert 'which stayed small ${f.below_min_blocked ? `because they share no edge' in page
+    assert 'r.group === "current" && f.below_min_blocked' not in page
+
+
+SEPTEMBER_FILE = SCRIPTS.parent / "odisha_script" / "odisha_phase3_3_results.txt"
+RERUN_FILES = {
+    10.0: (SCRIPTS.parent / "docs" / "reproducibility" / "odisha_repro" / "odisha_v120_handcrafted"
+           / "odisha_phase3_1_score_v120_merged_districts.txt"),
+    3.0: (SCRIPTS.parent / "docs" / "reproducibility" / "odisha_repro" / "odisha_v120_3ha"
+          / "odisha_phase3_1_score_v120_3ha_merged_districts_3ha.txt")}
+SEPTEMBER_LABELS = {"drawing_all_plots": "delineation ARI, all plots",
+                    "drawing_multi_plot": "delineation ARI, multi-plot stands",
+                    "pair_precision": "same-stand pair precision",
+                    "labelling_district": "labelling ARI, per-district wmean",
+                    "far_apart": "far-apart same-label rate, alike - differ"}
+RERUN_HEADINGS = {"drawing_all_plots": "  all pairs",
+                  "drawing_multi_plot": "  restricted to plots in multi-plot stands  (",
+                  "labelling_district": "  same-district pairs  ("}
+
+
+def _old_rows(rows: list[dict]) -> list[dict]:
+    return [r for r in rows if r["stands"] in ("September 2026 runs (Phase 3)",
+                                               "13 October 2026 re-runs")]
+
+
+def _copy(src: Path, out: Path, starts: str, how, nth: int = 0) -> Path:
+    """`src` written to `out` with the nth line that begins with `starts` edited: "drop" drops it,
+    "double" writes it twice, and (old, new) replaces old by new in it."""
+    lines = src.read_text().splitlines(keepends=True)
+    i = [k for k, line in enumerate(lines) if line.startswith(starts)][nth]
+    if how == "drop":
+        del lines[i]
+    elif how == "double":
+        lines.insert(i, lines[i])
+    else:
+        assert how[0] in lines[i]
+        lines[i] = lines[i].replace(*how, 1)
+    out.write_text("".join(lines))
+    return out
+
+
+def test_the_september_and_13_oct_rows_are_their_files_values(builder):
+    """Round 15's question 4 (b): every September and 13 Oct row's numbers, against their files
+    read here by another route (each table's columns by position), and the committed rows."""
+    rows = _old_rows(builder.fes_rows()["rows"])
+    sept = SEPTEMBER_FILE.read_text().splitlines()
+    for r in [r for r in rows if r["stands"].startswith("September")]:
+        arm = f"{r['stand_ceiling_ha']:g} ha"
+        start = next(i for i, line in enumerate(sept) if line.startswith(f"{arm.upper()} ARM ("))
+        row = next(line for line in sept[start:] if line.strip().startswith(
+            SEPTEMBER_LABELS[r["test"]] + "  "))
+        left, right = row.split("|")
+        assert r["score"] == float(left.split()[-1])
+        assert (r["chance_percentile"], r["p"]) == (float(right.split()[-3]), float(right.split()[-2]))
+        holm = next(line for line in sept if line.strip().startswith(
+            f"{arm}: {SEPTEMBER_LABELS[r['test']]}  "))
+        assert r["p_holm"] == float(holm.split()[-1]) and r["p"] == float(holm.split()[-2])
+        assert r["n_plots"] == 267 and "plots in the village AOIs: 267;" in SEPTEMBER_FILE.read_text()
+    for r in [r for r in rows if r["stands"].startswith("13 October")]:
+        lines = RERUN_FILES[r["stand_ceiling_ha"]].read_text().splitlines()
+        start = next(i for i, line in enumerate(lines)
+                     if line.startswith(RERUN_HEADINGS[r["test"]]) and (
+                         line.rstrip() == RERUN_HEADINGS[r["test"]].rstrip() or "(" in line))
+        ari = next(line for line in lines[start:] if ">>> ARI" in line)
+        assert r["score"] == float(ari.split()[2])
+        assert r["n_plots"] == 267
+    assert len(rows) == 16
+    committed = json.loads((DATA / "fes_comparison.json").read_text())
+    assert rows == _old_rows(committed["rows"])
+    assert builder.fes_rows()["reading"] == committed["reading"]
+
+
+def test_a_changed_value_in_a_copy_of_a_file_changes_its_row(builder, monkeypatch, tmp_path):
+    """Round 15's question 4 (b): the rows follow their files. Fails on the code before round 16,
+    which typed the numbers (raising=False lets it run there)."""
+    sept = tmp_path / SEPTEMBER_FILE.name
+    _copy(SEPTEMBER_FILE, sept, "    same-stand pair precision", ("+0.5385", "+0.5391"))
+    _copy(sept, sept, "    3 ha: labelling ARI, per-district wmean", ("1.000", "0.987"))
+    _copy(sept, sept, "  plots in the village AOIs", ("villages: 20;", "villages: 21;"))
+    rerun = _copy(RERUN_FILES[3.0], tmp_path / RERUN_FILES[3.0].name, "      >>> ARI +0.0233",
+                  ("+0.0233", "+0.0241"))
+    monkeypatch.setattr(builder, "SEPTEMBER", sept, raising=False)
+    monkeypatch.setattr(builder, "RERUN_SCORES", {10.0: RERUN_FILES[10.0], 3.0: rerun},
+                        raising=False)
+    out = builder.fes_rows()
+    rows = {(r["stands"][:4], r["stand_ceiling_ha"], r["test"]): r for r in _old_rows(out["rows"])}
+    assert rows[("Sept", 10.0, "pair_precision")]["score"] == 0.5391
+    assert rows[("Sept", 3.0, "pair_precision")]["score"] == 0.5575
+    assert rows[("Sept", 3.0, "labelling_district")]["p_holm"] == 0.987
+    assert rows[("13 O", 3.0, "drawing_multi_plot")]["score"] == 0.0241
+    assert rows[("13 O", 10.0, "drawing_multi_plot")]["score"] == 0.0364
+    assert "with 267 plots in 21 villages" in out["reading"]
+
+
+@pytest.mark.parametrize(("which", "starts", "how", "nth", "said"), [
+    ("sept", "    3 ha: far-apart same-label rate, alike - differ", "drop", 0,
+     'the row "3 ha: far-apart same-label rate, alike - differ" of the Holm table and found none'),
+    ("sept", "    same-stand pair precision", "double", 0,
+     'the row "same-stand pair precision" of the 10 ha arm\'s table and found 2'),
+    ("sept", "    delineation ARI, multi-plot stands", "drop", 1,
+     'the row "delineation ARI, multi-plot stands" of the 3 ha arm\'s table and found none'),
+    ("sept", "  * 0 of 10 headline tests", "drop", 0,
+     'the line "<n> of <m> headline tests beat chance after Holm correction at 0.05" and found none'),
+    ("sept", "  plots in the village AOIs", "double", 0,
+     'the line "plots in the village AOIs: <n>; villages: <n>; ..." and found 2'),
+    ("10", "      >>> ARI +0.0364", "drop", 0,
+     'the line ">>> ARI" under "restricted to plots in multi-plot stands" and found none'),
+    ("3", "  all pairs", "double", 0, 'the block headed "all pairs" and found 2'),
+    ("3", "  same-district pairs  (", "drop", 0, 'the block headed "same-district pairs" and found none'),
+    ("10", "  plots with a stand", "drop", 0, 'the line "plots with a stand: <n>" and found none'),
+])
+def test_a_missing_or_doubled_line_stops_the_build(builder, monkeypatch, tmp_path, which, starts,
+                                                   how, nth, said):
+    """Round 15's question 4 (b): a value is read from exactly one line; a line missing or found
+    twice stops the build, naming the file and the line it looked for. No typed fallback."""
+    src = SEPTEMBER_FILE if which == "sept" else RERUN_FILES[float(which)]
+    copy = _copy(src, tmp_path / src.name, starts, how, nth)
+    if which == "sept":
+        monkeypatch.setattr(builder, "SEPTEMBER", copy, raising=False)
+    else:
+        monkeypatch.setattr(builder, "RERUN_SCORES", {**RERUN_FILES, float(which): copy},
+                            raising=False)
+    with pytest.raises(SystemExit) as stop:
+        builder.fes_rows()
+    assert str(copy) in str(stop.value) and said in str(stop.value)
+
+
+@pytest.mark.parametrize(("starts", "how", "said"), [
+    ("  * 0 of 10 headline tests", ("* 0 of", "* 1 of"),
+     "1 of 10 headline tests beat chance after the Holm correction"),
+    ("    10 ha: delineation ARI, all plots", ("0.630", "0.050"), "Holm p 0.05 is 0.05 or under"),
+])
+def test_a_september_file_where_a_test_passes_after_correction_stops_the_build(
+        builder, monkeypatch, tmp_path, starts, how, said):
+    """Round 15's question 4 (b): the reading says none of the ten tests passes after the Holm
+    correction, so the build stops if the file says otherwise."""
+    copy = _copy(SEPTEMBER_FILE, tmp_path / SEPTEMBER_FILE.name, starts, how)
+    monkeypatch.setattr(builder, "SEPTEMBER", copy, raising=False)
+    with pytest.raises(SystemExit, match=said):
+        builder.fes_rows()
+
+
+def test_the_committed_lines_of_round_7s_runs_name_r3s_run_and_none_says_r9_is_the_record():
+    """Round 15's question 1 (b), in the committed ui_data/: each of round 7's four runs names R3's
+    run of the same boxes, features and stand size, a current run; no line on the site says that
+    the _r9 scores are the record or that the site does not show the record."""
+    runs = {r["run_id"]: r for r in _index()["runs"]}
+    for d in ("angul", "dhenkanal", "kendujhar", "koraput"):
+        run = f"odisha_v120_3ha_squares_{d}_keptland_s1desc"
+        r3 = runs[f"{run}_r14"]
+        assert r3["group"] == "current" and r3["area"] == runs[run]["area"]
+        assert (r3["arm"], r3["stand_ceiling_ha"], r3["roi"]) == (
+            runs[run]["arm"], runs[run]["stand_ceiling_ha"], runs[run]["roi"])
+        assert (f"The record is R3's scores, on R3's run of the same boxes, features and stand size, "
+                f"{run}_r14.") in runs[run]["note"]
+        assert "The _r9 scores, the record from before the corrections, are not on this site." in (
+            runs[run]["note"])
+    for r in runs.values():
+        for text in (r.get("note") or "", r.get("history") or ""):
+            assert "does not show" not in text and "the record is the scores on" not in text
+
+
+BLOCKED_EARLIER = {"odisha_v120_3ha_squares_angul_keptland": 2,
+                   "odisha_v120_3ha_squares_dhenkanal_keptland": 2,
+                   "odisha_v120_3ha_squares_kendujhar_keptland": 2,
+                   "odisha_v120_3ha_squares_koraput_keptland_s1desc": 4,
+                   "sanjay_van_alphaearth_keptland": 1}
+
+
+def test_the_committed_earlier_kept_land_runs_say_which_small_stands_were_too_big_to_take():
+    """Round 15's question 5 (b), in the committed ui_data/: the five earlier kept-land runs whose
+    merge left stands every neighbour was too big to take (the brief's 11) say of each small stand
+    which kind it is, as R3's do; the other earlier kept-land runs say nothing of it, so their
+    popups keep their one sentence; the counts are the merge's."""
+    earlier_kept = [r for r in _index()["runs"] if r["group"] == "earlier" and r.get("kept_land")]
+    assert len(earlier_kept) == 10
+    for r in earlier_kept:
+        f = r["facts"]
+        md = json.loads((DATA / "by_run" / r["run_id"] / "merge_diagnostics.json").read_text())
+        assert (f["below_min_blocked"], f["below_min_isolated"]) == (
+            md["orphans_area_blocked"], md["orphans_isolated"])
+        assert f["below_min_blocked"] == BLOCKED_EARLIER.get(r["run_id"], 0)
+        small = [s["properties"] for s in json.loads(
+            (DATA / "by_run" / r["run_id"] / "stands.json").read_text())["features"]
+            if s["properties"]["below_min"]]
+        if r["run_id"] in BLOCKED_EARLIER:
+            assert {p["below_why"] for p in small} == {"isolated", "area_blocked"}
+            assert len({p["stand_id"] for p in small if p["below_why"] == "area_blocked"}) == (
+                f["below_min_blocked"])
+        else:
+            assert all("below_why" not in p for p in small)
+    assert sum(BLOCKED_EARLIER.values()) == 11
+
+
+def test_the_committed_score_rows_are_byte_for_byte_what_the_builder_writes(builder):
+    """Round 16, Task 3's check: rebuilt from the files, fes_comparison.json is byte for byte the
+    committed one (write_json's form)."""
+    assert json.dumps(builder.fes_rows(), separators=(",", ":"), ensure_ascii=False) == (
+        DATA / "fes_comparison.json").read_text()
+
+
+def test_a_13_oct_block_ends_at_the_next_heading_too(builder, monkeypatch, tmp_path):
+    """Review of round 16, L7: a block whose ">>> ARI" line and the blank line after it are both
+    gone stops the build; it does not run into the next block and read that block's ARI."""
+    lines = RERUN_FILES[10.0].read_text().splitlines(keepends=True)
+    start = next(i for i, line in enumerate(lines) if line.rstrip() == "  all pairs")
+    ari = next(i for i in range(start, len(lines)) if ">>> ARI" in lines[i])
+    assert not lines[ari + 1].strip()
+    del lines[ari:ari + 2]
+    copy = tmp_path / RERUN_FILES[10.0].name
+    copy.write_text("".join(lines))
+    monkeypatch.setattr(builder, "RERUN_SCORES", {**RERUN_FILES, 10.0: copy}, raising=False)
+    with pytest.raises(SystemExit, match='the line ">>> ARI" under "all pairs" and found none'):
+        builder.fes_rows()
+
+
+def test_round_7s_line_links_r3s_run_in_the_area_step():
+    """Review of round 16, L2: the line names R3's run, and the page links it where it shows the
+    line (the Area step), as the field check does."""
+    page = (SCRIPTS.parent / "ui" / "explorer.html").read_text()
+    assert 'const r3 = r.run_id + "_r14", note = esc(r.note);' in page
+    assert "note.includes(r3) ? note.replace(r3, () => runLink(r3)) : note" in page

@@ -1281,7 +1281,12 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       }
       out.body.push(`The picture is a Sentinel-2 satellite image: for every 10 m pixel, the middle value of the clear views from 2017 to 2022.`);
       if (odisha && (!has(f.n_parts) || f.n_parts > 1)) out.body.push(`The map opens on the village with the most plots. Use the list at its top right to move between villages.`);
-      if (r.note) out.extra = `<p class="small">${esc(r.note)}</p>`;
+      // Round 7's runs name R3's run of the same boxes in their line, linked here as in their field
+      // check (round 15's question 1).
+      if (r.note) {
+        const r3 = r.run_id + "_r14", note = esc(r.note);
+        out.extra = `<p class="small">${note.includes(r3) ? note.replace(r3, () => runLink(r3)) : note}</p>`;
+      }
       out.facts = (has(f.area_ha) ? factBox(ha(f.area_ha), "area we work on") : "") +
         (odisha && has(f.n_parts) ? factBox(n0(f.n_parts), f.n_parts === 1 ? (roi === "boxes" ? "box" : "patch") : parts) : "") + (odisha && has(plotsInside) ? factBox(n0(plotsInside), "FES plots inside") : "");
     } else if (w.id === "land") {
@@ -1351,9 +1356,9 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       const keptSmall = isKept(r) && has(f.n_stands, f.stands_below_min) && f.stands_below_min > 0;
       // Why the small ones stayed small (round 13's question 25): "isolated" means a stand shares no
       // edge with another (it may meet one at a corner); "blocked", that every neighbour was too big.
-      // R3's runs say how many of each; an earlier run's text keeps its one reason (round 15 changed
-      // only its wording, question 25).
-      const blocked = r.group === "current" && has(f.below_min_blocked) ? f.below_min_blocked : 0;
+      // Every kept-land run says how many of each, from its merge's records: R3's, and the earlier
+      // ones too (round 15's question 5).
+      const blocked = has(f.below_min_blocked) ? f.below_min_blocked : 0;
       const isolated = has(f.below_min_isolated) ? f.below_min_isolated : f.stands_below_min - blocked;
       // Their area: the merge's (R3), or, in an earlier run, that of the stands left out of the fit,
       // which were all of them there.
@@ -1489,14 +1494,22 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     const head = `<tr><th></th>${tests.map(t => `<th title="${esc(TEST_SHORT[t] || t)}">${esc(TEST_COL[t] || t)}</th>`).join("")}</tr>`;
     const body = analyses.map(a => `<tr><th class="row">${esc(ANALYSIS_WORDS[a] || a)}</th>${tests.map(t => `<td>${cell(a, t)}</td>`).join("")}</tr>`).join("");
     return `<div class="card"><h3>How well the stands match the plots${esc(n)}</h3>` +
-      // Round 7's runs (15 Oct): their scores are kept as history; the record is the scores on their
-      // re-runs, which ui_data does not hold (Jaskaran, 18 Oct 2026).
+      // Round 7's runs (15 Oct): their scores are kept as history. The record is R3's scores, on R3's
+      // run of the same boxes, features and stand size, the same run id ending _r14; the _r9 scores,
+      // the record from before the corrections, are not on the site (round 15's question 1,
+      // site-round-7-runs-point-to-r3s-scores).
       (/_keptland_s1desc$/.test(run().run_id || "")
-        ? `<p class="small">These are the scores of the 15 Oct runs, kept as history: the record is the scores on their re-runs, which this site does not show, and the declared chance test was run on those, not on these stands. So these are numbers only: they can't be called better or worse than chance.${decl}</p>`
+        ? `<p class="small">These are round 7's scores, of the 15 Oct runs, kept as history. The record is R3's scores, on R3's run of the same boxes, features and stand size, ${runLink(run().run_id + "_r14")}. The _r9 scores, the record from before the corrections, are not on this site. The chance test was not run on these stands, so these scores are numbers only: they can't be called better or worse than chance.${decl}</p>`
         : `<p class="small">The chance test hasn't been run on these stands yet, so these are numbers only: they can't be called better or worse than chance.${decl}</p>`) +
       `<ul class="tests">${items}</ul>` +
       `<details><summary>The checks, side by side</summary><div class="scroll"><table class="xtab scores">${head}${body}</table></div></details>` +
       `<details><summary>About the scores</summary><p class="small">Four of the five scores are the adjusted Rand index: 0 means no better than grouping the plots at random, 1 means perfect agreement. The third is the share of same-stand pairs that are the same field type; the fifth is how much more often far-apart plots that are alike share a stand type than far-apart plots that differ.</p></details></div>`;
+  }
+
+  // A run named by its id, with a button that opens it where the index holds it.
+  function runLink(id) {
+    const known = ((state.index || {}).runs || []).some(x => x.run_id === id);
+    return `<code>${esc(id)}</code>` + (known ? ` (<button type="button" class="linkish" data-open-run="${esc(id)}">open it</button>)` : "");
   }
 
   function chanceCard(rows) {
@@ -1760,7 +1773,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       bars + (minHa ? line(minHa, "smallest allowed", false) : "") + line(ceil, "largest allowed", true) + `<g class="ticks">${ticks}</g></svg>` +
       `<p class="small">Each bar counts the stands of that size, in hectares. ${plural(areas.length, "stand")} in all; the middle one is ${ha(quantile(areas, 0.5))}.` +
       (below ? ` ${plural(below, "stand")} ${below === 1 ? "is" : "are"} still under ${ha(minHa)}.` : "") +
-      (small.length ? ` Not counted here: ${plural(Math.max(small.length, f.stands_below_min || 0), "small patch", "small patches")} of trees or scrub under ${ha(minHa)}, about ${ha(Math.round(small.reduce((s, p) => s + (p.area_ha || 0), 0)))} in all, which stayed small ${r.group === "current" && f.below_min_blocked ? `because they share no edge with another stand (${n0(f.below_min_isolated)}) or every neighbour was too big to take them (${n0(f.below_min_blocked)})` : "because they share no edge with another stand"}.` : "") +
+      (small.length ? ` Not counted here: ${plural(Math.max(small.length, f.stands_below_min || 0), "small patch", "small patches")} of trees or scrub under ${ha(minHa)}, about ${ha(Math.round(small.reduce((s, p) => s + (p.area_ha || 0), 0)))} in all, which stayed small ${f.below_min_blocked ? `because they share no edge with another stand (${n0(f.below_min_isolated)}) or every neighbour was too big to take them (${n0(f.below_min_blocked)})` : "because they share no edge with another stand"}.` : "") +
       (over ? ` ${plural(over, "stand")} ${over === 1 ? "goes" : "go"} past ${ha(ceil)}, the most is ${ha(areas[areas.length - 1])}.` : "") + `</p></div>`;
   }
   function areaByType(model) {
@@ -1949,7 +1962,9 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
         : `<p class="small">Averages over the stand. AlphaEarth's own 64 numbers have no names, so the stand is described with our measurements.</p>`)
       : `<p class="small">Averages over the stand's pixels.</p>`;
     const typed = !(p.stand_type === null || p.stand_type === undefined);
-    // Why a small stand stayed small, where the run says (R3's below_why: round 13's question 25).
+    // Why a small stand stayed small, where the run says (below_why: round 13's question 25), as
+    // R3's runs do and the earlier kept-land runs whose merge left a stand every neighbour was too
+    // big to take (round 15's question 5); elsewhere the one sentence it had.
     const small = p.below_why === "area_blocked" ? "A small patch of trees or scrub: every neighbour was already too big to take it, so it stays a stand of its own."
       : p.below_why === "isolated" ? "A small patch of trees or scrub that shares no edge with another stand, so it stays a stand of its own."
       : "A small patch of trees or scrub, cut off from the rest, so it stays a stand of its own.";
