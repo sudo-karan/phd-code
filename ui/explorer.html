@@ -1781,9 +1781,10 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     // The earlier runs' areas are measured from the outlines and rounded, so a stand within 1% of a
     // limit counts as at it; R3's are pixel counts (review A6), exact, so they are compared as they are.
     const slack = r.group === "current" ? 0 : 0.01;
-    // The sentence gives the merge's numbers where the run has them, as the Stands step does: the
-    // stands over the ceiling and the small patches' area (round 16's question 3). The bars count
-    // the stand layer's areas.
+    // The sentence gives the Stands step's numbers where the run has them: the merge's count of the
+    // stands over the ceiling, and the small patches' area as the Stands step gives it (smallPatchHa:
+    // the merge's for R3, the stands left out of the fit for an earlier run) (round 16's question 3).
+    // The bars count the stand layer's areas.
     const over = Number.isFinite(f.stands_over_max_stand_ha) ? f.stands_over_max_stand_ha : areas.filter(a => a > ceil * (1 + slack)).length;
     const below = minHa ? areas.filter(a => a < minHa * (1 - slack)).length : 0;
     const smallHa = smallPatchHa(f) ?? small.reduce((s, p) => s + (p.area_ha || 0), 0);
