@@ -1512,9 +1512,10 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       // Round 7's runs (15 Oct): their scores are kept as history. The record is R3's scores, on R3's
       // run of the same boxes, features and stand size, the same run id ending _r14; the _r9 scores,
       // the record from before the corrections, are not on the site (round 15's question 1,
-      // site-round-7-runs-point-to-r3s-scores).
+      // site-round-7-runs-point-to-r3s-scores). The declared chance test was not run on these stands;
+      // a rehearsal of it was (keptland_s1desc_chance_rehearsal.json; Jaskaran, 29 Oct 2026).
       (/_keptland_s1desc$/.test(run().run_id || "")
-        ? `<p class="small">These are round 7's scores, of the 15 Oct runs, kept as history. The record is R3's scores, on R3's run of the same boxes, features and stand size, ${runLink(run().run_id + "_r14")}. The _r9 scores, the record from before the corrections, are not on this site. The chance test was not run on these stands, so these scores are numbers only: they can't be called better or worse than chance.${decl}</p>`
+        ? `<p class="small">These are round 7's scores, of the 15 Oct runs, kept as history. The record is R3's scores, on R3's run of the same boxes, features and stand size, ${runLink(run().run_id + "_r14")}. The _r9 scores, the record from before the corrections, are not on this site. The declared chance test was not run on these stands, so these scores are numbers only: they can't be called better or worse than chance.${decl}</p>`
         : `<p class="small">The chance test hasn't been run on these stands yet, so these are numbers only: they can't be called better or worse than chance.${decl}</p>`) +
       `<ul class="tests">${items}</ul>` +
       `<details><summary>The checks, side by side</summary><div class="scroll"><table class="xtab scores">${head}${body}</table></div></details>` +

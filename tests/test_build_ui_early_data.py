@@ -724,7 +724,8 @@ def test_round_7s_line_points_to_r3s_run_of_the_same_boxes(builder, monkeypatch)
     """Round 15's question 1 (b), site-round-7-runs-point-to-r3s-scores: a round-7 run's line says
     its scores are round 7's, kept as history; that the record is R3's scores, on R3's run of the
     same boxes, features and stand size, by name; that the _r9 scores are not on the site; and that
-    the chance test was not run on these stands. The build stops if that R3 run is not R3's."""
+    the declared chance test was not run on these stands (round 17). The build stops if that R3 run
+    is not R3's."""
     run = "odisha_v120_3ha_squares_angul_keptland_s1desc"
     monkeypatch.setattr(builder, "RUNS", [{"run_id": f"{run}_r14", "r3": True}])
     note = builder.s1desc_note(run)
@@ -732,7 +733,8 @@ def test_round_7s_line_points_to_r3s_run_of_the_same_boxes(builder, monkeypatch)
     assert (f"The record is R3's scores, on R3's run of the same boxes, features and stand size, "
             f"{run}_r14.") in note
     assert "The _r9 scores, the record from before the corrections, are not on this site." in note
-    assert "The chance test was not run on these stands, so their scores are numbers only." in note
+    assert ("The declared chance test was not run on these stands, so their scores are numbers "
+            "only.") in note
     assert "does not show" not in note
     monkeypatch.setattr(builder, "RUNS", [{"run_id": f"{run}_r14"}])
     with pytest.raises(SystemExit, match="not among R3's runs"):
@@ -750,7 +752,8 @@ def test_round_7s_field_check_points_to_r3s_run_and_says_the_r9_scores_are_not_o
     assert ('The record is R3\'s scores, on R3\'s run of the same boxes, features and stand size, '
             '${runLink(run().run_id + "_r14")}.') in card
     assert "The _r9 scores, the record from before the corrections, are not on this site." in card
-    assert "The chance test was not run on these stands, so these scores are numbers only" in card
+    assert ("The declared chance test was not run on these stands, so these scores are numbers only"
+            in card)
 
 
 def _small_stands(tmp_path, run_id: str, whys: list[str]) -> Path:
@@ -1135,3 +1138,21 @@ def test_a_switch_of_run_writes_the_address_once_the_step_is_drawn():
     for step in ("state.restoring = true;", "await selectRun(first);", "await restoreLink(link.q);",
                  "state.restoring = false;", "setHash();", 'state.map.on("moveend", setHash);'):
         at = page.index(step, at)  # each after the one before, or ValueError
+
+
+def test_round_7s_runs_say_the_declared_chance_test_was_not_run_on_their_stands():
+    """Jaskaran, 29 Oct 2026, round 17's sixth fix (site-round-7-runs-say-the-declared-chance-test):
+    the line and the field-check card of round 7's four runs say that the declared chance test was
+    not run on their stands, since a rehearsal of it was, on those four runs' stands, and says so."""
+    rehearsal = json.loads((SCRIPTS.parent / "odisha_script" / "keptland_scores"
+                            / "keptland_s1desc_chance_rehearsal.json").read_text())
+    assert rehearsal["what"].startswith("REHEARSAL of the chance test of PHASE_KEPTLAND_PREDECLARED.md")
+    assert "Not the declared test's result" in rehearsal["what"]
+    assert sorted(rehearsal["runs"]) == sorted(
+        f"odisha_v120_3ha_squares_{d}_keptland_s1desc"
+        for d in ("angul", "dhenkanal", "kendujhar", "koraput"))
+    page = _page()
+    card = page[page.index("These are round 7's scores"):]
+    card = card[:card.index("</p>")]
+    assert "The declared chance test was not run on these stands" in card
+    assert "The chance test was not run" not in card

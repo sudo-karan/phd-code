@@ -219,12 +219,14 @@ SHORT_LABEL_WITH_S1DESC = ("Test runs from 13 to 15 October 2026: the village ou
                            "the boxes, there on both radar orbits. The final runs will replace "
                            "them.")
 NUMBER_WORDS = {1: "One", 2: "Two", 3: "Three", 4: "Four"}
-# The end of the line of round 7's four runs (`s1desc_note`).
+# The end of the line of round 7's four runs (`s1desc_note`). The declared chance test was not run
+# on their stands; a rehearsal of it was (odisha_script/keptland_scores/
+# keptland_s1desc_chance_rehearsal.json; Jaskaran, 29 Oct 2026, round 17).
 S1DESC_NOTE = (" Its radar comes from the descending Sentinel-1 orbit. Its field-check scores here are "
                "round 7's, kept as history. The record is R3's scores, on R3's run of the same "
                "boxes, features and stand size, {r3}. The _r9 scores, the record from before the "
-               "corrections, are not on this site. The chance test was not run on these stands, so "
-               "their scores are numbers only.")
+               "corrections, are not on this site. The declared chance test was not run on these "
+               "stands, so their scores are numbers only.")
 MEANS_NOTE = (" Its stands' named measurements come from one read-only reduction "
               "(docs/reproducibility/keptland_runs/{run}_stand_means.json): the optical and "
               "structure ones from this run's own images, the radar and static ones from the "
