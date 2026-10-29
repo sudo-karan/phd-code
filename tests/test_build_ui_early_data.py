@@ -1029,3 +1029,37 @@ def test_round_7s_line_links_r3s_run_in_the_area_step():
     page = (SCRIPTS.parent / "ui" / "explorer.html").read_text()
     assert 'const r3 = r.run_id + "_r14", note = esc(r.note);' in page
     assert "note.includes(r3) ? note.replace(r3, () => runLink(r3)) : note" in page
+
+
+# ---------------------------------------------------------------- round 17
+
+
+def _page() -> str:
+    return (SCRIPTS.parent / "ui" / "explorer.html").read_text()
+
+
+def test_the_ascending_orbit_note_says_what_is_true_of_each_district():
+    """Round 16's question 2 (b), site-ascending-orbit-note-by-district: the ascending-orbit
+    kept-land runs' field check keeps "only one to three images" for the districts whose pass first
+    used has that few over the boxes, by the register's counts, and says that Dhenkanal's, the one
+    district with more, has plenty, and that all four use the same pass."""
+    import re
+
+    import yaml
+
+    register = {d["id"]: d for d in yaml.safe_load(
+        (SCRIPTS.parent / "docs" / "decisions.yaml").read_text())["decisions"]}
+    text = " ".join(register["spec-odisha-keptland-s1-orbit-descending"]["decision"].split())
+    m = re.search(r"the ascending orbit has (\d+) images? in (\w+), (\d+) in (\w+), (\d+) in (\w+) "
+                  r"and (\d+) in (\w+);", text)
+    assert m
+    counts = {m.group(i + 1): int(m.group(i)) for i in (1, 3, 5, 7)}
+    assert sorted(d for d, n in counts.items() if n <= 3) == ["Angul", "Kendujhar", "Koraput"]
+    assert [d for d, n in counts.items() if n > 3] == ["Dhenkanal"]
+    page = _page()
+    assert 'const why = r.area === "Dhenkanal"' in page
+    assert ("Here the radar pass we first used has plenty of images, but the comparison was run on "
+            "the re-run that uses the other pass, as in the other three districts, so that all four "
+            "use the same pass.") in page
+    assert ("Over these boxes the radar pass we first used has only one to three images, so the "
+            "comparison was run on the re-run that uses the other pass.") in page

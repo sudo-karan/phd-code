@@ -1430,7 +1430,13 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     const r = run();
     const rows = fesRows(r);
     if (!comparable(r) && isAscendingRedo(r)) {
-      return `<p class="note">These stands were not compared with the plots. Over these boxes the radar pass we first used has only one to three images, so the comparison was run on the re-run that uses the other pass. <button type="button" class="linkish" data-open-run="${esc(r.run_id)}_s1desc">Open the re-run</button></p>`;
+      // By register spec-odisha-keptland-s1-orbit-descending, the pass first used has one to three
+      // images over the boxes of Angul, Kendujhar and Koraput, and plenty over Dhenkanal's; all four
+      // were re-run on the other pass, one pass for the four districts (round 16's question 2).
+      const why = r.area === "Dhenkanal"
+        ? "Here the radar pass we first used has plenty of images, but the comparison was run on the re-run that uses the other pass, as in the other three districts, so that all four use the same pass."
+        : "Over these boxes the radar pass we first used has only one to three images, so the comparison was run on the re-run that uses the other pass.";
+      return `<p class="note">These stands were not compared with the plots. ${why} <button type="button" class="linkish" data-open-run="${esc(r.run_id)}_s1desc">Open the re-run</button></p>`;
     }
     if (!comparable(r)) {
       return `<p class="note">We haven't compared ${r.arm === "alphaearth" ? "AlphaEarth's" : "these"} stands with the plots yet. We write down exactly how we'll test them before we run the test, so the result can't steer the method. That comes with the next update. Until then the map shows where the plots fall, without the comparison.</p>`;
