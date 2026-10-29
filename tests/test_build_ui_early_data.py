@@ -1083,3 +1083,19 @@ def test_the_size_chart_gives_the_merges_numbers_as_the_stands_step_does():
     for r in [r for r in _index()["runs"] if r.get("kept_land")]:
         md = json.loads((DATA / "by_run" / r["run_id"] / "merge_diagnostics.json").read_text())
         assert r["facts"]["stands_over_max_stand_ha"] == md["stands_over_max_area"], r["run_id"]
+
+
+def test_small_stands_are_small_patches_not_cut_off_patches():
+    """Round 16's question 4 (b), site-small-patches-not-cut-off-patches: the Types step of the
+    earlier kept-land runs and every kept-land run's area-by-type chart say "small patches"; the only
+    "cut-off" texts left are the two the brief keeps, which show only where every small stand
+    shares no edge with another."""
+    import re
+
+    page = _page()
+    assert "or more; the small patches then get the type they are closest to." in page
+    assert "“Small” counts the small patches under the smallest stand size that took the type." in page
+    left = re.findall(r"cut[- ]off", page)
+    assert len(left) == 2
+    assert 'blocked ? `small patches under ${minHa}` : "small cut-off patches"' in page
+    assert "A small patch of trees or scrub, cut off from the rest, so it stays a stand of its own." in page
