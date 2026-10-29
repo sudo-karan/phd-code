@@ -1063,3 +1063,23 @@ def test_the_ascending_orbit_note_says_what_is_true_of_each_district():
             "use the same pass.") in page
     assert ("Over these boxes the radar pass we first used has only one to three images, so the "
             "comparison was run on the re-run that uses the other pass.") in page
+
+
+def test_the_size_chart_gives_the_merges_numbers_as_the_stands_step_does():
+    """Round 16's question 3 (b), site-size-chart-gives-the-merges-numbers: the size chart's sentence
+    gives the stands over the ceiling and the small patches' area as the Stands step does, from the
+    run's facts (the merge's) where the run has them; its bars still count the stand layer."""
+    page = _page()
+    chart = page[page.index("function sizeHistogram"):page.index("function areaByType")]
+    assert ("const over = Number.isFinite(f.stands_over_max_stand_ha) ? f.stands_over_max_stand_ha "
+            ": areas.filter(") in chart
+    assert "const smallHa = smallPatchHa(f) ??" in chart
+    assert "about ${ha(Math.round(smallHa))} in all" in chart
+    assert "bins[Math.min(nb - 1, Math.floor(a / step))] += 1" in chart  # the bars: the layer's areas
+    stands_step = page[page.index('} else if (w.id === "stands") {'):
+                       page.index('} else if (w.id === "types") {')]
+    assert "const smallHa = smallPatchHa(f);" in stands_step
+    # The count the sentence reads is the merge's, in every kept-land run.
+    for r in [r for r in _index()["runs"] if r.get("kept_land")]:
+        md = json.loads((DATA / "by_run" / r["run_id"] / "merge_diagnostics.json").read_text())
+        assert r["facts"]["stands_over_max_stand_ha"] == md["stands_over_max_area"], r["run_id"]

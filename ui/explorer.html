@@ -633,6 +633,13 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     if (v >= 10) return fmt(v, 1) + " ha";
     return fmt(v, 2).replace(/\.?0+$/, "") + " ha";
   }
+  // The small patches' area as the Stands step gives it: the merge's (R3), or, in an earlier run,
+  // that of the stands left out of the fit, which were all of them there. The size chart gives the
+  // same (round 16's question 3).
+  function smallPatchHa(f) {
+    const v = f.area_ha_below_min ?? f.area_ha_left_out_of_fit;
+    return typeof v === "number" && Number.isFinite(v) ? v : null;
+  }
   function pct(x) {
     if (x === null || x === undefined) return "–";
     const p = x * 100;
@@ -1360,9 +1367,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       // ones too (round 15's question 5).
       const blocked = has(f.below_min_blocked) ? f.below_min_blocked : 0;
       const isolated = has(f.below_min_isolated) ? f.below_min_isolated : f.stands_below_min - blocked;
-      // Their area: the merge's (R3), or, in an earlier run, that of the stands left out of the fit,
-      // which were all of them there.
-      const smallHa = has(f.area_ha_below_min) ? f.area_ha_below_min : f.area_ha_left_out_of_fit;
+      const smallHa = smallPatchHa(f);
       let tail = keptSmall
         ? `In the end ${has(f.n_superpixels) ? n0(f.n_superpixels) + " superpixels become " : "we have "}${plural(f.n_stands - f.stands_below_min, "stand")} of ${minHa} or more. Trees and scrub also come in ${plural(f.stands_below_min, "small patch", "small patches")} under ${minHa}${has(smallHa) ? `, about ${ha(Math.round(smallHa))} in all` : ""}. ` +
           (blocked
@@ -1771,15 +1776,19 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     // The earlier runs' areas are measured from the outlines and rounded, so a stand within 1% of a
     // limit counts as at it; R3's are pixel counts (review A6), exact, so they are compared as they are.
     const slack = r.group === "current" ? 0 : 0.01;
-    const over = areas.filter(a => a > ceil * (1 + slack)).length;
+    // The sentence gives the merge's numbers where the run has them, as the Stands step does: the
+    // stands over the ceiling and the small patches' area (round 16's question 3). The bars count
+    // the stand layer's areas.
+    const over = Number.isFinite(f.stands_over_max_stand_ha) ? f.stands_over_max_stand_ha : areas.filter(a => a > ceil * (1 + slack)).length;
     const below = minHa ? areas.filter(a => a < minHa * (1 - slack)).length : 0;
+    const smallHa = smallPatchHa(f) ?? small.reduce((s, p) => s + (p.area_ha || 0), 0);
     return `<div class="card chart"><h3>How big the stands are</h3>` +
       `<svg ${SVG_NS} viewBox="0 0 ${W} ${H}" role="img" aria-label="Histogram of stand sizes">` +
       `<text x="${L - 4}" y="${T + 4}" text-anchor="end">${max}</text><text x="${L - 4}" y="${H - B}" text-anchor="end">0</text>` +
       bars + (minHa ? line(minHa, "smallest allowed", false) : "") + line(ceil, "largest allowed", true) + `<g class="ticks">${ticks}</g></svg>` +
       `<p class="small">Each bar counts the stands of that size, in hectares. ${plural(areas.length, "stand")} in all; the middle one is ${ha(quantile(areas, 0.5))}.` +
       (below ? ` ${plural(below, "stand")} ${below === 1 ? "is" : "are"} still under ${ha(minHa)}.` : "") +
-      (small.length ? ` Not counted here: ${plural(Math.max(small.length, f.stands_below_min || 0), "small patch", "small patches")} of trees or scrub under ${ha(minHa)}, about ${ha(Math.round(small.reduce((s, p) => s + (p.area_ha || 0), 0)))} in all, which stayed small ${f.below_min_blocked ? `because they share no edge with another stand (${n0(f.below_min_isolated)}) or every neighbour was too big to take them (${n0(f.below_min_blocked)})` : "because they share no edge with another stand"}.` : "") +
+      (small.length ? ` Not counted here: ${plural(Math.max(small.length, f.stands_below_min || 0), "small patch", "small patches")} of trees or scrub under ${ha(minHa)}, about ${ha(Math.round(smallHa))} in all, which stayed small ${f.below_min_blocked ? `because they share no edge with another stand (${n0(f.below_min_isolated)}) or every neighbour was too big to take them (${n0(f.below_min_blocked)})` : "because they share no edge with another stand"}.` : "") +
       (over ? ` ${plural(over, "stand")} ${over === 1 ? "goes" : "go"} past ${ha(ceil)}, the most is ${ha(areas[areas.length - 1])}.` : "") + `</p></div>`;
   }
   function areaByType(model) {
