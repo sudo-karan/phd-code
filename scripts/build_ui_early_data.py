@@ -868,8 +868,8 @@ def run_stands(run_id: str, arm: str, vec: Path, *, keptland: bool = False,
     minimum (`below_min`), and an R3 run's why (`below_why`: isolated, sharing no edge with
     another stand, or area_blocked, every neighbour too big to take it); so do an earlier
     kept-land run's whose merge left `blocked` stands of the second kind (its orphans_area_blocked;
-    round 15's question 5, site-earlier-keptland-small-stands-counted-apart). Where it says why,
-    the build stops if the stand layer names more or fewer stands area_blocked than `blocked`.
+    round 15's question 5, site-earlier-keptland-small-stands-counted-apart). For every kept-land
+    run, the build stops if the stand layer names more or fewer stands area_blocked than `blocked`.
     Where the run has named means by reduction (`stand_means`), its stands carry them beside their
     own means. An R3 run's stand means of each angle's sine and cosine (aspect_sin and the like)
     are kept, and not counted as measurements of their own."""
@@ -911,9 +911,10 @@ def run_stands(run_id: str, arm: str, vec: Path, *, keptland: bool = False,
         out.append({"type": "Feature", "properties": q,
                     "geometry": {"type": f["geometry"]["type"],
                                  "coordinates": round_coords(f["geometry"]["coordinates"])}})
-    if why:
-        named = len({f["properties"]["stand_id"] for f in out
-                     if f["properties"].get("below_why") == "area_blocked"})
+    if keptland:
+        named = len({f["properties"].get("stand_lbl") for f in feats
+                     if f["properties"].get("below_min")
+                     and f["properties"].get("below_why") == "area_blocked"})
         if named != blocked:
             raise SystemExit(f"{run_id}: its stand layer names {named} stands that every neighbour "
                              f"was too big to take, its merge counted {blocked}")
@@ -1716,7 +1717,8 @@ def september_numbers(path: Path) -> tuple[dict, dict]:
 def rerun_numbers(path: Path) -> tuple[dict, int]:
     """A 13 Oct re-run's scores, from its score file (odisha_phase3_1_score_*_merged_districts*.txt):
     {test: the ">>> ARI" of its block (RERUN_BLOCKS)}, a block running from its heading to the next
-    blank line; and the file's plots with a stand."""
+    blank line or the next line indented no deeper than the heading (the next heading); and the
+    file's plots with a stand."""
     if not path.is_file():
         raise SystemExit(f"{path}: not found; the 13 Oct score rows are read from it")
     lines = path.read_text().splitlines()
@@ -1724,7 +1726,10 @@ def rerun_numbers(path: Path) -> tuple[dict, int]:
     for tid, name in RERUN_BLOCKS.items():
         head = found_once(path, lines, re.escape(name) + r"(?:  \(|$)", f'the block headed "{name}"')
         rest = lines[lines.index(head) + 1:]
-        block = rest[:next((i for i, line in enumerate(rest) if not line.strip()), len(rest))]
+        indent = len(head) - len(head.lstrip())
+        block = rest[:next((i for i, line in enumerate(rest)
+                            if not line.strip() or len(line) - len(line.lstrip()) <= indent),
+                           len(rest))]
         what = f'the line ">>> ARI" under "{name}"'
         scores[tid] = float(parsed(path, found_once(path, block, re.escape(">>> ARI"), what),
                                    r">>> ARI ([+-]\d+\.\d+)\s", what)[0])

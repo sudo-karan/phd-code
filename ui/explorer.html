@@ -1281,7 +1281,12 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       }
       out.body.push(`The picture is a Sentinel-2 satellite image: for every 10 m pixel, the middle value of the clear views from 2017 to 2022.`);
       if (odisha && (!has(f.n_parts) || f.n_parts > 1)) out.body.push(`The map opens on the village with the most plots. Use the list at its top right to move between villages.`);
-      if (r.note) out.extra = `<p class="small">${esc(r.note)}</p>`;
+      // Round 7's runs name R3's run of the same boxes in their line, linked here as in their field
+      // check (round 15's question 1).
+      if (r.note) {
+        const r3 = r.run_id + "_r14", note = esc(r.note);
+        out.extra = `<p class="small">${note.includes(r3) ? note.replace(r3, () => runLink(r3)) : note}</p>`;
+      }
       out.facts = (has(f.area_ha) ? factBox(ha(f.area_ha), "area we work on") : "") +
         (odisha && has(f.n_parts) ? factBox(n0(f.n_parts), f.n_parts === 1 ? (roi === "boxes" ? "box" : "patch") : parts) : "") + (odisha && has(plotsInside) ? factBox(n0(plotsInside), "FES plots inside") : "");
     } else if (w.id === "land") {

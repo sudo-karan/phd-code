@@ -778,11 +778,17 @@ def test_an_earlier_kept_land_run_says_which_small_stands_were_too_big_to_take(b
     assert [f["properties"].get("below_why") for f in fc["features"]] == [None, "isolated",
                                                                           "area_blocked"]
     assert "below_why" not in fc["features"][0]["properties"]
-    fc, _ = builder.run_stands("k_run", "feature_vector", vec, keptland=True)
+    none = tmp_path / "none"
+    none.mkdir()
+    fc, _ = builder.run_stands("k_run", "feature_vector",
+                               _small_stands(none, "k_run", ["", "isolated"]), keptland=True)
     assert all("below_why" not in f["properties"] for f in fc["features"])
-    assert [f["properties"]["below_min"] for f in fc["features"]] == [False, True, True]
+    assert [f["properties"]["below_min"] for f in fc["features"]] == [False, True]
     with pytest.raises(SystemExit, match="its merge counted 2"):
         builder.run_stands("k_run", "feature_vector", vec, keptland=True, blocked=2)
+    # Review of round 16, L5: checked on every kept-land run, those whose merge counted none too.
+    with pytest.raises(SystemExit, match="its merge counted 0"):
+        builder.run_stands("k_run", "feature_vector", vec, keptland=True)
     # R3's runs say why in every run, as before, and are checked the same way.
     fc, _ = builder.run_stands("k_run", "feature_vector", vec, keptland=True, r3=True, blocked=1)
     assert [f["properties"].get("below_why") for f in fc["features"]][1:] == ["isolated",
@@ -1000,3 +1006,26 @@ def test_the_committed_score_rows_are_byte_for_byte_what_the_builder_writes(buil
     committed one (write_json's form)."""
     assert json.dumps(builder.fes_rows(), separators=(",", ":"), ensure_ascii=False) == (
         DATA / "fes_comparison.json").read_text()
+
+
+def test_a_13_oct_block_ends_at_the_next_heading_too(builder, monkeypatch, tmp_path):
+    """Review of round 16, L7: a block whose ">>> ARI" line and the blank line after it are both
+    gone stops the build; it does not run into the next block and read that block's ARI."""
+    lines = RERUN_FILES[10.0].read_text().splitlines(keepends=True)
+    start = next(i for i, line in enumerate(lines) if line.rstrip() == "  all pairs")
+    ari = next(i for i in range(start, len(lines)) if ">>> ARI" in lines[i])
+    assert not lines[ari + 1].strip()
+    del lines[ari:ari + 2]
+    copy = tmp_path / RERUN_FILES[10.0].name
+    copy.write_text("".join(lines))
+    monkeypatch.setattr(builder, "RERUN_SCORES", {**RERUN_FILES, 10.0: copy}, raising=False)
+    with pytest.raises(SystemExit, match='the line ">>> ARI" under "all pairs" and found none'):
+        builder.fes_rows()
+
+
+def test_round_7s_line_links_r3s_run_in_the_area_step():
+    """Review of round 16, L2: the line names R3's run, and the page links it where it shows the
+    line (the Area step), as the field check does."""
+    page = (SCRIPTS.parent / "ui" / "explorer.html").read_text()
+    assert 'const r3 = r.run_id + "_r14", note = esc(r.note);' in page
+    assert "note.includes(r3) ? note.replace(r3, () => runLink(r3)) : note" in page
