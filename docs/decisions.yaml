@@ -11567,3 +11567,37 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 29 Oct 2026 (round 17 brief), the round 16 record's question 6, answered (b)
+- id: site-round-7-runs-say-the-declared-chance-test
+  title: >-
+    Round 7's four runs say that the declared chance test was not run on their stands; a rehearsal of it was
+  decision: >-
+    Decided for round 17, added by Jaskaran to its five fixes as a sixth. On round 7's four runs
+    (odisha_v120_3ha_squares_<district>_keptland_s1desc), the line written by scripts/build_ui_early_data.py and the
+    field-check card in ui/explorer.html say "The declared chance test was not run on these stands", where they said
+    "The chance test was not run on these stands" (site-round-7-runs-point-to-r3s-scores): a rehearsal of the
+    declared test was run on those stands (odisha_script/keptland_scores/keptland_s1desc_chance_rehearsal.json), so
+    it is the declared test that was not run. The rest of both texts is unchanged.
+  alternatives_considered: []
+  alternatives_note: not recorded in the source
+  rationale: >-
+    Jaskaran, 29 Oct 2026, in the Claude Code session: "Add to round 17, with the same review: on round 7's four runs
+    (odisha_v120_3ha_squares_<district>_keptland_s1desc), the line written by scripts/build_ui_early_data.py and the
+    field-check card in ui/explorer.html say 'The chance test was not run on these stands'. Make both say 'The
+    declared chance test was not run on these stands' (a rehearsal of it was:
+    odisha_script/keptland_scores/keptland_s1desc_chance_rehearsal.json). Record it under Jaskaran's answers as a
+    sixth fix." The rehearsal file says: "REHEARSAL of the chance test of PHASE_KEPTLAND_PREDECLARED.md on the
+    _keptland_s1desc stands from before the round 9 cache fix. Not the declared test's result". No paper was
+    searched for this decision.
+  evidence:
+  - path: odisha_script/keptland_scores/keptland_s1desc_chance_rehearsal.json
+    what: The rehearsal of the declared chance test on round 7's four runs' stands
+  - path: docs/handoff/2026-10-29-round17.md
+    what: Done, round 16's answers and the sixth fix
+  - path: scripts/build_ui_early_data.py
+    what: The line of round 7's four runs (S1DESC_NOTE)
+  - path: ui/explorer.html
+    what: The field-check card of round 7's four runs
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 29 Oct 2026, in the Claude Code session (added to round 17)
