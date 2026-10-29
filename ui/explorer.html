@@ -1172,6 +1172,10 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     closeDrawer();
     closeVersions();
     await applyStep();
+    // The address was written before the step's layers were on (renderAll); write it again, so that
+    // it holds the view on screen (round 16's question 6). At start-up `state.restoring` holds it
+    // back until the link is restored.
+    setHash();
   }
   // The address holds the whole view, so a link opens exactly what is on screen: the run and step,
   // then the map's centre and zoom, layers switched on or off against the step's own, the

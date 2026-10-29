@@ -1118,3 +1118,20 @@ def test_earlier_versions_say_what_happened_not_the_next_update():
     # live check, "the same type" among its criteria, which held).
     assert ("R3 uses a fit that repeats: in a check, two runs with the same settings, both made from "
             "scratch, gave every stand the same type.") in page
+
+
+def test_a_switch_of_run_writes_the_address_once_the_step_is_drawn():
+    """Round 16's question 6 (b), site-address-written-again-after-a-switch-of-run: selectRun writes
+    the address again after applyStep has turned the step's layers on, and at start-up setHash still
+    waits until the link is restored. tests/test_explorer_address.py checks it in a browser."""
+    page = _page()
+    body = page[page.index("async function selectRun("):]
+    body = body[:body.index("\n  }\n") + 4]
+    code = [line.strip() for line in body.splitlines()
+            if line.strip() and not line.strip().startswith("//")]
+    assert code[-3:] == ["await applyStep();", "setHash();", "}"]
+    assert "if (state.restoring) return;" in page
+    at = page.index("async function boot(")
+    for step in ("state.restoring = true;", "await selectRun(first);", "await restoreLink(link.q);",
+                 "state.restoring = false;", "setHash();", 'state.map.on("moveend", setHash);'):
+        at = page.index(step, at)  # each after the one before, or ValueError
