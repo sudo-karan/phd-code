@@ -1099,3 +1099,22 @@ def test_small_stands_are_small_patches_not_cut_off_patches():
     assert len(left) == 2
     assert 'blocked ? `small patches under ${minHa}` : "small cut-off patches"' in page
     assert "A small patch of trees or scrub, cut off from the rest, so it stays a stand of its own." in page
+
+
+def test_earlier_versions_say_what_happened_not_the_next_update():
+    """Round 16's question 5 (b), site-earlier-versions-say-what-happened: the three texts that
+    promised a next update say what happened instead."""
+    page = _page()
+    for gone in ("Their own chance test comes with the next update.",
+                 "That comes with the next update.", "The next update uses a fit that repeats."):
+        assert gone not in page
+    # The 13 Oct village-outline runs' field check, and the earlier AlphaEarth runs'.
+    assert ("(the September stands: ${fmt(firstTested.score, 4)}). The chance test was not run on "
+            "these stands; R3's runs were tested on their own stands.") in page
+    assert ('${r.arm === "alphaearth" ? "These AlphaEarth stands" : "These stands"} were not compared '
+            "with the plots, so the chance test was not run on them; R3's runs were tested on their own "
+            "stands.") in page
+    # The Types step of the earlier runs that are not kept-land: R3's fit repeats (round 14's third
+    # live check, "the same type" among its criteria, which held).
+    assert ("R3 uses a fit that repeats: in a check, two runs with the same settings, both made from "
+            "scratch, gave every stand the same type.") in page

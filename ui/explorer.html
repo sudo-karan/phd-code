@@ -1402,7 +1402,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       } else if (isKept(r)) out.body.push(`Every stand here is trees or scrub, so every stand gets a type. The types are worked out from the ${has(f.n_stands, f.stands_below_min) ? n0(f.n_stands - f.stands_below_min) + " " : ""}stands of ${has(f.min_stand_ha) ? ha(f.min_stand_ha) : "the smallest allowed size"} or more; the small patches then get the type they are closest to.`);
       else if (has(f.n_untyped_stands, f.share_stand_area_untyped)) out.body.push(`Only stands with some trees or scrub get a type: ${plural(f.n_untyped_stands, "stand")} (${pct(f.share_stand_area_untyped)} of the stand area) have none. The dark shading marks land that isn't trees or scrub; a stand that is mostly field can still get a type from the trees in it, and its averages include the field.`);
       else out.body.push(`Only stands with some trees or scrub get a type. The dark shading marks land that isn't trees or scrub.`);
-      if (!isKept(r) && state.index && state.index.commit === "early build") out.body.push(`A caution about these types: they are the ones the 13 October run saved, and a second fit of the same stands gives different types in most runs, because that run computed part of its input fresh and read part from storage. The next update uses a fit that repeats.`);
+      if (!isKept(r) && state.index && state.index.commit === "early build") out.body.push(`A caution about these types: they are the ones the 13 October run saved, and a second fit of the same stands gives different types in most runs, because that run computed part of its input fresh and read part from storage. R3 uses a fit that repeats: in a check, two runs with the same settings, both made from scratch, gave every stand the same type.`);
       if (odisha) out.body.push(`The type numbers are only names. The types are worked out for each district separately, so type 2 in ${r.area} has nothing to do with type 2 in another district.`);
       else out.body.push(`The type numbers are only names. Sanjay Van has no field plots, so the check against the ground is done in Odisha.`);
       out.body.push(`Click any stand to see its measurements, or to compare it with another stand. The next step shows what each type looks like.`);
@@ -1444,7 +1444,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       return `<p class="note">These stands were not compared with the plots. ${why} <button type="button" class="linkish" data-open-run="${esc(r.run_id)}_s1desc">Open the re-run</button></p>`;
     }
     if (!comparable(r)) {
-      return `<p class="note">We haven't compared ${r.arm === "alphaearth" ? "AlphaEarth's" : "these"} stands with the plots yet. We write down exactly how we'll test them before we run the test, so the result can't steer the method. That comes with the next update. Until then the map shows where the plots fall, without the comparison.</p>`;
+      return `<p class="note">${r.arm === "alphaearth" ? "These AlphaEarth stands" : "These stands"} were not compared with the plots, so the chance test was not run on them; R3's runs were tested on their own stands. The map shows where the plots fall, without the comparison.</p>`;
     }
     const feats = state.plots || [];
     const st = pairStats(feats);
@@ -1552,7 +1552,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     const scoreOnly = fesRows(map).filter(x => (x.chance_percentile === null || x.chance_percentile === undefined) && x.test === "drawing_all_plots" && (x.analysis || "primary") === "primary");
     const tStands = tested[0].stands;
     const firstTested = tested.find(x => x.test === "drawing_all_plots") || {};
-    const mismatch = scoreOnly.length && tStands ? `<p class="note">These tests were run on the stands of the ${esc(tStands)}. The stands on this map come from the ${esc(scoreOnly[0].stands || "re-runs")} and score ${fmt(scoreOnly[0].score, 4)} on the first test (the September stands: ${fmt(firstTested.score, 4)}). Their own chance test comes with the next update.</p>` : "";
+    const mismatch = scoreOnly.length && tStands ? `<p class="note">These tests were run on the stands of the ${esc(tStands)}. The stands on this map come from the ${esc(scoreOnly[0].stands || "re-runs")} and score ${fmt(scoreOnly[0].score, 4)} on the first test (the September stands: ${fmt(firstTested.score, 4)}). The chance test was not run on these stands; R3's runs were tested on their own stands.</p>` : "";
     // The reading was written for the September runs' scores only (reading_for); no other set's
     // scores are read beyond their declaration.
     const reading = state.fes && state.fes.reading && (!state.fes.reading_for || tStands === state.fes.reading_for) ? `<details><summary>What this means</summary><p class="small">${esc(state.fes.reading)}</p></details>` : "";
