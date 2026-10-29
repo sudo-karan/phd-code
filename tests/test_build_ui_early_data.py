@@ -1156,3 +1156,8 @@ def test_round_7s_runs_say_the_declared_chance_test_was_not_run_on_their_stands(
     card = card[:card.index("</p>")]
     assert "The declared chance test was not run on these stands" in card
     assert "The chance test was not run" not in card
+    # The committed lines (ui_data/index.json).
+    notes = [r["note"] for r in _index()["runs"] if r["run_id"] in rehearsal["runs"]]
+    assert len(notes) == 4
+    assert all("The declared chance test was not run on these stands, so their scores are numbers "
+               "only." in n and "The chance test was not run" not in n for n in notes)
