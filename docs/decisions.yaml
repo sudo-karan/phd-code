@@ -11386,3 +11386,218 @@ decisions:
   status: adopted
   design_notes_section: null
   source: Jaskaran, 29 Oct 2026 (round 16 brief), the round 15 record's question 5, answered (b)
+- id: site-typed-method-numbers-left-as-they-are
+  title: >-
+    The numbers the site's builder and page still type (settings of the method and fixed facts of the data) are left
+    as they are
+  decision: >-
+    The numbers round 16 listed as still typed by hand are left typed: in ui/explorer.html, the 22 measurements, the
+    64 numbers of AlphaEarth, the five field types (four in S2), the 1,999 random placements, the four districts and
+    the "one to three images" of the ascending-orbit note (whose Dhenkanal case is site-ascending-orbit-note-by-district);
+    in scripts/build_ui_early_data.py, Sanjay Van's 1,300 ha and its corners, the field types' legend labels,
+    "fewer than 5 plots" and the AlphaEarth runs' 64 bands. Round 16 checked each against its file; all matched but the
+    Dhenkanal case.
+  alternatives_considered:
+  - >-
+    Read each from its file in a later round, the build stopping on a mismatch (option (b) of the round 16 record's
+    question 1): not chosen
+  rationale: >-
+    Jaskaran, 29 Oct 2026, in the round 17 brief, answering the round 16 record's question 1: "Numbers the builder or
+    the page still types: (a), leave them." No paper was searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-29-round16.md
+    what: Done, "Numbers the builder or the page still types"; Questions, item 1, marked answered
+  - path: docs/handoff/2026-10-29-round17.md
+    what: The brief, Jaskaran's answers
+  - path: ui/explorer.html
+    what: The page's typed counts
+  - path: scripts/build_ui_early_data.py
+    what: The builder's typed numbers (SANJAY_NOTE, FIELD_TYPES, OUTSIDE_REASON)
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 29 Oct 2026 (round 17 brief), the round 16 record's question 1, answered (a)
+- id: site-ascending-orbit-note-by-district
+  title: >-
+    The ascending-orbit kept-land runs' field check gives the reason for the re-run by district: Dhenkanal's pass had
+    plenty of images
+  decision: >-
+    Decided for round 17 (its Task 1). The field check of the four ascending-orbit kept-land runs
+    (odisha_v120_3ha_squares_<district>_keptland) keeps its sentence for Angul, Kendujhar and Koraput (the radar pass
+    first used has only one to three images over the boxes, so the comparison was run on the re-run that uses the
+    other pass). For Dhenkanal, whose ascending pass has 174 images against 188 descending, it says that the pass
+    first used has plenty of images there, but that the comparison was run on the re-run that uses the other pass, as
+    in the other three districts, so that all four use the same pass: Jaskaran chose one orbit for the four
+    districts, not one per district by image count (spec-odisha-keptland-s1-orbit-descending).
+  alternatives_considered:
+  - >-
+    Leave the one sentence for all four (option (a) of the round 16 record's question 2, the default taken in round
+    16): not chosen; it is not true of Dhenkanal
+  rationale: >-
+    Jaskaran, 29 Oct 2026, in the round 17 brief, answering the round 16 record's question 2: "The ascending-orbit
+    runs' 'one to three images': (b), say it by district (Task 1)." The image counts are those of round 6's read-only
+    check (docs/handoff/2026-10-15-round6.md, step 5 b). No paper was searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-29-round16.md
+    what: Questions, item 2, marked answered
+  - path: docs/handoff/2026-10-29-round17.md
+    what: The brief, Jaskaran's answers and Task 1
+  - path: docs/handoff/2026-10-15-round6.md
+    what: The ascending and descending image counts over the boxes, by district (step 5 b)
+  - path: ui/explorer.html
+    what: The field check of the four ascending-orbit kept-land runs
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 29 Oct 2026 (round 17 brief), the round 16 record's question 2, answered (b)
+- id: site-size-chart-gives-the-merges-numbers
+  title: >-
+    The size chart's sentence gives the merge's count of stands over the ceiling and the small patches' area, as the
+    Stands step does
+  decision: >-
+    Decided for round 17 (its Task 2). On the earlier Odisha kept-land runs, where the Stands step and the size chart
+    gave two counts of the stands over the size limit (the merge's, and a recount from the stand layer's rounded
+    areas) and on three of them two areas for the small patches, the size chart's sentence gives the merge's numbers
+    too (stands_over_max_stand_ha, and the small patches' area the Stands step gives), as R3's pages already do. The
+    chart's bars stay as they are, drawn from the stand layer.
+  alternatives_considered:
+  - >-
+    Leave the two numbers (option (a) of the round 16 record's question 3, the default taken in round 16): not
+    chosen
+  rationale: >-
+    Jaskaran, 29 Oct 2026, in the round 17 brief, answering the round 16 record's question 3: "Two counts on one page:
+    (b), the merge's numbers in both places (Task 2)." No paper was searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-29-round16.md
+    what: Questions, item 3, marked answered
+  - path: docs/handoff/2026-10-29-round17.md
+    what: The brief, Jaskaran's answers and Task 2
+  - path: ui/explorer.html
+    what: The Stands step and the size chart (Profiles)
+  - path: docs/reproducibility/keptland_runs
+    what: The earlier kept-land runs' run records, whose merge_diagnostics give stands_over_max_area
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 29 Oct 2026 (round 17 brief), the round 16 record's question 3, answered (b)
+- id: site-small-patches-not-cut-off-patches
+  title: >-
+    The Types step of the earlier kept-land runs and every kept-land run's area-by-type chart say "small patches", not
+    "cut-off patches"
+  decision: >-
+    Decided for round 17 (its Task 3). Two texts that called every small stand cut off, though some touch a stand
+    that was already too big to take them, say "small patches": the Types step of the earlier kept-land runs and the
+    area-by-type chart on the Profiles step of every kept-land run, R3's included (a change to R3's pages, approved in
+    the brief). The other "cut-off" texts stay, since they show only on runs where every small stand shares no edge
+    with another (the Stands step's fact box, the popup's "cut off from the rest").
+  alternatives_considered:
+  - >-
+    Leave them (option (a) of the round 16 record's question 4, the default taken in round 16, whose brief kept R3's
+    pages as they were): not chosen
+  rationale: >-
+    Jaskaran, 29 Oct 2026, in the round 17 brief, answering the round 16 record's question 4: "The two 'cut-off'
+    phrases: (b), 'small patches' in both, R3's pages included (Task 3)." No paper was searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-29-round16.md
+    what: Questions, item 4, marked answered
+  - path: docs/handoff/2026-10-29-round17.md
+    what: The brief, Jaskaran's answers and Task 3
+  - path: ui/explorer.html
+    what: The Types step and the area-by-type chart
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 29 Oct 2026 (round 17 brief), the round 16 record's question 4, answered (b)
+- id: site-earlier-versions-say-what-happened
+  title: >-
+    Three earlier-version texts say what happened instead of promising a "next update"
+  decision: >-
+    Decided for round 17 (its Task 4). On the earlier versions, "Their own chance test comes with the next update"
+    (the field check of the eight 13 Oct village-outline runs) and "That comes with the next update" (the field check
+    of the four earlier AlphaEarth runs) are replaced by what happened: the chance test was not run on these stands;
+    R3's runs were tested on their own stands. "The next update uses a fit that repeats" (the Types step of the 18
+    earlier runs that are not kept-land) is replaced by: R3 uses a fit that repeats, as round 14's third live check
+    found (two runs of the same configuration from scratch gave every stand the same type).
+  alternatives_considered:
+  - >-
+    Leave them (option (a) of the round 16 record's question 5, the default taken in round 16): not chosen
+  rationale: >-
+    Jaskaran, 29 Oct 2026, in the round 17 brief, answering the round 16 record's question 5: "The three 'next
+    update' texts: (b), say what happened (Task 4)." No paper was searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-29-round16.md
+    what: Questions, item 5, marked answered
+  - path: docs/handoff/2026-10-29-round17.md
+    what: The brief, Jaskaran's answers and Task 4
+  - path: docs/handoff/2026-10-26-round14.md
+    what: The third live check, every criterion held, "the same type" among them
+  - path: ui/explorer.html
+    what: The three texts
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 29 Oct 2026 (round 17 brief), the round 16 record's question 5, answered (b)
+- id: site-address-written-again-after-a-switch-of-run
+  title: >-
+    After a switch of run the explorer writes its address again once the step is drawn, so that the address holds
+    the view on screen
+  decision: >-
+    Decided for round 17 (its Task 5), before paper-v3. selectRun calls setHash() at its end, after applyStep has
+    turned the step's layers on; before, the address it wrote (renderAll, renderStory, setHash) came before the
+    layers were on and said off= for every layer of the step, and opened it showed an empty map. At start-up,
+    state.restoring still holds setHash back until restoreLink is done, so a link opens what it names.
+  alternatives_considered:
+  - >-
+    Leave it (option (a) of the round 16 record's question 6, the default taken in round 16, outside that round's
+    brief): not chosen
+  rationale: >-
+    Jaskaran, 29 Oct 2026, in the round 17 brief, answering the round 16 record's question 6: "The address bar after
+    a switch of run: (b), before paper-v3 (Task 5)." docs/site.md says the address holds the whole view. No paper was
+    searched for this decision.
+  evidence:
+  - path: docs/handoff/2026-10-29-round16.md
+    what: Questions, item 6, marked answered; Done, the review, L1
+  - path: docs/handoff/2026-10-29-round17.md
+    what: The brief, Jaskaran's answers and Task 5
+  - path: ui/explorer.html
+    what: selectRun and setHash
+  - path: docs/site.md
+    what: Links to a view
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 29 Oct 2026 (round 17 brief), the round 16 record's question 6, answered (b)
+- id: site-round-7-runs-say-the-declared-chance-test
+  title: >-
+    Round 7's four runs say that the declared chance test was not run on their stands; a rehearsal of it was
+  decision: >-
+    Decided for round 17, added by Jaskaran to its five fixes as a sixth. On round 7's four runs
+    (odisha_v120_3ha_squares_<district>_keptland_s1desc), the line written by scripts/build_ui_early_data.py and the
+    field-check card in ui/explorer.html say "The declared chance test was not run on these stands", where they said
+    "The chance test was not run on these stands" (site-round-7-runs-point-to-r3s-scores): a rehearsal of the
+    declared test was run on those stands (odisha_script/keptland_scores/keptland_s1desc_chance_rehearsal.json), so
+    it is the declared test that was not run. The rest of both texts is unchanged.
+  alternatives_considered: []
+  alternatives_note: not recorded in the source
+  rationale: >-
+    Jaskaran, 29 Oct 2026, in the Claude Code session: "Add to round 17, with the same review: on round 7's four runs
+    (odisha_v120_3ha_squares_<district>_keptland_s1desc), the line written by scripts/build_ui_early_data.py and the
+    field-check card in ui/explorer.html say 'The chance test was not run on these stands'. Make both say 'The
+    declared chance test was not run on these stands' (a rehearsal of it was:
+    odisha_script/keptland_scores/keptland_s1desc_chance_rehearsal.json). Record it under Jaskaran's answers as a
+    sixth fix." The rehearsal file says: "REHEARSAL of the chance test of PHASE_KEPTLAND_PREDECLARED.md on the
+    _keptland_s1desc stands from before the round 9 cache fix. Not the declared test's result". No paper was
+    searched for this decision.
+  evidence:
+  - path: odisha_script/keptland_scores/keptland_s1desc_chance_rehearsal.json
+    what: The rehearsal of the declared chance test on round 7's four runs' stands
+  - path: docs/handoff/2026-10-29-round17.md
+    what: Done, round 16's answers and the sixth fix
+  - path: scripts/build_ui_early_data.py
+    what: The line of round 7's four runs (S1DESC_NOTE)
+  - path: ui/explorer.html
+    what: The field-check card of round 7's four runs
+  papers: []
+  status: adopted
+  design_notes_section: null
+  source: Jaskaran, 29 Oct 2026, in the Claude Code session (added to round 17)

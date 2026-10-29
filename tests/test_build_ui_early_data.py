@@ -724,7 +724,8 @@ def test_round_7s_line_points_to_r3s_run_of_the_same_boxes(builder, monkeypatch)
     """Round 15's question 1 (b), site-round-7-runs-point-to-r3s-scores: a round-7 run's line says
     its scores are round 7's, kept as history; that the record is R3's scores, on R3's run of the
     same boxes, features and stand size, by name; that the _r9 scores are not on the site; and that
-    the chance test was not run on these stands. The build stops if that R3 run is not R3's."""
+    the declared chance test was not run on these stands (round 17). The build stops if that R3 run
+    is not R3's."""
     run = "odisha_v120_3ha_squares_angul_keptland_s1desc"
     monkeypatch.setattr(builder, "RUNS", [{"run_id": f"{run}_r14", "r3": True}])
     note = builder.s1desc_note(run)
@@ -732,7 +733,8 @@ def test_round_7s_line_points_to_r3s_run_of_the_same_boxes(builder, monkeypatch)
     assert (f"The record is R3's scores, on R3's run of the same boxes, features and stand size, "
             f"{run}_r14.") in note
     assert "The _r9 scores, the record from before the corrections, are not on this site." in note
-    assert "The chance test was not run on these stands, so their scores are numbers only." in note
+    assert ("The declared chance test was not run on these stands, so their scores are numbers "
+            "only.") in note
     assert "does not show" not in note
     monkeypatch.setattr(builder, "RUNS", [{"run_id": f"{run}_r14"}])
     with pytest.raises(SystemExit, match="not among R3's runs"):
@@ -750,7 +752,8 @@ def test_round_7s_field_check_points_to_r3s_run_and_says_the_r9_scores_are_not_o
     assert ('The record is R3\'s scores, on R3\'s run of the same boxes, features and stand size, '
             '${runLink(run().run_id + "_r14")}.') in card
     assert "The _r9 scores, the record from before the corrections, are not on this site." in card
-    assert "The chance test was not run on these stands, so these scores are numbers only" in card
+    assert ("The declared chance test was not run on these stands, so these scores are numbers only"
+            in card)
 
 
 def _small_stands(tmp_path, run_id: str, whys: list[str]) -> Path:
@@ -1029,3 +1032,132 @@ def test_round_7s_line_links_r3s_run_in_the_area_step():
     page = (SCRIPTS.parent / "ui" / "explorer.html").read_text()
     assert 'const r3 = r.run_id + "_r14", note = esc(r.note);' in page
     assert "note.includes(r3) ? note.replace(r3, () => runLink(r3)) : note" in page
+
+
+# ---------------------------------------------------------------- round 17
+
+
+def _page() -> str:
+    return (SCRIPTS.parent / "ui" / "explorer.html").read_text()
+
+
+def test_the_ascending_orbit_note_says_what_is_true_of_each_district():
+    """Round 16's question 2 (b), site-ascending-orbit-note-by-district: the ascending-orbit
+    kept-land runs' field check keeps "only one to three images" for the districts whose pass first
+    used has that few over the boxes, by the register's counts, and says that Dhenkanal's, the one
+    district with more, has plenty, and that all four use the same pass."""
+    import re
+
+    import yaml
+
+    register = {d["id"]: d for d in yaml.safe_load(
+        (SCRIPTS.parent / "docs" / "decisions.yaml").read_text())["decisions"]}
+    text = " ".join(register["spec-odisha-keptland-s1-orbit-descending"]["decision"].split())
+    m = re.search(r"the ascending orbit has (\d+) images? in (\w+), (\d+) in (\w+), (\d+) in (\w+) "
+                  r"and (\d+) in (\w+);", text)
+    assert m
+    counts = {m.group(i + 1): int(m.group(i)) for i in (1, 3, 5, 7)}
+    assert sorted(d for d, n in counts.items() if n <= 3) == ["Angul", "Kendujhar", "Koraput"]
+    assert [d for d, n in counts.items() if n > 3] == ["Dhenkanal"]
+    page = _page()
+    assert 'const why = r.area === "Dhenkanal"' in page
+    assert ("Here the radar pass we first used has plenty of images, but the comparison was run on "
+            "the re-run that uses the other pass, as in the other three districts, so that all four "
+            "use the same pass.") in page
+    assert ("Over these boxes the radar pass we first used has only one to three images, so the "
+            "comparison was run on the re-run that uses the other pass.") in page
+
+
+def test_the_size_chart_gives_the_merges_numbers_as_the_stands_step_does():
+    """Round 16's question 3 (b), site-size-chart-gives-the-merges-numbers: the size chart's sentence
+    gives the stands over the ceiling and the small patches' area as the Stands step does, from the
+    run's facts (the merge's) where the run has them; its bars still count the stand layer."""
+    page = _page()
+    chart = page[page.index("function sizeHistogram"):page.index("function areaByType")]
+    assert ("const over = Number.isFinite(f.stands_over_max_stand_ha) ? f.stands_over_max_stand_ha "
+            ": areas.filter(") in chart
+    assert "const smallHa = smallPatchHa(f) ??" in chart
+    assert "about ${ha(Math.round(smallHa))} in all" in chart
+    assert "bins[Math.min(nb - 1, Math.floor(a / step))] += 1" in chart  # the bars: the layer's areas
+    stands_step = page[page.index('} else if (w.id === "stands") {'):
+                       page.index('} else if (w.id === "types") {')]
+    assert "const smallHa = smallPatchHa(f);" in stands_step
+    # The count the sentence reads is the merge's, in every kept-land run.
+    for r in [r for r in _index()["runs"] if r.get("kept_land")]:
+        md = json.loads((DATA / "by_run" / r["run_id"] / "merge_diagnostics.json").read_text())
+        assert r["facts"]["stands_over_max_stand_ha"] == md["stands_over_max_area"], r["run_id"]
+
+
+def test_small_stands_are_small_patches_not_cut_off_patches():
+    """Round 16's question 4 (b), site-small-patches-not-cut-off-patches: the Types step of the
+    earlier kept-land runs and every kept-land run's area-by-type chart say "small patches"; the only
+    "cut-off" texts left are the two the brief keeps, which show only where every small stand
+    shares no edge with another."""
+    import re
+
+    page = _page()
+    assert "or more; the small patches then get the type they are closest to." in page
+    assert "“Small” counts the small patches under the smallest stand size that took the type." in page
+    left = re.findall(r"cut[- ]off", page)
+    assert len(left) == 2
+    assert 'blocked ? `small patches under ${minHa}` : "small cut-off patches"' in page
+    assert "A small patch of trees or scrub, cut off from the rest, so it stays a stand of its own." in page
+
+
+def test_earlier_versions_say_what_happened_not_the_next_update():
+    """Round 16's question 5 (b), site-earlier-versions-say-what-happened: the three texts that
+    promised a next update say what happened instead."""
+    page = _page()
+    for gone in ("Their own chance test comes with the next update.",
+                 "That comes with the next update.", "The next update uses a fit that repeats."):
+        assert gone not in page
+    # The 13 Oct village-outline runs' field check, and the earlier AlphaEarth runs'.
+    assert ("(the September stands: ${fmt(firstTested.score, 4)}). The chance test was not run on "
+            "these stands; R3's runs were tested on their own stands.") in page
+    assert ('${r.arm === "alphaearth" ? "These AlphaEarth stands" : "These stands"} were not compared '
+            "with the plots, so the chance test was not run on them; R3's runs were tested on their own "
+            "stands.") in page
+    # The Types step of the earlier runs that are not kept-land: R3's fit repeats (round 14's third
+    # live check, "the same type" among its criteria, which held).
+    assert ("R3 uses a fit that repeats: in a check, two runs with the same settings, both made from "
+            "scratch, gave every stand the same type.") in page
+
+
+def test_a_switch_of_run_writes_the_address_once_the_step_is_drawn():
+    """Round 16's question 6 (b), site-address-written-again-after-a-switch-of-run: selectRun writes
+    the address again after applyStep has turned the step's layers on, and at start-up setHash still
+    waits until the link is restored. tests/test_explorer_address.py checks it in a browser."""
+    page = _page()
+    body = page[page.index("async function selectRun("):]
+    body = body[:body.index("\n  }\n") + 4]
+    code = [line.strip() for line in body.splitlines()
+            if line.strip() and not line.strip().startswith("//")]
+    assert code[-3:] == ["await applyStep();", "setHash();", "}"]
+    assert "if (state.restoring) return;" in page
+    at = page.index("async function boot(")
+    for step in ("state.restoring = true;", "await selectRun(first);", "await restoreLink(link.q);",
+                 "state.restoring = false;", "setHash();", 'state.map.on("moveend", setHash);'):
+        at = page.index(step, at)  # each after the one before, or ValueError
+
+
+def test_round_7s_runs_say_the_declared_chance_test_was_not_run_on_their_stands():
+    """Jaskaran, 29 Oct 2026, round 17's sixth fix (site-round-7-runs-say-the-declared-chance-test):
+    the line and the field-check card of round 7's four runs say that the declared chance test was
+    not run on their stands, since a rehearsal of it was, on those four runs' stands, and says so."""
+    rehearsal = json.loads((SCRIPTS.parent / "odisha_script" / "keptland_scores"
+                            / "keptland_s1desc_chance_rehearsal.json").read_text())
+    assert rehearsal["what"].startswith("REHEARSAL of the chance test of PHASE_KEPTLAND_PREDECLARED.md")
+    assert "Not the declared test's result" in rehearsal["what"]
+    assert sorted(rehearsal["runs"]) == sorted(
+        f"odisha_v120_3ha_squares_{d}_keptland_s1desc"
+        for d in ("angul", "dhenkanal", "kendujhar", "koraput"))
+    page = _page()
+    card = page[page.index("These are round 7's scores"):]
+    card = card[:card.index("</p>")]
+    assert "The declared chance test was not run on these stands" in card
+    assert "The chance test was not run" not in card
+    # The committed lines (ui_data/index.json).
+    notes = [r["note"] for r in _index()["runs"] if r["run_id"] in rehearsal["runs"]]
+    assert len(notes) == 4
+    assert all("The declared chance test was not run on these stands, so their scores are numbers "
+               "only." in n and "The chance test was not run" not in n for n in notes)

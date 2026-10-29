@@ -633,6 +633,13 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     if (v >= 10) return fmt(v, 1) + " ha";
     return fmt(v, 2).replace(/\.?0+$/, "") + " ha";
   }
+  // The small patches' area as the Stands step gives it: the merge's (R3), or, in an earlier run,
+  // that of the stands left out of the fit, which were all of them there. The size chart gives the
+  // same (round 16's question 3).
+  function smallPatchHa(f) {
+    const v = f.area_ha_below_min ?? f.area_ha_left_out_of_fit;
+    return typeof v === "number" && Number.isFinite(v) ? v : null;
+  }
   function pct(x) {
     if (x === null || x === undefined) return "–";
     const p = x * 100;
@@ -1165,6 +1172,10 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     closeDrawer();
     closeVersions();
     await applyStep();
+    // The address was written before the step's layers were on (renderAll); write it again, so that
+    // it holds the view on screen (round 16's question 6). At start-up `state.restoring` holds it
+    // back until the link is restored.
+    setHash();
   }
   // The address holds the whole view, so a link opens exactly what is on screen: the run and step,
   // then the map's centre and zoom, layers switched on or off against the step's own, the
@@ -1360,9 +1371,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       // ones too (round 15's question 5).
       const blocked = has(f.below_min_blocked) ? f.below_min_blocked : 0;
       const isolated = has(f.below_min_isolated) ? f.below_min_isolated : f.stands_below_min - blocked;
-      // Their area: the merge's (R3), or, in an earlier run, that of the stands left out of the fit,
-      // which were all of them there.
-      const smallHa = has(f.area_ha_below_min) ? f.area_ha_below_min : f.area_ha_left_out_of_fit;
+      const smallHa = smallPatchHa(f);
       let tail = keptSmall
         ? `In the end ${has(f.n_superpixels) ? n0(f.n_superpixels) + " superpixels become " : "we have "}${plural(f.n_stands - f.stands_below_min, "stand")} of ${minHa} or more. Trees and scrub also come in ${plural(f.stands_below_min, "small patch", "small patches")} under ${minHa}${has(smallHa) ? `, about ${ha(Math.round(smallHa))} in all` : ""}. ` +
           (blocked
@@ -1394,10 +1403,10 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       if (kr && isKept(r) && has(f.stands_in_fit, f.stands_left_out_of_fit)) {
         out.body.push(`Every stand here is trees or scrub. The types are worked out from the ${n0(f.stands_in_fit)} stands of ${has(f.min_stand_ha) ? ha(f.min_stand_ha) : "the smallest allowed size"} or more; ${plural(f.stands_left_out_of_fit, "smaller stand")} then get the type ${f.stands_left_out_of_fit === 1 ? "it is" : "they are"} closest to.` +
           (f.n_untyped_stands ? ` ${plural(f.n_untyped_stands, "small stand")} ${f.n_untyped_stands === 1 ? "has" : "have"} no type: ${has(f.untyped_no_data) && f.untyped_no_data === f.n_untyped_stands ? (f.n_untyped_stands === 1 ? "it has" : "each has") + " no value for a measurement the types are sorted on, so " + (f.n_untyped_stands === 1 ? "it" : "each") + " was left out of the sorting (click one to see which)" : "the sorting has no row for " + (f.n_untyped_stands === 1 ? "it" : "them")}.` : ""));
-      } else if (isKept(r)) out.body.push(`Every stand here is trees or scrub, so every stand gets a type. The types are worked out from the ${has(f.n_stands, f.stands_below_min) ? n0(f.n_stands - f.stands_below_min) + " " : ""}stands of ${has(f.min_stand_ha) ? ha(f.min_stand_ha) : "the smallest allowed size"} or more; the small cut-off patches then get the type they are closest to.`);
+      } else if (isKept(r)) out.body.push(`Every stand here is trees or scrub, so every stand gets a type. The types are worked out from the ${has(f.n_stands, f.stands_below_min) ? n0(f.n_stands - f.stands_below_min) + " " : ""}stands of ${has(f.min_stand_ha) ? ha(f.min_stand_ha) : "the smallest allowed size"} or more; the small patches then get the type they are closest to.`);
       else if (has(f.n_untyped_stands, f.share_stand_area_untyped)) out.body.push(`Only stands with some trees or scrub get a type: ${plural(f.n_untyped_stands, "stand")} (${pct(f.share_stand_area_untyped)} of the stand area) have none. The dark shading marks land that isn't trees or scrub; a stand that is mostly field can still get a type from the trees in it, and its averages include the field.`);
       else out.body.push(`Only stands with some trees or scrub get a type. The dark shading marks land that isn't trees or scrub.`);
-      if (!isKept(r) && state.index && state.index.commit === "early build") out.body.push(`A caution about these types: they are the ones the 13 October run saved, and a second fit of the same stands gives different types in most runs, because that run computed part of its input fresh and read part from storage. The next update uses a fit that repeats.`);
+      if (!isKept(r) && state.index && state.index.commit === "early build") out.body.push(`A caution about these types: they are the ones the 13 October run saved, and a second fit of the same stands gives different types in most runs, because that run computed part of its input fresh and read part from storage. R3 uses a fit that repeats: in a check, two runs with the same settings, both made from scratch, gave every stand the same type.`);
       if (odisha) out.body.push(`The type numbers are only names. The types are worked out for each district separately, so type 2 in ${r.area} has nothing to do with type 2 in another district.`);
       else out.body.push(`The type numbers are only names. Sanjay Van has no field plots, so the check against the ground is done in Odisha.`);
       out.body.push(`Click any stand to see its measurements, or to compare it with another stand. The next step shows what each type looks like.`);
@@ -1430,10 +1439,16 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     const r = run();
     const rows = fesRows(r);
     if (!comparable(r) && isAscendingRedo(r)) {
-      return `<p class="note">These stands were not compared with the plots. Over these boxes the radar pass we first used has only one to three images, so the comparison was run on the re-run that uses the other pass. <button type="button" class="linkish" data-open-run="${esc(r.run_id)}_s1desc">Open the re-run</button></p>`;
+      // By register spec-odisha-keptland-s1-orbit-descending, the pass first used has one to three
+      // images over the boxes of Angul, Kendujhar and Koraput, and plenty over Dhenkanal's; all four
+      // were re-run on the other pass, one pass for the four districts (round 16's question 2).
+      const why = r.area === "Dhenkanal"
+        ? "Here the radar pass we first used has plenty of images, but the comparison was run on the re-run that uses the other pass, as in the other three districts, so that all four use the same pass."
+        : "Over these boxes the radar pass we first used has only one to three images, so the comparison was run on the re-run that uses the other pass.";
+      return `<p class="note">These stands were not compared with the plots. ${why} <button type="button" class="linkish" data-open-run="${esc(r.run_id)}_s1desc">Open the re-run</button></p>`;
     }
     if (!comparable(r)) {
-      return `<p class="note">We haven't compared ${r.arm === "alphaearth" ? "AlphaEarth's" : "these"} stands with the plots yet. We write down exactly how we'll test them before we run the test, so the result can't steer the method. That comes with the next update. Until then the map shows where the plots fall, without the comparison.</p>`;
+      return `<p class="note">${r.arm === "alphaearth" ? "These AlphaEarth stands" : "These stands"} were not compared with the plots, so the chance test was not run on them; R3's runs were tested on their own stands. The map shows where the plots fall, without the comparison.</p>`;
     }
     const feats = state.plots || [];
     const st = pairStats(feats);
@@ -1497,9 +1512,10 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       // Round 7's runs (15 Oct): their scores are kept as history. The record is R3's scores, on R3's
       // run of the same boxes, features and stand size, the same run id ending _r14; the _r9 scores,
       // the record from before the corrections, are not on the site (round 15's question 1,
-      // site-round-7-runs-point-to-r3s-scores).
+      // site-round-7-runs-point-to-r3s-scores). The declared chance test was not run on these stands;
+      // a rehearsal of it was (keptland_s1desc_chance_rehearsal.json; Jaskaran, 29 Oct 2026).
       (/_keptland_s1desc$/.test(run().run_id || "")
-        ? `<p class="small">These are round 7's scores, of the 15 Oct runs, kept as history. The record is R3's scores, on R3's run of the same boxes, features and stand size, ${runLink(run().run_id + "_r14")}. The _r9 scores, the record from before the corrections, are not on this site. The chance test was not run on these stands, so these scores are numbers only: they can't be called better or worse than chance.${decl}</p>`
+        ? `<p class="small">These are round 7's scores, of the 15 Oct runs, kept as history. The record is R3's scores, on R3's run of the same boxes, features and stand size, ${runLink(run().run_id + "_r14")}. The _r9 scores, the record from before the corrections, are not on this site. The declared chance test was not run on these stands, so these scores are numbers only: they can't be called better or worse than chance.${decl}</p>`
         : `<p class="small">The chance test hasn't been run on these stands yet, so these are numbers only: they can't be called better or worse than chance.${decl}</p>`) +
       `<ul class="tests">${items}</ul>` +
       `<details><summary>The checks, side by side</summary><div class="scroll"><table class="xtab scores">${head}${body}</table></div></details>` +
@@ -1541,7 +1557,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     const scoreOnly = fesRows(map).filter(x => (x.chance_percentile === null || x.chance_percentile === undefined) && x.test === "drawing_all_plots" && (x.analysis || "primary") === "primary");
     const tStands = tested[0].stands;
     const firstTested = tested.find(x => x.test === "drawing_all_plots") || {};
-    const mismatch = scoreOnly.length && tStands ? `<p class="note">These tests were run on the stands of the ${esc(tStands)}. The stands on this map come from the ${esc(scoreOnly[0].stands || "re-runs")} and score ${fmt(scoreOnly[0].score, 4)} on the first test (the September stands: ${fmt(firstTested.score, 4)}). Their own chance test comes with the next update.</p>` : "";
+    const mismatch = scoreOnly.length && tStands ? `<p class="note">These tests were run on the stands of the ${esc(tStands)}. The stands on this map come from the ${esc(scoreOnly[0].stands || "re-runs")} and score ${fmt(scoreOnly[0].score, 4)} on the first test (the September stands: ${fmt(firstTested.score, 4)}). The chance test was not run on these stands; R3's runs were tested on their own stands.</p>` : "";
     // The reading was written for the September runs' scores only (reading_for); no other set's
     // scores are read beyond their declaration.
     const reading = state.fes && state.fes.reading && (!state.fes.reading_for || tStands === state.fes.reading_for) ? `<details><summary>What this means</summary><p class="small">${esc(state.fes.reading)}</p></details>` : "";
@@ -1708,7 +1724,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     const typeLayer = layerById(r, "stand_types");
     const typed = stands.filter(p => p.stand_type !== null && p.stand_type !== undefined);
     const types = [...new Set(typed.map(p => Math.round(p.stand_type)))].sort((a, b) => a - b);
-    // Small cut-off patches get a type but take no part in deciding the types, so the profile of
+    // Small patches get a type but take no part in deciding the types, so the profile of
     // each type is drawn from the stands that did.
     const fitted = typed.filter(p => p.below_min !== true);
     const ms = measuresIn(stands);
@@ -1765,15 +1781,20 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
     // The earlier runs' areas are measured from the outlines and rounded, so a stand within 1% of a
     // limit counts as at it; R3's are pixel counts (review A6), exact, so they are compared as they are.
     const slack = r.group === "current" ? 0 : 0.01;
-    const over = areas.filter(a => a > ceil * (1 + slack)).length;
+    // The sentence gives the Stands step's numbers where the run has them: the merge's count of the
+    // stands over the ceiling, and the small patches' area as the Stands step gives it (smallPatchHa:
+    // the merge's for R3, the stands left out of the fit for an earlier run) (round 16's question 3).
+    // The bars count the stand layer's areas.
+    const over = Number.isFinite(f.stands_over_max_stand_ha) ? f.stands_over_max_stand_ha : areas.filter(a => a > ceil * (1 + slack)).length;
     const below = minHa ? areas.filter(a => a < minHa * (1 - slack)).length : 0;
+    const smallHa = smallPatchHa(f) ?? small.reduce((s, p) => s + (p.area_ha || 0), 0);
     return `<div class="card chart"><h3>How big the stands are</h3>` +
       `<svg ${SVG_NS} viewBox="0 0 ${W} ${H}" role="img" aria-label="Histogram of stand sizes">` +
       `<text x="${L - 4}" y="${T + 4}" text-anchor="end">${max}</text><text x="${L - 4}" y="${H - B}" text-anchor="end">0</text>` +
       bars + (minHa ? line(minHa, "smallest allowed", false) : "") + line(ceil, "largest allowed", true) + `<g class="ticks">${ticks}</g></svg>` +
       `<p class="small">Each bar counts the stands of that size, in hectares. ${plural(areas.length, "stand")} in all; the middle one is ${ha(quantile(areas, 0.5))}.` +
       (below ? ` ${plural(below, "stand")} ${below === 1 ? "is" : "are"} still under ${ha(minHa)}.` : "") +
-      (small.length ? ` Not counted here: ${plural(Math.max(small.length, f.stands_below_min || 0), "small patch", "small patches")} of trees or scrub under ${ha(minHa)}, about ${ha(Math.round(small.reduce((s, p) => s + (p.area_ha || 0), 0)))} in all, which stayed small ${f.below_min_blocked ? `because they share no edge with another stand (${n0(f.below_min_isolated)}) or every neighbour was too big to take them (${n0(f.below_min_blocked)})` : "because they share no edge with another stand"}.` : "") +
+      (small.length ? ` Not counted here: ${plural(Math.max(small.length, f.stands_below_min || 0), "small patch", "small patches")} of trees or scrub under ${ha(minHa)}, about ${ha(Math.round(smallHa))} in all, which stayed small ${f.below_min_blocked ? `because they share no edge with another stand (${n0(f.below_min_isolated)}) or every neighbour was too big to take them (${n0(f.below_min_blocked)})` : "because they share no edge with another stand"}.` : "") +
       (over ? ` ${plural(over, "stand")} ${over === 1 ? "goes" : "go"} past ${ha(ceil)}, the most is ${ha(areas[areas.length - 1])}.` : "") + `</p></div>`;
   }
   function areaByType(model) {
@@ -1783,7 +1804,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
       `<span class="abar"><i style="width:${(100 * x.area / max).toFixed(1)}%;background:${esc(x.color)}"></i></span>` +
       `<span class="aval">${pct(x.area / total)} <span class="small">${plural(x.n, "stand")}${x.nSmall ? ` + ${n0(x.nSmall)} small` : ""}</span></span></div>`).join("");
     return `<div class="card chart"><h3>How much land each type covers</h3><div class="arows">${rows}</div>` +
-      `<p class="small">Share of the area of the stands that have a type. Click a type to see only its stands on the map.${model.nSmall ? ` “Small” counts the cut-off patches under the smallest stand size that took the type.` : ""}${model.untyped ? ` ${plural(model.untyped, "stand")} ${model.untyped === 1 ? "has" : "have"} no type and ${model.untyped === 1 ? "is" : "are"} left out.` : ""}</p></div>`;
+      `<p class="small">Share of the area of the stands that have a type. Click a type to see only its stands on the map.${model.nSmall ? ` “Small” counts the small patches under the smallest stand size that took the type.` : ""}${model.untyped ? ` ${plural(model.untyped, "stand")} ${model.untyped === 1 ? "has" : "have"} no type and ${model.untyped === 1 ? "is" : "are"} left out.` : ""}</p></div>`;
   }
   function shiftColor(z) {
     if (z === null) return "var(--neutral-soft)";
